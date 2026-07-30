@@ -1,15 +1,17 @@
 package com.hanghai.kchtg.siem.dto;
 
-import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.util.UUID;
 
 /**
  * Request payload for triggering a new SIEM report.
  */
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SiemReportRequest {
 
     /** Required: export format — WORD, EXCEL, PDF, HTML, XML. */

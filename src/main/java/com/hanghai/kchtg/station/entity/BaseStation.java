@@ -1,10 +1,7 @@
 package com.hanghai.kchtg.station.entity;
-import lombok.*;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.hibernate.annotations.SQLRestriction;

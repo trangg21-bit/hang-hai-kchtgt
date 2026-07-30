@@ -1,10 +1,14 @@
 package com.hanghai.kchtg.shiprepairfacility.dto;
 
-import java.util.UUID;
-
-import jakarta.validation.constraints.Size;
-import lombok.*;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -18,8 +22,7 @@ public class ShipRepairFacilityUpdateRequest {
     @Size(max = 500)
     private String address;
 
-    @Size(max = 100)
-    private String province;
+    private Integer provinceId;
 
     @Size(max = 20)
     private String phone;
@@ -27,7 +30,7 @@ public class ShipRepairFacilityUpdateRequest {
     @Size(max = 100)
     private String email;
 
-    private com.hanghai.kchtg.shiprepairfacility.entity.FacilityType facilityType;
+    private FacilityType facilityType;
 
     @Size(max = 255)
     private String capacity;

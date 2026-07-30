@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.port;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
@@ -22,8 +24,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -32,7 +32,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
@@ -82,9 +81,9 @@ class PortServiceTest {
         ReflectionTestUtils.setField(testEntity, "id", testId);
         testEntity.setPortCode("CB-001");
         testEntity.setPortName("Cảng Biển Demo");
-        testEntity.setProvince("Hải Phòng");
+        testEntity.setProvinceId(1);
         testEntity.setArea(new BigDecimal("5000.00"));
-        testEntity.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
         testEntity.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
@@ -183,7 +182,7 @@ class PortServiceTest {
         UpdatePortRequest request = new UpdatePortRequest();
         request.setId(testId);
         request.setPortName("Cảng Đã Cập Nhật");
-        request.setProvince("Đà Nẵng");
+        request.setProvinceId(1);
 
         PortResponse result = service.update(request);
 
@@ -275,7 +274,7 @@ class PortServiceTest {
         req.setPortCode(portCode);
         req.setPortName(portName);
         req.setArea(area);
-        req.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        req.setOperationalStatus(OperationalStatus.OPERATIONAL);
         return req;
     }
 }

@@ -1,27 +1,32 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import java.util.UUID;
-
-import com.hanghai.kchtg.navigationchannel.dto.*;
-import com.hanghai.kchtg.navigationchannel.entity.*;
-import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.navigationchannel.repository.ApprovalHistoryRepository;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.navigationchannel.dto.*;
+import com.hanghai.kchtg.navigationchannel.entity.ApprovalHistory;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.navigationchannel.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -42,7 +47,7 @@ public class NavigationChannelService {
         String channelCode = req.getChannelCode();
         if (channelCode == null || channelCode.trim().isEmpty()) {
             String orgCode = orgUnitRepository.findById(req.getOrgUnitId())
-                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getCode)
+                    .map(OrgUnit::getCode)
                     .orElseThrow(() -> new IllegalArgumentException("Khong tim thay don vi voi id: " + req.getOrgUnitId()));
             long count = repo.countByOrgUnitId(req.getOrgUnitId());
             channelCode = orgCode + "-NC-" + String.format("%06d", count + 1);
@@ -488,7 +493,7 @@ public class NavigationChannelService {
     private String resolveOrgUnitName(UUID orgUnitId) {
         if (orgUnitId == null) return null;
         return orgUnitRepository.findById(orgUnitId)
-                .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                .map(OrgUnit::getName)
                 .orElse(null);
     }
 

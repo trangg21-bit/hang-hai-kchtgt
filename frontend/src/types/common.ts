@@ -88,3 +88,18 @@ export const VIETNAM_PROVINCES = [
   "Vĩnh Phúc",
   "Yên Bái"
 ];
+
+/**
+ * Mã tỉnh/thành phố khớp bảng `provinces` được tạo tại migration V108.
+ * Dropdown vẫn hiển thị tên tiếng Việt nhưng gửi mã số cho API.
+ */
+const VIETNAM_PROVINCE_IDS = [
+  89, 77, 24, 6, 95, 27, 83, 52, 74, 70, 60, 96, 92, 4, 48, 66, 67, 11, 75, 87, 64,
+  2, 35, 1, 42, 30, 31, 93, 17, 33, 56, 91, 62, 12, 68, 20, 10, 80, 36, 40, 37, 58,
+  25, 54, 44, 49, 51, 22, 45, 94, 14, 72, 34, 19, 38, 46, 82, 79, 84, 8, 86, 26, 15,
+] as const;
+
+export const VIETNAM_PROVINCE_OPTIONS = VIETNAM_PROVINCES.map((label, index) => ({
+  label,
+  value: String(VIETNAM_PROVINCE_IDS[index]),
+}));

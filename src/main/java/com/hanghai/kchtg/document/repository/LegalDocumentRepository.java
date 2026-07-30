@@ -1,16 +1,16 @@
 package com.hanghai.kchtg.document.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.entity.DocumentType;
-import com.hanghai.kchtg.document.entity.ValidityStatus;
 import com.hanghai.kchtg.document.entity.LegalDocument;
+import com.hanghai.kchtg.document.entity.ValidityStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public interface LegalDocumentRepository extends JpaRepository<LegalDocument, UUID> {
 

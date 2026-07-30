@@ -1,14 +1,16 @@
 package com.hanghai.kchtg.systemintegration.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.systemintegration.dto.*;
+import com.hanghai.kchtg.systemintegration.dto.IntegrationStatistics;
+import com.hanghai.kchtg.systemintegration.dto.IntegrationSummary;
+import com.hanghai.kchtg.systemintegration.dto.SystemIntegrationRequest;
+import com.hanghai.kchtg.systemintegration.dto.SystemIntegrationResponse;
 import com.hanghai.kchtg.systemintegration.entity.SystemIntegrationRecord;
 import com.hanghai.kchtg.systemintegration.enums.IntegrationStatus;
 import com.hanghai.kchtg.systemintegration.enums.IntegrationType;
 import com.hanghai.kchtg.systemintegration.repository.SystemIntegrationRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;

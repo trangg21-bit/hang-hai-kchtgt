@@ -183,20 +183,20 @@ export default function App() {
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
-                <Route path="/Port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
-                <Route path="/Port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
-                <Route path="/Port/:id" element={<PermissionGuard permission="port:read"><PortDetailPage /></PermissionGuard>} />
-                <Route path="/Port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
-                <Route path="/Port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
-                <Route path="/Port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
+                <Route path="/port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
+                <Route path="/port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
+                <Route path="/port/:id" element={<PermissionGuard permission="port:read"><PortDetailPage /></PermissionGuard>} />
+                <Route path="/port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
+                <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
+                <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
-                <Route path="/Berth" element={<PermissionGuard permission="berth:read"><BerthListPage /></PermissionGuard>} />
+                <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthListPage /></PermissionGuard>} />
 
-                <Route path="/Pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
 
-                <Route path="/DryPort" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
+                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
 
-                <Route path="/WaterZone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
+                <Route path="/water-zone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
 
                 <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="port:read"><DocumentUploadPage /></PermissionGuard>} />
 

@@ -326,6 +326,7 @@ export default function PortCreatePage() {
           .filter((inf) => inf.infraName?.trim())
           .map((inf) => ({ stt: inf.stt, infraName: inf.infraName.trim(), quantity: Number(inf.quantity) })),
       };
+<<<<<<< HEAD
 
       // POST create port
       const res = await api.post('/v1/ports', payload);
@@ -348,6 +349,11 @@ export default function PortCreatePage() {
         actionType === 'draft' ? 'Lưu tạm thành công' : 'Gửi phê duyệt thành công';
       toast.success(successMsg);
       navigate('/Port');
+=======
+      await createCangBien(payload);
+      toast.success('Tạo mới thành công — chờ phê duyệt');
+      navigate('/port');
+>>>>>>> origin
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -378,11 +384,15 @@ export default function PortCreatePage() {
         }}
       >
         <Space>
+<<<<<<< HEAD
           <Button
             icon={<ArrowLeftOutlined />}
             onClick={() => navigate('/Port')}
             style={btnStyle}
           >
+=======
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/port')}>
+>>>>>>> origin
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0, fontFamily: fontSans }}>
@@ -1162,6 +1172,7 @@ export default function PortCreatePage() {
               ════════════════════════════════════ */}
           <Divider style={{ borderColor: borderDefault, margin: `${spaceLg}px 0` }} />
 
+<<<<<<< HEAD
           <Form.Item style={{ marginBottom: 0 }}>
             <Space wrap>
               <Button
@@ -1196,6 +1207,30 @@ export default function PortCreatePage() {
               >
                 Hủy
               </Button>
+=======
+          {/* Status Section */}
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Trạng thái
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Trạng thái hoạt động" name="operationalStatus">
+                <Select placeholder="Chọn trạng thái" options={TRANG_THAI_HOAT_DONG_OPTIONS} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Trạng thái phê duyệt" name="approvalStatus" rules={[{ required: true, message: 'Vui lòng chọn trạng thái phê duyệt' }]}>
+                <Select options={[{ label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' }, { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' }, { label: 'Từ chối', value: 'TU_CHOI' }]} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Footer */}
+          <Form.Item style={{ marginTop: 24 }}>
+            <Space>
+              <Button type="primary" htmlType="submit" loading={submitting}>Tạo cảng biển</Button>
+              <Button onClick={() => navigate('/port')}>Hủy</Button>
+>>>>>>> origin
             </Space>
           </Form.Item>
         </Form>

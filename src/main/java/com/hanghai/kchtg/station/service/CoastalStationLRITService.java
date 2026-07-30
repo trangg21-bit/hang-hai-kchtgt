@@ -2,6 +2,7 @@ package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITHistoryResponse;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITRequest;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
@@ -91,7 +92,7 @@ public class CoastalStationLRITService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
 
         String stationCode = entity.getCode();
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(

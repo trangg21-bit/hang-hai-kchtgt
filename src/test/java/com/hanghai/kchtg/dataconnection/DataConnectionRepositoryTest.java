@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.dataconnection;
 
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
-import com.hanghai.kchtg.dataconnection.enums.*;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
+import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
 import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

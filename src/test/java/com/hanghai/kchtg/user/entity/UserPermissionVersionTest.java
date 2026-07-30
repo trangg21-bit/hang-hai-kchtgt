@@ -2,7 +2,7 @@ package com.hanghai.kchtg.user.entity;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class UserPermissionVersionTest {
 
@@ -17,7 +17,7 @@ class UserPermissionVersionTest {
         User user = new User();
         user.incrementPermissionVersion();
         assertEquals(1, user.getPermissionVersion());
-        
+
         user.incrementPermissionVersion();
         assertEquals(2, user.getPermissionVersion());
     }

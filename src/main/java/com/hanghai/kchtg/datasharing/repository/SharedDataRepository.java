@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.datasharing.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.datasharing.entity.ShareDataType;
 import com.hanghai.kchtg.datasharing.entity.ShareStatus;
 import com.hanghai.kchtg.datasharing.entity.SharedData;
@@ -11,8 +9,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface SharedDataRepository extends JpaRepository<SharedData, UUID> {

@@ -1,15 +1,19 @@
 package com.hanghai.kchtg.shiprepairfacility.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.*;
-import com.hanghai.kchtg.shiprepairfacility.repository.*;
+import com.hanghai.kchtg.shiprepairfacility.entity.ApprovalHistory;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
+import com.hanghai.kchtg.shiprepairfacility.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityAttachmentRepository;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,10 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Service
 @RequiredArgsConstructor
@@ -30,13 +30,13 @@ public class ShipRepairFacilityService {
     private final ShipRepairFacilityRepository repository;
     private final ShipRepairFacilityAttachmentRepository attachmentRepository;
     private final ApprovalHistoryRepository historyRepository;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     public ShipRepairFacilityResponse create(ShipRepairFacilityCreateRequest request, UUID createdBy) {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName(request.getFacilityName())
                 .address(request.getAddress())
-                .province(request.getProvince())
+                .provinceId(request.getProvinceId())
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .facilityType(request.getFacilityType())
@@ -119,7 +119,7 @@ public class ShipRepairFacilityService {
 
         if (request.getFacilityName() != null) entity.setFacilityName(request.getFacilityName());
         if (request.getAddress() != null) entity.setAddress(request.getAddress());
-        if (request.getProvince() != null) entity.setProvince(request.getProvince());
+        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
         if (request.getPhone() != null) entity.setPhone(request.getPhone());
         if (request.getEmail() != null) entity.setEmail(request.getEmail());
         if (request.getFacilityType() != null) entity.setFacilityType(request.getFacilityType());
@@ -305,12 +305,11 @@ public class ShipRepairFacilityService {
                         .build()).toList();
     }
 
-    public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, String province, String approvalStatus, String reviewStatus) {
+    public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, Integer provinceId, String approvalStatus, String reviewStatus) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        String provinceLike = (province != null && !province.trim().isEmpty()) ? "%" + province.trim().toLowerCase() + "%" : null;
         ShipRepairApprovalStatus statusEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty()) ? ShipRepairApprovalStatus.fromString(approvalStatus) : null;
         ShipRepairApprovalStatus reviewStatusEnum = (reviewStatus != null && !reviewStatus.trim().isEmpty()) ? ShipRepairApprovalStatus.fromString(reviewStatus) : null;
-        return repository.search(orgUnitId, keywordLike, provinceLike, statusEnum, reviewStatusEnum).stream().map(this::toResponse).toList();
+        return repository.search(orgUnitId, keywordLike, provinceId, statusEnum, reviewStatusEnum).stream().map(this::toResponse).toList();
     }
 
     private ShipRepairFacilityResponse toResponse(ShipRepairFacility entity) {
@@ -342,7 +341,7 @@ public class ShipRepairFacilityService {
                 .id(entity.getId())
                 .facilityName(entity.getFacilityName())
                 .address(entity.getAddress())
-                .province(entity.getProvince())
+                .provinceId(entity.getProvinceId())
                 .phone(entity.getPhone())
                 .email(entity.getEmail())
                 .facilityType(entity.getFacilityType())

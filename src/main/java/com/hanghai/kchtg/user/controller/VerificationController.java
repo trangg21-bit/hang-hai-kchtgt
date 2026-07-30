@@ -3,10 +3,12 @@ package com.hanghai.kchtg.user.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ResendVerificationRequest;
 import com.hanghai.kchtg.user.dto.VerifyResponse;
+import com.hanghai.kchtg.user.dto.VerifyTokenRequest;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.exception.VerificationException;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.repository.VerificationTokenRepository;
 import com.hanghai.kchtg.user.service.NotificationService;
 import com.hanghai.kchtg.user.service.RateLimiterService;
 import com.hanghai.kchtg.user.service.VerificationTokenService;
@@ -33,13 +35,13 @@ public class VerificationController {
 
     private final UserRepository userRepository;
     private final VerificationTokenService verificationTokenService;
-    private final com.hanghai.kchtg.user.repository.VerificationTokenRepository verificationTokenRepository;
+    private final VerificationTokenRepository verificationTokenRepository;
     private final NotificationService notificationService;
     private final RateLimiterService rateLimiterService;
 
     public VerificationController(UserRepository userRepository,
                                    VerificationTokenService verificationTokenService,
-                                   com.hanghai.kchtg.user.repository.VerificationTokenRepository verificationTokenRepository,
+                                   VerificationTokenRepository verificationTokenRepository,
                                    NotificationService notificationService,
                                    RateLimiterService rateLimiterService) {
         this.userRepository = userRepository;
@@ -54,7 +56,7 @@ public class VerificationController {
      */
     @PostMapping("/verify")
     public ResponseEntity<ApiResponse<VerifyResponse>> verify(
-            @Valid @RequestBody com.hanghai.kchtg.user.dto.VerifyTokenRequest request,
+            @Valid @RequestBody VerifyTokenRequest request,
             HttpServletRequest requestInfo) {
 
         String ipAddress = getClientIp(requestInfo);

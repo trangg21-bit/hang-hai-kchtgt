@@ -2,14 +2,15 @@ package com.hanghai.kchtg.config;
 
 import com.hanghai.kchtg.security.JwtAuthFilter;
 import com.hanghai.kchtg.security.JwtProperties;
-import com.hanghai.kchtg.security.PermissionAuthorizationManager;
+import com.hanghai.kchtg.security.filter.CookieRefreshTokenFilter;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import org.springframework.http.HttpMethod;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
@@ -45,9 +46,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    private final com.hanghai.kchtg.security.filter.CookieRefreshTokenFilter cookieRefreshTokenFilter;
+    private final CookieRefreshTokenFilter cookieRefreshTokenFilter;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, com.hanghai.kchtg.security.filter.CookieRefreshTokenFilter cookieRefreshTokenFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, CookieRefreshTokenFilter cookieRefreshTokenFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.cookieRefreshTokenFilter = cookieRefreshTokenFilter;
     }
@@ -129,9 +130,9 @@ public class SecurityConfig {
                     .password(user.getPassword())
                     .authorities(role)
                     .accountLocked(
-                            user.getStatus() == com.hanghai.kchtg.user.entity.UserStatus.LOCKED)
+                            user.getStatus() == UserStatus.LOCKED)
                     .disabled(
-                            user.getStatus() == com.hanghai.kchtg.user.entity.UserStatus.INACTIVE)
+                            user.getStatus() == UserStatus.INACTIVE)
                     .build();
         };
     }

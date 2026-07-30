@@ -1,6 +1,9 @@
 package com.hanghai.kchtg.report.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
@@ -9,8 +12,7 @@ import java.util.Map;
  * DTO for chart rendering (F-102: Biểu thống kê hàng hải).
  * Provides structured chart data compatible with Chart.js / ECharts.
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

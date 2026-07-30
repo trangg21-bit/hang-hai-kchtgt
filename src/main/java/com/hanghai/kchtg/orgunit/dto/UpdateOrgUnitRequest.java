@@ -1,11 +1,10 @@
 package com.hanghai.kchtg.orgunit.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.Data;
 
 import java.util.UUID;
 
@@ -44,4 +43,7 @@ public class UpdateOrgUnitRequest {
 
     /** Status — can be used to submit for approval (PENDING). */
     private OrgUnitStatus status;
+
+    /** Operational availability of the unit. */
+    private OrgUnitOperationalStatus operationalStatus;
 }

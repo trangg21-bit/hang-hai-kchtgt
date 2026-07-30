@@ -1,11 +1,10 @@
 package com.hanghai.kchtg.radarstation.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.radarstation.dto.*;
 import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
 import com.hanghai.kchtg.radarstation.service.RadarStationService;
+import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/radar-station")
@@ -28,7 +28,7 @@ public class RadarStationController {
     @PostMapping
     public ResponseEntity<ApiResponse<RadarStationResponse>> create(@Valid @RequestBody RadarStationCreateRequest request, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
             RadarStationResponse response = service.create(request, userId);
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
         } catch (Exception e) {
@@ -69,7 +69,7 @@ public class RadarStationController {
                                     @Valid @RequestBody RadarStationUpdateRequest request,
                                     Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
             RadarStationResponse response = service.update(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
         } catch (Exception e) {
@@ -82,7 +82,7 @@ public class RadarStationController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
             service.delete(id, userId);
             return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
         } catch (Exception e) {
@@ -97,7 +97,7 @@ public class RadarStationController {
                                        @Valid @RequestBody ApprovalRequest request,
                                        Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
             RadarStationResponse response = service.approveC1(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
         } catch (Exception e) {
@@ -112,7 +112,7 @@ public class RadarStationController {
                                        @Valid @RequestBody ApprovalRequest request,
                                        Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
             RadarStationResponse response = service.approveC2(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
         } catch (Exception e) {

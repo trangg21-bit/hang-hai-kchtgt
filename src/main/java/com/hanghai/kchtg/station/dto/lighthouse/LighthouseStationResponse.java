@@ -1,11 +1,7 @@
 package com.hanghai.kchtg.station.dto.lighthouse;
 
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +10,6 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Response DTO cho chi tiết nhà trạm đèn biển (F-091).

@@ -2,6 +2,7 @@ package com.hanghai.kchtg.siem.dto;
 
 import com.hanghai.kchtg.siem.entity.SiemReport;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -11,6 +12,7 @@ import java.util.UUID;
  * Never exposes the raw content bytes over the API.
  */
 @Getter
+@Setter
 public class SiemReportResponse {
 
     private final UUID id;
@@ -51,4 +53,3 @@ public class SiemReportResponse {
         this.contentType = contentType;
     }
 }
-

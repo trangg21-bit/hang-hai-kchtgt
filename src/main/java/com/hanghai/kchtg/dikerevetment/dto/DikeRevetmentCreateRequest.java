@@ -1,18 +1,20 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Create request for DikeRevetment (F-044).
  */
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 @NoArgsConstructor
@@ -41,7 +43,7 @@ public class DikeRevetmentCreateRequest {
     private List<DikeRevetmentAttachmentCreate> attachments;
     private GisGeometryType geometryType;
     private String coordinates;
-    private UUID bieuTuongId;
+    private UUID symbolId;
 
     @Data
     @NoArgsConstructor

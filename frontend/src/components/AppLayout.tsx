@@ -47,11 +47,11 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/beacon-lights': 'data:read',
   '/buoys': 'data:read',
   '/history': 'data:read',
-  '/Port': 'port:read',
-  '/Berth': 'berth:read',
-  '/Pier': 'pier:read',
-  '/DryPort': 'dryport:read',
-  '/WaterZone': 'waterzone:read',
+  '/port': 'port:read',
+  '/berth': 'berth:read',
+  '/pier': 'pier:read',
+  '/dry-port': 'dryport:read',
+  '/water-zone': 'waterzone:read',
   '/navigation-channel': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
   '/ship-repair-facility': 'shiprepair:read',
@@ -89,11 +89,11 @@ const pageTitles: Record<string, string> = {
   '/lighthouse-station': 'Nhà trạm đèn biển',
   '/buoy-station': 'Nhà trạm phao tiêu',
   '/history': 'Lịch sử thay đổi',
-  '/Port': 'Quản lý cảng biển',
-  '/Berth': 'Quản lý bến cảng',
-  '/Pier': 'Quản lý cầu cảng',
-  '/DryPort': 'Quản lý cảng cạn',
-  '/WaterZone': 'Quản lý vùng nước',
+  '/port': 'Quản lý cảng biển',
+  '/berth': 'Quản lý bến cảng',
+  '/pier': 'Quản lý cầu cảng',
+  '/dry-port': 'Quản lý cảng cạn',
+  '/water-zone': 'Quản lý vùng nước',
   '/navigation-channel': 'Luồng hàng hải',
   '/dike-revetment': 'Đê/Kè',
   '/ship-repair-facility': 'Cơ sở sửa chữa & đóng tàu',
@@ -149,7 +149,7 @@ export default function AppLayout() {
   } else if (pathSegments[0] === 'lighthouse-station' || pathSegments[0] === 'buoy-station' || pathSegments[0] === 'documents' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'Port' || pathSegments[0] === 'Berth' || pathSegments[0] === 'Pier' || pathSegments[0] === 'DryPort' || pathSegments[0] === 'WaterZone') {
+  } else if (pathSegments[0] === 'port' || pathSegments[0] === 'berth' || pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
     selectedKey = '/' + pathSegments[0];
@@ -165,7 +165,7 @@ export default function AppLayout() {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
-      } else if (['/Port', '/Berth', '/Pier', '/DryPort', '/WaterZone'].includes(selectedKey)) {
+      } else if (['/port', '/berth', '/pier', '/dry-port', '/water-zone'].includes(selectedKey)) {
         setOpenKeys(['cangben']);
       } else if (selectedKey.startsWith('/asset')) {
         setOpenKeys(['asset-movement']);
@@ -231,11 +231,11 @@ export default function AppLayout() {
       icon: <ContainerOutlined />,
       label: 'Quản lý KCHT Hàng Hải',
       children: [
-        canAccessMenu('/Port') ? { key: '/Port', label: 'Quản lý cảng biển' } : null,
-        canAccessMenu('/Berth') ? { key: '/Berth', label: 'Quản lý bến cảng' } : null,
-        canAccessMenu('/Pier') ? { key: '/Pier', label: 'Quản lý cầu cảng' } : null,
-        canAccessMenu('/DryPort') ? { key: '/DryPort', label: 'Quản lý cảng cạn' } : null,
-        canAccessMenu('/WaterZone') ? { key: '/WaterZone', label: 'Quản lý vùng nước' } : null,
+        canAccessMenu('/port') ? { key: '/port', label: 'Quản lý cảng biển' } : null,
+        canAccessMenu('/berth') ? { key: '/berth', label: 'Quản lý bến cảng' } : null,
+        canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng' } : null,
+        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn' } : null,
+        canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
     },
     {
@@ -520,11 +520,11 @@ export default function AppLayout() {
   const [searchParams] = useSearchParams();
   const hasAction = searchParams.has('action');
   const isListPage = [
-    '/Port',
-    '/Berth',
-    '/Pier',
-    '/DryPort',
-    '/WaterZone'
+    '/port',
+    '/berth',
+    '/pier',
+    '/dry-port',
+    '/water-zone'
   ].includes(location.pathname);
 
   if (isInIframe) {

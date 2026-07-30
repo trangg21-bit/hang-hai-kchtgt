@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { Typography, Tooltip, Modal, Form, Input, Select, Row, Col, Spin, Button } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Typography, Tooltip, Modal, Form, Input, Select, Row, Col, Spin, Button, Descriptions } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useChangeStatusUser } from '../hooks/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { useRoles } from '../hooks/useRoles';
 import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -12,7 +12,7 @@ import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../components/li
 import Pagination from '../components/list-view/Pagination';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService } from '../services/organizationService';
-import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField } from '../tokens';
+import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
 const { confirm } = Modal;
@@ -47,7 +47,11 @@ export default function UsersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
+  const [resetPasswordForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
+  const [detailUser, setDetailUser] = useState<User | null>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
 
   useEffect(() => {
@@ -67,10 +71,16 @@ export default function UsersPage() {
   });
 
   const { data: rolesData } = useRoles();
-  const { data: dataActive } = useUsers({ page: 1, pageSize: 1, status: 'active' });
-  const { data: dataLocked } = useUsers({ page: 1, pageSize: 1, status: 'locked' });
-  const { data: dataInactive } = useUsers({ page: 1, pageSize: 1, status: 'inactive' });
-  const { data: dataPending } = useUsers({ page: 1, pageSize: 1, status: 'PENDING_APPROVAL' });
+  const countFilter = {
+    page: 1,
+    pageSize: 1,
+    search: search || undefined,
+    roleId: filterRoleId,
+  };
+  const { data: dataActive } = useUsers({ ...countFilter, status: 'active' });
+  const { data: dataLocked } = useUsers({ ...countFilter, status: 'locked' });
+  const { data: dataInactive } = useUsers({ ...countFilter, status: 'inactive' });
+  const { data: dataPending } = useUsers({ ...countFilter, status: 'PENDING_APPROVAL' });
   const totalAll = (dataActive?.total || 0) + (dataLocked?.total || 0) + (dataInactive?.total || 0) + (dataPending?.total || 0);
   const countActive = dataActive?.total || 0;
   const countLocked = dataLocked?.total || 0;
@@ -82,6 +92,7 @@ export default function UsersPage() {
   const deleteUser = useDeleteUser();
   const toggleLock = useToggleLockUser();
   const resetPassword = useResetPassword();
+  const forgotPassword = useForgotPassword();
   const changeStatusUser = useChangeStatusUser();
 
   const openCreateModal = useCallback(() => { setEditingUser(null); form.resetFields(); setModalOpen(true); }, [form]);
@@ -97,10 +108,25 @@ export default function UsersPage() {
       const values = await form.validateFields();
       setSubmitting(true);
       if (editingUser) {
-        const payload: UpdateUserPayload = { fullName: values.fullName, email: values.email, phone: values.phone, roleId: values.roleId, orgUnitId: values.orgUnitId };
+        const payload: UpdateUserPayload = { 
+          fullName: values.fullName?.trim(), 
+          email: values.email?.trim(), 
+          phone: values.phone?.trim(), 
+          role: values.roleId, 
+          orgUnitId: values.orgUnitId || undefined, 
+          status: values.status 
+        };
         await updateUser.mutateAsync({ id: editingUser.id, payload });
       } else {
-        const payload: CreateUserPayload = { username: values.username, fullName: values.fullName, email: values.email, phone: values.phone, password: values.password, roleId: values.roleId, orgUnitId: values.orgUnitId };
+        const payload: CreateUserPayload = { 
+          username: values.username?.trim(), 
+          fullName: values.fullName?.trim(), 
+          email: values.email?.trim(), 
+          phone: values.phone?.trim(), 
+          password: values.password, 
+          role: values.roleId, 
+          orgUnitId: values.orgUnitId || undefined 
+        };
         await createUser.mutateAsync(payload);
       }
       setModalOpen(false);
@@ -123,11 +149,44 @@ export default function UsersPage() {
   }, [toggleLock]);
 
   const handleResetPassword = useCallback((user: User) => {
-    confirm({ title: 'Xác nhận đặt lại mật khẩu', icon: <ExclamationCircleOutlined />, content: `Mật khẩu của "${user.fullName}" sẽ được đặt lại thành mật khẩu ngẫu nhiên. Tiếp tục?`, okText: 'Đặt lại', cancelText: 'Hủy', onOk: () => resetPassword.mutateAsync(user.id) });
-  }, [resetPassword]);
+    resetPasswordForm.resetFields();
+    setResetPasswordUser(user);
+  }, [resetPasswordForm]);
+
+  const handleResetPasswordSubmit = useCallback(async () => {
+    if (!resetPasswordUser) return;
+
+    try {
+      const values = await resetPasswordForm.validateFields();
+      setResetPasswordSubmitting(true);
+      await resetPassword.mutateAsync({
+        id: resetPasswordUser.id,
+        newPassword: values.newPassword.trim(),
+      });
+      setResetPasswordUser(null);
+      resetPasswordForm.resetFields();
+    } catch (err: any) {
+      if (err.errorFields) return;
+      const msg = err.response?.data?.message || err.message || 'Không thể đặt lại mật khẩu';
+      toast.error(msg);
+    } finally {
+      setResetPasswordSubmitting(false);
+    }
+  }, [resetPassword, resetPasswordForm, resetPasswordUser]);
+
+  const handleForgotPassword = useCallback((user: User) => {
+    confirm({
+      title: 'Gửi liên kết quên mật khẩu',
+      icon: <ExclamationCircleOutlined />,
+      content: `Hệ thống sẽ gửi liên kết đặt lại mật khẩu tới email "${user.email}". Tiếp tục?`,
+      okText: 'Gửi liên kết',
+      cancelText: 'Hủy',
+      onOk: () => forgotPassword.mutateAsync(user.email),
+    });
+  }, [forgotPassword]);
 
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(values.search || ''); setFilterRoleId(values.roleId || undefined); setFilterStatus(values.status || undefined); setPage(1);
+    setSearch(values.search?.trim() || ''); setFilterRoleId(values.roleId || undefined); setFilterStatus(values.status || undefined); setPage(1);
   }, []);
 
   const handleFilterReset = useCallback(() => { setSearch(''); setFilterRoleId(undefined); setFilterStatus(undefined); setPage(1); }, []);
@@ -151,18 +210,23 @@ export default function UsersPage() {
       key: string; label: string; icon?: ReactNode;
       onClick: () => void; danger?: boolean;
     }[] = [];
-    
+
+    if (hasPerm('user.view')) {
+      actions.push({ key: 'view', label: 'Xem chi tiết tài khoản', icon: <EyeOutlined />, onClick: () => setDetailUser(record) });
+    }
+
     if (record.status === 'PENDING_APPROVAL') {
-      if (hasPerm('user.approve')) actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
-      if (hasPerm('user.approve')) actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
+      if (hasPerm('user.approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
+      if (hasPerm('user.approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
     } else {
       if (hasPerm('user.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
       if (hasPerm('user.lock')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
       if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', label: 'Reset mật khẩu', icon: <KeyOutlined />, onClick: () => handleResetPassword(record) });
+      if (hasPerm('user.reset_password')) actions.push({ key: 'forgot-password', label: 'Quên mật khẩu', icon: <MailOutlined />, onClick: () => handleForgotPassword(record) });
       if (hasPerm('user.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     }
     return actions;
-  }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleDelete, handleApprove, handleReject]);
+  }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleForgotPassword, handleDelete, handleApprove, handleReject]);
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
@@ -252,8 +316,142 @@ export default function UsersPage() {
             </Row>
             <Form.Item name="roleId" {...labelProps('Vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}><Select placeholder="Chọn vai trò" options={rolesData?.map((r: any) => ({ value: r.code, label: r.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
             <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn đơn vị trực thuộc" allowClear showSearch filterOption={(input: string, option: any) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())} options={organizations.map((org: any) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            {editingUser && (
+              <Form.Item
+                name="status"
+                {...labelProps('Trạng thái')}
+                style={{ marginBottom: spaceFormField }}
+                rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+              >
+                <Select
+                  placeholder="Chọn trạng thái"
+                  options={[
+                    { value: 'active', label: 'Hoạt động' },
+                    { value: 'inactive', label: 'Không hoạt động' },
+                  ]}
+                  style={{ borderRadius: radiusPill, height: 40 }}
+                />
+              </Form.Item>
+            )}
           </Form>
         </Spin>
+      </Modal>
+
+      <Modal
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Đặt lại mật khẩu</span>}
+        open={Boolean(resetPasswordUser)}
+        onOk={handleResetPasswordSubmit}
+        onCancel={() => setResetPasswordUser(null)}
+        destroyOnHidden
+        confirmLoading={resetPasswordSubmitting}
+        width={600}
+        maskClosable={false}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => setResetPasswordUser(null)}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}
+          >
+            Hủy
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            onClick={handleResetPasswordSubmit}
+            loading={resetPasswordSubmitting}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+          >
+            Đặt lại mật khẩu
+          </Button>,
+        ]}
+      >
+        <Spin spinning={resetPasswordSubmitting}>
+          <Typography.Text style={{ color: textSecondary }}>
+            Tài khoản: {resetPasswordUser?.fullName} ({resetPasswordUser?.username})
+          </Typography.Text>
+          <Form
+            form={resetPasswordForm}
+            layout="vertical"
+            style={{ marginTop: spaceMd }}
+            labelCol={{ style: { padding: 0, marginBottom: 4 } }}
+          >
+            <Form.Item
+              name="newPassword"
+              {...labelProps('Mật khẩu mới')}
+              style={{ marginBottom: spaceFormField }}
+              rules={[
+                { required: true, message: 'Vui lòng nhập mật khẩu mới' },
+                {
+                  validator: (_, value) => {
+                    const password = typeof value === 'string' ? value.trim() : '';
+                    if (!password) return Promise.resolve();
+                    if (password.length < 8) return Promise.reject(new Error('Mật khẩu phải có ít nhất 8 ký tự'));
+                    if (password.length > 128) return Promise.reject(new Error('Mật khẩu tối đa 128 ký tự'));
+                    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+                      return Promise.reject(new Error('Mật khẩu phải có ít nhất một chữ cái và một số'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <Input.Password
+                placeholder="Nhập mật khẩu mới"
+                autoComplete="new-password"
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
+            </Form.Item>
+            <Form.Item
+              name="confirmPassword"
+              {...labelProps('Xác nhận mật khẩu')}
+              dependencies={['newPassword']}
+              style={{ marginBottom: spaceFormField }}
+              rules={[
+                { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
+                ({ getFieldValue }) => ({
+                  validator: (_, value) => {
+                    const password = getFieldValue('newPassword')?.trim();
+                    const confirmation = typeof value === 'string' ? value.trim() : '';
+                    if (!confirmation || password === confirmation) return Promise.resolve();
+                    return Promise.reject(new Error('Mật khẩu xác nhận không khớp'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password
+                placeholder="Nhập lại mật khẩu mới"
+                autoComplete="new-password"
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
+
+      <Modal
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết tài khoản</span>}
+        open={detailUser !== null}
+        onCancel={() => setDetailUser(null)}
+        destroyOnHidden
+        maskClosable={false}
+        width={600}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setDetailUser(null)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Đóng</Button>,
+        ]}
+      >
+        {detailUser && (
+          <Descriptions column={1} bordered size="small">
+            <Descriptions.Item label="Tên đăng nhập">{detailUser.username}</Descriptions.Item>
+            <Descriptions.Item label="Họ và tên">{detailUser.fullName}</Descriptions.Item>
+            <Descriptions.Item label="Email">{detailUser.email}</Descriptions.Item>
+            <Descriptions.Item label="Số điện thoại">{detailUser.phone || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Vai trò">{detailUser.roleName}</Descriptions.Item>
+            <Descriptions.Item label="Đơn vị trực thuộc">{detailUser.orgUnitName || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">{STATUS_MAP[detailUser.status]?.label || detailUser.status}</Descriptions.Item>
+            <Descriptions.Item label="Đăng nhập gần nhất">{detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
+            <Descriptions.Item label="Ngày tạo">{detailUser.createdAt ? dayjs(detailUser.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
+          </Descriptions>
+        )}
       </Modal>
     </div>
   );

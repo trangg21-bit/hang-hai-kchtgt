@@ -1,10 +1,13 @@
 package com.hanghai.kchtg.document;
 
-import com.hanghai.kchtg.document.controller.IncidentController;
-import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.service.IncidentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.document.dto.IncidentCreateRequest;
+import com.hanghai.kchtg.document.dto.IncidentResponse;
+import com.hanghai.kchtg.document.dto.ProcessingProgressRequest;
+import com.hanghai.kchtg.document.dto.ProcessingProgressResponse;
+import com.hanghai.kchtg.document.entity.ProcessingStatus;
+import com.hanghai.kchtg.document.entity.SeverityLevel;
+import com.hanghai.kchtg.document.service.IncidentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -19,12 +23,11 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import org.springframework.security.test.context.support.WithMockUser;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)

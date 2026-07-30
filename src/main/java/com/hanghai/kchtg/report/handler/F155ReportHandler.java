@@ -1,11 +1,10 @@
 package com.hanghai.kchtg.report.handler;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
-import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
+import com.hanghai.kchtg.report.dto.ReportResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -104,7 +103,7 @@ public class F155ReportHandler extends BaseReportHandler {
                 String donVi = "";
                 if (b.getUnitId() != null) {
                     donVi = orgUnitRepository.findById(b.getUnitId())
-                            .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                            .map(OrgUnit::getName)
                             .orElse("");
                 }
                 r.put("Đơn vị quản lý", donVi);
@@ -198,7 +197,7 @@ public class F155ReportHandler extends BaseReportHandler {
                 String donVi = "";
                 if (b.getUnitId() != null) {
                     donVi = orgUnitRepository.findById(b.getUnitId())
-                            .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                            .map(OrgUnit::getName)
                             .orElse("");
                 }
                 item.put("donViQuanLy", donVi);

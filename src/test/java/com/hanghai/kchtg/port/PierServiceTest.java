@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.port;
 
-import com.hanghai.kchtg.port.dto.pier.PierResponse;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.dto.pier.CreatePierRequest;
+import com.hanghai.kchtg.port.dto.pier.PierResponse;
 import com.hanghai.kchtg.port.dto.pier.UpdatePierRequest;
 import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.entity.Pier;
@@ -19,8 +21,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -68,7 +68,7 @@ class PierServiceTest {
         ReflectionTestUtils.setField(activeBerth, "id", parentId);
         activeBerth.setBerthCode("BEN-001");
         activeBerth.setBerthName("Bến Cảng Demo");
-        activeBerth.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        activeBerth.setOperationalStatus(OperationalStatus.OPERATIONAL);
         activeBerth.setApprovalStatus(ApprovalStatus.PENDING);
 
         testEntity = new Pier();
@@ -78,7 +78,7 @@ class PierServiceTest {
         testEntity.setBerthId(parentId);
         testEntity.setLength(new BigDecimal("200.00"));
         testEntity.setDesignLoad(new BigDecimal("50000.00"));
-        testEntity.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
         testEntity.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
@@ -98,7 +98,7 @@ class PierServiceTest {
     @Test
     @DisplayName("INT-005: create — parent Berth not HIEN_HANH → IllegalArgumentException")
     void create_parentNotHienHanh_throwsIllegalArg() {
-        activeBerth.setOperationalStatus(OperationalStatus.TAM_NGUNG);
+        activeBerth.setOperationalStatus(OperationalStatus.SUSPENDED);
         CreatePierRequest request = buildCreateRequest("CAU-NEW", "Cầu mới", parentId);
         when(pierRepository.existsByPierCode("CAU-NEW")).thenReturn(false);
         when(berthRepository.findById(parentId)).thenReturn(Optional.of(activeBerth));
@@ -204,7 +204,7 @@ class PierServiceTest {
         req.setPierCode(pierCode);
         req.setPierName(pierName);
         req.setBerthId(berthId);
-        req.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        req.setOperationalStatus(OperationalStatus.OPERATIONAL);
         return req;
     }
 }

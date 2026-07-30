@@ -1,8 +1,12 @@
 package com.hanghai.kchtg.port;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.dto.waterzone.CreateWaterZoneRequest;
 import com.hanghai.kchtg.port.dto.waterzone.WaterZoneResponse;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.entity.WaterZone;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.WaterZoneService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
@@ -19,8 +23,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -30,9 +32,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
-import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.port.repository.PortRepository;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WaterZoneService unit tests — INT-004 / CRUD")
@@ -86,8 +85,8 @@ class WaterZoneServiceTest {
         testEntity.setArea(new BigDecimal("500.00"));
         testEntity.setMaxDepth(new BigDecimal("15.00"));
         testEntity.setAvgDepth(new BigDecimal("12.00"));
-        testEntity.setWaterZoneType(com.hanghai.kchtg.port.entity.WaterZoneType.NEO_DAU);
-        testEntity.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        testEntity.setWaterZoneType(com.hanghai.kchtg.port.entity.WaterZoneType.ANCHORAGE);
+        testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
         testEntity.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
@@ -183,7 +182,7 @@ class WaterZoneServiceTest {
         req.setWaterZoneCode(waterZoneCode);
         req.setWaterZoneName(waterZoneName);
         req.setPortId(portId);
-        req.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        req.setOperationalStatus(OperationalStatus.OPERATIONAL);
         return req;
     }
 }

@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.trade.dto;
 
-import java.util.UUID;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 /**
  * DTO representing a single trade flow record between two ports.

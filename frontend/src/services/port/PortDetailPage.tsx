@@ -235,9 +235,16 @@ export default function PortDetailPage() {
 
   if (isLoading) {
     return (
+<<<<<<< HEAD
       <div style={{ padding: spaceXl * 2, textAlign: 'center' }}>
         <Spin size="large" tip="Đang tải thông tin cảng biển..." />
       </div>
+=======
+      <Card>
+        <p>Không tìm thấy cảng biển với ID {id}.</p>
+        <Button onClick={() => navigate('/port')}>Quay lại danh sách</Button>
+      </Card>
+>>>>>>> origin
     );
   }
 
@@ -292,6 +299,7 @@ export default function PortDetailPage() {
   ];
 
   return (
+<<<<<<< HEAD
     <div style={{ padding: spaceLg, background: surfacePage, minHeight: '100vh' }}>
       {/* ── Breadcrumb ──────────────────────────────────────────── */}
       <Breadcrumb items={breadcrumbItems} style={{ marginBottom: spaceMd }} />
@@ -386,6 +394,261 @@ export default function PortDetailPage() {
                   </Button>
                 </Popconfirm>
               )}
+=======
+    <>
+      <Card style={{ marginBottom: 16 }}>
+        <Space>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/port')}>
+            Quay lại
+          </Button>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            {data.portCode} — {data.portName}
+          </Typography.Title>
+        </Space>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        {/* Info Card */}
+        <Col xs={24} md={16}>
+          <Card title="Thông tin chung">
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Typography.Text strong>Mã cảng:</Typography.Text>
+                <br />
+                <Tag color="cyan">{data.portCode}</Tag>
+              </Col>
+              <Col span={12}>
+                <Typography.Text strong>Tên cảng:</Typography.Text>
+                <br />
+                <Typography.Text>{data.portName}</Typography.Text>
+              </Col>
+              <Col span={24}>
+                <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
+                <br />
+                <Typography.Text>{data.province || '—'}</Typography.Text>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        {/* Stats Card */}
+        <Col xs={24} md={8}>
+          <Card title="Thống kê">
+            <Typography.Text strong>Diện tích (m²):</Typography.Text>
+            <br />
+            <Typography.Text>{data.area != null ? data.area.toFixed(2) : '—'}</Typography.Text>
+            <br />
+            <Typography.Text strong>Khả năng tiếp nhận:</Typography.Text>
+            <br />
+            <Typography.Text>{data.khaNangTiepNhan != null ? data.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
+          </Card>
+        </Col>
+
+        {/* Geo Card */}
+        <Col xs={24} md={16}>
+          <Card title="Thông tin địa lý & GIS">
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Typography.Text strong>Loại đối tượng:</Typography.Text>{' '}
+                <Typography.Text>
+                  {data.loaiHinhHoc === 'POINT' ? 'Đối tượng điểm'
+                    : data.loaiHinhHoc === 'LINE' ? 'Đối tượng đường'
+                      : data.loaiHinhHoc === 'POLYGON' ? 'Đối tượng vùng'
+                        : data.loaiHinhHoc || 'Đối tượng điểm'}
+                </Typography.Text>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        {/* Status Card */}
+        <Col xs={24} md={8}>
+          <Card title="Trạng thái">
+            <Typography.Text strong>Trạng thái hoạt động:</Typography.Text>
+            <br />
+            {data.operationalStatus && (
+              <Tag color={trangThaiHoatDongBadge(data.operationalStatus).color}>
+                {trangThaiHoatDongBadge(data.operationalStatus).label}
+              </Tag>
+            )}
+            <br />
+            <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>
+            <br />
+            {data.approvalStatus && (
+              <Tag color={trangThaiPheDuyetBadge(data.approvalStatus).color}>
+                {trangThaiPheDuyetBadge(data.approvalStatus).label}
+              </Tag>
+            )}
+          </Card>
+        </Col>
+
+        {/* Audit Card */}
+        <Col xs={24}>
+          <Card title="Thông tin audit">
+            <Row gutter={[16, 8]}>
+              <Col span={8}>
+                <Typography.Text strong>Tạo bởi:</Typography.Text>
+                <br />
+                <Typography.Text>{data.createdBy || '—'}</Typography.Text>
+              </Col>
+              <Col span={8}>
+                <Typography.Text strong>Cập nhật bởi:</Typography.Text>
+                <br />
+                <Typography.Text>{data.updatedBy || '—'}</Typography.Text>
+              </Col>
+              <Col span={8}>
+                <Typography.Text strong>Ngày tạo:</Typography.Text>
+                <br />
+                <Typography.Text>{formatDate(data.createdAt)}</Typography.Text>
+              </Col>
+              <Col span={8}>
+                <Typography.Text strong>Cập nhật:</Typography.Text>
+                <br />
+                <Typography.Text>{formatDate(data.updatedAt)}</Typography.Text>
+              </Col>
+              <Col span={8}>
+                <Typography.Text strong>Org Unit ID:</Typography.Text>
+                <br />
+                <Typography.Text>{data.orgUnitId || '—'}</Typography.Text>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        {/* Documents Section */}
+        <Col xs={24}>
+          <Card title="Tài liệu đính kèm">
+            {files.length === 0 ? (
+              <EmptyState description="Không có tài liệu đính kèm" />
+            ) : (
+              <div>
+                {files.map((f) => (
+                  <div key={f.id} style={{ marginBottom: 8 }}>
+                    <Typography.Text>{f.fileName}</Typography.Text>
+                    <br />
+                    <Typography.Text type="secondary">{f.fileSize} bytes — {new Date(f.createdAt).toLocaleString('vi-VN')}</Typography.Text>
+                    <Button
+                      type="link"
+                      icon={<DownloadOutlined />}
+                      onClick={() => window.open(documentApi.downloadUrl(f.minioKey), '_blank')}
+                      style={{ marginLeft: 8 }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </Col>
+
+        {/* ── Bến cảng trực thuộc ────────────────────────────────────── */}
+        <Col xs={24}>
+          <Card
+            title={
+              <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+                Bến cảng trực thuộc
+                {!childrenLoading && <span style={{ color: textTertiary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, marginLeft: spaceSm }}>({totalBenCangs})</span>}
+              </span>
+            }
+            style={{ border: `1px solid ${borderDefault}` }}
+          >
+            {childrenLoading ? (
+              <div style={{ textAlign: 'center', padding: spaceMd * 2, color: textTertiary, fontSize: fontSizeSm }}>Đang tải...</div>
+            ) : berths.length === 0 ? (
+              <EmptyState description="Không có bến cảng trực thuộc" />
+            ) : (
+              <>
+                <Table<Berth>
+                  dataSource={berths}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  showHeader={false}
+                  columns={[
+                    { dataIndex: 'berthCode', width: 120, render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: fontSizeSm, color: textSecondary }}>{v}</span> },
+                    { dataIndex: 'berthName', ellipsis: true, render: (v: string, r: Berth) => <Link to={`/berth/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
+                    { dataIndex: 'berthType', width: 140, render: (v: string) => v ? <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{v}</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
+                    { dataIndex: 'operationalStatus', width: 120, render: (v: string) => v === 'HIEN_HANH' ? <span style={{ fontSize: fontSizeSm, color: statusOperational, fontWeight: fontWeightMedium }}>● Hoạt động</span> : <span style={{ fontSize: fontSizeSm, color: statusAttention, fontWeight: fontWeightMedium }}>● Tạm ngừng</span> },
+                  ]}
+                />
+                {totalBenCangs > 5 && (
+                  <div style={{ textAlign: 'right', marginTop: spaceSm }}>
+                    <Link to={`/berth?portId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalBenCangs} bến cảng →</Link>
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        </Col>
+
+        {/* ── Vùng nước trực thuộc ──────────────────────────────────── */}
+        <Col xs={24}>
+          <Card
+            title={
+              <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+                Vùng nước trực thuộc
+                {!childrenLoading && <span style={{ color: textTertiary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, marginLeft: spaceSm }}>({totalVungNuocs})</span>}
+              </span>
+            }
+            style={{ border: `1px solid ${borderDefault}` }}
+          >
+            {childrenLoading ? (
+              <div style={{ textAlign: 'center', padding: spaceMd * 2, color: textTertiary, fontSize: fontSizeSm }}>Đang tải...</div>
+            ) : waterZones.length === 0 ? (
+              <EmptyState description="Không có vùng nước trực thuộc" />
+            ) : (
+              <>
+                <Table<WaterZone>
+                  dataSource={waterZones}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  showHeader={false}
+                  columns={[
+                    { dataIndex: 'waterZoneCode', width: 120, render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: fontSizeSm, color: textSecondary }}>{v}</span> },
+                    { dataIndex: 'waterZoneName', ellipsis: true, render: (v: string, r: WaterZone) => <Link to={`/water-zone/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
+                    { dataIndex: 'loaiVungNuoc', width: 160, render: (v: string) => { const label = VUNGNUOOC_LOAI_MAP[v as keyof typeof VUNGNUOOC_LOAI_MAP]?.label || v; return <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{label}</span>; } },
+                    { dataIndex: 'area', width: 100, render: (v: number) => v != null ? <span style={{ fontSize: fontSizeSm, color: textSecondary }}>{v.toLocaleString('vi-VN')} m²</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
+                  ]}
+                />
+                {totalVungNuocs > 5 && (
+                  <div style={{ textAlign: 'right', marginTop: spaceSm }}>
+                    <Link to={`/water-zone?portId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalVungNuocs} vùng nước →</Link>
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        </Col>
+
+        {/* Action Footer */}
+        <Col xs={24}>
+          <Card>
+            <Space wrap>
+              <Button icon={<UploadOutlined />} onClick={() => navigate(`/document/upload/port/${data.id}`)}>
+                Upload Giấy tờ
+              </Button>
+              <Button icon={<EditOutlined />} onClick={() => navigate(`/port/${data.id}/edit`)}>
+                Chỉnh sửa
+              </Button>
+              <Popconfirm
+                title="Xác nhận xóa"
+                description={`Bạn có chắc muốn xóa cảng biển "${data.portName}"?`}
+                okText="Xóa"
+                okType="danger"
+                cancelText="Hủy"
+                onConfirm={async () => {
+                  try {
+                    await deleteCangBien(data.id);
+                    toast.success('Xóa thành công');
+                    navigate('/port');
+                  } catch (err: unknown) {
+                    toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+                  }
+                }}
+              >
+                <Button danger icon={<DeleteOutlined />}>Xóa</Button>
+              </Popconfirm>
+>>>>>>> origin
               {data.approvalStatus === 'CHO_PHE_DUYET' && (
                 <>
                   {canApprove && (
@@ -435,6 +698,7 @@ export default function PortDetailPage() {
                   )}
                 </>
               )}
+<<<<<<< HEAD
               {canViewHistory && (
                 <Button
                   icon={<HistoryOutlined />}
@@ -450,6 +714,10 @@ export default function PortDetailPage() {
                 style={{ borderRadius: radiusPill }}
               >
                 Upload tài liệu
+=======
+              <Button icon={<HistoryOutlined />} onClick={() => navigate(`/port/${data.id}/history`)}>
+                Lịch sử
+>>>>>>> origin
               </Button>
             </Space>
           </Col>

@@ -1,20 +1,19 @@
 package com.hanghai.kchtg.group.dto;
 
 import com.hanghai.kchtg.group.entity.GroupMember;
-import com.hanghai.kchtg.group.entity.GroupMemberStatus;
 import com.hanghai.kchtg.user.entity.User;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 /**
  * DTO trả về thông tin thành viên nhóm (with full user details).
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class GroupMemberResponse {
 
     private String id;

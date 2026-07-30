@@ -1,16 +1,13 @@
 package com.hanghai.kchtg.group.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.entity.GroupType;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import lombok.Value;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-
-import com.hanghai.kchtg.group.entity.GroupType;
 
 /**
  * DTO trả về khi truy vấn thông tin nhóm người dùng.

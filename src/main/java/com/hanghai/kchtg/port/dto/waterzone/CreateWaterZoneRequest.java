@@ -1,7 +1,8 @@
 package com.hanghai.kchtg.port.dto.waterzone;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.port.entity.WaterZoneType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -9,8 +10,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.UUID;
-
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 public class CreateWaterZoneRequest {
@@ -29,8 +28,8 @@ public class CreateWaterZoneRequest {
     private BigDecimal area;
     private BigDecimal maxDepth;
     private BigDecimal avgDepth;
-    private com.hanghai.kchtg.port.entity.WaterZoneType waterZoneType;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
+    private WaterZoneType waterZoneType;
+    private OperationalStatus operationalStatus;
     private UUID mapSymbolId;
     private GisGeometryType geometryType;
     private String coordinates;

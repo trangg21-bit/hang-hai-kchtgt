@@ -14,7 +14,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -22,7 +22,7 @@ class ShipRepairFacilityEntityTest {
         assertNotNull(entity);
         assertEquals("Cơ sở ABC", entity.getFacilityName());
         assertEquals("Hà Nội", entity.getAddress());
-        assertEquals("Hà Nội", entity.getProvince());
+        assertEquals(1, entity.getProvinceId());
         assertEquals(FacilityType.REPAIR, entity.getFacilityType());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getCreatedBy());
     }
@@ -32,7 +32,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -52,7 +52,7 @@ class ShipRepairFacilityEntityTest {
         entity.setId(uuid);
         entity.setFacilityName("Cơ sở ABC");
         entity.setAddress("Hà Nội");
-        entity.setProvince("Hà Nội");
+        entity.setProvinceId(1);
         entity.setPhone("0123456789");
         entity.setEmail("test@example.com");
         entity.setFacilityType(FacilityType.REPAIR);
@@ -94,7 +94,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -110,7 +110,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -126,7 +126,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -142,7 +142,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -158,7 +158,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -172,7 +172,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.UNDER_REVIEW)
                 .approvedLevel1(true)
@@ -195,7 +195,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -237,13 +237,13 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = new ShipRepairFacility();
         entity.setFacilityName("ABC");
         entity.setAddress("Hà Nội");
-        entity.setProvince("Hà Nội");
+        entity.setProvinceId(1);
         entity.setFacilityType(FacilityType.REPAIR);
         entity.setCreatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
         assertEquals("ABC", entity.getFacilityName());
         assertEquals("Hà Nội", entity.getAddress());
-        assertEquals("Hà Nội", entity.getProvince());
+        assertEquals(1, entity.getProvinceId());
         assertEquals(FacilityType.REPAIR, entity.getFacilityType());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getCreatedBy());
     }
@@ -255,7 +255,7 @@ class ShipRepairFacilityEntityTest {
                 .id(uuid)
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .phone("0123456789")
                 .email("test@test.com")
                 .facilityType(FacilityType.REPAIR)
@@ -290,7 +290,7 @@ class ShipRepairFacilityEntityTest {
                 .id(uuid)
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .phone("0123456789")
                 .email("test@test.com")
                 .facilityType(FacilityType.REPAIR)
@@ -318,7 +318,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility a = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -326,7 +326,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility b = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
@@ -340,7 +340,7 @@ class ShipRepairFacilityEntityTest {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.siem.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.siem.entity.SiemReport;
 import com.hanghai.kchtg.siem.entity.SiemReportStatus;
 import org.springframework.data.jpa.repository.JpaRepository;

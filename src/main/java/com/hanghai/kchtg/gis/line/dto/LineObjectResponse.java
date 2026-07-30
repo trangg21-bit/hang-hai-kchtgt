@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.line.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;

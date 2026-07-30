@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.password.service;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.password.entity.PasswordHistory;
 import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
 import org.springframework.stereotype.Component;
 
@@ -33,10 +32,10 @@ public class HistoryValidator {
      * @return true if the password was found in history (i.e., reuse detected)
      */
     public boolean isPasswordInHistory(UUID userId, String candidateHash, int depth) {
-        List<com.hanghai.kchtg.password.entity.PasswordHistory> history =
+        List<PasswordHistory> history =
             historyRepository.findTopNByUserIdOrderByCreatedAtDesc(userId, depth);
 
-        for (com.hanghai.kchtg.password.entity.PasswordHistory entry : history) {
+        for (PasswordHistory entry : history) {
             if (passwordEncoder.matches(candidateHash, entry.getPasswordHash())) {
                 return true;
             }

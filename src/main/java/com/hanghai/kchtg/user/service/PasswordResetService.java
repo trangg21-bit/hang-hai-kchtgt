@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.user.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.user.entity.PasswordResetToken;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.exception.ValidationException;
@@ -14,9 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Password reset service - implements the forgot password + reset password flow.

@@ -1,20 +1,19 @@
 package com.hanghai.kchtg.report.handler;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
-import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
 import com.hanghai.kchtg.navigationchannel.repository.ChannelRouteDetailRepository;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
+import com.hanghai.kchtg.report.dto.ReportResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
 import java.math.BigDecimal;
+import java.util.*;
 
 @Component
 public class F151ReportHandler extends BaseReportHandler {
@@ -242,7 +241,7 @@ public class F151ReportHandler extends BaseReportHandler {
     private String resolveOrgUnitName(UUID orgUnitId) {
         if (orgUnitId == null) return "";
         return orgUnitRepository.findById(orgUnitId)
-                .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                .map(OrgUnit::getName)
                 .orElse("");
     }
 }

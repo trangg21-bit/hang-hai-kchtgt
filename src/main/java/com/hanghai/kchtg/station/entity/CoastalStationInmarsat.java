@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.station.entity;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,12 +9,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.hibernate.annotations.SQLRestriction;
-import com.hanghai.kchtg.station.entity.StationStatus;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+
+import java.util.UUID;
 
 /**
  * Entity for Coastal Station Inmarsat equipment and operational data.
- * Extends com.hanghai.kchtg.common.entity.BaseEntity for common station fields.
+ * Extends BaseEntity for common station fields.
  */
 @Entity
 @Table(name = "coastal_station_inmarsat")
@@ -24,7 +24,10 @@ import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 @AllArgsConstructor
 @Accessors(chain = true)
 @SQLRestriction("deleted_at IS NULL")
-public class CoastalStationInmarsat extends com.hanghai.kchtg.common.entity.BaseEntity {
+public class CoastalStationInmarsat extends BaseEntity {
+    @Column(name = "province_id")
+    private Integer provinceId;
+
 
     @Column(length = 50)
     protected String code;
@@ -35,9 +38,9 @@ public class CoastalStationInmarsat extends com.hanghai.kchtg.common.entity.Base
     @Column(length = 1000)
     protected String description;
 
-    
 
-    
+
+
 
     @Column(name = "unit_id")
     protected UUID unitId;
@@ -57,7 +60,7 @@ public class CoastalStationInmarsat extends com.hanghai.kchtg.common.entity.Base
     protected StationApprovalStatus approvalStatus;
 
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
-    protected com.hanghai.kchtg.common.enums.ApprovalLevel approvalLevel;
+    protected ApprovalLevel approvalLevel;
 
     @Column(name = "approved_by")
     protected String approvedBy;

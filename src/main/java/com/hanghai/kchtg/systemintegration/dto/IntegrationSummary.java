@@ -1,8 +1,11 @@
 package com.hanghai.kchtg.systemintegration.dto;
 
+import lombok.Data;
+
 import java.io.Serializable;
 import java.util.List;
 
+@Data
 public class IntegrationSummary implements Serializable {
     private String integrationType;
     private int totalRecords;

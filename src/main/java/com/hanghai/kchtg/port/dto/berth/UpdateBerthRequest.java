@@ -1,7 +1,8 @@
 package com.hanghai.kchtg.port.dto.berth;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.port.entity.BerthType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -10,7 +11,6 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 public class UpdateBerthRequest {
@@ -26,18 +26,17 @@ public class UpdateBerthRequest {
     private BigDecimal longitude;
     private BigDecimal length;
     private BigDecimal width;
-    private com.hanghai.kchtg.port.entity.BerthType berthType;
+    private BerthType berthType;
     private BigDecimal channelDepth;
     private String operationalFunction;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
+    private OperationalStatus operationalStatus;
     private UUID mapSymbolId;
     private GisGeometryType geometryType;
     private String coordinates;
 
     // ── Extended fields from hh.csdl legacy Qlkc038Dto ────────────────
 
-    @Size(max = 100)
-    private String locationCode;
+    private Integer provinceId;
 
     @Size(max = 500)
     private String detailedLocation;

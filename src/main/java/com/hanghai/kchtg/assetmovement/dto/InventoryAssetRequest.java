@@ -1,15 +1,16 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.assetmovement.entity.InventoryStatus;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
 /**
  * Request DTO cho Tai San Kiem Ke (create/update).
  */
+@NoArgsConstructor
+@AllArgsConstructor
 @Data
 public class InventoryAssetRequest {
 

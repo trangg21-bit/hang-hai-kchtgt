@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.document.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.SeverityLevel;
+import com.hanghai.kchtg.document.dto.IncidentCreateRequest;
+import com.hanghai.kchtg.document.dto.IncidentResponse;
+import com.hanghai.kchtg.document.dto.ProcessingProgressRequest;
+import com.hanghai.kchtg.document.dto.ProcessingProgressResponse;
 import com.hanghai.kchtg.document.entity.ProcessingStatus;
+import com.hanghai.kchtg.document.entity.SeverityLevel;
 import com.hanghai.kchtg.document.service.IncidentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for F-131 Quản lý thông tin sự cố.

@@ -273,9 +273,42 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
    - Tên cột, tên bảng trong CSDL (Database), tên biến Java (Backend) và tên biến ở Frontend (TypeScript/JavaScript) **BẮT BUỘC** phải được đặt bằng **tiếng Anh** chuẩn.
    - Ngược lại, các message hiển thị thông báo lỗi, xử lý ngoại lệ (Exception handle) trả về cho người dùng và toàn bộ nội dung text hiển thị trên giao diện Frontend (Label, Button, Toast...) **BẮT BUỘC** phải là **tiếng Việt có dấu** rõ nghĩa.
 
-6. **Đối chiếu Logic Nghiệp vụ với BA Spec**:
-   - Trước khi lập trình các logic nghiệp vụ (đặc biệt là các dữ liệu/trạng thái ngầm định), AI bắt buộc phải đọc và đối chiếu với tài liệu phân tích nghiệp vụ (BA Spec - ví dụ: các file `00-lean-spec.md` trong thư mục `docs/`).
-   - Nếu phát hiện có logic đang code không có trong tài liệu (hoặc ngược lại), AI phải cảnh báo và hỏi ý kiến người dùng thay vì tự ý giả định.
+6. **Đối chiếu Logic Nghiệp vụ với BA Lean Spec & Brief (BẮT BUỘC)**:
+
+   **Quy tắc vàng:** Trước khi viết BẤT KỲ logic nghiệp vụ nào (Entity, Service, Controller, DTO, Frontend form/validation), AI **BẮT BUỘC** phải đọc và đối chiếu với 2 loại tài liệu BA tương ứng của module/feature đang làm.
+
+   **Cấu trúc tài liệu BA trong dự án:**
+
+   | Loại tài liệu | Đường dẫn | Nội dung | Khi nào đọc |
+   |---|---|---|---|
+   | **BA Lean Spec** | `docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md` | Use Cases, Business Rules, Domain Model, Trạng thái, Quy trình phê duyệt, Validation rules chi tiết | **Luôn luôn** — đây là nguồn sự thật duy nhất cho logic nghiệp vụ |
+   | **Module Brief** | `docs/modules/M-{xxx}-{slug}/module-brief.md` | Tổng quan module, danh sách features, status, dependencies | Khi cần hiểu scope tổng thể của module |
+   | **Feature Brief** | `docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md` | Flow chi tiết, Acceptance Criteria, DTO fields, REST endpoint, Business Rules, Roles & Permissions, Entities, Validation rules cho từng feature cụ thể | **Luôn luôn** — khi code một feature cụ thể |
+
+   **Workflow bắt buộc khi bắt đầu code một module/feature:**
+
+   ```
+   Bước 1: Xác định Module ID (M-xxx) và Feature ID (F-xxx) đang làm
+   Bước 2: Đọc docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md
+           → Nắm Use Cases, Business Rules, Domain Model, Trạng thái, Validation
+   Bước 3: Đọc docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md
+           → Nắm Flow, Acceptance Criteria, DTO fields, REST endpoint, Roles
+   Bước 4: Đối chiếu từng điểm trước khi viết code:
+           ✅ Tên Entity/bảng có khớp tài liệu?
+           ✅ Các trường DTO (required/optional, kiểu dữ liệu, validation) có khớp?
+           ✅ Trạng thái mặc định khi tạo mới có đúng? (VD: PROPOSED)
+           ✅ Quy trình phê duyệt (mấy cấp, chuyển trạng thái) có đúng?
+           ✅ Business Rules (BR-xxx) có được implement đầy đủ?
+           ✅ Roles & Permissions có khớp?
+           ✅ REST endpoint path và method có đúng?
+   Bước 5: Nếu phát hiện BẤT KỲ sai lệch nào giữa code và tài liệu
+           → DỪNG LẠI, báo cáo chi tiết cho người dùng, KHÔNG tự ý giả định
+   ```
+
+   **Ví dụ:** Khi code feature F-038 (Tạo mới Luồng hàng hải) thuộc M-003:
+   - Đọc `docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md`
+   - Đọc `docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-038-quan-ly-luong-hang-hai-tao-moi/feature-brief.md`
+   - Đối chiếu: trạng thái mặc định = PROPOSED, phê duyệt 2 cấp (C1→C2), các trường bắt buộc (loại tàu, số lượng, ngày ghi nhận), validation rules (BR-038-01 đến BR-038-06)
 
 7. **Xử lý Dữ liệu Đầu vào (Input Processing)**:
    - Tất cả các trường nhập liệu văn bản (đặc biệt là ô tìm kiếm, form nhập liệu) bắt buộc phải được xử lý loại bỏ khoảng trắng thừa (`.trim()`) ở đầu và cuối chuỗi trước khi gửi API hoặc đưa vào hàm lọc dữ liệu, tránh trường hợp tìm kiếm không ra kết quả do lỗi gõ phím của người dùng.

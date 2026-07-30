@@ -2,6 +2,8 @@ package com.hanghai.kchtg.accesslog.entity;
 
 import com.hanghai.kchtg.accesslog.enums.LogSeverity;
 import com.hanghai.kchtg.accesslog.enums.LogType;
+import com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptor;
+import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -17,8 +19,8 @@ import java.util.UUID;
  * <p>
  * This entity is write-only from the application's perspective - the REST API
  * only exposes read operations. Log entries are typically created by an
- * {@link com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptor}
- * via {@link com.hanghai.kchtg.accesslog.service.AsyncLogAppender}.
+ * {@link AccessLogInterceptor}
+ * via {@link AsyncLogAppender}.
  * </p>
  */
 @Entity

@@ -17,7 +17,7 @@ export default function WaterZoneDeleteConfirm() {
     if (!id) return;
     waterZoneApi.findById(id)
       .then(setData)
-      .catch(() => { toast.error('Không thể tải thông tin vùng nước'); navigate('/WaterZone'); });
+      .catch(() => { toast.error('Không thể tải thông tin vùng nước'); navigate('/water-zone'); });
   }, [id, navigate]);
 
   const handleDelete = async () => {
@@ -26,7 +26,7 @@ export default function WaterZoneDeleteConfirm() {
       setLoading(true);
       await waterZoneApi.delete(id);
       toast.success('Xóa thành công');
-      navigate('/WaterZone');
+      navigate('/water-zone');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     } finally {
@@ -40,7 +40,7 @@ export default function WaterZoneDeleteConfirm() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/WaterZone/${id}`)}>Quay lại</Button>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/water-zone/${id}`)}>Quay lại</Button>
           <Space>
             <WarningOutlined style={{ color: '#faad14', fontSize: 24 }} />
             <Typography.Title level={5} style={{ margin: 0 }}>Xác nhận xóa</Typography.Title>
@@ -69,7 +69,7 @@ export default function WaterZoneDeleteConfirm() {
         </Checkbox>
 
         <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 16 }}>
-          <Button onClick={() => navigate(`/WaterZone/${id}`)}>Hủy</Button>
+          <Button onClick={() => navigate(`/water-zone/${id}`)}>Hủy</Button>
           <Button type="primary" danger icon={<DeleteOutlined />} loading={loading} disabled={!confirmed} onClick={handleDelete}>
             Xóa
           </Button>

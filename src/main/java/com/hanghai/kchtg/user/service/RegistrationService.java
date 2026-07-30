@@ -7,6 +7,8 @@ import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.exception.DuplicateResourceException;
+import com.hanghai.kchtg.user.exception.RateLimitExceededException;
+import com.hanghai.kchtg.user.exception.RegistrationException;
 import com.hanghai.kchtg.user.exception.ValidationException;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -112,13 +114,13 @@ public class RegistrationService {
 
             return buildResponse(user);
 
-        } catch (com.hanghai.kchtg.user.exception.RateLimitExceededException e) {
+        } catch (RateLimitExceededException e) {
             // Audit rate-limit event
             long duration = System.currentTimeMillis() - startTime;
             auditService.logFailure(null, identifier, "RATE_LIMITED", e.getMessage(), ipAddress, userAgent);
             throw e;
 
-        } catch (com.hanghai.kchtg.user.exception.RegistrationException e) {
+        } catch (RegistrationException e) {
             long duration = System.currentTimeMillis() - startTime;
             auditService.logFailure(null, identifier, "REGISTER_FAILURE", e.getMessage(), ipAddress, userAgent);
             throw e;
@@ -152,7 +154,8 @@ public class RegistrationService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("tên đăng nhập", request.getUsername());
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && userRepository.existsByEmailIgnoreCase(request.getEmail().trim())) {
             throw new DuplicateResourceException("email", request.getEmail());
         }
         if (request.getPhone() != null && !request.getPhone().isBlank()

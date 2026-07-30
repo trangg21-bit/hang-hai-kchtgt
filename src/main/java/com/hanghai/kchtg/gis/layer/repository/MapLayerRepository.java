@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.layer.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.layer.entity.MapLayer;
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;
 import org.springframework.data.jpa.repository.JpaRepository;

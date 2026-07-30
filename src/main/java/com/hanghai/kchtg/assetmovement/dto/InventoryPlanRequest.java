@@ -3,12 +3,17 @@ package com.hanghai.kchtg.assetmovement.dto;
 import com.hanghai.kchtg.assetmovement.entity.InventoryType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 /**
  * Request DTO cho Ke Hoach Kiem Ke (create/update).
  */
+@NoArgsConstructor
+@AllArgsConstructor
 @Data
 public class InventoryPlanRequest {
 

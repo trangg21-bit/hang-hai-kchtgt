@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;

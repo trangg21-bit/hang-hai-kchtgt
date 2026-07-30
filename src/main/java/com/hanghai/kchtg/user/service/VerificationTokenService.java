@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.user.entity.VerificationToken;
+import com.hanghai.kchtg.user.exception.VerificationException;
 import com.hanghai.kchtg.user.repository.VerificationTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,13 +75,13 @@ public class VerificationTokenService {
      *
      * @param plainToken the plaintext token from the user
      * @return true if valid and not expired/not used
-     * @throws com.hanghai.kchtg.user.exception.VerificationException if token is invalid
+     * @throws VerificationException if token is invalid
      */
     @Transactional
     public boolean validateToken(String plainToken) {
         // Xác thực verification token.
         if (plainToken == null || plainToken.isBlank()) {
-            throw new com.hanghai.kchtg.user.exception.VerificationException("Token không được để trống");
+            throw new VerificationException("Token không được để trống");
         }
 
         String requestedHash = sha256(plainToken);
@@ -96,7 +97,7 @@ public class VerificationTokenService {
 
         if (token == null) {
             // Check if it was used or expired for a better error message
-            throw new com.hanghai.kchtg.user.exception.VerificationException("Token không hợp lệ, đã hết hạn hoặc đã được sử dụng");
+            throw new VerificationException("Token không hợp lệ, đã hết hạn hoặc đã được sử dụng");
         }
 
         // Mark as used

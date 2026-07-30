@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.port;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.dto.berth.BerthResponse;
 import com.hanghai.kchtg.port.dto.berth.CreateBerthRequest;
 import com.hanghai.kchtg.port.entity.Berth;
@@ -19,10 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -81,14 +80,14 @@ class BerthServiceTest {
         ReflectionTestUtils.setField(parentHienHanh, "id", parentId);
         parentHienHanh.setPortCode("CB-001");
         parentHienHanh.setPortName("Cảng Cha Hoạt Động");
-        parentHienHanh.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        parentHienHanh.setOperationalStatus(OperationalStatus.OPERATIONAL);
         parentHienHanh.setApprovalStatus(ApprovalStatus.APPROVED);
 
         parentNotActive = new Port();
         ReflectionTestUtils.setField(parentNotActive, "id", parentId);
         parentNotActive.setPortCode("CB-002");
         parentNotActive.setPortName("Cảng Cha Không Hoạt Động");
-        parentNotActive.setOperationalStatus(OperationalStatus.TAM_NGUNG);
+        parentNotActive.setOperationalStatus(OperationalStatus.SUSPENDED);
         parentNotActive.setApprovalStatus(ApprovalStatus.PENDING);
 
         testBerth = new Berth();
@@ -96,7 +95,7 @@ class BerthServiceTest {
         testBerth.setBerthCode("BEN-001");
         testBerth.setBerthName("Bến Cảng Test");
         testBerth.setPortId(parentId);
-        testBerth.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        testBerth.setOperationalStatus(OperationalStatus.OPERATIONAL);
         testBerth.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
@@ -142,7 +141,7 @@ class BerthServiceTest {
     @Test
     @DisplayName("F-014: create — rejected when parent Port in draft status")
     void create_parentDraft_throws() {
-        parentHienHanh.setOperationalStatus(OperationalStatus.TAM_NGUNG);
+        parentHienHanh.setOperationalStatus(OperationalStatus.SUSPENDED);
         CreateBerthRequest request = buildCreateRequest("BEN-004", "Bến từ chối draft", parentId);
 
         when(berthRepository.existsByBerthCode("BEN-004")).thenReturn(false);
@@ -227,7 +226,7 @@ class BerthServiceTest {
         req.setBerthCode(berthCode);
         req.setBerthName(berthName);
         req.setPortId(portId);
-        req.setOperationalStatus(OperationalStatus.HIEN_HANH);
+        req.setOperationalStatus(OperationalStatus.OPERATIONAL);
         return req;
     }
 }

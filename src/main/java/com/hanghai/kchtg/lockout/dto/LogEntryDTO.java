@@ -1,12 +1,14 @@
 package com.hanghai.kchtg.lockout.dto;
 
-import java.util.UUID;
+import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * DTO for a single login attempt log entry.
  */
+@Data
 public class LogEntryDTO {
 
     private UUID id;

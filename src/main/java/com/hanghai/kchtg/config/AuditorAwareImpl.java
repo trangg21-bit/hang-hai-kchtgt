@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.config;
 
+import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.AuditorAware;
@@ -25,8 +26,8 @@ public class AuditorAwareImpl implements AuditorAware<UUID> {
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof com.hanghai.kchtg.user.entity.User) {
-            return Optional.of(((com.hanghai.kchtg.user.entity.User) principal).getId());
+        if (principal instanceof User) {
+            return Optional.of(((User) principal).getId());
         }
 
         // Prevent infinite recursion during Hibernate auto-flush
@@ -37,7 +38,7 @@ public class AuditorAwareImpl implements AuditorAware<UUID> {
         try {
             IS_LOOKING_UP.set(true);
             return userRepository.findByUsername(authentication.getName())
-                    .map(com.hanghai.kchtg.user.entity.User::getId);
+                    .map(User::getId);
         } finally {
             IS_LOOKING_UP.remove();
         }

@@ -1,12 +1,6 @@
 package com.hanghai.kchtg.port.entity;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.common.entity.BaseEntity;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
+import com.hanghai.kchtg.common.entity.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -37,8 +31,8 @@ public class DryPort extends BaseEntity {
     @Column(name = "dry_port_name", nullable = false, length = 255)
     private String dryPortName;
 
-    @Column(name = "province", length = 100)
-    private String province;
+    @Column(name = "province_id")
+    private Integer provinceId;
 
 
 

@@ -57,9 +57,9 @@ export default function LegalDocumentList() {
         page: page - 1,
         size: pageSize,
         keyword: filterKeyword ? filterKeyword.trim() : undefined,
-        coQuan: filterCoQuan ? filterCoQuan.trim() : undefined,
-        loai: filterLoai || undefined,
-        tinhTrang: filterStatus || undefined,
+        issuingAuthority: filterCoQuan ? filterCoQuan.trim() : undefined,
+        type: filterLoai || undefined,
+        status: filterStatus || undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -151,10 +151,10 @@ export default function LegalDocumentList() {
       dataIndex: 'loaiVanBan',
       key: 'loaiVanBan',
       render: (val: string) => {
-        if (val === 'QUYET_DINH') return 'Quyết định';
-        if (val === 'THONG_TU') return 'Thông tư';
-        if (val === 'NGHI_DINH') return 'Nghị định';
-        if (val === 'LUAT') return 'Luật';
+        if (val === 'DECISION') return 'Quyết định';
+        if (val === 'CIRCULAR') return 'Thông tư';
+        if (val === 'DECREE') return 'Nghị định';
+        if (val === 'LAW') return 'Luật';
         return val || '';
       }
     },
@@ -173,9 +173,9 @@ export default function LegalDocumentList() {
       dataIndex: 'tinhTrangHieuLuc',
       key: 'tinhTrangHieuLuc',
       render: (val: string) => {
-        if (val === 'CON_HIEU_LUC') return 'Còn hiệu lực';
-        if (val === 'SAP_HET_HIEU_LUC') return 'Sắp hết hiệu lực';
-        if (val === 'DA_HET_HIEU_LUC') return 'Đã hết hiệu lực';
+        if (val === 'EFFECTIVE') return 'Còn hiệu lực';
+        if (val === 'EXPIRING_SOON') return 'Sắp hết hiệu lực';
+        if (val === 'EXPIRED') return 'Đã hết hiệu lực';
         return val || '';
       }
     },
@@ -252,10 +252,10 @@ export default function LegalDocumentList() {
             style={{ width: 140 }}
             allowClear
             options={[
-              { label: 'Quyết định', value: 'QUYET_DINH' },
-              { label: 'Thông tư', value: 'THONG_TU' },
-              { label: 'Nghị định', value: 'NGHI_DINH' },
-              { label: 'Luật', value: 'LUAT' },
+              { label: 'Quyết định', value: 'DECISION' },
+              { label: 'Thông tư', value: 'CIRCULAR' },
+              { label: 'Nghị định', value: 'DECREE' },
+              { label: 'Luật', value: 'LAW' },
             ]}
           />
           <Select
@@ -268,9 +268,9 @@ export default function LegalDocumentList() {
             style={{ width: 160 }}
             allowClear
             options={[
-              { label: 'Còn hiệu lực', value: 'CON_HIEU_LUC' },
-              { label: 'Sắp hết hiệu lực', value: 'SAP_HET_HIEU_LUC' },
-              { label: 'Đã hết hiệu lực', value: 'DA_HET_HIEU_LUC' },
+              { label: 'Còn hiệu lực', value: 'EFFECTIVE' },
+              { label: 'Sắp hết hiệu lực', value: 'EXPIRING_SOON' },
+              { label: 'Đã hết hiệu lực', value: 'EXPIRED' },
             ]}
           />
           <Button
@@ -335,10 +335,10 @@ export default function LegalDocumentList() {
             rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
           >
             <Select placeholder="Chọn loại văn bản...">
-              <Select.Option value="QUYET_DINH">Quyết định</Select.Option>
-              <Select.Option value="THONG_TU">Thông tư</Select.Option>
-              <Select.Option value="NGHI_DINH">Nghị định</Select.Option>
-              <Select.Option value="LUAT">Luật</Select.Option>
+              <Select.Option value="DECISION">Quyết định</Select.Option>
+              <Select.Option value="CIRCULAR">Thông tư</Select.Option>
+              <Select.Option value="DECREE">Nghị định</Select.Option>
+              <Select.Option value="LAW">Luật</Select.Option>
             </Select>
           </Form.Item>
 
@@ -366,11 +366,11 @@ export default function LegalDocumentList() {
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item name="tinhTrangHieuLuc" label="Trạng thái hiệu lực" initialValue="CON_HIEU_LUC">
+          <Form.Item name="tinhTrangHieuLuc" label="Trạng thái hiệu lực" initialValue="EFFECTIVE">
             <Select placeholder="Chọn trạng thái hiệu lực...">
-              <Select.Option value="CON_HIEU_LUC">Còn hiệu lực</Select.Option>
-              <Select.Option value="SAP_HET_HIEU_LUC">Sắp hết hiệu lực</Select.Option>
-              <Select.Option value="DA_HET_HIEU_LUC">Đã hết hiệu lực</Select.Option>
+              <Select.Option value="EFFECTIVE">Còn hiệu lực</Select.Option>
+              <Select.Option value="EXPIRING_SOON">Sắp hết hiệu lực</Select.Option>
+              <Select.Option value="EXPIRED">Đã hết hiệu lực</Select.Option>
             </Select>
           </Form.Item>
 

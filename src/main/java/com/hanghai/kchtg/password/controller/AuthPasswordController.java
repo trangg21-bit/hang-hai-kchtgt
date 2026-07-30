@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.password.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.password.dto.ChangePasswordRequest;
 import com.hanghai.kchtg.password.dto.ChangePasswordResponse;

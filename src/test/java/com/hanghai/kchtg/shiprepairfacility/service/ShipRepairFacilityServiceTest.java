@@ -1,8 +1,13 @@
 package com.hanghai.kchtg.shiprepairfacility.service;
 
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.*;
-import com.hanghai.kchtg.shiprepairfacility.repository.*;
+import com.hanghai.kchtg.shiprepairfacility.entity.ApprovalHistory;
+import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
+import com.hanghai.kchtg.shiprepairfacility.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityAttachmentRepository;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,14 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,7 +58,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
@@ -70,7 +71,7 @@ class ShipRepairFacilityServiceTest {
         createRequest = ShipRepairFacilityCreateRequest.builder()
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .build();
 
@@ -84,7 +85,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
@@ -130,7 +131,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(false)
@@ -173,7 +174,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở mới")
                 .address("Đà Nẵng")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
@@ -200,7 +201,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(true)
@@ -230,7 +231,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(false)
@@ -261,7 +262,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(false)
@@ -451,7 +452,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(false)
@@ -477,7 +478,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Đà Nẵng")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(false)
@@ -487,13 +488,13 @@ class ShipRepairFacilityServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, null, "%đà nẵng%", null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, null, 1, null, null)).thenReturn(Arrays.asList(resultEntity));
 
-        List<ShipRepairFacilityResponse> responses = service.search(null, null, "Đà Nẵng", null, null);
+        List<ShipRepairFacilityResponse> responses = service.search(null, null, 1, null, null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
-        assertEquals("Đà Nẵng", responses.get(0).getProvince());
+        assertEquals(1, responses.get(0).getProvinceId());
     }
 
     @Test
@@ -502,7 +503,7 @@ class ShipRepairFacilityServiceTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.REJECTED)
                 .approvedLevel1(false)

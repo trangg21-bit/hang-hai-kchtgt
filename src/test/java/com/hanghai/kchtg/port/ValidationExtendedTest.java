@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.port;
 
-import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.dryport.CreateDryPortRequest;
+import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Bean Validation unit tests — GPS @AssertTrue paired-field constraint.

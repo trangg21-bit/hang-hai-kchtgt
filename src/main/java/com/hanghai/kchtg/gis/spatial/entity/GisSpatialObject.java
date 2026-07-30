@@ -1,9 +1,10 @@
 package com.hanghai.kchtg.gis.spatial.entity;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import jakarta.persistence.*;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,7 +13,6 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Entity
 @Table(name = "gis_spatial_objects")

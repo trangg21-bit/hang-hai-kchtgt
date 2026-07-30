@@ -1,5 +1,4 @@
 package com.hanghai.kchtg.station.dto.cospas;
-import lombok.*;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

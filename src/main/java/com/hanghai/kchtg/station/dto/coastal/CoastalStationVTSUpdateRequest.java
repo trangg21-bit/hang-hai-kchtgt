@@ -1,5 +1,4 @@
 package com.hanghai.kchtg.station.dto.coastal;
-import lombok.*;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,7 +15,8 @@ public class CoastalStationVTSUpdateRequest {
 
 
     private String stationCode;
-    private String stationName;    private String frequencyBand;
+    private String stationName;
+    private String frequencyBand;
     private Double transmitPower;
     private String equipmentType;
     private String locationAddress;

@@ -1,13 +1,12 @@
 package com.hanghai.kchtg.dataconnection.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.dataconnection.dto.*;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
 import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
 import com.hanghai.kchtg.security.EncryptionUtil;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,7 +127,7 @@ public class DataConnectionService {
             throw new EntityNotFoundException("Không tìm thấy kết nối dữ liệu: id=" + id);
         }
         DataConnection entity = repository.findById(id).orElseThrow();
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
         log.info("Soft-deleted data connection: id={}", id);
     }

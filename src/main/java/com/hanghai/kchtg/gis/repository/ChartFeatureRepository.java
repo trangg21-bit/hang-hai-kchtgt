@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.entity.ChartFeature;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -22,10 +20,10 @@ public interface ChartFeatureRepository extends JpaRepository<ChartFeature, UUID
     @Query("DELETE FROM ChartFeature f WHERE f.cellId = :cellId")
     void deleteByCellId(@Param("cellId") UUID cellId);
 
-    @org.springframework.data.jpa.repository.Query(value = 
+    @org.springframework.data.jpa.repository.Query(value =
         "SELECT f.* FROM enc_features f " +
         "WHERE f.deleted_at IS NULL " +
-        "AND ST_GeomFromText(f.coordinates, 4326) && ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326)", 
+        "AND ST_GeomFromText(f.coordinates, 4326) && ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326)",
         nativeQuery = true)
     List<ChartFeature> findFeaturesInBoundingBox(
         @org.springframework.data.repository.query.Param("minLon") double minLon,

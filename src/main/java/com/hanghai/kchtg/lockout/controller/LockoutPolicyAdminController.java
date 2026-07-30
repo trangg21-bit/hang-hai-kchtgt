@@ -2,6 +2,8 @@ package com.hanghai.kchtg.lockout.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.lockout.dto.LockoutPolicyResponse;
+import com.hanghai.kchtg.lockout.dto.LockoutPolicyUpdateRequest;
+import com.hanghai.kchtg.lockout.entity.LockoutPolicy;
 import com.hanghai.kchtg.lockout.service.LockoutPolicyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,8 +42,8 @@ public class LockoutPolicyAdminController {
      */
     @PutMapping("/lockout-policy")
     public ResponseEntity<ApiResponse<LockoutPolicyResponse>> updateLockoutPolicy(
-            @RequestBody com.hanghai.kchtg.lockout.dto.LockoutPolicyUpdateRequest request) {
-        var policy = new com.hanghai.kchtg.lockout.entity.LockoutPolicy();
+            @RequestBody LockoutPolicyUpdateRequest request) {
+        var policy = new LockoutPolicy();
         policy.setMaxFailedAttempts(request.getMaxFailedAttempts());
         policy.setLockoutDurationMinutes(request.getLockoutDurationMinutes());
         policy.setWindowMinutes(request.getWindowMinutes());

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.user.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.AuditLog;
 import com.hanghai.kchtg.common.entity.AuditLogRepository;
@@ -25,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * TOTP enrollment and verification controller.

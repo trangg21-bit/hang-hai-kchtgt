@@ -1,10 +1,14 @@
 package com.hanghai.kchtg.dataconnection.service;
 
-import com.hanghai.kchtg.dataconnection.dto.*;
+import com.hanghai.kchtg.dataconnection.dto.ConnectionResponse;
+import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
+import com.hanghai.kchtg.dataconnection.dto.UpdateConnectionRequest;
 import com.hanghai.kchtg.dataconnection.entity.ConnectionHealth;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
-import com.hanghai.kchtg.dataconnection.entity.SyncLog;
-import com.hanghai.kchtg.dataconnection.enums.*;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
+import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
 import com.hanghai.kchtg.dataconnection.repository.ConnectionHealthRepository;
 import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
 import com.hanghai.kchtg.dataconnection.repository.SyncLogRepository;
@@ -26,7 +30,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)

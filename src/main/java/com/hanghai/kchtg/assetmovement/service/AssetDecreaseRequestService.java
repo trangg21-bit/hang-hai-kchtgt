@@ -1,15 +1,14 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestResponse;
+import com.hanghai.kchtg.assetmovement.entity.AssetDecreaseRequest;
+import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.assetmovement.entity.DecreaseReason;
 import com.hanghai.kchtg.assetmovement.entity.RequestStatus;
-import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
-import com.hanghai.kchtg.assetmovement.entity.AssetDecreaseRequest;
 import com.hanghai.kchtg.assetmovement.repository.AssetDecreaseRequestRepository;
 import com.hanghai.kchtg.assetmovement.repository.InfraAssetRepository;
+import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +36,7 @@ public class AssetDecreaseRequestService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
             return userRepository.findByUsername(auth.getName())
-                    .map(com.hanghai.kchtg.user.entity.User::getId)
+                    .map(User::getId)
                     .orElse(null);
         }
         return null;
@@ -54,7 +53,7 @@ public class AssetDecreaseRequestService {
                 .status(RequestStatus.PENDING)
                 .createdBy(currentUserId)
                 .updatedBy(currentUserId)
-                
+
                 .build();
         AssetDecreaseRequest saved = repository.save(entity);
         return toResponse(saved);

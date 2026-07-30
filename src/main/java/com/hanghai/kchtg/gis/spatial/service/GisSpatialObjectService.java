@@ -1,19 +1,18 @@
 package com.hanghai.kchtg.gis.spatial.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialStatus;
 import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +30,7 @@ public class GisSpatialObjectService {
             String coordinates,
             UUID refId,
             InfrastructureType refType) {
-        
+
         GisSpatialObject entity;
         if (id != null) {
             entity = repository.findById(id).orElse(new GisSpatialObject());
@@ -55,7 +54,7 @@ public class GisSpatialObjectService {
     public void delete(UUID id) {
         if (id == null) return;
         repository.findById(id).ifPresent(entity -> {
-            entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+            entity.softDelete(SecurityUtils.getCurrentUserId());
             repository.save(entity);
         });
     }

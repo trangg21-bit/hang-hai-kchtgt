@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.search.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.search.entity.SearchQuery.QueryType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

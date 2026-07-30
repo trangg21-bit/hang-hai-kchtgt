@@ -1,0 +1,83 @@
+{
+  "triage_id": "TRI-1785315662049-57e5",
+  "created_at": 1785315662049,
+  "request_summary": "Rename 6 Vietnamese field names to English across frontend types/schemas/components and backend DTOs",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/app/berth/types.ts",
+      "frontend/src/app/waterzone/types.ts",
+      "frontend/src/components/gis/GisLocationSelector.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/dto/DikeRevetmentCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/dto/DikeRevetmentResponse.java",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/dto/DikeRevetmentUpdateRequest.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/dto/NavigationChannelCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/dto/NavigationChannelResponse.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/dto/NavigationChannelUpdateRequest.java"
+    ],
+    "impact_files": [
+      "frontend/src/app/berth/types.ts",
+      "frontend/src/app/waterzone/types.ts",
+      "frontend/src/components/gis/GisLocationSelector.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/dto/DikeRevetmentCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/dto/DikeRevetmentResponse.java",
+      "src/main/java/com/hanghai/kchtg/dikerevetment/dto/DikeRevetmentUpdateRequest.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/dto/NavigationChannelCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/dto/NavigationChannelResponse.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/dto/NavigationChannelUpdateRequest.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 11 edit-target files exceed the inline gate (11 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "KCHT management pages",
+  "blast_radius": 11,
+  "done_oracle": "mvn compile -q && npx tsc --noEmit both pass",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/dikerevetment/dto/DikeRevetmentUpdateRequest.java",
+      "line": 34,
+      "quote": "    private UUID bieuTuongId;",
+      "source_hash": "61c61dfd98b885ca2358b20b190e799c3d35f93076c876b7076df3e5d1ff9696",
+      "quote_hash": "3c4f8398c17c734dbfa902c233db050b3311f290e813b507557d96bd258cb11e"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/navigationchannel/dto/NavigationChannelCreateRequest.java",
+      "line": 38,
+      "quote": "    private UUID bieuTuongId;",
+      "source_hash": "587ae1984efa35a834821a9de4f06841181962a81ae3f4577156eec221890011",
+      "quote_hash": "3c4f8398c17c734dbfa902c233db050b3311f290e813b507557d96bd258cb11e"
+    },
+    {
+      "file": "frontend/src/types/port.ts",
+      "line": 354,
+      "quote": "  doSauMax: number;",
+      "source_hash": "e27be49422ca20446a5a62caf0c5d3a56521527d2c32d790210e9c18eeab0bb8",
+      "quote_hash": "5f1a562a9011fa03f36ae0112d93838f929ef7a923b42afd819a472ceb84227f"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785296347591-3696",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "6fe6ce775d74b79ae610c6fbd9159b4eda3b389d",
+    "dirty": true,
+    "captured_at": 1785315662164
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

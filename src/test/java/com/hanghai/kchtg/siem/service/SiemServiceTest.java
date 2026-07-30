@@ -69,7 +69,7 @@ public class SiemServiceTest {
     void exportWordReport_shouldProduceNonEmptyByteArray() throws IOException {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(1L);
+        log.setId(UUID.randomUUID());
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");
@@ -89,7 +89,7 @@ public class SiemServiceTest {
     void exportExcelReport_shouldProduceNonEmptyByteArray() throws IOException {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(1L);
+        log.setId(UUID.randomUUID());
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");
@@ -109,7 +109,7 @@ public class SiemServiceTest {
     void exportPdfReport_shouldProduceNonEmptyByteArray() throws IOException {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(1L);
+        log.setId(UUID.randomUUID());
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");
@@ -129,7 +129,7 @@ public class SiemServiceTest {
     void exportHtmlReport_shouldProduceNonEmptyByteArray() {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(1L);
+        log.setId(UUID.randomUUID());
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");
@@ -149,7 +149,7 @@ public class SiemServiceTest {
     void exportXmlReport_shouldProduceNonEmptyByteArray() {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(1L);
+        log.setId(UUID.randomUUID());
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");

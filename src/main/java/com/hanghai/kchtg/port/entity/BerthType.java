@@ -8,12 +8,12 @@ import lombok.Getter;
  */
 @Getter
 public enum BerthType {
-    BEN_CONTAINER(1),
-    BEN_TONG_HOP(2),
-    BEN_CHUYEN_DUNG(3),
-    BEN_HANH_KHACH(4),
-    BEN_PHAO(5),
-    BEN_THUY_NOI_DIA(6);
+    CONTAINER(1),
+    GENERAL_CARGO(2),
+    SPECIALIZED(3),
+    PASSENGER(4),
+    MOORING_BUOY(5),
+    INLAND_WATERWAY(6);
 
     private final int value;
 

@@ -1,16 +1,15 @@
 package com.hanghai.kchtg.document.repository;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.document.entity.SeverityLevel;
-import com.hanghai.kchtg.document.entity.ProcessingStatus;
 import com.hanghai.kchtg.document.entity.Incident;
+import com.hanghai.kchtg.document.entity.ProcessingStatus;
+import com.hanghai.kchtg.document.entity.SeverityLevel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface IncidentRepository extends JpaRepository<Incident, UUID> {

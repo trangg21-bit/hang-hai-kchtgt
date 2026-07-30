@@ -1,22 +1,22 @@
 package com.hanghai.kchtg.gis.seeder;
 
+import com.hanghai.kchtg.gis.entity.ChartCell;
 import com.hanghai.kchtg.gis.repository.ChartCellRepository;
 import com.hanghai.kchtg.gis.repository.ChartFeatureRepository;
 import com.hanghai.kchtg.gis.service.ChartIntegrationService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-
-import java.io.InputStream;
-
-import jakarta.persistence.EntityManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
+
+import java.io.InputStream;
 
 /**
  * Automatically seeds the database with the electronic chart cell (.000) files
@@ -71,7 +71,7 @@ public class ChartSeeder implements CommandLineRunner {
             String cellName = filename.toUpperCase().replace(".JSON", "");
 
             // Check if this cell is already imported with actual S-57 features
-            java.util.Optional<com.hanghai.kchtg.gis.entity.ChartCell> existingCell = cellRepository
+            java.util.Optional<ChartCell> existingCell = cellRepository
                     .findByCellName(cellName);
             if (existingCell.isPresent() && featureRepository.existsByCellId(existingCell.get().getId())) {
                 skippedCount++;

@@ -1,12 +1,16 @@
 package com.hanghai.kchtg.radarstation.dto;
 
-import java.util.UUID;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -24,7 +28,7 @@ public class RadarStationResponse {
     private String source;
     private String conditionStatus;
     private UUID orgUnitId;
-    private com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus approvalStatus;
+    private RadarStationApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;
     private LocalDateTime approvedDateLevel1;

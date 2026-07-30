@@ -3,6 +3,7 @@ package com.hanghai.kchtg.security.totp.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 
 /**
  * Session record for TOTP enrollment stored in Redis.
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Serialises to/from JSON for Redis storage.
  * </p>
  */
+@Data
 public class TotpEnrollSession {
 
     private String sessionId;

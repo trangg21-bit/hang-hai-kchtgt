@@ -5,10 +5,13 @@ import com.hanghai.kchtg.gis.point.dto.PointObjectResponse;
 import com.hanghai.kchtg.gis.point.dto.UpdatePointObjectRequest;
 import com.hanghai.kchtg.gis.point.entity.PointHistory;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
+import com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
 import com.hanghai.kchtg.gis.point.repository.PointHistoryRepository;
 import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
+import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +27,7 @@ public class PointObjectService {
 
     private final PointObjectRepository repository;
     private final PointHistoryRepository historyRepository;
-    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository spatialRepository;
+    private final GisSpatialObjectRepository spatialRepository;
 
     public List<PointObjectResponse> findAll() {
         return repository.findAll().stream()
@@ -98,7 +101,7 @@ public class PointObjectService {
         if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
         if (request.getCategoryId() != null) entity.setCategoryId(request.getCategoryId());
         if (request.getIconId() != null) entity.setIconId(request.getIconId());
-        
+
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
         if (request.getStatus() != null) entity.setStatus(request.getStatus());
         if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
@@ -116,7 +119,7 @@ public class PointObjectService {
         PointObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PointObject not found with id: " + id));
         entity.setStatus(Status.DELETED);
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
     }
 
@@ -125,7 +128,7 @@ public class PointObjectService {
         PointObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PointObject not found with id: " + id));
         entity.setStatus(Status.PENDING_APPROVAL);
-        entity.setApprovalStatus(com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
         repository.save(entity);
     }
 
@@ -140,7 +143,7 @@ public class PointObjectService {
         }
 
         entity.setStatus(Status.APPROVED_L1);
-        entity.setApprovalStatus(com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);

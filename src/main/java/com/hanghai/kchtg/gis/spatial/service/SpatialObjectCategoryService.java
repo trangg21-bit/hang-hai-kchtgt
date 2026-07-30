@@ -1,10 +1,9 @@
 package com.hanghai.kchtg.gis.spatial.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.spatial.dto.SpatialObjectCategoryDto;
 import com.hanghai.kchtg.gis.spatial.entity.SpatialObjectCategory;
 import com.hanghai.kchtg.gis.spatial.repository.SpatialObjectCategoryRepository;
+import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,7 +18,7 @@ import java.util.UUID;
 public class SpatialObjectCategoryService {
 
     private final SpatialObjectCategoryRepository repository;
-    private final com.hanghai.kchtg.mapicon.repository.MapSymbolRepository symbolRepository;
+    private final MapSymbolRepository symbolRepository;
 
     @Transactional(readOnly = true)
     public Page<SpatialObjectCategoryDto> findAll(Integer geometryType, Integer status, String search, Pageable pageable) {
@@ -44,7 +43,7 @@ public class SpatialObjectCategoryService {
         entity.setName(request.getName());
         entity.setGeometryType(request.getGeometryType());
         entity.setIconId(request.getIconId());
-        
+
         if (request.getStatus() != null) {
             entity.setStatus(request.getStatus());
         }
@@ -65,7 +64,7 @@ public class SpatialObjectCategoryService {
         entity.setName(request.getName());
         entity.setGeometryType(request.getGeometryType());
         entity.setIconId(request.getIconId());
-        
+
         if (request.getStatus() != null) {
             entity.setStatus(request.getStatus());
         }

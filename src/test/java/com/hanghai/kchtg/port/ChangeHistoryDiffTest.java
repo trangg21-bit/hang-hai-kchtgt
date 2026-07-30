@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.port;
 
-import com.hanghai.kchtg.port.entity.Port;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.entity.ChangeLog;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,12 +18,10 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -60,18 +60,18 @@ class ChangeHistoryDiffTest {
         // Build old snapshot (portName = "Old Name")
         Port oldEntity = Port.builder()
                 .portName("Old Name")
-                .province("Hải Phòng")
+                .provinceId(1)
                 .area(new BigDecimal("5000.00"))
-                .operationalStatus(OperationalStatus.HIEN_HANH)
+                .operationalStatus(OperationalStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 
         // Build new entity (portName = "New Name", everything else same)
         Port newEntity = Port.builder()
                 .portName("New Name")
-                .province("Hải Phòng")
+                .provinceId(1)
                 .area(new BigDecimal("5000.00"))
-                .operationalStatus(OperationalStatus.HIEN_HANH)
+                .operationalStatus(OperationalStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 
@@ -100,17 +100,17 @@ class ChangeHistoryDiffTest {
     void update_noChanges_noHistoryRecorded() {
         Port oldEntity = Port.builder()
                 .portName("Same Name")
-                .province("Hải Phòng")
+                .provinceId(1)
                 .area(new BigDecimal("5000.00"))
-                .operationalStatus(OperationalStatus.HIEN_HANH)
+                .operationalStatus(OperationalStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 
         Port newEntity = Port.builder()
                 .portName("Same Name")
-                .province("Hải Phòng")
+                .provinceId(1)
                 .area(new BigDecimal("5000.00"))
-                .operationalStatus(OperationalStatus.HIEN_HANH)
+                .operationalStatus(OperationalStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 

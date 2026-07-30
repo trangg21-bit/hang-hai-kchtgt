@@ -2,10 +2,16 @@ package com.hanghai.kchtg.interconnect.dto;
 
 import com.hanghai.kchtg.interconnect.entity.IntegrationConnection;
 import com.hanghai.kchtg.interconnect.enums.ConnectionStatus;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class IntegrationConnectionResponse {
 
     private UUID id;
@@ -16,9 +22,6 @@ public class IntegrationConnectionResponse {
     private ConnectionStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
-    public IntegrationConnectionResponse() {
-    }
 
     public IntegrationConnectionResponse(IntegrationConnection entity) {
         this.id = entity.getId();
@@ -31,67 +34,4 @@ public class IntegrationConnectionResponse {
         this.updatedAt = entity.getUpdatedAt();
     }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getAccountName() {
-        return accountName;
-    }
-
-    public void setAccountName(String accountName) {
-        this.accountName = accountName;
-    }
-
-    public String getConnectionName() {
-        return connectionName;
-    }
-
-    public void setConnectionName(String connectionName) {
-        this.connectionName = connectionName;
-    }
-
-    public String getSenderSystem() {
-        return senderSystem;
-    }
-
-    public void setSenderSystem(String senderSystem) {
-        this.senderSystem = senderSystem;
-    }
-
-    public String getReceiverSystem() {
-        return receiverSystem;
-    }
-
-    public void setReceiverSystem(String receiverSystem) {
-        this.receiverSystem = receiverSystem;
-    }
-
-    public ConnectionStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ConnectionStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

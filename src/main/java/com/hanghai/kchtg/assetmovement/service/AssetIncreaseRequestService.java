@@ -1,15 +1,13 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.AssetIncreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetIncreaseRequestResponse;
-import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
-import com.hanghai.kchtg.assetmovement.entity.RequestStatus;
-import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.assetmovement.entity.AssetIncreaseRequest;
+import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
+import com.hanghai.kchtg.assetmovement.entity.RequestStatus;
 import com.hanghai.kchtg.assetmovement.repository.AssetIncreaseRequestRepository;
 import com.hanghai.kchtg.assetmovement.repository.InfraAssetRepository;
+import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +36,7 @@ public class AssetIncreaseRequestService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
             return userRepository.findByUsername(auth.getName())
-                    .map(com.hanghai.kchtg.user.entity.User::getId)
+                    .map(User::getId)
                     .orElse(null);
         }
         return null;
@@ -54,7 +52,7 @@ public class AssetIncreaseRequestService {
                 .status(RequestStatus.PENDING)
                 .createdBy(currentUserId)
                 .updatedBy(currentUserId)
-                
+
                 .build();
 
         AssetIncreaseRequest saved = repository.save(entity);

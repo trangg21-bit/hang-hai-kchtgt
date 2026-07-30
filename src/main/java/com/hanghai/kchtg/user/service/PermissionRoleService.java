@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.user.service;
 
+import com.hanghai.kchtg.security.PermissionMiddleware;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.slf4j.Logger;
@@ -13,7 +14,7 @@ import java.util.UUID;
 /**
  * Permission evaluation service for 3-level RBAC (F-275).
  * <p>
- * Provides permission-checking methods used by {@link com.hanghai.kchtg.security.PermissionMiddleware}
+ * Provides permission-checking methods used by {@link PermissionMiddleware}
  * and other security components. Supports Super Admin bypass and wildcard matching.
  * </p>
  */

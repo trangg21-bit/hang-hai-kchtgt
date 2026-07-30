@@ -1,18 +1,23 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.document.dto.AdjustmentApprovalRequest;
+import com.hanghai.kchtg.document.dto.AdjustmentApprovalResponse;
+import com.hanghai.kchtg.document.dto.PlanningAdjustmentCreateRequest;
+import com.hanghai.kchtg.document.dto.PlanningAdjustmentResponse;
+import com.hanghai.kchtg.document.entity.AdjustmentApproval;
+import com.hanghai.kchtg.document.entity.AdjustmentStatus;
+import com.hanghai.kchtg.document.entity.PlanningAdjustment;
+import com.hanghai.kchtg.document.entity.PortPlanning;
+import com.hanghai.kchtg.document.repository.AdjustmentApprovalRepository;
+import com.hanghai.kchtg.document.repository.PlanningAdjustmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service

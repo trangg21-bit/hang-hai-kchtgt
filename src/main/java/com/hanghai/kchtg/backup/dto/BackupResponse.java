@@ -1,17 +1,13 @@
 package com.hanghai.kchtg.backup.dto;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.backup.entity.DatabaseBackup;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 public class BackupResponse {
 
@@ -23,13 +19,16 @@ public class BackupResponse {
     private String errorDetail;
     private LocalDateTime createdAt;
 
-    public BackupResponse(DatabaseBackup backup) {
-        this.id = backup.getId();
-        this.filename = backup.getFilename();
-        this.fileSize = backup.getFileSize();
-        this.backupType = backup.getBackupType().name();
-        this.status = backup.getStatus().name();
-        this.errorDetail = backup.getErrorDetail();
-        this.createdAt = backup.getCreatedAt();
+    // ── Entity-to-DTO constructor ────────────────────────────────────
+
+    public BackupResponse(com.hanghai.kchtg.backup.entity.DatabaseBackup entity) {
+        this.id = entity.getId();
+        this.filename = entity.getFilename();
+        this.fileSize = entity.getFileSize();
+        this.backupType = entity.getBackupType() != null ? entity.getBackupType().name() : null;
+        this.status = entity.getStatus() != null ? entity.getStatus().name() : null;
+        this.errorDetail = entity.getErrorDetail();
+        this.createdAt = entity.getCreatedAt();
     }
+
 }

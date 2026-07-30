@@ -1,9 +1,8 @@
 package com.hanghai.kchtg.password.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.password.entity.PasswordExpirationLog;
 import org.springframework.data.jpa.repository.JpaRepository;
+
 import java.util.UUID;
 
 /**

@@ -1,18 +1,26 @@
 package com.hanghai.kchtg.port.service;
 
-import com.hanghai.kchtg.port.dto.berth.*;
-import com.hanghai.kchtg.port.entity.Berth;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import java.math.BigDecimal;
-import java.util.Optional;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.port.dto.berth.BerthResponse;
+import com.hanghai.kchtg.port.dto.berth.CreateBerthRequest;
+import com.hanghai.kchtg.port.dto.berth.UpdateBerthRequest;
+import com.hanghai.kchtg.port.entity.Berth;
+import com.hanghai.kchtg.port.entity.BerthType;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.BerthRepository;
-import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +31,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -40,8 +50,8 @@ public class BerthService {
     private final ChangeHistoryService changeHistoryService;
     private final AuditLogService auditLogService;
     private final UserResolverService userResolverService;
-    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final UserRepository userRepository;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     @Transactional
     public BerthResponse create(CreateBerthRequest request) {
@@ -51,7 +61,7 @@ public class BerthService {
         Port parent = portRepository.findById(request.getPortId())
                 .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
 
-        if (parent.getOperationalStatus() != OperationalStatus.HIEN_HANH) {
+        if (parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
             throw new IllegalArgumentException(
                     "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
@@ -67,7 +77,7 @@ public class BerthService {
                 .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId())
                 // Extended fields
-                .locationCode(request.getLocationCode())
+                .provinceId(request.getProvinceId())
                 .detailedLocation(request.getDetailedLocation())
                 .coordinateSystem(request.getCoordinateSystem())
                 .displayRule(request.getDisplayRule())
@@ -91,10 +101,10 @@ public class BerthService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     saved.getBerthName(),
                     "BERTH_" + saved.getBerthCode(),
@@ -102,7 +112,7 @@ public class BerthService {
                     objType,
                     coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.PORT_TERMINAL
+                    InfrastructureType.PORT_TERMINAL
             );
             saved.setSpatialId(spatialObj.getId());
             saved = berthRepository.save(saved);
@@ -134,10 +144,10 @@ public class BerthService {
                 : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus)
                 : null;
-        com.hanghai.kchtg.port.entity.BerthType berthTypeEnum = null;
+        BerthType berthTypeEnum = null;
         if (berthType != null && !berthType.trim().isEmpty()) {
             try {
-                berthTypeEnum = com.hanghai.kchtg.port.entity.BerthType.valueOf(berthType.trim().toUpperCase());
+                berthTypeEnum = BerthType.valueOf(berthType.trim().toUpperCase());
             } catch (IllegalArgumentException e) {
                 // ignore
             }
@@ -178,7 +188,7 @@ public class BerthService {
             });
         }
 
-        return pageResult.map(e -> toResponse(e, 
+        return pageResult.map(e -> toResponse(e,
                 parentNameMap.get(e.getPortId()),
                 userNamesMap.get(e.getCreatedBy()),
                 userNamesMap.get(e.getUpdatedBy())
@@ -218,7 +228,7 @@ public class BerthService {
                 .orgUnitId(entity.getOrgUnitId())
                 .mapSymbolId(entity.getMapSymbolId())
                 // Extended fields snapshot
-                .locationCode(entity.getLocationCode())
+                .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
@@ -243,7 +253,7 @@ public class BerthService {
                     .orElseThrow(
                             () -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
             entity.setOrgUnitId(parent.getOrgUnitId());
-            
+
             pierRepository.findByBerthIdAndDeletedAtIsNull(entity.getId()).forEach(cc -> {
                 cc.setOrgUnitId(parent.getOrgUnitId());
                 pierRepository.save(cc);
@@ -251,7 +261,7 @@ public class BerthService {
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> {
                 entity.setOrgUnitId(p.getOrgUnitId());
-                
+
                 pierRepository.findByBerthIdAndDeletedAtIsNull(entity.getId()).forEach(cc -> {
                     cc.setOrgUnitId(p.getOrgUnitId());
                     pierRepository.save(cc);
@@ -274,8 +284,8 @@ public class BerthService {
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
         // Extended fields
-        if (request.getLocationCode() != null)
-            entity.setLocationCode(request.getLocationCode());
+        if (request.getProvinceId() != null)
+            entity.setProvinceId(request.getProvinceId());
         if (request.getDetailedLocation() != null)
             entity.setDetailedLocation(request.getDetailedLocation());
         if (request.getCoordinateSystem() != null)
@@ -310,10 +320,10 @@ public class BerthService {
         Berth saved = berthRepository.save(entity);
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(),
                     saved.getBerthName(),
                     "BERTH_" + saved.getBerthCode(),
@@ -321,7 +331,7 @@ public class BerthService {
                     objType,
                     coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.PORT_TERMINAL
+                    InfrastructureType.PORT_TERMINAL
             );
             saved.setSpatialId(spatialObj.getId());
             saved = berthRepository.save(saved);
@@ -337,7 +347,7 @@ public class BerthService {
     public void softDelete(UUID id) {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         berthRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -365,7 +375,7 @@ public class BerthService {
         BigDecimal latitude = null;
         BigDecimal longitude = null;
         if (e.getSpatialId() != null) {
-            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(e.getSpatialId());
+            Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(e.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coords = spatialObjOpt.get().getCoordinates();
                 try {
@@ -392,7 +402,7 @@ public class BerthService {
                 .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId())
                 .mapSymbolId(e.getMapSymbolId())
                 // Extended fields
-                .locationCode(e.getLocationCode())
+                .provinceId(e.getProvinceId())
                 .detailedLocation(e.getDetailedLocation())
                 .coordinateSystem(e.getCoordinateSystem())
                 .displayRule(e.getDisplayRule())

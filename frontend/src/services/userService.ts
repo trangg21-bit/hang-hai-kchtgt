@@ -127,7 +127,7 @@ export const userService = {
       email: payload.email,
       phone: payload.phone,
       password: payload.password || 'admin123',
-      role: payload.roleId,
+      role: payload.role,
       orgUnitId: payload.orgUnitId,
       status: 'ACTIVE'
     });
@@ -141,7 +141,7 @@ export const userService = {
       fullName: payload.fullName,
       email: payload.email,
       phone: payload.phone,
-      role: payload.roleId,
+      role: payload.role,
       orgUnitId: payload.orgUnitId,
       status: payload.status ? payload.status.toUpperCase() : undefined
     });
@@ -172,9 +172,13 @@ export const userService = {
     return { success: true, data: u };
   },
 
-  async resetPassword(id: string): Promise<ApiResponse<{ newPassword: string }>> {
-    const newPassword = `HH@${Math.random().toString(36).slice(2, 10)}`;
+  async resetPassword(id: string, newPassword: string): Promise<ApiResponse<null>> {
     await api.post(`/users/${id}/reset-password`, { newPassword });
-    return { success: true, data: { newPassword } };
+    return { success: true, data: null };
+  },
+
+  async forgotPassword(email: string): Promise<ApiResponse<null>> {
+    await api.post('/auth/forgot-password', { email: email.trim() });
+    return { success: true, data: null };
   },
 };

@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.user.service;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.util.IpUtils;
 import com.hanghai.kchtg.user.entity.LoginAttemptResult;
 import com.hanghai.kchtg.user.entity.LoginAttemptType;
 import com.hanghai.kchtg.user.entity.LoginAuditLog;
@@ -65,7 +64,7 @@ public class LoginAuditLogService {
      * Lấy IP thực của client từ HttpServletRequest (xử lý proxy headers).
      */
     public String extractIpAddress(HttpServletRequest request) {
-        return com.hanghai.kchtg.common.util.IpUtils.getClientIp(request);
+        return IpUtils.getClientIp(request);
     }
 
     /**

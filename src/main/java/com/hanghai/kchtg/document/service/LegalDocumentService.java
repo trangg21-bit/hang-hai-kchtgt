@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.*;
@@ -18,6 +16,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +39,11 @@ public class LegalDocumentService {
 
         if (request.getDocumentNumber() != null && legalDocumentRepository.existsByDocumentNumber(request.getDocumentNumber())) {
             throw new IllegalArgumentException("Số hiệu văn bản pháp lý đã tồn tại: " + request.getDocumentNumber());
+        }
+
+        if (request.getEffectiveDate() != null && request.getIssueDate() != null 
+                && request.getEffectiveDate().isBefore(request.getIssueDate())) {
+            throw new IllegalArgumentException("Ngày hiệu lực phải sau hoặc bằng ngày ban hành");
         }
 
         LegalDocument vb = LegalDocument.builder()
@@ -85,15 +89,25 @@ public class LegalDocumentService {
         LegalDocument vb = legalDocumentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy văn bản với id: " + id));
 
+        if (vb.getValidityStatus() == ValidityStatus.EXPIRED) {
+            throw new IllegalStateException("Không thể sửa văn bản đã hết hiệu lực");
+        }
+
         if (request.getDocumentName() != null) vb.setDocumentName(request.getDocumentName());
         if (request.getDocumentNumber() != null) {
-            if (legalDocumentRepository.existsByDocumentNumberAndIdNot(request.getDocumentNumber(), id)) {
+            if (!request.getDocumentNumber().equals(vb.getDocumentNumber()) && 
+                legalDocumentRepository.existsByDocumentNumberAndIdNot(request.getDocumentNumber(), id)) {
                 throw new IllegalArgumentException("Số hiệu văn bản pháp lý đã tồn tại: " + request.getDocumentNumber());
             }
             vb.setDocumentNumber(request.getDocumentNumber());
         }
         if (request.getIssuingAuthority() != null) vb.setIssuingAuthority(request.getIssuingAuthority());
-        if (request.getIssueDate() != null) vb.setIssueDate(request.getIssueDate());
+        if (request.getIssueDate() != null) {
+            if (request.getEffectiveDate() != null && request.getEffectiveDate().isBefore(request.getIssueDate())) {
+                throw new IllegalArgumentException("Ngày hiệu lực phải sau hoặc bằng ngày ban hành");
+            }
+            vb.setIssueDate(request.getIssueDate());
+        }
         if (request.getEffectiveDate() != null) vb.setEffectiveDate(request.getEffectiveDate());
         if (request.getExpirationDate() != null) vb.setExpirationDate(request.getExpirationDate());
         if (request.getDocumentType() != null) vb.setDocumentType(request.getDocumentType());
@@ -117,14 +131,14 @@ public class LegalDocumentService {
     // ── Search / Filter ───────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public List<LegalDocumentResponse> findByValidityStatus(ValidityStatus tinhTrang) {
-        return legalDocumentRepository.findByValidityStatus(tinhTrang)
+    public List<LegalDocumentResponse> findByValidityStatus(ValidityStatus status) {
+        return legalDocumentRepository.findByValidityStatus(status)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<LegalDocumentResponse> findByDocumentType(DocumentType loai) {
-        return legalDocumentRepository.findByDocumentType(loai)
+    public List<LegalDocumentResponse> findByDocumentType(DocumentType type) {
+        return legalDocumentRepository.findByDocumentType(type)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -141,21 +155,21 @@ public class LegalDocumentService {
     }
 
     @Transactional(readOnly = true)
-    public SearchResultResponse searchDocuments(String keyword, String coQuan, String loai,
-                                                  String tinhTrang, LocalDate yearStart,
+    public SearchResultResponse searchDocuments(String keyword, String issuingAuthority, String type,
+                                                  String status, LocalDate yearStart,
                                                   LocalDate yearEnd, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
-        
-        com.hanghai.kchtg.document.entity.DocumentType loaiEnum = (loai != null && !loai.isEmpty()) 
-                ? com.hanghai.kchtg.document.entity.DocumentType.valueOf(loai) : null;
-        com.hanghai.kchtg.document.entity.ValidityStatus tinhTrangEnum = (tinhTrang != null && !tinhTrang.isEmpty()) 
-                ? com.hanghai.kchtg.document.entity.ValidityStatus.valueOf(tinhTrang) : null;
+
+        DocumentType typeEnum = (type != null && !type.isEmpty())
+                ? DocumentType.valueOf(type) : null;
+        ValidityStatus statusEnum = (status != null && !status.isEmpty())
+                ? ValidityStatus.valueOf(status) : null;
 
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        String coQuanLike = (coQuan != null && !coQuan.trim().isEmpty()) ? "%" + coQuan.trim().toLowerCase() + "%" : null;
+        String issuingAuthorityPattern = (issuingAuthority != null && !issuingAuthority.trim().isEmpty()) ? "%" + issuingAuthority.trim().toLowerCase() + "%" : null;
 
         Page<LegalDocument> result = legalDocumentRepository.searchDocuments(
-                keywordLike, coQuanLike, loaiEnum, tinhTrangEnum, yearStart, yearEnd, pageable);
+                keywordLike, issuingAuthorityPattern, typeEnum, statusEnum, yearStart, yearEnd, pageable);
         return SearchResultResponse.builder()
                 .results(result.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(result.getTotalElements())

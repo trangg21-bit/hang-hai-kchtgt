@@ -438,7 +438,7 @@ export default function LogsPage() {
       dataIndex: 'orgUnit',
       render: (val: any) =>
         val ? (
-          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{typeof val === 'object' ? val.name : val}</span>
         ) : (
           <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
         ),

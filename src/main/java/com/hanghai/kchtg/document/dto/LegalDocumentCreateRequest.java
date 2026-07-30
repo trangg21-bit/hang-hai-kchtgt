@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.document.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.entity.DocumentType;
 import com.hanghai.kchtg.document.entity.ValidityStatus;
 import jakarta.validation.constraints.NotBlank;
@@ -9,6 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Request DTO for creating a LegalDocument record.
@@ -24,9 +25,9 @@ public class LegalDocumentCreateRequest {
 
     private String documentNumber;
     private String issuingAuthority;
-    private java.time.LocalDate issueDate;
-    private java.time.LocalDate effectiveDate;
-    private java.time.LocalDate expirationDate;
+    private LocalDate issueDate;
+    private LocalDate effectiveDate;
+    private LocalDate expirationDate;
     private DocumentType documentType;
     private String applicationArea;
     private ValidityStatus validityStatus;

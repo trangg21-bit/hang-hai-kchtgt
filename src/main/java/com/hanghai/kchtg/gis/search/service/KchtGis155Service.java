@@ -1,49 +1,40 @@
 package com.hanghai.kchtg.gis.search.service;
 
-import com.hanghai.kchtg.port.entity.*;
-import com.hanghai.kchtg.port.repository.*;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
-import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
-import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
-import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.station.entity.LighthouseStation;
-import com.hanghai.kchtg.station.entity.BuoyStation;
-import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
-import com.hanghai.kchtg.station.repository.BuoyStationRepository;
-import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
-import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
-import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
-import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
+import com.hanghai.kchtg.gis.search.dto.GisObjectType;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.search.dto.KchtGisSearchResult;
+import com.hanghai.kchtg.gis.search.dto.TinhThanhPho;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.port.entity.*;
+import com.hanghai.kchtg.port.repository.*;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import com.hanghai.kchtg.station.entity.*;
 import com.hanghai.kchtg.station.repository.*;
-import com.hanghai.kchtg.gis.search.dto.KchtGisSearchResult;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.search.dto.TinhThanhPho;
-import com.hanghai.kchtg.gis.search.dto.GisObjectType;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.*;
-import lombok.extern.slf4j.Slf4j;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -141,7 +132,7 @@ public class KchtGis155Service {
             query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
             query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
-            
+
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
             StringBuilder sb = new StringBuilder();
             sb.append("\n=================== EXPLAIN ANALYZE CAU_CANG ===================\n");
@@ -173,7 +164,7 @@ public class KchtGis155Service {
             query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
             query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
-            
+
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
             StringBuilder sb = new StringBuilder();
             sb.append("\n=================== EXPLAIN ANALYZE BEN_CANG ===================\n");
@@ -205,7 +196,7 @@ public class KchtGis155Service {
             query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
             query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
-            
+
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
             StringBuilder sb = new StringBuilder();
             sb.append("\n=================== EXPLAIN ANALYZE CANG_BIEN ===================\n");
@@ -237,7 +228,7 @@ public class KchtGis155Service {
             query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
             query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
-            
+
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
             StringBuilder sb = new StringBuilder();
             sb.append("\n=================== EXPLAIN ANALYZE VUNG_NUOC ===================\n");
@@ -268,7 +259,7 @@ public class KchtGis155Service {
                 double[] coords = parseFirstCoordinateFromWkt(spatial.getCoordinates());
                 if (coords != null) {
                 }
-                
+
                 if (objectType != null && geomTypeStr != null) {
                     if (objectType == GisObjectType.POINT && !"POINT".equalsIgnoreCase(geomTypeStr)) {
                         return;
@@ -310,7 +301,7 @@ public class KchtGis155Service {
                 double[] coords = parseFirstCoordinateFromWkt(spatial.getCoordinates());
                 if (coords != null) {
                 }
-                
+
                 if (objectType != null && geomTypeStr != null) {
                     if (objectType == GisObjectType.POINT && !"POINT".equalsIgnoreCase(geomTypeStr)) {
                         return;
@@ -361,6 +352,7 @@ public class KchtGis155Service {
         }
         String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
         String tinhThanhStr = (tinhThanhPho != null) ? tinhThanhPho.getDisplayName() : null;
+        Integer provinceIdLocal = null; // Temporary fix for provinceId
 
         // Batch pre-load tất cả OrgUnit vào Map 1 lần (tránh N+1 query khi gọi getOrgName)
         Map<UUID, String> orgNameMap = new HashMap<>();
@@ -393,7 +385,7 @@ public class KchtGis155Service {
             switch (type) {
                 case SEAPORT:
                     List<Port> ports = portRepository.searchPorts(
-                            orgUnitId, null, null, tinhThanhStr, OperationalStatus.HIEN_HANH,
+                            orgUnitId, null, null, provinceIdLocal, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, searchLower, PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
                     if (!ports.isEmpty()) {
@@ -413,7 +405,7 @@ public class KchtGis155Service {
                                 .code(cb.getPortCode())
                                 .orgName(getOrgName(cb.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cảng biển")
-                                .location(cb.getProvince() != null ? cb.getProvince() : "")
+                                .location(cb.getProvinceId() != null ? String.valueOf(cb.getProvinceId()) : "")
                                 .diaChiChiTiet("")
                                 .build();
                         if (objectType != null) {
@@ -427,7 +419,7 @@ public class KchtGis155Service {
 
                 case PORT_TERMINAL:
                     List<Berth> berths = berthRepository.searchBerths(
-                            orgUnitId, searchLower, null, null, null, null, null, OperationalStatus.HIEN_HANH,
+                            orgUnitId, searchLower, null, null, null, null, null, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> cbIds = berths.stream().map(Berth::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> bcPortMap = new HashMap<>();
@@ -442,9 +434,8 @@ public class KchtGis155Service {
                     }
                     for (Berth bc : berths) {
                         Port parent = (bc.getPortId() != null) ? bcPortMap.get(bc.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvince() != null)
-                                ? parent.getProvince()
-                                : "";
+                        String parentProvince = (parent != null && parent.getProvinceId() != null)
+                                ? String.valueOf(parent.getProvinceId()) : "";
                         GisSpatialObject spatial = bcSpatialMap.get(bc.getId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
@@ -470,7 +461,7 @@ public class KchtGis155Service {
 
                 case PIER:
                     List<Pier> piers = pierRepository.searchPiers(
-                            orgUnitId, searchLower, null, null, OperationalStatus.HIEN_HANH,
+                            orgUnitId, searchLower, null, null, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> parentBerthIds = piers.stream().map(Pier::getBerthId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Berth> berthMap = new HashMap<>();
@@ -497,8 +488,8 @@ public class KchtGis155Service {
                     for (Pier cc : piers) {
                         Berth parentBerth = (cc.getBerthId() != null) ? berthMap.get(cc.getBerthId()) : null;
                         Port parentCb = (parentBerth != null && parentBerth.getPortId() != null) ? portMap.get(parentBerth.getPortId()) : null;
-                        String parentProvince = (parentCb != null && parentCb.getProvince() != null) ? parentCb.getProvince() : "";
-                        
+                        String parentProvince = (parentCb != null && parentCb.getProvinceId() != null) ? String.valueOf(parentCb.getProvinceId()) : "";
+
                         GisSpatialObject parentBerthSpatial = (parentBerth != null) ? parentBerthSpatialMap.get(parentBerth.getId()) : null;
                         double[] coords = parentBerthSpatial != null ? parseFirstCoordinateFromWkt(parentBerthSpatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -526,7 +517,7 @@ public class KchtGis155Service {
 
                 case DRY_PORT:
                     List<DryPort> cangCans = dryPortRepository.searchDryPorts(
-                            orgUnitId, searchLower, OperationalStatus.HIEN_HANH, ApprovalStatus.APPROVED,
+                            orgUnitId, searchLower, OperationalStatus.OPERATIONAL, ApprovalStatus.APPROVED,
                             PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> ccSpatialMap = new HashMap<>();
                     if (!cangCans.isEmpty()) {
@@ -546,7 +537,7 @@ public class KchtGis155Service {
                                 .code(cc.getDryPortCode())
                                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cảng cạn")
-                                .location(cc.getProvince() != null ? cc.getProvince() : "")
+                                .location(cc.getProvinceId() != null ? String.valueOf(cc.getProvinceId()) : "")
                                 .diaChiChiTiet("")
                                 .build();
                         if (objectType != null) {
@@ -560,7 +551,7 @@ public class KchtGis155Service {
 
                 case WATER_AREA:
                     List<WaterZone> waterZones = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, null, OperationalStatus.HIEN_HANH,
+                            orgUnitId, null, searchLower, null, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> vnCbIds = waterZones.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> vnPortMap = new HashMap<>();
@@ -576,9 +567,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : waterZones) {
                         Port parent = (vn.getPortId() != null) ? vnPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvince() != null)
-                                ? parent.getProvince()
-                                : "";
+                        String parentProvince = (parent != null && parent.getProvinceId() != null)
+                                ? String.valueOf(parent.getProvinceId()) : "";
                         GisSpatialObject spatial = vnSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -639,7 +629,7 @@ public class KchtGis155Service {
                         }
                     }
                     break;
- 
+
                 case DIKE_REVETMENT:
                     List<DikeRevetment> dikeRevList = dikeRevetmentRepository.searchDocuments(
                             orgUnitId, searchLower, null, null, DikeRevetmentApprovalStatus.APPROVED, PageRequest.of(0, 10000))
@@ -676,7 +666,7 @@ public class KchtGis155Service {
                         }
                     }
                     break;
- 
+
                 case SHIP_REPAIR_FACILITY:
                     String csSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
                     List<ShipRepairFacility> csList = shipRepairFacilityRepository.searchFiltered(orgUnitId, csSearchParam);
@@ -699,7 +689,7 @@ public class KchtGis155Service {
                                 .code("COSO_" + cs.getId())
                                 .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cơ sở sửa chữa")
-                                .location(cs.getProvince() != null ? cs.getProvince() : "")
+                                .location(cs.getProvinceId() != null ? String.valueOf(cs.getProvinceId()) : "")
                                 .diaChiChiTiet(cs.getAddress() != null ? cs.getAddress() : "")
                                 .build();
                         if (objectType != null) {
@@ -1046,7 +1036,7 @@ public class KchtGis155Service {
 
                 case BUOY_BERTH:
                     List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, com.hanghai.kchtg.port.entity.WaterZoneType.BEN_PHAO, OperationalStatus.HIEN_HANH,
+                            orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> bpPortMap = new HashMap<>();
@@ -1062,9 +1052,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : benPhaos) {
                         Port parent = (vn.getPortId() != null) ? bpPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvince() != null)
-                                ? parent.getProvince()
-                                : "";
+                        String parentProvince = (parent != null && parent.getProvinceId() != null)
+                                ? String.valueOf(parent.getProvinceId()) : "";
                         GisSpatialObject spatial = bpSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -1092,7 +1081,7 @@ public class KchtGis155Service {
 
                 case ANCHORAGE_AREA:
                     List<WaterZone> anchorages = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, com.hanghai.kchtg.port.entity.WaterZoneType.NEO_DAU, OperationalStatus.HIEN_HANH,
+                            orgUnitId, null, searchLower, WaterZoneType.ANCHORAGE, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> knCbIds = anchorages.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> knPortMap = new HashMap<>();
@@ -1108,9 +1097,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : anchorages) {
                         Port parent = (vn.getPortId() != null) ? knPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvince() != null)
-                                ? parent.getProvince()
-                                : "";
+                        String parentProvince = (parent != null && parent.getProvinceId() != null)
+                                ? String.valueOf(parent.getProvinceId()) : "";
                         GisSpatialObject spatial = knSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -1138,7 +1126,7 @@ public class KchtGis155Service {
 
                 case TRANSSHIPMENT_AREA:
                     List<WaterZone> khuChuyens = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, com.hanghai.kchtg.port.entity.WaterZoneType.CHUYEN_TAI, OperationalStatus.HIEN_HANH,
+                            orgUnitId, null, searchLower, WaterZoneType.TRANSSHIPMENT, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> kcCbIds = khuChuyens.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> kcPortMap = new HashMap<>();
@@ -1154,9 +1142,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : khuChuyens) {
                         Port parent = (vn.getPortId() != null) ? kcPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvince() != null)
-                                ? parent.getProvince()
-                                : "";
+                        String parentProvince = (parent != null && parent.getProvinceId() != null)
+                                ? String.valueOf(parent.getProvinceId()) : "";
                         GisSpatialObject spatial = kcSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -1184,7 +1171,7 @@ public class KchtGis155Service {
 
                 case STORM_SHELTER_AREA:
                     List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
-                            orgUnitId, null, searchLower, com.hanghai.kchtg.port.entity.WaterZoneType.TRANH_BAO, OperationalStatus.HIEN_HANH,
+                            orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, OperationalStatus.OPERATIONAL,
                             ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> ktPortMap = new HashMap<>();
@@ -1200,9 +1187,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : khuTranhs) {
                         Port parent = (vn.getPortId() != null) ? ktPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvince() != null)
-                                ? parent.getProvince()
-                                : "";
+                        String parentProvince = (parent != null && parent.getProvinceId() != null)
+                                ? String.valueOf(parent.getProvinceId()) : "";
                         GisSpatialObject spatial = ktSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;

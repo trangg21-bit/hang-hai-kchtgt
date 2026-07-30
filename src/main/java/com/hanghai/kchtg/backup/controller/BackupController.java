@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.backup.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.backup.dto.BackupResponse;
 import com.hanghai.kchtg.backup.entity.DatabaseBackup;

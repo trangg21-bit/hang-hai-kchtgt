@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryStatus;

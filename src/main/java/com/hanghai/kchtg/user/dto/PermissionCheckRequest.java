@@ -1,8 +1,12 @@
 package com.hanghai.kchtg.user.dto;
 
+import com.hanghai.kchtg.user.entity.Permission;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Request body kiểm tra quyền hạn.
@@ -12,8 +16,11 @@ import jakarta.validation.constraints.Size;
  * Mã permission tuân thủ định dạng {@code {feature}:{action}} (BR-275-01).
  * </p>
  *
- * @see com.hanghai.kchtg.user.entity.Permission
+ * @see Permission
  */
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class PermissionCheckRequest {
 
     /** Resource (feature) cần kiểm tra quyền.
@@ -35,30 +42,6 @@ public class PermissionCheckRequest {
     )
     @Size(max = 30, message = "Action tối đa 30 ký tự")
     private String action;
-
-    public PermissionCheckRequest() {
-    }
-
-    public PermissionCheckRequest(String resource, String action) {
-        this.resource = resource;
-        this.action = action;
-    }
-
-    public String getResource() {
-        return resource;
-    }
-
-    public void setResource(String resource) {
-        this.resource = resource;
-    }
-
-    public String getAction() {
-        return action;
-    }
-
-    public void setAction(String action) {
-        this.action = action;
-    }
 
     /**
      * Tạo permission code từ resource và action.

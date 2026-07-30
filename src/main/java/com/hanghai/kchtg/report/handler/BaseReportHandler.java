@@ -1,12 +1,11 @@
 package com.hanghai.kchtg.report.handler;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.report.entity.ReportStatus;
 import com.hanghai.kchtg.report.entity.ReportType;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
@@ -26,7 +25,7 @@ public abstract class BaseReportHandler implements ReportHandler {
         }
         try {
             if (requestOrgId.trim().endsWith("-demo")) {
-                List<com.hanghai.kchtg.orgunit.entity.OrgUnit> roots = orgUnitRepository.findAll();
+                List<OrgUnit> roots = orgUnitRepository.findAll();
                 if (!roots.isEmpty())
                     return roots.get(0).getId();
                 return null;

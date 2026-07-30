@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
-import java.util.UUID;
-
 import lombok.Builder;
 import lombok.Data;
 

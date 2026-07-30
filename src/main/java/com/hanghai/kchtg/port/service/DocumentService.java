@@ -1,17 +1,15 @@
 package com.hanghai.kchtg.port.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.port.dto.document.DocumentResponse;
 import com.hanghai.kchtg.port.entity.Document;
 import com.hanghai.kchtg.port.repository.DocumentRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -84,7 +82,7 @@ public class DocumentService {
                 .fileSize(fileSize)
                 .mimeType(contentType != null ? contentType : "application/octet-stream")
                 .storageKey(storageKey)
-                
+
                 .build();
 
         Document saved = documentRepository.save(entity);
@@ -145,7 +143,7 @@ public class DocumentService {
 
         log.info("[DocumentService.delete] MinIO delete (STUB): key={}", entity.getStorageKey());
 
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         entity.setUpdatedBy(UUID.fromString(userId));
         documentRepository.save(entity);
 

@@ -1,13 +1,12 @@
 package com.hanghai.kchtg.station.dto.inmarsat;
-import lombok.*;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
 
 @Getter
 @Setter
@@ -22,10 +21,10 @@ public class CoastalStationInmarsatRequest {
     @DecimalMax(value = "180.0", message = "Kinh độ phải từ -180 đến 180")
     private Double longitude;
 
-    @jakarta.validation.constraints.NotBlank(message = "Mã thiết bị không được để trống")
+    @NotBlank(message = "Mã thiết bị không được để trống")
     private String deviceCode;
 
-    @jakarta.validation.constraints.NotBlank(message = "Tên trạm không được để trống")
+    @NotBlank(message = "Tên trạm không được để trống")
     private String stationName;
 
     private String modemType;

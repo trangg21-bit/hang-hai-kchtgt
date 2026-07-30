@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Typography, Modal, Form, Input, Select, Spin, Button, Space, Dropdown, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined, EyeOutlined } from '@ant-design/icons';
 import { organizationService } from '../../services/organizationService';
 
 import type { Organization, CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
+import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, FilterBar } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -42,6 +43,8 @@ function fmtDate(iso?: string) {
 
 export default function UnitList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const currentUser = useAuthStore((s) => s.user);
+  const canViewUpdateMetadata = currentUser?.email?.trim().toLowerCase() === 'cuc@vimawa.gov.vn' || currentUser?.username?.trim().toLowerCase() === 'cuc@vimawa.gov.vn';
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
@@ -50,6 +53,7 @@ export default function UnitList() {
   const [error, setError] = useState<Error | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
+  const [isViewing, setIsViewing] = useState(false);
   const [form] = Form.useForm();
   const selectedType = Form.useWatch('type', form);
   const [submitting, setSubmitting] = useState(false);
@@ -81,8 +85,15 @@ export default function UnitList() {
   }, []);
   useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
 
-  const openCreateModal = useCallback(() => { setEditingOrg(null); form.resetFields(); setModalOpen(true); }, [form]);
+  const openCreateModal = useCallback(() => {
+    setIsViewing(false);
+    setEditingOrg(null);
+    form.resetFields();
+    form.setFieldsValue({ operationalStatus: 'active' });
+    setModalOpen(true);
+  }, [form]);
   const openEditModal = useCallback((org: Organization) => {
+    setIsViewing(false);
     setEditingOrg(org);
     form.setFieldsValue({
       code: org.code, name: org.name, type: org.type,
@@ -90,6 +101,21 @@ export default function UnitList() {
       address: org.address, detailAddress: (org as any).detailAddress ?? '',
       phone: org.phone, description: org.description,
       status: org.status,
+      operationalStatus: org.operationalStatus,
+    });
+    setModalOpen(true);
+  }, [form]);
+
+  const openViewModal = useCallback((org: Organization) => {
+    setIsViewing(true);
+    setEditingOrg(org);
+    form.setFieldsValue({
+      code: org.code, name: org.name, type: org.type,
+      parentId: org.parentId,
+      address: org.address, detailAddress: (org as any).detailAddress ?? '',
+      phone: org.phone, description: org.description,
+      status: org.status,
+      operationalStatus: org.operationalStatus,
     });
     setModalOpen(true);
   }, [form]);
@@ -103,7 +129,7 @@ export default function UnitList() {
           parentId,
           address: values.address, detailAddress: values.detailAddress,
           phone: values.phone, description: values.description,
-          status: values.status,
+          operationalStatus: values.operationalStatus,
         });
         toast.success('Đã cập nhật');
       } else {
@@ -112,6 +138,7 @@ export default function UnitList() {
           parentId,
           address: values.address, detailAddress: values.detailAddress,
           phone: values.phone, description: values.description,
+          operationalStatus: values.operationalStatus,
         });
         toast.success('Đã tạo mới');
       }
@@ -154,6 +181,7 @@ export default function UnitList() {
 
   const getActions = (record: Organization) => {
     const items: any[] = [];
+    items.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => openViewModal(record) });
     if (hasPerm('org.edit')) items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
     if (hasPerm('org.edit') && (record.status === 'draft' || record.status === 'rejected')) items.push({ key: 'submit', label: 'Trình duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
     if (hasPerm('org.approve') && record.status === 'pending') { items.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) }); items.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true }); }
@@ -239,8 +267,8 @@ export default function UnitList() {
         <div style={{ display: 'flex', alignItems: 'center', gap: COL_GAP, padding: '8px 0', borderBottom: `1px solid ${borderDefault}`, marginBottom: 4 }}>
           <div style={{ width: COL_NAME, minWidth: COL_NAME, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', paddingLeft: 24, whiteSpace: 'nowrap' }}>Tên đơn vị</div>
           <div style={{ width: COL_TYPE, minWidth: COL_TYPE, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Loại</div>
-          <div style={{ width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Cán bộ cập nhật</div>
-          <div style={{ width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Ngày cập nhật</div>
+          <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Cán bộ cập nhật</div>
+          <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Ngày cập nhật</div>
           <div style={{ width: COL_STATUS, minWidth: COL_STATUS, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trạng thái</div>
           <div style={{ width: COL_ACTION, minWidth: COL_ACTION }} />
         </div>
@@ -269,10 +297,10 @@ export default function UnitList() {
                         <div style={{ width: COL_TYPE, minWidth: COL_TYPE }}>
                           <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${textSecondary}10`, color: textSecondary }}>{getTypeLabel(org.type)}</span>
                         </div>
-                        <div style={{ width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontSize: fontSizeMd, color: textSecondary }}>
+                        <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontSize: fontSizeMd, color: textSecondary }}>
                           {fmtUser(org.updatedBy)}
                         </div>
-                        <div style={{ width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontSize: fontSizeMd, color: textTertiary }}>
+                        <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontSize: fontSizeMd, color: textTertiary }}>
                           {fmtDate(org.updatedAt)}
                         </div>
                         <div style={{ width: COL_STATUS, minWidth: COL_STATUS }}>
@@ -316,11 +344,11 @@ export default function UnitList() {
                         </span>
                       </div>
                       {/* Column 3: Cán bộ cập nhật */}
-                      <div style={{ width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, flexShrink: 0, fontSize: fontSizeMd, color: textSecondary }}>
+                      <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, flexShrink: 0, fontSize: fontSizeMd, color: textSecondary }}>
                         {fmtUser(org.updatedBy)}
                       </div>
                       {/* Column 4: Ngày cập nhật */}
-                      <div style={{ width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, flexShrink: 0, fontSize: fontSizeMd, color: textTertiary }}>
+                      <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, flexShrink: 0, fontSize: fontSizeMd, color: textTertiary }}>
                         {fmtDate(org.updatedAt)}
                       </div>
                       {/* Column 5: Status — fixed position */}
@@ -347,15 +375,17 @@ export default function UnitList() {
       </div>
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị'}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isViewing ? 'Chi tiết đơn vị' : (editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị')}</span>}
         open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={640} mask={{ closable: false }}
-        footer={[
+        footer={isViewing ? [
+          <Button key="close" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Đóng</Button>
+        ] : [
           <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>,
         ]}
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }} disabled={isViewing}>
             <Form.Item name="code" {...labelProps('Mã đơn vị')} style={{ marginBottom: spaceFormField }}>
               <Input disabled placeholder={editingOrg ? undefined : 'Tự động sinh khi tạo mới'} style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
@@ -385,11 +415,9 @@ export default function UnitList() {
             <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
               <Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-            {editingOrg && (
-              <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }}>
-                <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'draft', label: 'Bản nháp' }, { value: 'pending', label: 'Chờ duyệt' }, { value: 'approved', label: 'Đã phê duyệt' }, { value: 'rejected', label: 'Bị từ chối' }]} />
-              </Form.Item>
-            )}
+            <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
+              <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
+            </Form.Item>
             <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
               <Input.TextArea rows={2} placeholder="Ghi chú thêm..." />
             </Form.Item>

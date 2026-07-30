@@ -1,24 +1,18 @@
 package com.hanghai.kchtg.user.dto;
 
-import java.util.UUID;
-
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-import java.util.UUID;
 
 /**
  * DTO returned after successful account registration.
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class RegisterResponse {
 
-    private UUID id;
+    private java.util.UUID id;
     private String username;
     private String email;
     private String fullName;

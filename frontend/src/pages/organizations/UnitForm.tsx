@@ -48,6 +48,7 @@ export default function UnitForm() {
             contactPerson: data.contactPerson,
             contactPhone: data.contactPhone,
             status: data.status,
+            operationalStatus: data.operationalStatus,
           });
           form.setFieldsValue({
             name: data.name,
@@ -59,6 +60,7 @@ export default function UnitForm() {
             contactPerson: data.contactPerson,
             contactPhone: data.contactPhone,
             status: data.status,
+            operationalStatus: data.operationalStatus,
           });
         } catch {
           toast.error('Không thể tải thông tin đơn vị');
@@ -89,7 +91,7 @@ export default function UnitForm() {
           detailAddress: values.detailAddress,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
-          status: values.status,
+          operationalStatus: values.operationalStatus,
         };
         await organizationService.update(id!, payload);
         toast.success('Đã cập nhật đơn vị thành công');
@@ -104,6 +106,7 @@ export default function UnitForm() {
           phone: values.phone,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
+          operationalStatus: values.operationalStatus,
         };
         await organizationService.create(payload);
         toast.success('Đã tạo đơn vị thành công');
@@ -132,7 +135,7 @@ export default function UnitForm() {
       </Card>
 
       <Card style={{ maxWidth: 700, margin: '0 auto' }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={(info) => console.error("Form validation failed:", info)} initialValues={{ status: 'draft', ...initialData }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={(info) => console.error("Form validation failed:", info)} initialValues={{ operationalStatus: 'active', ...initialData }}>
           <FormField
             type="text"
             name="name"
@@ -209,14 +212,12 @@ export default function UnitForm() {
 
           <FormField
             type="select"
-            name="status"
+            name="operationalStatus"
             label="Trạng thái"
             required
             options={[
-              { value: 'draft', label: 'Bản nháp' },
-              { value: 'pending', label: 'Chờ duyệt' },
-              { value: 'approved', label: 'Đã phê duyệt' },
-              { value: 'rejected', label: 'Bị từ chối' },
+              { value: 'active', label: 'Sử dụng' },
+              { value: 'inactive', label: 'Không sử dụng' },
             ]}
           />
 

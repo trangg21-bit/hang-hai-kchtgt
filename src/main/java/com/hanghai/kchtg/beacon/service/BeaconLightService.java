@@ -5,16 +5,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
-import com.hanghai.kchtg.beacon.entity.*;
+import com.hanghai.kchtg.beacon.entity.BeaconHistory;
+import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
+import com.hanghai.kchtg.beacon.entity.BeaconLight;
+import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -161,7 +170,7 @@ public class BeaconLightService {
         Double currentLon = null;
         Double currentLat = null;
         if (entity.getSpatialId() != null) {
-            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
                 try {
@@ -221,14 +230,14 @@ public class BeaconLightService {
 
         // Sync GIS spatial object
         if (wkt != null) {
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     entity.getSpatialId(),
                     entity.getName(),
                     "DENBIEN_" + entity.getCode(),
-                    com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
-                    com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE,
+                    GisGeometryType.POINT,
+                    GisSpatialObjectType.POINT_LIGHTHOUSE,
                     wkt, entity.getId(),
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.LIGHTHOUSE
+                    InfrastructureType.LIGHTHOUSE
             );
             if (entity.getSpatialId() == null) {
                 entity.setSpatialId(spatialObj.getId());
@@ -264,7 +273,7 @@ public class BeaconLightService {
         }
 
         entity.setStatus("DELETED");
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         beaconLightRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
@@ -418,7 +427,7 @@ public class BeaconLightService {
         Double latitude = null;
         Double longitude = null;
         if (entity.getSpatialId() != null) {
-            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
                 try {
@@ -451,7 +460,7 @@ public class BeaconLightService {
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
-                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.fromInt(entity.getApprovalLevel()))
+                .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())

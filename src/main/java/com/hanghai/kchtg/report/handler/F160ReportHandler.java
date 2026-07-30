@@ -1,17 +1,16 @@
 package com.hanghai.kchtg.report.handler;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
-import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
+import com.hanghai.kchtg.report.dto.ReportResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
 import java.util.*;
-import java.util.Comparator;
 
 /**
  * Report handler for F-160 Biểu 13-N: Thống kê hệ thống đê, kè chắn sóng, chắn cát.
@@ -66,7 +65,7 @@ public class F160ReportHandler extends BaseReportHandler {
             String donVi = "";
             if (dr.getOrgUnitId() != null) {
                 donVi = orgUnitRepository.findById(dr.getOrgUnitId())
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse("");
             }
             r.put("Đơn vị quản lý", donVi);
@@ -121,7 +120,7 @@ public class F160ReportHandler extends BaseReportHandler {
             String donVi = "";
             if (dikeRev.getOrgUnitId() != null) {
                 donVi = orgUnitRepository.findById(dikeRev.getOrgUnitId())
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse("");
             }
             item.put("donViQuanLy", donVi);

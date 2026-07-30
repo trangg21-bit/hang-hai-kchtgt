@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.security.service;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.entity.JwtSessionEntity;
 import com.hanghai.kchtg.security.entity.JwtSessionEntity.SessionStatus;
 import com.hanghai.kchtg.security.repository.JwtSessionRepository;
@@ -37,13 +36,13 @@ public class JwtSessionService {
 
     private final JwtSessionRepository sessionRepository;
     private final UserRepository userRepository;
-    private final com.hanghai.kchtg.security.JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
     private final CacheManager cacheManager;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public JwtSessionService(JwtSessionRepository sessionRepository,
                              UserRepository userRepository,
-                             com.hanghai.kchtg.security.JwtUtil jwtUtil,
+                             JwtUtil jwtUtil,
                              CacheManager cacheManager) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;

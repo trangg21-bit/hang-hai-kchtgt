@@ -1,13 +1,12 @@
 package com.hanghai.kchtg.mapicon.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.mapicon.dto.CreateMapIconRequest;
 import com.hanghai.kchtg.mapicon.dto.MapIconResponse;
 import com.hanghai.kchtg.mapicon.dto.UpdateMapIconRequest;
 import com.hanghai.kchtg.mapicon.entity.MapIcon;
 import com.hanghai.kchtg.mapicon.entity.MapIcon.Category;
 import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -80,7 +79,7 @@ public class MapIconService {
     public void delete(UUID id) {
         MapIcon entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MapIcon not found with id: " + id));
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
     }
 

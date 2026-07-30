@@ -1,19 +1,21 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
-import lombok.*;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Response DTO for DikeRevetment (F-044 to F-049).
  */
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 @NoArgsConstructor
@@ -53,5 +55,5 @@ public class DikeRevetmentResponse {
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
-    private UUID bieuTuongId;
+    private UUID symbolId;
 }

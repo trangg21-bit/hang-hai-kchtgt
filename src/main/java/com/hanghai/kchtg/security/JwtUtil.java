@@ -1,9 +1,10 @@
 package com.hanghai.kchtg.security;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.security.service.TokenClaimsBuilder;
+import com.hanghai.kchtg.user.entity.Permission;
+import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -11,16 +12,8 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 
-import com.hanghai.kchtg.user.entity.Permission;
-import com.hanghai.kchtg.user.entity.Role;
-import com.hanghai.kchtg.user.repository.PermissionRepository;
-
 import javax.crypto.SecretKey;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -114,17 +107,14 @@ public class JwtUtil {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
         String role = user.getRoles().stream().map(Role::getCode).findFirst().orElse("ROLE_USER");
-        List<String> permissions = new java.util.ArrayList<>();
-        for (Role r : user.getRoles()) {
-            if (r.getPermissions() != null) {
-                permissions.addAll(r.getPermissions().stream().map(Permission::getCode).collect(Collectors.toList()));
-            }
-        }
+        List<String> permissions = new ArrayList<>(user.getAllPermissions());
 
         Map<String, Object> claims = TokenClaimsBuilder.builder()
                 .subject(user.getUsername())
                 .jti(UUID.randomUUID().toString())
                 .userId(user.getId().toString())
+                .claim("email", user.getEmail())
+                .role(role)
                 .roles(List.of(role))
                 .permissions(permissions)
                 .claim("role_level", resolveRoleLevel(role))

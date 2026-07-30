@@ -1,18 +1,12 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
-import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
 import com.hanghai.kchtg.assetmovement.entity.ApprovalRecord;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
+import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;

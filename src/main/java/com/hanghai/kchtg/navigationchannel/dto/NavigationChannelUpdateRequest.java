@@ -1,15 +1,17 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
-import java.util.UUID;
-
-import lombok.*;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Update request for NavigationChannel (F-038). All fields optional.
  */
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 @NoArgsConstructor
@@ -54,5 +56,5 @@ public class NavigationChannelUpdateRequest {
     private UUID orgUnitId;
     private GisGeometryType geometryType;
     private String coordinates;
-    private UUID bieuTuongId;
+    private UUID symbolId;
 }

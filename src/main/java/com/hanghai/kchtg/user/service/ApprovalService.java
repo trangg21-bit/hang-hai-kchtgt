@@ -1,15 +1,8 @@
 package com.hanghai.kchtg.user.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.user.dto.ApprovalDecisionRequest;
-import com.hanghai.kchtg.user.dto.PendingApprovalResponse;
 import com.hanghai.kchtg.user.dto.PendingApprovalRequest;
-import com.hanghai.kchtg.user.entity.ApprovalNotification;
-import com.hanghai.kchtg.user.entity.PendingApproval;
-import com.hanghai.kchtg.user.entity.Role;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.dto.PendingApprovalResponse;
+import com.hanghai.kchtg.user.entity.*;
 import com.hanghai.kchtg.user.exception.AccountPendingApprovalException;
 import com.hanghai.kchtg.user.exception.SelfApprovalException;
 import com.hanghai.kchtg.user.exception.ValidationException;
@@ -27,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -106,7 +98,8 @@ public class ApprovalService {
      */
     public PendingApprovalResponse submitRegistration(PendingApprovalRequest request) {
         // BR-001: Check email/username uniqueness
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && userRepository.existsByEmailIgnoreCase(request.getEmail().trim())) {
             throw new ValidationException("Email đã tồn tại: " + request.getEmail());
         }
         if (userRepository.existsByUsername(request.getUsername())) {

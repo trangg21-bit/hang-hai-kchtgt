@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum OperationalStatus {
-    TAM_NGUNG(0),
-    HIEN_HANH(1);
+    SUSPENDED(0),
+    OPERATIONAL(1);
 
     private final int value;
 

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.beacon.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.beacon.dto.history.BeaconHistoryResponse;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
@@ -18,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**

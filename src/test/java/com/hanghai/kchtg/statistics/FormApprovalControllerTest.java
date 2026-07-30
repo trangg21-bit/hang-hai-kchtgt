@@ -2,6 +2,7 @@ package com.hanghai.kchtg.statistics;
 
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
@@ -12,7 +13,6 @@ import com.hanghai.kchtg.statistics.entity.StatFormStatus;
 import com.hanghai.kchtg.statistics.entity.StatisticsForm;
 import com.hanghai.kchtg.statistics.service.FormApprovalService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(FormApprovalController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @WithMockUser(roles = "SYSTEM_ADMIN")
+@MockBean(JpaMetamodelMappingContext.class)
 class FormApprovalControllerTest {
 
     @Autowired

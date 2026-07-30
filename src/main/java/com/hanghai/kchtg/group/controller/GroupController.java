@@ -1,20 +1,10 @@
 package com.hanghai.kchtg.group.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
-import com.hanghai.kchtg.group.dto.CreateUserGroupRequest;
-import com.hanghai.kchtg.group.dto.GroupCopyRequest;
-import com.hanghai.kchtg.group.dto.GroupMemberResponse;
-import com.hanghai.kchtg.group.dto.GroupResponse;
-import com.hanghai.kchtg.group.dto.PaginatedGroupResponse;
-import com.hanghai.kchtg.group.dto.PaginatedGroupMemberResponse;
-import com.hanghai.kchtg.group.dto.UpdateUserGroupRequest;
-import com.hanghai.kchtg.group.dto.UserGroupResponse;
-import com.hanghai.kchtg.group.entity.UserGroup;
+import com.hanghai.kchtg.group.dto.*;
 import com.hanghai.kchtg.group.entity.GroupHistory;
 import com.hanghai.kchtg.group.entity.GroupMember;
+import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.service.UserGroupService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;

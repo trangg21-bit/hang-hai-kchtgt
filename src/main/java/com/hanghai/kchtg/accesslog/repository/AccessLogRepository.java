@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.accesslog.repository;
 
 import com.hanghai.kchtg.accesslog.entity.AccessLog;
+import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
 import com.hanghai.kchtg.accesslog.enums.LogSeverity;
 import com.hanghai.kchtg.accesslog.enums.LogType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -61,11 +62,11 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, UUID>,
     long countByCreatedAtAfter(LocalDateTime since);
 
     /** Count all log entries by status. */
-    long countByStatus(com.hanghai.kchtg.accesslog.entity.AccessLogStatus status);
+    long countByStatus(AccessLogStatus status);
 
     /** Count all log entries with a given status created after a specific time. */
     long countByStatusAndCreatedAtAfter(
-            @Param("status") com.hanghai.kchtg.accesslog.entity.AccessLogStatus status,
+            @Param("status") AccessLogStatus status,
             @Param("since") LocalDateTime since);
 
     // ── Aggregation helpers for LogAggregate ──────────────────────────
@@ -89,5 +90,5 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, UUID>,
      */
     long countByCreatedAtBetweenAndStatus(
             LocalDateTime start, LocalDateTime end,
-            com.hanghai.kchtg.accesslog.entity.AccessLogStatus status);
+            AccessLogStatus status);
 }

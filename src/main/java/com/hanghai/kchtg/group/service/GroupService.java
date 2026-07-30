@@ -1,13 +1,12 @@
 package com.hanghai.kchtg.group.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.group.dto.CreateGroupRequest;
 import com.hanghai.kchtg.group.dto.GroupResponse;
 import com.hanghai.kchtg.group.dto.UpdateGroupRequest;
 import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +135,7 @@ public class GroupService {
         UserGroup entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
 
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
         log.info("Soft-deleted group: id={}", id);
     }

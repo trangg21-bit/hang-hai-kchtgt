@@ -35,14 +35,14 @@ public class PlanningGisController {
             String sql;
             Object[] args;
             if (hasBbox) {
-                sql = "SELECT fid, name, province, color, type, length, area, " +
+                sql = "SELECT fid, name, provinceId, color, type, length, area, " +
                       "status, data_source, notes, agency, ST_AsGeoJSON(geom) as geojson, " +
                       "ST_Y(ST_Centroid(geom)) as lat, ST_X(ST_Centroid(geom)) as lon " +
                       "FROM qhcb_all." + type + " " +
                       "WHERE geom && ST_MakeEnvelope(?, ?, ?, ?, 4326)";
                 args = new Object[]{minLon, minLat, maxLon, maxLat};
             } else {
-                sql = "SELECT fid, name, province, color, type, length, area, " +
+                sql = "SELECT fid, name, provinceId, color, type, length, area, " +
                       "status, data_source, notes, agency, ST_AsGeoJSON(geom) as geojson, " +
                       "ST_Y(ST_Centroid(geom)) as lat, ST_X(ST_Centroid(geom)) as lon " +
                       "FROM qhcb_all." + type;
@@ -107,7 +107,7 @@ public class PlanningGisController {
         String[] types = {"point", "line", "area"};
         
         for (String type : types) {
-            String sql = "SELECT fid, name, province, color, type, length, area, " +
+            String sql = "SELECT fid, name, provinceId, color, type, length, area, " +
                          "status, data_source, notes, agency, ST_AsGeoJSON(geom) as geojson, " +
                          "ST_Y(ST_Centroid(geom)) as lat, ST_X(ST_Centroid(geom)) as lon " +
                          "FROM qhcb_all." + type + " " +

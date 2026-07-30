@@ -1,9 +1,9 @@
 package com.hanghai.kchtg.document.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.document.dto.*;
+import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;
+import com.hanghai.kchtg.document.dto.LegalDocumentResponse;
+import com.hanghai.kchtg.document.dto.SearchResultResponse;
 import com.hanghai.kchtg.document.entity.DocumentType;
 import com.hanghai.kchtg.document.entity.ValidityStatus;
 import com.hanghai.kchtg.document.service.LegalDocumentService;
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for F-128 Quản lý văn bản pháp lý.
@@ -97,27 +98,27 @@ public class LegalDocumentController {
     // ── Filter Endpoints ──────────────────────────────────────────────
 
     /**
-     * GET /api/v1/legal-documents/status/{tinhTrang}
+     * GET /api/v1/legal-documents/status/{status}
      * Filter by legal status.
      */
-    @GetMapping("/status/{tinhTrang}")
+    @GetMapping("/status/{status}")
     @PreAuthorize("@auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<LegalDocumentResponse>>> filterByStatus(
-            @PathVariable String tinhTrang) {
-        ValidityStatus status = ValidityStatus.valueOf(tinhTrang);
-        return ResponseEntity.ok(ApiResponse.success(vanBanPhapLyService.findByValidityStatus(status)));
+            @PathVariable String status) {
+        ValidityStatus validityStatus = ValidityStatus.valueOf(status);
+        return ResponseEntity.ok(ApiResponse.success(vanBanPhapLyService.findByValidityStatus(validityStatus)));
     }
 
     /**
-     * GET /api/v1/legal-documents/type/{loai}
+     * GET /api/v1/legal-documents/type/{type}
      * Filter by document type.
      */
-    @GetMapping("/type/{loai}")
+    @GetMapping("/type/{type}")
     @PreAuthorize("@auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<LegalDocumentResponse>>> filterByType(
-            @PathVariable String loai) {
-        DocumentType type = DocumentType.valueOf(loai);
-        return ResponseEntity.ok(ApiResponse.success(vanBanPhapLyService.findByDocumentType(type)));
+            @PathVariable String type) {
+        DocumentType documentType = DocumentType.valueOf(type);
+        return ResponseEntity.ok(ApiResponse.success(vanBanPhapLyService.findByDocumentType(documentType)));
     }
 
     // ── Search Endpoint (F-135) ───────────────────────────────────────
@@ -130,15 +131,15 @@ public class LegalDocumentController {
     @PreAuthorize("@auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<SearchResultResponse>> searchDocuments(
             @RequestParam(name = "keyword", required = false) String keyword,
-            @RequestParam(name = "coQuan", required = false) String coQuan,
-            @RequestParam(name = "loai", required = false) String loai,
-            @RequestParam(name = "tinhTrang", required = false) String tinhTrang,
+            @RequestParam(name = "issuingAuthority", required = false) String issuingAuthority,
+            @RequestParam(name = "type", required = false) String type,
+            @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "yearStart", required = false) LocalDate yearStart,
             @RequestParam(name = "yearEnd", required = false) LocalDate yearEnd,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
         SearchResultResponse result = vanBanPhapLyService.searchDocuments(
-                keyword, coQuan, loai, tinhTrang, yearStart, yearEnd, page, size);
+                keyword, issuingAuthority, type, status, yearStart, yearEnd, page, size);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

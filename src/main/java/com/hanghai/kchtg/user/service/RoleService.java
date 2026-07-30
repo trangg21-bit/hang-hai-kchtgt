@@ -1,24 +1,22 @@
 package com.hanghai.kchtg.user.service;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.dto.CreateRoleRequest;
 import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
-import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
@@ -51,7 +49,7 @@ public class RoleService {
     @Transactional
     public List<Role> findAll() {
         List<Role> roles = roleRepository.findByStatusNot(RoleStatus.DELETED);
-        
+
         java.util.Map<UUID, Long> countsMap = userRepository.countUsersGroupByRoleId().stream()
                 .collect(Collectors.toMap(
                         row -> (UUID) row[0],
@@ -67,7 +65,7 @@ public class RoleService {
     @Transactional
     public Page<Role> findAll(Pageable pageable) {
         Page<Role> roles = roleRepository.findByStatusNot(RoleStatus.DELETED, pageable);
-        
+
         java.util.Map<UUID, Long> countsMap = userRepository.countUsersGroupByRoleId().stream()
                 .collect(Collectors.toMap(
                         row -> (UUID) row[0],
@@ -125,7 +123,7 @@ public class RoleService {
                 existingRole.setDeletedAt(null);
                 existingRole.setDeletedBy(null);
                 existingRole.setUserCount(0);
-                
+
                 Role saved = roleRepository.save(existingRole);
                 log.info("Restored and updated role: {} ({})", saved.getCode(), saved.getId());
                 return saved;
@@ -176,13 +174,12 @@ public class RoleService {
 
         Role saved = roleRepository.save(role);
 
-        // When a role's permission set changes, every user holding that role has stale
-        // cached permissions. Invalidate their cache so the next authorization check
-        // recomputes from the database. No version bump / re-login is required because
-        // the JWT role claim itself is unchanged — permissions are always resolved live.
+        // JWT contains a permission snapshot used by the frontend route/menu guards.
+        // Bump the version as well as clearing Redis so holders of this role must
+        // authenticate again and receive the updated permission set.
         if (permissionsChanged) {
             for (UUID userId : userRepository.findIdsByRoleId(saved.getId())) {
-                permissionCacheService.invalidateCache(userId);
+                permissionCacheService.invalidateAndIncrementVersion(userId);
             }
         }
 
@@ -191,14 +188,14 @@ public class RoleService {
     }
 
     /**
-     * Xóa vai trò (soft delete - dùng BaseEntity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId())).
+     * Xóa vai trò (soft delete - dùng BaseEntity.softDelete(SecurityUtils.getCurrentUserId())).
      *
      * @throws EntityNotFoundException nếu không tìm thấy role
      */
     public Role delete(UUID id) {
         Role role = findById(id);
         role.setStatus(RoleStatus.DELETED);
-        role.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        role.softDelete(SecurityUtils.getCurrentUserId());
         Role saved = roleRepository.save(role);
         log.info("Soft-deleted role: {} ({})", saved.getCode(), saved.getId());
         return saved;

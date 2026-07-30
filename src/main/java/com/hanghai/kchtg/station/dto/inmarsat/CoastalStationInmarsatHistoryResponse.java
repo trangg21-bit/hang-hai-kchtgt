@@ -1,9 +1,10 @@
 package com.hanghai.kchtg.station.dto.inmarsat;
 
-import java.util.UUID;
-import lombok.*;
-
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

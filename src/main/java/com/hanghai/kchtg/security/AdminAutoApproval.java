@@ -1,9 +1,9 @@
 package com.hanghai.kchtg.security;
 
-import java.util.Set;
-
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Set;
 
 /**
  * Decides whether the acting user may clear a whole approval chain in one step.

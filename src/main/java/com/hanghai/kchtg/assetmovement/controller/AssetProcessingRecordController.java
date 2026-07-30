@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.ProcessingType;

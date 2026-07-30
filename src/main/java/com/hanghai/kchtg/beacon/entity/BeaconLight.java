@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.beacon.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
@@ -21,6 +23,9 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class BeaconLight extends BaseEntity {
+    @Column(name = "province_id")
+    private Integer provinceId;
+
 
     @NotBlank(message = "Mã đèn biển không được để trống")
     @Size(max = 50)

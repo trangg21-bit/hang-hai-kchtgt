@@ -1,16 +1,16 @@
 package com.hanghai.kchtg.orgunit.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitHistoryRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -22,7 +22,10 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -210,6 +213,8 @@ public class OrganizationService {
                 .phone(request.getPhone())
                 .contactPerson(request.getContactPerson())
                 .status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)
+                .operationalStatus(request.getOperationalStatus() != null
+                        ? request.getOperationalStatus() : OrgUnitOperationalStatus.ACTIVE)
                 .sortOrder(0)
                 .build();
 
@@ -294,6 +299,7 @@ public class OrganizationService {
         if (request.getDetailAddress() != null) unit.setDetailAddress(request.getDetailAddress());
         if (request.getPhone() != null) unit.setPhone(request.getPhone());
         if (request.getContactPerson() != null) unit.setContactPerson(request.getContactPerson());
+        if (request.getOperationalStatus() != null) unit.setOperationalStatus(request.getOperationalStatus());
 
         OrgUnit saved = orgUnitRepo.save(unit);
 
@@ -319,7 +325,7 @@ public class OrganizationService {
         }
 
         String details = String.format("Xóa đơn vị '%s' (code: %s)", unit.getName(), unit.getCode());
-        unit.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        unit.softDelete(SecurityUtils.getCurrentUserId());
         orgUnitRepo.save(unit);
 
         log.info("Soft-deleted org unit: {} ({})", unit.getCode(), unit.getId());

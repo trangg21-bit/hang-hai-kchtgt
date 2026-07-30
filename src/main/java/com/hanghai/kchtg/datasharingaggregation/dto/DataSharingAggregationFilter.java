@@ -2,8 +2,11 @@ package com.hanghai.kchtg.datasharingaggregation.dto;
 
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingStatus;
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingType;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
+@Data
 public class DataSharingAggregationFilter {
 
     private SharingType sharingType;

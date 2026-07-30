@@ -47,8 +47,7 @@ export default function PortDeleteConfirm() {
         }
       } catch (err) {
         console.error('Failed to fetch Port:', err);
-        toast.error('Không thể tải thông tin cảng biển');
-        navigate('/Port');
+        navigate('/port');
       } finally {
         setIsLoading(false);
       }
@@ -69,8 +68,13 @@ export default function PortDeleteConfirm() {
     setSubmitting(true);
     try {
       await deleteCangBien(id);
+<<<<<<< HEAD
       toast.success('Đã xóa thành công');
       navigate('/Port');
+=======
+      toast.success('Xóa thành công');
+      navigate('/port');
+>>>>>>> origin
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     } finally {
@@ -86,7 +90,7 @@ export default function PortDeleteConfirm() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button onClick={() => navigate(`/Port/${id}`)}>Quay lại</Button>
+          <Button onClick={() => navigate(`/port/${id}`)}>Quay lại</Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
             Xác nhận xóa — {data.portCode}
           </Typography.Title>
@@ -148,7 +152,7 @@ export default function PortDeleteConfirm() {
         {/* Footer */}
         <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16 }}>
           <Space>
-            <Button onClick={() => navigate(`/Port/${id}`)}>Hủy</Button>
+            <Button onClick={() => navigate(`/port/${id}`)}>Hủy</Button>
             <Button
               type="primary"
               danger

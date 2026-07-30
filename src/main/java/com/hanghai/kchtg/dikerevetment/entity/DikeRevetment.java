@@ -1,16 +1,24 @@
 package com.hanghai.kchtg.dikerevetment.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.*;
-import lombok.*;
-import java.time.*;
-import java.util.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "dike_revetment")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class DikeRevetment {
+    @Column(name = "province_id")
+    private Integer provinceId;
+
 
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)

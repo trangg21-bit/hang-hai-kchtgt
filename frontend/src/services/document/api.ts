@@ -16,17 +16,17 @@ export async function fetchVanBanList(params: {
   page?: number;
   size?: number;
   keyword?: string;
-  coQuan?: string;
-  loai?: string;
-  tinhTrang?: string;
+  issuingAuthority?: string;
+  type?: string;
+  status?: string;
 }): Promise<PageResponse<VanBanPhapLyResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
   if (params.keyword) sp.set('keyword', params.keyword);
-  if (params.coQuan) sp.set('coQuan', params.coQuan);
-  if (params.loai) sp.set('loai', params.loai);
-  if (params.tinhTrang) sp.set('tinhTrang', params.tinhTrang);
+  if (params.issuingAuthority) sp.set('issuingAuthority', params.issuingAuthority);
+  if (params.type) sp.set('type', params.type);
+  if (params.status) sp.set('status', params.status);
 
   const res = await api.get(`/v1/legal-documents/search?${sp}`);
   const data = res.data.data;
