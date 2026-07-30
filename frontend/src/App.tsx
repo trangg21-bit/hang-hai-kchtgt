@@ -33,6 +33,7 @@ import GroupList from './pages/groups/GroupList';
 import GroupForm from './pages/groups/GroupForm';
 import GroupMembers from './pages/groups/GroupMembers';
 import LogsPage from './pages/LogsPage';
+import InterconnectPage from './pages/InterconnectPage';
 import SettingsPage from './pages/SettingsPage';
 import BeaconList from './pages/beacons/BeaconList';
 import BeaconForm from './pages/beacons/BeaconForm';
@@ -163,6 +164,9 @@ export default function App() {
                 <Route path="/connections/create" element={<PermissionGuard permission="connection:read"><ConnectionForm /></PermissionGuard>} />
                 <Route path="/connections/:id/edit" element={<PermissionGuard permission="connection:read"><ConnectionForm /></PermissionGuard>} />
                 <Route path="/connections/:id/health" element={<PermissionGuard permission="connection:read"><ConnectionHealth /></PermissionGuard>} />
+
+                {/* F-004: Quản lý kết nối liên thông chia sẻ dữ liệu */}
+                <Route path="/interconnect" element={<PermissionGuard permission="connection:read"><InterconnectPage /></PermissionGuard>} />
 
                 {/* Reports & Statistics */}
                 <Route path="/reports" element={<PermissionGuard permission="report:read"><ReportList /></PermissionGuard>} />

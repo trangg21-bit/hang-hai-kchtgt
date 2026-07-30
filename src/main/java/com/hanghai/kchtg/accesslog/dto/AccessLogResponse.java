@@ -6,6 +6,7 @@ import com.hanghai.kchtg.accesslog.enums.LogSeverity;
 import com.hanghai.kchtg.accesslog.enums.LogType;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Projection DTO returned by the read-only access-log API.
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
  */
 public class AccessLogResponse {
 
-    private final Long id;
+    private final UUID id;
     private final Long userId;
     private final String username;
     private final String action;
@@ -67,7 +68,7 @@ public class AccessLogResponse {
 
     // ── Original accessors ───────────────────────────────────────────
 
-    public Long getId() { return id; }
+    public UUID getId() { return id; }
     public Long getUserId() { return userId; }
     public String getUsername() { return username; }
     public String getAction() { return action; }

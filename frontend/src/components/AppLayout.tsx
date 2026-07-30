@@ -58,6 +58,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/radar-station': 'radarstation:read',
   '/vts-system': 'vts:read',
   '/connections': 'connection:read',
+  '/interconnect': 'connection:read',
   '/reports': 'report:read',
   '/settings': 'admin:manage',
   '/logs': 'log:manage',
@@ -99,6 +100,7 @@ const pageTitles: Record<string, string> = {
   '/radar-station': 'Trạm Radar',
   '/vts-system': 'Hệ thống VTS',
   '/connections': 'Liên thông dữ liệu',
+  '/interconnect': 'Quản lý kết nối liên thông',
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Quản lý log truy cập',
@@ -175,7 +177,7 @@ export default function AppLayout() {
         setOpenKeys(['stations']);
       } else if (selectedKey.startsWith('/reports')) {
         setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
-      } else if (['/users', '/organizations', '/groups', '/roles', '/logs'].includes(selectedKey)) {
+      } else if (['/users', '/organizations', '/groups', '/roles', '/interconnect', '/logs'].includes(selectedKey)) {
         setOpenKeys(['system-admin']);
       }
     }
@@ -193,6 +195,7 @@ export default function AppLayout() {
         canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
         canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
         canAccessMenu('/roles') ? { key: '/roles', label: 'Phân quyền' } : null,
+        canAccessMenu('/interconnect') ? { key: '/interconnect', label: 'Quản lý kết nối liên thông' } : null,
         canAccessMenu('/logs') ? { key: '/logs', label: 'Quản lý log truy cập' } : null,
       ].filter(Boolean),
     },
