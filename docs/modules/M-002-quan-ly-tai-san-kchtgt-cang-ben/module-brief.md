@@ -12,32 +12,46 @@ M-002
 
 completed — current stage: completed
 
-## Features in scope (70)
+## Features in scope (63)
 
-- **F-008** ql-cb-tao-moi — status: `done`
-- **F-009** ql-cb-cap-nhat — status: `done`
-- **F-010** ql-cb-xoa — status: `done`
-- **F-011** phe-duyet-cb — status: `done`
-- **F-012** xem-cb — status: `done`
-- **F-013** ql-cb-lich-su — status: `done`
+### Cang bien (Port) — BE+UI merged
+
+- **F-008** ql-cb-tao-moi — status: `done` — merged with F-070 (UI)
+- **F-009** ql-cb-cap-nhat — status: `done` — merged with F-071 (UI)
+- **F-010** ql-cb-xoa — status: `done` — merged with F-093 (UI)
+- **F-011** phe-duyet-cb — status: `done` — merged with F-072 (UI)
+- **F-012** xem-cb — status: `done` — merged with F-068 (UI list) + F-069 (UI detail)
+- **F-013** ql-cb-lich-su — status: `cancelled` — cancelled per URD audit; F-094 also cancelled
+
+### Ben cang (Berth)
+
 - **F-014** ql-bc-tao-moi — status: `done`
 - **F-015** ql-bc-cap-nhat — status: `done`
 - **F-016** ql-bc-xoa — status: `done`
 - **F-017** phe-duyet-bc — status: `done`
 - **F-018** xem-bc — status: `done`
 - **F-019** ql-bc-lich-su — status: `done`
+
+### Cau cang (Pier)
+
 - **F-020** ql-cc-tao-moi — status: `done`
 - **F-021** ql-cc-cap-nhat — status: `done`
 - **F-022** ql-cc-xoa — status: `done`
 - **F-023** phe-duyet-cc — status: `done`
 - **F-024** xem-cc — status: `done`
 - **F-025** ql-cc-lich-su — status: `done`
+
+### Cang can (DryPort)
+
 - **F-026** ql-cct-tao-moi — status: `done`
 - **F-027** ql-cct-cap-nhat — status: `done`
 - **F-028** ql-cct-xoa — status: `done`
 - **F-029** phe-duyet-cct — status: `done`
 - **F-030** xem-cct — status: `done`
 - **F-031** ql-cct-lich-su — status: `done`
+
+### Vung nuoc (WaterZone)
+
 - **F-032** ql-vn-tao-moi — status: `done`
 - **F-033** ql-vn-cap-nhat — status: `done`
 - **F-034** ql-vn-xoa — status: `done`
@@ -45,46 +59,49 @@ completed — current stage: completed
 - **F-036** xem-vn — status: `done`
 - **F-037** ql-vn-lich-su — status: `done`
 
-### UI features (frontend track — status: proposed)
-- **F-068** ui-ql-cb-danh-sach — status: `proposed`
-- **F-069** ui-xem-cb-chi-tiet — status: `proposed`
-- **F-070** ui-ql-cb-tao-moi — status: `proposed`
-- **F-071** ui-ql-cb-cap-nhat — status: `proposed`
-- **F-072** ui-phe-duyet-cb — status: `proposed`
+### UI features (frontend track)
+
+#### Cang bien
+- **F-103** ui-upload-giayto-cb — status: `proposed`
+
+#### Ben cang
 - **F-073** ui-ql-bc-danh-sach — status: `proposed`
 - **F-074** ui-xem-bc-chi-tiet — status: `proposed`
 - **F-075** ui-ql-bc-tao-moi — status: `proposed`
 - **F-076** ui-ql-bc-cap-nhat — status: `proposed`
 - **F-077** ui-phe-duyet-bc — status: `proposed`
+- **F-095** ui-ql-bc-xoa — status: `proposed`
+- **F-096** ui-ql-bc-lich-su — status: `proposed`
+- **F-104** ui-upload-giayto-bc — status: `proposed`
+
+#### Cau cang
 - **F-078** ui-ql-cc-danh-sach — status: `proposed`
 - **F-079** ui-xem-cc-chi-tiet — status: `proposed`
 - **F-080** ui-ql-cc-tao-moi — status: `proposed`
 - **F-081** ui-ql-cc-cap-nhat — status: `proposed`
 - **F-082** ui-phe-duyet-cc — status: `proposed`
+- **F-097** ui-ql-cc-xoa — status: `proposed`
+- **F-098** ui-ql-cc-lich-su — status: `proposed`
+- **F-105** ui-upload-giayto-cc — status: `proposed`
+
+#### Cang can
 - **F-083** ui-ql-cct-danh-sach — status: `proposed`
 - **F-084** ui-xem-cct-chi-tiet — status: `proposed`
 - **F-085** ui-ql-cct-tao-moi — status: `proposed`
 - **F-086** ui-ql-cct-cap-nhat — status: `proposed`
 - **F-087** ui-phe-duyet-cct — status: `proposed`
+- **F-099** ui-ql-cct-xoa — status: `proposed`
+- **F-100** ui-ql-cct-lich-su — status: `proposed`
+- **F-106** ui-upload-giayto-cct — status: `proposed`
+
+#### Vung nuoc
 - **F-088** ui-ql-vn-danh-sach — status: `proposed`
 - **F-089** ui-xem-vn-chi-tiet — status: `proposed`
 - **F-090** ui-ql-vn-tao-moi — status: `proposed`
 - **F-091** ui-ql-vn-cap-nhat — status: `proposed`
 - **F-092** ui-phe-duyet-vn — status: `proposed`
-- **F-093** ui-ql-cb-xoa — status: `proposed`
-- **F-094** ui-ql-cb-lich-su — status: `proposed`
-- **F-095** ui-ql-bc-xoa — status: `proposed`
-- **F-096** ui-ql-bc-lich-su — status: `proposed`
-- **F-097** ui-ql-cc-xoa — status: `proposed`
-- **F-098** ui-ql-cc-lich-su — status: `proposed`
-- **F-099** ui-ql-cct-xoa — status: `proposed`
-- **F-100** ui-ql-cct-lich-su — status: `proposed`
 - **F-101** ui-ql-vn-xoa — status: `proposed`
 - **F-102** ui-ql-vn-lich-su — status: `proposed`
-- **F-103** ui-upload-giayto-cb — status: `proposed`
-- **F-104** ui-upload-giayto-bc — status: `proposed`
-- **F-105** ui-upload-giayto-cc — status: `proposed`
-- **F-106** ui-upload-giayto-cct — status: `proposed`
 - **F-107** ui-upload-giayto-vn — status: `proposed`
 
 ## Dependencies (module-level)

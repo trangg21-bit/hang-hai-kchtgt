@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1785148899490-1ceb",
+  "created_at": 1785148899490,
+  "lane": "general-work",
+  "owner": "build",
+  "dispatch_target": "build",
+  "routing_mode": "inline",
+  "request_summary": "Move 3 non-SDLC orphan M-001 directories (M-001-gis, M-001-menu, M-001-user-management) from docs/modules/ to docs/modules/_trash/",
+  "reason": "This is a filesystem cleanup of misplaced directories, not a code change and not a Studio work-product — no pipeline, no artifact authoring",
+  "signals": [
+    "3 orphan dirs with no _state.md",
+    "no SDLC pipeline",
+    "not a code change",
+    "not a Studio document"
+  ]
+}
