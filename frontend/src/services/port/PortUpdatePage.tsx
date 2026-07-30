@@ -30,13 +30,13 @@ export default function PortUpdatePage() {
           portName: data.portName,
           province: data.province || undefined,
           area: data.area != null ? data.area : undefined,
-          khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
-          operationalStatus: data.operationalStatus || undefined,
+          khaNangTiepNhan: (data as any).khaNangTiepNhan != null ? (data as any).khaNangTiepNhan : undefined,
+          operationalStatus: (data as any).operationalStatus || undefined,
           loaiHinhHoc: data.loaiHinhHoc || 'POINT',
           gisLocation: {
             loaiHinhHoc: data.loaiHinhHoc || 'POINT',
             toaDo: data.toaDo || '',
-            bieuTuongId: data.bieuTuongId
+            bieuTuongId: (data as any).bieuTuongId
           }
         });
       } catch (err) {
@@ -197,7 +197,7 @@ export default function PortUpdatePage() {
             </Col>
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
-                <Input disabled value={entityData.approvalStatus || '—'} aria-readonly="true" />
+                <Input disabled value={(entityData as any).approvalStatus || entityData.portStatus || '—'} aria-readonly="true" />
               </Form.Item>
             </Col>
           </Row>

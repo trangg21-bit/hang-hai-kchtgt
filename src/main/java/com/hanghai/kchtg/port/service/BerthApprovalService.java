@@ -3,7 +3,7 @@ package com.hanghai.kchtg.port.service;
 import java.util.UUID;
 
 import com.hanghai.kchtg.port.entity.Berth;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.port.entity.PortStatus;
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.repository.BerthRepository;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Approval service for Berth entity.
+ * Approval service for Berth entity using unified PortStatus.
  */
 @Slf4j
 @Service
@@ -39,21 +39,38 @@ public class BerthApprovalService {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
 
-        ApprovalStatus currentStatus = entity.getApprovalStatus();
+        PortStatus currentStatus = entity.getPortStatus();
         String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             approvalWorkflowService.approve(currentStatusStr, "Berth", id.toString(), userId);
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setPortStatus(PortStatus.DA_PHE_DUYET);
+            entity.syncOldFieldsFromPortStatus();
             berthRepository.save(entity);
-            log.info("Berth [{}] approved by {}", id, userId);
+            log.info("Berth [{}] approved by {}, status=DA_PHE_DUYET", id, userId);
             notificationService.sendApprovalNotification("Berth", id.toString(), userId, null);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "Berth", id.toString(), userId, reason);
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
+            entity.setPortStatus(PortStatus.TU_CHOI);
+            entity.syncOldFieldsFromPortStatus();
             berthRepository.save(entity);
-            log.info("Berth [{}] rejected by {}: {}", id, userId, reason);
+            log.info("Berth [{}] rejected by {}: {}, status=TU_CHOI", id, userId, reason);
         }
+    }
+
+    @Transactional
+    public void reject(UUID id, String userId, String reason) {
+        Berth entity = berthRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
+
+        PortStatus currentStatus = entity.getPortStatus();
+        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
+
+        approvalWorkflowService.reject(currentStatusStr, "Berth", id.toString(), userId, reason);
+        entity.setPortStatus(PortStatus.TU_CHOI);
+        entity.syncOldFieldsFromPortStatus();
+        berthRepository.save(entity);
+        log.info("Berth [{}] rejected by {}: {}, status=TU_CHOI", id, userId, reason);
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +87,7 @@ public class BerthApprovalService {
         return java.util.Map.of(
                 "entityId", entityId,
                 "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus(),
+                "currentPortStatus", entity.getPortStatus(),
                 "changeHistory", changeHistory,
                 "approvalLog", approvalLog
         );

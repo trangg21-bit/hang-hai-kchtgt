@@ -11,17 +11,18 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Request DTO for creating a new Port.
- * GPS fields (latitude/longitude) must be both present or both absent.
+ * Supports composite form: action (draft/submit) + coordinates[] + infrastructure[].
+ * Port code is auto-generated.
  */
 @Data
 public class CreatePortRequest {
 
-    @NotBlank(message = "Mã cảng không được để trống")
-    @Size(max = 50, message = "Mã cảng tối đa 50 ký tự")
+    @Size(max = 20, message = "Mã cảng tối đa 20 ký tự")
     private String portCode;
 
     @NotBlank(message = "Tên cảng không được để trống")
@@ -39,12 +40,10 @@ public class CreatePortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = false, message = "Diện tích phải lớn hơn 0")
+    @DecimalMin(value = "0", inclusive = true, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal maxVesselCapacity;
-
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
 
     private UUID orgUnitId;
 
@@ -52,6 +51,13 @@ public class CreatePortRequest {
     private UUID mapSymbolId;
     private GisGeometryType geometryType;
     private String coordinates;
+
+    // ── Managing unit & notes ───────────────────────────────────────
+
+    private UUID managingUnitId;
+
+    @Size(max = 2000, message = "Ghi chú tối đa 2000 ký tự")
+    private String notes;
 
     // ── Extended fields (V53) ────────────────────────────────────────
 
@@ -104,8 +110,24 @@ public class CreatePortRequest {
     @Size(max = 2000, message = "Ghi chú tối đa 2000 ký tự")
     private String remarks;
 
+    // ── Composite form fields ────────────────────────────────────────
+
+    @NotNull(message = "Action không được để trống (draft hoặc submit)")
+    private String action;
+
+    private List<CoordinateDto> portCoordinates;
+
+    private List<InfrastructureDto> portInfrastructures;
+
+    // ── Validation helpers ──────────────────────────────────────────
+
     @AssertTrue(message = "Vĩ độ và kinh độ phải được điền đồng thời")
     public boolean isGpsPaired() {
         return (latitude == null && longitude == null) || (latitude != null && longitude != null);
+    }
+
+    @AssertTrue(message = "Action phải là 'draft' hoặc 'submit'")
+    public boolean isValidAction() {
+        return "draft".equals(action) || "submit".equals(action);
     }
 }

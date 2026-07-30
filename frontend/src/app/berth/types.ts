@@ -1,5 +1,6 @@
 // ============================================================
 // Berth — TypeScript types (BE ground truth)
+// portStatus is the SINGLE status field (replaces operationalStatus + approvalStatus)
 // ============================================================
 
 export interface BenCangEntity {
@@ -8,17 +9,18 @@ export interface BenCangEntity {
   berthName: string;
   portId: string;
   tenCangBien?: string;
-  tuyenDuongThuy?: string;
+  waterway?: string;
   latitude?: number;
   longitude?: number;
   length?: number;
   width?: number;
   berthType?: string;
-  doSauLuong?: number;
-  operationalStatus?: string;
-  approvalStatus: string;
+  channelDepth?: number;
+  portStatus: string;   // NHAP | CHO_PHE_DUYET | DA_PHE_DUYET | TU_CHOI | TAM_NGUNG
   orgUnitId?: string;
-  bieuTuongId?: string;
+  operationalFunction?: string;
+  mapSymbolId?: string;
+  spatialId?: string;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: string;
@@ -39,13 +41,26 @@ export interface BenCangEntity {
   quyetDinhCongBo?: string;
   vanBanThoaThuanDauTu?: string;
   structureType?: number;
+  // GIS
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  bieuTuongId?: string;
+  // Extra
+  locationCode?: string;
+  detailedLocation?: string;
+  coordinateSystem?: string;
+  displayRule?: string;
+  operator?: string;
+  totalArea?: number;
+  designThroughput?: number;
+  currentThroughput?: number;
+  maxVesselSize?: number;
+  plannedThroughput?: number;
+  latestCargoVolume?: number;
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
+  investmentAgreement?: string;
 }
-
-// Approval statuses — values returned by the BE (ASCII, no diacritics)
-export type ApprovalStatus = "CHO_PHE_DUYET" | "DUOC_PHE_DUYET" | "TU_CHOI";
-
-// Activity statuses — free text, canonical display values
-export type ActivityStatus = "HIEN_HANH" | "TAM_NGUNG";
 
 // API wrapper shapes
 export interface ApiResponse<T> {
@@ -66,24 +81,13 @@ export interface PaginatedResponse<T> {
 
 // History record from GET /{id}/history
 export interface ChangeHistoryRecord {
+  id?: string;
   fieldName: string;
   oldValue?: string;
   newValue?: string;
   changedBy?: string;
   changedAt?: string;
-}
-
-export interface ApprovalHistoryRecord {
-  decision: string;
   reason?: string;
-  decidedBy?: string;
-  decidedAt?: string;
-}
-
-export interface HistoryResponse {
-  entity: BenCangEntity;
-  changeHistory: ChangeHistoryRecord[];
-  approvalHistory: ApprovalHistoryRecord[];
 }
 
 // Sort options for list page
@@ -93,8 +97,7 @@ export type SortOrder = "asc" | "desc";
 // List filter query params
 export interface BenCangListFilters {
   search?: string;
-  status?: ActivityStatus;
-  approvalStatus?: ApprovalStatus;
+  portStatus?: string;
   portId?: string;
   orgUnitId?: string;
   sortBy: SortField;

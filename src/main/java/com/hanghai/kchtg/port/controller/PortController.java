@@ -3,7 +3,10 @@ package com.hanghai.kchtg.port.controller;
 import java.util.UUID;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.dto.port.*;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.PortApprovalService;
 import com.hanghai.kchtg.port.service.PortService;
 import jakarta.validation.Valid;
@@ -16,6 +19,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.security.core.Authentication;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -27,12 +33,21 @@ public class PortController {
 
     private final PortService portService;
     private final PortApprovalService portApprovalService;
+    private final PortRepository portRepository;
+
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'port:create')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
+        log.info("Generating next port code");
+        Map<String, String> result = portService.generateCode();
+        return ResponseEntity.ok(ApiResponse.success("Tạo mã cảng mới thành công", result));
+    }
 
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'port:create')")
     public ResponseEntity<ApiResponse<PortResponse>> create(
             @Valid @RequestBody CreatePortRequest request) {
-        log.info("Creating Port: code={}", request.getPortCode());
+        log.info("Creating Port: name={}, action={}", request.getPortName(), request.getAction());
         PortResponse response = portService.create(request);
         return ResponseEntity.ok(ApiResponse.success("Tạo mới cảng biển thành công", response));
     }
@@ -55,12 +70,11 @@ public class PortController {
             @RequestParam(required = false) String portCode,
             @RequestParam(required = false) String portName,
             @RequestParam(required = false) String province,
-            @RequestParam(required = false) String operationalStatus,
-            @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, portCode, portName, province, operationalStatus, approvalStatus);
+            @RequestParam(required = false) String portStatus) {
+        log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, portStatus={}",
+                page, size, orgUnitId, search, portCode, portName, province, portStatus);
         Page<PortResponse> result = portService.findAll(
-                page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, search);
+                page, size, orgUnitId, portCode, portName, province, portStatus, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 
@@ -70,7 +84,7 @@ public class PortController {
             @Valid @RequestBody UpdatePortRequest request) {
         log.info("Updating Port: id={}", request.getId());
         PortResponse response = portService.update(request);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật cảng biển thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công — chờ phê duyệt lại", response));
     }
 
     @DeleteMapping("/{id}")
@@ -79,6 +93,14 @@ public class PortController {
         log.info("Soft-deleting Port: id={}", id);
         portService.softDelete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa cảng biển thành công", null));
+    }
+
+    @GetMapping("/{id}/children")
+    @PreAuthorize("@auth.check(authentication, 'port:read')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getChildren(@PathVariable UUID id) {
+        log.info("Getting Port children count: id={}", id);
+        Map<String, Long> result = portService.getChildrenCount(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin cảng con thành công", result));
     }
 
     @PostMapping("/{id}/approve")
@@ -100,7 +122,7 @@ public class PortController {
             Authentication authentication) {
         String userId = authentication.getName();
         log.info("Rejecting Port: id={}, userId={}", id, userId);
-        portApprovalService.approve(id, userId, reason);
+        portApprovalService.reject(id, userId, reason);
         return ResponseEntity.ok(ApiResponse.success("Từ chối cảng biển thành công", null));
     }
 
@@ -110,5 +132,27 @@ public class PortController {
         log.info("Getting Port history: id={}", id);
         Object history = portApprovalService.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử cảng biển thành công", history));
+    }
+
+    @GetMapping("/status-counts")
+    @PreAuthorize("@auth.check(authentication, 'port:read')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getStatusCounts() {
+        log.info("Fetching port status counts");
+        Map<String, Long> counts = new LinkedHashMap<>();
+        counts.put("NHAP", 0L); counts.put("CHO_PHE_DUYET", 0L);
+        counts.put("DA_PHE_DUYET", 0L); counts.put("TU_CHOI", 0L); counts.put("TAM_NGUNG", 0L);
+
+        List<Object[]> rows = portRepository.countByStatusGroups();
+        for (Object[] row : rows) {
+            ApprovalStatus as = (ApprovalStatus) row[0];
+            OperationalStatus os = (OperationalStatus) row[1];
+            Long cnt = (Long) row[2];
+            if (as == ApprovalStatus.PENDING && os == null) counts.put("NHAP", cnt);
+            else if (as == ApprovalStatus.PENDING && os == OperationalStatus.HIEN_HANH) counts.put("CHO_PHE_DUYET", cnt);
+            else if (as == ApprovalStatus.APPROVED && os == OperationalStatus.HIEN_HANH) counts.put("DA_PHE_DUYET", cnt);
+            else if (as == ApprovalStatus.REJECTED) counts.put("TU_CHOI", cnt);
+            else if (as == ApprovalStatus.APPROVED && os == OperationalStatus.TAM_NGUNG) counts.put("TAM_NGUNG", cnt);
+        }
+        return ResponseEntity.ok(ApiResponse.success("OK", counts));
     }
 }

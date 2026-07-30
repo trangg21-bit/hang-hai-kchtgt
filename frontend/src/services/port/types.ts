@@ -1,128 +1,197 @@
-// ── Port Response (matches CangBienResponse.java exactly) ─
-// BigDecimal fields are serialized as JSON number by Spring.
+// ── Port Response (matches the NEW backend contract) ─
+// portStatus replaces operationalStatus + approvalStatus
+
+export interface PortCoordinate {
+  id?: string;
+  latitude: number;
+  longitude: number;
+  sortOrder: number;
+}
+
+export interface PortInfrastructure {
+  id?: string;
+  sequenceNumber: number;
+  infrastructureName: string;
+  quantity: number;
+}
+
+export interface Attachment {
+  id: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  contentType: string;
+}
 
 export interface CangBienResponse {
   id: string;
   portCode: string;
   portName: string;
   province: string | null;
-  latitude: number | null;
-  longitude: number | null;
   area: number | null;
-  khaNangTiepNhan: number | null;
-  operationalStatus: string | null;
-  approvalStatus: string | null;
+  maxVesselCapacity: number | null;
+  portStatus: string | null;           // unified status: NHAP | CHO_PHE_DUYET | DA_PHE_DUYET | TU_CHOI | TAM_NGUNG | DA_XOA
   orgUnitId: string | null;
+  managingUnitId: string | null;       // NEW: Đơn vị quản lý
   portGroup: number | null;
-  bieuTuongId: string | null;
+  mapSymbolId: string | null;
+  spatialId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
-  // Extended fields (V53)
-  diaDiemChiTiet: string | null;
-  phanCap: number | null;
-  heQuyChieu: number | null;
-  quyTacHienThi: number | null;
-  // zobjDataSub fields
-  phamViVungNuoc: string | null;
-  tongSoBenCang: number | null;
-  tongSoKhuNeoDauChuyenTai: number | null;
-  tongSoTuyenLuongCongCong: number | null;
-  tongSoTuyenLuongChuyenDung: number | null;
-  tongChieuDaiLuongCongCong: number | null;
-  tongChieuDaiLuongChuyenDung: number | null;
-  tongSoPhaoTieuBaoHieu: number | null;
-  tongSoDeKe: number | null;
-  tongChieuDaiDeKe: number | null;
-  tongSoDenBienDangTieu: number | null;
-  quantityBenPhao: number | null;
-  quantityKhuNeoDau: number | null;
-  quantityKhuChuyenTai: number | null;
-  cacKhuNuocKhac: string | null;
+  // Extended fields
+  detailedLocation: string | null;
+  portClass: number | null;
+  coordinateSystem: number | null;
+  displayRule: number | null;
+  waterAreaScope: string | null;
+  // 14 composite indicator fields
+  totalBerth: number | null;
+  totalAnchorageTransshipment: number | null;
+  totalPublicChannel: number | null;
+  totalDedicatedChannel: number | null;
+  totalPublicChannelLength: number | null;
+  totalDedicatedChannelLength: number | null;
+  totalBeaconMarker: number | null;
+  totalDikeRevetment: number | null;
+  totalDikeRevetmentLength: number | null;
+  totalLighthouseBeacon: number | null;
+  buoyBerthCount: number | null;
+  anchorageCount: number | null;
+  transshipmentCount: number | null;
+  otherWaterAreas: string | null;
   remarks: string | null;
+  // Portable GIS fields (kept from old schema)
   loaiHinhHoc?: string;
   toaDo?: string;
+  latitude?: number;            // BACKWARD COMPAT: first coordinate's latitude
+  longitude?: number;           // BACKWARD COMPAT: first coordinate's longitude
+  // Legacy aliases (for old pages)
+  khaNangTiepNhan?: number;     // alias for maxVesselCapacity
+  bieuTuongId?: string;         // alias for mapSymbolId
+  operationalStatus?: string;   // derived from portStatus
+  approvalStatus?: string;      // derived from portStatus
+  diaDiemChiTiet?: string;      // alias for detailedLocation
+  phanCap?: number;             // alias for portClass
+  heQuyChieu?: number;          // alias for coordinateSystem
+  quyTacHienThi?: number;       // alias for displayRule
+  phamViVungNuoc?: string;      // alias for waterAreaScope
+  tongSoBenCang?: number;       // alias for totalBerth
+  tongSoKhuNeoDauChuyenTai?: number; // alias for totalAnchorageTransshipment
+  tongSoTuyenLuongCongCong?: number; // alias for totalPublicChannel
+  tongSoTuyenLuongChuyenDung?: number; // alias for totalDedicatedChannel
+  tongChieuDaiLuongCongCong?: number; // alias for totalPublicChannelLength
+  tongChieuDaiLuongChuyenDung?: number; // alias for totalDedicatedChannelLength
+  tongSoPhaoTieuBaoHieu?: number; // alias for totalBeaconMarker
+  tongSoDeKe?: number;          // alias for totalDikeRevetment
+  tongChieuDaiDeKe?: number;    // alias for totalDikeRevetmentLength
+  tongSoDenBienDangTieu?: number; // alias for totalLighthouseBeacon
+  quantityBenPhao?: number;     // alias for buoyBerthCount
+  quantityKhuNeoDau?: number;   // alias for anchorageCount
+  quantityKhuChuyenTai?: number; // alias for transshipmentCount
+  cacKhuNuocKhac?: string;      // alias for otherWaterAreas
+  // NEW fields
+  notes: string | null;
+  portCoordinates: PortCoordinate[];
+  portInfrastructures: PortInfrastructure[];
+  attachments: Attachment[];
 }
 
-// ── CreateCangBienRequest (matches CreateCangBienRequest.java) ─
+// ── CreateCangBienRequest (matches new POST body) ─
+// portCode is auto-generated, NOT in the payload
 
 export interface CreateCangBienRequest {
-  portCode: string;
   portName: string;
   province?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
   area: number;
-  khaNangTiepNhan?: number | null;
-  operationalStatus?: string | null;
-  approvalStatus?: string | null;
+  maxVesselCapacity?: number | null;
+  action: 'draft' | 'submit';          // required: "draft" or "submit"
   orgUnitId?: string | null;
+  managingUnitId?: string | null;       // NEW
   portGroup?: number | null;
-  bieuTuongId?: string | null;
-  // Extended fields (V53)
-  diaDiemChiTiet?: string | null;
-  phanCap?: number | null;
-  heQuyChieu?: number | null;
-  quyTacHienThi?: number | null;
-  // zobjDataSub fields
-  phamViVungNuoc?: string | null;
-  tongSoBenCang?: number | null;
-  tongSoKhuNeoDauChuyenTai?: number | null;
-  tongSoTuyenLuongCongCong?: number | null;
-  tongSoTuyenLuongChuyenDung?: number | null;
-  tongChieuDaiLuongCongCong?: number | null;
-  tongChieuDaiLuongChuyenDung?: number | null;
-  tongSoPhaoTieuBaoHieu?: number | null;
-  tongSoDeKe?: number | null;
-  tongChieuDaiDeKe?: number | null;
-  tongSoDenBienDangTieu?: number | null;
-  quantityBenPhao?: number | null;
-  quantityKhuNeoDau?: number | null;
-  quantityKhuChuyenTai?: number | null;
-  cacKhuNuocKhac?: string | null;
+  mapSymbolId?: string | null;
+  spatialId?: string | null;
+  // Extended fields
+  detailedLocation?: string | null;
+  portClass?: number | null;
+  coordinateSystem?: number | null;
+  displayRule?: number | null;
+  waterAreaScope?: string | null;
+  // 14 composite indicator fields
+  totalBerth?: number | null;
+  totalAnchorageTransshipment?: number | null;
+  totalPublicChannel?: number | null;
+  totalDedicatedChannel?: number | null;
+  totalPublicChannelLength?: number | null;
+  totalDedicatedChannelLength?: number | null;
+  totalBeaconMarker?: number | null;
+  totalDikeRevetment?: number | null;
+  totalDikeRevetmentLength?: number | null;
+  totalLighthouseBeacon?: number | null;
+  buoyBerthCount?: number | null;
+  anchorageCount?: number | null;
+  transshipmentCount?: number | null;
+  otherWaterAreas?: string | null;
   remarks?: string | null;
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  notes?: string | null;
+  // Composite sub-resources
+  portCoordinates?: PortCoordinate[];
+  portInfrastructures?: PortInfrastructure[];
 }
 
-// ── UpdateCangBienRequest (matches UpdateCangBienRequest.java) ─
+// ── UpdateCangBienRequest ─
 
 export interface UpdateCangBienRequest {
   id: string;
   portName?: string | null;
   province?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
   area?: number | null;
-  khaNangTiepNhan?: number | null;
-  operationalStatus?: string | null;
+  maxVesselCapacity?: number | null;
   orgUnitId?: string | null;
+  managingUnitId?: string | null;
   portGroup?: number | null;
-  bieuTuongId?: string | null;
-  // Extended fields (V53)
-  diaDiemChiTiet?: string | null;
-  phanCap?: number | null;
-  heQuyChieu?: number | null;
-  quyTacHienThi?: number | null;
-  // zobjDataSub fields
-  phamViVungNuoc?: string | null;
-  tongSoBenCang?: number | null;
-  tongSoKhuNeoDauChuyenTai?: number | null;
-  tongSoTuyenLuongCongCong?: number | null;
-  tongSoTuyenLuongChuyenDung?: number | null;
-  tongChieuDaiLuongCongCong?: number | null;
-  tongChieuDaiLuongChuyenDung?: number | null;
-  tongSoPhaoTieuBaoHieu?: number | null;
-  tongSoDeKe?: number | null;
-  tongChieuDaiDeKe?: number | null;
-  tongSoDenBienDangTieu?: number | null;
-  quantityBenPhao?: number | null;
-  quantityKhuNeoDau?: number | null;
-  quantityKhuChuyenTai?: number | null;
-  cacKhuNuocKhac?: string | null;
+  mapSymbolId?: string | null;
+  spatialId?: string | null;
+  // Extended fields
+  detailedLocation?: string | null;
+  portClass?: number | null;
+  coordinateSystem?: number | null;
+  displayRule?: number | null;
+  waterAreaScope?: string | null;
+  // 14 composite indicator fields
+  totalBerth?: number | null;
+  totalAnchorageTransshipment?: number | null;
+  totalPublicChannel?: number | null;
+  totalDedicatedChannel?: number | null;
+  totalPublicChannelLength?: number | null;
+  totalDedicatedChannelLength?: number | null;
+  totalBeaconMarker?: number | null;
+  totalDikeRevetment?: number | null;
+  totalDikeRevetmentLength?: number | null;
+  totalLighthouseBeacon?: number | null;
+  buoyBerthCount?: number | null;
+  anchorageCount?: number | null;
+  transshipmentCount?: number | null;
+  otherWaterAreas?: string | null;
   remarks?: string | null;
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  notes?: string | null;
+  portCoordinates?: PortCoordinate[];
+  portInfrastructures?: PortInfrastructure[];
 }
 
-// ── ChangeHistory record (matches LichSuThayDoi.java) ─
+// ── Children summary (from GET /:id/children) ─
+
+export interface PortChildrenSummary {
+  berths: number;
+  waterZones: number;
+}
+
+// ── ChangeHistory record ─
 
 export interface ChangeHistory {
   id: string;
@@ -148,7 +217,7 @@ export interface PageResponse<T> {
   last: boolean;
 }
 
-// ── ApiResponse envelope (matches ApiResponse.java wrapper) ─
+// ── ApiResponse envelope ─
 
 export interface ApiResponseEnvelope<T> {
   success: boolean;
@@ -156,7 +225,7 @@ export interface ApiResponseEnvelope<T> {
   data: T;
 }
 
-// ── Approval result (from approve/reject endpoints — returns void wrapper) ─
+// ── Approval result ─
 
 export interface ApprovalResult {
   success: boolean;

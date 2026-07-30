@@ -4,6 +4,7 @@ import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
 import com.hanghai.kchtg.port.entity.Port;
+import com.hanghai.kchtg.port.entity.PortStatus;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
@@ -31,9 +32,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -86,6 +85,8 @@ class PortServiceTest {
         testEntity.setArea(new BigDecimal("5000.00"));
         testEntity.setOperationalStatus(OperationalStatus.HIEN_HANH);
         testEntity.setApprovalStatus(ApprovalStatus.PENDING);
+        // Trigger @PostLoad logic to derive portStatus
+        testEntity.setPortStatus(PortStatus.CHO_PHE_DUYET);
     }
 
     // ── CREATE (F-008) ─────────────────────────────────────────────────────
@@ -93,37 +94,24 @@ class PortServiceTest {
     @Test
     @DisplayName("F-008: create — succeeds and returns response")
     void create_succeeds() {
-        CreatePortRequest request = buildCreateRequest("CB-002", "Cảng mới",
+        CreatePortRequest request = buildCreateRequest("Cảng mới",
                 new BigDecimal("20.0"), new BigDecimal("106.0"), new BigDecimal("1000.00"));
+        request.setAction("submit");
 
-        when(portRepository.existsByPortCode("CB-002")).thenReturn(false);
         when(portRepository.save(any(Port.class))).thenAnswer(inv -> {
             Port saved = inv.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
+            saved.syncOldFieldsFromPortStatus();
             return saved;
         });
 
         PortResponse result = service.create(request);
 
         assertNotNull(result);
-        assertEquals("CB-002", result.getPortCode());
         assertEquals("Cảng mới", result.getPortName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
-        verify(portRepository, times(1)).save(any(Port.class));
-    }
-
-    @Test
-    @DisplayName("F-008: create — duplicate code throws IllegalArgumentException")
-    void create_duplicateCode_throwsConflict() {
-        CreatePortRequest request = buildCreateRequest("CB-001", "Duplicate",
-                new BigDecimal("10.0"), new BigDecimal("100.0"), new BigDecimal("100.00"));
-
-        when(portRepository.existsByPortCode("CB-001")).thenReturn(true);
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> service.create(request));
-        assertTrue(ex.getMessage().contains("CB-001"));
-        verify(portRepository, never()).save(any());
+        // submit action → portStatus = CHO_PHE_DUYET
+        assertEquals(PortStatus.CHO_PHE_DUYET, result.getPortStatus());
+        verify(portRepository, times(2)).save(any(Port.class)); // entity + spatial update
     }
 
     // ── READ ───────────────────────────────────────────────────────────────
@@ -151,23 +139,29 @@ class PortServiceTest {
     @DisplayName("F-012: findAll — pagination honored, defaults max 100")
     void findAll_paginationHonored() {
         Page<Port> mockPage = new PageImpl<>(List.of(testEntity));
-        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), eq(false), isNull(), any(Pageable.class)))
+                .thenReturn(mockPage);
 
         Page<PortResponse> result = service.findAll(0, 20, null);
 
         assertEquals(1, result.getTotalElements());
-        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), eq(false), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("F-012: findAll — size capped at 5000")
     void findAll_sizeCappedAt5000() {
         Page<Port> mockPage = new PageImpl<>(List.of());
-        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), eq(false), isNull(), any(Pageable.class)))
+                .thenReturn(mockPage);
 
         service.findAll(0, 9999, null);
 
-        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
+        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), eq(false), isNull(), argThat(p -> p.getPageSize() == 5000));
     }
 
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────
@@ -175,10 +169,16 @@ class PortServiceTest {
     @Test
     @DisplayName("F-009: update — applies mutable fields, resets approval to PENDING")
     void update_appliesMutableFields() {
-        testEntity.setApprovalStatus(ApprovalStatus.APPROVED); // was approved
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        // @PostLoad would derive DA_PHE_DUYET from APPROVED + HIEN_HANH
+        testEntity.setPortStatus(PortStatus.DA_PHE_DUYET);
 
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(portRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(portRepository.save(any())).thenAnswer(inv -> {
+            Port saved = inv.getArgument(0);
+            saved.syncOldFieldsFromPortStatus();
+            return saved;
+        });
 
         UpdatePortRequest request = new UpdatePortRequest();
         request.setId(testId);
@@ -188,7 +188,8 @@ class PortServiceTest {
         PortResponse result = service.update(request);
 
         assertEquals("Cảng Đã Cập Nhật", result.getPortName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus()); // reset
+        // Auto-reset: non-NHAP → CHO_PHE_DUYET
+        assertEquals(PortStatus.CHO_PHE_DUYET, result.getPortStatus());
         assertEquals("CB-001", result.getPortCode()); // code unchanged
     }
 
@@ -268,14 +269,12 @@ class PortServiceTest {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private CreatePortRequest buildCreateRequest(String portCode, String portName,
-                                                     BigDecimal latitude, BigDecimal longitude,
-                                                     BigDecimal area) {
+    private CreatePortRequest buildCreateRequest(String portName,
+                                                    BigDecimal latitude, BigDecimal longitude,
+                                                    BigDecimal area) {
         CreatePortRequest req = new CreatePortRequest();
-        req.setPortCode(portCode);
         req.setPortName(portName);
         req.setArea(area);
-        req.setOperationalStatus(OperationalStatus.HIEN_HANH);
         return req;
     }
 }

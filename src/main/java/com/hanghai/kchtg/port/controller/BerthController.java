@@ -16,6 +16,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.security.core.Authentication;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -28,11 +29,19 @@ public class BerthController {
     private final BerthService berthService;
     private final BerthApprovalService berthApprovalService;
 
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'berth:create')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
+        log.info("Generating next berth code");
+        Map<String, String> result = berthService.generateCode();
+        return ResponseEntity.ok(ApiResponse.success("Tạo mã bến mới thành công", result));
+    }
+
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'berth:create')")
     public ResponseEntity<ApiResponse<BerthResponse>> create(
             @Valid @RequestBody CreateBerthRequest request) {
-        log.info("Creating Berth: code={}", request.getBerthCode());
+        log.info("Creating Berth: name={}, action={}", request.getBerthName(), request.getAction());
         BerthResponse response = berthService.create(request);
         return ResponseEntity.ok(ApiResponse.success("Tạo mới bến cảng thành công", response));
     }
@@ -57,12 +66,11 @@ public class BerthController {
             @RequestParam(required = false) UUID portId,
             @RequestParam(required = false) String waterway,
             @RequestParam(required = false) String berthType,
-            @RequestParam(required = false) String operationalStatus,
-            @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, berthCode, berthName, portId, operationalStatus, approvalStatus);
+            @RequestParam(required = false) String portStatus) {
+        log.info("Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, portStatus={}",
+                page, size, orgUnitId, search, berthCode, berthName, portId, portStatus);
         Page<BerthResponse> result = berthService.findAll(page, size, orgUnitId,
-                berthCode, berthName, portId, waterway, berthType, operationalStatus, approvalStatus, search);
+                berthCode, berthName, portId, waterway, berthType, portStatus, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bến cảng thành công", result));
     }
 
@@ -72,7 +80,7 @@ public class BerthController {
             @Valid @RequestBody UpdateBerthRequest request) {
         log.info("Updating Berth: id={}", request.getId());
         BerthResponse response = berthService.update(request);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật bến cảng thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công — chờ phê duyệt lại", response));
     }
 
     @DeleteMapping("/{id}")
@@ -81,6 +89,14 @@ public class BerthController {
         log.info("Soft-deleting Berth: id={}", id);
         berthService.softDelete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa bến cảng thành công", null));
+    }
+
+    @GetMapping("/{id}/children")
+    @PreAuthorize("@auth.check(authentication, 'berth:read')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getChildren(@PathVariable UUID id) {
+        log.info("Getting Berth children count: id={}", id);
+        Map<String, Long> result = berthService.getChildrenCount(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin bến con thành công", result));
     }
 
     @PostMapping("/{id}/approve")
@@ -102,7 +118,7 @@ public class BerthController {
             Authentication authentication) {
         String userId = authentication.getName();
         log.info("Rejecting Berth: id={}, userId={}", id, userId);
-        berthApprovalService.approve(id, userId, reason);
+        berthApprovalService.reject(id, userId, reason);
         return ResponseEntity.ok(ApiResponse.success("Từ chối bến cảng thành công", null));
     }
 

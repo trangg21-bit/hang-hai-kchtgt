@@ -9,7 +9,7 @@ export const TRANG_THAI_HOAT_DONG_OPTIONS: Array<{ label: string; value: string 
 
 export const TRANG_THAI_PHE_DUYET_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' },
-  { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' },
+  { label: 'Đã phê duyệt', value: 'DA_PHE_DUYET' },
   { label: 'Từ chối', value: 'TU_CHOI' },
 ];
 
@@ -21,7 +21,7 @@ export type approvalStatus = (typeof TRANG_THAI_PHE_DUYET_OPTIONS[number])['valu
 export const listFiltersSchema = z.object({
   search: z.string().optional(),
   status: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
-  approvalStatus: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).optional(),
+  approvalStatus: z.enum(['CHO_PHE_DUYET', 'DA_PHE_DUYET', 'TU_CHOI']).optional(),
   sortBy: z.enum(['portCode', 'portName', 'createdAt', 'updatedAt']).default('updatedAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(0).default(0),
@@ -47,7 +47,7 @@ export const createSchema = z.object({
   area: z.coerce.number().positive('Diện tích phải lớn hơn 0'),
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
-  approvalStatus: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).default('CHO_PHE_DUYET'),
+  approvalStatus: z.enum(['CHO_PHE_DUYET', 'DA_PHE_DUYET', 'TU_CHOI']).default('CHO_PHE_DUYET'),
   orgUnitId: z.string().uuid().optional().or(z.literal('')),
   portGroup: z.coerce.number().int().optional().or(z.nan()),
   bieuTuongId: z.string().uuid().optional().or(z.literal('')),
@@ -193,11 +193,11 @@ export const trangThaiPheDuyetBadge = (status: string): { color: string; label: 
     return { color: 'orange', label: 'Chờ phê duyệt' };
   }
   if (
-    norm === 'DUOC_PHE_DUYET' ||
+    norm === 'DA_PHE_DUYET' ||
     norm === 'APPROVED' ||
     norm === 'ĐƯỢC_PHÊ_DUYỆT'.normalize('NFC').toUpperCase()
   ) {
-    return { color: 'green', label: 'Được phê duyệt' };
+    return { color: 'green', label: 'Đã phê duyệt' };
   }
   if (
     norm === 'TU_CHOI' ||

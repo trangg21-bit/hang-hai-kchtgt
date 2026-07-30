@@ -22,6 +22,21 @@ export type CangBenStatus = CangBenApprovalStatus;
 export const BECBANG_STATUS_MAP = APPROVAL_STATUS_MAP;
 export const BECBANG_APPROVAL_STATUS_MAP = APPROVAL_STATUS_MAP;
 
+// ── PortStatus (NEW unified status replacing operationalStatus + approvalStatus) ─
+
+export type PortStatusValue = 'NHAP' | 'CHO_PHE_DUYET' | 'DA_PHE_DUYET' | 'TU_CHOI' | 'TAM_NGUNG' | 'DA_XOA';
+
+import { statusDraft, statusAttention, statusOperational, statusCritical } from '../tokens';
+
+export const PORT_STATUS_MAP: Record<string, { color: string; label: string }> = {
+  NHAP: { color: statusDraft, label: 'Nháp' },
+  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
+  TAM_NGUNG: { color: statusAttention, label: 'Tạm ngừng' },
+  DA_XOA: { color: statusDraft, label: 'Đã xóa' },
+};
+
 // ── 1. Cảng Biển ─────────────────────────────────────────────────────
 
 export interface Port {
@@ -29,117 +44,188 @@ export interface Port {
   portCode: string;
   portName: string;
   province: string;
-
   area: number;
   khaNangTiepNhan: number;
-  operationalStatus: string;
-  approvalStatus: string;
+  portStatus: string;            // NEW: unified status
+  // KEPT for backward compatibility (other entities still use them)
+  operationalStatus?: string;
+  approvalStatus?: string;
   orgUnitId: string;
+  managingUnitId?: string;       // NEW
   portGroup?: number;
   bieuTuongId?: string;
+  mapSymbolId?: string;
+  spatialId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
   // Extended fields (V53)
+  detailedLocation?: string;
   diaDiemChiTiet?: string;
+  portClass?: number;
   phanCap?: number;
+  coordinateSystem?: number;
   heQuyChieu?: number;
+  displayRule?: number;
   quyTacHienThi?: number;
-  // zobjDataSub fields
+  waterAreaScope?: string;
   phamViVungNuoc?: string;
+  // 14 composite indicator fields
+  totalBerth?: number;
   tongSoBenCang?: number;
+  totalAnchorageTransshipment?: number;
   tongSoKhuNeoDauChuyenTai?: number;
+  totalPublicChannel?: number;
   tongSoTuyenLuongCongCong?: number;
+  totalDedicatedChannel?: number;
   tongSoTuyenLuongChuyenDung?: number;
+  totalPublicChannelLength?: number;
   tongChieuDaiLuongCongCong?: number;
+  totalDedicatedChannelLength?: number;
   tongChieuDaiLuongChuyenDung?: number;
+  totalBeaconMarker?: number;
   tongSoPhaoTieuBaoHieu?: number;
+  totalDikeRevetment?: number;
   tongSoDeKe?: number;
+  totalDikeRevetmentLength?: number;
   tongChieuDaiDeKe?: number;
+  totalLighthouseBeacon?: number;
   tongSoDenBienDangTieu?: number;
+  buoyBerthCount?: number;
   quantityBenPhao?: number;
+  anchorageCount?: number;
   quantityKhuNeoDau?: number;
+  transshipmentCount?: number;
   quantityKhuChuyenTai?: number;
+  otherWaterAreas?: string;
   cacKhuNuocKhac?: string;
   remarks?: string;
+  notes?: string;
+  // Sub-resources
+  portCoordinates?: Array<{ id?: string; latitude: number; longitude: number; sortOrder: number }>;
+  portInfrastructures?: Array<{ id?: string; sequenceNumber: number; infrastructureName: string; quantity: number }>;
+  attachments?: Array<{ id: string; fileName: string; filePath: string; fileSize: number; contentType: string }>;
 }
 
-export interface CreateCangBienRequest {
-  portCode: string;
+export interface CreatePortRequest {
   portName: string;
-  province: string;
-
+  province?: string | null;
   area: number;
-  khaNangTiepNhan: number;
-  operationalStatus: string;
-  approvalStatus: string;
-  orgUnitId: string;
-  portGroup?: number;
-  bieuTuongId?: string;
-  // Extended fields (V53)
-  diaDiemChiTiet?: string;
-  phanCap?: number;
-  heQuyChieu?: number;
-  quyTacHienThi?: number;
-  // zobjDataSub fields
-  phamViVungNuoc?: string;
-  tongSoBenCang?: number;
-  tongSoKhuNeoDauChuyenTai?: number;
-  tongSoTuyenLuongCongCong?: number;
-  tongSoTuyenLuongChuyenDung?: number;
-  tongChieuDaiLuongCongCong?: number;
-  tongChieuDaiLuongChuyenDung?: number;
-  tongSoPhaoTieuBaoHieu?: number;
-  tongSoDeKe?: number;
-  tongChieuDaiDeKe?: number;
-  tongSoDenBienDangTieu?: number;
-  quantityBenPhao?: number;
-  quantityKhuNeoDau?: number;
-  quantityKhuChuyenTai?: number;
-  cacKhuNuocKhac?: string;
-  remarks?: string;
+  khaNangTiepNhan?: number | null;
+  action: 'draft' | 'submit';
+  orgUnitId?: string | null;
+  managingUnitId?: string | null;
+  portGroup?: number | null;
+  bieuTuongId?: string | null;
+  mapSymbolId?: string | null;
+  spatialId?: string | null;
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  detailedLocation?: string | null;
+  diaDiemChiTiet?: string | null;
+  portClass?: number | null;
+  phanCap?: number | null;
+  coordinateSystem?: number | null;
+  heQuyChieu?: number | null;
+  displayRule?: number | null;
+  quyTacHienThi?: number | null;
+  waterAreaScope?: string | null;
+  phamViVungNuoc?: string | null;
+  totalBerth?: number | null;
+  tongSoBenCang?: number | null;
+  totalAnchorageTransshipment?: number | null;
+  tongSoKhuNeoDauChuyenTai?: number | null;
+  totalPublicChannel?: number | null;
+  tongSoTuyenLuongCongCong?: number | null;
+  totalDedicatedChannel?: number | null;
+  tongSoTuyenLuongChuyenDung?: number | null;
+  totalPublicChannelLength?: number | null;
+  tongChieuDaiLuongCongCong?: number | null;
+  totalDedicatedChannelLength?: number | null;
+  tongChieuDaiLuongChuyenDung?: number | null;
+  totalBeaconMarker?: number | null;
+  tongSoPhaoTieuBaoHieu?: number | null;
+  totalDikeRevetment?: number | null;
+  tongSoDeKe?: number | null;
+  totalDikeRevetmentLength?: number | null;
+  tongChieuDaiDeKe?: number | null;
+  totalLighthouseBeacon?: number | null;
+  tongSoDenBienDangTieu?: number | null;
+  buoyBerthCount?: number | null;
+  quantityBenPhao?: number | null;
+  anchorageCount?: number | null;
+  quantityKhuNeoDau?: number | null;
+  transshipmentCount?: number | null;
+  quantityKhuChuyenTai?: number | null;
+  otherWaterAreas?: string | null;
+  cacKhuNuocKhac?: string | null;
+  remarks?: string | null;
+  notes?: string | null;
+  portCoordinates?: Array<{ latitude: number; longitude: number; sortOrder: number }>;
+  portInfrastructures?: Array<{ sequenceNumber: number; infrastructureName: string; quantity: number }>;
 }
 
-export interface UpdateCangBienRequest {
-  portCode?: string;
-  portName?: string;
-  province?: string;
-
-  area?: number;
-  khaNangTiepNhan?: number;
+export interface UpdatePortRequest {
+  id: string;
+  portName?: string | null;
+  province?: string | null;
+  area?: number | null;
+  khaNangTiepNhan?: number | null;
+  orgUnitId?: string | null;
+  managingUnitId?: string | null;
+  portGroup?: number | null;
   bieuTuongId?: string | null;
-  operationalStatus?: string;
-  approvalStatus?: string;
-  orgUnitId?: string;
-  portGroup?: number;
-  // Extended fields (V53)
-  diaDiemChiTiet?: string;
-  phanCap?: number;
-  heQuyChieu?: number;
-  quyTacHienThi?: number;
-  // zobjDataSub fields
-  phamViVungNuoc?: string;
-  tongSoBenCang?: number;
-  tongSoKhuNeoDauChuyenTai?: number;
-  tongSoTuyenLuongCongCong?: number;
-  tongSoTuyenLuongChuyenDung?: number;
-  tongChieuDaiLuongCongCong?: number;
-  tongChieuDaiLuongChuyenDung?: number;
-  tongSoPhaoTieuBaoHieu?: number;
-  tongSoDeKe?: number;
-  tongChieuDaiDeKe?: number;
-  tongSoDenBienDangTieu?: number;
-  quantityBenPhao?: number;
-  quantityKhuNeoDau?: number;
-  quantityKhuChuyenTai?: number;
-  cacKhuNuocKhac?: string;
-  remarks?: string;
+  mapSymbolId?: string | null;
+  spatialId?: string | null;
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  detailedLocation?: string | null;
+  diaDiemChiTiet?: string | null;
+  portClass?: number | null;
+  phanCap?: number | null;
+  coordinateSystem?: number | null;
+  heQuyChieu?: number | null;
+  displayRule?: number | null;
+  quyTacHienThi?: number | null;
+  waterAreaScope?: string | null;
+  phamViVungNuoc?: string | null;
+  // 14 composite indicator fields
+  totalBerth?: number | null;
+  tongSoBenCang?: number | null;
+  totalAnchorageTransshipment?: number | null;
+  tongSoKhuNeoDauChuyenTai?: number | null;
+  totalPublicChannel?: number | null;
+  tongSoTuyenLuongCongCong?: number | null;
+  totalDedicatedChannel?: number | null;
+  tongSoTuyenLuongChuyenDung?: number | null;
+  totalPublicChannelLength?: number | null;
+  tongChieuDaiLuongCongCong?: number | null;
+  totalDedicatedChannelLength?: number | null;
+  tongChieuDaiLuongChuyenDung?: number | null;
+  totalBeaconMarker?: number | null;
+  tongSoPhaoTieuBaoHieu?: number | null;
+  totalDikeRevetment?: number | null;
+  tongSoDeKe?: number | null;
+  totalDikeRevetmentLength?: number | null;
+  tongChieuDaiDeKe?: number | null;
+  totalLighthouseBeacon?: number | null;
+  tongSoDenBienDangTieu?: number | null;
+  buoyBerthCount?: number | null;
+  quantityBenPhao?: number | null;
+  anchorageCount?: number | null;
+  quantityKhuNeoDau?: number | null;
+  transshipmentCount?: number | null;
+  quantityKhuChuyenTai?: number | null;
+  otherWaterAreas?: string | null;
+  cacKhuNuocKhac?: string | null;
+  remarks?: string | null;
+  notes?: string | null;
+  portCoordinates?: Array<{ latitude: number; longitude: number; sortOrder: number }>;
+  portInfrastructures?: Array<{ sequenceNumber: number; infrastructureName: string; quantity: number }>;
 }
 
 // ── 2. Bến Cảng ──────────────────────────────────────────────────────
-// All field names match BE exactly (Berth.java, BenCangResponse.java).
-// berthType is free text (no enum). latitude/longitude are optional.
 
 export interface Berth {
   id: string;
@@ -148,12 +234,19 @@ export interface Berth {
   portId: string;
   tenCangBien?: string;
   tuyenDuongThuy?: string;
+  waterway?: string;
 
   length?: number;
   width?: number;
   berthType?: string;
   doSauLuong?: number;
+  channelDepth?: number;
   operationalCapacity?: string;
+  latitude?: number;
+  longitude?: number;
+  // Unified portStatus (replaces operationalStatus + approvalStatus)
+  portStatus?: string;
+  // KEPT for backward compatibility
   operationalStatus?: string;
   approvalStatus: string;
   orgUnitId?: string;
@@ -178,17 +271,38 @@ export interface Berth {
   quyetDinhCongBo?: string;
   vanBanThoaThuanDauTu?: string;
   structureType?: number;
+  // GIS
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  // Extra new fields from API
+  locationCode?: string;
+  detailedLocation?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  operator?: string;
+  totalArea?: number;
+  designThroughput?: number;
+  currentThroughput?: number;
+  maxVesselSize?: number;
+  plannedThroughput?: number;
+  latestCargoVolume?: number;
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
+  investmentAgreement?: string;
 }
 
-export interface CreateBenCangRequest {
+export interface CreateBerthRequest {
+  action: 'draft' | 'submit';
   berthCode: string;
   berthName: string;
   portId: string;
+  waterway?: string;
   tuyenDuongThuy?: string;
 
   length?: number;
   width?: number;
   berthType?: string;
+  channelDepth?: number;
   doSauLuong?: number;
   operationalCapacity?: string;
   operationalStatus?: string;
@@ -196,31 +310,47 @@ export interface CreateBenCangRequest {
   // Extended fields
   orgUnitId?: string;
   location?: string;
+  locationCode?: string;
+  detailedLocation?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  operator?: string;
+  donViKhaiThac?: string;
   diaDiemChiTiet?: string;
   heQuyChieu?: number;
   quyTacHienThi?: number;
-  donViKhaiThac?: string;
+  totalArea?: number;
   tongDienTich?: number;
+  designThroughput?: number;
   nangLucThongQuaThietKe?: number;
+  currentThroughput?: number;
   nangLucThongQuaHienTrang?: number;
+  maxVesselSize?: number;
   coTauTiepNhanLonNhat?: number;
+  plannedThroughput?: number;
   quyHoachNangLucThongQua?: number;
+  latestCargoVolume?: number;
   sanLuongHangHoaNamGanNhat?: number;
   thoiDiemCongBoMo?: string;
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
   quyetDinhCongBo?: string;
+  investmentAgreement?: string;
   vanBanThoaThuanDauTu?: string;
   structureType?: number;
 }
 
-export interface UpdateBenCangRequest {
+export interface UpdateBerthRequest {
   id: string;
   berthName?: string;
   portId?: string;
+  waterway?: string;
   tuyenDuongThuy?: string;
 
   length?: number;
   width?: number;
   berthType?: string;
+  channelDepth?: number;
   doSauLuong?: number;
   operationalCapacity?: string;
   operationalStatus?: string;
@@ -228,20 +358,35 @@ export interface UpdateBenCangRequest {
   // Extended fields
   orgUnitId?: string;
   location?: string;
+  locationCode?: string;
+  detailedLocation?: string;
+  coordinateSystem?: number;
+  displayRule?: number;
+  operator?: string;
+  donViKhaiThac?: string;
   diaDiemChiTiet?: string;
   heQuyChieu?: number;
   quyTacHienThi?: number;
-  donViKhaiThac?: string;
+  totalArea?: number;
   tongDienTich?: number;
+  designThroughput?: number;
   nangLucThongQuaThietKe?: number;
+  currentThroughput?: number;
   nangLucThongQuaHienTrang?: number;
+  maxVesselSize?: number;
   coTauTiepNhanLonNhat?: number;
+  plannedThroughput?: number;
   quyHoachNangLucThongQua?: number;
+  latestCargoVolume?: number;
   sanLuongHangHoaNamGanNhat?: number;
   thoiDiemCongBoMo?: string;
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
   quyetDinhCongBo?: string;
+  investmentAgreement?: string;
   vanBanThoaThuanDauTu?: string;
   structureType?: number;
+  action?: 'draft' | 'submit';
 }
 
 // ── 3. Cầu Cảng ──────────────────────────────────────────────────────
@@ -268,7 +413,7 @@ export interface Pier {
   updatedAt: string;
 }
 
-export interface CreateCauCangRequest {
+export interface CreatePierRequest {
   pierCode: string;
   pierName: string;
   berthId: string;
@@ -282,7 +427,7 @@ export interface CreateCauCangRequest {
   toaDo?: string;
 }
 
-export interface UpdateCauCangRequest {
+export interface UpdatePierRequest {
   id: string;
   pierCode?: string;
   pierName?: string;
@@ -317,7 +462,7 @@ export interface DryPort {
   updatedAt: string;
 }
 
-export interface CreateCangCanRequest {
+export interface CreateDryPortRequest {
   dryPortCode: string;
   dryPortName: string;
   province: string;
@@ -330,7 +475,7 @@ export interface CreateCangCanRequest {
   bieuTuongId?: string;
 }
 
-export interface UpdateCangCanRequest {
+export interface UpdateDryPortRequest {
   dryPortCode?: string;
   dryPortName?: string;
   province?: string;
@@ -367,7 +512,7 @@ export interface WaterZone {
   updatedAt: string;
 }
 
-export interface CreateVungNuocRequest {
+export interface CreateWaterZoneRequest {
   waterZoneCode: string;
   waterZoneName: string;
   portId: string;
@@ -382,7 +527,7 @@ export interface CreateVungNuocRequest {
   toaDo?: string;
 }
 
-export interface UpdateVungNuocRequest {
+export interface UpdateWaterZoneRequest {
   id: string;
   waterZoneCode?: string;
   waterZoneName?: string;

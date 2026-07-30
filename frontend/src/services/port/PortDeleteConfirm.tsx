@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Card, Button, Space, Typography, Tag, Row, Col } from 'antd';
+import { Card, Button, Space, Typography, Tag, Row, Col, Input } from 'antd';
 import toast from '../../components/ToastNotification';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { borderDefault, statusAttention, spaceMd } from '../../tokens';
-import { fetchCangBienById, deleteCangBien } from './api';
+import { borderDefault, statusAttention, statusCritical, textPrimary, textSecondary, textTertiary, spaceMd, fontSizeMd, fontSizeSm, radiusPill } from '../../tokens';
+import { fetchCangBienById, deleteCangBien, fetchPortChildren } from './api';
 import type { CangBienResponse } from './types';
 
 function formatDate(dateStr: string | null): string {
@@ -23,17 +23,25 @@ export default function PortDeleteConfirm() {
   const [data, setData] = useState<CangBienResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [childrenInfo, setChildrenInfo] = useState<{ berths: number; waterZones: number } | null>(null);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       setIsLoading(true);
       try {
-        const res = await fetchCangBienById(id);
+        const [res, children] = await Promise.all([
+          fetchCangBienById(id),
+          fetchPortChildren(id).catch(() => ({ berths: 0, waterZones: 0 })),
+        ]);
         setData(res);
-      } catch (err) {
-        console.error('Failed to fetch Port:', err);
+        setChildrenInfo(children);
+        if (children.berths > 0 || children.waterZones > 0) {
+          setBlocked(true);
+        }
+      } catch {
         toast.error('Không thể tải thông tin cảng biển');
         navigate('/Port');
       } finally {
@@ -43,15 +51,15 @@ export default function PortDeleteConfirm() {
   }, [id, navigate]);
 
   const handleDelete = async () => {
-    if (!confirmChecked) {
-      toast.error('Bạn cần xác nhận để xóa');
+    if (!id || !data) return;
+    if (confirmText !== data.portName) {
+      toast.error('Vui lòng nhập chính xác tên cảng biển để xác nhận');
       return;
     }
-    if (!id) return;
     setSubmitting(true);
     try {
       await deleteCangBien(id);
-      toast.success('Xóa thành công');
+      toast.success('Đã xóa thành công');
       navigate('/Port');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
@@ -61,84 +69,124 @@ export default function PortDeleteConfirm() {
   };
 
   if (isLoading || !data) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
+    return <div style={{ padding: 40, textAlign: 'center', color: textSecondary }}>Đang tải...</div>;
+  }
+
+  // ── Blocked: has children ─────────────────────────────────────────
+  if (blocked && childrenInfo) {
+    return (
+      <>
+        <Card style={{ marginBottom: 16 }}>
+          <Space>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/Port/${id}`)}>Quay lại</Button>
+            <Typography.Title level={5} style={{ margin: 0, color: statusCritical }}>
+              Không thể xóa — {data.portCode}
+            </Typography.Title>
+          </Space>
+        </Card>
+        <Card style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: 32 }}>
+          <Typography.Text style={{ color: statusCritical, fontSize: fontSizeMd }}>
+            Cảng này có {childrenInfo.berths} bến cảng và {childrenInfo.waterZones} vùng nước liên kết, không thể xóa.
+          </Typography.Text>
+          <br /><br />
+          <Typography.Text style={{ color: textSecondary, fontSize: fontSizeSm }}>
+            Vui lòng xóa các bến cảng và vùng nước trực thuộc trước khi xóa cảng biển này.
+          </Typography.Text>
+          <br /><br />
+          <Button type="primary" onClick={() => navigate(`/Port/${id}`)}
+            style={{ borderRadius: radiusPill, height: 40 }}>
+            Quay lại thông tin cảng
+          </Button>
+        </Card>
+      </>
+    );
   }
 
   return (
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button onClick={() => navigate(`/Port/${id}`)}>Quay lại</Button>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/Port/${id}`)}>Quay lại</Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
             Xác nhận xóa — {data.portCode}
           </Typography.Title>
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 500, margin: '0 auto' }}>
-        {/* Info Card */}
+      <Card style={{ maxWidth: 600, margin: '0 auto' }}>
+        {/* Thông tin cảng */}
         <Card size="small" title="Thông tin cảng biển" style={{ marginBottom: 16 }}>
           <Row gutter={[16, 8]}>
             <Col span={12}>
-              <Typography.Text strong>Mã cảng:</Typography.Text>
+              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Mã cảng</Typography.Text>
               <br />
               <Tag color="cyan">{data.portCode}</Tag>
             </Col>
             <Col span={12}>
-              <Typography.Text strong>Tên cảng:</Typography.Text>
+              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tên cảng</Typography.Text>
               <br />
-              <Typography.Text>{data.portName}</Typography.Text>
+              <Typography.Text style={{ fontSize: fontSizeMd }}>{data.portName}</Typography.Text>
             </Col>
             <Col span={12}>
-              <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
+              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tỉnh/Thành phố</Typography.Text>
               <br />
-              <Typography.Text>{data.province || '—'}</Typography.Text>
+              <Typography.Text style={{ fontSize: fontSizeMd }}>{data.province || '—'}</Typography.Text>
             </Col>
             <Col span={12}>
-              <Typography.Text strong>Tạo bởi:</Typography.Text>
+              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tạo bởi</Typography.Text>
               <br />
-              <Typography.Text>{data.createdBy || '—'}</Typography.Text>
+              <Typography.Text style={{ fontSize: fontSizeMd }}>{data.createdBy || '—'}</Typography.Text>
             </Col>
             <Col span={12}>
-              <Typography.Text strong>Ngày tạo:</Typography.Text>
+              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Ngày tạo</Typography.Text>
               <br />
-              <Typography.Text>{formatDate(data.createdAt)}</Typography.Text>
+              <Typography.Text style={{ fontSize: fontSizeMd }}>{formatDate(data.createdAt)}</Typography.Text>
             </Col>
           </Row>
         </Card>
 
         {/* Warning */}
-        <Card size="small" style={{ marginBottom: spaceMd, borderColor: statusAttention, backgroundColor: `${statusAttention}10` }}>
-          <Typography.Text type="warning">
-            ⚠️ Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống.
+        <Card size="small" style={{ marginBottom: spaceMd, borderColor: statusAttention, backgroundColor: `${statusAttention}08` }}>
+          <Typography.Text style={{ color: statusAttention, fontSize: fontSizeSm }}>
+            Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống.
           </Typography.Text>
         </Card>
 
-        {/* Confirm */}
+        {/* Confirm by typing port name */}
         <div style={{ marginBottom: 16 }}>
-          <Space>
-            <input
-              type="checkbox"
-              checked={confirmChecked}
-              onChange={(e) => setConfirmChecked(e.target.checked)}
-              aria-label="Tôi xác nhận muốn xóa cảng biển này"
-            />
-            <Typography.Text>Tôi xác nhận muốn xóa cảng biển này</Typography.Text>
-          </Space>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 8, color: textPrimary, fontSize: fontSizeMd }}>
+            Nhập <strong style={{ color: statusCritical }}>{data.portName}</strong> để xác nhận xóa:
+          </Typography.Text>
+          <Input
+            placeholder="Nhập tên cảng biển để xác nhận..."
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            style={{ borderRadius: radiusPill, height: 40 }}
+          />
+          {confirmText && confirmText !== data.portName && (
+            <span style={{ color: statusCritical, fontSize: fontSizeSm }}>Tên không khớp</span>
+          )}
+          {confirmText === data.portName && (
+            <span style={{ color: '#1BAF7A', fontSize: fontSizeSm }}>Đã xác nhận</span>
+          )}
         </div>
 
         {/* Footer */}
         <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16 }}>
           <Space>
-            <Button onClick={() => navigate(`/Port/${id}`)}>Hủy</Button>
+            <Button onClick={() => navigate(`/Port/${id}`)}
+              style={{ borderRadius: radiusPill, height: 40, borderColor: borderDefault, color: textSecondary }}>
+              Hủy
+            </Button>
             <Button
               type="primary"
               danger
               onClick={handleDelete}
               loading={submitting}
-              disabled={!confirmChecked}
+              disabled={confirmText !== data.portName}
+              style={{ borderRadius: radiusPill, height: 40 }}
             >
-              Xóa
+              Xóa cảng biển
             </Button>
           </Space>
         </div>

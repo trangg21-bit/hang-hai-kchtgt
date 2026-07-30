@@ -5,7 +5,6 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { createCangBien } from './api';
 import { TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
-import type { CreateCangBienRequest } from './types';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
@@ -32,15 +31,13 @@ export default function PortCreatePage() {
 
     setSubmitting(true);
     try {
-      const payload: CreateCangBienRequest = {
-        portCode,
+      const payload: any = {
         portName,
         province: (values.province as string) || undefined,
         area,
-        khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
-        operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: (values.approvalStatus as string) || 'CHO_PHE_DUYET',
-        bieuTuongId: (values.gisLocation as any)?.bieuTuongId || undefined,
+        action: 'submit',
+        portGroup: values.portGroup ? Number(values.portGroup) : undefined,
+        mapSymbolId: (values.gisLocation as any)?.bieuTuongId || undefined,
         loaiHinhHoc: values.loaiHinhHoc as string,
         toaDo: (values.gisLocation as any)?.toaDo,
       };
