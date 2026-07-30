@@ -1,12 +1,18 @@
 package com.hanghai.kchtg.port.dto.port;
 
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import jakarta.validation.constraints.*;
+import java.util.UUID;
+
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.util.UUID;
+import java.util.List;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Request DTO for creating a new Port.
@@ -23,7 +29,8 @@ public class CreatePortRequest {
     @Size(max = 255, message = "Tên cảng tối đa 255 ký tự")
     private String portName;
 
-    private Integer provinceId;
+    @Size(max = 100, message = "Tỉnh/thành phố tối đa 100 ký tự")
+    private String province;
 
     @DecimalMin(value = "-90", message = "Vĩ độ phải từ -90 đến 90")
     @DecimalMax(value = "90", message = "Vĩ độ phải từ -90 đến 90")
@@ -33,12 +40,11 @@ public class CreatePortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal maxVesselCapacity;
 
-    private OperationalStatus operationalStatus;
+    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
 
     private UUID orgUnitId;
 
@@ -97,6 +103,21 @@ public class CreatePortRequest {
 
     @Size(max = 2000, message = "Ghi chú tối đa 2000 ký tự")
     private String remarks;
+
+    // ── Child lists ───────────────────────────────────────────────────
+
+    private List<PortCoordinateDto> coordinateList;
+
+    private List<PortInfrastructureDto> infrastructureList;
+
+    private List<PortAttachmentDto> attachments;
+
+    /**
+     * Hành động: "draft" = lưu nháp (chỉ cần portName),
+     * "submit" = gửi phê duyệt (yêu cầu đầy đủ province, portClass, tọa độ GPS).
+     * Mặc định xử lý ở Service: "submit" nếu null hoặc rỗng.
+     */
+    private String action;
 
     @AssertTrue(message = "Vĩ độ và kinh độ phải được điền đồng thời")
     public boolean isGpsPaired() {
