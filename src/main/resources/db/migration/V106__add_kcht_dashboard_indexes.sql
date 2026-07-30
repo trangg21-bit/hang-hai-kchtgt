@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_coastal_station_inmarsat_dashboard ON coastal_sta
 -- Tables with condition_status
 CREATE INDEX IF NOT EXISTS idx_radar_station_dashboard ON radar_station (deleted_at, condition_status, approval_status);
 CREATE INDEX IF NOT EXISTS idx_vts_system_dashboard ON vts_system (deleted_at, condition_status, approval_status);
-CREATE INDEX IF NOT EXISTS idx_ship_repair_facility_dashboard ON ship_repair_facility (deleted_at, condition_status, approval_status);
+CREATE INDEX IF NOT EXISTS idx_ship_repair_facility_dashboard ON ship_repair_facility (deleted_at, approval_status);
 
 -- 2. Index for filtering spatial_id
 CREATE INDEX IF NOT EXISTS idx_ports_spatial ON ports (deleted_at, spatial_id);
