@@ -867,7 +867,7 @@ export default function WaterZoneListPage() {
           </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+              <Form.Item label="Loại đối tượng" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
                 <Select placeholder="Chọn loại đối tượng" options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },
@@ -1021,7 +1021,7 @@ export default function WaterZoneListPage() {
           </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+              <Form.Item label="Loại đối tượng" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
                 <Select placeholder="Chọn loại đối tượng" options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },

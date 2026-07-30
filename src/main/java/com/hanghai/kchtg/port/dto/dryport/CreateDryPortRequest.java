@@ -34,7 +34,6 @@ public class CreateDryPortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal teuCapacity;

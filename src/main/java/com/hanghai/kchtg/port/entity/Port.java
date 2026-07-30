@@ -3,18 +3,22 @@ package com.hanghai.kchtg.port.entity;
 import java.util.UUID;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -135,4 +139,21 @@ public class Port extends BaseEntity {
 
     @Column(name = "remarks", length = 2000)
     private String remarks;
+
+    // ── Child collections ─────────────────────────────────────────────
+
+    @OneToMany(mappedBy = "port", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<PortCoordinate> coordinates = new ArrayList<>();
+
+    @OneToMany(mappedBy = "port", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<PortInfrastructure> infrastructureList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "port", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<PortAttachment> attachments = new ArrayList<>();
 }

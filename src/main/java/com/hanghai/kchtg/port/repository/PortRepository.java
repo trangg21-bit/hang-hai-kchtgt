@@ -8,6 +8,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,6 +33,9 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
 
     long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
+    @Query("SELECT MAX(p.portCode) FROM Port p WHERE p.portCode LIKE 'CB-%' AND p.deletedAt IS NULL")
+    Optional<String> findMaxPortCode();
+
     @Query("SELECT p FROM Port p WHERE p.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId) " +
             "AND (CAST(:portCode AS string) IS NULL OR LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:portCode AS string), '%'))) " +
@@ -49,4 +53,22 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("search") String search,
             Pageable pageable);
+
+    // ── Soft-delete restore queries ──────────────────────────────────
+
+    /**
+     * Native query to find a deleted port's id and deleted_at timestamp.
+     * Bypasses @SQLRestriction("deleted_at IS NULL") on BaseEntity
+     * which prevents findById from locating soft-deleted rows.
+     */
+    @Query(value = "SELECT p.id, p.deleted_at FROM ports p WHERE p.id = :id AND p.deleted_at IS NOT NULL", nativeQuery = true)
+    Optional<Object[]> findDeletedPortById(@Param("id") UUID id);
+
+    /**
+     * JPQL bulk UPDATE to restore a soft-deleted port.
+     * @SQLRestriction does NOT apply to UPDATE statements, so this bypasses the filter.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Port p SET p.deletedAt = NULL, p.deletedBy = NULL WHERE p.id = :id AND p.deletedAt IS NOT NULL")
+    int restorePortById(@Param("id") UUID id);
 }

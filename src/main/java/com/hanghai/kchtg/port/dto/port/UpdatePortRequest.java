@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
@@ -35,7 +36,6 @@ public class UpdatePortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal maxVesselCapacity;
@@ -96,5 +96,12 @@ public class UpdatePortRequest {
 
     private String remarks;
 
+    // ── Child lists ───────────────────────────────────────────────────
+
+    private List<PortCoordinateDto> coordinateList;
+
+    private List<PortInfrastructureDto> infrastructureList;
+
+    private List<PortAttachmentDto> attachments;
 
 }

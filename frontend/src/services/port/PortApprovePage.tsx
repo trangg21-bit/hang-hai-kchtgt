@@ -53,8 +53,9 @@ export default function PortApprovePage() {
 
   const validateReason = (): boolean => {
     if (tab !== 'reject') return true;
-    if (!rejectReason || rejectReason.length < 10) {
-      setReasonError('Lý do từ chối tối thiểu 10 ký tự');
+    if (!rejectReason || rejectReason.trim().length < 10) {
+      setReasonError('Lý do từ chối phải có ít nhất 10 ký tự');
+      toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
       return false;
     }
     if (rejectReason.length > 500) {
@@ -76,10 +77,10 @@ export default function PortApprovePage() {
     try {
       if (tab === 'approve') {
         await approveCangBien(data.id);
-        toast.success('Phê duyệt thành công');
+        toast.success('Đã phê duyệt thành công');
       } else {
         await rejectCangBien(data.id, rejectReason);
-        toast.success('Từ chối thành công');
+        toast.success('Đã từ chối');
       }
       navigate(`/Port/${data.id}`);
     } catch (err: unknown) {
