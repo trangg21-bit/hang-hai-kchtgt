@@ -33,8 +33,8 @@ const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
 const MENU_PERMISSION_MAP: Record<string, string> = {
-  '/users': 'user:manage',
-  '/organizations': 'orgunit:manage',
+  '/users': 'admin:manage',
+  '/organizations': 'orgunit:read',
   '/groups': 'group:manage',
   '/roles': 'role:manage',
   '/gis/points': 'data:read',
@@ -61,7 +61,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/interconnect': 'connection:read',
   '/reports': 'report:read',
   '/settings': 'admin:manage',
-  '/logs': 'log:manage',
+  '/logs': 'admin:view',
   '/symbols': 'data:read',
 };
 

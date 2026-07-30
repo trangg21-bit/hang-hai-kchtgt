@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.port.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -99,7 +101,7 @@ public class DryPortService {
     public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId,
                                              String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, search, statusEnum, approvalEnum, pageable);

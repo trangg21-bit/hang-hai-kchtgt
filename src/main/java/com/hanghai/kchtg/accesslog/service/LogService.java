@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.accesslog.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.accesslog.dto.AccessLogFilterRequest;
 import com.hanghai.kchtg.accesslog.dto.AccessLogResponse;
 import com.hanghai.kchtg.accesslog.dto.LogAggregateResponse;
@@ -110,7 +112,7 @@ public class LogService {
                     }
 
                     Page<AccessLogResponse> pageResult = accessLogService.findAll(filter,
-                            PageRequest.of(page, pageSize, Sort.by("createdAt").descending()));
+                            PageRequest.of(page, pageSize, Sort.by(EntityFields.CREATED_AT).descending()));
 
                     for (AccessLogResponse entry : pageResult.getContent()) {
                         if (totalExported >= MAX_EXPORT_ROWS) break;

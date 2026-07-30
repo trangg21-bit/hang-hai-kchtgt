@@ -1,8 +1,8 @@
 import api from '../api';
 import type {
   PageResponse,
-  VanBanPhapLyCreateRequest,
-  VanBanPhapLyResponse,
+  LegalDocumentCreateRequest,
+  LegalDocumentResponse,
   SuCoCreateRequest,
   SuCoResponse,
   QuyHoachBenCangCreateRequest,
@@ -12,14 +12,17 @@ import type {
 // ==========================================
 // 1. Văn bản pháp lý
 // ==========================================
-export async function fetchVanBanList(params: {
+export async function fetchLegalDocumentList(params: {
   page?: number;
   size?: number;
   keyword?: string;
   issuingAuthority?: string;
   type?: string;
   status?: string;
-}): Promise<PageResponse<VanBanPhapLyResponse>> {
+  applicationArea?: string;
+  yearStart?: string;
+  yearEnd?: string;
+}): Promise<PageResponse<LegalDocumentResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
@@ -27,6 +30,9 @@ export async function fetchVanBanList(params: {
   if (params.issuingAuthority) sp.set('issuingAuthority', params.issuingAuthority);
   if (params.type) sp.set('type', params.type);
   if (params.status) sp.set('status', params.status);
+  if (params.applicationArea) sp.set('applicationArea', params.applicationArea);
+  if (params.yearStart) sp.set('yearStart', params.yearStart);
+  if (params.yearEnd) sp.set('yearEnd', params.yearEnd);
 
   const res = await api.get(`/v1/legal-documents/search?${sp}`);
   const data = res.data.data;
@@ -39,23 +45,32 @@ export async function fetchVanBanList(params: {
   };
 }
 
-export async function fetchVanBanById(id: string): Promise<VanBanPhapLyResponse> {
+export async function fetchLegalDocumentById(id: string): Promise<LegalDocumentResponse> {
   const res = await api.get(`/v1/legal-documents/${id}`);
   return res.data.data;
 }
 
-export async function createVanBan(payload: VanBanPhapLyCreateRequest): Promise<VanBanPhapLyResponse> {
+export async function createLegalDocument(payload: LegalDocumentCreateRequest): Promise<LegalDocumentResponse> {
   const res = await api.post('/v1/legal-documents', payload);
   return res.data.data;
 }
 
-export async function updateVanBan(id: string, payload: VanBanPhapLyCreateRequest): Promise<VanBanPhapLyResponse> {
+export async function updateLegalDocument(id: string, payload: LegalDocumentCreateRequest): Promise<LegalDocumentResponse> {
   const res = await api.put(`/v1/legal-documents/${id}`, payload);
   return res.data.data;
 }
 
-export async function deleteVanBan(id: string): Promise<void> {
+export async function deleteLegalDocument(id: string): Promise<void> {
   await api.delete(`/v1/legal-documents/${id}`);
+}
+
+export async function uploadLegalDocumentAttachment(id: string, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post(`/v1/legal-documents/${id}/attachments`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.data;
 }
 
 // ==========================================

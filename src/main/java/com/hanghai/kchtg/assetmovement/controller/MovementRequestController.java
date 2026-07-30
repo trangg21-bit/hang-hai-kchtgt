@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestResponse;
 import com.hanghai.kchtg.assetmovement.entity.MovementType;
@@ -52,7 +54,7 @@ public class MovementRequestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
-                Sort.by("createdAt").descending());
+                Sort.by(EntityFields.CREATED_AT).descending());
         Page<MovementRequestResponse> result;
         if (movementType != null && status != null) {
             result = movementRequestService.findByMovementTypeAndStatus(movementType, status, pageable);

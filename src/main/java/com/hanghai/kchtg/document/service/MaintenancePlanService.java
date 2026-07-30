@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.document.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.MaintenancePlanRepository;
@@ -54,13 +56,13 @@ public class MaintenancePlanService {
 
     @Transactional(readOnly = true)
     public List<MaintenancePlanResponse> findAll() {
-        return maintenancePlanRepository.findAll(Sort.by(Sort.Direction.DESC, "createdDate"))
+        return maintenancePlanRepository.findAll(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<MaintenancePlanResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return maintenancePlanRepository.findAll(pageable).map(this::toResponse);
     }
 

@@ -118,11 +118,11 @@ export default function GroupList() {
   const rowActions = useCallback((record: Group) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean }[] = [];
     actions.push({ key: 'members', label: 'Thành viên', icon: <UserOutlined />, onClick: () => navigate(`/groups/${record.id}/members`) });
-    if (hasPerm('group.edit')) {
+    if (hasPerm('group:edit')) {
       actions.push({ key: 'permissions', label: 'Phân quyền', icon: <EditOutlined />, onClick: () => toast.info('Tính năng phân quyền nhóm đang được phát triển') });
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
     }
-    if (hasPerm('group.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    if (hasPerm('group:delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return actions;
   }, [hasPerm, navigate, openEditModal, handleDelete]);
 
@@ -171,7 +171,7 @@ export default function GroupList() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('group.create')) actions.push({ key: 'create', label: 'Thêm nhóm', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    if (hasPerm('group:create')) actions.push({ key: 'create', label: 'Thêm nhóm', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
     return actions;
   }, [hasPerm, openCreateModal]);
 

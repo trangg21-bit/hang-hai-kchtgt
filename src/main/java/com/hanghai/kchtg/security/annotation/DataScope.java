@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.security.annotation;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.security.DataScopeAspect;
 
 import java.lang.annotation.ElementType;
@@ -26,5 +27,5 @@ public @interface DataScope {
     /**
      * The entity field name representing the record owner (default: "createdBy").
      */
-    String ownerField() default "createdBy";
+    String ownerField() default EntityFields.CREATED_BY;
 }

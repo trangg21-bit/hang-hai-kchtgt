@@ -182,10 +182,10 @@ export default function UnitList() {
   const getActions = (record: Organization) => {
     const items: any[] = [];
     items.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => openViewModal(record) });
-    if (hasPerm('org.edit')) items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
-    if (hasPerm('org.edit') && (record.status === 'draft' || record.status === 'rejected')) items.push({ key: 'submit', label: 'Trình duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
-    if (hasPerm('org.approve') && record.status === 'pending') { items.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) }); items.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true }); }
-    if (hasPerm('org.delete')) items.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    if (hasPerm('orgunit:manage')) items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm('orgunit:manage') && (record.status === 'draft' || record.status === 'rejected')) items.push({ key: 'submit', label: 'Trình duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
+    if (hasPerm('orgunit:approve') && record.status === 'pending') { items.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) }); items.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true }); }
+    if (hasPerm('orgunit:manage')) items.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return items;
   };
 
@@ -253,7 +253,7 @@ export default function UnitList() {
   ], []);
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('org.create')) actions.push({ key: 'create', label: 'Thêm đơn vị', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    if (hasPerm('orgunit:manage')) actions.push({ key: 'create', label: 'Thêm đơn vị', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
     actions.push({ key: 'export', label: '', variant: 'subtle' as const, icon: <FileExcelOutlined style={{ color: statusOperational }} />, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => {} });
     return actions;
   }, [hasPerm, openCreateModal]);

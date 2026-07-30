@@ -12,28 +12,34 @@ import {
   Popconfirm,
   Tooltip,
   Select,
-  Row,
-  Col,
+  Upload,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   ReloadOutlined,
+  InboxOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import {
-  fetchVanBanList,
-  createVanBan,
-  updateVanBan,
-  deleteVanBan,
+  fetchLegalDocumentList,
+  createLegalDocument,
+  updateLegalDocument,
+  deleteLegalDocument,
+  uploadLegalDocumentAttachment,
 } from '../../services/document/api';
-import type { VanBanPhapLyResponse, VanBanPhapLyCreateRequest } from '../../services/document/types';
+import type { LegalDocumentResponse, LegalDocumentCreateRequest } from '../../services/document/types';
 import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg } from '../../tokens';
+import { fontWeightBold, fontSizeLg, spaceMd, spaceFormField, radiusPill } from '../../tokens';
 import dayjs from 'dayjs';
+import { usePermissionStore } from '../../store/permissionStore';
+
+const { Dragger } = Upload;
 
 export default function LegalDocumentList() {
-  const [dataSource, setDataSource] = useState<VanBanPhapLyResponse[]>([]);
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const [dataSource, setDataSource] = useState<LegalDocumentResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -44,22 +50,36 @@ export default function LegalDocumentList() {
   const [filterCoQuan, setFilterCoQuan] = useState('');
   const [filterLoai, setFilterLoai] = useState<string | undefined>(undefined);
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+  const [filterApplicationArea, setFilterApplicationArea] = useState('');
+  const [filterIssueDateStart, setFilterIssueDateStart] = useState<string | null>(null);
+  const [filterIssueDateEnd, setFilterIssueDateEnd] = useState<string | null>(null);
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<VanBanPhapLyResponse | null>(null);
+  const [editingItem, setEditingItem] = useState<LegalDocumentResponse | null>(null);
   const [form] = Form.useForm();
+
+  const attachedFileList = (editingItem?.attachedDocuments || []).map((doc) => ({
+    uid: doc.id,
+    name: doc.documentName,
+    status: 'done' as const,
+    url: doc.filePath,
+    size: doc.fileSize,
+  }));
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchVanBanList({
+      const res = await fetchLegalDocumentList({
         page: page - 1,
         size: pageSize,
         keyword: filterKeyword ? filterKeyword.trim() : undefined,
         issuingAuthority: filterCoQuan ? filterCoQuan.trim() : undefined,
         type: filterLoai || undefined,
         status: filterStatus || undefined,
+        applicationArea: filterApplicationArea || undefined,
+        yearStart: filterIssueDateStart || undefined,
+        yearEnd: filterIssueDateEnd || undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -68,25 +88,27 @@ export default function LegalDocumentList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filterKeyword, filterCoQuan, filterLoai, filterStatus]);
+  }, [page, pageSize, filterKeyword, filterCoQuan, filterLoai, filterStatus, filterApplicationArea, filterIssueDateStart, filterIssueDateEnd]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handleOpenModal = (record?: VanBanPhapLyResponse) => {
+  const handleOpenModal = (record?: LegalDocumentResponse) => {
     if (record) {
       setEditingItem(record);
       form.setFieldsValue({
-        soHieu: record.soHieu,
-        tenVanBan: record.tenVanBan,
-        loaiVanBan: record.loaiVanBan,
-        nguoiKy: record.nguoiKy,
-        ngayBanHanh: record.ngayBanHanh ? dayjs(record.ngayBanHanh) : null,
-        ngayCoHieuLuc: record.ngayCoHieuLuc ? dayjs(record.ngayCoHieuLuc) : null,
-        coQuanBanHanh: record.coQuanBanHanh,
-        tinhTrangHieuLuc: record.tinhTrangHieuLuc,
-        moTa: record.moTa,
+        documentNumber: record.documentNumber,
+        documentName: record.documentName,
+        documentType: record.documentType,
+        signer: record.signer,
+        issueDate: record.issueDate ? dayjs(record.issueDate) : null,
+        effectiveDate: record.effectiveDate ? dayjs(record.effectiveDate) : null,
+        expirationDate: record.expirationDate ? dayjs(record.expirationDate) : null,
+        issuingAuthority: record.issuingAuthority,
+        validityStatus: record.validityStatus,
+        applicationArea: record.applicationArea,
+        description: record.description,
       });
     } else {
       setEditingItem(null);
@@ -103,17 +125,18 @@ export default function LegalDocumentList() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const payload: VanBanPhapLyCreateRequest = {
+      const payload: LegalDocumentCreateRequest = {
         ...values,
-        ngayBanHanh: values.ngayBanHanh ? values.ngayBanHanh.toISOString() : '',
-        ngayCoHieuLuc: values.ngayCoHieuLuc ? values.ngayCoHieuLuc.toISOString() : '',
+        issueDate: values.issueDate ? values.issueDate.toISOString() : '',
+        effectiveDate: values.effectiveDate ? values.effectiveDate.toISOString() : '',
+        expirationDate: values.expirationDate ? values.expirationDate.toISOString() : undefined,
       };
 
       if (editingItem) {
-        await updateVanBan(editingItem.id, payload);
+        await updateLegalDocument(editingItem.id, payload);
         message.success('Cập nhật văn bản pháp lý thành công!');
       } else {
-        await createVanBan(payload);
+        await createLegalDocument(payload);
         message.success('Tạo văn bản pháp lý thành công!');
       }
 
@@ -127,7 +150,7 @@ export default function LegalDocumentList() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteVanBan(id);
+      await deleteLegalDocument(id);
       message.success('Xóa văn bản pháp lý thành công!');
       loadData();
     } catch (err: any) {
@@ -135,21 +158,42 @@ export default function LegalDocumentList() {
     }
   };
 
+  const handleExportPdf = async (id: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const resp = await fetch(`/api/v1/legal-documents/${id}/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!resp.ok) throw new Error('Tải PDF thất bại');
+      const blob = await resp.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi tải PDF');
+    }
+  };
+
   const columns = [
     {
       title: 'Số hiệu văn bản',
-      dataIndex: 'soHieu',
-      key: 'soHieu',
+      dataIndex: 'documentNumber',
+      key: 'documentNumber',
     },
     {
       title: 'Tên văn bản pháp lý',
-      dataIndex: 'tenVanBan',
-      key: 'tenVanBan',
+      dataIndex: 'documentName',
+      key: 'documentName',
     },
     {
       title: 'Loại văn bản',
-      dataIndex: 'loaiVanBan',
-      key: 'loaiVanBan',
+      dataIndex: 'documentType',
+      key: 'documentType',
       render: (val: string) => {
         if (val === 'DECISION') return 'Quyết định';
         if (val === 'CIRCULAR') return 'Thông tư';
@@ -160,18 +204,18 @@ export default function LegalDocumentList() {
     },
     {
       title: 'Cơ quan ban hành',
-      dataIndex: 'coQuanBanHanh',
-      key: 'coQuanBanHanh',
+      dataIndex: 'issuingAuthority',
+      key: 'issuingAuthority',
     },
     {
       title: 'Người ký',
-      dataIndex: 'nguoiKy',
-      key: 'nguoiKy',
+      dataIndex: 'signer',
+      key: 'signer',
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'tinhTrangHieuLuc',
-      key: 'tinhTrangHieuLuc',
+      dataIndex: 'validityStatus',
+      key: 'validityStatus',
       render: (val: string) => {
         if (val === 'EFFECTIVE') return 'Còn hiệu lực';
         if (val === 'EXPIRING_SOON') return 'Sắp hết hiệu lực';
@@ -182,25 +226,30 @@ export default function LegalDocumentList() {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: any, record: VanBanPhapLyResponse) => (
+      render: (_: any, record: LegalDocumentResponse) => (
         <Space size="middle">
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenModal(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Bạn có chắc chắn muốn xóa văn bản này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
-          >
-            <Tooltip title="Xóa">
-              <Button type="text" danger icon={<DeleteOutlined />} />
+          {hasPerm('document:read') && (
+            <Tooltip title="Xuất PDF">
+              <Button type="text" icon={<DownloadOutlined />} onClick={() => handleExportPdf(record.id)} />
             </Tooltip>
-          </Popconfirm>
+          )}
+          {hasPerm('document:update') && (
+            <Tooltip title="Chỉnh sửa">
+              <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenModal(record)} />
+            </Tooltip>
+          )}
+          {hasPerm('document:delete') && (
+            <Popconfirm
+              title="Bạn có chắc chắn muốn xóa văn bản này?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Có"
+              cancelText="Không"
+            >
+              <Tooltip title="Xóa">
+                <Button type="text" danger icon={<DeleteOutlined />} />
+              </Tooltip>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -212,13 +261,9 @@ export default function LegalDocumentList() {
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-          >
-            Tạo văn bản
-          </Button>
+          {hasPerm('document:create') && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>Tạo văn bản</Button>
+          )}
         </Space>
       }
     >
@@ -273,12 +318,44 @@ export default function LegalDocumentList() {
               { label: 'Đã hết hiệu lực', value: 'EXPIRED' },
             ]}
           />
+          <Input
+            placeholder="Phạm vi áp dụng..."
+            value={filterApplicationArea}
+            onChange={(e) => {
+              setFilterApplicationArea(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 150 }}
+          />
+          <Input
+            placeholder="Ngày ban hành từ..."
+            value={filterIssueDateStart || ''}
+            onChange={(e) => {
+              setFilterIssueDateStart(e.target.value);
+              setPage(1);
+            }}
+            type="date"
+            style={{ width: 150 }}
+          />
+          <Input
+            placeholder="Ngày ban hành đến..."
+            value={filterIssueDateEnd || ''}
+            onChange={(e) => {
+              setFilterIssueDateEnd(e.target.value);
+              setPage(1);
+            }}
+            type="date"
+            style={{ width: 150 }}
+          />
           <Button
             onClick={() => {
               setFilterKeyword('');
               setFilterCoQuan('');
               setFilterLoai(undefined);
               setFilterStatus(undefined);
+              setFilterApplicationArea('');
+              setFilterIssueDateStart(null);
+              setFilterIssueDateEnd(null);
               setPage(1);
             }}
           >
@@ -314,7 +391,7 @@ export default function LegalDocumentList() {
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
-            name="soHieu"
+            name="documentNumber"
             label="Số hiệu văn bản"
             rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
           >
@@ -322,7 +399,7 @@ export default function LegalDocumentList() {
           </Form.Item>
 
           <Form.Item
-            name="tenVanBan"
+            name="documentName"
             label="Tên văn bản"
             rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
           >
@@ -330,7 +407,7 @@ export default function LegalDocumentList() {
           </Form.Item>
 
           <Form.Item
-            name="loaiVanBan"
+            name="documentType"
             label="Loại văn bản"
             rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
           >
@@ -343,7 +420,7 @@ export default function LegalDocumentList() {
           </Form.Item>
 
           <Form.Item
-            name="coQuanBanHanh"
+            name="issuingAuthority"
             label="Cơ quan ban hành"
             rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
           >
@@ -351,22 +428,30 @@ export default function LegalDocumentList() {
           </Form.Item>
 
           <Form.Item
-            name="nguoiKy"
+            name="signer"
             label="Người ký"
             rules={[{ required: true, message: 'Vui lòng nhập người ký' }]}
           >
             <Input placeholder="Nhập họ và tên người ký..." />
           </Form.Item>
 
-          <Form.Item name="ngayBanHanh" label="Ngày ban hành">
+          <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item name="ngayCoHieuLuc" label="Ngày có hiệu lực">
+          <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item name="tinhTrangHieuLuc" label="Trạng thái hiệu lực" initialValue="EFFECTIVE">
+          <Form.Item name="expirationDate" label="Ngày hết hiệu lực">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="applicationArea" label="Phạm vi áp dụng">
+            <Input placeholder="Nhập phạm vi áp dụng..." />
+          </Form.Item>
+
+          <Form.Item name="validityStatus" label="Trạng thái hiệu lực" initialValue="EFFECTIVE">
             <Select placeholder="Chọn trạng thái hiệu lực...">
               <Select.Option value="EFFECTIVE">Còn hiệu lực</Select.Option>
               <Select.Option value="EXPIRING_SOON">Sắp hết hiệu lực</Select.Option>
@@ -374,8 +459,40 @@ export default function LegalDocumentList() {
             </Select>
           </Form.Item>
 
-          <Form.Item name="moTa" label="Mô tả tóm tắt nội dung">
+          <Form.Item name="description" label="Mô tả tóm tắt nội dung">
             <Input.TextArea placeholder="Tóm tắt nội dung văn bản..." rows={3} />
+          </Form.Item>
+
+          <Form.Item label="Tệp đính kèm">
+            <Dragger
+              name="file"
+              multiple
+              maxCount={5}
+              accept=".pdf,.doc,.docx,.xls,.xlsx"
+              fileList={attachedFileList}
+              showUploadList={{ showPreviewIcon: true, showRemoveIcon: false, showDownloadIcon: true }}
+              customRequest={async (options) => {
+                const { file, onSuccess, onError } = options as any;
+                if (!editingItem?.id) {
+                  onError?.(new Error('Vui lòng lưu văn bản trước khi tải tệp đính kèm'));
+                  return;
+                }
+                try {
+                  const result = await uploadLegalDocumentAttachment(editingItem.id, file as File);
+                  onSuccess?.(result, file);
+                  message.success(`Đã tải lên: ${(file as File).name}`);
+                } catch (err: any) {
+                  onError?.(err);
+                  message.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`);
+                }
+              }}
+            >
+              <p className="ant-upload-drag-icon">
+                <InboxOutlined />
+              </p>
+              <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây để tải lên</p>
+              <p className="ant-upload-hint">Hỗ trợ PDF, Word, Excel. Tối đa 5 tệp.</p>
+            </Dragger>
           </Form.Item>
         </Form>
       </Modal>

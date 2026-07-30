@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.ProcessingType;
@@ -51,7 +53,7 @@ public class AssetProcessingRecordController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
-                Sort.by("createdAt").descending());
+                Sort.by(EntityFields.CREATED_AT).descending());
         Page<AssetProcessingRecordResponse> result;
         if (assetId != null && processingType != null) {
             result = assetProcessingRecordService.findByAssetIdAndProcessingType(assetId, processingType, pageable);

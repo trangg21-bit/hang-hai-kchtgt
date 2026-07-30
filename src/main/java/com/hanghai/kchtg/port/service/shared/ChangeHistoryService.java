@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.port.service.shared;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -95,12 +97,12 @@ public class ChangeHistoryService {
 
     private boolean isSkippedField(java.lang.reflect.Field field) {
         String name = field.getName();
-        return name.equals("id")
-                || name.equals("createdAt")
-                || name.equals("updatedAt")
-                || name.equals("deletedAt")
-                || name.equals("createdBy")
-                || name.equals("updatedBy");
+        return name.equals(EntityFields.ID)
+                || name.equals(EntityFields.CREATED_AT)
+                || name.equals(EntityFields.UPDATED_AT)
+                || name.equals(EntityFields.DELETED_AT)
+                || name.equals(EntityFields.CREATED_BY)
+                || name.equals(EntityFields.UPDATED_BY);
     }
 
     private boolean valuesEqual(Object a, Object b) {

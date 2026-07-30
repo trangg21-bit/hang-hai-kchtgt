@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -110,13 +112,13 @@ public class NavigationChannelService {
 
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> findAll() {
-        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<NavigationChannelResponse> findAll(int page, int size) {
-        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
+        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
                 .map(this::toResponse);
     }
 
@@ -130,9 +132,9 @@ public class NavigationChannelService {
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, approvalStatus,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
-            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         }
         return results.map(this::toResponse);
     }
@@ -369,7 +371,7 @@ public class NavigationChannelService {
             }
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, keywordLike, status, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, keywordLike, status, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

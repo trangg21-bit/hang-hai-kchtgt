@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+import com.hanghai.kchtg.common.entity.BaseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,14 +22,11 @@ import java.util.UUID;
 @Entity
 @Table(name = "legal_documents")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class LegalDocument {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private UUID id;
+@SuperBuilder
+public class LegalDocument extends BaseEntity {
 
     @Column(name = "document_name", nullable = false, length = 200)
     private String documentName;
@@ -63,29 +63,12 @@ public class LegalDocument {
     @Column(name = "description", length = 500)
     private String description;
 
-    @Column(name = "created_by", length = 100)
-    private UUID createdBy;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdDate;
-
-    @Column(name = "updated_by", length = 100)
-    private UUID updatedBy;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedDate;
-
     @OneToMany(mappedBy = "legalDocument", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<AttachedDocument> attachedDocuments = new ArrayList<>();
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdDate = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedDate = LocalDateTime.now();
+    public void softDelete(UUID operatorId) {
+        super.softDelete(operatorId);
+        this.validityStatus = ValidityStatus.EXPIRED;
     }
 }

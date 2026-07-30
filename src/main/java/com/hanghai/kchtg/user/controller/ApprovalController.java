@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ApprovalDecisionRequest;
 import com.hanghai.kchtg.user.dto.PendingApprovalResponse;
@@ -48,7 +50,7 @@ public class ApprovalController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         int actualSize = Math.min(Math.max(size, 1), 100);
-        Pageable pageable = PageRequest.of(page, actualSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, actualSize, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         Page<PendingApprovalResponse> result = approvalService.listPending(pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
