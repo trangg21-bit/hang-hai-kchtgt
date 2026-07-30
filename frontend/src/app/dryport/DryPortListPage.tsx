@@ -761,7 +761,7 @@ export default function DryPortListPage() {
 
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Loại đối tượng" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+              <Form.Item label="Loại đối tượng *" name="geometryType" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
                 <Select placeholder="Chọn loại đối tượng" options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },
@@ -784,8 +784,9 @@ export default function DryPortListPage() {
           <Row gutter={24}>
             <Col span={12}>
               <Form.Item
-                label="Diện tích (m²)"
+                label="Diện tích (m²) *"
                 name="area"
+                rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}
               >
                 <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 10000.00" style={{ width: '100%' }} />
               </Form.Item>
@@ -869,7 +870,7 @@ export default function DryPortListPage() {
 
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Loại đối tượng" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+              <Form.Item label="Loại đối tượng *" name="geometryType" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
                 <Select placeholder="Chọn loại đối tượng" options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },
@@ -894,6 +895,7 @@ export default function DryPortListPage() {
               <Form.Item
                 label="Diện tích (m²)"
                 name="area"
+                rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}
               >
                 <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 10000.00" style={{ width: '100%' }} />
               </Form.Item>
