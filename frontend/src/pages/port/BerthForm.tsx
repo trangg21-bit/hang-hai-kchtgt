@@ -1,368 +1,404 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Row, Col, message, Tag } from 'antd';
-import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router-dom';
-import { berthCRUD, berthApproval, portCRUD } from '../../services/portService';
-import type { CreateBenCangRequest, UpdateBenCangRequest } from '../../types/port';
-import { BECBANG_STATUS_MAP, type CangBenStatus } from '../../types/port';
-import FormField from '../../components/FormField';
-import { radiusPill, fontSizeMd, borderDefault, textSecondary, actionPrimary } from '../../tokens';
-import toast from '../../components/ToastNotification';
+// ── BerthForm Modal Component ──────────────────────────────────────────
+// Modal-based Create/Edit form for Berth (Bến cảng).
 
-export default function BerthForm() {
-  const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const isEdit = !!id;
+import { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  Modal, Form, Input, InputNumber, Select, DatePicker, Card, Row, Col, Button, Space,
+} from 'antd';
+import { berthCRUD, portCRUD } from '../../services/portService';
+import { organizationService } from '../../services/organizationService';
+import toast from '../../components/ToastNotification';
+import {
+  spaceFormField, spaceMd, spaceLg,
+  radiusPill, textSecondary, borderDefault,
+} from '../../tokens';
+import dayjs from 'dayjs';
+
+const LOAI_BEN_OPTIONS = [
+  { label: 'Bến Container', value: 'BEN_CONTAINER' },
+  { label: 'Bến tổng hợp', value: 'BEN_TONG_HOP' },
+  { label: 'Bến chuyên dụng', value: 'BEN_CHUYEN_DUNG' },
+  { label: 'Bến hành khách', value: 'BEN_HANH_KHACH' },
+  { label: 'Bến phao', value: 'BEN_PHAO' },
+  { label: 'Bến thủy nội địa', value: 'BEN_THUY_NOI_DIA' },
+];
+
+export interface BerthFormModalProps {
+  open: boolean;
+  record?: { id: string } | null;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export default function BerthFormModal({ open, record, onClose, onSuccess }: BerthFormModalProps) {
+  const isEdit = !!record?.id;
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [entityData, setEntityData] = useState<{ status: CangBenStatus } | null>(null);
-  const [rejectLoading, setRejectLoading] = useState(false);
-  const [cangBienOptions, setCangBienOptions] = useState<{ value: string; label: string }[]>([]);
+  const actionRef = useRef<'draft' | 'submit'>('draft');
+  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!open) return;
     (async () => {
       try {
-        const res = await portCRUD.search({ page: 1, pageSize: 1000 });
-        setCangBienOptions((res.data || []).map((cb: any) => ({ value: cb.id, label: cb.portName })));
+        const [portRes, orgResp] = await Promise.all([
+          portCRUD.search({ page: 1, pageSize: 1000 }),
+          organizationService.list(),
+        ]);
+        setPortOptions((portRes.data || []).map((p: any) => ({ value: p.id, label: p.portName || '' })));
+        setOrgUnits(orgResp.data || []);
       } catch { /* ignore */ }
     })();
-  }, []);
+  }, [open]);
 
   useEffect(() => {
-    if (isEdit) {
+    if (!open) return;
+    form.resetFields();
+
+    if (isEdit && record?.id) {
       (async () => {
         try {
-          const data = await berthCRUD.findById(id!);
-          setEntityData({ status: data.approvalStatus as CangBenStatus });
+          const data = await berthCRUD.findById(record.id);
           form.setFieldsValue({
             berthCode: data.berthCode,
             berthName: data.berthName,
             portId: data.portId,
-            tuyenDuongThuy: data.tuyenDuongThuy,
-            latitude: data.latitude,
-            longitude: data.longitude,
+            waterway: data.waterway || data.tuyenDuongThuy,
             length: data.length,
             width: data.width,
             berthType: data.berthType,
-            doSauLuong: data.doSauLuong,
-            operationalStatus: data.operationalStatus,
+            channelDepth: data.channelDepth || data.doSauLuong,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            orgUnitId: data.orgUnitId,
+            operator: data.operator || data.donViKhaiThac,
+            location: data.location,
+            detailedLocation: data.detailedLocation || data.diaDiemChiTiet,
+            totalArea: data.totalArea || data.tongDienTich,
+            designThroughput: data.designThroughput || data.nangLucThongQuaThietKe,
+            currentThroughput: data.currentThroughput || data.nangLucThongQuaHienTrang,
+            maxVesselSize: data.maxVesselSize || data.coTauTiepNhanLonNhat,
+            plannedThroughput: data.plannedThroughput || data.quyHoachNangLucThongQua,
+            latestCargoVolume: data.latestCargoVolume || data.sanLuongHangHoaNamGanNhat,
+            openingAnnouncementDate: data.openingAnnouncementDate
+              ? dayjs(data.openingAnnouncementDate)
+              : data.thoiDiemCongBoMo
+                ? dayjs(data.thoiDiemCongBoMo)
+                : undefined,
+            openingDecision: data.openingDecision || data.quyetDinhCongBo,
+            investmentAgreement: data.investmentAgreement || data.vanBanThoaThuanDauTu,
+            structureType: data.structureType,
           });
         } catch {
           toast.error('Không thể tải thông tin bến cảng');
-          navigate('/Berth');
         }
       })();
+    } else {
+      (async () => {
+        try {
+          const code = await berthCRUD.generateCode();
+          form.setFieldsValue({ berthCode: code });
+        } catch { /* user can type manually */ }
+      })();
     }
-  }, [isEdit, id, form, navigate]);
+  }, [open, isEdit, record, form]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleFinish = useCallback(async (values: any) => {
+    setSubmitting(true);
     try {
-      const values = await form.validateFields();
-
-      // GPS pair constraint: both or neither
-      const hasViDo = values.latitude !== undefined && values.latitude !== null && values.latitude !== '';
-      const hasKinhDo = values.longitude !== undefined && values.longitude !== null && values.longitude !== '';
-      if (hasViDo !== hasKinhDo) {
-        message.error('Vui lòng nhập cả Vĩ độ và Kinh độ hoặc bỏ qua cả hai');
-        return;
-      }
-
-      setSubmitting(true);
+      const payload: Record<string, any> = isEdit
+        ? {
+            id: record!.id,
+            berthName: values.berthName || undefined,
+            portId: values.portId || undefined,
+            waterway: values.waterway || undefined,
+            length: values.length ?? undefined,
+            width: values.width ?? undefined,
+            berthType: values.berthType || undefined,
+            channelDepth: values.channelDepth ?? undefined,
+            latitude: values.latitude ?? undefined,
+            longitude: values.longitude ?? undefined,
+            orgUnitId: values.orgUnitId || undefined,
+            operator: values.operator || undefined,
+            location: values.location || undefined,
+            detailedLocation: values.detailedLocation || undefined,
+            totalArea: values.totalArea ?? undefined,
+            designThroughput: values.designThroughput ?? undefined,
+            currentThroughput: values.currentThroughput ?? undefined,
+            maxVesselSize: values.maxVesselSize ?? undefined,
+            plannedThroughput: values.plannedThroughput ?? undefined,
+            latestCargoVolume: values.latestCargoVolume ?? undefined,
+            openingAnnouncementDate: values.openingAnnouncementDate
+              ? dayjs(values.openingAnnouncementDate).toISOString()
+              : undefined,
+            openingDecision: values.openingDecision || undefined,
+            investmentAgreement: values.investmentAgreement || undefined,
+            structureType: values.structureType ?? undefined,
+          }
+        : {
+            action: actionRef.current,
+            berthCode: values.berthCode,
+            berthName: values.berthName,
+            portId: values.portId,
+            waterway: values.waterway || undefined,
+            length: values.length ?? undefined,
+            width: values.width ?? undefined,
+            berthType: values.berthType || undefined,
+            channelDepth: values.channelDepth ?? undefined,
+            latitude: values.latitude ?? undefined,
+            longitude: values.longitude ?? undefined,
+            orgUnitId: values.orgUnitId || undefined,
+            operator: values.operator || undefined,
+            location: values.location || undefined,
+            detailedLocation: values.detailedLocation || undefined,
+            totalArea: values.totalArea ?? undefined,
+            designThroughput: values.designThroughput ?? undefined,
+            currentThroughput: values.currentThroughput ?? undefined,
+            maxVesselSize: values.maxVesselSize ?? undefined,
+            plannedThroughput: values.plannedThroughput ?? undefined,
+            latestCargoVolume: values.latestCargoVolume ?? undefined,
+            openingAnnouncementDate: values.openingAnnouncementDate
+              ? dayjs(values.openingAnnouncementDate).toISOString()
+              : undefined,
+            openingDecision: values.openingDecision || undefined,
+            investmentAgreement: values.investmentAgreement || undefined,
+            structureType: values.structureType ?? undefined,
+          };
 
       if (isEdit) {
-        const payload: UpdateBenCangRequest & { id: string } = {
-          ...values,
-          id: id!,
-        };
-        await berthCRUD.update(payload);
-        toast.success('Đã cập nhật bến cảng');
+        await berthCRUD.update(payload as any);
+        toast.success('Cập nhật bến cảng thành công');
       } else {
-        const payload: CreateBenCangRequest = {
-          berthCode: values.berthCode,
-          berthName: values.berthName,
-          portId: values.portId,
-          tuyenDuongThuy: values.tuyenDuongThuy,
-          latitude: values.latitude,
-          longitude: values.longitude,
-          length: values.length,
-          width: values.width,
-          berthType: values.berthType,
-          doSauLuong: values.doSauLuong,
-          operationalStatus: values.operationalStatus,
-          approvalStatus: 'DRAFT',
-          orgUnitId: '',
-        };
-        await berthCRUD.create(payload);
-        toast.success('Đã tạo bến cảng');
+        await berthCRUD.create(payload as any);
+        toast.success('Tạo mới bến cảng thành công');
       }
-
-      navigate('/Berth');
-    } catch {
-      // validation errors or API errors (handled globally by Axios interceptor in api.ts)
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra');
     } finally {
       setSubmitting(false);
     }
-  }, [isEdit, id, form, navigate]);
-
-  const handleDelete = useCallback(async () => {
-    if (!id) return;
-    const confirmed = window.confirm('Bạn có chắc muốn xóa bến cảng này?');
-    if (!confirmed) return;
-    try {
-      await berthCRUD.delete(id);
-      toast.success('Đã xóa bến cảng');
-      navigate('/Berth');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
-    }
-  }, [id, navigate]);
-
-  const handleSubmitApproval = useCallback(async () => {
-    if (!id) return;
-    try {
-      await berthApproval.approve(id);
-      toast.success('Đã gửi duyệt bến cảng');
-      navigate('/Berth');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
-    }
-  }, [id, navigate]);
-
-  const handleApproveL1 = useCallback(async () => {
-    if (!id) return;
-    try {
-      await berthApproval.approve(id);
-      toast.success('Đã phê duyệt cấp 1');
-      navigate('/Berth');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-    }
-  }, [id, navigate]);
-
-  const handleApproveL2 = useCallback(async () => {
-    if (!id) return;
-    try {
-      await berthApproval.approve(id);
-      toast.success('Đã phê duyệt cấp 2');
-      navigate('/Berth');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-    }
-  }, [id, navigate]);
-
-  const handleReject = useCallback(async () => {
-    if (!id) return;
-    const reason = window.prompt('Lý do từ chối:', '');
-    if (reason === null) return;
-    try {
-      setRejectLoading(true);
-      await berthApproval.reject(id, reason);
-      toast.success('Đã từ chối');
-      navigate('/Berth');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
-    } finally {
-      setRejectLoading(false);
-    }
-  }, [id, navigate]);
+  }, [isEdit, record, onSuccess, onClose]);
 
   return (
-    <>
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/Berth')}>
-            Quay lại
-          </Button>
-          <Typography.Title level={5} style={{ margin: 0 }}>
-            {isEdit ? 'Chỉnh sửa bến cảng' : 'Thêm bến cảng mới'}
-          </Typography.Title>
-        </Space>
-      </Card>
+    <Modal
+      title={isEdit ? 'Chỉnh sửa bến cảng' : 'Tạo mới bến cảng'}
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={800}
+      forceRender
+    >
+      <Form form={form} layout="vertical" onFinish={handleFinish} style={{ marginTop: 8 }}>
+        {/* 1. Thông tin chung */}
+        <Card title="1. Thông tin chung" size="small" style={{ marginBottom: spaceMd }}>
+          <Row gutter={spaceLg}>
+            <Col span={12}>
+              <Form.Item label="Mã bến" name="berthCode" style={{ marginBottom: spaceFormField }}
+                rules={[{ required: true, message: 'Mã bến không được để trống' }]}>
+                <Input disabled={isEdit} placeholder="Tự động sinh" style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Tên bến" name="berthName" style={{ marginBottom: spaceFormField }}
+                rules={[{ required: true, message: 'Tên bến không được để trống' }]}>
+                <Input placeholder="VD: Bến cảng Hải Phòng" style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={spaceLg}>
+            <Col span={12}>
+              <Form.Item label="Cảng mẹ" name="portId" style={{ marginBottom: spaceFormField }}
+                rules={[{ required: true, message: 'Vui lòng chọn cảng mẹ' }]}>
+                <Select showSearch placeholder="Chọn cảng biển chủ" options={portOptions}
+                  style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Tuyến đường thủy" name="waterway" style={{ marginBottom: spaceFormField }}>
+                <Input placeholder="VD: Tuyến sông Bạch Đằng" style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={spaceLg}>
+            <Col span={12}>
+              <Form.Item label="Loại bến" name="berthType" style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Chọn loại bến" options={LOAI_BEN_OPTIONS}
+                  style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Loại kết cấu" name="structureType" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={1} precision={0} placeholder="VD: 1"
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
 
-      {/* Approval status tag for edit mode */}
-      {isEdit && entityData && (
-        <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16, padding: '12px 24px' }}>
+        {/* 2. Kỹ thuật */}
+        <Card title="2. Kỹ thuật" size="small" style={{ marginBottom: spaceMd }}>
+          <Row gutter={spaceLg}>
+            <Col span={8}>
+              <Form.Item label="Chiều dài (m)" name="length" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 200"
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Chiều rộng (m)" name="width" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 30"
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Độ sâu luồng (m)" name="channelDepth" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 12.5"
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* 3. Tọa độ */}
+        <Card title="3. Tọa độ" size="small" style={{ marginBottom: spaceMd }}>
+          <Row gutter={spaceLg}>
+            <Col span={12}>
+              <Form.Item label="Vĩ độ" name="latitude" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={-90} max={90} step={0.000001} placeholder="VD: 20.866070"
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Kinh độ" name="longitude" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={-180} max={180} step={0.000001} placeholder="VD: 106.688810"
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* 4. Đơn vị khai thác */}
+        <Card title="4. Đơn vị khai thác" size="small" style={{ marginBottom: spaceMd }}>
+          <Row gutter={spaceLg}>
+            <Col span={12}>
+              <Form.Item label="Đơn vị khai thác" name="operator" style={{ marginBottom: spaceFormField }}>
+                <Input placeholder="VD: Công ty CP Cảng Hải Phòng"
+                  style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Đơn vị quản lý" name="orgUnitId" style={{ marginBottom: spaceFormField }}>
+                <Select allowClear showSearch placeholder="Chọn đơn vị quản lý"
+                  optionFilterProp="label"
+                  options={orgUnits.map(o => ({ label: o.name, value: o.id }))}
+                  style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* 5. Năng lực */}
+        <Card title="5. Năng lực" size="small" style={{ marginBottom: spaceMd }}>
+          <Row gutter={spaceLg}>
+            <Col span={8}>
+              <Form.Item label="Tổng diện tích (ha)" name="totalArea" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.0001} precision={4}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="NL thông qua (TK)" name="designThroughput" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.0001} precision={4}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="NL thông qua (HT)" name="currentThroughput" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.0001} precision={4}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={spaceLg}>
+            <Col span={8}>
+              <Form.Item label="Cỡ tàu lớn nhất (DWT)" name="maxVesselSize" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.0001} precision={4}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Quy hoạch NL" name="plannedThroughput" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.0001} precision={4}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="SL hàng hóa (gần nhất)" name="latestCargoVolume" style={{ marginBottom: spaceFormField }}>
+                <InputNumber min={0} step={0.0001} precision={4}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* 6. Công bố mở */}
+        <Card title="6. Công bố mở" size="small" style={{ marginBottom: spaceMd }}>
+          <Row gutter={spaceLg}>
+            <Col span={12}>
+              <Form.Item label="Ngày công bố" name="openingAnnouncementDate" style={{ marginBottom: spaceFormField }}>
+                <DatePicker showTime style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Quyết định công bố" name="openingDecision" style={{ marginBottom: spaceFormField }}>
+                <Input placeholder="VD: 1234/QĐ-BGTVT" style={{ borderRadius: radiusPill, height: 40 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={spaceLg}>
+            <Col span={24}>
+              <Form.Item label="Văn bản thỏa thuận đầu tư" name="investmentAgreement" style={{ marginBottom: spaceFormField }}>
+                <Input.TextArea rows={3} maxLength={2000} placeholder="VD: Thỏa thuận đầu tư số..."
+                  style={{ borderRadius: 4 }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        <Form.Item style={{ marginTop: spaceLg, marginBottom: 0, textAlign: 'right' }}>
           <Space>
-            <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>
-            <Tag color={BECBANG_STATUS_MAP[entityData.status]?.color || 'default'}>
-              {BECBANG_STATUS_MAP[entityData.status]?.label || entityData.status}
-            </Tag>
-          </Space>
-        </Card>
-      )}
-
-      <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16 }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          {!isEdit && (
-            <FormField
-              type="text"
-              name="berthCode"
-              label="Mã bến"
-              required
-              placeholder="VD: BC-HAIPHONG-001"
-              help="Mã định danh duy nhất cho bến cảng"
-            />
-          )}
-          {isEdit && (
-            <FormField
-              type="text"
-              name="berthCode"
-              label="Mã bến"
-              disabled
-            />
-          )}
-
-          <FormField
-            type="text"
-            name="berthName"
-            label="Tên bến cảng"
-            required
-            placeholder="VD: Bến cảng Hải Phòng"
-          />
-
-          <FormField
-            type="select"
-            name="portId"
-            label="Cảng biển"
-            placeholder="Chọn cảng biển chứa bến này"
-            options={cangBienOptions}
-            help="Chọn cảng biển cha từ danh sách"
-          />
-
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <FormField
-                type="text"
-                name="tuyenDuongThuy"
-                label="Tuyến đường thủy"
-                placeholder="VD: Tuyến sông Bạch Đằng"
-              />
-            </Col>
-            <Col xs={24} md={12}>
-              <FormField
-                type="text"
-                name="berthType"
-                label="Loại bến"
-                placeholder="VD: Bến nước, Bến bờ..."
-                disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
-              />
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <FormField
-                type="number"
-                name="latitude"
-                label="Vĩ độ (Latitude)"
-                min={-90}
-                max={90}
-                step={0.0001}
-                placeholder="20.9"
-                help="WGS84: -90 ~ 90"
-              />
-            </Col>
-            <Col xs={24} md={12}>
-              <FormField
-                type="number"
-                name="longitude"
-                label="Kinh độ (Longitude)"
-                min={-180}
-                max={180}
-                step={0.0001}
-                placeholder="-106.7"
-                help="WGS84: -180 ~ 180"
-              />
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col xs={24} md={8}>
-              <FormField
-                type="number"
-                name="length"
-                label="Chiều dài (m)"
-                min={0}
-                step={0.01}
-                placeholder="VD: 200.0"
-                help="Chiều dài bến tính bằng mét"
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <FormField
-                type="number"
-                name="width"
-                label="Chiều rộng (m)"
-                min={0}
-                step={0.01}
-                placeholder="VD: 30.0"
-                help="Chiều rộng bến tính bằng mét"
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <FormField
-                type="number"
-                name="doSauLuong"
-                label="Độ sâu luồng (m)"
-                min={0}
-                step={0.01}
-                placeholder="VD: 12.5"
-                help="Độ sâu luồng tính bằng mét"
-              />
-            </Col>
-          </Row>
-
-          <FormField
-            type="select"
-            name="operationalStatus"
-            label="Trạng thái hoạt động"
-            options={[
-              { label: 'Hiện hành', value: 'HIEN_HANH' },
-              { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
-            ]}
-          />
-
-          <Form.Item style={{ marginTop: 24 }}>
-            <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}
-                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
-                {isEdit ? 'Cập nhật' : 'Tạo bến cảng'}
+            <Button onClick={onClose} style={{ borderRadius: radiusPill, height: 40 }}>Hủy</Button>
+            {!isEdit && (
+              <Button
+                onClick={() => { actionRef.current = 'draft'; form.submit(); }}
+                loading={submitting}
+                style={{ borderRadius: radiusPill, height: 40, borderColor: borderDefault, color: textSecondary }}
+              >
+                Lưu tạm
               </Button>
-              <Button onClick={() => navigate('/Berth')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Card>
-
-      {/* Approval actions — shown only when editing */}
-      {isEdit && entityData && (
-        <Card style={{ maxWidth: 800, margin: '0 auto' }}>
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-            Thao tác phê duyệt
-          </Typography.Text>
-          <Space wrap>
-            <Button type="dashed" onClick={() => navigate(`/history?entityId=${id}&type=BEN_CANG`)}>Lịch sử thay đổi</Button>
-            {entityData.status === 'DRAFT' && (
-              <Button icon={<SendOutlined />} onClick={handleSubmitApproval}>Gửi duyệt</Button>
             )}
-            {entityData.status === 'PENDING_APPROVAL' && (
-              <>
-                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL1}>Phê duyệt L1</Button>
-                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
-              </>
+            {!isEdit && (
+              <Button
+                type="primary"
+                onClick={() => { actionRef.current = 'submit'; form.submit(); }}
+                loading={submitting}
+                style={{ borderRadius: radiusPill, height: 40 }}
+              >
+                Gửi phê duyệt
+              </Button>
             )}
-            {entityData.status === 'APPROVED_L1' && (
-              <>
-                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL2}>Phê duyệt L2</Button>
-                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
-              </>
-            )}
-            {entityData.status === 'DRAFT' && (
-              <Button danger onClick={handleDelete}>Xóa</Button>
+            {isEdit && (
+              <Button type="primary" htmlType="submit" loading={submitting}
+                style={{ borderRadius: radiusPill, height: 40 }}>
+                Cập nhật
+              </Button>
             )}
           </Space>
-        </Card>
-      )}
-    </>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 }

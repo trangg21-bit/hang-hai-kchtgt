@@ -1,18 +1,13 @@
 package com.hanghai.kchtg.port.service;
 
-import com.hanghai.kchtg.port.dto.port.PortResponse;
-import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
-import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
-import com.hanghai.kchtg.port.entity.Port;
-import java.math.BigDecimal;
-import com.hanghai.kchtg.port.repository.BerthRepository;
-import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.repository.PierRepository;
-import com.hanghai.kchtg.port.repository.WaterZoneRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.port.dto.port.*;
+import com.hanghai.kchtg.port.entity.*;
+import com.hanghai.kchtg.port.repository.*;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,17 +18,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service core for Port CRUD operations.
- * Covers F-008 (create), F-009 (update), F-010 (soft-delete).
- * <p>
- * Business rules:
- * - Code (portCode) is immutable after creation — duplicate detection on create
- * - Approval status always set to PENDING on create/update
- * - Cannot soft-delete if active children (Berth, WaterZone) exist
- * </p>
+ * Supports unified PortStatus (replaces OperationalStatus + ApprovalStatus).
+ * Supports composite form: coordinates + infrastructure sub-entities.
  */
 @Slf4j
 @Service
@@ -44,30 +36,76 @@ public class PortService {
     private final BerthRepository berthRepository;
     private final WaterZoneRepository waterZoneRepository;
     private final PierRepository pierRepository;
+    private final PortCoordinateRepository portCoordinateRepository;
+    private final PortInfrastructureRepository portInfrastructureRepository;
+    private final PortAttachmentRepository portAttachmentRepository;
     private final ChangeTrackingService changeTrackingService;
     private final UserResolverService userResolverService;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
-    // ── CREATE ──────────────────────────────────────────────────
+    // ── CODE GENERATION ─────────────────────────────────────────────
+
+    /**
+     * Generate the next port code in format "CB-XXXXXX".
+     */
+    public Map<String, String> generateCode() {
+        Integer maxNum = portRepository.findMaxPortCodeNumber();
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String code = String.format("CB-%06d", nextNum);
+        return Map.of("code", code);
+    }
+
+    // ── CREATE (composite form) ─────────────────────────────────
 
     @Transactional
     public PortResponse create(CreatePortRequest request) {
-        if (portRepository.existsByPortCode(request.getPortCode())) {
-            throw new IllegalArgumentException("Mã " + request.getPortCode() + " đã tồn tại");
+        // Validate action
+        String action = request.getAction();
+        if (!"draft".equals(action) && !"submit".equals(action)) {
+            throw new IllegalArgumentException("Action phải là 'draft' hoặc 'submit'");
         }
 
+        // Generate port code (use provided code, or auto-generate)
+        String portCode = request.getPortCode();
+        if (portCode == null || portCode.trim().isEmpty()) {
+            portCode = generateCode().get("code");
+        }
+
+        // Validate for submit action
+        if ("submit".equals(action)) {
+            if (request.getPortName() == null || request.getPortName().trim().isEmpty()) {
+                throw new IllegalArgumentException("Tên cảng không được để trống khi gửi phê duyệt");
+            }
+            if (request.getOrgUnitId() == null) {
+                throw new IllegalArgumentException("Đơn vị không được để trống khi gửi phê duyệt");
+            }
+            if (request.getProvince() == null || request.getProvince().trim().isEmpty()) {
+                throw new IllegalArgumentException("Tỉnh/thành phố không được để trống khi gửi phê duyệt");
+            }
+            if (request.getPortClass() == null) {
+                throw new IllegalArgumentException("Phân cấp cảng biển không được để trống khi gửi phê duyệt");
+            }
+            if (request.getPortCoordinates() == null || request.getPortCoordinates().isEmpty()) {
+                throw new IllegalArgumentException("Phải có ít nhất một tọa độ khi gửi phê duyệt");
+            }
+        }
+
+        // Set initial status
+        PortStatus initialStatus = "submit".equals(action) ? PortStatus.CHO_PHE_DUYET : PortStatus.NHAP;
+
         Port entity = Port.builder()
-                .portCode(request.getPortCode())
+                .portCode(portCode)
                 .portName(request.getPortName())
                 .province(request.getProvince())
                 .area(request.getArea())
                 .maxVesselCapacity(request.getMaxVesselCapacity())
-                .operationalStatus(request.getOperationalStatus())
-                .approvalStatus(ApprovalStatus.PENDING)
+                .portStatus(initialStatus)
                 .orgUnitId(request.getOrgUnitId())
                 .portGroup(request.getPortGroup())
                 .mapSymbolId(request.getMapSymbolId())
+                .managingUnitId(request.getManagingUnitId())
+                .notes(request.getNotes())
                 // Extended fields
                 .detailedLocation(request.getDetailedLocation())
                 .portClass(request.getPortClass())
@@ -92,8 +130,38 @@ public class PortService {
                 .remarks(request.getRemarks())
                 .build();
 
+        // Sync unified portStatus → legacy DB columns before save
+        entity.syncOldFieldsFromPortStatus();
+
         Port saved = portRepository.save(entity);
 
+        // Save port coordinates
+        if (request.getPortCoordinates() != null && !request.getPortCoordinates().isEmpty()) {
+            for (CoordinateDto coordDto : request.getPortCoordinates()) {
+                PortCoordinate coord = PortCoordinate.builder()
+                        .portId(saved.getId())
+                        .latitude(coordDto.getLatitude())
+                        .longitude(coordDto.getLongitude())
+                        .sortOrder(coordDto.getSortOrder() != null ? coordDto.getSortOrder() : 0)
+                        .build();
+                portCoordinateRepository.save(coord);
+            }
+        }
+
+        // Save port infrastructures
+        if (request.getPortInfrastructures() != null && !request.getPortInfrastructures().isEmpty()) {
+            for (InfrastructureDto infraDto : request.getPortInfrastructures()) {
+                PortInfrastructure infra = PortInfrastructure.builder()
+                        .portId(saved.getId())
+                        .sequenceNumber(infraDto.getSequenceNumber() != null ? infraDto.getSequenceNumber() : 0)
+                        .infrastructureName(infraDto.getInfrastructureName())
+                        .quantity(infraDto.getQuantity() != null ? infraDto.getQuantity() : 1)
+                        .build();
+                portInfrastructureRepository.save(infra);
+            }
+        }
+
+        // Handle GIS spatial object
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
@@ -117,7 +185,7 @@ public class PortService {
             saved = portRepository.save(saved);
         }
 
-        log.info("Created Port [{}] code={}", saved.getId(), saved.getPortCode());
+        log.info("Created Port [{}] code={}, status={}", saved.getId(), saved.getPortCode(), saved.getPortStatus());
         return toResponse(saved);
     }
 
@@ -132,21 +200,52 @@ public class PortService {
 
     @Transactional(readOnly = true)
     public Page<PortResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PortResponse> findAll(int page, int size, UUID orgUnitId,
                                           String portCode, String portName, String province,
-                                          String operationalStatus, String approvalStatus,
+                                          String portStatus,
                                           String search) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
 
-        OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
-        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
+        PortStatus statusEnum = portStatus != null ? PortStatus.fromString(portStatus) : null;
+
+        // Map unified PortStatus → legacy DB columns for query
+        ApprovalStatus approvalStatusParam = null;
+        OperationalStatus operationalStatusParam = null;
+        boolean operationalStatusNull = false;
+        if (statusEnum != null) {
+            switch (statusEnum) {
+                case NHAP:
+                    approvalStatusParam = ApprovalStatus.PENDING;
+                    operationalStatusNull = true;
+                    break;
+                case CHO_PHE_DUYET:
+                    approvalStatusParam = ApprovalStatus.PENDING;
+                    operationalStatusParam = OperationalStatus.HIEN_HANH;
+                    break;
+                case DA_PHE_DUYET:
+                    approvalStatusParam = ApprovalStatus.APPROVED;
+                    break;
+                case TU_CHOI:
+                    approvalStatusParam = ApprovalStatus.REJECTED;
+                    break;
+                case TAM_NGUNG:
+                    approvalStatusParam = ApprovalStatus.APPROVED;
+                    operationalStatusParam = OperationalStatus.TAM_NGUNG;
+                    break;
+                case DA_XOA:
+                    // DA_XOA items have deletedAt set — excluded by deletedAt IS NULL
+                    break;
+            }
+        }
         Page<Port> results = portRepository.searchPorts(
-                orgUnitId, portCode, portName, province, statusEnum, approvalEnum, search, pageable);
+                orgUnitId, portCode, portName, province,
+                approvalStatusParam, operationalStatusParam, operationalStatusNull,
+                search, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         results.getContent().forEach(e -> {
@@ -171,7 +270,7 @@ public class PortService {
         return results.map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
     }
 
-    // ── UPDATE ──────────────────────────────────────────────────
+    // ── UPDATE (composite form) ──────────────────────────────────
 
     @Transactional
     public PortResponse update(UpdatePortRequest request) {
@@ -189,20 +288,18 @@ public class PortService {
                 .portCode(entity.getPortCode())
                 .portName(entity.getPortName())
                 .province(entity.getProvince())
-
                 .area(entity.getArea())
                 .maxVesselCapacity(entity.getMaxVesselCapacity())
+                .portStatus(entity.getPortStatus())
                 .orgUnitId(entity.getOrgUnitId())
                 .portGroup(entity.getPortGroup())
-                .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .managingUnitId(entity.getManagingUnitId())
+                .notes(entity.getNotes())
                 .mapSymbolId(entity.getMapSymbolId())
-                // Extended fields (pre-image)
                 .detailedLocation(entity.getDetailedLocation())
                 .portClass(entity.getPortClass())
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
-                // zobjDataSub fields (pre-image)
                 .waterAreaScope(entity.getWaterAreaScope())
                 .totalBerths(entity.getTotalBerths())
                 .totalAnchoragesTransshipment(entity.getTotalAnchoragesTransshipment())
@@ -247,8 +344,18 @@ public class PortService {
         }
         if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
         entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
-        entity.setApprovalStatus(ApprovalStatus.PENDING);
+
+        // Update managing unit
+        if (request.getManagingUnitId() != null) entity.setManagingUnitId(request.getManagingUnitId());
+        if (request.getNotes() != null) entity.setNotes(request.getNotes());
+
+        // Auto-reset status on update: only if not draft
+        if (entity.getPortStatus() != PortStatus.NHAP) {
+            entity.setPortStatus(PortStatus.CHO_PHE_DUYET);
+        }
+
+        // Sync unified portStatus → legacy DB columns before save
+        entity.syncOldFieldsFromPortStatus();
 
         // Update extended fields
         if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
@@ -276,6 +383,35 @@ public class PortService {
 
         Port saved = portRepository.save(entity);
 
+        // Replace port coordinates: delete old, insert new
+        if (request.getPortCoordinates() != null) {
+            portCoordinateRepository.deleteByPortId(saved.getId());
+            for (CoordinateDto coordDto : request.getPortCoordinates()) {
+                PortCoordinate coord = PortCoordinate.builder()
+                        .portId(saved.getId())
+                        .latitude(coordDto.getLatitude())
+                        .longitude(coordDto.getLongitude())
+                        .sortOrder(coordDto.getSortOrder() != null ? coordDto.getSortOrder() : 0)
+                        .build();
+                portCoordinateRepository.save(coord);
+            }
+        }
+
+        // Replace port infrastructures: delete old, insert new
+        if (request.getPortInfrastructures() != null) {
+            portInfrastructureRepository.deleteByPortId(saved.getId());
+            for (InfrastructureDto infraDto : request.getPortInfrastructures()) {
+                PortInfrastructure infra = PortInfrastructure.builder()
+                        .portId(saved.getId())
+                        .sequenceNumber(infraDto.getSequenceNumber() != null ? infraDto.getSequenceNumber() : 0)
+                        .infrastructureName(infraDto.getInfrastructureName())
+                        .quantity(infraDto.getQuantity() != null ? infraDto.getQuantity() : 1)
+                        .build();
+                portInfrastructureRepository.save(infra);
+            }
+        }
+
+        // Handle GIS spatial object
         if (coordinates != null && !coordinates.trim().isEmpty()) {
             com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
@@ -297,7 +433,7 @@ public class PortService {
         // Record field-level change history
         changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", preImage, saved);
 
-        log.info("Updated Port [{}] code={}", saved.getId(), saved.getPortCode());
+        log.info("Updated Port [{}] code={}, status={}", saved.getId(), saved.getPortCode(), saved.getPortStatus());
         return toResponse(saved);
     }
 
@@ -320,12 +456,29 @@ public class PortService {
             throw new IllegalArgumentException(msg.toString());
         }
 
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.setPortStatus(PortStatus.DA_XOA);
+        entity.syncOldFieldsFromPortStatus();
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         portRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         log.info("Soft-deleted Port [{}] code={}", entity.getId(), entity.getPortCode());
+    }
+
+    // ── CHILDREN COUNT ──────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getChildrenCount(UUID id) {
+        if (!portRepository.existsById(id)) {
+            throw new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id);
+        }
+        long berthCount = countBerthByPortId(id);
+        long waterZoneCount = countWaterZoneByPortId(id);
+        Map<String, Long> result = new java.util.LinkedHashMap<>();
+        result.put("berths", berthCount);
+        result.put("waterZones", waterZoneCount);
+        return result;
     }
 
     // ── Count helpers ──────────────────────────────────────
@@ -348,29 +501,67 @@ public class PortService {
         String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(entity.getCreatedBy());
         String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(entity.getUpdatedBy());
 
+        // Load sub-entities
+        List<CoordinateResponse> coords = portCoordinateRepository
+                .findByPortIdAndDeletedAtIsNullOrderBySortOrderAsc(entity.getId())
+                .stream()
+                .map(c -> CoordinateResponse.builder()
+                        .id(c.getId())
+                        .latitude(c.getLatitude())
+                        .longitude(c.getLongitude())
+                        .sortOrder(c.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<InfrastructureResponse> infras = portInfrastructureRepository
+                .findByPortIdAndDeletedAtIsNullOrderBySequenceNumberAsc(entity.getId())
+                .stream()
+                .map(i -> InfrastructureResponse.builder()
+                        .id(i.getId())
+                        .sequenceNumber(i.getSequenceNumber())
+                        .infrastructureName(i.getInfrastructureName())
+                        .quantity(i.getQuantity())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<AttachmentResponse> attachments = portAttachmentRepository
+                .findByPortIdAndDeletedAtIsNull(entity.getId())
+                .stream()
+                .map(a -> AttachmentResponse.builder()
+                        .id(a.getId())
+                        .fileName(a.getFileName())
+                        .filePath(a.getFilePath())
+                        .fileSize(a.getFileSize())
+                        .contentType(a.getContentType())
+                        .uploadedBy(a.getUploadedBy())
+                        .createdAt(a.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
         PortResponse.PortResponseBuilder builder = PortResponse.builder()
                 .id(entity.getId())
                 .portCode(entity.getPortCode())
                 .portName(entity.getPortName())
                 .province(entity.getProvince())
-
                 .area(entity.getArea())
                 .maxVesselCapacity(entity.getMaxVesselCapacity())
-                .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .portStatus(entity.getPortStatus())
                 .orgUnitId(entity.getOrgUnitId())
+                .managingUnitId(entity.getManagingUnitId())
+                .notes(entity.getNotes())
                 .portGroup(entity.getPortGroup())
                 .mapSymbolId(entity.getMapSymbolId())
                 .createdBy(entity.getCreatedBy())
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
-                // Extended fields
+                .portCoordinates(coords)
+                .portInfrastructures(infras)
+                .attachments(attachments)
                 .detailedLocation(entity.getDetailedLocation())
                 .portClass(entity.getPortClass())
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
-                // zobjDataSub fields
                 .waterAreaScope(entity.getWaterAreaScope())
                 .totalBerths(entity.getTotalBerths())
                 .totalAnchoragesTransshipment(entity.getTotalAnchoragesTransshipment())

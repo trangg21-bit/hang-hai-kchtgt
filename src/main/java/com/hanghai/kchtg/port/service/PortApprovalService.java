@@ -3,7 +3,7 @@ package com.hanghai.kchtg.port.service;
 import java.util.UUID;
 
 import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.port.entity.PortStatus;
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.repository.PortRepository;
@@ -22,12 +22,10 @@ import java.util.UUID;
 
 /**
  * Approval service for Port entity.
- * Handles approve/reject operations.
+ * Handles approve/reject operations using unified PortStatus.
  * <p>
- * Uses ApprovalWorkflowService for state machine transitions.
- * On approve: sets approvalStatus = APPROVED.
- * On reject: sets approvalStatus = REJECTED.
- * On update: resets to PENDING (handled in PortService).
+ * On approve: sets portStatus = DA_PHE_DUYET.
+ * On reject: sets portStatus = TU_CHOI.
  * </p>
  */
 @Slf4j
@@ -46,20 +44,50 @@ public class PortApprovalService {
         Port entity = portRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
 
-        ApprovalStatus currentStatus = entity.getApprovalStatus();
-        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
+        PortStatus currentStatus = entity.getPortStatus();
+        String currentStatusStr = toApprovalStatusStr(currentStatus);
 
         if (reason == null || reason.isBlank()) {
             approvalWorkflowService.approve(currentStatusStr, "Port", id.toString(), userId);
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setPortStatus(PortStatus.DA_PHE_DUYET);
+            entity.syncOldFieldsFromPortStatus();
             portRepository.save(entity);
-            log.info("Port [{}] approved by {}", id, userId);
+            log.info("Port [{}] approved by {}, status=DA_PHE_DUYET", id, userId);
             notificationService.sendApprovalNotification("Port", id.toString(), userId, null);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "Port", id.toString(), userId, reason);
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
+            entity.setPortStatus(PortStatus.TU_CHOI);
+            entity.syncOldFieldsFromPortStatus();
             portRepository.save(entity);
-            log.info("Port [{}] rejected by {}: {}", id, userId, reason);
+            log.info("Port [{}] rejected by {}: {}, status=TU_CHOI", id, userId, reason);
+        }
+    }
+
+    @Transactional
+    public void reject(UUID id, String userId, String reason) {
+        Port entity = portRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
+
+        PortStatus currentStatus = entity.getPortStatus();
+        String currentStatusStr = toApprovalStatusStr(currentStatus);
+
+        approvalWorkflowService.reject(currentStatusStr, "Port", id.toString(), userId, reason);
+        entity.setPortStatus(PortStatus.TU_CHOI);
+        entity.syncOldFieldsFromPortStatus();
+        portRepository.save(entity);
+        log.info("Port [{}] rejected by {}: {}, status=TU_CHOI", id, userId, reason);
+    }
+
+    private String toApprovalStatusStr(PortStatus portStatus) {
+        if (portStatus == null) return null;
+        switch (portStatus) {
+            case NHAP: return "PENDING";
+            case CHO_PHE_DUYET: return "PENDING";
+            case DA_PHE_DUYET: return "APPROVED";
+            case TU_CHOI: return "REJECTED";
+            case TAM_NGUNG: return "APPROVED";
+            case DA_XOA: return "REJECTED";
+            default: return "PENDING";
         }
     }
 
@@ -77,7 +105,7 @@ public class PortApprovalService {
         return java.util.Map.of(
                 "entityId", entityId,
                 "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus(),
+                "currentPortStatus", entity.getPortStatus(),
                 "changeHistory", changeHistory,
                 "approvalLog", approvalLog
         );

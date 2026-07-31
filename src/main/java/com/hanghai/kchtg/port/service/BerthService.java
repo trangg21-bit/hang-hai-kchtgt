@@ -1,18 +1,14 @@
 package com.hanghai.kchtg.port.service;
 
-import com.hanghai.kchtg.port.dto.berth.*;
-import com.hanghai.kchtg.port.entity.Berth;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import java.math.BigDecimal;
-import java.util.Optional;
-import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.port.repository.BerthRepository;
-import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.repository.PierRepository;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.port.dto.berth.*;
+import com.hanghai.kchtg.port.entity.*;
+import com.hanghai.kchtg.port.repository.*;
 import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,11 +19,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service core for Berth CRUD operations.
+ * Uses unified PortStatus (replaces OperationalStatus + ApprovalStatus).
  */
 @Slf4j
 @Service
@@ -43,28 +41,71 @@ public class BerthService {
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
+    // ── CODE GENERATION ─────────────────────────────────────────────
+
+    /**
+     * Generate the next berth code in format "BC-XXXXXX".
+     */
+    public Map<String, String> generateCode() {
+        Integer maxNum = berthRepository.findMaxBerthCodeNumber();
+        int nextNum = (maxNum != null ? maxNum : 0) + 1;
+        String code = String.format("BC-%06d", nextNum);
+        return Map.of("code", code);
+    }
+
     @Transactional
     public BerthResponse create(CreateBerthRequest request) {
-        if (berthRepository.existsByBerthCode(request.getBerthCode())) {
-            throw new IllegalArgumentException("Mã " + request.getBerthCode() + " đã tồn tại");
+        // Validate action
+        String action = request.getAction();
+        if (!"draft".equals(action) && !"submit".equals(action)) {
+            throw new IllegalArgumentException("Action phải là 'draft' hoặc 'submit'");
         }
+
+        // Validate berth code length
+        String generatedCode = generateCode().get("code");
+        if (generatedCode.length() < 6 || generatedCode.length() > 10) {
+            throw new IllegalArgumentException("Mã bến phải từ 6 đến 10 ký tự");
+        }
+
+        // Validate length > 0 and ≤ 2000m
+        if (request.getLength() != null) {
+            if (request.getLength().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Chiều dài bến phải lớn hơn 0");
+            }
+            if (request.getLength().compareTo(new java.math.BigDecimal("2000")) > 0) {
+                throw new IllegalArgumentException("Chiều dài bến tối đa 2000m");
+            }
+        }
+
+        // Validate channelDepth ≥ 3m (if provided)
+        if (request.getChannelDepth() != null) {
+            if (request.getChannelDepth().compareTo(new java.math.BigDecimal("3")) < 0) {
+                throw new IllegalArgumentException("Độ sâu luồng tối thiểu 3m");
+            }
+        }
+
+        // Generate berth code (already generated in validation above)
+        String berthCode = generatedCode;
+
         Port parent = portRepository.findById(request.getPortId())
                 .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
 
-        if (parent.getOperationalStatus() != OperationalStatus.HIEN_HANH) {
-            throw new IllegalArgumentException(
-                    "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
+        // Parent must be in DA_PHE_DUYET or TAM_NGUNG status to create berths
+        if (parent.getPortStatus() != PortStatus.DA_PHE_DUYET && parent.getPortStatus() != PortStatus.TAM_NGUNG) {
+            throw new IllegalArgumentException("Cảng mẹ phải ở trạng thái Hiện hành hoặc Tạm ngừng");
         }
 
+        // Set initial status
+        PortStatus initialStatus = "submit".equals(action) ? PortStatus.CHO_PHE_DUYET : PortStatus.NHAP;
+
         Berth entity = Berth.builder()
-                .berthCode(request.getBerthCode()).berthName(request.getBerthName())
+                .berthCode(berthCode).berthName(request.getBerthName())
                 .portId(request.getPortId()).waterway(request.getWaterway())
                 .length(request.getLength()).width(request.getWidth())
                 .berthType(request.getBerthType()).channelDepth(request.getChannelDepth())
                 .operationalFunction(request.getOperationalFunction())
-                .operationalStatus(request.getOperationalStatus())
+                .portStatus(initialStatus)
                 .orgUnitId(parent.getOrgUnitId())
-                .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId())
                 // Extended fields
                 .locationCode(request.getLocationCode())
@@ -83,6 +124,10 @@ public class BerthService {
                 .investmentAgreement(request.getInvestmentAgreement())
                 .structureType(request.getStructureType())
                 .build();
+
+        // Sync unified portStatus → legacy DB columns before save
+        entity.syncOldFieldsFromPortStatus();
+
         Berth saved = berthRepository.save(entity);
 
         String coordinates = request.getCoordinates();
@@ -108,7 +153,7 @@ public class BerthService {
             saved = berthRepository.save(saved);
         }
 
-        log.info("Created Berth [{}] code={}", saved.getId(), saved.getBerthCode());
+        log.info("Created Berth [{}] code={}, status={}", saved.getId(), saved.getBerthCode(), saved.getPortStatus());
         return toResponse(saved);
     }
 
@@ -120,20 +165,17 @@ public class BerthService {
 
     @Transactional(readOnly = true)
     public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId,
             String berthCode, String berthName, UUID portId,
             String waterway, String berthType,
-            String operationalStatus, String approvalStatus, String search) {
+            String portStatus, String search) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
-        OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus)
-                : null;
-        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus)
-                : null;
+        PortStatus statusEnum = portStatus != null ? PortStatus.fromString(portStatus) : null;
         com.hanghai.kchtg.port.entity.BerthType berthTypeEnum = null;
         if (berthType != null && !berthType.trim().isEmpty()) {
             try {
@@ -142,8 +184,37 @@ public class BerthService {
                 // ignore
             }
         }
+
+        // Map unified PortStatus → legacy DB columns for query
+        ApprovalStatus approvalStatusParam = null;
+        OperationalStatus operationalStatusParam = null;
+        boolean operationalStatusNull = false;
+        if (statusEnum != null) {
+            switch (statusEnum) {
+                case NHAP:
+                    approvalStatusParam = ApprovalStatus.PENDING;
+                    operationalStatusNull = true;
+                    break;
+                case CHO_PHE_DUYET:
+                    approvalStatusParam = ApprovalStatus.PENDING;
+                    operationalStatusParam = OperationalStatus.HIEN_HANH;
+                    break;
+                case DA_PHE_DUYET:
+                    approvalStatusParam = ApprovalStatus.APPROVED;
+                    break;
+                case TU_CHOI:
+                    approvalStatusParam = ApprovalStatus.REJECTED;
+                    break;
+                case TAM_NGUNG:
+                    approvalStatusParam = ApprovalStatus.APPROVED;
+                    operationalStatusParam = OperationalStatus.TAM_NGUNG;
+                    break;
+                case DA_XOA:
+                    break;
+            }
+        }
         Page<Berth> pageResult = berthRepository.searchBerths(orgUnitId, search, berthCode, berthName, portId,
-                waterway, berthTypeEnum, statusEnum, approvalEnum, pageable);
+                waterway, berthTypeEnum, approvalStatusParam, operationalStatusParam, operationalStatusNull, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(Berth::getPortId)
@@ -213,11 +284,9 @@ public class BerthService {
                 .length(entity.getLength())
                 .width(entity.getWidth()).berthType(entity.getBerthType())
                 .channelDepth(entity.getChannelDepth()).operationalFunction(entity.getOperationalFunction())
-                .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .portStatus(entity.getPortStatus())
                 .orgUnitId(entity.getOrgUnitId())
                 .mapSymbolId(entity.getMapSymbolId())
-                // Extended fields snapshot
                 .locationCode(entity.getLocationCode())
                 .detailedLocation(entity.getDetailedLocation())
                 .coordinateSystem(entity.getCoordinateSystem())
@@ -271,8 +340,15 @@ public class BerthService {
             entity.setChannelDepth(request.getChannelDepth());
         if (request.getOperationalFunction() != null)
             entity.setOperationalFunction(request.getOperationalFunction());
-        if (request.getOperationalStatus() != null)
-            entity.setOperationalStatus(request.getOperationalStatus());
+
+        // Auto-reset status on update
+        if (entity.getPortStatus() != PortStatus.NHAP) {
+            entity.setPortStatus(PortStatus.CHO_PHE_DUYET);
+        }
+
+        // Sync unified portStatus → legacy DB columns before save
+        entity.syncOldFieldsFromPortStatus();
+
         // Extended fields
         if (request.getLocationCode() != null)
             entity.setLocationCode(request.getLocationCode());
@@ -305,7 +381,6 @@ public class BerthService {
         if (request.getStructureType() != null)
             entity.setStructureType(request.getStructureType());
         entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setApprovalStatus(ApprovalStatus.PENDING);
 
         Berth saved = berthRepository.save(entity);
 
@@ -327,9 +402,7 @@ public class BerthService {
             saved = berthRepository.save(saved);
         }
 
-        // changeHistoryService.recordChanges
-
-        log.info("Updated Berth [{}] code={}", saved.getId(), saved.getBerthCode());
+        log.info("Updated Berth [{}] code={}, status={}", saved.getId(), saved.getBerthCode(), saved.getPortStatus());
         return toResponse(saved);
     }
 
@@ -337,12 +410,36 @@ public class BerthService {
     public void softDelete(UUID id) {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+
+        // Guard: check if berth has piers
+        long pierCount = countPierByBerthId(id);
+        if (pierCount > 0) {
+            throw new IllegalArgumentException("Không thể xóa: còn " + pierCount + " cầu cảng đang hoạt động");
+        }
+
+        entity.setPortStatus(PortStatus.DA_XOA);
+        entity.syncOldFieldsFromPortStatus();
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         berthRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         log.info("Soft-deleted Berth [{}] code={}", entity.getId(), entity.getBerthCode());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getChildrenCount(UUID id) {
+        if (!berthRepository.existsById(id)) {
+            throw new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id);
+        }
+        long pierCount = countPierByBerthId(id);
+        Map<String, Long> result = new java.util.LinkedHashMap<>();
+        result.put("piers", pierCount);
+        return result;
+    }
+
+    private long countPierByBerthId(UUID berthId) {
+        return pierRepository.countByBerthIdAndDeletedAtIsNull(berthId);
     }
 
     private BerthResponse toResponse(Berth e) {
@@ -388,10 +485,8 @@ public class BerthService {
                 .waterway(e.getWaterway())
                 .width(e.getWidth()).berthType(e.getBerthType())
                 .channelDepth(e.getChannelDepth()).operationalFunction(e.getOperationalFunction())
-                .operationalStatus(e.getOperationalStatus())
-                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId())
+                .portStatus(e.getPortStatus()).orgUnitId(e.getOrgUnitId())
                 .mapSymbolId(e.getMapSymbolId())
-                // Extended fields
                 .locationCode(e.getLocationCode())
                 .detailedLocation(e.getDetailedLocation())
                 .coordinateSystem(e.getCoordinateSystem())

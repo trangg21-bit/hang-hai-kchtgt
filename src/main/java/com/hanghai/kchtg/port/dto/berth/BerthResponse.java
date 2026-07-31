@@ -2,6 +2,7 @@ package com.hanghai.kchtg.port.dto.berth;
 
 import java.util.UUID;
 
+import com.hanghai.kchtg.port.entity.PortStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -10,6 +11,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
+/**
+ * Response DTO for Berth entity.
+ */
 @Data
 @Builder
 public class BerthResponse {
@@ -26,8 +30,7 @@ public class BerthResponse {
     private com.hanghai.kchtg.port.entity.BerthType berthType;
     private BigDecimal channelDepth;
     private String operationalFunction;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
-    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
+    private PortStatus portStatus;
     private UUID orgUnitId;
     private UUID createdBy;
     private UUID updatedBy;

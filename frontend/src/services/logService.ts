@@ -1,7 +1,7 @@
 import api from './api';
 
 export interface AccessLogEntry {
-  id: number;
+  id: string;
   userId: number;
   username: string;
   email?: string;
@@ -17,7 +17,7 @@ export interface AccessLogEntry {
   status: string;
   type: string;
   severity: string;
-  message?: string;
+  detail?: string;
   metadata?: string;
   createdAt: string;
 }
@@ -32,7 +32,7 @@ export const logService = {
     };
   },
 
-  async getAccessLogById(id: number) {
+  async getAccessLogById(id: string) {
     const resp = await api.get(`/access-logs/${id}`);
     return resp.data?.data ?? resp.data;
   },
