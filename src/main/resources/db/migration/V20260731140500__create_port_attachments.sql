@@ -44,20 +44,20 @@ END $$;
 -- V107: Alter sub-tables id column from BIGINT to UUID (idempotent)
 DO $$
 BEGIN
-    -- 1. port_coordinates
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_coordinates' AND column_name = 'id' AND data_type = 'bigint') THEN
-        ALTER TABLE port_coordinates ALTER COLUMN id TYPE UUID USING gen_random_uuid();
-        ALTER TABLE port_coordinates ALTER COLUMN id SET DEFAULT gen_random_uuid();
-    END IF;
+    -- port_coordinates is a temporary legacy table. Its BIGINT id is needed
+    -- by V20260731141100 while data is migrated to gis_spatial_objects, then
+    -- the table is dropped. Do not change its id type here.
 
-    -- 2. port_infrastructure
+    -- port_infrastructure
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_infrastructure' AND column_name = 'id' AND data_type = 'bigint') THEN
+        ALTER TABLE port_infrastructure ALTER COLUMN id DROP DEFAULT;
         ALTER TABLE port_infrastructure ALTER COLUMN id TYPE UUID USING gen_random_uuid();
         ALTER TABLE port_infrastructure ALTER COLUMN id SET DEFAULT gen_random_uuid();
     END IF;
 
-    -- 3. port_attachments
+    -- port_attachments
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_attachments' AND column_name = 'id' AND data_type = 'bigint') THEN
+        ALTER TABLE port_attachments ALTER COLUMN id DROP DEFAULT;
         ALTER TABLE port_attachments ALTER COLUMN id TYPE UUID USING gen_random_uuid();
         ALTER TABLE port_attachments ALTER COLUMN id SET DEFAULT gen_random_uuid();
     END IF;
