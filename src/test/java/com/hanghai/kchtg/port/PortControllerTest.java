@@ -108,7 +108,7 @@ class PortControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<PortResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(portService.findAll(0, 20, null, null, null, null, null, null, null)).thenReturn(page);
+        when(portService.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/ports")
                         .param("page", "0")
@@ -117,7 +117,7 @@ class PortControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].portCode").value("CB-001"));
 
-        verify(portService).findAll(0, 20, null, null, null, null, null, null, null);
+        verify(portService).findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -126,7 +126,7 @@ class PortControllerTest {
         UUID someUuid = UUID.randomUUID();
         String uuidStr = someUuid.toString();
         Page<PortResponse> page = new PageImpl<>(List.of());
-        when(portService.findAll(2, 10, someUuid, null, null, null, null, null, null)).thenReturn(page);
+        when(portService.findAll(2, 10, someUuid, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/ports")
                         .param("page", "2")
@@ -134,7 +134,7 @@ class PortControllerTest {
                         .param("orgUnitId", uuidStr))
                 .andExpect(status().isOk());
 
-        verify(portService).findAll(2, 10, someUuid, null, null, null, null, null, null);
+        verify(portService).findAll(2, 10, someUuid, null, null, null, null, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/ports/{id} ────────────────────────────────────────

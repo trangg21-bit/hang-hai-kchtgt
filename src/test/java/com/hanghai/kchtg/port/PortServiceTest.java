@@ -81,7 +81,7 @@ class PortServiceTest {
         ReflectionTestUtils.setField(testEntity, "id", testId);
         testEntity.setPortCode("CB-001");
         testEntity.setPortName("Cảng Biển Demo");
-        testEntity.setProvinceId(1);
+        testEntity.setProvince("Hà Nội");
         testEntity.setArea(new BigDecimal("5000.00"));
         testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
         testEntity.setApprovalStatus(ApprovalStatus.PENDING);
@@ -150,23 +150,23 @@ class PortServiceTest {
     @DisplayName("F-012: findAll — pagination honored, defaults max 100")
     void findAll_paginationHonored() {
         Page<Port> mockPage = new PageImpl<>(List.of(testEntity));
-        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         Page<PortResponse> result = service.findAll(0, 20, null);
 
         assertEquals(1, result.getTotalElements());
-        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("F-012: findAll — size capped at 5000")
     void findAll_sizeCappedAt5000() {
         Page<Port> mockPage = new PageImpl<>(List.of());
-        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         service.findAll(0, 9999, null);
 
-        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
+        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
     }
 
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ class PortServiceTest {
         UpdatePortRequest request = new UpdatePortRequest();
         request.setId(testId);
         request.setPortName("Cảng Đã Cập Nhật");
-        request.setProvinceId(1);
+        request.setProvince("Hà Nội");
 
         PortResponse result = service.update(request);
 
