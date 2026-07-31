@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:42Z
-last-updated: 2026-07-30
+last-updated: 2026-07-31
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -17,7 +17,7 @@ consumed_by_modules: []
 **Feature:** F-017 — Phê duyệt Bến cảng
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
 **Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-07-30
+**Ngày cập nhật:** 2026-07-31
 
 ---
 
@@ -25,20 +25,29 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Phê duyệt Bến cảng là tính năng cho phép **Lãnh đạo (cấp Cục)** xem, phê duyệt hoặc từ chối các Bến cảng đang trong trạng thái chờ phê duyệt (`trangThaiPheDuyet = CHO_PHE_DUYET`). Giao diện hiển thị danh sách bến chờ duyệt với đầy đủ thông tin. Lãnh đạo có thể **Phê duyệt** (chuyển thành `DUOC_PHE_DUYET`) hoặc **Từ chối** (chuyển thành `TU_CHOI`) kèm lý do bắt buộc ≥10 ký tự. Mỗi quyết định tạo bản ghi **PheDuyetLog** để lưu vết kiểm toán. Ngoài ra, admin-operation và system-admin có thể phê duyệt ngay từ form tạo mới/cập nhật qua nút "Lưu và phê duyệt" (F-014, F-015).
+Phê duyệt Bến cảng là tính năng cho phép phê duyệt Bến cảng theo **quy trình 2 cấp**:
+
+1. **Cấp Cảng vụ/Chi cục** — duyệt trước, chuyển trạng thái `CHO_PHE_DUYET` → `CHO_PD_CAP_CUC`
+2. **Cấp Cục** — duyệt sau, chuyển trạng thái `CHO_PD_CAP_CUC` → `DA_PHE_DUYET`
+
+Mỗi cấp có thể **Phê duyệt** hoặc **Từ chối** (kèm lý do ≥10 ký tự). Mỗi quyết định tạo bản ghi **PheDuyetLog** (có trường `cap` để phân biệt cấp). Giao diện hiển thị danh sách bến đang chờ ở cấp tương ứng với người dùng.
+
+Ngoài ra, admin-operation và system-admin có thể phê duyệt nhanh cả 2 cấp từ form tạo mới/cập nhật qua nút "Lưu và phê duyệt" (F-014, F-015).
 
 ### 1.2. Tại sao cần tính năng này?
 
-Phê duyệt là bước kiểm soát chất lượng bắt buộc trước khi Bến cảng được đưa vào vận hành:
+Phê duyệt 2 cấp đảm bảo kiểm soát chất lượng chặt chẽ:
 
-- Đảm bảo mọi bến đều được Lãnh đạo xem xét trước khi kích hoạt
-- Lý do từ chối giúp người tạo biết chính xác cần sửa gì
-- PheDuyetLog lưu vết vĩnh viễn phục vụ kiểm toán
-- Hỗ trợ cả phê duyệt từ màn hình riêng (F-017) và phê duyệt nhanh từ form (F-014, F-015)
+- Cấp Cảng vụ/Chi cục: kiểm tra tính hợp lệ về mặt kỹ thuật, vị trí, kết cấu
+- Cấp Cục: phê duyệt cuối cùng về mặt quy hoạch, chính sách
+- Mỗi cấp có thể từ chối và yêu cầu chỉnh sửa, tạo vòng phản hồi
+- PheDuyetLog lưu vết đầy đủ ai duyệt, cấp nào, khi nào
 
 ### 1.3. Luồng hoạt động chính
 
-Lãnh đạo truy cập màn hình "Phê duyệt Bến cảng" → `GET /api/v1/ben-cang?trangThaiPheDuyet=CHO_PHE_DUYET` → danh sách bến chờ duyệt với các cột: Mã bến, Tên bến, Cảng mẹ, Loại kết cấu, Tình trạng, Ngày tạo, Người tạo. Chọn một bến → xem chi tiết đầy đủ 26 trường. **Phê duyệt:** confirmation dialog → xác nhận → `POST /api/v1/ben-cang/:id/approve` → `trangThaiPheDuyet = DUOC_PHE_DUYET` → tạo PheDuyetLog → toast "Đã phê duyệt Bến cảng" → bến biến mất khỏi danh sách chờ. **Từ chối:** dialog yêu cầu lý do ≥10 ký tự → `POST /api/v1/ben-cang/:id/reject` → `TU_CHOI` → tạo PheDuyetLog kèm lý do → toast "Đã từ chối Bến cảng".
+**Cấp Cảng vụ/Chi cục:** Bến sau khi tạo/cập nhật và gửi phê duyệt có trạng thái `CHO_PHE_DUYET`. Cán bộ Cảng vụ/Chi cục truy cập màn hình "Phê duyệt Bến cảng" → thấy danh sách bến chờ cấp mình → xem chi tiết → Phê duyệt (`CHO_PD_CAP_CUC`) hoặc Từ chối (`TU_CHOI`).
+
+**Cấp Cục:** Bến sau khi Cảng vụ duyệt có trạng thái `CHO_PD_CAP_CUC`. Cán bộ Cục truy cập màn hình → thấy danh sách bến chờ cấp mình → xem chi tiết → Phê duyệt (`DA_PHE_DUYET`) hoặc Từ chối (`TU_CHOI`).
 
 ---
 
@@ -48,20 +57,21 @@ Quyền thao tác và xem tính năng được áp dụng theo hệ thống phâ
 
 ### 2.1. Logic phân quyền chung
 
-| Vai trò | Quyền xem | Quyền thao tác | Phạm vi dữ liệu | Ghi chú |
+| Vai trò | Quyền xem | Quyền thao tác | Cấp duyệt | Ghi chú |
 |---|---|---|---|---|
-| system-admin (Admin Cục) | Xem toàn bộ | Phê duyệt, Từ chối (từ F-017); Lưu và phê duyệt (từ F-014/F-015) | Toàn bộ hệ thống | Toàn quyền |
-| admin-operation | Xem toàn bộ | Phê duyệt, Từ chối (từ F-017); Lưu và phê duyệt (từ F-014/F-015) | Toàn bộ hệ thống | Vai trò vận hành chính |
-| Lãnh đạo (cấp Cục) | Xem toàn bộ | Phê duyệt, Từ chối (từ F-017) | Toàn bộ hệ thống | **Vai trò chính của F-017** |
+| system-admin (Admin Cục) | Xem toàn bộ | Phê duyệt, Từ chối cả 2 cấp; Lưu và phê duyệt (F-014/F-015) | Cục | Toàn quyền |
+| admin-operation | Xem toàn bộ | Phê duyệt, Từ chối cả 2 cấp; Lưu và phê duyệt (F-014/F-015) | Cục | Vai trò vận hành chính |
+| Lãnh đạo (cấp Cục) | Xem toàn bộ | Phê duyệt, Từ chối | **Cục** | Chỉ duyệt cấp Cục |
+| Cán bộ Cảng vụ/Chi cục | Xem trong đơn vị | Phê duyệt, Từ chối | **Cảng vụ/Chi cục** | Chỉ duyệt cấp Cảng vụ |
 | admin | Xem trong đơn vị | Không | — | Không có quyền phê duyệt |
 | Chuyên viên / Lãnh đạo đơn vị | Xem trong đơn vị | Không | — | Không có quyền phê duyệt |
 | Cá nhân | Không có quyền | Không | — | Không áp dụng |
 
 ### 2.2. Logic phân quyền đặc biệt cho Admin Cục
 
-- **Xem toàn bộ** bến chờ duyệt trên toàn hệ thống
-- **Xem người phê duyệt** (họ tên, username)
-- **Xem thời gian phê duyệt** (timestamp)
+- **Xem toàn bộ** bến ở mọi cấp duyệt
+- **Xem người phê duyệt từng cấp** (họ tên, username)
+- **Xem thời gian phê duyệt từng cấp** (timestamp)
 - **Xem lý do từ chối** đầy đủ
 
 ---
@@ -70,20 +80,20 @@ Quyền thao tác và xem tính năng được áp dụng theo hệ thống phâ
 
 ### Mức Must (bắt buộc có)
 
-- **US-017-01:** Là Lãnh đạo (cấp Cục), tôi muốn xem danh sách tất cả Bến cảng đang chờ phê duyệt.
-- **US-017-02:** Là Lãnh đạo, tôi muốn xem chi tiết đầy đủ 26 trường của bến trước khi quyết định.
-- **US-017-03:** Là Lãnh đạo, tôi muốn phê duyệt bến với một click + xác nhận, bến chuyển thành DUOC_PHE_DUYET.
-- **US-017-04:** Là Lãnh đạo, tôi muốn từ chối bến và nhập lý do ≥10 ký tự, bến chuyển thành TU_CHOI.
-- **US-017-05:** Là Lãnh đạo, tôi muốn hệ thống tự động tạo PheDuyetLog ghi nhận mọi quyết định.
+- **US-017-01:** Là Cán bộ Cảng vụ/Chi cục, tôi muốn xem danh sách bến đang chờ cấp tôi duyệt (`CHO_PHE_DUYET`).
+- **US-017-02:** Là Cán bộ Cục, tôi muốn xem danh sách bến đang chờ cấp tôi duyệt (`CHO_PD_CAP_CUC`).
+- **US-017-03:** Là Cán bộ Cảng vụ, tôi muốn phê duyệt bến → chuyển `CHO_PD_CAP_CUC` để Cục duyệt tiếp.
+- **US-017-04:** Là Cán bộ Cục, tôi muốn phê duyệt bến → chuyển `DA_PHE_DUYET`, bến chính thức được kích hoạt.
+- **US-017-05:** Là Cán bộ bất kỳ cấp, tôi muốn từ chối bến với lý do ≥10 ký tự → `TU_CHOI`.
 
 ### Mức Should (nên có)
 
-- **US-017-06:** Là Lãnh đạo, tôi muốn lọc danh sách chờ duyệt theo Đơn vị quản lý hoặc Cảng mẹ.
-- **US-017-07:** Là Lãnh đạo, tôi muốn thấy lịch sử phê duyệt/từ chối gần đây của bến.
+- **US-017-06:** Là Cán bộ, tôi muốn xem toàn bộ lịch sử phê duyệt (ai duyệt cấp nào, khi nào).
+- **US-017-07:** Là Cán bộ, tôi muốn lọc danh sách theo Đơn vị quản lý hoặc Cảng mẹ.
 
 ### Mức Could (có thể có sau)
 
-- **US-017-08:** Là Lãnh đạo, tôi muốn phê duyệt/từ chối nhiều bến cùng lúc (bulk approve/reject).
+- **US-017-08:** Là Cán bộ, tôi muốn phê duyệt/từ chối nhiều bến cùng lúc (bulk).
 
 ---
 
@@ -91,37 +101,34 @@ Quyền thao tác và xem tính năng được áp dụng theo hệ thống phâ
 
 ### Nhóm 1: Danh sách chờ duyệt
 
-**AC-017-01 — Danh sách chờ duyệt:** Màn hình "Phê duyệt Bến cảng" hiển thị danh sách bến có `trangThaiPheDuyet = CHO_PHE_DUYET`, gọi từ `GET /api/v1/ben-cang?trangThaiPheDuyet=CHO_PHE_DUYET`. Các cột: Mã bến, Tên bến, Cảng mẹ, Loại kết cấu, Tình trạng, Ngày tạo, Người tạo. **Xử lý khi lỗi:** API lỗi → toast "Không thể tải danh sách chờ phê duyệt".
+**AC-017-01 — Danh sách theo cấp:** Màn hình hiển thị bến theo cấp của người dùng:
+- Cán bộ Cảng vụ/Chi cục → bến có `trangThaiPheDuyet = CHO_PHE_DUYET`
+- Cán bộ Cục, Lãnh đạo, admin-op, system-admin → bến có `trangThaiPheDuyet = CHO_PD_CAP_CUC`
+- **Xử lý khi lỗi:** API lỗi → toast "Không thể tải danh sách chờ phê duyệt".
 
-**AC-017-02 — Lọc và tìm kiếm:** Hỗ trợ lọc theo Đơn vị quản lý, Cảng mẹ. Tìm kiếm theo mã bến/tên bến. Phân trang 20/50.
+**AC-017-02 — Cột danh sách:** Mã bến, Tên bến, Cảng mẹ, Loại kết cấu, Tình trạng, Ngày gửi PD, Người gửi PD. Với cấp Cục: hiển thị thêm Ngày PD cấp Cảng vụ, Người PD cấp Cảng vụ.
 
-**AC-017-03 — Danh sách trống:** Nếu không có bến nào chờ duyệt → hiển thị "Không có Bến cảng nào đang chờ phê duyệt".
+### Nhóm 2: Phê duyệt
 
-### Nhóm 2: Xem chi tiết
+**AC-017-03 — Phê duyệt cấp Cảng vụ:** Nhấn "Phê duyệt" → confirmation dialog → `POST /api/v1/ben-cang/:id/approve` body `{ "cap": "CANG_VU" }` → `trangThaiPheDuyet = CHO_PD_CAP_CUC` → tạo PheDuyetLog (cap=CANG_VU, action=APPROVE) → toast "Đã phê duyệt, chuyển Cục duyệt" → bến chuyển sang danh sách chờ Cục.
 
-**AC-017-04 — Xem chi tiết bến chờ duyệt:** Click vào bến trong danh sách → hiển thị toàn bộ 26 trường (giống F-018 detail), read-only. **Xử lý khi lỗi:** Bến không tồn tại → 404.
+**AC-017-04 — Phê duyệt cấp Cục:** Nhấn "Phê duyệt" → confirmation dialog → `POST /api/v1/ben-cang/:id/approve` body `{ "cap": "CUC" }` → `trangThaiPheDuyet = DA_PHE_DUYET` → tạo PheDuyetLog (cap=CUC, action=APPROVE) → toast "Đã phê duyệt Bến cảng" → bến biến mất khỏi danh sách chờ.
 
-### Nhóm 3: Phê duyệt
+### Nhóm 3: Từ chối
 
-**AC-017-05 — Phê duyệt thành công:** Nhấn "Phê duyệt" → confirmation dialog "Bạn có chắc chắn muốn phê duyệt Bến cảng [maBen]?" → xác nhận → `POST /api/v1/ben-cang/:id/approve` → `trangThaiPheDuyet = DUOC_PHE_DUYET` → tạo PheDuyetLog (action=APPROVE) → toast "Đã phê duyệt Bến cảng" → bến biến mất khỏi danh sách chờ.
+**AC-017-05 — Từ chối:** Nhấn "Từ chối" → dialog yêu cầu lý do ≥10 ký tự → `POST /api/v1/ben-cang/:id/reject` body `{ "cap": "...", "lyDo": "..." }` → `trangThaiPheDuyet = TU_CHOI` → tạo PheDuyetLog (action=REJECT, lyDo) → toast "Đã từ chối Bến cảng". Từ chối ở bất kỳ cấp nào cũng dừng quy trình.
 
-**AC-017-06 — Hủy phê duyệt:** Nhấn "Hủy" trong dialog → đóng dialog, không thực hiện.
+**AC-017-06 — Chặn từ chối không lý do:** Nhập <10 ký tự → nút disable + counter "[n]/10 ký tự tối thiểu".
 
-### Nhóm 4: Từ chối
+### Nhóm 4: PheDuyetLog
 
-**AC-017-07 — Từ chối thành công:** Nhấn "Từ chối" → dialog yêu cầu nhập lý do (textarea, placeholder "Nhập lý do từ chối (tối thiểu 10 ký tự)"). Nhập ≥10 ký tự → nút "Xác nhận từ chối" enable → `POST /api/v1/ben-cang/:id/reject` body `{ "lyDo": "..." }` → `trangThaiPheDuyet = TU_CHOI` → tạo PheDuyetLog (action=REJECT, lyDo) → toast "Đã từ chối Bến cảng" → bến biến mất khỏi danh sách chờ.
+**AC-017-07 — Ghi nhận log:** Mỗi quyết định tạo 1 bản ghi: `benCangId`, `cap` (CANG_VU/CUC), `action` (APPROVE/REJECT), `pheDuyetBoi`, `thoiGian`, `lyDo`. Log bất biến.
 
-**AC-017-08 — Chặn từ chối không lý do:** Nhập <10 ký tự → nút "Xác nhận từ chối" disable + counter hiển thị "[n]/10 ký tự tối thiểu". Để trống → lỗi "Lý do từ chối là bắt buộc".
+### Nhóm 5: Phân quyền
 
-### Nhóm 5: PheDuyetLog
+**AC-017-08 — Giới hạn theo cấp:** Cán bộ Cảng vụ không thấy/thao tác được bến ở cấp Cục và ngược lại. Admin Cục/admin-op thấy và thao tác được cả 2 cấp.
 
-**AC-017-09 — Ghi nhận log:** Mỗi quyết định phê duyệt/từ chối tạo 1 bản ghi PheDuyetLog: `benCangId`, `action` (APPROVE/REJECT), `pheDuyetBoi`, `thoiGian`, `lyDo` (nếu REJECT). Log không thể sửa/xóa.
-
-### Nhóm 6: Phân quyền
-
-**AC-017-10 — Giới hạn truy cập:** Admin, Chuyên viên, Lãnh đạo đơn vị, Cá nhân → không thấy menu "Phê duyệt Bến cảng". Truy cập URL trực tiếp → HTTP 403.
-
-**AC-017-11 — Ẩn nút theo vai trò:** Nút "Phê duyệt" và "Từ chối" chỉ hiển thị cho Lãnh đạo (cấp Cục), admin-operation, system-admin.
+**AC-017-09 — Từ chối truy cập:** Vai trò không có quyền → ẩn menu "Phê duyệt". URL trực tiếp → HTTP 403.
 
 ---
 
@@ -129,11 +136,11 @@ Quyền thao tác và xem tính năng được áp dụng theo hệ thống phâ
 
 | ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
 |---|---|---|---|---|
-| BR-017-01 | **Chỉ phê duyệt bến CHO_PHE_DUYET** — không thể phê duyệt bến đã DUOC_PHE_DUYET, TU_CHOI, hoặc 'nhap' | Phê duyệt | Nghiệp vụ | Không |
-| BR-017-02 | **Lý do từ chối bắt buộc ≥10 ký tự** — không cho phép từ chối nếu thiếu hoặc ngắn hơn | Từ chối | Nghiệp vụ | Không |
-| BR-017-03 | **Mỗi bến chỉ duyệt một lần** — sau khi DUOC_PHE_DUYET hoặc TU_CHOI, chỉ reset về CHO_PHE_DUYET khi cập nhật (F-015) | Luồng | Nghiệp vụ | Cập nhật → reset |
-| BR-017-04 | **PheDuyetLog bất biến** — không cho phép sửa hoặc xóa sau khi ghi nhận | Audit | Bảo mật | Không |
-| BR-017-05 | **Lãnh đạo, admin-op, system-admin được duyệt** — các vai trò khác không có quyền | RBAC | Bảo mật | Không |
+| BR-017-01 | **Duyệt tuần tự 2 cấp** — Cảng vụ/Chi cục duyệt trước → `CHO_PD_CAP_CUC`; Cục duyệt sau → `DA_PHE_DUYET`. Không được duyệt vượt cấp | Phê duyệt | Nghiệp vụ | Admin Cục có thể duyệt cả 2 cấp |
+| BR-017-02 | **Từ chối dừng quy trình** — từ chối ở bất kỳ cấp nào → `TU_CHOI`, không tiếp tục. Muốn duyệt lại → cập nhật (F-015) → gửi lại PD | Từ chối | Nghiệp vụ | Không |
+| BR-017-03 | **Lý do từ chối ≥10 ký tự** — bắt buộc, không cho phép bỏ trống | Từ chối | UX | Không |
+| BR-017-04 | **PheDuyetLog có trường `cap`** — CANG_VU / CUC, bất biến sau khi ghi | Audit | Thiết kế | Không |
+| BR-017-05 | **Phân quyền theo cấp** — Cảng vụ chỉ duyệt cấp mình; Cục chỉ duyệt cấp mình; Admin Cục/admin-op duyệt được cả 2 | RBAC | Bảo mật | Admin Cục |
 | BR-017-06 | **Audit log mọi thao tác** — actor, thời gian, hành động, IP | Audit | Bảo mật | Không |
 
 ---
@@ -142,62 +149,79 @@ Quyền thao tác và xem tính năng được áp dụng theo hệ thống phâ
 
 > 🔴 = trường mới.
 
-### 6.1. Bảng `ben_cang` — trường phê duyệt
+### 6.1. Bảng `ben_cang` — trạng thái phê duyệt
 
-- 🔴 **trang_thai_phe_duyet:** NVARCHAR(50) — CHO_PHE_DUYET / DUOC_PHE_DUYET / TU_CHOI
-- 🔴 **ly_do_tu_choi:** NVARCHAR(500), nullable — lý do từ chối (chỉ khi TU_CHOI)
+- 🔴 **trang_thai_phe_duyet:** NVARCHAR(50) — `CHO_PHE_DUYET` (chờ Cảng vụ) / `CHO_PD_CAP_CUC` (chờ Cục) / `DA_PHE_DUYET` / `TU_CHOI` / `NHAP`
+- 🔴 **ly_do_tu_choi:** NVARCHAR(500), nullable
 
-### 6.2. 🔴 Bảng mới `phe_duyet_log` — nhật ký phê duyệt
+> **Luồng trạng thái:** `NHAP` → (gửi PD) → `CHO_PHE_DUYET` → (Cảng vụ duyệt) → `CHO_PD_CAP_CUC` → (Cục duyệt) → `DA_PHE_DUYET`. Từ chối ở bất kỳ đâu → `TU_CHOI`.
 
-- 🔴 **id:** BIGINT, PK, AUTO_INCREMENT
-- 🔴 **ben_cang_id:** BIGINT, NOT NULL, FK → ben_cang.id
-- 🔴 **action:** NVARCHAR(20), NOT NULL — APPROVE / REJECT
-- 🔴 **phe_duyet_boi:** NVARCHAR(100), NOT NULL — người phê duyệt
-- 🔴 **thoi_gian:** TIMESTAMP, DEFAULT NOW()
-- 🔴 **ly_do:** NVARCHAR(500), nullable — lý do (chỉ khi REJECT)
+### 6.2. 🔴 Bảng `phe_duyet_log` — cập nhật
+
+- id: BIGINT, PK
+- ben_cang_id: BIGINT, FK
+- 🔴 **cap:** NVARCHAR(20), NOT NULL — `CANG_VU` / `CUC`
+- action: NVARCHAR(20), NOT NULL — `APPROVE` / `REJECT`
+- phe_duyet_boi: NVARCHAR(100), NOT NULL
+- thoi_gian: TIMESTAMP, DEFAULT NOW()
+- ly_do: NVARCHAR(500), nullable
 
 ---
 
 ## 7. API Endpoints
 
-### 7.1. F-017 — Phê duyệt
-
 | Method | Endpoint | Mô tả | Phân quyền |
 |---|---|---|---|
-| GET | `/api/v1/ben-cang?trangThaiPheDuyet=CHO_PHE_DUYET` | Danh sách bến chờ phê duyệt (hỗ trợ filter: orgUnitId, cangBienId, search) | `bencang:approve` |
-| GET | `/api/v1/ben-cang/{id}` | Xem chi tiết bến chờ duyệt | `bencang:approve` |
-| POST | `/api/v1/ben-cang/{id}/approve` | Phê duyệt → DUOC_PHE_DUYET + PheDuyetLog | `bencang:approve` |
-| POST | `/api/v1/ben-cang/{id}/reject` | Từ chối → TU_CHOI + PheDuyetLog (body: `{ "lyDo": "..." }`) | `bencang:approve` |
+| GET | `/api/v1/ben-cang?trangThaiPheDuyet=CHO_PHE_DUYET` | Danh sách chờ cấp Cảng vụ | `bencang:approve` (Cảng vụ) |
+| GET | `/api/v1/ben-cang?trangThaiPheDuyet=CHO_PD_CAP_CUC` | Danh sách chờ cấp Cục | `bencang:approve` (Cục) |
+| GET | `/api/v1/ben-cang/{id}` | Xem chi tiết bến | `bencang:approve` |
+| POST | `/api/v1/ben-cang/{id}/approve` | Phê duyệt. Body: `{ "cap": "CANG_VU" \| "CUC" }` | `bencang:approve` |
+| POST | `/api/v1/ben-cang/{id}/reject` | Từ chối. Body: `{ "cap": "...", "lyDo": "..." }` | `bencang:approve` |
 
 ---
 
 ## 8. Chi tiết nghiệp vụ
 
-### 8.1. Luồng phê duyệt
+### 8.1. Luồng phê duyệt cấp Cảng vụ/Chi cục
 
 ```
-Lãnh đạo → màn hình "Phê duyệt Bến cảng"
+Cán bộ Cảng vụ → màn hình "Phê duyệt Bến cảng"
 → GET /api/v1/ben-cang?trangThaiPheDuyet=CHO_PHE_DUYET
-→ Danh sách bến chờ duyệt
+→ Danh sách bến chờ cấp mình
 → Chọn bến → xem chi tiết (GET /api/v1/ben-cang/{id})
 → "Phê duyệt" → confirmation dialog → xác nhận
-→ POST /api/v1/ben-cang/{id}/approve
-→ Server: UPDATE ben_cang SET trang_thai_phe_duyet = 'DUOC_PHE_DUYET'
-         INSERT phe_duyet_log (action='APPROVE', phe_duyet_boi, thoi_gian)
-→ Response 200 → toast "Đã phê duyệt Bến cảng"
+→ POST /api/v1/ben-cang/{id}/approve { "cap": "CANG_VU" }
+→ UPDATE trang_thai_phe_duyet = 'CHO_PD_CAP_CUC'
+  INSERT phe_duyet_log (cap='CANG_VU', action='APPROVE', ...)
+→ toast "Đã phê duyệt, chuyển Cục duyệt"
+→ Bến chuyển sang danh sách chờ cấp Cục
+```
+
+### 8.2. Luồng phê duyệt cấp Cục
+
+```
+Cán bộ Cục → màn hình "Phê duyệt Bến cảng"
+→ GET /api/v1/ben-cang?trangThaiPheDuyet=CHO_PD_CAP_CUC
+→ Danh sách bến chờ cấp mình (kèm thông tin ai duyệt cấp Cảng vụ, khi nào)
+→ Chọn bến → xem chi tiết
+→ "Phê duyệt" → confirmation dialog → xác nhận
+→ POST /api/v1/ben-cang/{id}/approve { "cap": "CUC" }
+→ UPDATE trang_thai_phe_duyet = 'DA_PHE_DUYET'
+  INSERT phe_duyet_log (cap='CUC', action='APPROVE', ...)
+→ toast "Đã phê duyệt Bến cảng"
 → Bến biến mất khỏi danh sách chờ
 ```
 
-### 8.2. Luồng từ chối
+### 8.3. Luồng từ chối
 
 ```
-Lãnh đạo → chọn bến → "Từ chối"
+Cán bộ bất kỳ cấp → chọn bến → "Từ chối"
 → Dialog: textarea "Nhập lý do từ chối (tối thiểu 10 ký tự)"
 → Nhập ≥10 ký tự → "Xác nhận từ chối"
-→ POST /api/v1/ben-cang/{id}/reject { "lyDo": "..." }
-→ Server: UPDATE ben_cang SET trang_thai_phe_duyet = 'TU_CHOI', ly_do_tu_choi = :lyDo
-         INSERT phe_duyet_log (action='REJECT', ly_do, phe_duyet_boi, thoi_gian)
-→ Response 200 → toast "Đã từ chối Bến cảng"
+→ POST /api/v1/ben-cang/{id}/reject { "cap": "...", "lyDo": "..." }
+→ UPDATE trang_thai_phe_duyet = 'TU_CHOI', ly_do_tu_choi = :lyDo
+  INSERT phe_duyet_log (cap, action='REJECT', lyDo, ...)
+→ toast "Đã từ chối Bến cảng"
 → Bến biến mất khỏi danh sách chờ
 ```
 
@@ -206,10 +230,10 @@ Lãnh đạo → chọn bến → "Từ chối"
 ## 9. Yêu cầu phi chức năng
 
 - **Hiệu năng:** GET danh sách ≤500ms, POST approve/reject ≤1s, ≥30 concurrent users
-- **Mở rộng:** PheDuyetLog thiết kế đơn giản, dễ mở rộng thêm trường
-- **Bảo mật:** RBAC `bencang:approve`; không cho phép sửa/xóa PheDuyetLog; HTTPS
+- **Mở rộng:** PheDuyetLog có trường cap, dễ mở rộng thêm cấp nếu cần
+- **Bảo mật:** RBAC `bencang:approve` + kiểm tra cấp; không cho phép sửa/xóa log; HTTPS
 - **Độ tin cậy:** Transaction atomicity (update ben_cang + insert PheDuyetLog); rollback nếu lỗi
-- **UX:** Confirmation dialog trước mọi hành động; counter ký tự lý do từ chối; toast thông báo
+- **UX:** Confirmation dialog trước mọi hành động; counter ký tự; hiển thị rõ cấp đang duyệt
 - **Pháp lý:** PheDuyetLog lưu trữ vĩnh viễn; audit log ≥2 năm
 
 ---
@@ -221,36 +245,35 @@ Lãnh đạo → chọn bến → "Từ chối"
 ### 10.1. Màn hình danh sách chờ duyệt
 
 - **Component:** `BenCangApprovalPage`
-- **Header:** "Phê duyệt Bến cảng" + badge số lượng chờ duyệt
+- **Header:** "Phê duyệt Bến cảng" + badge cấp hiện tại ("Cấp Cảng vụ/Chi cục" hoặc "Cấp Cục")
 - **FilterBar:** Đơn vị quản lý, Cảng mẹ, Tìm kiếm
-- **Bảng columns:** Mã bến, Tên bến, Cảng mẹ, Loại kết cấu, Tình trạng, Ngày tạo, Người tạo, Thao tác
-- **Thao tác mỗi dòng:** "Phê duyệt" (primary) + "Từ chối" (danger)
-- **Pagination:** 20/50 mục
+- **Bảng columns:** Mã bến, Tên bến, Cảng mẹ, Loại kết cấu, Tình trạng, Ngày gửi PD, Người gửi PD (+ cột Cảng vụ nếu là cấp Cục)
+- **Thao tác:** "Phê duyệt" (primary) + "Từ chối" (danger)
+- **Pagination:** 20/50
 
 ### 10.2. Dialog phê duyệt
 
-- **Tiêu đề:** "Phê duyệt Bến cảng"
+- **Tiêu đề:** "Phê duyệt Bến cảng (Cấp [Cảng vụ/Cục])"
 - **Nội dung:** "Bạn có chắc chắn muốn phê duyệt Bến cảng [maBen] - [tenBen]?"
-- **Nút:** "Hủy" (outlined) + "Xác nhận phê duyệt" (primary)
+- **Nút:** "Hủy" + "Xác nhận phê duyệt" (primary)
 
 ### 10.3. Dialog từ chối
 
 - **Tiêu đề:** "Từ chối Bến cảng"
-- **Nội dung:** "Bạn có chắc chắn muốn từ chối Bến cảng [maBen] - [tenBen]?"
-- **Textarea:** placeholder "Nhập lý do từ chối (tối thiểu 10 ký tự)"
-- **Counter:** "[n]/10 ký tự tối thiểu" (đỏ nếu <10, xanh nếu đủ)
-- **Nút:** "Hủy" (outlined) + "Xác nhận từ chối" (danger, disable đến khi ≥10 ký tự)
+- **Textarea:** "Nhập lý do từ chối (tối thiểu 10 ký tự)"
+- **Counter:** "[n]/10" (đỏ nếu <10, xanh nếu đủ)
+- **Nút:** "Hủy" + "Xác nhận từ chối" (danger, disable đến khi ≥10)
 
 ### 10.4. Trạng thái UI
 
 - Danh sách trống: "Không có Bến cảng nào đang chờ phê duyệt"
 - Đang tải: spinner
 - Phê duyệt thành công: toast xanh + dòng biến mất
-- Từ chối thành công: toast cam + dòng biến mất
+- Từ chối: toast cam + dòng biến mất
 - Lỗi: toast đỏ
 
 ---
 
 ## Consolidation Note
 
-Merged with UI feature F-077 (ui-phe-duyet-bc) — 2026-07-30
+Merged with UI feature F-077 (ui-phe-duyet-bc) — 2026-07-31
