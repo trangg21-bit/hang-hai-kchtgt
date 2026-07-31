@@ -2,90 +2,87 @@
 feature-id: F-024
 document: lean-spec
 output-mode: lean
-last-updated: 2026-06-27
+last-updated: 2026-07-31
 ---
 # Xem chi tiết Cầu cảng
 
 ## Summary
 
-Cán bộ quản lý và người vận hành cần tra cứu nhanh thông tin Cầu cảng để phục vụ điều phối vận tải, kiểm tra năng lực tiếp nhận tàu và báo cáo nhà nước. Tính năng cung cấp màn hình tìm kiếm/lọc danh sách theo mã cầu, tên cầu, Bến cảng mẹ và trang chi tiết Cầu cảng với kiểm soát ẩn trường theo vai trò. Thành công khi tra cứu trả kết quả dưới 3 giây và 100% trường kỹ thuật được hiển thị đúng theo phân quyền vai trò.
+Hệ thống cần cung cấp trang chi tiết hiển thị toàn bộ thông tin Cầu cảng ở chế độ read-only, bao gồm 11 nhóm thông tin (A→K) dạng collapsible + 5 tab dữ liệu liên quan (phê duyệt, KCHT, vận hành, bảo trì, sự cố). Trang là điểm trung tâm điều hướng đến các tính năng khác: chỉnh sửa, phê duyệt, lịch sử. Hiển thị badge trạng thái theo vòng đời, cảnh báo trạng thái, và metadata (chỉ Admin Cục). Thành công khi tất cả trường hiển thị đúng, badge màu chính xác theo trạng thái, các tab liên quan load đủ dữ liệu.
 
 ## Scope
 
 | | Items |
 |---|---|
-| In scope | Thanh tìm kiếm (mã cầu, tên cầu, Bến cảng mẹ, trạng thái); Bảng danh sách kết quả phân trang (50/trang) với sắp xếp; Trang chi tiết Cầu cảng (đầy đủ các trường); Hiển thị liên kết đến Bến cảng mẹ; Hiển thị createdBy/updatedBy; Kiểm soát ẩn trường theo vai trò (field-level RBAC) |
-| Out of scope | Tạo mới Cầu cảng (F-020); Cập nhật Cầu cảng (F-021); Xóa Cầu cảng (F-022); Phê duyệt Cầu cảng (F-023); Lịch sử thay đổi chi tiết (F-025); Xuất dữ liệu Excel/PDF; Tích hợp bản đồ GIS (Cầu cảng không có trường tọa độ GPS) |
-| Assumptions | Cơ chế RBAC đã được triển khai tại tầng API và frontend; Bến cảng mẹ (BenCang) đã tồn tại trong hệ thống; Phân trang offset-based chấp nhận được |
+| In scope | 11 nhóm hiển thị (A: cơ bản, B: kỹ thuật, C: trạng thái + metadata, D: thời điểm, E: số lượng, F: ATHH, G: công bố, H: GIS, I: phạm vi & tọa độ, J: giấy tờ, K: hành động); 5 tab: phê duyệt, KCHT, vận hành, bảo trì, sự cố; Badge trạng thái theo vòng đời; Cảnh báo trạng thái; Breadcrumb; Nút hành động theo vai trò và trạng thái; Link Bến cảng cha; Metadata cho Admin Cục |
+| Out of scope | Chỉnh sửa (F-021); Tạo mới (F-020); Xóa (F-022); Phê duyệt (F-023); Lịch sử (F-025) |
+| Assumptions | Cầu cảng đã tồn tại; JOIN BenCang + GiayTo; Collapsible sections mặc định: A, B, C, J mở; D→I, L→P thu gọn |
 
 ## User Stories
 
 | US-ID | Actor | Goal | Value | Priority |
 |---|---|---|---|---|
-| US-001 | Chuyên viên (A-003) / Người dùng tại Cảng (A-004) | Tìm kiếm Cầu cảng theo mã cầu, tên cầu hoặc Bến cảng mẹ | Tra cứu nhanh không cần duyệt toàn bộ danh sách | Must Have |
-| US-002 | Chuyên viên (A-003) / Quản trị (A-001) | Xem trang chi tiết đầy đủ thông tin kỹ thuật của một Cầu cảng | Có đủ dữ liệu kỹ thuật (tải trọng, kích thước, loại kết cấu) để phân tích và lập báo cáo | Must Have |
-| US-003 | Người dùng tại Cảng (A-004) | Xem thông tin cơ bản Cầu cảng trong phạm vi quyền hạn | Khai thác dữ liệu an toàn mà không lộ thông tin kỹ thuật nhạy cảm | Must Have |
-| US-004 | Tất cả actor nội bộ | Hệ thống không hiển thị trường kỹ thuật mở rộng cho vai trò không đủ quyền | Bảo vệ dữ liệu nhạy cảm và tuân thủ kiểm soát truy cập field-level | Must Have |
-| US-005 | Chuyên viên (A-003) | Xem liên kết điều hướng đến Bến cảng mẹ từ trang chi tiết Cầu cảng | Tra cứu thông tin Bến cảng mẹ liên quan mà không cần tìm kiếm lại | Should Have |
+| US-024-01 | Nhân viên vận hành | Xem toàn bộ thông tin chi tiết cầu cảng | Nắm tình trạng hiện tại phục vụ vận hành | Must Have |
+| US-024-02 | Quản lý tài sản | Xem đầy đủ trường kỹ thuật và trạng thái | Kiểm tra trước khi chỉnh sửa | Must Have |
+| US-024-03 | Lãnh đạo | Xem chi tiết + phê duyệt/từ chối ngay trên trang | Tiết kiệm thời gian | Must Have |
+| US-024-04 | Nhân viên vận hành | Tải xuống/in giấy tờ đính kèm | Phục vụ kiểm tra thực tế | Should Have |
+| US-024-05 | Quản lý tài sản | Xem lịch sử thay đổi từ trang chi tiết | Biết ai đã thay đổi gì | Should Have |
+| US-024-06 | Người dùng | Breadcrumb điều hướng rõ ràng | Dễ dàng quay lại danh sách/Bến cảng cha | Should Have |
 
 ## Acceptance Criteria
 
 | AC-ID | US-ref | Scenario | Given / When / Then | Constraints |
 |---|---|---|---|---|
-| AC-001 | US-001 | Tra cứu theo mã cầu trả kết quả đúng trong 3 giây | Given người dùng có quyền VIEW_CAU_CANG đăng nhập thành công; When nhập mã cầu vào thanh tìm kiếm và gửi; Then kết quả danh sách hiển thị trong vòng 3 giây với Cầu cảng có mã tương ứng | SLA: p95 ≤ 3s trên tập 614 bản ghi |
-| AC-002 | US-001 | Tra cứu theo tên cầu (partial match, case-insensitive) | Given người dùng nhập một phần tên cầu; When gửi tìm kiếm; Then kết quả chứa tất cả Cầu cảng có tên chứa chuỗi tìm kiếm (case-insensitive, partial match) | |
-| AC-003 | US-001 | Lọc theo Bến cảng mẹ | Given người dùng chọn Bến cảng mẹ từ dropdown; When áp dụng bộ lọc; Then chỉ hiển thị Cầu cảng thuộc Bến cảng mẹ đã chọn | Dropdown lấy danh sách BenCang trạng thái hien_hanh |
-| AC-004 | US-001 | Phân trang 50 kết quả/trang với sắp xếp | Given tìm kiếm trả về >50 kết quả; When xem trang kết quả; Then hiển thị tối đa 50 mục/trang, có điều hướng phân trang, có tùy chọn sắp xếp theo tên hoặc thời gian tạo | |
-| AC-005 | US-002 | Trang chi tiết hiển thị đầy đủ tất cả các trường | Given người dùng vai trò Chuyên viên (A-003) hoặc Quản trị viên (A-001); When click vào một Cầu cảng trong danh sách; Then trang chi tiết hiển thị: maCau, tenCau, liên kết BenCang mẹ, loaiKetCau, vatLieuChinh, taiTrongThietKe, chieuDaiCau, chieuRongCau, mucNuocCaoNhat, trangThai, ghiChu, createdAt, updatedAt, createdBy, updatedBy | Tất cả trường CauCang entity phải có mặt |
-| AC-006 | US-003 | Người dùng tại Cảng (A-004) chỉ thấy trường cơ bản | Given người dùng vai trò Người dùng tại Cảng (A-004); When xem trang chi tiết Cầu cảng; Then chỉ hiển thị: maCau, tenCau, trangThai, BenCang mẹ (tên); các trường kỹ thuật bị ẩn | Áp dụng cả API response — không trả dữ liệu thừa trong JSON |
-| AC-007 | US-004 | API không trả trường bị ẩn cho vai trò không đủ quyền | Given API GET /cau-cang/{id} gọi bởi token vai trò A-004; When server xử lý; Then response JSON không chứa: taiTrongThietKe, chieuDaiCau, chieuRongCau, mucNuocCaoNhat, vatLieuChinh, loaiKetCau, ghiChu, createdBy, updatedBy | Kiểm soát tại service layer, không chỉ frontend |
-| AC-008 | US-001 | Kết quả tìm kiếm mặc định loại trừ trạng thái cho_phe_duyet và da_xoa | Given người dùng tìm kiếm không có bộ lọc trạng thái; When kết quả trả về; Then chỉ hiển thị Cầu cảng trạng thái "Hiện hành" và "Tạm ngừng"; Cầu cảng "Chờ phê duyệt" và "Đã xóa" bị loại trừ | Bật "Xem tất cả" để thấy đầy đủ |
-| AC-009 | US-001 | Người dùng không có quyền VIEW_CAU_CANG bị chặn | Given người dùng không có permission VIEW_CAU_CANG; When truy cập danh sách hoặc chi tiết Cầu cảng; Then nhận HTTP 403 Forbidden; không hiển thị dữ liệu | Áp dụng cả API endpoint và UI navigation |
-| AC-010 | US-005 | Liên kết Bến cảng mẹ dẫn đến trang chi tiết Bến cảng | Given người dùng đang xem trang chi tiết Cầu cảng; When click vào tên Bến cảng mẹ; Then hệ thống điều hướng đến trang chi tiết Bến cảng mẹ tương ứng (F-016) | Chỉ điều hướng nếu người dùng có quyền VIEW_BEN_CANG |
+| AC-024-01 | US-024-01 | Hiển thị đầy đủ 11 nhóm thông tin | Given người dùng click vào cầu cảng từ danh sách; When GET /api/v1/cau-cang/:id thành công; Then hiển thị 11 nhóm A→K, badge trạng thái đúng màu, cảnh báo trạng thái phù hợp | API lỗi → thông báo + nút Thử lại |
+| AC-024-02 | US-024-06 | Link Bến cảng cha hoạt động | Given trang chi tiết; When click tên Bến cảng; Then điều hướng đến trang chi tiết Bến cảng. Nếu bến đã xóa → hiển thị "(không khả dụng)" | |
+| AC-024-03 | US-024-01 | Badge trạng thái theo vòng đời | Given cầu cảng CHO_PHE_DUYET; Then badge vàng; DUOC_PHE_DUYET → xanh dương; TU_CHOI → đỏ; TAM_NGUNG → vàng; HIEN_HANH → xanh lá | |
+| AC-024-04 | US-024-01 | Danh sách giấy tờ đính kèm | Given cầu cảng có file; Then hiển thị bảng: tên, kích thước, loại, ngày upload + nút Tải xuống/In. Không có file → "Không có giấy tờ đính kèm" | |
+| AC-024-05 | US-024-03 | Nút hành động theo trạng thái + vai trò | Given Leader/Admin + CHO_PHE_DUYET; Then hiển thị "Phê duyệt" + "Từ chối". Given DUOC_PHE_DUYET/TU_CHOI; Then ẩn nút phê duyệt. Given Admin/QLTS; Then hiển thị "Chỉnh sửa" | |
+| AC-024-06 | US-024-06 | Breadcrumb đúng | Then hiển thị: Trang chủ > Quản lý KCHT Hàng Hải > Quản lý cầu cảng > [tên]. Click "Quản lý cầu cảng" → F-078 | |
+| AC-024-07 | US-024-01 | Metadata cho Admin Cục | Given Admin Cục; Then thấy createdBy, createdAt, updatedBy, updatedAt. Vai trò khác → ẩn | |
+| AC-024-08 | US-024-01 | 5 tab dữ liệu liên quan load đủ | Given tab Phê duyệt/KCHT/Vận hành/Bảo trì/Sự cố; When click tab; Then hiển thị bảng dữ liệu tương ứng với đầy đủ cột | Tab trống → empty state |
 
 ## Business Rules
 
 | BR-ID | Rule | Applies to | Exception |
 |---|---|---|---|
-| BR-001 | Kết quả tìm kiếm mặc định chỉ trả Cầu cảng trạng thái hien_hanh và tam_ngung | AC-008, US-001 | Khi người dùng bật "Xem tất cả" thì hiển thị cả cho_phe_duyet và da_xoa |
-| BR-002 | Người dùng tại Cảng (A-004) chỉ xem được 4 trường cơ bản: maCau, tenCau, trangThai, tenBenCangMe; các trường kỹ thuật bị ẩn | AC-006, AC-007 | Không có ngoại lệ |
-| BR-003 | Trường kỹ thuật mở rộng (taiTrongThietKe, chieuDaiCau, chieuRongCau, mucNuocCaoNhat, vatLieuChinh, loaiKetCau, ghiChu, createdBy, updatedBy) chỉ hiển thị cho vai trò Chuyên viên (A-003) trở lên | AC-005, AC-007 | Quản trị hệ thống (A-001) luôn thấy đầy đủ |
-| BR-004 | Danh sách kết quả hiển thị tối đa 50 bản ghi/trang; phải có phân trang | AC-004 | Không có ngoại lệ |
-| BR-005 | Liên kết điều hướng đến Bến cảng mẹ chỉ hiển thị khi người dùng có quyền VIEW_BEN_CANG | AC-010 | Không có ngoại lệ |
-| BR-006 | Live search debounce ≤ 500ms sau khi ngừng gõ; bộ lọc dropdown kích hoạt ngay khi chọn | AC-001 | Chỉ áp dụng cho tìm kiếm text |
+| BR-024-01 | Xem được ở mọi trạng thái; luôn hiển thị trạng thái hiện tại | AC-024-01 | Không có ngoại lệ |
+| BR-024-02 | Read-only — mọi chỉnh sửa qua F-021 | AC-024-01 | Không có ngoại lệ |
+| BR-024-03 | Phê duyệt/từ chối từ trang chi tiết khi CHO_PHE_DUYET | AC-024-05 | |
+| BR-024-04 | Bến cảng cha hiển thị link; nếu đã xóa → cảnh báo | AC-024-02 | |
+| BR-024-05 | Dữ liệu làm mới mỗi lần truy cập, không cache | AC-024-01 | |
+| BR-024-06 | Nút hành động thay đổi theo trạng thái | AC-024-05 | |
+| BR-024-07 | Cảnh báo: CHO_PHE_DUYET/TU_CHOI → "chưa được duyệt"; DUOC_PHE_DUYET → "đang khả dụng" | AC-024-01 | |
+| BR-024-08 | Cha (Bến/Cảng) mất → CC tự động TAM_NGUNG + cảnh báo | - | |
 
 ## Non-Functional Requirements
 
 | Area | Requirement | Target |
 |---|---|---|
-| Performance | API tra cứu danh sách p95 ≤ 3s trên tập 614 bản ghi; live search debounce ≤ 500ms | p95 ≤ 3s |
-| Security | Kiểm soát quyền VIEW_CAU_CANG tại API layer (Spring @PreAuthorize); API không leak trường ẩn trong response cho role không đủ quyền | 0 field leak cho role không đủ quyền |
-| Reliability | Trang chi tiết không crash khi trường optional thiếu hoặc null | 100% graceful fallback |
-| Audit/Logging | Mọi lần truy cập GET chi tiết Cầu cảng (user_id, cau_cang_id, timestamp) được ghi log | 100% access events logged |
-| Operability | Danh sách và chi tiết hoạt động bình thường khi dữ liệu trường optional (ghiChu, mucNuocCaoNhat) null | Graceful empty-state display |
+| Performance | Tải trang chi tiết (JOIN BenCang + GiayTo) ≤ 1 giây | p95 ≤ 1s |
+| Performance | Tải file đính kèm ≤ 3 giây (max 10MB) | p95 ≤ 3s |
+| Security | RBAC trên API; metadata chỉ cho Admin Cục | |
+| UX | Collapsible sections (A,B,C,J mở; còn lại thu gọn); Loading skeleton; Empty state; WCAG 2.1 AA | |
+| Compliance | Thông tư 48/2017/TT-BGTVT | |
 
 ## Test Scenarios
 
 | TS-ID | AC-ref | Scenario | Type |
 |---|---|---|---|
-| TS-001 | AC-001 | Tìm kiếm theo mã cầu hợp lệ → kết quả trong 3s | Performance + Integration |
-| TS-002 | AC-002 | Tìm kiếm partial tên cầu (case-insensitive) → đúng kết quả | Integration |
-| TS-003 | AC-003 | Lọc theo Bến cảng mẹ → chỉ hiển thị Cầu cảng của Bến đó | Integration |
-| TS-004 | AC-004 | Tập 51 bản ghi → phân trang đúng 50/trang | Integration |
-| TS-005 | AC-005 | Vai trò Chuyên viên → thấy đủ 15 trường CauCang | Integration + UI |
-| TS-006 | AC-006 | Vai trò Người dùng tại Cảng → chỉ thấy 4 trường cơ bản | Security/RBAC |
-| TS-007 | AC-007 | API GET /cau-cang/{id} với token A-004 → response không có trường kỹ thuật | Security/API |
-| TS-008 | AC-008 | Tìm kiếm mặc định → không trả Cầu cảng trạng thái cho_phe_duyet và da_xoa | Integration |
-| TS-009 | AC-009 | Token không có quyền VIEW_CAU_CANG → HTTP 403 | Security |
-| TS-010 | AC-010 | Click tên Bến cảng mẹ → điều hướng đến trang chi tiết Bến cảng đúng | UI/Integration |
-| TS-011 | AC-001 | Performance: 614 bản ghi, p95 tra cứu ≤ 3s | Performance |
-| TS-012 | AC-005 | Trường optional null (ghiChu, mucNuocCaoNhat) → hiển thị empty-state thay vì crash | Negative/UI |
+| TS-024-01 | AC-024-01 | Happy path: Mở chi tiết → hiển thị đủ 11 nhóm + badge | Integration |
+| TS-024-02 | AC-024-02 | Link Bến cảng cha → điều hướng đúng | UI |
+| TS-024-03 | AC-024-03 | Các trạng thái → badge màu đúng | UI |
+| TS-024-04 | AC-024-05 | Leader thấy nút Phê duyệt/Từ chối khi CHO_PHE_DUYET | UI + RBAC |
+| TS-024-05 | AC-024-05 | User thường không thấy nút phê duyệt | Security |
+| TS-024-06 | AC-024-07 | Admin Cục thấy metadata; vai trò khác không thấy | Security |
+| TS-024-07 | AC-024-08 | 5 tab load đúng dữ liệu | Integration |
+| TS-024-08 | AC-024-01 | API lỗi → thông báo + nút Thử lại | Negative |
 
 ## Pipeline Triage
 
 | Question | Answer | Rationale |
 |---|---|---|
-| Domain model affected? | No | CauCang entity đã được định nghĩa bởi F-020; F-024 chỉ đọc (read-only), không thêm aggregate/event mới |
-| Architecture affected? | Yes | Cần thiết kế API GET endpoint với field-level access control theo role, liên kết cross-entity sang BenCang, live search với debounce |
-| Implementation clear? | No | Field-level RBAC projection (ẩn trường theo role tại API layer) và cross-entity navigation link cần quyết định kiến trúc |
-| **Verdict** | `Ready for solution architecture` | Read-only feature nhưng có non-trivial API design: field-level role projection + cross-entity BenCang link + performance SLA |
+| Domain model affected? | No | Read-only trên entity hiện có + JOIN BenCang, GiayTo, PheDuyetLog, KCHT, Vận hành, Bảo trì, Sự cố |
+| Architecture affected? | Yes | Cần JOIN nhiều bảng cho 5 tab; field-level RBAC cho metadata |
+| Implementation clear? | Yes | Pattern read-only đã rõ; collapsible sections theo pattern F-020 |
+| **Verdict** | `Ready for Technical Lead planning` | Read-only với nhiều JOIN; implementation rõ ràng từ pattern có sẵn |
