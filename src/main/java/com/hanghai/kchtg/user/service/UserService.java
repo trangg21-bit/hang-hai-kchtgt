@@ -395,7 +395,7 @@ public class UserService {
         // 3. Check any table with audit columns referencing this user
         @SuppressWarnings("unchecked")
         List<Object[]> refColumns = entityManager.createNativeQuery(
-            "SELECT DISTINCT c.table_name, c.column_name FROM information_schema.columns c " +
+            "SELECT DISTINCT c.table_name, c.column_name, c.data_type FROM information_schema.columns c " +
             "WHERE c.table_schema = 'public' " +
             "AND c.column_name IN ('created_by','updated_by','deleted_by','approved_by','assigned_by','changed_by','operator_id') " +
             "ORDER BY c.table_name"
@@ -406,8 +406,26 @@ public class UserService {
             String col = (String) row[1];
             if (ignoredSystemTables.contains(tbl)) continue;
 
+            String dataType = (String) row[2];
+            String userIdExpression;
+            if ("uuid".equalsIgnoreCase(dataType)) {
+                userIdExpression = "CAST(:userId AS uuid)";
+            } else if ("character varying".equalsIgnoreCase(dataType)
+                    || "character".equalsIgnoreCase(dataType)
+                    || "text".equalsIgnoreCase(dataType)) {
+                // Some legacy audit columns (for example
+                // adjustment_approvals.approved_by) intentionally remain text.
+                userIdExpression = "CAST(:userId AS text)";
+            } else {
+                // A UUID user identifier cannot meaningfully match numeric/date
+                // audit columns; skip those columns instead of aborting deletion.
+                log.debug("Skipping unsupported audit column type {}.{} ({})", tbl, col, dataType);
+                continue;
+            }
+
             Number count = (Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
+                "SELECT COUNT(*) FROM \"" + tbl.replace("\"", "\"\"") + "\" WHERE \""
+                    + col.replace("\"", "\"\"") + "\" = " + userIdExpression
             ).setParameter("userId", user.getId()).getSingleResult();
             if (count.longValue() > 0) {
                 throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
