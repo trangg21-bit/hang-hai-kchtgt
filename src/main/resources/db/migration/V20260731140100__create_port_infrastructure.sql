@@ -1,5 +1,5 @@
 -- Tạo bảng port_infrastructure lưu danh sách công trình KCHT trực thuộc mỗi Cảng biển
-CREATE TABLE port_infrastructure (
+CREATE TABLE IF NOT EXISTS port_infrastructure (
     id BIGSERIAL PRIMARY KEY,
     port_id UUID NOT NULL REFERENCES ports(id) ON DELETE CASCADE,
     stt INTEGER NOT NULL,
@@ -9,4 +9,5 @@ CREATE TABLE port_infrastructure (
 );
 
 -- Index để truy vấn nhanh theo port_id
-CREATE INDEX idx_port_infrastructure_port_id ON port_infrastructure(port_id);
+CREATE INDEX IF NOT EXISTS idx_port_infrastructure_port_id ON port_infrastructure(port_id);
+

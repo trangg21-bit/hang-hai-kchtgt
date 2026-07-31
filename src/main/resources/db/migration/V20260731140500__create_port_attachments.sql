@@ -3,7 +3,7 @@
 -- Mỗi port có thể có nhiều file đính kèm (tối đa 10 file, mỗi file ≤ 20MB).
 -- Các định dạng hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF
 
-CREATE TABLE port_attachments (
+CREATE TABLE IF NOT EXISTS port_attachments (
     id           BIGSERIAL    PRIMARY KEY,
     port_id      UUID         NOT NULL,
     file_name    VARCHAR(255) NOT NULL,
@@ -18,19 +18,27 @@ CREATE TABLE port_attachments (
         ON DELETE CASCADE,
 
     CONSTRAINT fk_port_attachments_uploaded_by
-        FOREIGN KEY (uploaded_by) REFERENCES users(id)
+        FOREIGN KEY (uploaded_by) REFERENCES app_users(id)
 );
 
 -- Index để truy vấn nhanh theo port_id
-CREATE INDEX idx_port_attachments_port_id ON port_attachments(port_id);
+CREATE INDEX IF NOT EXISTS idx_port_attachments_port_id ON port_attachments(port_id);
 
 
 -- V106: Alter updated_at columns to allow NULL (safe migration for existing rows)
 -- Applied to all 3 port child tables that now have the updatedAt field.
-
-ALTER TABLE port_coordinates ALTER COLUMN updated_at DROP NOT NULL;
-ALTER TABLE port_infrastructure ALTER COLUMN updated_at DROP NOT NULL;
-ALTER TABLE port_attachments ALTER COLUMN updated_at DROP NOT NULL;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_coordinates' AND column_name = 'updated_at') THEN
+        ALTER TABLE port_coordinates ALTER COLUMN updated_at DROP NOT NULL;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_infrastructure' AND column_name = 'updated_at') THEN
+        ALTER TABLE port_infrastructure ALTER COLUMN updated_at DROP NOT NULL;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_attachments' AND column_name = 'updated_at') THEN
+        ALTER TABLE port_attachments ALTER COLUMN updated_at DROP NOT NULL;
+    END IF;
+END $$;
 
 
 -- V107: Alter sub-tables id column from BIGINT to UUID (idempotent)
