@@ -21,7 +21,6 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 @Data
 public class CreatePortRequest {
 
-    @NotBlank(message = "Mã cảng không được để trống")
     @Size(max = 50, message = "Mã cảng tối đa 50 ký tự")
     private String portCode;
 
@@ -50,6 +49,7 @@ public class CreatePortRequest {
 
     private Integer portGroup;
     private UUID mapSymbolId;
+    private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
 

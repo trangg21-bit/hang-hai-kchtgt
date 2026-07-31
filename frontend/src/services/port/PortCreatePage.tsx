@@ -84,6 +84,7 @@ export default function PortCreatePage() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [portCodeLoading, setPortCodeLoading] = useState(true);
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
   const isSystemAdmin = userPermissions.includes('admin:manage');
@@ -106,13 +107,20 @@ export default function PortCreatePage() {
   // ── Auto-generate port code on mount ──
   useEffect(() => {
     (async () => {
+      setPortCodeLoading(true);
       try {
         const res = await api.get('/v1/ports/generate-code');
-        // Response envelope: { success, message, data: "CB-XXXXXX" }
-        const code = res.data?.data ?? res.data;
-        form.setFieldsValue({ portCode: String(code) });
+        // API envelope: { success, message, data: { portCode: "CB-XXXXXX" } }
+        const code: string | undefined = res.data?.data?.portCode;
+        if (code) {
+          form.setFieldsValue({ portCode: code });
+        }
+        // If API returns no code, backend will auto-gen on submit anyway
       } catch {
-        toast.error('Không thể tạo mã cảng. Vui lòng thử lại.');
+        // Silent — backend auto-generates portCode if empty on submit
+        console.warn('Không thể lấy mã cảng từ API, backend sẽ tự sinh khi lưu');
+      } finally {
+        setPortCodeLoading(false);
       }
     })();
   }, [form]);
@@ -245,6 +253,7 @@ export default function PortCreatePage() {
 
     // ── Submit-only validation ──
     if (actionType === 'submit') {
+      const hasSpatialId = !!values.spatialId;
       const validCoords = coordinateList.filter(
         (c) =>
           c.latitude !== null &&
@@ -252,8 +261,8 @@ export default function PortCreatePage() {
           !Number.isNaN(Number(c.latitude)) &&
           !Number.isNaN(Number(c.longitude)),
       );
-      if (validCoords.length === 0) {
-        toast.error('Vui lòng thêm ít nhất một tọa độ GPS (Vĩ độ, Kinh độ)');
+      if (validCoords.length === 0 && !hasSpatialId) {
+        toast.error('Vui lòng thêm ít nhất một tọa độ GPS hoặc liên kết đối tượng GIS');
         return;
       }
     }
@@ -302,7 +311,7 @@ export default function PortCreatePage() {
 
       const payload: Record<string, unknown> = {
         action: actionType,
-        portCode: String(values.portCode ?? ''),
+        portCode: String(values.portCode || '').trim(),
         portName,
         province: values.province || undefined,
         orgUnitId: values.orgUnitId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId) ? values.orgUnitId : undefined,
@@ -316,6 +325,7 @@ export default function PortCreatePage() {
         otherWaterAreas: values.otherWaterAreas || undefined,
         geometryType: values.geometryType || 'POINT',
         mapSymbolId: values.mapSymbolId || undefined,
+        spatialId: values.spatialId || undefined,
         coordinateSystem: values.coordinateSystem !== undefined && values.coordinateSystem !== null ? Number(values.coordinateSystem) : undefined,
         displayRule: values.displayRule || undefined,
         remarks: values.remarks || undefined,
@@ -326,6 +336,13 @@ export default function PortCreatePage() {
           .filter((inf) => inf.infraName?.trim())
           .map((inf) => ({ stt: inf.stt, infraName: inf.infraName.trim(), quantity: Number(inf.quantity) })),
       };
+
+      // Add top-level lat/lng for spatial sync
+      const firstCoord = coordinateList.find((c) => c.latitude !== null && c.longitude !== null);
+      if (firstCoord) {
+        payload.latitude = Number(firstCoord.latitude);
+        payload.longitude = Number(firstCoord.longitude);
+      }
 
       // POST create port
       const res = await api.post('/v1/ports', payload);
@@ -420,11 +437,17 @@ export default function PortCreatePage() {
                 label="Mã cảng biển"
                 name="portCode"
                 style={{ marginBottom: spaceFormField }}
+                tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa"
               >
                 <Input
-                  readOnly
-                  placeholder="Đang tạo mã..."
-                  style={{ ...pillStyle, color: textTertiary, fontFamily: fontSans }}
+                  disabled
+                  placeholder={portCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'}
+                  style={{
+                    ...pillStyle,
+                    fontFamily: fontSans,
+                    color: textTertiary,
+                    cursor: 'not-allowed',
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -848,6 +871,23 @@ export default function PortCreatePage() {
                 />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={24}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                label="Liên kết đối tượng GIS (spatial_id)"
+                name="spatialId"
+                style={{ marginBottom: spaceFormField }}
+                tooltip="UUID của đối tượng GIS đã tạo trên bản đồ. Để trống nếu nhập tọa độ thủ công."
+              >
+                <Input
+                  placeholder="VD: 550e8400-e29b-41d4-a716-446655440000"
+                  style={{ ...pillStyle, fontFamily: fontSans }}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} />
           </Row>
 
           {/* ════════════════════════════════════

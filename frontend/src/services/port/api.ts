@@ -23,6 +23,10 @@ export async function fetchCangBienList(params: {
   province?: string;
   operationalStatus?: string;
   approvalStatus?: string;
+  portGroup?: number;
+  portClass?: number;
+  updatedFrom?: string;
+  updatedTo?: string;
   sortBy?: string;
   sortOrder?: string;
 }): Promise<PageResponse<CangBienResponse>> {
@@ -36,6 +40,10 @@ export async function fetchCangBienList(params: {
   if (params.province) sp.set('province', params.province);
   if (params.operationalStatus) sp.set('operationalStatus', params.operationalStatus);
   if (params.approvalStatus) sp.set('approvalStatus', params.approvalStatus);
+  if (params.portGroup !== undefined) sp.set('portGroup', String(params.portGroup));
+  if (params.portClass !== undefined) sp.set('portClass', String(params.portClass));
+  if (params.updatedFrom) sp.set('updatedFrom', params.updatedFrom);
+  if (params.updatedTo) sp.set('updatedTo', params.updatedTo);
   if (params.sortBy) sp.set('sort', `${params.sortBy},${params.sortOrder ?? 'desc'}`);
 
   const res = await api.get(`${BASE}?${sp}`);

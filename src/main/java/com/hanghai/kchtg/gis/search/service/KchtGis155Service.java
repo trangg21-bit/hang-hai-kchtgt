@@ -386,7 +386,7 @@ public class KchtGis155Service {
                 case SEAPORT:
                     List<Port> ports = portRepository.searchPorts(
                             orgUnitId, null, null, provinceLocal, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, searchLower, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, null, null, null, null, searchLower, PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
                     if (!ports.isEmpty()) {
                         List<UUID> cbIds = ports.stream().map(Port::getId).collect(Collectors.toList());

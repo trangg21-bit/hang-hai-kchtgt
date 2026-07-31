@@ -8,7 +8,6 @@ import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.entity.PortAttachment;
-import com.hanghai.kchtg.port.entity.PortCoordinate;
 import com.hanghai.kchtg.port.entity.PortInfrastructure;
 import java.math.BigDecimal;
 import com.hanghai.kchtg.port.repository.BerthRepository;
@@ -112,23 +111,23 @@ public class PortService {
 
         boolean isDraft = "draft".equals(action);
 
-        if (!isDraft) {
-            // Submit validation: yêu cầu đầy đủ thông tin
-            // Kiểm tra có ít nhất một tọa độ GPS
-            boolean hasCoordinates = (request.getCoordinateList() != null && !request.getCoordinateList().isEmpty())
-                    || (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty())
-                    || (request.getLongitude() != null && request.getLatitude() != null);
-            if (!hasCoordinates) {
-                throw new IllegalArgumentException("Phải có ít nhất một tọa độ GPS khi gửi phê duyệt");
-            }
-        }
-
         if (portRepository.existsByPortCode(request.getPortCode())) {
             throw new IllegalArgumentException("Mã " + request.getPortCode() + " đã tồn tại");
         }
 
+        String portCode = request.getPortCode();
+        if (portCode == null || portCode.trim().isEmpty()) {
+            portCode = generatePortCode();
+            log.info("Auto-generated port code: {}", portCode);
+        }
+
+        // Section 8.1: Tampering detection — mã cảng phải đúng format tự sinh CB-XXXXXX
+        if (!portCode.matches("^CB-\\d{6}$")) {
+            throw new IllegalArgumentException("Mã cảng không hợp lệ");
+        }
+
         Port entity = Port.builder()
-                .portCode(request.getPortCode())
+                .portCode(portCode)
                 .portName(request.getPortName())
                 .province(request.getProvince())
                 .area(request.getArea())
@@ -138,6 +137,7 @@ public class PortService {
                 .orgUnitId(request.getOrgUnitId())
                 .portGroup(request.getPortGroup())
                 .mapSymbolId(request.getMapSymbolId())
+                .spatialId(request.getSpatialId())
                 // Extended fields
                 .detailedLocation(request.getDetailedLocation())
                 .portClass(request.getPortClass())
@@ -163,19 +163,6 @@ public class PortService {
                 .build();
 
         Port saved = portRepository.save(entity);
-
-        // ── Handle PortCoordinate list ────────────────────────────────
-        if (request.getCoordinateList() != null && !request.getCoordinateList().isEmpty()) {
-            for (PortCoordinateDto dto : request.getCoordinateList()) {
-                PortCoordinate coord = new PortCoordinate();
-                coord.setPort(saved);
-                coord.setLatitude(dto.getLatitude());
-                coord.setLongitude(dto.getLongitude());
-                coord.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
-                saved.getCoordinates().add(coord);
-            }
-            saved = portRepository.save(saved);
-        }
 
         // ── Handle PortInfrastructure list ────────────────────────────
         if (request.getInfrastructureList() != null && !request.getInfrastructureList().isEmpty()) {
@@ -205,27 +192,55 @@ public class PortService {
             saved = portRepository.save(saved);
         }
 
-        String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
-            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
-        }
+        // ── Spatial sync ──────────────────────────────────────────────
+        // Only auto-create a GIS spatial object when NO spatialId was provided in the request.
+        // When a spatialId is provided, the pre-created GIS object (created via the GIS map) is
+        // the single source of truth for coordinates and is linked directly (see builder above).
+        if (request.getSpatialId() == null) {
+            String coordinates = request.getCoordinates();
+            // Derive WKT from coordinateList if no top-level coordinates provided
+            if ((request.getCoordinates() == null || request.getCoordinates().trim().isEmpty())
+                    && request.getLatitude() == null && request.getLongitude() == null
+                    && request.getCoordinateList() != null && !request.getCoordinateList().isEmpty()) {
+                PortCoordinateDto first = request.getCoordinateList().get(0);
+                if (request.getCoordinateList().size() == 1) {
+                    coordinates = "POINT(" + first.getLongitude() + " " + first.getLatitude() + ")";
+                } else {
+                    // Build POLYGON or LINESTRING from all coordinates
+                    StringBuilder sb = new StringBuilder("POLYGON((");
+                    for (int i = 0; i < request.getCoordinateList().size(); i++) {
+                        PortCoordinateDto c = request.getCoordinateList().get(i);
+                        if (i > 0) sb.append(", ");
+                        sb.append(c.getLongitude()).append(" ").append(c.getLatitude());
+                    }
+                    // Close the polygon
+                    PortCoordinateDto firstCoord = request.getCoordinateList().get(0);
+                    sb.append(", ").append(firstCoord.getLongitude()).append(" ").append(firstCoord.getLatitude());
+                    sb.append("))");
+                    coordinates = sb.toString();
+                }
+            }
+            if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+                coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+            }
 
-        if (coordinates != null && !coordinates.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
-            UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    null,
-                    saved.getPortName(),
-                    "PORT_" + saved.getPortCode(),
-                    geomType,
-                    objType,
-                    coordinates,
-                    refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.SEAPORT
-            );
-            saved.setSpatialId(spatialObj.getId());
-            saved = portRepository.save(saved);
+            if (coordinates != null && !coordinates.trim().isEmpty()) {
+                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+                UUID refId = saved.getId();
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        null,
+                        saved.getPortName(),
+                        "PORT_" + saved.getPortCode(),
+                        geomType,
+                        objType,
+                        coordinates,
+                        refId,
+                        com.hanghai.kchtg.gis.search.dto.InfrastructureType.SEAPORT
+                );
+                saved.setSpatialId(spatialObj.getId());
+                saved = portRepository.save(saved);
+            }
         }
 
         log.info("Created Port [{}] code={}", saved.getId(), saved.getPortCode());
@@ -243,13 +258,15 @@ public class PortService {
 
     @Transactional(readOnly = true)
     public Page<PortResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PortResponse> findAll(int page, int size, UUID orgUnitId,
                                           String portCode, String portName, String province,
                                           String operationalStatus, String approvalStatus,
+                                          Integer portGroup, Integer portClass,
+                                          String updatedFrom, String updatedTo,
                                           String search) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
@@ -257,7 +274,7 @@ public class PortService {
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<Port> results = portRepository.searchPorts(
-                orgUnitId, portCode, portName, province, statusEnum, approvalEnum, search, pageable);
+                orgUnitId, portCode, portName, province, statusEnum, approvalEnum, portGroup, portClass, updatedFrom, updatedTo, search, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         results.getContent().forEach(e -> {
@@ -290,6 +307,28 @@ public class PortService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + request.getId()));
 
         String coordinates = request.getCoordinates();
+        // Derive WKT from coordinateList if no top-level coordinates provided
+        if ((request.getCoordinates() == null || request.getCoordinates().trim().isEmpty())
+                && request.getLatitude() == null && request.getLongitude() == null
+                && request.getCoordinateList() != null && !request.getCoordinateList().isEmpty()) {
+            PortCoordinateDto first = request.getCoordinateList().get(0);
+            if (request.getCoordinateList().size() == 1) {
+                coordinates = "POINT(" + first.getLongitude() + " " + first.getLatitude() + ")";
+            } else {
+                // Build POLYGON or LINESTRING from all coordinates
+                StringBuilder sb = new StringBuilder("POLYGON((");
+                for (int i = 0; i < request.getCoordinateList().size(); i++) {
+                    PortCoordinateDto c = request.getCoordinateList().get(i);
+                    if (i > 0) sb.append(", ");
+                    sb.append(c.getLongitude()).append(" ").append(c.getLatitude());
+                }
+                // Close the polygon
+                PortCoordinateDto firstCoord = request.getCoordinateList().get(0);
+                sb.append(", ").append(firstCoord.getLongitude()).append(" ").append(firstCoord.getLatitude());
+                sb.append("))");
+                coordinates = sb.toString();
+            }
+        }
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
@@ -359,8 +398,8 @@ public class PortService {
         if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
         if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
         entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
-        // Only reset to PENDING if currently APPROVED or REJECTED
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.REJECTED) {
+        // Reset to PENDING if currently APPROVED, REJECTED, or DRAFT (submit draft)
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.REJECTED || entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
             entity.setApprovalStatus(ApprovalStatus.PENDING);
         }
 
@@ -387,19 +426,6 @@ public class PortService {
         if (request.getTransshipmentCount() != null) entity.setTransshipmentCount(request.getTransshipmentCount());
         if (request.getOtherWaterAreas() != null) entity.setOtherWaterAreas(request.getOtherWaterAreas());
         if (request.getRemarks() != null) entity.setRemarks(request.getRemarks());
-
-        // ── Handle PortCoordinate list (replace) ─────────────────────
-        if (request.getCoordinateList() != null) {
-            entity.getCoordinates().clear();
-            for (PortCoordinateDto dto : request.getCoordinateList()) {
-                PortCoordinate coord = new PortCoordinate();
-                coord.setPort(entity);
-                coord.setLatitude(dto.getLatitude());
-                coord.setLongitude(dto.getLongitude());
-                coord.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
-                entity.getCoordinates().add(coord);
-            }
-        }
 
         // ── Handle PortInfrastructure list (replace) ──────────────────
         if (request.getInfrastructureList() != null) {
@@ -557,13 +583,19 @@ public class PortService {
     }
 
     private PortResponse toResponse(Port entity, String preResolvedCreatorName, String preResolvedUpdaterName) {
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(entity.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(entity.getUpdatedBy());
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName 
+                : userResolverService.resolveName(entity.getCreatedBy());
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName 
+                : userResolverService.resolveName(entity.getUpdatedBy());
+        // Fallback to UUID substring if name resolution returns null
+        if (createdBy == null && entity.getCreatedBy() != null) createdBy = entity.getCreatedBy().toString().substring(0, 8);
+        if (updatedBy == null && entity.getUpdatedBy() != null) updatedBy = entity.getUpdatedBy().toString().substring(0, 8);
 
         PortResponse.PortResponseBuilder builder = PortResponse.builder()
                 .id(entity.getId())
                 .portCode(entity.getPortCode())
                 .portName(entity.getPortName())
+                .province(entity.getProvince())
                 .area(entity.getArea())
                 .maxVesselCapacity(entity.getMaxVesselCapacity())
                 .operationalStatus(entity.getOperationalStatus())
@@ -573,6 +605,8 @@ public class PortService {
                 .mapSymbolId(entity.getMapSymbolId())
                 .createdBy(entity.getCreatedBy())
                 .updatedBy(entity.getUpdatedBy())
+                .createdByName(createdBy)
+                .updatedByName(updatedBy)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 // Extended fields
@@ -614,6 +648,75 @@ public class PortService {
                     // ignore
                 }
             });
+        }
+
+        // Parse coordinateList from spatial WKT (single source of truth: gis_spatial_objects)
+        if (entity.getSpatialId() != null) {
+            gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
+                String wkt = spatialObj.getCoordinates();
+                if (wkt != null && !wkt.trim().isEmpty()) {
+                    List<PortCoordinateDto> coordList = new ArrayList<>();
+                    try {
+                        String clean = wkt.trim();
+                        if (clean.startsWith("POINT")) {
+                            String inner = clean.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                            String[] parts = inner.split("\\s+");
+                            if (parts.length == 2) {
+                                PortCoordinateDto dto = new PortCoordinateDto();
+                                dto.setLongitude(new BigDecimal(parts[0]));
+                                dto.setLatitude(new BigDecimal(parts[1]));
+                                dto.setSortOrder(0);
+                                coordList.add(dto);
+                            }
+                        } else if (clean.startsWith("POLYGON")) {
+                            String inner = clean.replace("POLYGON", "").replace("((", "").replace("))", "").trim();
+                            String[] pointStrings = inner.split(",");
+                            int idx = 0;
+                            for (String ps : pointStrings) {
+                                String[] parts = ps.trim().split("\\s+");
+                                if (parts.length >= 2) {
+                                    PortCoordinateDto dto = new PortCoordinateDto();
+                                    dto.setLongitude(new BigDecimal(parts[0]));
+                                    dto.setLatitude(new BigDecimal(parts[1]));
+                                    dto.setSortOrder(idx);
+                                    coordList.add(dto);
+                                    idx++;
+                                }
+                            }
+                            // Remove last point if it closes back to first (polygon closure)
+                            if (coordList.size() >= 2) {
+                                PortCoordinateDto last = coordList.get(coordList.size() - 1);
+                                PortCoordinateDto first = coordList.get(0);
+                                if (last.getLatitude().compareTo(first.getLatitude()) == 0
+                                        && last.getLongitude().compareTo(first.getLongitude()) == 0) {
+                                    coordList.remove(coordList.size() - 1);
+                                }
+                            }
+                        }
+                    } catch (Exception ex) {
+                        log.warn("Không thể parse WKT thành coordinateList: {}", ex.getMessage());
+                    }
+                    if (!coordList.isEmpty()) {
+                        builder.coordinateList(coordList);
+                    }
+                }
+            });
+        }
+        // Add infrastructure and attachments
+        if (entity.getInfrastructureList() != null) {
+            builder.infrastructureList(entity.getInfrastructureList().stream().map(infra -> {
+                PortInfrastructureDto dto = new PortInfrastructureDto();
+                dto.setStt(infra.getStt()); dto.setInfraName(infra.getInfraName()); dto.setQuantity(infra.getQuantity());
+                return dto;
+            }).collect(Collectors.toList()));
+        }
+        if (entity.getAttachments() != null) {
+            builder.attachments(entity.getAttachments().stream().map(att -> {
+                PortAttachmentDto dto = new PortAttachmentDto();
+                dto.setId(att.getId()); dto.setFileName(att.getFileName()); dto.setFilePath(att.getFilePath());
+                dto.setFileSize(att.getFileSize()); dto.setContentType(att.getContentType());
+                return dto;
+            }).collect(Collectors.toList()));
         }
         return builder.build();
     }

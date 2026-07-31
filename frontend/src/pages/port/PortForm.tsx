@@ -187,9 +187,10 @@ export default function PortForm() {
         setPortCodeLoading(true);
         try {
           const res = await api.get('/v1/ports/generate-code');
-          const code = res.data?.data || res.data?.portCode || '';
-          setPortCode(code);
-          form.setFieldValue('portCode', code);
+          // API envelope: { success, message, data: { portCode: "CB-XXXXXX" } }
+          const code = res.data?.data?.portCode || '';
+          setPortCode(String(code));
+          form.setFieldValue('portCode', String(code));
         } catch {
           // silent — user can still type manually if API unavailable
         } finally {
@@ -205,35 +206,36 @@ export default function PortForm() {
     (async () => {
       try {
         const data = await portCRUD.findById(id!);
+        const d = data as any;
         form.setFieldsValue({
-          portCode: data.portCode,
-          portName: data.portName,
-          province: data.province,
-          detailed_location: data.diaDiemChiTiet,
-          portClass: data.phanCap,
-          water_area_scope: data.phamViVungNuoc,
-          managing_unit: data.orgUnitId,
-          portGroup: data.portGroup,
-          objectType: (data as any).loaiHinhHoc,
-          symbolId: data.bieuTuongId,
-          coordinateSystem: data.heQuyChieu,
-          displayRule: data.quyTacHienThi,
-          remarks: data.remarks,
+          portCode: d.portCode,
+          portName: d.portName,
+          province: d.province,
+          detailed_location: d.detailedLocation,
+          portClass: d.portClass,
+          water_area_scope: d.waterAreaScope,
+          managing_unit: d.orgUnitId,
+          portGroup: d.portGroup,
+          objectType: d.geometryType,
+          symbolId: d.mapSymbolId,
+          coordinateSystem: d.coordinateSystem,
+          displayRule: d.displayRule,
+          remarks: d.remarks,
           // Composite index fields
-          tongSoBenCang: data.tongSoBenCang,
-          tongSoKhuNeoDauChuyenTai: data.tongSoKhuNeoDauChuyenTai,
-          tongSoTuyenLuongCongCong: data.tongSoTuyenLuongCongCong,
-          tongSoTuyenLuongChuyenDung: data.tongSoTuyenLuongChuyenDung,
-          tongChieuDaiLuongCongCong: data.tongChieuDaiLuongCongCong,
-          tongChieuDaiLuongChuyenDung: data.tongChieuDaiLuongChuyenDung,
-          tongSoPhaoTieuBaoHieu: data.tongSoPhaoTieuBaoHieu,
-          tongSoDeKe: data.tongSoDeKe,
-          tongChieuDaiDeKe: data.tongChieuDaiDeKe,
-          tongSoDenBienDangTieu: data.tongSoDenBienDangTieu,
-          quantityBenPhao: data.quantityBenPhao,
-          quantityKhuNeoDau: data.quantityKhuNeoDau,
-          quantityKhuChuyenTai: data.quantityKhuChuyenTai,
-          cacKhuNuocKhac: data.cacKhuNuocKhac,
+          tongSoBenCang: d.totalBerths,
+          tongSoKhuNeoDauChuyenTai: d.totalAnchoragesTransshipment,
+          tongSoTuyenLuongCongCong: d.totalPublicChannels,
+          tongSoTuyenLuongChuyenDung: d.totalDedicatedChannels,
+          tongChieuDaiLuongCongCong: d.totalPublicChannelLength,
+          tongChieuDaiLuongChuyenDung: d.totalDedicatedChannelLength,
+          tongSoPhaoTieuBaoHieu: d.totalBuoysBeacons,
+          tongSoDeKe: d.totalDikes,
+          tongChieuDaiDeKe: d.totalDikeLength,
+          tongSoDenBienDangTieu: d.totalLighthouses,
+          quantityBenPhao: d.buoyBerthCount,
+          quantityKhuNeoDau: d.anchorageCount,
+          quantityKhuChuyenTai: d.transshipmentCount,
+          cacKhuNuocKhac: d.otherWaterAreas,
         });
         setPortCode(data.portCode);
 
@@ -388,31 +390,31 @@ export default function PortForm() {
         portCode: portCode || values.portCode,
         portName: String(values.portName || '').trim(),
         province: values.province || null,
-        diaDiemChiTiet: values.detailed_location || null,
-        phanCap: values.portClass != null ? Number(values.portClass) : null,
-        phamViVungNuoc: values.water_area_scope || null,
+        detailedLocation: values.detailed_location || null,
+        portClass: values.portClass != null ? Number(values.portClass) : null,
+        waterAreaScope: values.water_area_scope || null,
         orgUnitId: values.managing_unit || null,
         portGroup: values.portGroup != null ? Number(values.portGroup) : null,
-        loaiHinhHoc: values.objectType || null,
-        bieuTuongId: values.symbolId || null,
-        heQuyChieu: values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
-        quyTacHienThi: values.displayRule != null ? Number(values.displayRule) : null,
+        geometryType: values.objectType || null,
+        mapSymbolId: values.symbolId || null,
+        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+        displayRule: values.displayRule != null ? Number(values.displayRule) : null,
         remarks: values.remarks || null,
         // Composite index — default 0 for number fields, null for text
-        tongSoBenCang: values.tongSoBenCang ?? 0,
-        tongSoKhuNeoDauChuyenTai: values.tongSoKhuNeoDauChuyenTai ?? 0,
-        tongSoTuyenLuongCongCong: values.tongSoTuyenLuongCongCong ?? 0,
-        tongSoTuyenLuongChuyenDung: values.tongSoTuyenLuongChuyenDung ?? 0,
-        tongChieuDaiLuongCongCong: values.tongChieuDaiLuongCongCong ?? 0,
-        tongChieuDaiLuongChuyenDung: values.tongChieuDaiLuongChuyenDung ?? 0,
-        tongSoPhaoTieuBaoHieu: values.tongSoPhaoTieuBaoHieu ?? 0,
-        tongSoDeKe: values.tongSoDeKe ?? 0,
-        tongChieuDaiDeKe: values.tongChieuDaiDeKe ?? 0,
-        tongSoDenBienDangTieu: values.tongSoDenBienDangTieu ?? 0,
-        quantityBenPhao: values.quantityBenPhao ?? 0,
-        quantityKhuNeoDau: values.quantityKhuNeoDau ?? 0,
-        quantityKhuChuyenTai: values.quantityKhuChuyenTai ?? 0,
-        cacKhuNuocKhac: values.cacKhuNuocKhac || null,
+        totalBerths: values.tongSoBenCang ?? 0,
+        totalAnchoragesTransshipment: values.tongSoKhuNeoDauChuyenTai ?? 0,
+        totalPublicChannels: values.tongSoTuyenLuongCongCong ?? 0,
+        totalDedicatedChannels: values.tongSoTuyenLuongChuyenDung ?? 0,
+        totalPublicChannelLength: values.tongChieuDaiLuongCongCong ?? 0,
+        totalDedicatedChannelLength: values.tongChieuDaiLuongChuyenDung ?? 0,
+        totalBuoysBeacons: values.tongSoPhaoTieuBaoHieu ?? 0,
+        totalDikes: values.tongSoDeKe ?? 0,
+        totalDikeLength: values.tongChieuDaiDeKe ?? 0,
+        totalLighthouses: values.tongSoDenBienDangTieu ?? 0,
+        buoyBerthCount: values.quantityBenPhao ?? 0,
+        anchorageCount: values.quantityKhuNeoDau ?? 0,
+        transshipmentCount: values.quantityKhuChuyenTai ?? 0,
+        otherWaterAreas: values.cacKhuNuocKhac || null,
         // GPS coordinates
         coordinateList: coordinates
           .filter((c) => c.latitude != null && c.longitude != null)

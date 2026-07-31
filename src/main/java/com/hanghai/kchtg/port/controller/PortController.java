@@ -68,11 +68,15 @@ public class PortController {
             @RequestParam(required = false) String portName,
             @RequestParam(required = false) String province,
             @RequestParam(required = false) String operationalStatus,
-            @RequestParam(required = false) String approvalStatus) {
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) Integer portGroup,
+            @RequestParam(required = false) Integer portClass,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo) {
         log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, search, portCode, portName, province, operationalStatus, approvalStatus);
         Page<PortResponse> result = portService.findAll(
-                page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, search);
+                page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, portGroup, portClass, updatedFrom, updatedTo, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 

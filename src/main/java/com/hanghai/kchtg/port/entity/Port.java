@@ -145,11 +145,6 @@ public class Port extends BaseEntity {
     @OneToMany(mappedBy = "port", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     @Builder.Default
-    private List<PortCoordinate> coordinates = new ArrayList<>();
-
-    @OneToMany(mappedBy = "port", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    @Builder.Default
     private List<PortInfrastructure> infrastructureList = new ArrayList<>();
 
     @OneToMany(mappedBy = "port", cascade = CascadeType.ALL, orphanRemoval = true)

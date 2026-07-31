@@ -403,6 +403,8 @@ public class BerthService {
                 .operationalStatus(e.getOperationalStatus())
                 .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId())
                 .mapSymbolId(e.getMapSymbolId())
+                .latitude(latitude)
+                .longitude(longitude)
                 // Extended fields
                 .provinceId(e.getProvinceId())
                 .detailedLocation(e.getDetailedLocation())

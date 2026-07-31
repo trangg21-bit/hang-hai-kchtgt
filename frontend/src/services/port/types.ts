@@ -9,40 +9,46 @@ export interface CangBienResponse {
   latitude: number | null;
   longitude: number | null;
   area: number | null;
-  khaNangTiepNhan: number | null;
+  maxVesselCapacity: number | null;
   operationalStatus: string | null;
   approvalStatus: string | null;
   orgUnitId: string | null;
+  orgUnitName: string | null;
   portGroup: number | null;
-  bieuTuongId: string | null;
+  mapSymbolId: string | null;
+  mapSymbolName: string | null;
   createdBy: string | null;
   updatedBy: string | null;
+  createdByName: string | null;
+  updatedByName: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   // Extended fields (V53)
-  diaDiemChiTiet: string | null;
-  phanCap: number | null;
-  heQuyChieu: number | null;
-  quyTacHienThi: number | null;
+  detailedLocation: string | null;
+  portClass: number | null;
+  coordinateSystem: number | null;
+  displayRule: number | null;
   // zobjDataSub fields
-  phamViVungNuoc: string | null;
-  tongSoBenCang: number | null;
-  tongSoKhuNeoDauChuyenTai: number | null;
-  tongSoTuyenLuongCongCong: number | null;
-  tongSoTuyenLuongChuyenDung: number | null;
-  tongChieuDaiLuongCongCong: number | null;
-  tongChieuDaiLuongChuyenDung: number | null;
-  tongSoPhaoTieuBaoHieu: number | null;
-  tongSoDeKe: number | null;
-  tongChieuDaiDeKe: number | null;
-  tongSoDenBienDangTieu: number | null;
-  quantityBenPhao: number | null;
-  quantityKhuNeoDau: number | null;
-  quantityKhuChuyenTai: number | null;
-  cacKhuNuocKhac: string | null;
+  waterAreaScope: string | null;
+  totalBerths: number | null;
+  totalAnchoragesTransshipment: number | null;
+  totalPublicChannels: number | null;
+  totalDedicatedChannels: number | null;
+  totalPublicChannelLength: number | null;
+  totalDedicatedChannelLength: number | null;
+  totalBuoysBeacons: number | null;
+  totalDikes: number | null;
+  totalDikeLength: number | null;
+  totalLighthouses: number | null;
+  buoyBerthCount: number | null;
+  anchorageCount: number | null;
+  transshipmentCount: number | null;
+  otherWaterAreas: string | null;
   remarks: string | null;
   loaiHinhHoc?: string;
-  toaDo?: string;
+  geometryType?: string;
+  coordinates?: string;
+  coordinateList?: Array<{ latitude: number; longitude: number }>;
 }
 
 // ── CreateCangBienRequest (matches CreateCangBienRequest.java) ─

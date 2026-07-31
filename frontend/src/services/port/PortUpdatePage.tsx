@@ -110,37 +110,37 @@ export default function PortUpdatePage() {
           portCode: data.portCode,
           portName: data.portName,
           province: data.province || undefined,
-          detailedLocation: data.diaDiemChiTiet || undefined,
-          waterAreaScope: data.phamViVungNuoc || undefined,
-          portClass: data.phanCap != null ? data.phanCap : undefined,
+          detailedLocation: data.detailedLocation || undefined,
+          waterAreaScope: data.waterAreaScope || undefined,
+          portClass: data.portClass != null ? data.portClass : undefined,
           area: data.area != null ? data.area : undefined,
-          maxVesselCapacity: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
+          maxVesselCapacity: data.maxVesselCapacity != null ? data.maxVesselCapacity : undefined,
           operationalStatus: data.operationalStatus || undefined,
-          geometryType: data.loaiHinhHoc || 'POINT',
+          geometryType: data.geometryType || 'POINT',
           gisLocation: {
-            geometryType: data.loaiHinhHoc || 'POINT',
-            toaDo: data.toaDo || '',
-            mapSymbolId: data.bieuTuongId,
+            geometryType: data.geometryType || 'POINT',
+            coordinates: data.coordinates || '',
+            mapSymbolId: data.mapSymbolId,
           },
           // GIS metadata
-          mapSymbolId: data.bieuTuongId || undefined,
-          coordinateSystem: data.heQuyChieu != null ? data.heQuyChieu : undefined,
-          displayRule: data.quyTacHienThi != null ? data.quyTacHienThi : undefined,
+          mapSymbolId: data.mapSymbolId || undefined,
+          coordinateSystem: data.coordinateSystem != null ? data.coordinateSystem : undefined,
+          displayRule: data.displayRule != null ? data.displayRule : undefined,
           // Composite index fields
-          totalBerths: data.tongSoBenCang != null ? data.tongSoBenCang : undefined,
-          totalAnchoragesTransshipment: data.tongSoKhuNeoDauChuyenTai != null ? data.tongSoKhuNeoDauChuyenTai : undefined,
-          totalPublicChannels: data.tongSoTuyenLuongCongCong != null ? data.tongSoTuyenLuongCongCong : undefined,
-          totalDedicatedChannels: data.tongSoTuyenLuongChuyenDung != null ? data.tongSoTuyenLuongChuyenDung : undefined,
-          totalPublicChannelLength: data.tongChieuDaiLuongCongCong != null ? data.tongChieuDaiLuongCongCong : undefined,
-          totalDedicatedChannelLength: data.tongChieuDaiLuongChuyenDung != null ? data.tongChieuDaiLuongChuyenDung : undefined,
-          totalBuoysBeacons: data.tongSoPhaoTieuBaoHieu != null ? data.tongSoPhaoTieuBaoHieu : undefined,
-          totalDikes: data.tongSoDeKe != null ? data.tongSoDeKe : undefined,
-          totalDikeLength: data.tongChieuDaiDeKe != null ? data.tongChieuDaiDeKe : undefined,
-          totalLighthouses: data.tongSoDenBienDangTieu != null ? data.tongSoDenBienDangTieu : undefined,
-          buoyBerthCount: data.quantityBenPhao != null ? data.quantityBenPhao : undefined,
-          anchorageCount: data.quantityKhuNeoDau != null ? data.quantityKhuNeoDau : undefined,
-          transshipmentCount: data.quantityKhuChuyenTai != null ? data.quantityKhuChuyenTai : undefined,
-          otherWaterAreas: data.cacKhuNuocKhac || undefined,
+          totalBerths: data.totalBerths != null ? data.totalBerths : undefined,
+          totalAnchoragesTransshipment: data.totalAnchoragesTransshipment != null ? data.totalAnchoragesTransshipment : undefined,
+          totalPublicChannels: data.totalPublicChannels != null ? data.totalPublicChannels : undefined,
+          totalDedicatedChannels: data.totalDedicatedChannels != null ? data.totalDedicatedChannels : undefined,
+          totalPublicChannelLength: data.totalPublicChannelLength != null ? data.totalPublicChannelLength : undefined,
+          totalDedicatedChannelLength: data.totalDedicatedChannelLength != null ? data.totalDedicatedChannelLength : undefined,
+          totalBuoysBeacons: data.totalBuoysBeacons != null ? data.totalBuoysBeacons : undefined,
+          totalDikes: data.totalDikes != null ? data.totalDikes : undefined,
+          totalDikeLength: data.totalDikeLength != null ? data.totalDikeLength : undefined,
+          totalLighthouses: data.totalLighthouses != null ? data.totalLighthouses : undefined,
+          buoyBerthCount: data.buoyBerthCount != null ? data.buoyBerthCount : undefined,
+          anchorageCount: data.anchorageCount != null ? data.anchorageCount : undefined,
+          transshipmentCount: data.transshipmentCount != null ? data.transshipmentCount : undefined,
+          otherWaterAreas: data.otherWaterAreas || undefined,
           // Remarks
           remarks: data.remarks || undefined,
         });
@@ -404,7 +404,7 @@ export default function PortUpdatePage() {
         operationalStatus: (values.operationalStatus as string) || undefined,
         mapSymbolId: (values.gisLocation as any)?.mapSymbolId || null,
         geometryType: values.geometryType as string,
-        toaDo: (values.gisLocation as any)?.toaDo,
+        coordinates: (values.gisLocation as any)?.coordinates,
         // Extended GIS metadata
         detailedLocation: (values.detailedLocation as string) || null,
         portClass: values.portClass != null ? Number(values.portClass) : null,
@@ -454,6 +454,13 @@ export default function PortUpdatePage() {
         // Remarks
         remarks: (values.remarks as string) || null,
       };
+
+      // Add top-level lat/lng for spatial sync
+      const firstCoord = coordinates.find((c) => c.latitude != null && c.longitude != null);
+      if (firstCoord) {
+        payload.latitude = Number(firstCoord.latitude);
+        payload.longitude = Number(firstCoord.longitude);
+      }
 
       await updateCangBien(payload as any);
 
