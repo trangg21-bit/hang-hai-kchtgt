@@ -1,21 +1,25 @@
 package com.hanghai.kchtg.port.controller;
 
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
-import com.hanghai.kchtg.port.dto.port.PortResponse;
-import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
+import com.hanghai.kchtg.port.dto.port.*;
 import com.hanghai.kchtg.port.service.PortApprovalService;
 import com.hanghai.kchtg.port.service.PortService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.security.core.Authentication;
 import java.util.UUID;
 
 @RestController
@@ -37,6 +41,14 @@ public class PortController {
         return ResponseEntity.ok(ApiResponse.success("Tạo mới cảng biển thành công", response));
     }
 
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'port:create')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
+        log.info("Generating port code");
+        String code = portService.generatePortCode();
+        return ResponseEntity.ok(ApiResponse.success("Sinh mã cảng thành công", Map.of("portCode", code)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'port:read')")
     public ResponseEntity<ApiResponse<PortResponse>> getById(@PathVariable UUID id) {
@@ -54,13 +66,17 @@ public class PortController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String portCode,
             @RequestParam(required = false) String portName,
-            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) String province,
             @RequestParam(required = false) String operationalStatus,
-            @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, provinceId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, portCode, portName, provinceId, operationalStatus, approvalStatus);
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) Integer portGroup,
+            @RequestParam(required = false) Integer portClass,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo) {
+        log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, portCode, portName, province, operationalStatus, approvalStatus);
         Page<PortResponse> result = portService.findAll(
-                page, size, orgUnitId, portCode, portName, provinceId, operationalStatus, approvalStatus, search);
+                page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, portGroup, portClass, updatedFrom, updatedTo, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 
@@ -110,5 +126,68 @@ public class PortController {
         log.info("Getting Port history: id={}", id);
         Object history = portApprovalService.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử cảng biển thành công", history));
+    }
+
+    // ── Child guard API (Feature 1) ────────────────────────────────────
+
+    @GetMapping("/{id}/children")
+    @PreAuthorize("@auth.check(authentication, 'port:read')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getChildren(@PathVariable UUID id) {
+        log.info("Getting children counts for Port id={}", id);
+        Map<String, Object> counts = portService.getChildCounts(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin children của cảng biển thành công", counts));
+    }
+
+    // ── Soft-delete restore (Feature 2) ────────────────────────────────
+
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("@auth.check(authentication, 'port:delete')")
+    public ResponseEntity<ApiResponse<PortResponse>> restore(@PathVariable UUID id) {
+        log.info("Restoring Port id={}", id);
+        PortResponse response = portService.restore(id);
+        return ResponseEntity.ok(ApiResponse.success("Khôi phục cảng biển thành công", response));
+    }
+
+    // ── Attachment endpoints ────────────────────────────────────────────
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@auth.check(authentication, 'port:update')")
+    public ResponseEntity<ApiResponse<List<PortAttachmentDto>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files,
+            Authentication authentication) {
+
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
+        }
+
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        log.info("Uploading {} attachments for Port id={}, userId={}", files.size(), id, userId);
+
+        List<PortAttachmentDto> result = portService.uploadAttachments(id, files, userId);
+        return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'port:read')")
+    public ResponseEntity<ApiResponse<List<PortAttachmentDto>>> listAttachments(@PathVariable UUID id) {
+        log.info("Listing attachments for Port id={}", id);
+        List<PortAttachmentDto> result = portService.listAttachments(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @PreAuthorize("@auth.check(authentication, 'port:update')")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId,
+            Authentication authentication) {
+
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        log.info("Deleting attachment id={} for Port id={}, userId={}", attId, id, userId);
+
+        portService.deleteAttachment(id, attId, userId);
+        return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 }

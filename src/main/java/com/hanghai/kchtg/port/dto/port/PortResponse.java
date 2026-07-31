@@ -3,11 +3,13 @@ package com.hanghai.kchtg.port.dto.port;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.port.dto.port.PortCoordinateDto;
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -21,6 +23,7 @@ public class PortResponse {
     private String portCode;
     private String portName;
     private Integer provinceId;
+    private String province;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private BigDecimal area;
@@ -28,15 +31,22 @@ public class PortResponse {
     private OperationalStatus operationalStatus;
     private ApprovalStatus approvalStatus;
     private UUID orgUnitId;
+    private String orgUnitName;
     private Integer portGroup;
     private UUID createdBy;
     private UUID updatedBy;
+    private String createdByName;
+    private String updatedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private UUID mapSymbolId;
+    private String mapSymbolName;
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
+    private List<PortCoordinateDto> coordinateList;
+    private List<PortInfrastructureDto> infrastructureList;
+    private List<PortAttachmentDto> attachments;
 
     // ── Extended fields (V53) ────────────────────────────────────────
 

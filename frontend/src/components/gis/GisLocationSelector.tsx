@@ -258,11 +258,21 @@ export default function GisLocationSelector({
     if (!wkt) return [];
     try {
       const type = geomType.toUpperCase();
-      if (type === 'POINT' && wkt.startsWith('POINT(')) {
-        const match = wkt.match(/POINT\(([^)]+)\)/);
-        if (match) {
-          const parts = match[1].split(' ');
-          return [{ lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) }];
+      if (type === 'POINT') {
+        if (wkt.startsWith('MULTIPOINT(')) {
+          const match = wkt.match(/MULTIPOINT\(([^)]+)\)/);
+          if (match) {
+            return match[1].split('),(').map((pt) => {
+              const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
+              return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
+            });
+          }
+        } else if (wkt.startsWith('POINT(')) {
+          const match = wkt.match(/POINT\(([^)]+)\)/);
+          if (match) {
+            const parts = match[1].split(' ');
+            return [{ lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) }];
+          }
         }
       } else if (type === 'LINE' && wkt.startsWith('LINESTRING(')) {
         const match = wkt.match(/LINESTRING\(([^)]+)\)/);
@@ -303,7 +313,11 @@ export default function GisLocationSelector({
     if (validPts.length === 0) return '';
     const type = geomType.toUpperCase();
     if (type === 'POINT') {
-      return `POINT(${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
+      if (validPts.length === 1) {
+        return `POINT(${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
+      }
+      const coords = validPts.map((p) => `(${p.lng.toFixed(6)} ${p.lat.toFixed(6)})`).join(',');
+      return `MULTIPOINT(${coords})`;
     } else if (type === 'LINE') {
       const coords = validPts.map((p) => `${p.lng.toFixed(6)} ${p.lat.toFixed(6)}`).join(', ');
       return `LINESTRING(${coords})`;
@@ -351,7 +365,12 @@ export default function GisLocationSelector({
       let layer: any;
 
       if (internalGeom === 'POINT') {
-        layer = L.marker([validVertices[0].lat, validVertices[0].lng]);
+        const coords = validVertices.map((v) => [v.lat, v.lng]);
+        if (coords.length === 1) {
+          layer = L.marker(coords[0]);
+        } else {
+          layer = L.layerGroup(coords.map((c: [number, number]) => L.marker(c)));
+        }
       } else if (internalGeom === 'LINE') {
         if (validVertices.length < 2) return; // Polyline needs at least 2 points to draw
         const coords = validVertices.map((v) => [v.lat, v.lng]);
@@ -367,7 +386,7 @@ export default function GisLocationSelector({
         drawnLayerRef.current = layer;
 
         // Auto center map on the shape
-        if (internalGeom === 'POINT') {
+        if (internalGeom === 'POINT' && validVertices.length === 1) {
           mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], 15);
         } else {
           mapRef.current.fitBounds(layer.getBounds(), { padding: [20, 20] });

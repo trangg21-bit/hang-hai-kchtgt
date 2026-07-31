@@ -201,7 +201,7 @@ public class PortCargoShareController {
      */
     @GetMapping("/ports/cargo-total")
     public ResponseEntity<ApiResponse<Page<CargoAggregate>>> getPortCargoTotal(
-            @RequestParam(required = false) Integer province,
+            @RequestParam(required = false) String province,
             @PageableDefault(size = 20, sort = "periodStart", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<CargoAggregate> page = province == null
                 ? cargoAggregateRepository.findByPeriodType("ANNUAL", pageable)
@@ -226,7 +226,7 @@ public class PortCargoShareController {
     public ResponseEntity<ApiResponse<Page<CargoAggregate>>> getCargoSummary(
             @RequestParam(required = false) String portCode,
             @RequestParam(required = false) String periodType,
-            @RequestParam(required = false) Integer province,
+            @RequestParam(required = false) String province,
             @PageableDefault(size = 20, sort = "periodStart", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Page<CargoAggregate> page;

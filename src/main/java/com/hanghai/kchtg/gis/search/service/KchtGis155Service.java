@@ -352,7 +352,7 @@ public class KchtGis155Service {
         }
         String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
         String tinhThanhStr = (tinhThanhPho != null) ? tinhThanhPho.getDisplayName() : null;
-        Integer provinceIdLocal = null; // Temporary fix for provinceId
+        String provinceLocal = null; // Temporary fix for provinceId
 
         // Batch pre-load tất cả OrgUnit vào Map 1 lần (tránh N+1 query khi gọi getOrgName)
         Map<UUID, String> orgNameMap = new HashMap<>();
@@ -385,8 +385,8 @@ public class KchtGis155Service {
             switch (type) {
                 case SEAPORT:
                     List<Port> ports = portRepository.searchPorts(
-                            orgUnitId, null, null, provinceIdLocal, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, searchLower, PageRequest.of(0, 10000)).getContent();
+                            orgUnitId, null, null, provinceLocal, OperationalStatus.OPERATIONAL,
+                            ApprovalStatus.APPROVED, null, null, null, null, searchLower, PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
                     if (!ports.isEmpty()) {
                         List<UUID> cbIds = ports.stream().map(Port::getId).collect(Collectors.toList());
@@ -405,7 +405,7 @@ public class KchtGis155Service {
                                 .code(cb.getPortCode())
                                 .orgName(getOrgName(cb.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cảng biển")
-                                .location(cb.getProvinceId() != null ? String.valueOf(cb.getProvinceId()) : "")
+                                .location(cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "")
                                 .diaChiChiTiet("")
                                 .build();
                         if (objectType != null) {
@@ -434,8 +434,8 @@ public class KchtGis155Service {
                     }
                     for (Berth bc : berths) {
                         Port parent = (bc.getPortId() != null) ? bcPortMap.get(bc.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvinceId() != null)
-                                ? String.valueOf(parent.getProvinceId()) : "";
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? String.valueOf(parent.getProvince()) : "";
                         GisSpatialObject spatial = bcSpatialMap.get(bc.getId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
@@ -488,7 +488,7 @@ public class KchtGis155Service {
                     for (Pier cc : piers) {
                         Berth parentBerth = (cc.getBerthId() != null) ? berthMap.get(cc.getBerthId()) : null;
                         Port parentCb = (parentBerth != null && parentBerth.getPortId() != null) ? portMap.get(parentBerth.getPortId()) : null;
-                        String parentProvince = (parentCb != null && parentCb.getProvinceId() != null) ? String.valueOf(parentCb.getProvinceId()) : "";
+                        String parentProvince = (parentCb != null && parentCb.getProvince() != null) ? String.valueOf(parentCb.getProvince()) : "";
 
                         GisSpatialObject parentBerthSpatial = (parentBerth != null) ? parentBerthSpatialMap.get(parentBerth.getId()) : null;
                         double[] coords = parentBerthSpatial != null ? parseFirstCoordinateFromWkt(parentBerthSpatial.getCoordinates()) : null;
@@ -567,8 +567,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : waterZones) {
                         Port parent = (vn.getPortId() != null) ? vnPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvinceId() != null)
-                                ? String.valueOf(parent.getProvinceId()) : "";
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? String.valueOf(parent.getProvince()) : "";
                         GisSpatialObject spatial = vnSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -1052,8 +1052,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : benPhaos) {
                         Port parent = (vn.getPortId() != null) ? bpPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvinceId() != null)
-                                ? String.valueOf(parent.getProvinceId()) : "";
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? String.valueOf(parent.getProvince()) : "";
                         GisSpatialObject spatial = bpSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -1097,8 +1097,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : anchorages) {
                         Port parent = (vn.getPortId() != null) ? knPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvinceId() != null)
-                                ? String.valueOf(parent.getProvinceId()) : "";
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? String.valueOf(parent.getProvince()) : "";
                         GisSpatialObject spatial = knSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -1142,8 +1142,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : khuChuyens) {
                         Port parent = (vn.getPortId() != null) ? kcPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvinceId() != null)
-                                ? String.valueOf(parent.getProvinceId()) : "";
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? String.valueOf(parent.getProvince()) : "";
                         GisSpatialObject spatial = kcSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;
@@ -1187,8 +1187,8 @@ public class KchtGis155Service {
                     }
                     for (WaterZone vn : khuTranhs) {
                         Port parent = (vn.getPortId() != null) ? ktPortMap.get(vn.getPortId()) : null;
-                        String parentProvince = (parent != null && parent.getProvinceId() != null)
-                                ? String.valueOf(parent.getProvinceId()) : "";
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? String.valueOf(parent.getProvince()) : "";
                         GisSpatialObject spatial = ktSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double latitude = coords != null ? coords[0] : null;

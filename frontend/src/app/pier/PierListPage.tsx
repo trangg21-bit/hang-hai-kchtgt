@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Card,
   Row,
@@ -15,21 +15,28 @@ import {
   Typography,
   Popconfirm,
   Descriptions,
+  Alert,
+  Tabs,
+  DatePicker,
+  Divider,
 } from 'antd';
 import {
-  SearchOutlined,
   PlusOutlined,
-  ReloadOutlined,
   EyeOutlined,
   EditOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
+  ExclamationCircleOutlined,
   HistoryOutlined,
   DownloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ScreenHeader, FilterBar, StatusTabs } from '../../components/list-view';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -45,10 +52,28 @@ import {
   rejectCauCang,
   fetchBenCangOptions,
   fetchBenCangById,
+  fetchCangBienOptions,
+  fetchNavigationChannelOptions,
 } from './api';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/port/schema';
-import type { Pier, CauCangListQuery, BenCangOption, LoaiCau } from './types';
+import type { Pier, CauCangListQuery, BenCangOption, PortOption, NavigationChannelOption, LoaiCau } from './types';
 import { LOAI_CAU_OPTIONS, translateLoaiCau } from './types';
+import {
+  textPrimary,
+  textSecondary,
+  textTertiary,
+  actionPrimary,
+  spaceMd,
+  spaceLg,
+  spaceSm,
+  spaceFormField,
+  radiusPill,
+  radiusSm,
+  radiusLg,
+  surfaceCard,
+  borderDefault,
+  shadowSm,
+} from '../../tokens';
 import { documentApi } from '../document/api';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
@@ -108,14 +133,14 @@ export const translateFieldName = (fieldName: string): string => {
 };
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  'HIEN_HANH': { color: 'green', label: 'Hiện hành' },
-  'TAM_NGUNG': { color: 'gold', label: 'Tạm ngừng' },
+  'OPERATIONAL': { color: 'green', label: 'Hiện hành' },
+  'SUSPENDED': { color: 'gold', label: 'Tạm ngừng' },
 };
 
 const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  'CHO_PHE_DUYET': { color: 'gold', label: 'Chờ phê duyệt' },
-  'DUOC_PHE_DUYET': { color: 'green', label: 'Được phê duyệt' },
-  'TU_CHOI': { color: 'red', label: 'Từ chối' },
+  'PENDING': { color: 'gold', label: 'Chờ phê duyệt' },
+  'APPROVED': { color: 'green', label: 'Được phê duyệt' },
+  'REJECTED': { color: 'red', label: 'Từ chối' },
 };
 
 const CONG_NANG_KHAI_THAC_OPTIONS = [
@@ -127,6 +152,34 @@ const CONG_NANG_KHAI_THAC_OPTIONS = [
   { label: 'Hành khách', value: 'Hành khách' }
 ];
 
+const CONSTRUCTION_GRADE_OPTIONS = [
+  { value: 1, label: 'Cấp I — Đặc biệt' },
+  { value: 2, label: 'Cấp I' },
+  { value: 3, label: 'Cấp II' },
+  { value: 4, label: 'Cấp III' },
+  { value: 5, label: 'Cấp IV' },
+];
+
+const CONDITION_STATUS_OPTIONS = [
+  { value: 1, label: 'Sử dụng' },
+  { value: 2, label: 'Sửa chữa' },
+  { value: 3, label: 'Tạm ngừng khai thác' },
+];
+
+const RECEIVES_LARGE_VESSEL_OPTIONS = [
+  { value: '0', label: 'Không' },
+  { value: '1', label: 'Có' },
+];
+
+const PROVINCE_OPTIONS = [
+  { value: 'Hải Phòng', label: 'Hải Phòng' },
+  { value: 'TP. Hồ Chí Minh', label: 'TP. Hồ Chí Minh' },
+  { value: 'Đà Nẵng', label: 'Đà Nẵng' },
+  { value: 'Quảng Ninh', label: 'Quảng Ninh' },
+  { value: 'Bà Rịa - Vũng Tàu', label: 'Bà Rịa - Vũng Tàu' },
+  { value: 'Khánh Hòa', label: 'Khánh Hòa' },
+];
+
 export default function PierListPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -135,11 +188,14 @@ export default function PierListPage() {
   const action = searchParams.get('action');
   const id = searchParams.get('id');
 
+  const currentUser = useAuthStore((s) => s.user);
+  const hasPermission = usePermissionStore((s) => s.hasPermission);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>();
   const [filterApproval, setFilterApproval] = useState<string>();
   const [filterBenCangId, setFilterBenCangId] = useState<string>();
   const [filterLoaiCau, setFilterLoaiCau] = useState<LoaiCau>();
+  const [filterProvince, setFilterProvince] = useState<string>();
   const sortBy = 'createdAt';
   const sortOrder = 'desc';
   const [page, setPage] = useState(0);
@@ -150,7 +206,10 @@ export default function PierListPage() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [benCangOptions, setBenCangOptions] = useState<BenCangOption[]>([]);
+  const [portOptions, setPortOptions] = useState<PortOption[]>([]);
+  const [navigationChannelOptions, setNavigationChannelOptions] = useState<NavigationChannelOption[]>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
+  const actionTypeRef = useRef<'LUU_TAM' | 'LUU_VA_GUI_PHE_DUYET' | 'LUU_VA_PHE_DUYET'>('LUU_TAM');
 
   const fetchSymbols = useCallback(async () => {
     try {
@@ -171,6 +230,10 @@ export default function PierListPage() {
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [editWarning, setEditWarning] = useState<string | null>(null);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<Pier | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const closeUpdateModal = useCallback(() => {
     setUpdateModalVisible(false);
@@ -203,6 +266,7 @@ export default function PierListPage() {
         approvalStatus: filterApproval as any,
         berthId: filterBenCangId || undefined,
         loaiCau: filterLoaiCau,
+        province: filterProvince || undefined,
         sortBy: sortBy as any,
         sortOrder: sortOrder as any,
         page,
@@ -218,14 +282,92 @@ export default function PierListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, filterStatus, filterApproval, filterBenCangId, filterLoaiCau, sortBy, sortOrder, page, pageSize]);
+  }, [search, filterStatus, filterApproval, filterBenCangId, filterLoaiCau, filterProvince, sortBy, sortOrder, page, pageSize]);
+
+  // ── Filter fields ────────────────────────────────────────────────
+  const filterFields = useMemo(() => [
+    {
+      key: 'search',
+      type: 'search' as const,
+      label: 'Tìm kiếm',
+      placeholder: 'Tìm theo mã, tên cầu cảng...',
+    },
+    {
+      key: 'loaiCau',
+      type: 'select' as const,
+      label: 'Loại cầu',
+      placeholder: 'Chọn loại cầu',
+      options: LOAI_CAU_OPTIONS.map(o => ({ value: o.value as string, label: o.label })),
+    },
+    {
+      key: 'province',
+      type: 'select' as const,
+      label: 'Địa điểm',
+      placeholder: 'Chọn tỉnh/thành phố',
+      options: VIETNAM_PROVINCE_OPTIONS.map(p => ({ value: p.value, label: p.label })),
+    },
+  ], []);
 
   const handleBenCangSearch = useCallback(async (searchText: string) => {
     try {
-      const res = await fetchBenCangOptions({ size: 50, berthName: searchText || undefined });
+      const res = await fetchBenCangOptions({ size: 50, search: searchText || undefined });
       setBenCangOptions(res.content);
     } catch (err) {
       console.error('Failed to load Berth options:', err);
+    }
+  }, []);
+
+  const fetchBerthsByPort = useCallback(async (portId?: string) => {
+    try {
+      const res = await fetchBenCangOptions({ size: 100, portId });
+      setBenCangOptions(res.content);
+    } catch (err) {
+      console.error('Failed to load Berths by port:', err);
+    }
+  }, []);
+
+  const handlePortSearch = useCallback(async (searchText: string) => {
+    try {
+      const res = await fetchCangBienOptions({ size: 50, search: searchText || undefined });
+      setPortOptions(res.content);
+    } catch (err) {
+      console.error('Failed to load Port options:', err);
+    }
+  }, []);
+
+  const handleCangBienSearch = useCallback(async (searchText: string) => {
+    try {
+      const res = await fetchCangBienOptions({ size: 50, search: searchText || undefined });
+      setPortOptions(res.content);
+    } catch (err) {
+      console.error('Failed to load Port options:', err);
+    }
+  }, []);
+
+  const handleNavChannelSearch = useCallback(async (searchText: string) => {
+    try {
+      const res = await fetchNavigationChannelOptions({ size: 50, search: searchText || undefined });
+      setNavigationChannelOptions(res.content);
+    } catch (err) {
+      console.error('Failed to load NavChannel options:', err);
+    }
+  }, []);
+
+  const handleNavigationChannelSearch = useCallback(async (searchText: string) => {
+    try {
+      const res = await fetchNavigationChannelOptions({ size: 50, search: searchText || undefined });
+      setNavigationChannelOptions(res.content);
+    } catch (err) {
+      console.error('Failed to load NavigationChannel options:', err);
+    }
+  }, []);
+
+  const fetchNavChannelsByPort = useCallback(async (portId?: string) => {
+    try {
+      const res = await fetchNavigationChannelOptions({ size: 100, portId });
+      setNavigationChannelOptions(res.content);
+    } catch (err) {
+      console.error('Failed to load NavChannels by port:', err);
     }
   }, []);
 
@@ -329,23 +471,37 @@ export default function PierListPage() {
     }
   }, [selectedRecord, benCangOptions]);
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setPage(0);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (record: Pier) => {
-      try {
-        await deleteCauCang(record.id);
-        toast.success('Đã xóa cầu cảng');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
-      }
-    },
-    [fetchData],
-  );
+  const handleDelete = useCallback((record: Pier) => {
+    let inputValue = '';
+    Modal.confirm({
+      title: 'Xác nhận xóa cầu cảng',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>Hành động này sẽ xóa cầu cảng khỏi danh sách hoạt động. Dữ liệu vẫn được lưu trữ để phục vụ kiểm toán.</p>
+          <p><strong>Mã:</strong> {record.pierCode} | <strong>Tên:</strong> {record.pierName}</p>
+          <p>Vui lòng nhập tên cầu cảng để xác nhận: <strong>{record.pierName}</strong></p>
+          <Input placeholder="Nhập tên cầu cảng" onChange={(e) => { inputValue = e.target.value; }} />
+        </div>
+      ),
+      okText: 'Xóa',
+      okButtonProps: { danger: true, disabled: false },
+      cancelText: 'Hủy',
+      onOk: async () => {
+        if (inputValue.trim() !== record.pierName) {
+          toast.error('Tên cầu cảng không khớp');
+          return Promise.reject();
+        }
+        try {
+          await deleteCauCang(record.id);
+          toast.success('Đã xóa cầu cảng');
+          fetchData();
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+        }
+      },
+    });
+  }, [fetchData]);
 
   const handleApprove = useCallback(
     async (record: Pier) => {
@@ -364,48 +520,90 @@ export default function PierListPage() {
     [fetchData, detailModalVisible, selectedRecord],
   );
 
-  const handleReject = useCallback(
-    async (record: Pier) => {
-      const reason = window.prompt('Lý do từ chối (tối thiểu 10 ký tự):', '');
-      if (reason === null || reason.trim().length < 10) {
-        if (reason === null) return;
-        toast.warning('Lý do từ chối tối thiểu 10 ký tự');
-        return;
-      }
-      try {
-        await rejectCauCang(record.id, reason);
-        toast.success('Đã từ chối cầu cảng');
-        fetchData();
-        if (detailModalVisible && selectedRecord?.id === record.id) {
-          const updated = await fetchCauCangById(record.id);
-          setSelectedRecord(updated);
-        }
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
-      }
-    },
-    [fetchData, detailModalVisible, selectedRecord],
-  );
+  const handleReject = useCallback((record: Pier) => {
+    setRejectTarget(record);
+    setRejectReason('');
+    setRejectModalVisible(true);
+  }, []);
 
-  const handleCreateFinish = async (values: any) => {
+  const handleRejectConfirm = async () => {
+    if (!rejectTarget) return;
+    if (!rejectReason || rejectReason.trim().length < 10) {
+      toast.error('Lý do từ chối tối thiểu 10 ký tự');
+      return;
+    }
     try {
-      const parsed = cauCangCreateSchema.parse({
+      await rejectCauCang(rejectTarget.id, rejectReason.trim());
+      toast.success('Đã từ chối cầu cảng');
+      setRejectModalVisible(false);
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+    }
+  };
+
+  const handleCreateFinish = async (values: any, actionType: 'LUU_TAM' | 'LUU_VA_GUI_PHE_DUYET' | 'LUU_VA_PHE_DUYET') => {
+    try {
+      const formatDate = (d: any) => d?.format ? d.format('YYYY-MM-DD') : d || undefined;
+      const formatMonth = (d: any) => d?.format ? d.format('YYYY-MM') : d || undefined;
+
+      // Conditional ATHH validation
+      if (values.receivesLargeVessel === '1') {
+        if (!values.documentNumber) {
+          toast.error('Số văn bản là bắt buộc khi tiếp nhận tàu có trọng tải lớn hơn');
+          return;
+        }
+        if (!values.documentDate) {
+          toast.error('Ngày văn bản là bắt buộc khi tiếp nhận tàu có trọng tải lớn hơn');
+          return;
+        }
+      }
+
+      const payload = {
         pierCode: values.pierCode,
         pierName: values.pierName,
+        portId: values.portId || undefined,
         berthId: values.berthId,
+        navigationChannelId: values.navigationChannelId || undefined,
+        province: values.province || undefined,
+        detailedLocation: values.detailedLocation || undefined,
+        constructionGrade: values.constructionGrade ? Number(values.constructionGrade) : undefined,
+        pierType: values.loaiCau || undefined,
+        operationalFunction: values.operationalCapacity ? (Array.isArray(values.operationalCapacity) ? values.operationalCapacity.join(', ') : values.operationalCapacity) : undefined,
+        conditionStatus: values.conditionStatus ? Number(values.conditionStatus) : undefined,
         length: values.length || undefined,
-        taiTrong: values.taiTrong || undefined,
-        loaiCau: values.loaiCau || undefined,
-        operationalCapacity: values.operationalCapacity ? values.operationalCapacity.join(', ') : undefined,
-        operationalStatus: values.operationalStatus || 'HIEN_HANH',
-        bieuTuongId: values.gisLocation?.bieuTuongId || values.bieuTuongId || undefined,
-        loaiHinhHoc: values.loaiHinhHoc,
-        toaDo: values.gisLocation?.toaDo,
-      });
+        width: values.width || undefined,
+        currentWaterDepth: values.currentWaterDepth || undefined,
+        designBedElevation: values.designBedElevation || undefined,
+        publishedVesselDWT: values.publishedVesselDWT || undefined,
+        maintenanceApprovalDate: formatMonth(values.maintenanceApprovalDate),
+        safetyAssessmentDate: formatMonth(values.safetyAssessmentDate),
+        lastInspectionDate: formatMonth(values.lastInspectionDate),
+        operatingPierCount: values.operatingPierCount ? Number(values.operatingPierCount) : undefined,
+        publishedPierCount: values.publishedPierCount ? Number(values.publishedPierCount) : undefined,
+        investmentAgreementPierCount: values.investmentAgreementPierCount ? Number(values.investmentAgreementPierCount) : undefined,
+        cargoThroughput: values.cargoThroughput ? Number(values.cargoThroughput) : undefined,
+        receivesLargeVessel: values.receivesLargeVessel === '1',
+        documentNumber: values.documentNumber || undefined,
+        documentDate: formatDate(values.documentDate),
+        openingAnnouncementDate: formatDate(values.openingAnnouncementDate),
+        openingDecision: values.openingDecision || undefined,
+        investmentAgreementDoc: values.investmentAgreementDoc || undefined,
+        operationalStatus: 'OPERATIONAL',
+        mapSymbolId: values.gisLocation?.bieuTuongId || values.bieuTuongId || undefined,
+        geometryType: values.loaiHinhHoc || undefined,
+        coordinates: values.gisLocation?.toaDo || undefined,
+      };
+
+      const parsed = cauCangCreateSchema.parse(payload);
 
       setSubmitting(true);
-      await createCauCang(parsed);
-      toast.success('Tạo mới cầu cảng thành công');
+      await createCauCang(parsed, actionType);
+
+      const successMsg = actionType === 'LUU_TAM' ? 'Lưu tạm cầu cảng thành công'
+        : actionType === 'LUU_VA_GUI_PHE_DUYET' ? 'Đã gửi phê duyệt cầu cảng'
+        : 'Tạo mới và phê duyệt cầu cảng thành công';
+      toast.success(successMsg);
       setCreateModalVisible(false);
       createForm.resetFields();
       fetchData();
@@ -470,24 +668,24 @@ export default function PierListPage() {
   const columns = useMemo(
     () => [
       {
-        title: 'STT',
+        key: 'stt', title: 'STT',
         width: 60,
         render: (_: unknown, __: Pier, idx: number) => page * pageSize + idx + 1,
       },
       {
-        title: 'Mã cầu',
+        key: 'pierCode', title: 'Mã cầu',
         dataIndex: 'pierCode',
         width: 120,
         render: (pierCode: string) => <Tag color="cyan">{pierCode}</Tag>,
       },
       {
-        title: 'Tên cầu',
+        key: 'pierName', title: 'Tên cầu',
         dataIndex: 'pierName',
         width: 250,
         ellipsis: true,
       },
       {
-        title: 'Bến cảng chủ',
+        key: 'berthName', title: 'Bến cảng chủ',
         dataIndex: 'tenBenCang',
         width: 180,
         render: (tenBenCang: string, record: Pier) => {
@@ -495,28 +693,28 @@ export default function PierListPage() {
         },
       },
       {
-        title: 'Chiều dài (m)',
+        key: 'length', title: 'Chiều dài (m)',
         dataIndex: 'length',
         width: 125,
         align: 'right' as const,
         render: (v: number | null) => v != null && v !== undefined ? v.toFixed(2) : '—',
       },
       {
-        title: 'Tải trọng (tấn)',
+        key: 'taiTrong', title: 'Tải trọng (tấn)',
         dataIndex: 'taiTrong',
         width: 125,
         align: 'right' as const,
         render: (v: number | null) => v != null && v !== undefined ? v.toFixed(2) : '—',
       },
       {
-        title: 'Loại cầu',
+        key: 'loaiCau', title: 'Loại cầu',
         dataIndex: 'loaiCau',
         width: 120,
         ellipsis: true,
         render: (v: string) => translateLoaiCau(v),
       },
       {
-        title: 'Trạng thái HĐ',
+        key: 'operationalStatus', title: 'Trạng thái HĐ',
         dataIndex: 'operationalStatus',
         width: 100,
         render: (v: string) => {
@@ -525,7 +723,7 @@ export default function PierListPage() {
         },
       },
       {
-        title: 'Phê duyệt',
+        key: 'approvalStatus', title: 'Phê duyệt',
         dataIndex: 'approvalStatus',
         width: 110,
         render: (v: string) => {
@@ -534,14 +732,13 @@ export default function PierListPage() {
         },
       },
       {
-        title: 'Ngày tạo',
+        key: 'createdAt', title: 'Ngày tạo',
         dataIndex: 'createdAt',
         width: 140,
         render: (v: string) => v ? new Date(v).toLocaleDateString('vi-VN') : '—',
       },
       {
-        title: 'Thao tác',
-        key: 'actions',
+        key: 'actions', title: '',
         width: 240,
         fixed: 'right' as const,
         render: (_: unknown, record: Pier) => (
@@ -595,6 +792,11 @@ export default function PierListPage() {
                       }
                     });
                     setUpdateModalVisible(true);
+                    if (data.approvalStatus === 'PENDING') {
+                      setEditWarning('Cầu cảng đang trong quá trình phê duyệt. Sau khi cập nhật, trạng thái phê duyệt sẽ quay về Chờ phê duyệt.');
+                    } else {
+                      setEditWarning(null);
+                    }
                   } catch (err) {
                     toast.error('Không thể tải thông tin cầu cảng');
                   } finally {
@@ -624,7 +826,7 @@ export default function PierListPage() {
                 }}
               />
             </Tooltip>
-            {record.approvalStatus === 'CHO_PHE_DUYET' && (
+            {record.approvalStatus === 'PENDING' && (
               <>
                 <Tooltip title="Phê duyệt">
                   <Popconfirm
@@ -650,15 +852,7 @@ export default function PierListPage() {
               </>
             )}
             <Tooltip title="Xóa">
-              <Popconfirm
-                title="Xác nhận xóa cầu cảng?"
-                description={`Bạn có chắc muốn xóa cầu cảng "${record.pierCode}"?`}
-                okText="Xóa"
-                cancelText="Hủy"
-                onConfirm={() => handleDelete(record)}
-              >
-                <Button type="link" size="small" danger icon={<DeleteOutlined />} />
-              </Popconfirm>
+              <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} />
             </Tooltip>
           </Space>
         ),
@@ -671,66 +865,48 @@ export default function PierListPage() {
     <>
       {!isIframeModal && (
         <>
-          <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={16}>
-            <Space wrap>
-              <Input.Search
-                placeholder="Tìm theo mã, tên..."
-                allowClear
-                style={{ width: 300 }}
-                prefix={<SearchOutlined />}
-                onSearch={handleSearch}
-                onClear={() => setSearch('')}
-              />
-              <Select
-                placeholder="Trạng thái HĐ"
-                allowClear
-                style={{ width: 160 }}
-                value={filterStatus}
-                onChange={(val) => { setFilterStatus(val); setPage(0); }}
-                options={Object.entries(STATUS_MAP).map(([v, { label }]) => ({ value: v, label }))}
-              />
-              <Select
-                placeholder="Trạng thái phê duyệt"
-                allowClear
-                style={{ width: 180 }}
-                value={filterApproval}
-                onChange={(val) => { setFilterApproval(val); setPage(0); }}
-                options={Object.entries(APPROVAL_MAP).map(([v, { label }]) => ({ value: v, label }))}
-              />
-              <Select
-                placeholder="Loại cầu"
-                allowClear
-                style={{ width: 160 }}
-                value={filterLoaiCau}
-                onChange={(val) => { setFilterLoaiCau(val as LoaiCau); setPage(0); }}
-                options={LOAI_CAU_OPTIONS}
-              />
-              <Select
-                placeholder="Bến cảng chủ"
-                allowClear
-                style={{ width: 200 }}
-                value={filterBenCangId}
-                onChange={(val) => { setFilterBenCangId(val); setPage(0); }}
-                options={benCangOptions.map((o) => ({ value: o.id, label: o.berthName }))}
-                showSearch
-                filterOption={(input, opt) => (opt?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={() => { setPage(0); fetchData(); }} />
-              </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateModalVisible(true); }}>
-                Tạo cầu cảng
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+          <ScreenHeader
+            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cầu cảng' }]}
+            actions={[
+              {
+                key: 'create',
+                label: 'Tạo mới',
+                icon: <PlusOutlined />,
+                variant: 'primary' as const,
+                onClick: () => { createForm.resetFields(); setCreateModalVisible(true); },
+              },
+            ]}
+          />
+          <FilterBar
+            fields={filterFields}
+            onSearch={(values) => {
+              setSearch(values.search || '');
+              setFilterLoaiCau(values.loaiCau || undefined);
+              setFilterProvince(values.province || '');
+              setPage(0);
+            }}
+            onReset={() => {
+              setSearch('');
+              setFilterLoaiCau(undefined);
+              setFilterProvince('');
+              setFilterStatus(undefined);
+              setFilterApproval(undefined);
+              setFilterBenCangId(undefined);
+              setPage(0);
+            }}
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+            <StatusTabs
+              tabs={[
+                { key: '', label: 'Tất cả', count: 0, color: textSecondary, active: !filterApproval },
+                { key: 'PENDING', label: 'Chờ phê duyệt', count: 0, color: '#faad14', active: filterApproval === 'PENDING' },
+                { key: 'APPROVED', label: 'Đã phê duyệt', count: 0, color: '#1677ff', active: filterApproval === 'APPROVED' },
+                { key: 'REJECTED', label: 'Từ chối', count: 0, color: '#ff4d4f', active: filterApproval === 'REJECTED' },
+              ]}
+              onChange={(key) => { setFilterApproval(key || undefined); setPage(0); }}
+            />
+          </div>
 
       <Card>
         {isLoading && <LoadingSkeleton rows={8} type="table" />}
@@ -766,156 +942,491 @@ export default function PierListPage() {
         </>
       )}
 
-      {/* Create Modal */}
+      {/* Create Modal — redesigned with 7 Collapse groups (F-020) */}
       {!isIframeModal && (
         <Modal
-        title="Tạo mới Cầu cảng"
-        open={createModalVisible}
-        onCancel={() => setCreateModalVisible(false)}
-        footer={null}
-        width={800}
-      >
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} initialValues={{ operationalStatus: 'HIEN_HANH' }}>
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-            Thông tin chung
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                label="Mã cầu *"
-                name="pierCode"
-                rules={[{ required: true, message: 'Mã cầu không được để trống' }, { max: 50, message: 'Mã cầu tối đa 50 ký tự' }]}
+          title="Tạo mới Cầu cảng"
+          open={createModalVisible}
+          onCancel={() => setCreateModalVisible(false)}
+          footer={null}
+          width={1100}
+          styles={{ body: { maxHeight: '80vh', overflowY: 'auto', padding: '16px 24px' } }}
+        >
+          <Form
+            form={createForm}
+            layout="vertical"
+            onFinish={(values) => handleCreateFinish(values, actionTypeRef.current)}
+            onFinishFailed={handleFormFailed}
+            initialValues={{ operationalStatus: 'OPERATIONAL', conditionStatus: 1, receivesLargeVessel: '0' }}
+          >
+            <Tabs
+              defaultActiveKey="basic"
+              tabBarStyle={{ marginBottom: 16, paddingLeft: 16, paddingRight: 16 }}
+              style={{ border: 'none', background: surfaceCard, borderRadius: 0 }}
+              items={[
+                // ── Group A: Thông tin cơ bản ──────────────────────────────────
+                {
+                  key: 'basic',
+                  label: <span style={{ fontWeight: 600, fontSize: 15, color: textPrimary }}>Thông tin cơ bản</span>,
+                  children: (
+                    <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>
+                      <Row gutter={24}>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Đơn vị quản lý" name="orgUnitId">
+                            <Select
+                              disabled
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              placeholder="Đơn vị của bạn"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Thuộc cảng biển" name="portId">
+                            <Select
+                              placeholder="Chọn cảng biển"
+                              showSearch
+                              filterOption={false}
+                              onOpenChange={(open) => { if (open && portOptions.length === 0) handlePortSearch(''); }}
+                              onSearch={handlePortSearch}
+                              onSelect={(val) => { fetchBerthsByPort(val); fetchNavChannelsByPort(val); }}
+                              onClear={() => { setBenCangOptions([]); setNavigationChannelOptions([]); }}
+                              allowClear
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={portOptions.map((o) => ({ label: o.portName, value: o.id }))}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={12}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label="Thuộc bến cảng *"
+                            name="berthId"
+                            rules={[{ required: true, message: 'Vui lòng chọn bến cảng chủ' }]}
+                          >
+                            <Select
+                              placeholder="Chọn bến cảng"
+                              showSearch
+                              filterOption={false}
+                              onOpenChange={(open) => { if (open && benCangOptions.length === 0) handleBenCangSearch(''); }}
+                              onSearch={handleBenCangSearch}
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={benCangOptions.map((o) => ({ label: o.berthName, value: o.id }))}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Thuộc luồng hàng hải" name="navigationChannelId">
+                            <Select
+                              placeholder="Chọn luồng hàng hải"
+                              showSearch
+                              filterOption={false}
+                              onOpenChange={(open) => { if (open && navigationChannelOptions.length === 0) handleNavigationChannelSearch(''); }}
+                              onSearch={handleNavigationChannelSearch}
+                              allowClear
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={navigationChannelOptions.map((o) => ({ label: o.channelName, value: o.id }))}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={12}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label="Mã cầu cảng *"
+                            name="pierCode"
+                            rules={[{ required: true, message: 'Mã cầu không được để trống' }, { max: 50, message: 'Mã cầu tối đa 50 ký tự' }]}
+                          >
+                            <Input placeholder="VD: CC-HAIPHONG-001" maxLength={50} style={{ borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label="Tên cầu cảng *"
+                            name="pierName"
+                            rules={[{ required: true, message: 'Tên cầu không được để trống' }, { max: 255, message: 'Tên cầu tối đa 255 ký tự' }]}
+                          >
+                            <Input placeholder="VD: Cầu cảng Hải Phòng" maxLength={255} style={{ borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Địa điểm (Tỉnh/TP)" name="province">
+                            <Select
+                              placeholder="Chọn tỉnh/thành phố"
+                              showSearch
+                              allowClear
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={VIETNAM_PROVINCE_OPTIONS}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Địa điểm chi tiết" name="detailedLocation">
+                            <Input.TextArea
+                              placeholder="Nhập địa điểm chi tiết"
+                              maxLength={500}
+                              rows={1}
+                              style={{ borderRadius: radiusSm, minHeight: 40 }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Phân cấp công trình" name="constructionGrade">
+                            <Select
+                              placeholder="Chọn cấp"
+                              allowClear
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={CONSTRUCTION_GRADE_OPTIONS}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Loại kết cấu" name="loaiCau">
+                            <Select
+                              placeholder="Chọn loại kết cấu"
+                              allowClear
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={LOAI_CAU_OPTIONS}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Tình trạng" name="conditionStatus">
+                            <Select
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={CONDITION_STATUS_OPTIONS}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={24}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Công năng khai thác" name="operationalCapacity">
+                            <Select
+                              mode="multiple"
+                              placeholder="Chọn công năng khai thác"
+                              allowClear
+                              style={{ borderRadius: radiusPill, minHeight: 40 }}
+                              options={CONG_NANG_KHAI_THAC_OPTIONS}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+
+                // ── Group B: Thông số kỹ thuật ─────────────────────────────────
+                {
+                  key: 'technical',
+                  label: <span style={{ fontWeight: 600, fontSize: 15, color: textPrimary }}>Thông số kỹ thuật</span>,
+                  children: (
+                    <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>
+                      <Row gutter={24}>
+                        <Col span={12}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label={<span>Chiều dài (m) <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                            name="length"
+                            rules={[{ required: true, message: 'Chiều dài là bắt buộc' }]}
+                          >
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 150.00" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label={<span>Chiều rộng (m) <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                            name="width"
+                            rules={[{ required: true, message: 'Chiều rộng là bắt buộc' }]}
+                          >
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 25.00" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Độ sâu khu nước hiện tại" name="currentWaterDepth">
+                            <Input placeholder="VD: -12.5m" maxLength={20} style={{ borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Cao độ đáy bến thiết kế" name="designBedElevation">
+                            <Input placeholder="VD: -15.0m" maxLength={20} style={{ borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Cỡ tàu khai thác (DWT)" name="publishedVesselDWT">
+                            <Input placeholder="VD: 50,000 DWT" maxLength={20} style={{ borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+
+                // ── Group C: Thời điểm & kiểm định ────────────────────────────
+                {
+                  key: 'timing',
+                  label: <span style={{ fontWeight: 600, fontSize: 15, color: textPrimary }}>Thời điểm & kiểm định</span>,
+                  children: (
+                    <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>
+                      <Row gutter={24}>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Thời điểm phê duyệt quy trình bảo trì" name="maintenanceApprovalDate">
+                            <DatePicker picker="month" placeholder="MM/YYYY" format="MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Thời điểm chấp thuận hồ sơ ĐG ATCT" name="safetyAssessmentDate">
+                            <DatePicker picker="month" placeholder="MM/YYYY" format="MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Thời điểm kiểm định gần nhất" name="lastInspectionDate">
+                            <DatePicker picker="month" placeholder="MM/YYYY" format="MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+
+                // ── Group D: Số lượng & sản lượng ─────────────────────────────
+                {
+                  key: 'quantities',
+                  label: <span style={{ fontWeight: 600, fontSize: 15, color: textPrimary }}>Số lượng & sản lượng</span>,
+                  children: (
+                    <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>
+                      <Row gutter={24}>
+                        <Col span={6}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Số lượng CC đang khai thác" name="operatingPierCount">
+                            <InputNumber min={0} max={99999} placeholder="0" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Số lượng CC đã công bố" name="publishedPierCount">
+                            <InputNumber min={0} max={99999} placeholder="0" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Số lượng CC đang TƯĐT XD" name="investmentAgreementPierCount">
+                            <InputNumber min={0} max={99999} placeholder="0" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Sản lượng hàng thông qua" name="cargoThroughput">
+                            <InputNumber min={0} placeholder="0" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+
+                // ── Group E: Phương án bảo đảm ATHH ──────────────────────────
+                {
+                  key: 'athh',
+                  label: <span style={{ fontWeight: 600, fontSize: 15, color: textPrimary }}>Phương án bảo đảm ATHH</span>,
+                  children: (
+                    <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>
+                      <Row gutter={24}>
+                        <Col span={8}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label="Tiếp nhận tàu có TT lớn hơn QĐ CB"
+                            name="receivesLargeVessel"
+                          >
+                            <Select
+                              style={{ borderRadius: radiusPill, height: 40 }}
+                              options={RECEIVES_LARGE_VESSEL_OPTIONS}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label="Số văn bản"
+                            name="documentNumber"
+                            dependencies={['receivesLargeVessel']}
+                            rules={[
+                              ({ getFieldValue }: any) => ({
+                                validator(_: any, value: any) {
+                                  if (getFieldValue('receivesLargeVessel') === '1' && !value) {
+                                    return Promise.reject(new Error('Vui lòng nhập số văn bản'));
+                                  }
+                                  return Promise.resolve();
+                                },
+                              }),
+                            ]}
+                          >
+                            <Input placeholder="Nhập số văn bản" maxLength={100} style={{ borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item
+                            style={{ marginBottom: spaceFormField }}
+                            label="Ngày văn bản"
+                            name="documentDate"
+                            dependencies={['receivesLargeVessel']}
+                            rules={[
+                              ({ getFieldValue }: any) => ({
+                                validator(_: any, value: any) {
+                                  if (getFieldValue('receivesLargeVessel') === '1' && !value) {
+                                    return Promise.reject(new Error('Vui lòng chọn ngày văn bản'));
+                                  }
+                                  return Promise.resolve();
+                                },
+                              }),
+                            ]}
+                          >
+                            <DatePicker placeholder="Chọn ngày" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+
+                // ── Group F: Công bố mở, đưa vào SD ──────────────────────────
+                {
+                  key: 'announcement',
+                  label: <span style={{ fontWeight: 600, fontSize: 15, color: textPrimary }}>Công bố mở, đưa vào sử dụng</span>,
+                  children: (
+                    <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>
+                      <Row gutter={24}>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Thời điểm công bố mở, đưa vào SD" name="openingAnnouncementDate">
+                            <DatePicker placeholder="Chọn ngày" format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Quyết định công bố / VB cho phép KT" name="openingDecision">
+                            <Input.TextArea placeholder="Nhập số quyết định/văn bản" maxLength={200} rows={1} style={{ borderRadius: radiusSm, minHeight: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Văn bản thỏa thuận đầu tư XD" name="investmentAgreementDoc">
+                            <Input.TextArea placeholder="Nhập văn bản thỏa thuận" maxLength={2000} rows={1} style={{ borderRadius: radiusSm, minHeight: 40 }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+
+                // ── Group G: GIS & File ─────────────────────────────────────
+                {
+                  key: 'gis',
+                  label: <span style={{ fontWeight: 600, fontSize: 15, color: textPrimary }}>GIS</span>,
+                  children: (
+                    <div style={{ padding: `0 ${spaceMd}px ${spaceMd}px ${spaceMd}px` }}>
+                      <Row gutter={24}>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Loại đối tượng" name="loaiHinhHoc">
+                            <Select placeholder="Chọn loại đối tượng" allowClear style={{ borderRadius: radiusPill, height: 40 }}
+                              options={[{ value: 'POINT', label: 'Đối tượng điểm' }, { value: 'LINE', label: 'Đối tượng đường' }, { value: 'POLYGON', label: 'Đối tượng vùng' }]} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} name="bieuTuongId" label="Biểu tượng bản đồ">
+                            <Select placeholder="Chọn biểu tượng" allowClear showSearch optionFilterProp="label" style={{ borderRadius: radiusPill, height: 40 }}>
+                              {symbols.map((sym) => (<Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}><Space>{sym.hinhAnh && <img src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}<span>{sym.name} ({sym.code})</span></Space></Select.Option>))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Hệ quy chiếu">
+                            <Input value="WGS_84" disabled style={{ borderRadius: radiusPill, height: 40, color: textTertiary }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item style={{ marginBottom: spaceFormField }} label="Quy tắc hiển thị">
+                            <Input value="Độ/Phút/Giây" disabled style={{ borderRadius: radiusPill, height: 40, color: textTertiary }} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={24}>
+                        <Col span={24}>
+                          <Form.Item style={{ marginBottom: 0 }}>
+                            <Form.Item name="gisLocation" style={{ marginBottom: 0 }}>
+                              <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
+                            </Form.Item>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+
+            {/* ── Footer: 4 action buttons ──────────────────────────────────── */}
+            <div
+              style={{
+                padding: `${spaceMd}px ${spaceLg}px`,
+                borderTop: `1px solid ${borderDefault}`,
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: spaceSm,
+                background: surfaceCard,
+              }}
+            >
+              <Button
+                style={{ borderRadius: radiusPill, height: 40, color: textSecondary, borderColor: borderDefault }}
+                onClick={() => setCreateModalVisible(false)}
               >
-                <Input placeholder="VD: CC-HAIPHONG-001" maxLength={50} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tên cầu *"
-                name="pierName"
-                rules={[{ required: true, message: 'Tên cầu không được để trống' }, { max: 255, message: 'Tên cầu tối đa 255 ký tự' }]}
+                Hủy
+              </Button>
+              <Button
+                style={{ borderRadius: radiusPill, height: 40, color: textSecondary, borderColor: borderDefault }}
+                loading={submitting}
+                onClick={() => {
+                  createForm.validateFields()
+                    .then((values) => { void handleCreateFinish(values, 'LUU_TAM'); })
+                    .catch(() => {});
+                }}
               >
-                <Input placeholder="VD: Cầu cảng Hải Phòng" maxLength={255} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                label="Bến cảng chủ *"
-                name="berthId"
-                rules={[{ required: true, message: 'Vui lòng chọn bến cảng chủ' }]}
+                Lưu tạm
+              </Button>
+              <Button
+                type="primary"
+                style={{ borderRadius: radiusPill, height: 40, background: actionPrimary, borderColor: actionPrimary }}
+                loading={submitting}
+                onClick={() => {
+                  createForm.validateFields()
+                    .then((values) => { void handleCreateFinish(values, 'LUU_VA_GUI_PHE_DUYET'); })
+                    .catch(() => {});
+                }}
               >
-                <Select
-                  placeholder="Chọn bến cảng chủ"
-                  showSearch
-                  filterOption={false}
-                  onSearch={handleBenCangSearch}
-                  onOpenChange={(open) => {
-                    if (open && benCangOptions.length <= 1) {
-                      void handleBenCangSearch('');
-                    }
+                Lưu và gửi phê duyệt
+              </Button>
+              {(currentUser?.role?.includes('ADMIN') || hasPermission('data:approve')) && (
+                <Button
+                  type="primary"
+                  style={{ borderRadius: radiusPill, height: 40, background: actionPrimary, borderColor: actionPrimary }}
+                  loading={submitting}
+                  onClick={() => {
+                    createForm.validateFields()
+                      .then((values) => { void handleCreateFinish(values, 'LUU_VA_PHE_DUYET'); })
+                      .catch(() => {});
                   }}
-                  options={benCangOptions.map(o => ({ label: o.berthName, value: o.id }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Loại cầu" name="loaiCau">
-                <Select placeholder="Chọn loại cầu cảng" allowClear options={LOAI_CAU_OPTIONS} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Thông số kỹ thuật
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Chiều dài (m)" name="length">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 150.00" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Tải trọng (tấn)" name="taiTrong">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 5000.00" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item label="Công năng khai thác" name="operationalCapacity">
-                <Select
-                  mode="multiple"
-                  placeholder="Chọn công năng khai thác"
-                  allowClear
-                  options={CONG_NANG_KHAI_THAC_OPTIONS}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Trạng thái
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Trạng thái hoạt động" name="operationalStatus">
-                <Select placeholder="Chọn trạng thái" options={Object.entries(STATUS_MAP).map(([v, { label }]) => ({ value: v, label }))} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
-                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
-                  {symbols.map((sym) => (
-                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
-                      <Space>
-                        {sym.hinhAnh && (
-                          <img
-                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
-                            alt={sym.name}
-                            style={{ width: 20, height: 20, objectFit: 'contain' }}
-                          />
-                        )}
-                        <span>{sym.name} ({sym.code})</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Vị trí không gian (GIS)
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
-                <Select placeholder="Chọn loại đối tượng" options={[
-                  { value: 'POINT', label: 'Đối tượng điểm' },
-                  { value: 'LINE', label: 'Đối tượng đường' },
-                  { value: 'POLYGON', label: 'Đối tượng vùng' }
-                ]} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item name="gisLocation">
-                <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setCreateModalVisible(false)}>Hủy</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>Tạo cầu cảng</Button>
-            </Space>
-          </Form.Item>
-        </Form>
+                >
+                  Lưu và phê duyệt
+                </Button>
+              )}
+            </div>
+          </Form>
         </Modal>
       )}
 
@@ -935,6 +1446,7 @@ export default function PierListPage() {
         }}
       >
         <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish} onFinishFailed={handleFormFailed}>
+          {editWarning && <Alert type="warning" message={editWarning} showIcon style={{ marginBottom: 16 }} />}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
@@ -1052,7 +1564,7 @@ export default function PierListPage() {
           </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+              <Form.Item label="Loại đối tượng" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
                 <Select placeholder="Chọn loại đối tượng" options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },
@@ -1231,7 +1743,7 @@ export default function PierListPage() {
 
             <div style={{ marginTop: 24, textAlign: 'right' }}>
               <Space>
-                {selectedRecord.approvalStatus === 'CHO_PHE_DUYET' && (
+                {selectedRecord.approvalStatus === 'PENDING' && (
                   <>
                     <Popconfirm
                       title="Phê duyệt cầu cảng?"
@@ -1276,6 +1788,11 @@ export default function PierListPage() {
                       }
                     });
                     setUpdateModalVisible(true);
+                    if (selectedRecord.approvalStatus === 'PENDING') {
+                      setEditWarning('Cầu cảng đang trong quá trình phê duyệt. Sau khi cập nhật, trạng thái phê duyệt sẽ quay về Chờ phê duyệt.');
+                    } else {
+                      setEditWarning(null);
+                    }
                   }}
                 >
                   Chỉnh sửa
@@ -1287,6 +1804,27 @@ export default function PierListPage() {
         )}
         </Modal>
       )}
+
+      {/* Reject Modal */}
+      <Modal
+        title="Từ chối cầu cảng"
+        open={rejectModalVisible}
+        onCancel={() => setRejectModalVisible(false)}
+        onOk={handleRejectConfirm}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+      >
+        <p style={{ marginBottom: 12 }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
+        <Input.TextArea
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Nhập lý do từ chối..."
+          rows={4}
+          maxLength={500}
+          showCount
+        />
+      </Modal>
 
       {/* Upload Giấy tờ Modal */}
       {selectedRecord && (

@@ -4,14 +4,41 @@ export interface Pier {
   pierCode: string;
   pierName: string;
   berthId: string;
+  portId?: string;
+  navigationChannelId?: string;
   tenBenCang?: string;
+  tenPort?: string;
+  tenNavigationChannel?: string;
   length: number | null;
+  width?: number | null;
   taiTrong: number | null;
   loaiCau: string;
+  pierType?: string;
   operationalCapacity?: string | null;
-  operationalStatus: 'HIEN_HANH' | 'TAM_NGUNG';
-  approvalStatus: 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI';
+  operationalFunction?: string;
+  operationalStatus: 'OPERATIONAL' | 'SUSPENDED';
+  approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   orgUnitId: string;
+  province?: string;
+  detailedLocation?: string;
+  constructionGrade?: number;
+  conditionStatus?: number;
+  currentWaterDepth?: string;
+  designBedElevation?: string;
+  publishedVesselDWT?: string;
+  maintenanceApprovalDate?: string;
+  safetyAssessmentDate?: string;
+  lastInspectionDate?: string;
+  operatingPierCount?: number;
+  publishedPierCount?: number;
+  investmentAgreementPierCount?: number;
+  cargoThroughput?: number;
+  receivesLargeVessel?: boolean;
+  documentNumber?: string;
+  documentDate?: string;
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
+  investmentAgreementDoc?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -24,11 +51,12 @@ export interface Pier {
 
 export interface CauCangListQuery {
   search?: string;
-  status?: 'HIEN_HANH' | 'TAM_NGUNG';
-  approvalStatus?: 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI';
+  status?: 'OPERATIONAL' | 'SUSPENDED';
+  approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   berthId?: string;
   orgUnitId?: string;
   loaiCau?: LoaiCau;
+  province?: string;
   sortBy?: 'pierCode' | 'pierName' | 'createdAt' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
   page: number;
@@ -38,12 +66,38 @@ export interface CauCangListQuery {
 export interface CauCangCreateRequest {
   pierCode: string;
   pierName: string;
+  portId?: string;
   berthId: string;
-  length?: number | null | '';
-  taiTrong?: number | null | '';
+  navigationChannelId?: string;
+  orgUnitId?: string;
+  province?: string;
+  detailedLocation?: string;
+  constructionGrade?: number;
+  pierType?: string;
   loaiCau?: string;
+  operationalFunction?: string;
   operationalCapacity?: string;
-  operationalStatus?: 'HIEN_HANH' | 'TAM_NGUNG';
+  conditionStatus?: number;
+  length?: number | null | '';
+  width?: number | null | '';
+  taiTrong?: number | null | '';
+  currentWaterDepth?: string;
+  designBedElevation?: string;
+  publishedVesselDWT?: string;
+  maintenanceApprovalDate?: string;
+  safetyAssessmentDate?: string;
+  lastInspectionDate?: string;
+  operatingPierCount?: number;
+  publishedPierCount?: number;
+  investmentAgreementPierCount?: number;
+  cargoThroughput?: number;
+  receivesLargeVessel?: boolean;
+  documentNumber?: string;
+  documentDate?: string;
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
+  investmentAgreementDoc?: string;
+  operationalStatus?: 'OPERATIONAL' | 'SUSPENDED';
   loaiHinhHoc?: string;
   toaDo?: string;
   bieuTuongId?: string;
@@ -52,12 +106,37 @@ export interface CauCangCreateRequest {
 export interface CauCangUpdateRequest {
   id: string;
   pierName?: string;
+  portId?: string;
   berthId?: string;
+  navigationChannelId?: string;
   length?: number | null | '';
+  width?: number | null | '';
   taiTrong?: number | null | '';
   loaiCau?: string;
+  pierType?: string;
   operationalCapacity?: string;
-  operationalStatus?: 'HIEN_HANH' | 'TAM_NGUNG';
+  operationalFunction?: string;
+  operationalStatus?: 'OPERATIONAL' | 'SUSPENDED';
+  province?: string;
+  detailedLocation?: string;
+  constructionGrade?: number;
+  conditionStatus?: number;
+  currentWaterDepth?: string;
+  designBedElevation?: string;
+  publishedVesselDWT?: string;
+  maintenanceApprovalDate?: string;
+  safetyAssessmentDate?: string;
+  lastInspectionDate?: string;
+  operatingPierCount?: number;
+  publishedPierCount?: number;
+  investmentAgreementPierCount?: number;
+  cargoThroughput?: number;
+  receivesLargeVessel?: boolean;
+  documentNumber?: string;
+  documentDate?: string;
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
+  investmentAgreementDoc?: string;
   loaiHinhHoc?: string;
   toaDo?: string;
   bieuTuongId?: string | null;
@@ -78,6 +157,16 @@ export interface pierHistoryRecord {
 export interface BenCangOption {
   id: string;
   berthName: string;
+}
+
+export interface PortOption {
+  id: string;
+  portName: string;
+}
+
+export interface NavigationChannelOption {
+  id: string;
+  channelName: string;
 }
 
 export type ApproveAction = 'APPROVE' | 'REJECT';

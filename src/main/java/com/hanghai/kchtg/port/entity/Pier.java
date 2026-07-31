@@ -9,6 +9,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -25,9 +26,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @SuperBuilder
 public class Pier extends BaseEntity {
-    @Column(name = "province_id")
-    private Integer provinceId;
-
 
     @Column(name = "pier_code", nullable = false, unique = true, length = 50)
     private String pierCode;
@@ -67,4 +65,93 @@ public class Pier extends BaseEntity {
 
     @Column(name = "spatial_id")
     private UUID spatialId;
+
+    // ── Spec Group A: Basic info ──
+
+    @Column(name = "port_id")
+    private UUID portId;                         // #2 - Thuộc cảng biển
+
+    @Column(name = "navigation_channel_id")
+    private UUID navigationChannelId;            // #4 - Thuộc luồng hàng hải
+
+    @Column(name = "province", length = 100)
+    private String province;                     // #7 - Địa điểm (Tỉnh/TP)
+
+    @Column(name = "detailed_location", length = 500)
+    private String detailedLocation;             // #8 - Địa điểm chi tiết
+
+    @Column(name = "construction_grade")
+    private Integer constructionGrade;           // #9 - Phân cấp công trình
+
+    @Column(name = "structure_type")
+    private Integer structureType;               // #10 - Loại kết cấu
+
+    @Column(name = "condition_status")
+    private Integer conditionStatus;             // #12 - Tình trạng (default 1)
+
+    // ── Spec Group B: Technical ──
+
+    @Column(name = "width", precision = 15, scale = 2)
+    private BigDecimal width;                    // #14 - Chiều rộng
+
+    @Column(name = "current_water_depth", length = 20)
+    private String currentWaterDepth;            // #15 - Độ sâu khu nước hiện tại
+
+    @Column(name = "design_bed_elevation", length = 20)
+    private String designBedElevation;           // #16 - Cao độ đáy bến thiết kế
+
+    @Column(name = "published_vessel_dwt", length = 20)
+    private String publishedVesselDWT;           // #17 - Cỡ tàu khai thác theo công bố
+
+    // ── Spec Group C: Dates (zobjDataSub) ──
+
+    @Column(name = "maintenance_approval_date", length = 7)
+    private String maintenanceApprovalDate;      // #18 - MM/YYYY
+
+    @Column(name = "safety_assessment_date", length = 7)
+    private String safetyAssessmentDate;         // #19 - MM/YYYY
+
+    @Column(name = "last_inspection_date", length = 7)
+    private String lastInspectionDate;           // #20 - MM/YYYY
+
+    // ── Spec Group D: Quantities ──
+
+    @Column(name = "operating_pier_count")
+    private Integer operatingPierCount;          // #21
+
+    @Column(name = "published_pier_count")
+    private Integer publishedPierCount;          // #22
+
+    @Column(name = "investment_agreement_pier_count")
+    private Integer investmentAgreementPierCount; // #23
+
+    @Column(name = "cargo_throughput", precision = 15, scale = 2)
+    private BigDecimal cargoThroughput;          // #24
+
+    // ── Spec Group E: ATHH ──
+
+    @Column(name = "receives_large_vessel")
+    private Boolean receivesLargeVessel;         // #25 - 0/1
+
+    @Column(name = "document_number", length = 200)
+    private String documentNumber;               // #26
+
+    @Column(name = "document_date")
+    private LocalDate documentDate;              // #27
+
+    // ── Spec Group F: Opening announcement ──
+
+    @Column(name = "opening_announcement_date")
+    private LocalDate openingAnnouncementDate;   // #28
+
+    @Column(name = "opening_decision", length = 200)
+    private String openingDecision;              // #29
+
+    @Column(name = "investment_agreement_doc", length = 2000)
+    private String investmentAgreementDoc;       // #30
+
+    // ── Spec Group G: GIS additional ──
+
+    @Column(name = "water_area_neutral_scope", length = 2000)
+    private String waterAreaNeutralScope;        // G4
 }

@@ -1,14 +1,17 @@
 package com.hanghai.kchtg.port.dto.port;
 
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import java.util.UUID;
+
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Request DTO for updating an existing Port.
@@ -23,7 +26,7 @@ public class UpdatePortRequest {
 
     private String portName;
 
-    private Integer provinceId;
+    private String province;
 
     @DecimalMin(value = "-90", message = "Vĩ độ phải từ -90 đến 90")
     @DecimalMax(value = "90", message = "Vĩ độ phải từ -90 đến 90")
@@ -33,12 +36,11 @@ public class UpdatePortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal maxVesselCapacity;
 
-    private OperationalStatus operationalStatus;
+    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
 
     private UUID orgUnitId;
 
@@ -94,5 +96,12 @@ public class UpdatePortRequest {
 
     private String remarks;
 
+    // ── Child lists ───────────────────────────────────────────────────
+
+    private List<PortCoordinateDto> coordinateList;
+
+    private List<PortInfrastructureDto> infrastructureList;
+
+    private List<PortAttachmentDto> attachments;
 
 }

@@ -63,6 +63,7 @@ export interface Port {
   quantityKhuChuyenTai?: number;
   cacKhuNuocKhac?: string;
   remarks?: string;
+  coordinateList?: Array<{ latitude: number; longitude: number; sortOrder?: number }>;
 }
 
 export interface CreateCangBienRequest {
