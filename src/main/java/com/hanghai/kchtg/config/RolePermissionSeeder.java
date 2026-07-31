@@ -316,6 +316,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
         ));
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
                 "orgunit:read", "data:read", "data:update",
+                "document:read",
                 // M-003 read only
                 "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
                 "radarstation:read", "vts:read"
@@ -522,6 +523,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermMap.put("ROLE_SPECIALIST", List.of(
             "document:read", "document:create", "document:update"
         ));
+        rolePermMap.put("ROLE_PORT_OPERATOR", List.of("document:read"));
         rolePermMap.put("ROLE_PUBLIC_USER", List.of("document:read"));
 
         int assigned = 0;

@@ -38,7 +38,7 @@ public class AssetProcessingRecordController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'processingrecord:manage')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AssetProcessingRecordResponse>> getById(
             @PathVariable UUID id) {
         AssetProcessingRecordResponse response = assetProcessingRecordService.getById(id);
@@ -46,7 +46,7 @@ public class AssetProcessingRecordController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'processingrecord:manage')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AssetProcessingRecordResponse>>> findAll(
             @RequestParam(required = false) UUID assetId,
             @RequestParam(required = false) ProcessingType processingType,

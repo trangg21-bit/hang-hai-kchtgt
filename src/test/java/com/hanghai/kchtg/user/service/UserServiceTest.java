@@ -5,6 +5,7 @@ import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
+import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
@@ -81,6 +82,7 @@ class UserServiceTest {
         regularUser = new User();
         regularUser.setId(UUID.randomUUID());
         regularUser.setUsername("regular");
+        regularUser.setStatus(UserStatus.ACTIVE);
         regularUser.setRoles(new HashSet<>(Set.of(userRole)));
 
         jakarta.persistence.Query mockQuery = mock(jakarta.persistence.Query.class);
@@ -112,7 +114,7 @@ class UserServiceTest {
         request.setRole("ROLE_SYSTEM_ADMIN");
 
         when(userRepository.existsByUsername("newadmin")).thenReturn(false);
-        when(userRepository.existsByEmail("newadmin@test.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("newadmin@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
 
         // When/Then: should throw AccessDeniedException
@@ -137,7 +139,7 @@ class UserServiceTest {
         request.setRole("ROLE_SYSTEM_ADMIN");
 
         when(userRepository.existsByUsername("newadmin")).thenReturn(false);
-        when(userRepository.existsByEmail("newadmin@test.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("newadmin@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
         when(roleRepository.findByCode("ROLE_SYSTEM_ADMIN")).thenReturn(Optional.of(systemAdminRole));
         when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
@@ -168,7 +170,7 @@ class UserServiceTest {
         request.setRole("ROLE_USER");
 
         when(userRepository.existsByUsername("regularuser")).thenReturn(false);
-        when(userRepository.existsByEmail("regular@test.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("regular@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
         when(roleRepository.findByCode("ROLE_USER")).thenReturn(Optional.of(userRole));
         when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
@@ -184,6 +186,39 @@ class UserServiceTest {
         // Then
         assertNotNull(result);
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void create_shouldRejectEmailThatDiffersOnlyByCase() {
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("anotheruser");
+        request.setPassword("SecurePass1");
+        request.setEmail("Loan@Gmail.com");
+        request.setFullName("Another User");
+
+        when(userRepository.existsByUsername("anotheruser")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("loan@gmail.com")).thenReturn(true);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> userService.create(request));
+
+        assertEquals("Email đã tồn tại: loan@gmail.com", ex.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void update_shouldChangeStatusAndWriteStatusAuditLog() {
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setStatus(UserStatus.INACTIVE);
+        when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User result = userService.update(regularUser.getId(), request);
+
+        assertEquals(UserStatus.INACTIVE, result.getStatus());
+        verify(userStatusLogRepository).save(argThat(logEntry ->
+                logEntry.getOldStatus() == UserStatus.ACTIVE
+                        && logEntry.getNewStatus() == UserStatus.INACTIVE));
     }
 
     // =========================================================================
