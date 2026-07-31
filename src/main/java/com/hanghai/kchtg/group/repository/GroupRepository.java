@@ -76,7 +76,10 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
     @Query("SELECT g FROM UserGroup g "
           + "WHERE g.deletedAt IS NULL "
           + "AND (:groupType IS NULL OR cast(g.groupType as integer) = :groupType) "
-          + "AND (:search IS NULL OR g.name LIKE %:search%) "
+          + "AND (:search IS NULL OR :search = '' OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.description, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
           + "AND (:status IS NULL OR cast(g.status as integer) = :status)")
     Page<UserGroup> searchAndFilter(@Param("search") String search,
                                     @Param("groupType") Integer groupType,
@@ -86,7 +89,10 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
     @Query("SELECT COUNT(g) FROM UserGroup g "
           + "WHERE g.deletedAt IS NULL "
           + "AND (:groupType IS NULL OR cast(g.groupType as integer) = :groupType) "
-          + "AND (:search IS NULL OR g.name LIKE %:search%) "
+          + "AND (:search IS NULL OR :search = '' OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.description, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
           + "AND cast(g.status as integer) = :status")
     long countByFiltersAndStatus(@Param("search") String search,
                                  @Param("groupType") Integer groupType,
@@ -103,7 +109,10 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
           + "  SELECT 1 FROM GroupMember gm WHERE gm.userGroup.id = g.id "
           + "  AND gm.user.id = :userId AND gm.status = GroupMemberStatus.ACTIVE)) "
           + "AND (:groupType IS NULL OR cast(g.groupType as integer) = :groupType) "
-          + "AND (:search IS NULL OR g.name LIKE %:search%)")
+          + "AND (:search IS NULL OR :search = '' OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.description, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string))")
     Page<UserGroup> searchAndFilterMyGroups(@Param("search") String search,
                                             @Param("groupType") Integer groupType,
                                             @Param("userId") UUID userId,

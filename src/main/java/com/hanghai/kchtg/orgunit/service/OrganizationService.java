@@ -201,12 +201,19 @@ public class OrganizationService {
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Đơn vị cha không tồn tại: " + request.getParentId()));
         }
+        // The form intentionally does not expose a separate unit-level/type
+        // selector. Keep the legacy type column consistent by deriving it
+        // from the hierarchy when the API caller omits it.
+        OrgUnitType type = request.getType() != null
+                ? request.getType()
+                : (parent == null ? OrgUnitType.DEPARTMENT : OrgUnitType.SUB_DEPARTMENT);
+        validateParentEligibility(parent, type);
 
         OrgUnit unit = OrgUnit.builder()
                 .name(request.getName())
                 .code(code)
                 .parentId(request.getParentId())
-                .type(request.getType())
+                .type(type)
                 .description(request.getDescription())
                 .address(request.getAddress())
                 .detailAddress(request.getDetailAddress())
@@ -277,11 +284,15 @@ public class OrganizationService {
                         .orElseThrow(() -> new EntityNotFoundException(
                                 "Đơn vị cha không tồn tại: " + newParentId));
 
+                validateParentEligibility(newParent, request.getType() != null ? request.getType() : unit.getType());
+
                 // BR-016: circular reference detection
                 if (materializedPathService.isAncestor(id, newParentId)) {
                     throw new IllegalArgumentException(
                             "Không thể đặt đơn vị con làm cha của đơn vị cha — sẽ tạo vòng lặp phân cấp");
                 }
+
+                validateSubtreeDepth(unit, newParent);
 
                 // Parent changed — cascade path rebuild
                 if (!newParentId.equals(unit.getParentId())) {
@@ -301,10 +312,52 @@ public class OrganizationService {
         if (request.getContactPerson() != null) unit.setContactPerson(request.getContactPerson());
         if (request.getOperationalStatus() != null) unit.setOperationalStatus(request.getOperationalStatus());
 
+        if (unit.getParentId() != null) {
+            OrgUnit currentParent = orgUnitRepo.findById(unit.getParentId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Đơn vị cha không tồn tại: " + unit.getParentId()));
+            validateParentEligibility(currentParent, unit.getType());
+        }
+
         OrgUnit saved = orgUnitRepo.save(unit);
 
         log.info("Updated org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
+    }
+
+    /**
+     * Enforce the hierarchy rules at the API boundary as well as in the UI.
+     * A parent must be an active node below the maximum depth (three levels),
+     * and root-level unit types cannot be attached below another unit.
+     */
+    private void validateParentEligibility(OrgUnit parent, OrgUnitType childType) {
+        if (parent == null) {
+            return;
+        }
+        if (parent.getOperationalStatus() == OrgUnitOperationalStatus.INACTIVE) {
+            throw new IllegalArgumentException("Không thể chọn đơn vị không sử dụng làm đơn vị cha");
+        }
+        if (parent.getLevel() != null && parent.getLevel() >= 3) {
+            throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
+        }
+        if (childType == OrgUnitType.DEPARTMENT || childType == OrgUnitType.GENERAL_DEPARTMENT) {
+            throw new IllegalArgumentException("Cấp đơn vị cao nhất không được chọn đơn vị cha");
+        }
+    }
+
+    private void validateSubtreeDepth(OrgUnit unit, OrgUnit newParent) {
+        if (unit.getLevel() == null || newParent.getLevel() == null) {
+            return;
+        }
+        int deepestRelativeLevel = materializedPathService.getSubtree(unit.getId()).stream()
+                .map(OrgUnit::getLevel)
+                .filter(level -> level != null)
+                .mapToInt(level -> level - unit.getLevel())
+                .max()
+                .orElse(0);
+        if (newParent.getLevel() + 1 + deepestRelativeLevel > 3) {
+            throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
+        }
     }
 
     /**

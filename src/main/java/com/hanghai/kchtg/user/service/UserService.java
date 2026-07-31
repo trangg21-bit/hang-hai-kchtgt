@@ -359,15 +359,16 @@ public class UserService {
      * pointing to this user. Blocks delete if any references exist.
      */
     private void checkBusinessDataReferences(User user) {
-        // 1. Check password_history references
-        long historyCount = passwordHistoryRepository.countByUserId(user.getId());
-        if (historyCount > 0) {
-            throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
-        }
-        // 2. Query information_schema for all FK tables referencing app_users
+        List<String> ignoredSystemTables = List.of(
+            "app_users", "password_history", "user_status_log", 
+            "user_roles", "app_user_roles", "user_group_members", 
+            "group_members", "pending_approvals", "password_expiration_log"
+        );
+
+        // 1. Query information_schema for all FK tables AND exact column names referencing app_users
         @SuppressWarnings("unchecked")
-        List<String> fkTables = entityManager.createNativeQuery(
-            "SELECT DISTINCT tc.table_name FROM information_schema.table_constraints AS tc " +
+        List<Object[]> fkReferences = entityManager.createNativeQuery(
+            "SELECT DISTINCT kcu.table_name, kcu.column_name FROM information_schema.table_constraints AS tc " +
             "JOIN information_schema.key_column_usage AS kcu " +
             "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema " +
             "JOIN information_schema.constraint_column_usage AS ccu " +
@@ -376,28 +377,35 @@ public class UserService {
             "AND ccu.table_name = 'app_users' " +
             "AND tc.table_schema = 'public'"
         ).getResultList();
-        // 3. Check each dependent table for references to this user
-        for (String table : fkTables) {
-            if ("password_history".equals(table) || "user_status_log".equals(table)) continue;
+
+        // 2. Check each dependent table using its exact foreign key column name
+        for (Object[] row : fkReferences) {
+            String tbl = (String) row[0];
+            String col = (String) row[1];
+            if (ignoredSystemTables.contains(tbl)) continue;
+
             Number count = (Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM " + table + " WHERE user_id = :userId"
+                "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
             ).setParameter("userId", user.getId()).getSingleResult();
             if (count.longValue() > 0) {
                 throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
             }
         }
-        // 4. Check any table with audit columns referencing this user
+
+        // 3. Check any table with audit columns referencing this user
         @SuppressWarnings("unchecked")
         List<Object[]> refColumns = entityManager.createNativeQuery(
             "SELECT DISTINCT c.table_name, c.column_name FROM information_schema.columns c " +
             "WHERE c.table_schema = 'public' " +
             "AND c.column_name IN ('created_by','updated_by','deleted_by','approved_by','assigned_by','changed_by','operator_id') " +
-            "AND c.table_name NOT IN ('app_users','password_history','user_status_log') " +
             "ORDER BY c.table_name"
         ).getResultList();
+
         for (Object[] row : refColumns) {
             String tbl = (String) row[0];
             String col = (String) row[1];
+            if (ignoredSystemTables.contains(tbl)) continue;
+
             Number count = (Number) entityManager.createNativeQuery(
                 "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
             ).setParameter("userId", user.getId()).getSingleResult();

@@ -12,15 +12,8 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
-import FormField from '../../components/FormField';
-import { spaceMd, radiusPill, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, actionPrimary, textSecondary, borderDefault, cardStyle, statusOperational, statusCritical } from '../../tokens';
+import { spaceMd, spaceFormField, radiusPill, fontSizeMd, fontSizeLg, fontWeightBold, actionPrimary, textSecondary, borderDefault, cardStyle } from '../../tokens';
 import { colors } from '../../theme';
-
-const ROLE_MAP: Record<string, { color: string; label: string }> = {
-  admin: { color: 'red', label: 'Quản lý' },
-  member: { color: 'blue', label: 'Thành viên' },
-  viewer: { color: 'default', label: 'Xem' },
-};
 
 export default function GroupMembers() {
   const navigate = useNavigate();
@@ -35,7 +28,6 @@ export default function GroupMembers() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState<string | undefined>();
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
@@ -46,7 +38,7 @@ export default function GroupMembers() {
   const fetchUserOptions = useCallback(async (searchTxt: string) => {
     setIsSearchingUser(true);
     try {
-      const res = await userService.list({ search: searchTxt, pageSize: 50 });
+      const res = await userService.list({ search: searchTxt.trim(), pageSize: 50 });
       setUserOptions(res.data.map((u) => ({ value: u.id, label: `${u.fullName} (${u.username})` })));
     } catch (err) {
       console.error('Failed to load users for dropdown:', err);
@@ -64,19 +56,19 @@ export default function GroupMembers() {
   const handleUserSearch = useCallback((value: string) => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
-      void fetchUserOptions(value);
+      void fetchUserOptions(value.trim());
     }, 500);
   }, [fetchUserOptions]);
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
-      const resp = await groupService.getMembers(id!, { page, pageSize, search, role: filterRole });
+      const resp = await groupService.getMembers(id!, { page, pageSize, search });
       setDataSource(resp.data);
       setTotal(resp.total);
     } catch (err: unknown) { setIsError(true); setError(err instanceof Error ? err : new Error('Không thể tải danh sách thành viên')); }
     finally { setIsLoading(false); }
-  }, [id, page, pageSize, search, filterRole]);
+  }, [id, page, pageSize, search]);
 
   useEffect(() => { void fetchMembers(); }, [fetchMembers]);
 
@@ -96,7 +88,7 @@ export default function GroupMembers() {
   const handleAddMember = useCallback(async () => {
     try {
       const values = await form.validateFields();
-      await groupService.addMember(id!, { userId: values.userId, role: values.role });
+      await groupService.addMember(id!, { userId: values.userId });
       toast.success('Đã thêm thành viên vào nhóm');
       setAddModalOpen(false); form.resetFields(); fetchMembers();
     } catch (err: any) {
@@ -110,10 +102,10 @@ export default function GroupMembers() {
 
   // ---- Filter handlers ----
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setFilterRole(values.role || undefined); setPage(1);
+    setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setPage(1);
   }, []);
 
-  const handleFilterReset = useCallback(() => { setSearch(''); setFilterRole(undefined); setPage(1); }, []);
+  const handleFilterReset = useCallback(() => { setSearch(''); setPage(1); }, []);
 
   const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
 
@@ -130,11 +122,6 @@ export default function GroupMembers() {
       render: (text: string) => <Space><UserOutlined /><Typography.Text strong>{text}</Typography.Text></Space> },
     { key: 'username', label: 'Tên đăng nhập', dataIndex: 'username', width: 150 },
     { key: 'email', label: 'Email', dataIndex: 'email', width: 200 },
-    { key: 'role', label: 'Vai trò', dataIndex: 'role', width: 120, align: 'center' as const,
-      render: (role: string) => {
-        const r = ROLE_MAP[role] || { color: textSecondary, label: role };
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: r.color === 'default' ? textSecondary : actionPrimary }}>{r.label}</span>;
-      } },
     { key: 'joinedAt', label: 'Tham gia từ', dataIndex: 'joinedAt', width: 150, align: 'center' as const,
       render: (text: string) => text ? dayjs(text).format('DD/MM/YYYY') : '—' },
   ], [page, pageSize]);
@@ -144,7 +131,7 @@ export default function GroupMembers() {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách thành viên'} onRetry={fetchMembers} />;
     if (dataSource.length === 0) {
-      if (search || filterRole) return <EmptyState description="Không tìm thấy thành viên nào phù hợp" />;
+      if (search) return <EmptyState description="Không tìm thấy thành viên nào phù hợp" />;
       return <EmptyState description="Chưa có thành viên nào" />;
     }
     return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={dataSource} rowKey="userId" rowActions={rowActions} scroll={{ x: 900 }} /><Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
@@ -153,8 +140,6 @@ export default function GroupMembers() {
   // ---- Filter fields ----
   const filterFields = useMemo(() => [
     { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, email...' },
-    { key: 'role', type: 'select' as const, label: 'Vai trò', placeholder: 'Chọn vai trò',
-      options: [{ value: 'admin', label: 'Quản lý' }, { value: 'member', label: 'Thành viên' }, { value: 'viewer', label: 'Xem' }] },
   ], []);
 
   // ---- Header actions ----
@@ -181,7 +166,7 @@ export default function GroupMembers() {
       >
         <Spin spinning={false}>
           <Form form={form} layout="vertical" style={{ marginTop: spaceMd }}>
-            <Form.Item name="userId" label={<span>Chọn người dùng<span style={{ color: '#ff4d4f', marginLeft: 4 }}>*</span></span>} rules={[{ required: true, message: 'Vui lòng chọn người dùng' }]}>
+            <Form.Item name="userId" label="Chọn người dùng" required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn người dùng' }]}>
               <Select
                 showSearch
                 placeholder="Tìm và chọn người dùng..."
@@ -189,9 +174,9 @@ export default function GroupMembers() {
                 filterOption={false}
                 onSearch={handleUserSearch}
                 loading={isSearchingUser}
+                style={{ borderRadius: radiusPill, height: 40 }}
               />
             </Form.Item>
-            <FormField type="select" name="role" label="Vai trò" required options={[{ value: 'admin', label: 'Quản lý' }, { value: 'member', label: 'Thành viên' }, { value: 'viewer', label: 'Xem' }]} />
           </Form>
         </Spin>
       </Modal>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, Form, Button, Space, Typography, Input, Select, Row, Col } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -15,7 +15,6 @@ export default function UnitForm() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const [form] = Form.useForm();
-  const selectedType = Form.useWatch('type', form);
   const [submitting, setSubmitting] = useState(false);
   const [initialData, setInitialData] = useState<UpdateOrganizationPayload & { parentOrgId?: string } | null>(null);
   const [orgOptions, setOrgOptions] = useState<Organization[]>([]);
@@ -24,7 +23,7 @@ export default function UnitForm() {
   useEffect(() => {
     (async () => {
       try {
-        const orgs = await organizationService.getTree();
+        const orgs = await organizationService.getTree({ allowMockFallback: false });
         setOrgOptions(orgs);
       } catch {
         // ignore
@@ -42,7 +41,6 @@ export default function UnitForm() {
             name: data.name,
             code: data.code || 'ORG_' + id,
             parentId: data.parentId,
-            type: data.type,
             description: data.description,
             address: data.address,
             contactPerson: data.contactPerson,
@@ -54,7 +52,6 @@ export default function UnitForm() {
             name: data.name,
             code: data.code || 'ORG_' + id,
             parentId: data.parentId,
-            type: data.type,
             description: data.description,
             address: data.address,
             contactPerson: data.contactPerson,
@@ -70,22 +67,39 @@ export default function UnitForm() {
     }
   }, [isEdit, id, form, navigate]);
 
-  const parentOptions = orgOptions
-    .filter((o) => o.id !== id)
-    .map((o) => ({ value: o.id, label: `${o.name} (C${o.level})` }));
+  const parentOptions = useMemo(() => {
+    const currentOrg = orgOptions.find((org) => org.id === id);
+    const parentLevel = currentOrg?.level && currentOrg.level > 1 ? currentOrg.level - 1 : undefined;
+    const isDescendant = (candidateId: string) => {
+      if (!id) return false;
+      let current = orgOptions.find((org) => org.id === candidateId);
+      const visited = new Set<string>();
+      while (current?.parentId && !visited.has(current.parentId)) {
+        if (current.parentId === id) return true;
+        visited.add(current.parentId);
+        current = orgOptions.find((org) => org.id === current?.parentId);
+      }
+      return false;
+    };
+
+    return orgOptions
+      .filter((org) => org.id !== id && !isDescendant(org.id))
+      .filter((org) => org.operationalStatus !== 'inactive')
+      .filter((org) => parentLevel === undefined ? (org.level ?? 0) < 3 : org.level === parentLevel)
+      .map((org) => ({ value: org.id, label: `${org.name}${org.level ? ` (Cấp ${org.level})` : ''}` }));
+  }, [id, orgOptions]);
 
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const targetParentId = (values.type && values.type !== 'DEPARTMENT') ? values.parentId : undefined;
+      const targetParentId = values.parentId || undefined;
 
       if (isEdit) {
         const payload: UpdateOrganizationPayload = {
           name: values.name,
           parentId: targetParentId,
-          type: values.type,
           description: values.description,
           address: values.address,
           detailAddress: values.detailAddress,
@@ -99,7 +113,6 @@ export default function UnitForm() {
         const payload: CreateOrganizationPayload = {
           name: values.name,
           parentId: targetParentId,
-          type: values.type,
           description: values.description,
           address: values.address,
           detailAddress: values.detailAddress,
@@ -152,27 +165,12 @@ export default function UnitForm() {
             placeholder="VD: PHONG_CNTT"
           />
 
-          {selectedType !== 'GENERAL_DEPARTMENT' && (
-            <FormField
-              type="select"
-              name="parentId"
-              label="Đơn vị cha"
-              options={[{ value: '', label: '(Không có) — đơn vị cấp cao nhất' }, ...parentOptions]}
-              help="Để trống nếu đây là đơn vị cấp cao nhất"
-            />
-          )}
-
           <FormField
             type="select"
-            name="type"
-            label="Loại đơn vị"
-            required
-            options={[
-              { value: 'GENERAL_DEPARTMENT', label: 'Tổng cục' },
-              { value: 'DEPARTMENT', label: 'Cục' },
-              { value: 'SUB_DEPARTMENT', label: 'Chi cục' },
-              { value: 'PORT_AUTHORITY', label: 'Cảng vụ' },
-            ]}
+            name="parentId"
+            label="Đơn vị cha"
+            options={[{ value: '', label: '(Không có) — đơn vị cấp cao nhất' }, ...parentOptions]}
+            help="Để trống nếu đây là đơn vị cấp cao nhất"
           />
 
           <FormField

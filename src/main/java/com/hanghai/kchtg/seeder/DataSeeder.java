@@ -393,7 +393,6 @@ public class DataSeeder implements CommandLineRunner {
                         GroupMember member = new GroupMember();
                         member.setUser(u);
                         member.setUserGroup(group);
-                        member.setRole(offset == 0 ? GroupMemberRole.ADMIN : GroupMemberRole.MEMBER);
                         member.setStatus(GroupMemberStatus.ACTIVE);
                         member.setJoinedAt(java.time.LocalDateTime.now());
                         groupMemberRepo.save(member);

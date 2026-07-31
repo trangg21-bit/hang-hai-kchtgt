@@ -29,7 +29,7 @@ verdict: Pass
 | File | Type | Status |
 |---|---|---|
 | `entity/UserGroup.java` | Entity | ✅ Reviewed — groupType added, UNIQUE constraints |
-| `entity/GroupMember.java` | Entity | ✅ Reviewed — joinsBy, joinedAt, roleInGroup correct |
+| `entity/GroupMember.java` | Entity | ✅ Reviewed — joinedBy, joinedAt correct |
 | `entity/GroupHistory.java` | Entity | ✅ Reviewed — action, performedBy, performedAt, notes aligned |
 | `entity/GroupType.java` | Entity | ✅ Reviewed — NEW, DEPARTMENT/PROJECT/CUSTOM enum |
 | `entity/GroupStatus.java` | Entity | ✅ Reviewed — ACTIVE, INACTIVE |
@@ -42,8 +42,6 @@ verdict: Pass
 | `dto/UserGroupResponse.java` | DTO | ✅ Reviewed — memberCount, groupType |
 | `dto/PaginatedGroupResponse.java` | DTO | ✅ Reviewed — pagination wrapper |
 | `dto/GroupCopyRequest.java` | DTO | ✅ Reviewed — name + description overrides |
-| `dto/AddGroupMemberRequest.java` | DTO | ✅ Reviewed — roleInGroup field |
-| `dto/GroupMemberResponse.java` | DTO | ✅ Reviewed — roleInGroup renamed from role |
 | `service/UserGroupService.java` | Service | ✅ Reviewed — all business rules implemented |
 | `controller/GroupController.java` | Controller | ✅ Reviewed — 10 endpoints, RBAC enforcement |
 | `db/migration/V20__F-002_user_groups.sql` | Migration | ✅ Reviewed — tables, indexes, constraints |

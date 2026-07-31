@@ -56,7 +56,7 @@ flowchart LR
 | Dependency | Direction | Reason | Integration Type |
 |---|---|---|---|
 | **F-001 (UserAccount)** | Reads `UserAccount` entity | Validate userId before adding to group; resolve performedBy userId from JWT principal | JPA `@ManyToOne` reference — no direct cross-module service call |
-| **F-001 (Role)** | Reads `Role` entity | Validate roleInGroup values against known system roles | JPA `@ManyToOne` reference |
+| **F-001 (Role)** | Reads `Role` entity | Resolve Roles assigned to the group for permission inheritance | Application service integration |
 | **F-005 (AccessLog)** | Writes to `AccessLog` entity | All mutations logged as group operations (audit trail) | Spring ApplicationEvent publish |
 
 ---
@@ -128,7 +128,6 @@ erDiagram
         BIGINT userId FK
         BIGINT joinedBy FK
         DATETIME joinedAt
-        VARCHAR roleInGroup
     }
 
     GroupHistory {
@@ -281,5 +280,4 @@ erDiagram
 | **Delete group strategy** | Hard delete (check members = 0, then cascade delete members then group) | Soft delete with `deletedAt` | No audit requirement to retain deleted group data; GroupHistory already captures the deletion action |
 | **Member add strategy** | Application check (not exists) → INSERT; DB unique composite (groupId, userId) as safety net | DB constraint only (no app check) | Application check provides better error message (409 "User already in this group"); DB constraint as safety net |
 | **Group code generation** | Factory pattern (`GroupCodeFactory`) — auto-increment or prefix-based | Manual input by user | Resolves AMBIGUITY-002; factory allows configurable strategy (prefix-based like "DA-001", "PRJ-001"); admin can still override if needed |
-| **roleInGroup values** | VARCHAR(30) (open-ended, documented in frontend) | Rigid enum | Allows flexible role names (admin, member, observer, lead); frontend validates against allowed list |
 | **Service layer split** | Two services: `GroupService` (CRUD + copy) + `GroupMemberService` (add/remove members) | Single monolithic service | Separation aligns with tech lead plan; GroupMemberService can be tested independently |

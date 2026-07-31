@@ -205,10 +205,9 @@ public class GroupController {
     public ResponseEntity<ApiResponse<PaginatedGroupMemberResponse>> listMembers(
             @PathVariable UUID id,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<GroupMember> pageResult = service.findMembers(id, search, role, page, size);
+        Page<GroupMember> pageResult = service.findMembers(id, search, page, size);
 
         List<GroupMemberResponse> items = pageResult.getContent().stream()
                 .map(GroupMemberResponse::from)

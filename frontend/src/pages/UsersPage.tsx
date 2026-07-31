@@ -11,7 +11,7 @@ import ErrorState from '../components/ErrorState';
 import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../components/list-view';
 import Pagination from '../components/list-view/Pagination';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
-import { organizationService } from '../services/organizationService';
+import { organizationService, type Organization } from '../services/organizationService';
 import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
@@ -52,14 +52,20 @@ export default function UsersPage() {
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
   const [detailUser, setDetailUser] = useState<User | null>(null);
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const resp = await organizationService.list({ pageSize: 1000 });
-        setOrganizations(resp.data || []);
-      } catch (err) { console.error('Failed to load organizations', err); }
+        // Use the real hierarchy endpoint. The user form must never fall back
+        // to static mock organizations, otherwise IDs/names can be submitted
+        // that do not exist in the UAT database.
+        const orgs = await organizationService.getTree({ allowMockFallback: false });
+        setOrganizations(orgs);
+      } catch (err) {
+        console.error('Không thể tải danh sách đơn vị trực thuộc', err);
+        setOrganizations([]);
+      }
     })();
   }, []);
 
@@ -315,7 +321,7 @@ export default function UsersPage() {
               <Col xs={24} md={12}><Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}><Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
             </Row>
             <Form.Item name="roleId" {...labelProps('Vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}><Select placeholder="Chọn vai trò" options={rolesData?.map((r: any) => ({ value: r.code, label: r.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn đơn vị trực thuộc" allowClear showSearch filterOption={(input: string, option: any) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())} options={organizations.map((org: any) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn đơn vị trực thuộc" allowClear showSearch filterOption={(input: string, option: any) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())} options={organizations.map((org) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
             {editingUser && (
               <Form.Item
                 name="status"

@@ -63,17 +63,13 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
       @Query(value = "SELECT gm FROM GroupMember gm "
                   + "LEFT JOIN FETCH gm.user u "
                   + "WHERE gm.userGroup.id = :groupId AND gm.status = :status "
-                  + "AND (CAST(:search AS string) IS NULL OR LOWER(u.fullName) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.email) LIKE LOWER(CAST(:search AS string))) "
-                  + "AND (:roleIsNull = true OR CAST(gm.role AS integer) = :role)", countQuery = "SELECT COUNT(gm) FROM GroupMember gm "
+                  + "AND (CAST(:search AS string) IS NULL OR LOWER(u.fullName) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.email) LIKE LOWER(CAST(:search AS string)))", countQuery = "SELECT COUNT(gm) FROM GroupMember gm "
                               + "LEFT JOIN gm.user u "
                               + "WHERE gm.userGroup.id = :groupId AND gm.status = :status "
-                              + "AND (CAST(:search AS string) IS NULL OR LOWER(u.fullName) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.email) LIKE LOWER(CAST(:search AS string))) "
-                              + "AND (:roleIsNull = true OR CAST(gm.role AS integer) = :role)")
-      Page<GroupMember> searchAndFilterMembers(@Param("groupId") UUID groupId,
+                              + "AND (CAST(:search AS string) IS NULL OR LOWER(u.fullName) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.email) LIKE LOWER(CAST(:search AS string)))")
+      Page<GroupMember> searchMembers(@Param("groupId") UUID groupId,
                   @Param("status") GroupMemberStatus status,
                   @Param("search") String search,
-                  @Param("roleIsNull") boolean roleIsNull,
-                  @Param("role") Integer role,
                   Pageable pageable);
 
       /**

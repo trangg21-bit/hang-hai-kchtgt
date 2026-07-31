@@ -365,7 +365,7 @@ export const organizationService = {
    * GET /api/org-units/tree
    * Returns hierarchical tree with children populated.
    */
-  async getTree(): Promise<Organization[]> {
+  async getTree(options?: { allowMockFallback?: boolean }): Promise<Organization[]> {
     try {
       const resp = await api.get("/org-units/tree");
       const items: any[] = extractData(resp) ?? [];
@@ -389,6 +389,7 @@ export const organizationService = {
           detailAddress: node.detailAddress,
           phone: node.phone,
           status: (node.status?.toLowerCase() as Organization["status"]) ?? "draft",
+          operationalStatus: (node.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
           childCount: Array.isArray(node.children) ? node.children.length : 0,
           createdAt: node.createdAt ? new Date(node.createdAt).toISOString() : "",
           updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "", updatedBy: (node.updatedBy ?? undefined), 
@@ -415,7 +416,10 @@ export const organizationService = {
       });
 
       return flatList;
-    } catch {
+    } catch (error) {
+      if (options?.allowMockFallback === false) {
+        throw error;
+      }
       await delay();
       // Build a tree-like flat list from MOCK_ORGANIZATIONS
       const orgMap = new Map<string, Organization>();

@@ -22,7 +22,6 @@ public class GroupMemberResponse {
     private String fullName;
     private String groupId;
     private String groupName;
-    private String roleInGroup;
     private String status;
     private String email;
     private LocalDateTime joinedAt;
@@ -35,7 +34,6 @@ public class GroupMemberResponse {
         GroupMemberResponse resp = new GroupMemberResponse();
         resp.setId(member.getId().toString());
         resp.setStatus(member.getStatus() != null ? member.getStatus().name() : null);
-        resp.setRoleInGroup(member.getRole() != null ? member.getRole().getValue() : null);
         resp.setJoinedAt(member.getJoinedAt());
         resp.setCreatedAt(member.getCreatedAt());
 
