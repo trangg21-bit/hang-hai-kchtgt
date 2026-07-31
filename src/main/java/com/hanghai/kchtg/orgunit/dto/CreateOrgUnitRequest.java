@@ -32,12 +32,13 @@ public class CreateOrgUnitRequest {
     /** Parent unit ID (nullable — root unit if omitted). */
     private UUID parentId;
 
-    @NotNull(message = "Loại đơn vị không được để trống")
+    /** Unit type — optional, auto-inferred from parentId if omitted. */
     private OrgUnitType type;
 
     /** Optional description of the unit. */
     private String description;
 
+    @NotBlank(message = "Địa điểm (Tỉnh/Thành phố) không được để trống")
     @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
     private String address;
 

@@ -23,7 +23,7 @@ Quản trị hệ thống cần cơ chế phân nhóm người dùng linh hoạt
 
 ## Flow Summary
 
-Quản trị hệ thống truy cập module Quản lý nhóm từ sidebar → chọn tạo nhóm mới hoặc quản lý nhóm hiện có → điền thông tin nhóm (tên, mã, loại nhóm, mô tả) → hệ thống kiểm tra tên nhóm unique → tạo nhóm thành công → thêm/xóa thành viên từ danh sách người dùng hệ thống → hệ thống ghi nhận lịch sử thay đổi nhóm → hiển thị danh sách nhóm với khả năng lọc theo tên, loại nhóm, số lượng thành viên và phân trang. Quy trình mở rộng bao gồm: sao chép nhóm để tạo nhanh nhóm tương tự, xem chi tiết thành viên từng nhóm, và quản lý quyền hạn của thành viên trong nhóm (roleInGroup).
+Quản trị hệ thống truy cập module Quản lý nhóm từ sidebar → chọn tạo nhóm mới hoặc quản lý nhóm hiện có → điền thông tin nhóm (tên, mã, loại nhóm, mô tả) → hệ thống kiểm tra tên nhóm unique → tạo nhóm thành công → thêm/xóa thành viên từ danh sách người dùng hệ thống → hệ thống ghi nhận lịch sử thay đổi nhóm → hiển thị danh sách nhóm với khả năng lọc theo tên, loại nhóm, số lượng thành viên và phân trang. Quy trình mở rộng bao gồm: sao chép nhóm để tạo nhanh nhóm tương tự, xem chi tiết thành viên từng nhóm, và quản lý quyền hạn của thành viên theo các Role được gán cho nhóm.
 
 ## Acceptance Criteria
 
@@ -62,7 +62,7 @@ Quản trị hệ thống truy cập module Quản lý nhóm từ sidebar → ch
 ## Entities
 
 - **UserGroup**: id(BIGINT PK), name(VARCHAR 100 NOT NULL), code(VARCHAR 30 UNIQUE NOT NULL), description(TEXT), groupType(VARCHAR 30), status(VARCHAR 20), createdAt(TIMESTAMP), updatedAt(TIMESTAMP)
-- **GroupMember**: id(BIGINT PK), groupId(BIGINT FK→UserGroup), userId(BIGINT FK→UserAccount), joinedBy(BIGINT FK→UserAccount), joinedAt(TIMESTAMP), roleInGroup(VARCHAR 30)
+- **GroupMember**: id(BIGINT PK), groupId(BIGINT FK→UserGroup), userId(BIGINT FK→UserAccount), joinedBy(BIGINT FK→UserAccount), joinedAt(TIMESTAMP)
 - **GroupHistory**: id(BIGINT PK), groupId(BIGINT FK→UserGroup), action(VARCHAR 30), performedBy(BIGINT FK→UserAccount), performedAt(TIMESTAMP), notes(TEXT)
 - **UserAccount**: id(BIGINT PK), username(VARCHAR 50 UNIQUE NOT NULL), email(VARCHAR 100 UNIQUE NOT NULL), passwordHash(VARCHAR 255 NOT NULL), roleId(BIGINT FK→Role), organizationId(BIGINT FK→Organization), status(VARCHAR 20), createdAt(TIMESTAMP), updatedAt(TIMESTAMP), deletedAt(TIMESTAMP NULL), lastLoginAt(TIMESTAMP NULL)
 - **Role**: id(BIGINT PK), name(VARCHAR 50 NOT NULL), code(VARCHAR 30 UNIQUE NOT NULL), description(TEXT), permissions(JSON), isSystem(BOOLEAN DEFAULT false)

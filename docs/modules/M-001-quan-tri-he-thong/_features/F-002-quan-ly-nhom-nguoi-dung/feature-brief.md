@@ -34,7 +34,7 @@ Quản trị hệ thống truy cập module Quản lý nhóm từ sidebar → ch
 | AC-003 | Tạo nhóm thất bại — trùng mã | Người dùng là Admin, mã nhóm "DA" đã tồn tại | Nhập code="DA" (trùng) và nhấn Tạo | Hiển thị lỗi "Mã nhóm đã tồn tại", nhóm không được tạo | Critical |
 | AC-004 | Xóa nhóm thất bại — còn thành viên | Nhóm "Đội A" có 2 thành viên, người dùng là Admin | Nhấn Xóa nhóm | Hiển thị lỗi "Không thể xóa nhóm còn thành viên" | Critical |
 | AC-005 | Xóa nhóm thành công | Nhóm "Đội A" không còn thành viên, người dùng là Admin | Nhấn Xóa và xác nhận | Nhóm bị xóa, toast "Đã xóa thành công" | Critical |
-| AC-006 | Thêm thành viên vào nhóm | Nhóm "Đội A" tồn tại, user "U001" chưa thuộc nhóm | Chọn user "U001", chọn roleInGroup="member", nhấn Thêm | Thành viên được thêm, toast "Đã thêm thành viên" | Critical |
+| AC-006 | Thêm thành viên vào nhóm | Nhóm "Đội A" tồn tại, user "U001" chưa thuộc nhóm | Chọn user "U001", nhấn Thêm | Thành viên được thêm, toast "Đã thêm thành viên" | Critical |
 | AC-007 | Thêm thành viên thất bại — trùng lặp | Nhóm "Đội A" đã có user "U001" | Chọn user "U001" và nhấn Thêm | Hiển thị lỗi "Người dùng đã thuộc nhóm này" | Major |
 | AC-008 | Xóa thành viên khỏi nhóm | Nhóm "Đội A" có user "U001" | Nhấn Xóa thành viên "U001" và xác nhận | Thành viên bị xóa khỏi nhóm, UserAccount không bị ảnh hưởng | Major |
 | AC-009 | Tìm kiếm nhóm theo tên | Có 5 nhóm trong hệ thống | Nhập từ khóa "Đội" vào ô tìm kiếm | Danh sách nhóm chứa từ khóa "Đội", phân trang chính xác | Major |
@@ -76,7 +76,7 @@ Quản trị hệ thống truy cập module Quản lý nhóm từ sidebar → ch
 ## Entities
 
 - **UserGroup**: id(BIGINT PK), name(VARCHAR 100 NOT NULL), code(VARCHAR 30 UNIQUE NOT NULL), description(TEXT), groupType(VARCHAR 30), status(VARCHAR 20), createdAt(TIMESTAMP), updatedAt(TIMESTAMP)
-- **GroupMember**: id(BIGINT PK), groupId(BIGINT FK→UserGroup), userId(BIGINT FK→UserAccount), joinedBy(BIGINT FK→UserAccount), joinedAt(TIMESTAMP), roleInGroup(VARCHAR 30)
+- **GroupMember**: id(BIGINT PK), groupId(BIGINT FK→UserGroup), userId(BIGINT FK→UserAccount), joinedBy(BIGINT FK→UserAccount), joinedAt(TIMESTAMP)
 - **GroupHistory**: id(BIGINT PK), groupId(BIGINT FK→UserGroup), action(VARCHAR 30), performedBy(BIGINT FK→UserAccount), performedAt(TIMESTAMP), notes(TEXT)
 - **UserAccount**: id(BIGINT PK), username(VARCHAR 50 UNIQUE NOT NULL), email(VARCHAR 100 UNIQUE NOT NULL), passwordHash(VARCHAR 255 NOT NULL), roleId(BIGINT FK→Role), organizationId(BIGINT FK→Organization), status(VARCHAR 20), createdAt(TIMESTAMP), updatedAt(TIMESTAMP), deletedAt(TIMESTAMP NULL), lastLoginAt(TIMESTAMP NULL)
 - **Role**: id(BIGINT PK), name(VARCHAR 50 NOT NULL), code(VARCHAR 30 UNIQUE NOT NULL), description(TEXT), permissions(JSON), isSystem(BOOLEAN DEFAULT false)

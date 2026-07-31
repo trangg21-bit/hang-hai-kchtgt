@@ -193,26 +193,26 @@ PMO Lead
 
 Toàn bộ cấu trúc tài liệu đặc tả nghiệp vụ (feature-brief.md) được định nghĩa tại **1 file duy nhất**:
 
-| File                                      | Vai trò                                          | Agent nào phải đọc        |
-| ----------------------------------------- | ------------------------------------------------ | ------------------------- |
-| `docs/feature-brief-template.md`          | Template 10-section cho mọi feature-brief.md     | **BA** (business analyst) |
+| File                             | Vai trò                                      | Agent nào phải đọc        |
+| -------------------------------- | -------------------------------------------- | ------------------------- |
+| `docs/feature-brief-template.md` | Template 10-section cho mọi feature-brief.md | **BA** (business analyst) |
 
 ### Cấu trúc 10 section bắt buộc
 
 Mọi file `feature-brief.md` **PHẢI** tuân thủ đúng cấu trúc 10 section, đúng thứ tự, đúng tiêu đề:
 
-| #   | Section                              | Nội dung                                                                 |
-| --- | ------------------------------------ | ------------------------------------------------------------------------ |
-| 1   | Tổng quan                            | 1.1 Tính năng này làm gì / 1.2 Tại sao cần / 1.3 Luồng hoạt động chính  |
-| 2   | Ai dùng? Dùng như thế nào?           | Bảng phân quyền RBAC 7 role + logic Admin Cục đặc biệt                   |
-| 3   | User Stories                         | Must / Should / Could, định dạng US-{XXX}-XX                             |
-| 4   | Yêu cầu chức năng (Acceptance Criteria) | AC-{XXX}-XX, mỗi AC kèm xử lý khi lỗi                                |
-| 5   | Quy tắc nghiệp vụ (Business Rules)   | BR-{XXX}-XX, định dạng bảng: ID / Rule / Applies-to / Source             |
-| 6   | Mô hình dữ liệu                      | Bảng DB, 🔴 đỏ = trường mới, ~~gạch ngang~~ = trường cần loại bỏ         |
-| 7   | API Endpoints                        | Bảng Method / Endpoint / Mô tả / Phân quyền                              |
-| 8   | Chi tiết nghiệp vụ từng phần         | Triển khai chi tiết từng phần (bỏ nếu không áp dụng)                     |
-| 9   | Yêu cầu phi chức năng                | Hiệu năng / Mở rộng / Bảo mật / Độ tin cậy / UX / Pháp lý               |
-| 10  | Yêu cầu giao diện người dùng         | Token theme + bảng cột chi tiết (STT/Tên trường/Loại ĐK/Edit/Bắt buộc/Default/Mô tả) |
+| #   | Section                                 | Nội dung                                                                             |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------ |
+| 1   | Tổng quan                               | 1.1 Tính năng này làm gì / 1.2 Tại sao cần / 1.3 Luồng hoạt động chính               |
+| 2   | Ai dùng? Dùng như thế nào?              | Bảng phân quyền RBAC 7 role + logic Admin Cục đặc biệt                               |
+| 3   | User Stories                            | Must / Should / Could, định dạng US-{XXX}-XX                                         |
+| 4   | Yêu cầu chức năng (Acceptance Criteria) | AC-{XXX}-XX, mỗi AC kèm xử lý khi lỗi                                                |
+| 5   | Quy tắc nghiệp vụ (Business Rules)      | BR-{XXX}-XX, định dạng bảng: ID / Rule / Applies-to / Source                         |
+| 6   | Mô hình dữ liệu                         | Bảng DB, 🔴 đỏ = trường mới, ~~gạch ngang~~ = trường cần loại bỏ                     |
+| 7   | API Endpoints                           | Bảng Method / Endpoint / Mô tả / Phân quyền                                          |
+| 8   | Chi tiết nghiệp vụ từng phần            | Triển khai chi tiết từng phần (bỏ nếu không áp dụng)                                 |
+| 9   | Yêu cầu phi chức năng                   | Hiệu năng / Mở rộng / Bảo mật / Độ tin cậy / UX / Pháp lý                            |
+| 10  | Yêu cầu giao diện người dùng            | Token theme + bảng cột chi tiết (STT/Tên trường/Loại ĐK/Edit/Bắt buộc/Default/Mô tả) |
 
 ### Quy tắc bắt buộc
 
@@ -279,11 +279,11 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 
    **Cấu trúc tài liệu BA trong dự án:**
 
-   | Loại tài liệu | Đường dẫn | Nội dung | Khi nào đọc |
-   |---|---|---|---|
-   | **BA Lean Spec** | `docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md` | Use Cases, Business Rules, Domain Model, Trạng thái, Quy trình phê duyệt, Validation rules chi tiết | **Luôn luôn** — đây là nguồn sự thật duy nhất cho logic nghiệp vụ |
-   | **Module Brief** | `docs/modules/M-{xxx}-{slug}/module-brief.md` | Tổng quan module, danh sách features, status, dependencies | Khi cần hiểu scope tổng thể của module |
-   | **Feature Brief** | `docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md` | Flow chi tiết, Acceptance Criteria, DTO fields, REST endpoint, Business Rules, Roles & Permissions, Entities, Validation rules cho từng feature cụ thể | **Luôn luôn** — khi code một feature cụ thể |
+   | Loại tài liệu     | Đường dẫn                                                               | Nội dung                                                                                                                                               | Khi nào đọc                                                       |
+   | ----------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+   | **BA Lean Spec**  | `docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md`                        | Use Cases, Business Rules, Domain Model, Trạng thái, Quy trình phê duyệt, Validation rules chi tiết                                                    | **Luôn luôn** — đây là nguồn sự thật duy nhất cho logic nghiệp vụ |
+   | **Module Brief**  | `docs/modules/M-{xxx}-{slug}/module-brief.md`                           | Tổng quan module, danh sách features, status, dependencies                                                                                             | Khi cần hiểu scope tổng thể của module                            |
+   | **Feature Brief** | `docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md` | Flow chi tiết, Acceptance Criteria, DTO fields, REST endpoint, Business Rules, Roles & Permissions, Entities, Validation rules cho từng feature cụ thể | **Luôn luôn** — khi code một feature cụ thể                       |
 
    **Workflow bắt buộc khi bắt đầu code một module/feature:**
 
@@ -319,14 +319,16 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 # Local Agent Customization Rules (Workspace-Scoped)
 
 > [!IMPORTANT]
-> Đây là file cấu hình hướng dẫn và nguyên tắc hoạt động cho tất cả các AI Coding Assistant (Antigravity, Claude, v.v.) khi làm việc trong Workspace này. 
+> Đây là file cấu hình hướng dẫn và nguyên tắc hoạt động cho tất cả các AI Coding Assistant (Antigravity, Claude, v.v.) khi làm việc trong Workspace này.
 > Mọi AI bắt buộc phải đọc và tuân thủ các chỉ thị trong file này trước khi thực hiện bất kỳ chỉnh sửa nào.
 
 ## 📌 Hướng dẫn & Ràng buộc nghiệp vụ (User Custom Rules)
 
-*Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn ở đây để AI luôn tuân theo mỗi khi pair-programming.*
+_Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn ở đây để AI luôn tuân theo mỗi khi pair-programming._
 
 1. **Nguyên tắc chung**:
+   - **TUÂN THỦ TUYỆT ĐỐ TÀI LIỆU BRIEF (FEATURE BRIEF & LEAN SPEC)**:
+     - AI chỉ được phép lập trình, xây dựng giao diện và xử lý logic nghiệp vụ theo đúng cấu trúc cột, trường dữ liệu, acceptance criteria và business rules đã định nghĩa trong tài liệu brief (`feature-brief.md` và `00-lean-spec.md`).
    - Luôn kiểm tra cấu trúc dữ liệu thực tế và các màn hình quản lý CRUD trước khi đề xuất chỉnh sửa logic báo cáo hoặc nghiệp vụ.
    - Không tự động gán dữ liệu giả lập (placeholder/hardcoded) cho các cột khi database thực tế không hỗ trợ trường tương ứng.
    - **TẠO SCRIPT SQL CHO THAY ĐỔI DB**: Khi thao tác liên quan đến thay đổi cấu trúc DB (schema, index, migrations...), bắt buộc phải tạo script SQL Flyway tương ứng (đặt trong thư mục `src/main/resources/db/migration/`) để khi đưa lên môi trường khác (UAT, Production) cấu trúc DB sẽ khớp 100%.

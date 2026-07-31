@@ -269,7 +269,6 @@ public class M001DataSeeder implements CommandLineRunner {
                         GroupMember member = new GroupMember();
                         member.setUser(u);
                         member.setUserGroup(group);
-                        member.setRole(offset == 0 ? GroupMemberRole.ADMIN : GroupMemberRole.MEMBER);
                         member.setStatus(GroupMemberStatus.ACTIVE);
                         member.setJoinedAt(java.time.LocalDateTime.now());
                         groupMemberRepo.save(member);
@@ -305,17 +304,13 @@ public class M001DataSeeder implements CommandLineRunner {
         for (int i = 0; i < allUsers.size(); i++) {
             User user = allUsers.get(i);
             UserGroup targetGroup;
-            GroupMemberRole role;
 
             if (i < 3) {
                 targetGroup = grpAdmins;
-                role = GroupMemberRole.ADMIN;
             } else if (i < 8) {
                 targetGroup = grpSpecialists;
-                role = GroupMemberRole.MEMBER;
             } else {
                 targetGroup = grpLeaders;
-                role = GroupMemberRole.MEMBER;
             }
 
             if (targetGroup == null) continue;
@@ -324,7 +319,6 @@ public class M001DataSeeder implements CommandLineRunner {
                 GroupMember member = new GroupMember();
                 member.setUser(user);
                 member.setUserGroup(targetGroup);
-                member.setRole(role);
                 member.setStatus(GroupMemberStatus.ACTIVE);
                 member.setJoinedAt(java.time.LocalDateTime.now());
                 groupMemberRepo.save(member);

@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -56,6 +57,13 @@ import java.util.UUID;
 @Service
 @Transactional
 public class UserService {
+
+    private static String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email không được để trống");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
@@ -183,8 +191,9 @@ public class UserService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(email)) {
+            throw new IllegalArgumentException("Email đã tồn tại: " + email);
         }
 
         // BR-002: Validate password policy
@@ -193,7 +202,7 @@ public class UserService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
@@ -244,11 +253,16 @@ public class UserService {
     public User update(UUID id, UpdateUserRequest request) {
         User user = findById(id);
 
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        if (request.getStatus() != null && request.getStatus() != user.getStatus()) {
+            user = changeStatus(id, request.getStatus(), "Cập nhật trạng thái từ biểu mẫu chỉnh sửa");
+        }
+
+        if (request.getEmail() != null) {
+            String email = normalizeEmail(request.getEmail());
+            if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(email, user.getId())) {
+                throw new IllegalArgumentException("Email đã tồn tại: " + email);
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(email);
         }
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
@@ -345,15 +359,16 @@ public class UserService {
      * pointing to this user. Blocks delete if any references exist.
      */
     private void checkBusinessDataReferences(User user) {
-        // 1. Check password_history references
-        long historyCount = passwordHistoryRepository.countByUserId(user.getId());
-        if (historyCount > 0) {
-            throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
-        }
-        // 2. Query information_schema for all FK tables referencing app_users
+        List<String> ignoredSystemTables = List.of(
+            "app_users", "password_history", "user_status_log", 
+            "user_roles", "app_user_roles", "user_group_members", 
+            "group_members", "pending_approvals", "password_expiration_log"
+        );
+
+        // 1. Query information_schema for all FK tables AND exact column names referencing app_users
         @SuppressWarnings("unchecked")
-        List<String> fkTables = entityManager.createNativeQuery(
-            "SELECT DISTINCT tc.table_name FROM information_schema.table_constraints AS tc " +
+        List<Object[]> fkReferences = entityManager.createNativeQuery(
+            "SELECT DISTINCT kcu.table_name, kcu.column_name FROM information_schema.table_constraints AS tc " +
             "JOIN information_schema.key_column_usage AS kcu " +
             "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema " +
             "JOIN information_schema.constraint_column_usage AS ccu " +
@@ -362,28 +377,35 @@ public class UserService {
             "AND ccu.table_name = 'app_users' " +
             "AND tc.table_schema = 'public'"
         ).getResultList();
-        // 3. Check each dependent table for references to this user
-        for (String table : fkTables) {
-            if ("password_history".equals(table) || "user_status_log".equals(table)) continue;
+
+        // 2. Check each dependent table using its exact foreign key column name
+        for (Object[] row : fkReferences) {
+            String tbl = (String) row[0];
+            String col = (String) row[1];
+            if (ignoredSystemTables.contains(tbl)) continue;
+
             Number count = (Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM " + table + " WHERE user_id = :userId"
+                "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
             ).setParameter("userId", user.getId()).getSingleResult();
             if (count.longValue() > 0) {
                 throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
             }
         }
-        // 4. Check any table with audit columns referencing this user
+
+        // 3. Check any table with audit columns referencing this user
         @SuppressWarnings("unchecked")
         List<Object[]> refColumns = entityManager.createNativeQuery(
             "SELECT DISTINCT c.table_name, c.column_name FROM information_schema.columns c " +
             "WHERE c.table_schema = 'public' " +
             "AND c.column_name IN ('created_by','updated_by','deleted_by','approved_by','assigned_by','changed_by','operator_id') " +
-            "AND c.table_name NOT IN ('app_users','password_history','user_status_log') " +
             "ORDER BY c.table_name"
         ).getResultList();
+
         for (Object[] row : refColumns) {
             String tbl = (String) row[0];
             String col = (String) row[1];
+            if (ignoredSystemTables.contains(tbl)) continue;
+
             Number count = (Number) entityManager.createNativeQuery(
                 "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
             ).setParameter("userId", user.getId()).getSingleResult();
@@ -491,11 +513,12 @@ public class UserService {
         if (!isAdmin && request.getEmail() != null) {
             throw new AccessDeniedException("Chỉ quản trị viên mới được thay đổi email");
         }
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        if (request.getEmail() != null) {
+            String email = normalizeEmail(request.getEmail());
+            if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(email, user.getId())) {
+                throw new IllegalArgumentException("Email đã tồn tại: " + email);
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(email);
         }
 
         // Self can update fullName and phone

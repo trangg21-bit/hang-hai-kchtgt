@@ -42,6 +42,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmailIgnoreCase(String email);
 
     /**
+     * Kiểm tra email đang được một tài khoản chưa xóa sử dụng, không phân biệt hoa/thường.
+     */
+    boolean existsByEmailIgnoreCaseAndDeletedAtIsNull(String email);
+
+    /**
+     * Kiểm tra email trùng khi cập nhật, ngoại trừ chính tài khoản đang được sửa.
+     */
+    boolean existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(String email, UUID id);
+
+    /**
      * Kiểm tra tồn tại số điện thoại.
      */
     boolean existsByPhone(String phone);

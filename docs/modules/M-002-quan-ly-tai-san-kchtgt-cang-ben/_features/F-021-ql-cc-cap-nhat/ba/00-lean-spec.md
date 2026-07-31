@@ -4,7 +4,7 @@ document: lean-spec
 output-mode: lean
 last-updated: 2026-07-29
 ---
-# Quản lý Cầu cảng - Cập nhật
+# Cập nhật Cầu cảng
 
 ## Summary
 
