@@ -1,92 +1,201 @@
 ---
 id: F-083
-name: "Danh sách Cảng cạn"
+name: Danh sách Cảng cạn
 slug: ui-ql-cct-danh-sach
 module-id: M-002
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-01T04:08:36Z"
-last-updated: "2026-07-01T04:08:36Z"
+created: 2026-07-01T04:08:35Z
+last-updated: 2026-08-03
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Danh sách Cảng cạn
 
-# Feature: Danh sách Cảng cạn
+**Tài liệu:** BA Feature Brief
+**Feature:** F-083 — Danh sách Cảng cạn
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Người viết:** Business Analyst
+**Ngày cập nhật:** 2026-08-03
 
-## Description
+---
 
-Giao diện danh sách Cảng cạn (CangCan) cho phép người dùng quản lý toàn bộ danh sách tài sản cảng cạn trong hệ thống với các khả năng tìm kiếm, lọc và phân trang. Bảng danh sách hiển thị các cột: mã cảng cạn, tên cảng cạn, địa chỉ, tỉnh/thành, trạng thái hoạt động và ngày cập nhật cuối cùng. Người dùng có thể tìm kiếm theo mã cảng cạn, tên cảng cạn hoặc địa chỉ; lọc theo trạng thái hoạt động (HIEN_HANH, TAM_NGUNG) và theo tỉnh/thành. Phân trang mặc định 20 bản ghi mỗi trang, có thể chuyển sang 100 bản ghi. Sắp xếp mặc định theo updatedAt giảm dần. Hành động trên mỗi dòng gồm: xem chi tiết, chỉnh sửa, xóa và xem lịch sử (tất cả vai trò có quyền tương ứng), phê duyệt (chỉ dành cho Lãnh đạo). Giao diện hỗ trợ điều hướng bàn phím bằng Tab/Enter để tăng tốc độ thao tác.
+## 1. Tổng quan
 
-## Business Intent
+### 1.1. Tính năng này làm gì?
 
-Cung cấp giao diện danh sách Cảng cạn giúp người dùng và lãnh đạo có thể nhanh chóng tìm kiếm, lọc và quản lý tất cả cảng cạn trong hệ thống, đồng thời thực hiện các thao tác xem, sửa, xóa và phê duyệt một cách trực quan và hiệu quả.
+Trang Danh sách là **điểm vào chính** cho toàn bộ quy trình quản lý Cảng cạn. Hiển thị danh sách phân trang với tìm kiếm, lọc, và các hành động trên từng dòng theo phân quyền. Đặc biệt, đây là nơi thực hiện **"Gửi phê duyệt"** — chuyển bản ghi NHAP sang PENDING để vào queue duyệt (F-029).
 
-## Flow Summary
+### 1.2. Hành động trên mỗi dòng
 
-Người dùng truy cập trang Danh sách Cảng cạn thông qua menu quản lý tài sản, hệ thống gọi API GET /api/v1/cang-can với các tham số phân trang (page, pageSize=20 hoặc 100), sắp xếp (sortBy=updatedAt, sortOrder=DESC), tìm kiếm (search=maCangCan/tenCangCan/diaChi) và bộ lọc (filterStatus, filterTinhThanh). Kết quả được hiển thị dưới dạng bảng với phân trang và sắp xếp. Người dùng nhập từ khóa tìm kiếm và nhấn Enter để lọc theo mã/tên/địa chỉ cảng cạn. Người dùng chọn trạng thái và tỉnh/thành từ dropdown bộ lọc để thu hẹp kết quả. Nhấp vào dòng bảng sẽ mở trang Chi tiết Cảng cạn (F-084). Nhấp nút Sửa để mở trang cập nhật (F-086), nút Xóa (cho vai trò có quyền) hiển thị hộp thoại xác nhận (F-099), nút Lịch sử hiển thị bảng thay đổi (F-100). Lãnh đạo có thêm nút Phê duyệt mở trang phê duyệt (F-087). Giao diện hỗ trợ Tab/Enter cho điều hướng bàn phím.
+| Hành động | Điều kiện hiển thị | Đích / API |
+|-----------|-------------------|-----------|
+| Xem chi tiết | Luôn (click dòng) | F-030 |
+| Tiếp tục chỉnh sửa | `approvalStatus=NHAP` + `dryport:update` | F-027 |
+| Chỉnh sửa | `approvalStatus != NHAP` + `dryport:update` | F-027 |
+| **Gửi phê duyệt** | `approvalStatus=NHAP` | PUT → PENDING |
+| Xóa | `dryport:delete` | F-028 |
+| Phê duyệt / Từ chối | `approvalStatus=PENDING` + `dryport:approve` | F-029 |
+| Lịch sử | `dryport:history` | F-031 |
 
-## Acceptance Criteria
+### 1.3. Tại sao cần?
 
-1. Khi mở trang, hệ thống gọi GET /api/v1/cang-can với pageSize=20, sortBy=updatedAt, sortOrder=DESC, hiển thị danh sách 20 cảng cạn đầu tiên sắp xếp theo thời gian cập nhật giảm dần.
-2. Người dùng nhập từ khóa tìm kiếm vào ô tìm kiếm (chứa maCangCan/tenCangCan/diaChi) và nhấn Enter hoặc bấm nút Tìm — hệ thống gọi API với tham số search tương ứng, hiển thị kết quả khớp (ít nhất 1 kết quả hoặc thông báo "không tìm thấy").
-3. Người dùng chọn một giá trị trong bộ lọc "Trạng thái" (HIEN_HANH hoặc TAM_NGUNG) và bộ lọc "Tỉnh/Thành" — hệ thống gọi API với filterStatus và filterTinhThanh, bảng cập nhật kết quả phù hợp.
-4. Bảng danh sách hiển thị chính xác các cột: maCangCan, tenCangCan, diaChi, tinhThanh, trạng thái (có badge màu), updatedAt — không thiếu cột nào và thứ tự đúng.
-5. Nhấp vào bất kỳ dòng nào trong bảng điều hướng người dùng đến trang Chi tiết Cảng cạn (F-084) với đúng entityId.
-6. Nút "Sửa" trên mỗi dòng (chỉ hiển thị cho vai trò có quyền update) mở trang Cập nhật Cảng cạn (F-086) với đúng entityId tương ứng.
-7. Nút "Xóa" trên mỗi dòng (chỉ hiển thị cho Leadership/Admin) kích hoạt hộp thoại xác nhận F-099, sau khi xác nhận gọi DELETE và danh sách cập nhật.
-8. Nút "Phê duyệt" chỉ hiển thị cho vai trò Leadership, mở trang Phê duyệt (F-087) với đúng entityId.
-9. Phân trang hiển thị đúng số trang, cho phép chuyển trang bằng nút Next/Previous hoặc nhập số trang trực tiếp, cập nhật danh sách khi chuyển trang.
-10. Tất cả các ô nhập liệu, nút và liên kết có thể tiếp cận được bằng phím Tab, phím Enter kích hoạt hành động mặc định (chọn dòng, submit tìm kiếm).
+- Cửa ngõ duy nhất để xem và thao tác với tất cả Cảng cạn
+- Tập trung mọi hành động: tạo mới, sửa, xóa, gửi duyệt, phê duyệt
+- Tìm kiếm và lọc nhanh giúp quản lý số lượng lớn Cảng cạn
 
-## In Scope
+### 1.4. Luồng chính
 
-- Hiển thị bảng danh sách Cảng cạn với phân trang, sắp xếp, tìm kiếm và lọc
-- Các cột: maCangCan, tenCangCan, diaChi, tinhThanh, trangThaiHoatDong, updatedAt
-- Tìm kiếm theo maCangCan, tenCangCan, diaChi
-- Lọc theo trangThaiHoatDong (HIEN_HANH/TAM_NGUNG) và tinhThanh
-- Phân trang 20 hoặc 100 bản ghi/sự kiện, sắp xếp mặc định updatedAt DESC
-- Hành động: xem chi tiết, sửa, xóa, xem lịch sử, phê duyệt (Leaders)
-- Điều hướng bàn phím Tab/Enter
-- Responsive layout cho màn hình desktop và tablet
+Mở trang → `GET /api/v1/dry-ports?page=0&size=20&sortBy=updatedAt&sortOrder=DESC` → bảng 20 dòng. Header: nút "Tạo mới" (`dryport:create`) → F-026. FilterBar: ô search + dropdown Tỉnh/TP + dropdown Trạng thái. Mỗi dòng: click → F-030, dropdown → hành động khác.
 
-## Out of Scope
+---
 
-- Tạo mới Cảng cạn (thuộc F-085)
-- Chi tiết từng Cảng cạn với attachment (thuộc F-084 chi tiết)
-- Phê duyệt/reject chi tiết (thuộc F-087)
-- Xóa Cảng cạn (thuộc F-099)
-- Lịch sử thay đổi chi tiết (thuộc F-100)
-- Xuất Excel/PDF danh sách
-- Phân quyền chi tiết từng hành động (thuộc M-001)
+## 2. Ai dùng? Dùng như thế nào?
 
-## Roles + Permissions
+### 2.1. Phân quyền theo chức năng
 
-| Role | Level | Notes |
-|---|---|---|
-| NhanVien | read | Xem danh sách Cảng cạn, xem chi tiết, xem lịch sử |
-| QuanTriCuc | read, update | Xem, chỉnh sửa Cảng cạn; xem danh sách, chi tiết, lịch sử |
-| LanhDaoCuc | read, approve | Xem danh sách, chi tiết, phê duyệt/reject Cảng cạn; xem lịch sử |
-| QuanTriHeThong | read, update, delete, approve | Toàn quyền: xem, tạo, sửa, xóa, phê duyệt, xem lịch sử |
-
-## Entities
-
-| Entity | Fields |
+| Permission | Hiển thị / Hành động |
 |---|---|
-| CangCan | id(UUID), maCangCan(string unique), tenCangCan(string), diaChi(string), tinhThanh(string), ghiChu(text), trangThaiHoatDong(enum), trangThaiPheDuyet(enum), orgUnitId(UUID), createdBy(UUID), updatedBy(UUID), createdAt, updatedAt, deletedAt(nullable) |
-| PaginationResult | total(int), page(int), pageSize(int), data:CangCan[] |
-| FilterParams | search(string), filterStatus(enum), filterTinhThanh(string) |
+| `dryport:read` | Xem danh sách |
+| `dryport:create` | Nút "Tạo mới" trên header |
+| `dryport:update` | "Chỉnh sửa" / "Tiếp tục chỉnh sửa" trong dropdown |
+| `dryport:delete` | "Xóa" trong dropdown |
+| `dryport:approve` | "Phê duyệt" / "Từ chối" (nếu PENDING) |
+| `dryport:history` | "Lịch sử" trong dropdown |
 
-## Business Rules
+> M-001 quản lý. Admin Cục: không giới hạn đơn vị, xem được bản ghi đã xóa mềm.
 
-| ID | Rule | Applies-to | Source |
+---
+
+## 3. User Stories
+
+### Must
+- **US-083-01:** Xem danh sách Cảng cạn phân trang 20 dòng, sắp xếp updatedAt DESC.
+- **US-083-02:** Tìm kiếm theo mã, tên, địa chỉ (ô search + Enter).
+- **US-083-03:** Lọc theo Tỉnh/TP và Trạng thái phê duyệt.
+- **US-083-04:** **Gửi phê duyệt** bản ghi NHAP — kiểm tra đủ 6 trường → PENDING.
+- **US-083-05:** Các nút hành động hiển thị theo phân quyền.
+
+### Should
+- **US-083-06:** Badge trạng thái màu trên mỗi dòng.
+- **US-083-07:** Click dòng → F-030. Dropdown hành động đầy đủ.
+
+### Could
+- **US-083-08:** Xuất Excel danh sách Cảng cạn.
+
+---
+
+## 4. Yêu cầu chức năng (Acceptance Criteria)
+
+### Nhóm 1: Danh sách
+
+**AC-083-01:** Mở trang → GET page=0, size=20, sortBy=updatedAt, sortOrder=DESC → bảng 20 dòng.
+**AC-083-02:** Cột: Mã CC-XXXXXX, Tên, Tỉnh/TP, Trạng thái (badge), Ngày cập nhật.
+**AC-083-03:** Phân trang: tổng số trang, nút Previous/Next, nhập số trang.
+
+### Nhóm 2: Tìm kiếm & Lọc
+
+**AC-083-04:** Ô search → Enter → GET `?search=` (tìm trong mã, tên, địa chỉ). 0 kết quả → "Không tìm thấy Cảng cạn nào".
+**AC-083-05:** Dropdown Tỉnh/TP + Trạng thái → GET với filter tương ứng. Kết hợp được với search.
+
+### Nhóm 3: Gửi phê duyệt
+
+**AC-083-06:** Bản ghi NHAP → dropdown có "Gửi phê duyệt" → hệ thống kiểm tra đủ 6 trường:
+- **Đủ** → `PUT /api/v1/dry-ports/{id}?action=submit` → `approvalStatus=PENDING` → toast "Đã gửi phê duyệt" → refresh.
+- **Thiếu** → toast "Vui lòng hoàn thiện thông tin trước khi gửi. Thiếu: [danh sách trường]".
+
+### Nhóm 4: Hành động khác
+
+**AC-083-07:** Nút "Tạo mới" (`dryport:create`) → F-026.
+**AC-083-08:** Click dòng → F-030. Dropdown: theo bảng 1.2.
+
+---
+
+## 5. Quy tắc nghiệp vụ (Business Rules)
+
+### 5.1. Danh sách
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-083-01 | Mặc định 20 dòng/trang, tối đa 100. | UX |
+| BR-083-02 | Sắp xếp mặc định updatedAt DESC — mới nhất lên đầu. | UX |
+| BR-083-03 | Search không phân biệt hoa thường, tự động trim. | Kỹ thuật |
+
+### 5.2. Gửi phê duyệt
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-083-04 | **Gửi phê duyệt yêu cầu đủ 6 trường bắt buộc** (như BR-026-03). Thiếu → thông báo rõ thiếu trường nào. | Nghiệp vụ |
+| BR-083-05 | Sau Gửi phê duyệt → `approvalStatus=PENDING` → vào queue F-029. | Nghiệp vụ |
+| BR-083-06 | Chỉ NHAP mới hiển thị nút "Gửi phê duyệt". | Nghiệp vụ |
+
+### 5.3. Phân quyền
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-083-07 | Mỗi nút hành động kiểm tra permission độc lập — nút nào không có quyền thì ẩn. | RBAC |
+| BR-083-08 | Bản ghi đã xóa mềm không xuất hiện (trừ Admin Cục). | Thiết kế |
+
+---
+
+## 6. Mô hình dữ liệu
+
+> Kế thừa F-026. Không thêm bảng mới.
+
+API trả về `Page<DryPortResponse>`: id, dryPortCode, dryPortName, province, approvalStatus, operationalStatus, updatedAt...
+
+---
+
+## 7. API Endpoints
+
+| Method | Endpoint | Mô tả | Quyền |
 |---|---|---|---|
-| BR-083-01 | maCangCan phải là duy nhất trong toàn hệ thống; không cho phép tạo mới hoặc sửa có trùng mã | F-083, F-085, F-086 | Spec |
-| BR-083-02 | Giá trị mặc định của trangThaiPheDuyet khi tạo mới là CHO_PHE_DUYET | F-085 | Spec |
-| BR-083-03 | Soft-delete: khi xóa, đặt deletedAt thay vì xóa vật lý; không có guard xóa bản ghi con vì CangCan không có thực thể con | F-099 | Spec |
-| BR-083-04 | Reject yêu cầu phê duyệt phải có lý do ít nhất 10 ký tự | F-087 | Spec |
-| BR-083-05 | Khi cập nhật Cảng cạn, trangThaiPheDuyet được đặt lại về CHO_PHE_DUYET để chờ phê duyệt lại | F-086 | Spec |
+| GET | `/api/v1/dry-ports?page=&size=&search=&status=&approvalStatus=&sortBy=&sortOrder=` | Danh sách | `dryport:read` |
+| PUT | `/api/v1/dry-ports/{id}?action=submit` | Gửi phê duyệt (từ NHAP) | `dryport:update` |
 
-## Testing Strategy
+---
 
-Kiểm thử đơn vị (unit test) tập trung vào các thành phần UI: component hiển thị bảng, component phân trang, component tìm kiếm, component bộ lọc — kiểm tra render đúng các cột, xử lý sự kiện click/tab/enter, và hiển thị dữ liệu từ mock API response. Kiểm thử tích hợp (integration test) xác nhận việc gọi đúng các endpoint API GET /api/v1/cang-can với các tham số phân trang, sắp xếp, tìm kiếm và lọc, đồng thời xác nhận việc phân trang cập nhật danh sách khi chuyển trang. Kiểm thử khả năng tiếp cận (accessibility test) đảm bảo Tab/Enter điều hướng đúng các tương tác. Kiểm thử RBAC: mỗi vai trò chỉ thấy các hành động (nút Sửa, Xóa, Phê duyệt) mà họ có quyền theo auth.check. Kiểm thử nghiệp vụ: tạo dữ liệu giả có mã trùng, trạng thái khác nhau, tỉnh/thành khác nhau — xác nhận tìm kiếm, lọc và phân trang hoạt động chính xác.
+## 8. Chi tiết nghiệp vụ
+
+### 8.1. Header & FilterBar
+
+Header: breadcrumb "Quản lý Cảng cạn" + nút [Tạo mới] (`dryport:create`). FilterBar: ô search (placeholder "Tìm theo mã, tên, địa chỉ...") + dropdown Tỉnh/TP + dropdown Trạng thái (Tất cả / NHAP / PENDING / APPROVED / REJECTED) + nút [Tìm] [Reload].
+
+### 8.2. Bảng danh sách
+
+Mỗi dòng: Mã (link → F-030), Tên, Tỉnh/TP, Badge trạng thái, Ngày cập nhật (dd/MM/yyyy), Dropdown hành động (icon ba chấm).
+
+### 8.3. Gửi phê duyệt
+
+Dropdown → "Gửi phê duyệt" → loading → kiểm tra 6 trường → PUT submit → toast → refresh. Đây là bước chuyển NHAP → PENDING, khác với "Lưu và phê duyệt" trên form (F-026/F-027) chuyển thẳng → APPROVED.
+
+---
+
+## 9. Yêu cầu phi chức năng
+
+- **Hiệu năng:** GET ≤1s với 1000 bản ghi; search ≤500ms; hỗ trợ ≥50 concurrent
+- **Bảo mật:** HTTPS; RBAC từng nút; server-side pagination
+- **UX:** Responsive; loading skeleton; giữ filter khi chuyển trang
+
+---
+
+## 10. Yêu cầu giao diện
+
+> Token từ `theme.ts` + `tokens.ts`. Dùng ScreenHeader, FilterBar, StatusTabs, DataTable, Pagination từ `frontend/src/components/list-view/`.
+
+- **ScreenHeader:** "Quản lý Cảng cạn" + breadcrumb + nút [Tạo mới] primary
+- **FilterBar:** Ô search + dropdown Tỉnh/TP + dropdown Trạng thái + [Tìm] [Reload]
+- **DataTable:** Mã | Tên | Tỉnh/TP | Trạng thái (badge) | Ngày cập nhật | Hành động (dropdown)
+- **Badge:** NHAP (xám), PENDING (vàng), APPROVED (xanh), REJECTED (đỏ)
+- **Pagination:** Component chuẩn
+- `borderRadius: radiusPill`, `height:40`
+
+---
+
+## Implementation Status
+
+| Layer | Status |
+|-------|--------|
+| Backend | Done |
+| Frontend | Pending |

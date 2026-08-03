@@ -5,139 +5,162 @@ slug: ql-cct-lich-su
 module-id: M-002
 status: backend_done
 classification: local
-priority: high
+priority: medium
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-29T11:10:08Z
+last-updated: 2026-08-03
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Cảng cạn - Lịch sử
+# Đặc tả nghiệp vụ: Quản lý Cảng cạn - Lịch sử thay đổi
 
-## Description
-Theo dõi và hiển thị toàn bộ lịch sử thay đổi của Cảng cạn, bao gồm các lần cập nhật thông tin, thay đổi trạng thái, phê duyệt hoặc từ chối, giúp kiểm toán và追溯 nguồn gốc của mọi biến động.
+**Tài liệu:** BA Feature Brief
+**Feature:** F-031 — Lịch sử Cảng cạn
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Người viết:** Business Analyst
+**Ngày cập nhật:** 2026-08-03
 
-## Business Intent
-Cung cấp khả năng truy vết toàn bộ quá trình biến động của Cảng cạn theo thời gian, hỗ trợ công tác kiểm toán, giải trình khi có thắc mắc và phân tích xu hướng vận hành logistics. Đây là yêu cầu bắt buộc trong quản lý hạ tầng cảng biển để đảm bảo tính minh bạch và trách nhiệm giải trình đối với mọi thay đổi về Cảng cạn, đặc biệt quan trọng khi Cảng cạn liên quan đến nhiều bên tham gia logistics.
+---
 
-## Flow Summary
-Người dùng chọn một Cảng cạn cụ thể và truy cập vào mục "Lịch sử". Hệ thống hiển thị danh sách các lần thay đổi theo thứ tự thời gian giảm dần, bao gồm: ngày giờ thay đổi, người thực hiện, loại thay đổi (cập nhật thông tin / thay đổi trạng thái / phê duyệt / từ chối), nội dung chi tiết trước và sau thay đổi. Người dùng có thể lọc theo ngày, theo người thực hiện hoặc theo loại thay đổi, và xem chi tiết từng lần thay đổi cụ thể.
+## 1. Tổng quan
 
-## Acceptance Criteria
-1. Người dùng có thể xem danh sách tất cả các lần thay đổi của một Cảng cạn theo thứ tự thời gian
-2. Mỗi lần thay đổi hiển thị đầy đủ: ngày giờ, người thực hiện, loại thay đổi, nội dung trước và sau
-3. Người dùng có thể lọc danh sách thay đổi theo ngày, người thực hiện hoặc loại thay đổi
-4. Danh sách thay đổi cập nhật thời gian thực khi có thay đổi mới
-5. Lịch sử không bao giờ bị xóa, chỉ bổ sung thêm
+### 1.1. Tính năng này làm gì?
 
-## In Scope
-- Hiển thị danh sách lịch sử thay đổi Cảng cạn
-- Hiển thị chi tiết từng lần thay đổi (trước/sau)
-- Lọc và tìm kiếm theo ngày, người thực hiện, loại thay đổi
-- Hiển thị theo thứ tự thời gian giảm dần
-- Ghi nhật ký tự động cho mọi thay đổi
+Hiển thị toàn bộ lịch sử thay đổi của một Cảng cạn từ bảng `change_history`. Mỗi dòng thể hiện: loại hành động (Tạo mới / Cập nhật), trường bị thay đổi, giá trị cũ → giá trị mới, người thực hiện, thời gian. Dữ liệu sắp xếp mới nhất lên đầu. Có bộ lọc theo tên trường.
 
-## Out of Scope
-- Xóa hoặc sửa lịch sử thay đổi
-- Xuất báo cáo lịch sử ra file
-- So sánh đồng thời lịch sử của nhiều Cảng cạn
+### 1.2. Tại sao cần?
 
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Nhân viên Cảng | Xem lịch sử |
-| Trưởng phòng QL Cảng | Xem lịch sử |
-| Quản trị viên | Xem lịch sử, Xuất báo cáo |
+- Truy xuất mọi thay đổi của Cảng cạn — minh bạch, giải trình được
+- Hỗ trợ kiểm toán: ai sửa, sửa gì, khi nào
+- Phát hiện sai sót: so sánh oldValue → newValue
 
-## Entities
-- **LichSuCangCan**: id, cangCanId, ngayThayDoi, nguoiThucHien, loaiThayDoi, noiDungTruoc, noiDungSau, ghiChu, createdAt
+### 1.3. Luồng chính
 
-## Business Rules
-1. Mọi thay đổi về Cảng cạn đều tự động được ghi nhận vào lịch sử
-2. Lịch sử thay đổi không thể bị xóa hoặc sửa đổi, chỉ được bổ sung
-3. Các thay đổi quan trọng (phê duyệt, từ chối, thay đổi trạng thái) phải được đánh dấu nổi bật
-4. Thông tin người thực hiện được tự động lấy từ tài khoản đăng nhập
-5. Lịch sử được lưu trữ vĩnh viễn và chỉ phục vụ mục đích tham khảo
+F-083 (dropdown) hoặc F-084 (nút "Lịch sử") → `GET /api/v1/dry-ports/{id}/history` → bảng change_history phân trang. Breadcrumb: "Chi tiết > Lịch sử". Filter dropdown: chọn tên trường → chỉ hiện thay đổi của trường đó.
 
-## Testing Strategy
-Kiểm thử ghi nhận tự động lịch sử thay đổi khi cập nhật Cảng cạn, kiểm thử hiển thị danh sách theo thứ tự thời gian, kiểm thử lọc theo các tiêu chí khác nhau, kiểm thử khi Cảng cạn chưa từng thay đổi, kiểm thử độ chính xác của thông tin trước/sau thay đổi.
+---
 
-## UI Specification
+## 2. Ai dùng? Dùng như thế nào?
 
-Giao diện Lịch sử Cảng cạn (CangCan) cho phép người dùng xem toàn bộ lịch sử thay đổi của một cảng cạn cụ thể thông qua bảng danh sách các bản ghi LichSuThayDoi. Bảng hiển thị các cột: tên trường thay đổi (Field), giá trị cũ (Old Value), giá trị mới (New Value), người thay đổi (Changed By), thời gian thay đổi (Changed At). Các bản ghi được sắp xếp theo changedAt giảm dần (mới nhất lên đầu). Có bộ lọc theo tên trường (Field filter dropdown) để người dùng chỉ xem các thay đổi của một trường cụ thể (ví dụ: chỉ xem thay đổi của tenCangCan). Giao diện phân biệt loại hành động "Tạo mới" (actionType=CREATE) và "Cập nhật" (actionType=UPDATE) bằng badge màu hoặc ký hiệu: "Tạo mới" hiển thị badge xanh, "Cập nhật" hiển thị badge vàng. Dữ liệu được tải từ API GET /:id/history khi người dùng mở trang Lịch sử từ trang Chi tiết (F-084) hoặc từ trang Danh sách (F-083).
-
-**Business Intent**
-
-Cung cấp khả năng truy xuất toàn bộ lịch sử thay đổi của một cảng cạn giúp người dùng và lãnh đạo giám sát, kiểm tra và giải trình mọi thay đổi dữ liệu, đảm bảo tính minh bạch và trách nhiệm giải trình trong quản lý tài sản giao thông vận tải biển.
-
-**Flow Summary**
-
-Người dùng truy cập trang Chi tiết Cảng cạn (F-084) và bấm nút "Lịch sử" để mở trang Lịch sử Cảng cạn (F-100) với entityId tương ứng. Hệ thống gọi API GET /api/v1/cang-can/:id/history để tải tất cả LichSuThayDoi record của cảng cạn đó. Dữ liệu được hiển thị dưới dạng bảng phân trang với các cột: actionType (badge "Tạo mới" xanh hoặc "Cập nhật" vàng), field, oldValue, newValue, changedBy (tên người dùng), changedAt (định dạng ngày/giờ). Bảng mặc định sắp xếp theo changedAt DESC. Người dùng có thể lọc theo field bằng cách chọn từ dropdown bộ lọc — hệ thống gọi lại API với tham số filterField tương ứng. Mỗi hàng cho biết chính xác trường nào đã thay đổi, giá trị cũ là gì, giá trị mới là gì, ai là người thay đổi và khi nào thay đổi. Người dùng có thể bấm nút "Quay lại" để trở về trang Chi tiết (F-084).
-
-**Acceptance Criteria (UI)**
-
-1. Khi mở trang Lịch sử, hệ thống gọi GET /api/v1/cang-can/:id/history, trả về danh sách LichSuThayDoi record của cảng cạn được chỉ định, sắp xếp theo changedAt DESC.
-2. Bảng hiển thị chính xác các cột: actionType (badge "Tạo mới" hoặc "Cập nhật"), field, oldValue, newValue, changedBy (tên người dùng), changedAt (định dạng ngày/giờ) — không thiếu cột nào.
-3. Bản ghi đầu tiên trong danh sách luôn là bản ghi "Tạo mới" (actionType=CREATE) khi cảng cạn được tạo lần đầu, hiển thị badge màu xanh.
-4. Các bản ghi sau đó là các bản ghi "Cập nhật" (actionType=UPDATE) khi cảng cạn được chỉnh sửa, hiển thị badge màu vàng.
-5. Người dùng chọn một giá trị trong bộ lọc "Trường" (Field filter dropdown) — hệ thống gọi API với filterField tương ứng, chỉ hiển thị các bản ghi thay đổi trường được chọn.
-6. Nhấp nút "Quay lại" hoặc breadcrumb "Chi tiết" điều hướng người dùng quay về trang Chi tiết Cảng cạn (F-084) với đúng entityId.
-7. Phân trang hiển thị đúng số trang, cho phép chuyển trang — mặc định 20 bản ghi mỗi trang.
-8. Cột changedBy hiển thị tên người dùng (không phải UUID) — hệ thống resolve UUID sang tên người dùng từ dịch vụ người dùng.
-9. oldValue và newValue hiển thị giá trị ở dạng chuỗi dễ đọc — nếu giá trị tương đương null/empty, hiển thị "—".
-10. Người dùng không có quyền read không thể truy cập trang Lịch sử — điều này được kiểm soát bởi RBAC ở cấp giao diện.
-
-**In Scope (UI)**
-
-- Bảng LichSuThayDoi records của một cảng cạn
-- Cột: field, oldValue, newValue, changedBy, changedAt
-- Sắp xếp mặc định changedAt DESC
-- Badge "Tạo mới" (CREATE, xanh) và "Cập nhật" (UPDATE, vàng)
-- Lọc theo field (Field filter dropdown)
-- Phân trang 20 bản ghi mỗi trang
-- Breadcrumb/nút "Quay lại" → F-084
-- Resolve changedBy UUID → tên người dùng
-
-**Out of Scope (UI)**
-
-- Xóa bản ghi lịch sử
-- Xuất Excel/PDF lịch sử thay đổi
-- So sánh hai thời điểm thay đổi (diff view)
-- Tìm kiếm theo nội dung oldValue/newValue
-- Thông báo khi có thay đổi mới
-
-**Roles + Permissions (UI)**
-
-| Role | Level | Notes |
-|---|---|---|
-| NhanVien | read | Xem lịch sử thay đổi của Cảng cạn |
-| QuanTriCuc | read | Xem lịch sử thay đổi của Cảng cạn |
-| LanhDaoCuc | read | Xem lịch sử thay đổi của Cảng cạn |
-| QuanTriHeThong | read | Xem lịch sử thay đổi của Cảng cạn |
-
-**UI Entities**
-
-| Entity | Fields |
+| Permission | Mô tả |
 |---|---|
-| CangCan | id(UUID), maCangCan(string unique), tenCangCan(string), diaChi(string), tinhThanh(string), ghiChu(text), trangThaiHoatDong(enum), trangThaiPheDuyet(enum), orgUnitId(UUID), createdBy(UUID), updatedBy(UUID), createdAt, updatedAt, deletedAt(nullable) |
-| LichSuThayDoi | id(UUID), cangCanId(UUID), actionType(enum CREATE/UPDATE), field(string), oldValue(string), newValue(string), changedBy(UUID), changedAt(timestamp) |
-| HistoryResponse | data:LichSuThayDoi[], total(int), page(int), pageSize(int) |
+| `dryport:history` | Xem lịch sử thay đổi |
 
-**UI Business Rules**
+> M-001 quản lý. Tất cả vai trò (trừ Cá nhân) thường được gán quyền này. Admin Cục: không giới hạn đơn vị.
 
-| ID | Rule | Applies-to | Source |
+---
+
+## 3. User Stories
+
+### Must
+- **US-031-01:** Xem danh sách thay đổi, sắp xếp mới nhất lên đầu.
+- **US-031-02:** Phân biệt Tạo mới (badge xanh) và Cập nhật (badge vàng).
+- **US-031-03:** Xem chi tiết từng thay đổi: trường nào, giá trị cũ → mới.
+
+### Should
+- **US-031-04:** Lọc theo tên trường (Field filter dropdown).
+- **US-031-05:** Phân trang 20 dòng/trang.
+
+### Could
+- **US-031-06:** Xuất Excel lịch sử thay đổi.
+
+---
+
+## 4. Yêu cầu chức năng (Acceptance Criteria)
+
+### Nhóm 1: Hiển thị
+
+**AC-031-01:** `GET /api/v1/dry-ports/{id}/history` → bảng các cột: Hành động (badge), Trường, Giá trị cũ, Giá trị mới, Người thay đổi, Thời gian.
+**AC-031-02:** Sắp xếp `changedAt` DESC (mới nhất lên đầu).
+**AC-031-03:** CREATE = badge xanh "Tạo mới", UPDATE = badge vàng "Cập nhật".
+
+### Nhóm 2: Lọc & Phân trang
+
+**AC-031-04:** Dropdown "Trường" → chọn tên trường → GET `?field=` → chỉ hiện thay đổi của trường đó. Chọn "Tất cả" → hiện toàn bộ.
+**AC-031-05:** Phân trang 20 dòng/trang.
+
+### Nhóm 3: Dữ liệu
+
+**AC-031-06:** `oldValue` hoặc `newValue` null → hiển thị "—".
+**AC-031-07:** `changedBy` hiển thị tên người dùng (resolve UUID → tên qua M-001), không hiển thị UUID.
+**AC-031-08:** `changedAt` hiển thị định dạng dd/MM/yyyy HH:mm:ss.
+
+---
+
+## 5. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-031-01 | Lịch sử thay đổi là bất biến — không thể xóa hoặc sửa. | Thiết kế |
+| BR-031-02 | Bản ghi CREATE đầu tiên được tạo khi Cảng cạn được tạo mới (F-026 Lưu và phê duyệt). | Nghiệp vụ |
+| BR-031-03 | Bản ghi UPDATE được tạo mỗi lần Lưu và phê duyệt trong F-027. | Nghiệp vụ |
+| BR-031-04 | `changedBy` resolve UUID → tên hiển thị từ M-001. Nếu user đã bị xóa → hiển thị "Người dùng không xác định". | Kỹ thuật |
+
+---
+
+## 6. Mô hình dữ liệu
+
+### `change_history`
+
+| Tên trường | Kiểu | Mô tả |
+|---|---|---|
+| id | UUID | PK |
+| entity_id | UUID | FK → dry_ports.id |
+| entity_type | NVARCHAR(50) | "DRY_PORT" |
+| action_type | NVARCHAR(20) | CREATE / UPDATE |
+| field_name | NVARCHAR(100) | Tên trường thay đổi |
+| old_value | NVARCHAR(1000) | Giá trị cũ (null nếu CREATE) |
+| new_value | NVARCHAR(1000) | Giá trị mới |
+| changed_by | UUID | Người thực hiện |
+| changed_at | TIMESTAMP | Thời điểm |
+
+---
+
+## 7. API Endpoints
+
+| Method | Endpoint | Mô tả | Quyền |
 |---|---|---|---|
-| BR-100-01 | Mọi hành động Tạo mới và Cập nhật Cảng cạn phải được ghi nhận vào LichSuThayDoi record bởi backend | F-100, F-085, F-086 | Spec |
-| BR-100-02 | Lịch sử thay đổi được sắp xếp theo changedAt giảm dần (mới nhất lên đầu) | F-100, INT-003 | Spec |
-| BR-100-03 | Badge hành động phân biệt rõ: "Tạo mới" (CREATE, màu xanh) và "Cập nhật" (UPDATE, màu vàng) | F-100 | Spec |
-| BR-100-04 | maCangCan phải là duy nhất trong toàn hệ thống; không cho phép tạo mới hoặc sửa có trùng mã | F-100, F-085, F-086 | Spec |
-| BR-100-05 | Soft-delete: CangCan không có thực thể con nên khi xóa chỉ cần đặt deletedAt, không cần kiểm tra guard | F-099 | Spec |
+| GET | `/api/v1/dry-ports/{id}/history?field=&page=&size=` | Lấy lịch sử thay đổi | `dryport:history` |
 
-**Testing Strategy (UI)**
+---
 
-Kiểm thử đơn vị (unit test) tập trung vào component bảng Lịch sử: render đúng tất cả các cột (actionType badge, field, oldValue, newValue, changedBy, changedAt), badge màu đúng ("Tạo mới" xanh, "Cập nhật" vàng), component dropdown bộ lọc Field, component phân trang. Mock API response với các bản ghi CREATE và UPDATE khác nhau, xác nhận bảng hiển thị đúng thứ tự changedAt DESC. Kiểm thử tích hợp (integration test): gọi GET /api/v1/cang-can/:id/history, xác nhận danh sách LichSuThayDoi trả về chính xác; gọi với filterField, xác nhận chỉ trả về bản ghi của trường được chọn. Kiểm thử nghiệp vụ: tạo 1 cảng cạn (bản ghi CREATE đầu tiên), chỉnh sửa 2 trường (2 bản ghi UPDATE), xác nhận bảng có 3 bản ghi với đúng oldValue/newValue; lọc theo từng field — mỗi lần chỉ hiển thị bản ghi của field đó. Kiểm thử RBAC: tất cả các vai trò (NhanVien, QuanTriCuc, LanhDaoCuc, QuanTriHeThông) đều có thể xem lịch sử thay đổi. Kiểm thử định dạng: changedBy resolve UUID → tên người dùng, oldValue/newValue null hiển thị "—".
+## 8. Chi tiết nghiệp vụ
+
+### 8.1. Truy cập lịch sử
+
+Từ F-083: dropdown hành động → "Lịch sử". Từ F-084: nút "Lịch sử" trong footer. Cả hai truyền `id` → GET history.
+
+### 8.2. Bảng lịch sử
+
+Dòng đầu tiên luôn là CREATE (từ F-026). Các dòng sau là UPDATE (từ F-027). Mỗi lần Lưu và phê duyệt tạo N dòng UPDATE (N = số trường thay đổi).
+
+### 8.3. Lọc
+
+Dropdown chứa tất cả tên trường của DryPort (25 trường). Chọn 1 trường → filter. Mặc định: "Tất cả".
+
+---
+
+## 9. Yêu cầu phi chức năng
+
+- **Hiệu năng:** GET ≤500ms; hỗ trợ ≥50 concurrent
+- **Bảo mật:** HTTPS; RBAC; dữ liệu read-only
+- **UX:** Responsive; loading skeleton; phân trang mượt
+
+---
+
+## 10. Yêu cầu giao diện
+
+> Token từ `theme.ts` + `tokens.ts`.
+
+- **Layout:** Breadcrumb "Quản lý Cảng cạn > CC-XXXXXX > Lịch sử". Bảng lịch sử + filter dropdown + phân trang.
+- **Badge:** CREATE = `statusOperational` (xanh), UPDATE = `statusWarning` (vàng)
+- **Bảng:** cột rõ ràng, oldValue → newValue hiển thị dạng "A → B"
+- `borderRadius: radiusPill`, `height:40` cho dropdown
+
+---
 
 ## Implementation Status
-| Layer | Status | Notes |
-|-------|--------|-------|
-| Backend (API) | Done | API endpoints fully implemented |
-| Frontend (UI) | Pending | UI specs exist in merged feature scope; pending implementation |
+
+| Layer | Status |
+|-------|--------|
+| Backend | Done |
+| Frontend | Pending |

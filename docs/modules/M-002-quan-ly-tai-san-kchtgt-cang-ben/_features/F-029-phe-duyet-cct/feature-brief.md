@@ -7,134 +7,169 @@ status: backend_done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-29T11:10:07Z
+last-updated: 2026-08-03
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Phê duyệt Cảng cạn
+# Đặc tả nghiệp vụ: Phê duyệt Cảng cạn
 
-## Description
-Quy trình phê duyệt Cảng cạn (Cảng nội địa) do nhân viên Cảng khởi tạo, nhằm xác nhận thông tin và điều kiện khai thác trước khi đưa Cảng cạn vào sử dụng chính thức trong hệ thống quản lý tài sản KCHTGT.
+**Tài liệu:** BA Feature Brief
+**Feature:** F-029 — Phê duyệt Cảng cạn
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Người viết:** Business Analyst
+**Ngày cập nhật:** 2026-08-03
 
-## Business Intent
-Đảm bảo mọi Cảng cạn mới hoặc cập nhật đều trải qua quá trình xem xét, kiểm tra và phê duyệt bởi cấp có thẩm quyền trước khi kích hoạt. Điều này tuân thủ quy định quản lý hạ tầng cảng biển và logistics liên quan, tránh rủi ro vận hành do thiếu thẩm định, đồng thời tạo lập hồ sơ pháp lý đầy đủ cho từng Cảng cạn phục vụ quản lý nhà nước về giao thông vận tải.
+---
 
-## Flow Summary
-Nhân viên Cảng khởi tạo yêu cầu phê duyệt Cảng cạn bằng cách điền đầy đủ thông tin kỹ thuật, địa chỉ, diện tích, năng lực xử lý, loại hình dịch vụ và các giấy tờ liên quan (giấy phép thành lập, quyết định chủ trương). Yêu cầu được lưu ở trạng thái "chờ phê duyệt" và gửi đến Trưởng phòng Quản lý Cảng để xem xét. Trưởng phòng thực hiện phê duyệt hoặc từ chối kèm lý do; nếu từ chối, nhân viên Cảng có thể chỉnh sửa và gửi lại. Khi được phê duyệt, trạng thái Cảng cạn chuyển sang "đã kích hoạt" và có thể đưa vào khai thác.
+## 1. Tổng quan
 
-## Acceptance Criteria
-1. Nhân viên Cảng có thể khởi tạo yêu cầu phê duyệt Cảng cạn với đầy đủ thông tin bắt buộc
-2. Trưởng phòng Quản lý Cảng nhận được thông báo và có thể xem, phê duyệt hoặc từ chối yêu cầu
-3. Khi được phê duyệt, trạng thái Cảng cạn tự động chuyển sang "đã kích hoạt"
-4. Khi bị từ chối, hệ thống ghi nhận lý do và cho phép nhân viên chỉnh sửa, gửi lại
+### 1.1. Tính năng này làm gì?
 
-## In Scope
-- Khởi tạo yêu cầu phê duyệt Cảng cạn bởi nhân viên Cảng
-- Duyệt hoặc từ chối yêu cầu bởi Trưởng phòng Quản lý Cảng
-- Cập nhật trạng thái Cảng cạn (chờ phê duyệt / đã phê duyệt / bị từ chối)
-- Gửi thông báo cho các bên liên quan
-- Chỉnh sửa và gửi lại yêu cầu khi bị từ chối
+Phê duyệt Cảng cạn cho phép **Lãnh đạo** (`dryport:approve`) xem danh sách Cảng cạn đang chờ duyệt (`approvalStatus = PENDING`) và thực hiện **Phê duyệt** hoặc **Từ chối**. Cảng cạn vào trạng thái PENDING khi được "Gửi phê duyệt" từ F-083 (Danh sách). Mỗi hành động phê duyệt/từ chối được ghi vào `approval_logs`.
 
-## Out of Scope
-- Phê duyệt bởi cấp Cục (thuộc quy trình phê duyệt hai cấp của Vùng nước)
-- Tự động phê duyệt dựa trên quy tắc
-- Tích hợp với hệ thống nghiệp vụ bên ngoài
+### 1.2. Tại sao cần?
 
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Nhân viên Cảng | Khởi tạo, Chỉnh sửa (khi bị từ chối), Xem |
-| Trưởng phòng QL Cảng | Xem, Phê duyệt, Từ chối |
-| Quản trị viên | Xem toàn bộ, Quản lý vai trò |
+- Kiểm soát chất lượng dữ liệu trước khi Cảng cạn đi vào hoạt động chính thức
+- Đảm bảo mọi Cảng cạn đều được Lãnh đạo xem xét trước khi phê duyệt
+- Ghi nhận đầy đủ: ai duyệt, khi nào, lý do từ chối — phục vụ truy xuất trách nhiệm
 
-## Entities
-- **CangCan**: id, ma, ten, diaChi, toDo, loaiHinh, dienTich, nangLxuLy, dichVu, trangThai, ghiChu, createdAt, updatedAt
-- **YeuCauPheDuyet**: id, cangCanId, nguoiTao, ngayTao, trangThai, nguoiPheDuyet, ngayPheDuyet, lyDo, createdAt, updatedAt
+### 1.3. Luồng chính
 
-## Business Rules
-1. Chỉ Cảng cạn có trạng thái "chờ phê duyệt" hoặc "bị từ chối" mới được khởi tạo hoặc gửi lại yêu cầu phê duyệt
-2. Thông tin bắt buộc bao gồm: mã, tên, địa chỉ, loại hình và năng lực xử lý
-3. Chỉ Trưởng phòng Quản lý Cảng mới có quyền phê duyệt hoặc từ chối yêu cầu
-4. Mọi thay đổi trạng thái Cảng cạn đều được ghi nhận vào lịch sử
-5. Yêu cầu từ chối phải cung cấp lý do rõ ràng
+F-083 → tab "Chờ phê duyệt" hoặc menu riêng → danh sách PENDING → chọn bản ghi → xem chi tiết → **Phê duyệt** (xác nhận → APPROVED) hoặc **Từ chối** (nhập lý do ≥10 ký tự → REJECTED).
 
-## Testing Strategy
-Kiểm thử đơn vị cho từng bước của luồng phê duyệt, kiểm thử tích hợp giữa dịch vụ Cảng cạn và dịch vụ phê duyệt, kiểm thử giao diện người dùng cho các màn hình khởi tạo, xem và phê duyệt yêu cầu, kiểm thử xác thực quyền truy cập theo vai trò, kiểm thử trường hợp từ chối và gửi lại.
+---
 
-## UI Specification
+## 2. Ai dùng? Dùng như thế nào?
 
-Giao diện phê duyệt Cảng cạn (CangCan) cho phép người dùng có vai trò Lãnh đạo xem danh sách các cảng cạn đang chờ phê duyệt và thực hiện hành động phê duyệt hoặc từ chối. Trang danh sách chờ phê duyệt gọi API GET /api/v1/cang-can với filter `trangThaiPheDuyet=CHO_PHE_DUYET` để lấy danh sách. Người dùng chọn một cảng cạn cần phê duyệt — hệ thống hiển thị chi tiết cảng cạn với các nút "Phê duyệt" và "Từ chối". Khi bấm "Phê duyệt", hệ thống hiển thị hộp thoại xác nhận → bấm "Xác nhận" → gọi POST /:id/approve → trạng thái chuyển thành DUOC_PHE_DUYET → toast "Phê duyệt thành công". Khi bấm "Từ chối", form nhập lý do hiện ra (tối thiểu 10 ký tự) → xác nhận → gọi POST /:id/reject → trạng thái chuyển thành TU_CHOI → toast "Từ chối thành công". PheDuyetLog được ghi nhận trong cả hai trường hợp.
-
-**Business Intent**
-
-Cung cấp cơ chế phê duyệt Cảng cạn cho Lãnh đạo, đảm bảo mọi cảng cạn mới tạo hoặc được cập nhật đều phải được xem xét và chấp thuận trước khi hoạt động chính thức trong hệ thống, đồng thời ghi nhận đầy đủ lý do phê duyệt/từ chối để phục vụ truy xuất trách nhiệm giải trình.
-
-**Flow Summary**
-
-Người dùng có vai trò Lãnh đạo truy cập trang Danh sách (F-083) và nhấp vào nút "Phê duyệt" trên một dòng có trạng thái CHO_PHE_DUYET, hoặc truy cập trực tiếp trang Phê duyệt (F-087). Hệ thống gọi GET /api/v1/cang-can với filter `trangThaiPheDuyet=CHO_PHE_DUYET` để lấy danh sách chờ phê duyệt. Người dùng chọn một cảng cạn cần phê duyệt — hệ thống hiển thị chi tiết cảng cạn. Người dùng bấm "Phê duyệt" → hộp thoại xác nhận hiện ra → bấm "Xác nhận" → hệ thống gọi POST /:id/approve → trạng thái chuyển thành DUOC_PHE_DUYET → toast "Phê duyệt thành công" → danh sách cập nhật (cảng cạn này biến khỏi danh sách chờ). Người dùng bấm "Từ chối" → form nhập lý do hiện ra (≥10 ký tự) → xác nhận → hệ thống gọi POST /:id/reject → trạng thái chuyển thành TU_CHOI → toast "Từ chối thành công" + hiển thị lý do. PheDuyetLog được ghi nhận trong cả hai trường hợp.
-
-**Acceptance Criteria (UI)**
-
-1. Chỉ người dùng có vai trò Leadership/LanhDaoCuc mới thấy tab "Phê duyệt" hoặc nút "Phê duyệt" trên danh sách — người dùng không có quyền không thấy các yếu tố này.
-2. Trang Phê duyệt gọi GET /api/v1/cang-can?filterTrangThaiPheDuyet=CHO_PHE_DUYET, hiển thị danh sách tất cả cảng cạn đang chờ phê duyệt với cột: maCangCan, tenCangCan, diaChi, tinhThanh, createdAt, createdBy.
-3. Khi bấm "Phê duyệt" trên một bản ghi, hệ thống hiển thị hộp thoại xác nhận với tiêu đề "Xác nhận phê duyệt" và nội dung "Bạn có chắc chắn muốn phê duyệt cảng cạn [maCangCan]?"; bấm "Xác nhận" gọi POST /:id/approve.
-4. Sau khi phê duyệt thành công (POST /:id/approve trả về 200), trạng thái của cảng cạn chuyển thành DUOC_PHE_DUYET, PheDuyetLog được ghi nhận với approvedBy=người dùng hiện tại, approvedAt=thời điểm hiện tại, và toast "Phê duyệt thành công" hiển thị.
-5. Khi bấm "Từ chối" trên một bản ghi, hệ thống hiển thị form nhập lý do với trường bắt buộc có validation tối thiểu 10 ký tự; nếu nhập <10 ký tự và bấm "Xác nhận", hệ thống hiển thị lỗi "Lý do từ chối phải có ít nhất 10 ký tự".
-6. Sau khi từ chối thành công (POST /:id/reject trả về 200), trạng thái của cảng cạn chuyển thành TU_CHOI, PheDuyetLog được ghi nhận với approvedBy=người dùng hiện tại, approvedAt=thời điểm hiện tại, lyDo=nội dung đã nhập, và toast "Từ chối thành công" hiển thị.
-7. Một cảng cạn đã có trạng thái DUOC_PHE_DUYET hoặc TU_CHOI không xuất hiện trong danh sách chờ phê duyệt (không thể phê duyệt lại cùng một yêu cầu).
-8. Phê duyệt/Từ chối là một hành động đơn định (atomic) — không thể phê duyệt rồi từ chối cùng một yêu cầu trong cùng một phiên.
-
-**In Scope (UI)**
-
-- Danh sách cảng cạn đang chờ phê duyệt (filter trangThaiPheDuyet=CHO_PHE_DUYET)
-- Hiển thị chi tiết cảng cạn cần phê duyệt
-- Hành động Phê duyệt → POST /:id/approve → DUOC_PHE_DUYET + PheDuyetLog
-- Hành động Từ chối → POST /:id/reject + lý do ≥10 ký tự → TU_CHOI + PheDuyetLog
-- Hộp thoại xác nhận trước khi phê duyệt
-- Form nhập lý do từ chối với validation ≥10 ký tự
-- Toast thông báo kết quả
-
-**Out of Scope (UI)**
-
-- Phê duyệt hàng loạt nhiều cảng cạn cùng lúc
-- Tự động phê duyệt theo quy tắc (approval workflow)
-- Gửi thông báo email cho người tạo khi phê duyệt/từ chối
-- Xem chi tiết PheDuyetLog lịch sử (thuộc F-100)
-- Từ chối mà không cần lý do (bắt buộc lý do ≥10 ký tự)
-
-**Roles + Permissions (UI)**
-
-| Role | Level | Notes |
-|---|---|---|
-| NhanVien | read | Không có quyền phê duyệt; chỉ xem danh sách và chi tiết |
-| QuanTriCuc | read | Không có quyền phê duyệt; chỉ xem, chỉnh sửa, xem lịch sử |
-| LanhDaoCuc | read, approve | Phê duyệt/Từ chối Cảng cạn; xem danh sách chờ phê duyệt, chi tiết, lịch sử |
-| QuanTriHeThong | read, update, delete, approve | Toàn quyền phê duyệt/từ chối Cảng cạn; xem, sửa, xóa, xem lịch sử |
-
-**UI Entities**
-
-| Entity | Fields |
+| Permission | Mô tả |
 |---|---|
-| CangCan | id(UUID), maCangCan(string unique), tenCangCan(string), diaChi(string), tinhThanh(string), ghiChu(text), trangThaiHoatDong(enum), trangThaiPheDuyet(enum), orgUnitId(UUID), createdBy(UUID), updatedBy(UUID), createdAt, updatedAt, deletedAt(nullable) |
-| PheDuyetLog | id(UUID), cangCanId(UUID), action(enum APPROVE/REJECT), approvedBy(UUID), approvedAt(timestamp), lyDo(text), ghiChu(text) |
-| ApprovalRequest | action(enum APPROVE/REJECT), reason(text) |
+| `dryport:approve` | Xem danh sách chờ duyệt, thực hiện Phê duyệt / Từ chối |
 
-**UI Business Rules**
+> Phân quyền do M-001 quản lý. Admin Cục không giới hạn đơn vị.
 
-| ID | Rule | Applies-to | Source |
+---
+
+## 3. User Stories
+
+### Must
+- **US-029-01:** Là Lãnh đạo, tôi muốn xem danh sách Cảng cạn đang PENDING.
+- **US-029-02:** Là Lãnh đạo, tôi muốn "Phê duyệt" → APPROVED, ghi approval_logs.
+- **US-029-03:** Là Lãnh đạo, tôi muốn "Từ chối" với lý do ≥10 ký tự → REJECTED.
+
+### Should
+- **US-029-04:** Toast "Phê duyệt thành công" / "Đã từ chối", danh sách tự động làm mới.
+- **US-029-05:** Xem chi tiết Cảng cạn trước khi quyết định phê duyệt/từ chối.
+
+### Could
+- **US-029-06:** Lọc danh sách chờ duyệt theo tỉnh/thành, ngày gửi.
+
+---
+
+## 4. Yêu cầu chức năng (Acceptance Criteria)
+
+### Nhóm 1: Danh sách chờ duyệt
+
+**AC-029-01:** `dryport:approve` → thấy tab/menu "Phê duyệt" → `GET /api/v1/dry-ports?approvalStatus=PENDING` → danh sách các cột: Mã, Tên, Tỉnh/TP, Ngày gửi, Người gửi. Không có quyền → ẩn tab.
+
+### Nhóm 2: Phê duyệt
+
+**AC-029-02:** Chọn bản ghi → xem chi tiết → "Phê duyệt" → hộp thoại xác nhận "Phê duyệt CC-XXXXXX — [Tên]?" → "Xác nhận" → `POST /api/v1/dry-ports/{id}/approve` → `approvalStatus=APPROVED`, tạo `approval_logs` (action=APPROVE) → toast "Phê duyệt thành công" → bản ghi biến khỏi danh sách.
+
+### Nhóm 3: Từ chối
+
+**AC-029-03:** "Từ chối" → form nhập lý do (textarea, bắt buộc, ≥10 ký tự) → "Xác nhận" → `POST /api/v1/dry-ports/{id}/reject?reason=...` → `approvalStatus=REJECTED`, tạo `approval_logs` (action=REJECT, reason) → toast "Đã từ chối".
+**AC-029-04:** Lý do <10 ký tự → lỗi "Lý do từ chối phải có ít nhất 10 ký tự", không gửi API.
+
+### Nhóm 4: Trạng thái
+
+**AC-029-05:** Bản ghi đã APPROVED hoặc REJECTED → không xuất hiện trong danh sách chờ duyệt. Không thể phê duyệt lại.
+
+---
+
+## 5. Quy tắc nghiệp vụ (Business Rules)
+
+### 5.1. Luồng phê duyệt
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-029-01 | **Chỉ PENDING mới được duyệt** — Bản ghi có `approvalStatus != PENDING` không xuất hiện trong danh sách chờ. | Nghiệp vụ |
+| BR-029-02 | **Phê duyệt** → `approvalStatus=APPROVED`, tạo `approval_logs` (action=APPROVE, approvedBy, approvedAt). | Nghiệp vụ |
+| BR-029-03 | **Từ chối bắt buộc lý do** — Phải nhập lý do ≥10 ký tự. `approvalStatus=REJECTED`, tạo `approval_logs` (action=REJECT, reason, approvedBy, approvedAt). | Nghiệp vụ |
+| BR-029-04 | **Không duyệt lại** — APPROVED và REJECTED không thể duyệt/từ chối lần nữa qua màn này. Muốn thay đổi phải qua F-027 (Cập nhật → Lưu và phê duyệt). | Nghiệp vụ |
+| BR-029-05 | **Phê duyệt đơn định** — Mỗi lần chỉ duyệt/từ chối 1 bản ghi. Không duyệt hàng loạt. | Thiết kế |
+
+### 5.2. Phân quyền
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-029-06 | `dryport:approve` mới thấy tab Phê duyệt và gọi được API. | RBAC |
+| BR-029-07 | Audit log mọi thao tác phê duyệt/từ chối. | Bảo mật |
+
+---
+
+## 6. Mô hình dữ liệu
+
+### `approval_logs`
+
+| Tên trường | Kiểu | Mô tả |
+|---|---|---|
+| id | UUID | PK |
+| entity_id | UUID | FK → dry_ports.id |
+| entity_type | NVARCHAR(50) | "DRY_PORT" |
+| action | NVARCHAR(20) | APPROVE / REJECT |
+| approved_by | UUID | Người thực hiện |
+| approved_at | TIMESTAMP | Thời điểm |
+| reason | NVARCHAR(500) | Lý do từ chối (NULL nếu APPROVE) |
+
+---
+
+## 7. API Endpoints
+
+| Method | Endpoint | Mô tả | Quyền |
 |---|---|---|---|
-| BR-087-01 | Chỉ các cảng cạn có trạng thái trangThaiPheDuyet=CHO_PHE_DUYET mới được hiển thị trong danh sách chờ phê duyệt | F-087 | Spec |
-| BR-087-02 | Phê duyệt thành công đặt trangThaiPheDuyet=DUOC_PHE_DUYET và ghi nhận PheDuyetLog với approvedBy, approvedAt | F-087 | Spec |
-| BR-087-03 | Từ chối thành công đặt trangThaiPheDuyet=TU_CHOI, ghi nhận PheDuyetLog với approvedBy, approvedAt, lyDo (≥10 ký tự) | F-087 | Spec |
-| BR-087-04 | Lý do từ chối là bắt buộc và phải có ít nhất 10 ký tự; hệ thống không cho phép từ chối nếu lý do <10 ký tự | F-087 | Spec |
-| BR-087-05 | maCangCan phải là duy nhất trong toàn hệ thống; không cho phép tạo mới hoặc sửa có trùng mã | F-087, F-085, F-086 | Spec |
+| GET | `/api/v1/dry-ports?approvalStatus=PENDING` | Danh sách chờ duyệt | `dryport:approve` |
+| POST | `/api/v1/dry-ports/{id}/approve` | Phê duyệt | `dryport:approve` |
+| POST | `/api/v1/dry-ports/{id}/reject?reason=` | Từ chối (reason ≥10 ký tự) | `dryport:approve` |
 
-**Testing Strategy (UI)**
+---
 
-Kiểm thử đơn vị (unit test) tập trung vào component danh sách chờ phê duyệt: filter đúng trạng thái CHO_PHE_DUYET, hiển thị đúng các cột, component hộp thoại xác nhận hiện ra khi bấm "Phê duyệt", component form nhập lý do hiện ra khi bấm "Từ chối" với validation ≥10 ký tự. Kiểm thử tích hợp (integration test): gọi POST /:id/approve cho một cảng cạn CHO_PHE_DUYET, xác nhận phản hồi 200 và trạng thái chuyển thành DUOC_PHE_DUYET; kiểm tra PheDuyetLog được tạo với approvedBy đúng; gọi POST /:id/reject với lý do đủ 10 ký tự, xác nhận trạng thái thành TU_CHOI và PheDuyetLog có lý do; gọi POST /:id/reject với lý do <10 ký tự, xác nhận lỗi validation. Kiểm thử nghiệp vụ: tạo 2 cảng cạn mới (CHO_PHE_DUYET), phê duyệt 1, từ chối 1 — xác nhận danh sách chờ còn 0; thử từ chối với lý do 9 ký tự → từ chối thất bại; thử phê duyệt lại cảng cạn đã DUOC_PHE_DUYET → không tìm thấy trong danh sách chờ. Kiểm thử RBAC: chỉ LanhDaoCuc và QuanTriHeThông thấy tab/actions Phê duyệt; NhanVien và QuanTriCuc không thấy.
+## 8. Chi tiết nghiệp vụ
+
+### 8.1. Danh sách chờ duyệt
+
+Tab "Phê duyệt" trên F-083 hoặc menu riêng. Gọi GET với filter `approvalStatus=PENDING`. Cột: Mã, Tên, Tỉnh/TP, Ngày gửi, Người gửi. Sắp xếp theo ngày gửi tăng dần (cũ nhất lên đầu).
+
+### 8.2. Phê duyệt
+
+Chọn bản ghi → xem chi tiết (có thể mở F-084) → "Phê duyệt" → confirm dialog → POST approve → APPROVED + approval_logs → toast → refresh list.
+
+### 8.3. Từ chối
+
+"Từ chối" → form nhập lý do → validate ≥10 ký tự → POST reject → REJECTED + approval_logs(reason) → toast → refresh list.
+
+---
+
+## 9. Yêu cầu phi chức năng
+
+POST ≤1s; HTTPS; RBAC; audit log ≥2 năm.
+
+---
+
+## 10. Yêu cầu giao diện
+
+Token từ `theme.ts` + `tokens.ts`.
+
+- **Danh sách:** Bảng PENDING, cột Mã/Tên/Tỉnh/Ngày gửi/Người gửi + nút [Phê duyệt] [Từ chối]
+- **Phê duyệt:** Confirm dialog "Phê duyệt CC-XXXXXX — [Tên]?" → [Hủy] [Xác nhận]
+- **Từ chối:** Form lý do, textarea ≥10 ký tự, `borderRadius: radiusMd` → [Hủy] [Xác nhận]
+- **Toast:** `statusOperational` (xanh) / `statusWarning` (vàng)
+- Nút: `borderRadius: radiusPill`, `height: 40`
+
+---
 
 ## Implementation Status
-| Layer | Status | Notes |
-|-------|--------|-------|
-| Backend (API) | Done | API endpoints fully implemented |
-| Frontend (UI) | Pending | UI specs exist in merged feature scope; pending implementation |
+
+| Layer | Status |
+|-------|--------|
+| Backend | Done — approve/reject endpoints đã triển khai |
+| Frontend | Pending |

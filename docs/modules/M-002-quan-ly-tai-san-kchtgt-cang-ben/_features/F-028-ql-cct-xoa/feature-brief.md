@@ -7,135 +7,192 @@ status: backend_done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-29T11:10:07Z
+last-updated: 2026-08-03
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Cảng cạn - Xóa
+# Đặc tả nghiệp vụ: Quản lý Cảng cạn - Xóa
 
-## Description
-Xóa Cảng cạn khỏi hệ thống khi không còn sử dụng, với cơ chế xóa mềm (soft delete) để bảo tồn dữ liệu lịch sử và hỗ trợ khôi phục nếu cần. Quy trình xóa yêu cầu xác nhận và được ghi nhận đầy đủ vào nhật ký hệ thống.
+**Tài liệu:** BA Feature Brief
+**Feature:** F-028 — Quản lý Cảng cạn - Xóa
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Người viết:** Business Analyst
+**Ngày cập nhật:** 2026-08-03
 
-## Business Intent
-Cho phép loại bỏ Cảng cạn không còn hoạt động hoặc đã sáp nhập khỏi danh sách khai thác, giúp hệ thống luôn phản ánh đúng thực tế quản lý. Việc xóa mềm đảm bảo dữ liệu không bị mất vĩnh viễn, hỗ trợ công tác kiểm toán và khôi phục trong trường hợp xóa nhầm. Quy trình xóa có xác nhận ngăn ngừa xóa vô tình hoặc xóa trái phép.
+---
 
-## Flow Summary
-Người dùng chọn một Cảng cạn từ danh sách và chọn hành động "Xóa". Hệ thống hiển thị hộp thoại xác nhận với thông tin Cảng cạn và cảnh báo về hậu quả của việc xóa. Người dùng xác nhận bằng cách nhập mã Cảng cạn hoặc nhấn nút xác nhận. Hệ thống thực hiện xóa mềm — chuyển trạng thái Cảng cạn thành "đã xóa" thay vì xóa vĩnh viễn — ghi nhận người xóa, ngày giờ xóa và lưu vào nhật ký. Cảng cạn bị xóa không còn hiển thị trong danh sách khai thác nhưng vẫn可查看 trong lịch sử.
+## 1. Tổng quan
 
-## Acceptance Criteria
-1. Người dùng nhận được hộp thoại xác nhận trước khi xóa Cảng cạn
-2. Cảng cạn bị xóa mềm (soft delete), không bị xóa vĩnh viễn khỏi cơ sở dữ liệu
-3. Cảng cạn bị xóa không còn hiển thị trong danh sách khai thác chính
-4. Nhật ký xóa được ghi nhận đầy đủ: người xóa, ngày giờ, lý do
-5. Không thể xóa Cảng cạn đang có hoạt động logistics đang diễn ra
+### 1.1. Tính năng này làm gì?
 
-## In Scope
-- Xóa mềm Cảng cạn (soft delete)
-- Xác nhận xóa bằng hộp thoại
-- Ghi nhật ký xóa vào hệ thống
-- Không hiển thị Cảng cạn đã xóa trong danh sách chính
-- Kiểm tra điều kiện xóa (không có hoạt động đang diễn ra)
+Xóa Cảng cạn cho phép người dùng có thẩm quyền loại bỏ một Cảng cạn khỏi danh sách hoạt động thông qua cơ chế **xóa mềm (soft-delete)**. Bản ghi không bị xóa vật lý khỏi database — thay vào đó, trường `deletedAt` được gán timestamp hiện tại. Cảng cạn đã xóa không còn xuất hiện trong danh sách mặc định nhưng vẫn tồn tại để phục vụ truy xuất lịch sử và kiểm toán.
 
-## Out of Scope
-- Xóa vĩnh viễn Cảng cạn khỏi cơ sở dữ liệu
-- Khôi phục Cảng cạn đã xóa (thuộc chức năng quản lý khôi phục riêng)
-- Xóa hàng loạt Cảng cạn
-- Xóa tự động theo quy tắc thời gian
+Để ngăn chặn xóa nhầm, hệ thống yêu cầu người dùng **nhập lại chính xác mã cảng cạn (CC-XXXXXX)** trong hộp thoại xác nhận trước khi thực hiện.
 
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Nhân viên Cảng | Không có quyền xóa |
-| Trưởng phòng QL Cảng | Xóa (có xác nhận) |
-| Quản trị viên | Xóa, Khôi phục |
+### 1.2. Tại sao cần?
 
-## Entities
-- **CangCan**: id, ma, ten, diaChi, toDo, loaiHinh, dienTich, nangLxuLy, dichVu, trangThai, daXoa, nguoiXoa, ngayXoa, createdAt, updatedAt
-- **NhatKyXoa**: id, cangCanId, cangCanMa, cangCanTen, nguoiXoa, ngayXoa, lyDo, createdAt
+- Loại bỏ Cảng cạn không còn tồn tại hoặc đã sáp nhập khỏi giao diện hoạt động
+- Soft-delete bảo toàn dữ liệu lịch sử — không mất dữ liệu vĩnh viễn
+- Yêu cầu nhập mã xác nhận — chống xóa nhầm do thao tác vô ý
+- DryPort không có thực thể con nên không cần kiểm tra ràng buộc (child guard)
 
-## Business Rules
-1. Chỉ người dùng vai trò Trưởng phòng hoặc Quản trị viên mới có quyền xóa
-2. Phải có xác nhận bằng hộp thoại trước khi xóa
-3. Không thể xóa Cảng cạn đang có hoạt động logistics đang diễn ra
-4. Xóa là xóa mềm — dữ liệu vẫn được bảo tồn với cờ đã xóa
-5. Nhật ký xóa phải ghi nhận đầy đủ người xóa và ngày giờ
+### 1.3. Luồng chính
 
-## Testing Strategy
-Kiểm thử xóa với Cảng cạn không có hoạt động (thành công), kiểm thử xóa với Cảng cạn đang có hoạt động (bị chặn), kiểm thử xác nhận xóa, kiểm thử xóa mềm và khôi phục, kiểm thử ghi nhật ký xóa, kiểm thử phân quyền xóa.
+F-083 (Danh sách) hoặc F-084 (Chi tiết) → nút "Xóa" (chỉ hiển thị cho người có `dryport:delete`) → hộp thoại xác nhận: "Bạn có chắc chắn muốn xóa cảng cạn CC-XXXXXX — [Tên]? Hành động này không thể hoàn tác. Vui lòng nhập mã cảng cạn để xác nhận." → nhập đúng mã → "Xác nhận xóa" → `DELETE /api/v1/dry-ports/{id}` → `deletedAt = NOW()` → toast "Đã xóa thành công" → refresh danh sách.
 
-## UI Specification
+---
 
-Giao diện xóa Cảng cạn (CangCan) cho phép người dùng có vai trò Lãnh đạo hoặc Quản trị hệ thống thực hiện xóa mềm (soft-delete) một cảng cạn đã tồn tại. Thao tác xóa được kích hoạt từ trang Danh sách (F-083) bằng cách bấm nút "Xóa" trên dòng tương ứng, hoặc từ trang Chi tiết (F-084) bằng cách bấm nút "Xóa". Khi bấm nút Xóa, hệ thống hiển thị hộp thoại xác nhận (confirm dialog) với thông báo rõ ràng: "Bạn có chắc chắn muốn xóa cảng cạn [maCangCan] — [tenCangCan]? Hành động này không thể hoàn tác." và yêu cầu người dùng nhập lại mã cảng cạn để xác nhận (để tránh xóa nhầm). Nếu người dùng nhập đúng mã và bấm "Xác nhận xóa", hệ thống gọi DELETE /api/v1/cang-can/:id. Backend thực hiện xóa mềm bằng cách đặt trường deletedAt thành thời điểm hiện tại thay vì xóa bản ghi vật lý khỏi cơ sở dữ liệu. Sau khi xóa thành công, cảng cạn biến khỏi danh sách hiện tại, toast "Xóa thành công" hiển thị, và danh sách được làm mới.
+## 2. Ai dùng? Dùng như thế nào?
 
-**Business Intent**
+### 2.1. Phân quyền theo chức năng
 
-Cho phép người dùng có thẩm quyền loại bỏ cảng cạn khỏi danh sách hoạt động thông qua cơ chế xóa mềm, đảm bảo dữ liệu vẫn được lưu trữ để phục vụ truy xuất lịch sử nhưng không còn xuất hiện trong các giao diện hoạt động chính, đồng thời yêu cầu xác nhận bằng mã để ngăn chặn xóa nhầm.
-
-**Flow Summary**
-
-Người dùng có quyền Leadership/Admin nhấp vào nút "Xóa" trên dòng cảng cạn trong danh sách (F-083) hoặc trên trang Chi tiết (F-084). Hệ thống mở hộp thoại xác nhận với tiêu đề "Xác nhận xóa", nội dung yêu cầu nhập mã cảng cạn để xác nhận, và hai nút "Hủy" + "Xác nhận xóa". Người dùng nhập chính xác mã cảng cạn (maCangCan) vào ô nhập, nếu đúng thì nút "Xác nhận xóa" được kích hoạt. Khi bấm nút này, hệ thống gọi DELETE /api/v1/cang-can/:id. Backend đặt deletedAt=now() và trả về 200. Toast "Xóa thành công" hiển thị, cảng cạn biến khỏi danh sách, và trang được làm mới. Nếu người dùng bấm "Hủy" hoặc nhấn Esc, hộp thoại đóng lại và không có thao tác xóa nào được thực hiện. Nếu mã nhập sai, nút "Xác nhận xóa" vẫn bị vô hiệu hóa.
-
-**Acceptance Criteria (UI)**
-
-1. Chỉ người dùng có vai trò Leadership (LanhDaoCuc) hoặc Admin (QuanTriHeThong) mới thấy nút "Xóa" trên trang Danh sách (F-083) và trang Chi tiết (F-084).
-2. Khi bấm "Xóa" trên một dòng cảng cạn, hệ thống hiển thị hộp thoại xác nhận với nội dung: "Bạn có chắc chắn muốn xóa cảng cạn [maCangCan] — [tenCangCan]? Hành động này không thể hoàn tác."
-3. Hộp thoại xác nhận yêu cầu người dùng nhập lại chính xác mã cảng cạn (maCangCan) — nút "Xác nhận xóa" chỉ được kích hoạt khi giá trị nhập vào khớp với maCangCan.
-4. Khi người dùng nhập đúng maCangCan và bấm "Xác nhận xóa", hệ thống gọi DELETE /api/v1/cang-can/:id; backend đặt deletedAt=now() và trả về 200.
-5. Sau khi xóa mềm thành công, toast "Xóa thành công" hiển thị, cảng cạn biến khỏi danh sách hiện tại, và danh sách được tự động làm mới.
-6. Nếu người dùng bấm "Hủy" hoặc nhấn Esc, hộp thoại đóng lại — không có thay đổi nào được thực hiện trên dữ liệu.
-7. Nếu maCangCan nhập vào không khớp, nút "Xác nhận xóa" vẫn bị vô hiệu hóa và không có API call nào được thực hiện.
-8. Sau khi xóa mềm, cảng cạn không còn xuất hiện trong kết quả tìm kiếm mặc định (deletedAt != null được backend lọc ra).
-
-**In Scope (UI)**
-
-- Nút "Xóa" chỉ hiển thị cho Leadership/Admin
-- Hộp thoại xác nhận với yêu cầu nhập lại mã cảng cạn
-- Gọi DELETE /api/v1/cang-can/:id
-- Xóa mềm: set deletedAt=now()
-- Toast "Xóa thành công" sau khi xóa
-- Làm mới danh sách sau xóa
-
-**Out of Scope (UI)**
-
-- Xóa cứng (hard-delete) dữ liệu
-- Khôi phục cảng cạn đã xóa (restore)
-- Xóa hàng loạt nhiều cảng cạn cùng lúc
-- Lịch sử xóa chi tiết (thuộc F-100)
-- Thông báo email cho người tạo khi bị xóa
-
-**Roles + Permissions (UI)**
-
-| Role | Level | Notes |
-|---|---|---|
-| NhanVien | read | Không có quyền xóa; chỉ xem danh sách, chi tiết và lịch sử |
-| QuanTriCuc | read | Không có quyền xóa; chỉ xem, chỉnh sửa, xem lịch sử |
-| LanhDaoCuc | read, delete | Xóa mềm Cảng cạn; xem danh sách, chi tiết, phê duyệt, lịch sử |
-| QuanTriHeThong | read, update, delete, approve | Toàn quyền: xem, tạo, sửa, xóa, phê duyệt, xem lịch sử |
-
-**UI Entities**
-
-| Entity | Fields |
+| Permission | Mô tả |
 |---|---|
-| CangCan | id(UUID), maCangCan(string unique), tenCangCan(string), diaChi(string), tinhThanh(string), ghiChu(text), trangThaiHoatDong(enum), trangThaiPheDuyet(enum), orgUnitId(UUID), createdBy(UUID), updatedBy(UUID), createdAt, updatedAt, deletedAt(nullable) |
-| DeleteResponse | success(boolean), deletedAt(timestamp) |
-| ConfirmDialog | entityMa(string), userEntry(string), isValid(boolean) |
+| `dryport:delete` | Xóa Cảng cạn — bắt buộc để thấy nút "Xóa" và gọi API |
 
-**UI Business Rules**
+> **Phân quyền do M-001 — Quản trị hệ thống quản lý.** Tài liệu này chỉ khai báo permission cần có.
 
-| ID | Rule | Applies-to | Source |
+> **Admin Cục (system-admin):** Khi được gán `dryport:delete`, xóa được toàn bộ Cảng cạn không giới hạn đơn vị. Vai trò khác bị giới hạn trong đơn vị quản lý của mình.
+
+---
+
+## 3. User Stories
+
+### Must
+- **US-028-01:** Là người dùng có `dryport:delete`, tôi muốn thấy nút "Xóa" trên dòng Cảng cạn trong F-083 và trên trang F-084.
+- **US-028-02:** Là người dùng, tôi muốn hệ thống yêu cầu nhập mã CC-XXXXXX trước khi xóa để tránh xóa nhầm.
+- **US-028-03:** Là người dùng, tôi muốn Cảng cạn bị xóa mềm — dữ liệu không mất, chỉ ẩn khỏi danh sách.
+
+### Should
+- **US-028-04:** Là người dùng, tôi muốn thấy toast "Đã xóa thành công" và danh sách tự động làm mới sau khi xóa.
+- **US-028-05:** Là người dùng, tôi muốn hủy hộp thoại (Esc hoặc nút Hủy) để không thực hiện xóa.
+
+### Could
+- **US-028-06:** Là người dùng, tôi muốn xem danh sách Cảng cạn đã xóa (filter deletedAt != null) — chức năng khôi phục trong tương lai.
+
+---
+
+## 4. Yêu cầu chức năng (Acceptance Criteria)
+
+### Nhóm 1: Hiển thị
+
+**AC-028-01 — Hiển thị nút Xóa:** Người dùng có `dryport:delete` → thấy nút "Xóa" trên F-083 (dropdown hành động mỗi dòng) và F-084 (footer). Không có quyền → không thấy nút.
+
+### Nhóm 2: Xác nhận
+
+**AC-028-02 — Hộp thoại xác nhận:** Bấm "Xóa" → hộp thoại hiển thị: "Bạn có chắc chắn muốn xóa cảng cạn CC-XXXXXX — [Tên cảng cạn]? Hành động này không thể hoàn tác." + ô nhập mã + nút [Hủy] [Xác nhận xóa].
+
+**AC-028-03 — Nhập mã:** Nút "Xác nhận xóa" chỉ enabled khi người dùng nhập đúng chính xác mã CC-XXXXXX (case-insensitive). Nhập sai → nút disabled, không gọi API.
+
+**AC-028-04 — Hủy:** Bấm "Hủy" hoặc Esc → đóng hộp thoại, không thực hiện xóa.
+
+### Nhóm 3: Thực hiện xóa
+
+**AC-028-05 — Xóa mềm:** Nhập đúng mã → "Xác nhận xóa" → `DELETE /api/v1/dry-ports/{id}` → backend set `deletedAt = NOW()` → 200 → toast "Đã xóa thành công" → danh sách F-083 tự động làm mới (bản ghi biến mất).
+
+**AC-028-06 — Không guard:** Cảng cạn không có thực thể con → không kiểm tra ràng buộc trước khi xóa.
+
+**AC-028-07 — Ẩn khỏi danh sách:** Sau khi xóa mềm, bản ghi có `deletedAt != null` → không xuất hiện trong `GET /api/v1/dry-ports` mặc định.
+
+---
+
+## 5. Quy tắc nghiệp vụ (Business Rules)
+
+### 5.1. Cơ chế xóa
+
+| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
+|---|---|---|---|---|
+| BR-028-01 | **Xóa mềm (soft-delete)** — Không xóa vật lý bản ghi. Chỉ gán `deletedAt = NOW()`. Dữ liệu vẫn tồn tại trong DB để phục vụ kiểm toán và truy xuất lịch sử. | Xóa | Thiết kế | Không |
+| BR-028-02 | **Không guard** — Cảng cạn (DryPort) không có thực thể con phụ thuộc. Không cần kiểm tra ràng buộc khóa ngoại trước khi xóa. Khác với Cảng biển có Bến cảng/Vùng nước. | Xóa | Thiết kế | Không |
+
+### 5.2. Xác nhận xóa
+
+| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
+|---|---|---|---|---|
+| BR-028-03 | **Xác nhận bằng mã** — Bắt buộc nhập đúng mã CC-XXXXXX để xác nhận xóa. Ngăn chặn xóa nhầm do click vô ý. Mã so sánh case-insensitive. | Xóa | Nghiệp vụ | Không |
+| BR-028-04 | **Không thể hoàn tác qua giao diện** — Sau khi xóa mềm, không có nút "Khôi phục" trên giao diện người dùng. Việc khôi phục (set deletedAt = null) chỉ thực hiện được qua database bởi quản trị viên hệ thống. | Xóa | Nghiệp vụ | Không |
+
+### 5.3. Phân quyền
+
+| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
+|---|---|---|---|---|
+| BR-028-05 | **Phân quyền xóa** — Chỉ người dùng được gán `dryport:delete` mới thấy nút "Xóa" và gọi được API. | Xóa | RBAC | Không |
+| BR-028-06 | **Phạm vi đơn vị** — Người dùng chỉ xóa được Cảng cạn trong đơn vị quản lý của mình. Admin Cục xóa được toàn bộ. | Xóa | RBAC | Admin Cục |
+| BR-028-07 | **Audit log** — Mọi thao tác xóa được ghi nhận: ai xóa, thời gian, IP, mã cảng cạn bị xóa. | Audit | Bảo mật | Không |
+
+---
+
+## 6. Mô hình dữ liệu
+
+> Không thêm bảng mới. Sử dụng cơ chế soft-delete có sẵn trong BaseEntity.
+
+### 6.1. `dry_ports` — trường `deleted_at`
+
+| Tên trường | Kiểu | Mô tả |
+|---|---|---|
+| deleted_at | TIMESTAMP | NULL = đang hoạt động; NOT NULL = đã xóa mềm, thời điểm xóa |
+
+> Backend tự động filter `WHERE deleted_at IS NULL` trong tất cả truy vấn mặc định. Bản ghi đã xóa chỉ truy xuất được qua query đặc biệt (dành cho Admin Cục).
+
+---
+
+## 7. API Endpoints
+
+| Method | Endpoint | Mô tả | Quyền |
 |---|---|---|---|
-| BR-099-01 | Soft-delete: xóa Cảng cạn chỉ đặt deletedAt=now() thay vì xóa vật lý; bản ghi vẫn tồn tại trong cơ sở dữ liệu | F-099 | Spec |
-| BR-099-02 | CangCan không có thực thể con nên không cần kiểm tra guard xóa bản ghi con trước khi xóa | F-099 | Spec |
-| BR-099-03 | maCangCan phải là duy nhất trong toàn hệ thống; không cho phép tạo mới hoặc sửa có trùng mã | F-099, F-085, F-086 | Spec |
-| BR-099-04 | Khi cập nhật lại cảng cạn đã tạo, trangThaiPheDuyet được đặt lại về CHO_PHE_DUYET để chờ phê duyệt lại | F-086 | Spec |
-| BR-099-05 | Chỉ Leadership/Admin mới có quyền xóa; các vai trò khác không thấy nút Xóa | F-099 | Spec |
+| DELETE | `/api/v1/dry-ports/{id}` | Xóa mềm: set `deletedAt = NOW()`. Response 200. | `dryport:delete` |
 
-**Testing Strategy (UI)**
+---
 
-Kiểm thử đơn vị (unit test) tập trung vào component nút Xóa: chỉ hiển thị cho vai trò Leadership/Admin, component hộp thoại xác nhận hiện ra đúng nội dung, yêu cầu nhập mã để xác nhận và nút "Xác nhận xóa" chỉ kích hoạt khi mã khớp. Kiểm thử tích hợp (integration test): gọi DELETE /api/v1/cang-can/:id cho một cảng cạn có deletedAt=null, xác nhận phản hồi 200 và deletedAt được set; gọi lại GET để xác nhận cảng cạn không còn xuất hiện trong kết quả (backend lọc deletedAt). Kiểm thử nghiệp vụ: tạo 1 cảng cạn, thử xóa với mã sai — không xóa được; thử xóa với mã đúng — xóa mềm thành công, toast hiện, danh sách làm mới. Kiểm thử RBAC: chỉ Leadership/Admin thấy nút Xóa; các vai trò khác không thấy.
+## 8. Chi tiết nghiệp vụ
+
+### 8.1. Kích hoạt xóa
+
+Từ F-083: dropdown hành động trên mỗi dòng → "Xóa". Từ F-084: nút "Xóa" trên footer trang chi tiết. Cả hai chỉ hiển thị nếu người dùng có `dryport:delete`.
+
+### 8.2. Hộp thoại xác nhận
+
+Hiển thị tên và mã cảng cạn. Ô nhập mã: placeholder "Nhập mã cảng cạn". Nút "Xác nhận xóa" disabled (màu xám) cho đến khi người dùng nhập đúng mã. Nút "Hủy" luôn enabled.
+
+### 8.3. Thực hiện xóa
+
+Người dùng nhập đúng mã → nút "Xác nhận xóa" enabled (màu đỏ, destructive) → bấm → loading trên nút → `DELETE /api/v1/dry-ports/{id}` → backend set `deletedAt = NOW()`, trả về 200 → toast xanh "Đã xóa thành công" → danh sách F-083 reload (bản ghi biến mất).
+
+### 8.4. Sau khi xóa
+
+Bản ghi không còn xuất hiện trong danh sách mặc định. Lịch sử thay đổi (F-031) vẫn truy xuất được nếu biết ID. Admin Cục có thể xem bản ghi đã xóa qua filter đặc biệt.
+
+---
+
+## 9. Yêu cầu phi chức năng
+
+- **Hiệu năng:** DELETE ≤ 500ms; không lock bảng
+- **Bảo mật:** RBAC `dryport:delete`; xác nhận 2 bước (nhập mã); HTTPS
+- **Độ tin cậy:** Soft-delete trong transaction; không ảnh hưởng bảng khác
+- **UX:** Destructive button màu đỏ; confirm rõ ràng; loading state
+- **Pháp lý:** Dữ liệu không mất — đáp ứng yêu cầu kiểm toán; audit log ≥ 2 năm
+
+---
+
+## 10. Yêu cầu giao diện
+
+> Token từ `theme.ts` + `tokens.ts`.
+
+### 10.1. Nút Xóa
+- F-083: trong dropdown hành động mỗi dòng, màu danger, icon `Trash2`
+- F-084: footer, nút outlined danger, `borderRadius: radiusPill`, `height: 40`
+
+### 10.2. Hộp thoại xác nhận
+- **Tiêu đề:** "Xác nhận xóa"
+- **Nội dung:** "Bạn có chắc chắn muốn xóa cảng cạn **[CC-XXXXXX]** — **[Tên]**? Hành động này không thể hoàn tác."
+- **Ô nhập:** "Nhập mã cảng cạn để xác nhận", `borderRadius: radiusPill`, `height: 40`
+- **Footer:** [Hủy] outlined + [Xác nhận xóa] danger primary, disabled đến khi nhập đúng mã
+
+---
 
 ## Implementation Status
+
 | Layer | Status | Notes |
 |-------|--------|-------|
-| Backend (API) | Done | API endpoints fully implemented |
-| Frontend (UI) | Pending | UI specs exist in merged feature scope; pending implementation |
+| Backend (API) | Done | `DELETE /api/v1/dry-ports/{id}` soft-delete đã triển khai |
+| Frontend (UI) | Pending | Spec sẵn sàng, chờ implement |

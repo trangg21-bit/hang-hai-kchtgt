@@ -1,95 +1,181 @@
 ---
 id: F-106
-name: "Upload GiayTo Cảng cạn"
+name: Upload Giấy tờ Cảng cạn
 slug: ui-upload-giayto-cct
 module-id: M-002
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-01T04:09:37Z"
-last-updated: "2026-07-01T04:09:37Z"
+created: 2026-07-01T04:09:20Z
+last-updated: 2026-08-03
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Upload Giấy tờ Cảng cạn
 
-# Feature: Upload GiayTo Cảng cạn
+**Tài liệu:** BA Feature Brief
+**Feature:** F-106 — Upload Giấy tờ Cảng cạn
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Người viết:** Business Analyst
+**Ngày cập nhật:** 2026-08-03
 
-## Description
+---
 
-Tính năng Upload GiayTo Cảng cạn cho phép người dùng đính kèm các văn bản liên quan (giấy tờ, hồ sơ, chứng từ) trực tiếp từ trang chi tiết Cảng cạn (F-084). Giao diện bao gồm một nút "Thêm văn bản đính kèm" nằm trên trang thông tin chi tiết của Cảng cạn; khi người dùng nhấn nút này, một modal upload file hiện ra, cho phép chọn file từ thiết bị, xem trước thông tin file (tên, kích thước, định dạng) và xác nhận tải lên. Hệ thống cho phép tải lên file với bất kỳ MIME type nào, không giới hạn định dạng file cụ thể. Định danh của file (GiayTo) được lưu trữ cùng tham chiếu thực thể — entityType="cang-can" và entityId (string) của Cảng cạn tương ứng — nhằm đảm bảo mọi tài liệu đính kèm luôn gắn liền với thực thể Cảng cạn mà nó mô tả. Dữ liệu binary của file không được lưu thực tế vào MinIO mà sử dụng mock console-stub (đàm phán với W4 để tích hợp Tika kiểm tra magic-byte ở giai đoạn sau). Đây là một tính năng cục bộ, phục vụ nhu cầu quản lý hồ sơ điện tử cho Cảng cạn trong hệ thống cảng hải quan một cách thống nhất.
+## 1. Tổng quan
 
-## Business Intent
+### 1.1. Tính năng này làm gì?
 
-Cho phép người dùng gắn các giấy tờ chứng từ liên quan trực tiếp vào từng Cảng cạn, tạo lập một kho lưu trữ hồ sơ điện tử tập trung, giảm thiểu việc sử dụng giấy tờ và đảm bảo tính truy xuất, kiểm toán của các tài liệu quản lý cảng cạn.
+Cho phép upload file đính kèm (giấy phép thành lập, quyết định chủ trương, tài liệu pháp lý) cho Cảng cạn. Tích hợp trong form Tạo mới (F-026) và Cập nhật (F-027) qua **tab "File đính kèm"**. File được lưu vào bảng `dry_port_attachments`.
 
-## Flow Summary
+### 1.2. Thông số
 
-Người dùng mở trang chi tiết Cảng cạn (F-084), nhấn nút "Thêm văn bản đính kèm". Modal upload file hiện ra, người dùng chọn file từ thiết bị và nhấn "Tải lên". Client-side kiểm tra thông tin file (tên, kích thước) trước khi gửi lên. File được gửi qua POST /api/v1/giay-to với FormData chứa file, entityType="cang-can" và entityId (string của Cảng cạn tương ứng). Server lưu metadata vào CSDL, lưu metadata vào CSDL, và gọi MinIO stub (ghi log key ra console). Sau khi hoàn tất, hệ thống hiển thị toast "Upload thành công" và cập nhật danh sách file đính kèm ngay trên trang chi tiết. Người dùng có thể xem danh sách file đã upload, nhấn nút "Tải xuống" (GET /api/v1/giay-to/:id/download) để xem lại hoặc nhấn "Xóa" (DELETE /api/v1/giay-to/:id) để xóa nếu có quyền.
+| Tham số | Giá trị |
+|---------|--------|
+| Định dạng | PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF |
+| Kích thước tối đa | 20MB / file |
+| Số lượng tối đa | 10 files / Cảng cạn |
+| Lưu trữ | Server filesystem hoặc object storage |
 
-## Acceptance Criteria
+### 1.3. Tại sao cần?
 
-1. Nút "Thêm văn bản đính kèm" hiển thị trên trang chi tiết Cảng cạn (F-084) và mở modal upload khi được nhấn.
-2. Modal upload cho phép chọn tối đa một file mỗi lần; hiển thị thông tin file (tên, kích thước, MIME type) trước khi xác nhận.
-3. Hệ thống chấp nhận file với bất kỳ MIME type nào, không giới hạn định dạng file cụ thể.
-4. Kích thước file được ghi nhận nhưng không có giới hạn tối đa được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).
-5. Sau khi upload thành công, metadata được lưu vào CSDL với entityType="cang-can" và entityId đúng của Cảng cạn tương ứng; toast "Upload thành công" được hiển thị.
-6. Người dùng có thể xem danh sách file đính kèm trên trang chi tiết, mỗi mục hiển thị tên file, kích thước, ngày upload và người upload.
-7. Nút "Tải xuống" cho từng file gọi GET /api/v1/giay-to/:id/download và trả về nội dung file.
-8. Nút "Xóa" cho từng file gọi DELETE /api/v1/giay-to/:id và xóa metadata khỏi CSDL sau khi xác nhận; người dùng không có quyền giayto:delete không thấy nút này.
-9. GET /api/v1/giay-to?entityType=cang-can&entityId={entityId} trả về đúng danh sách các file đính kèm cho Cảng cạn cụ thể.
-10. RBAC: các quyền upload (giayto:upload) và delete (giayto:delete) được kiểm tra đúng theo quy định; người dùng không có quyền upload không thấy nút "Thêm văn bản đính kèm".
+- Lưu trữ hồ sơ pháp lý gắn liền với Cảng cạn
+- Hỗ trợ quy trình phê duyệt: Lãnh đạo xem giấy tờ trước khi duyệt
+- Truy xuất tài liệu nhanh — không cần tìm trong hồ sơ giấy
 
-## In Scope
+### 1.4. Luồng chính
 
-- Giao diện nút "Thêm văn bản đính kèm" trên trang chi tiết Cảng cạn (F-084).
-- Modal upload file với hỗ trợ chọn file từ trình duyệt.
-- Client-side kiểm tra thông tin file (tên, kích thước, MIME type) trước khi gửi lên.
-- Client-side hiển thị thông tin kích thước file (không có giới hạn tối đa từ BE).
-- POST /api/v1/giay-to gửi FormData (file + entityType + entityId).
-- Server-side lưu metadata và ghi nhận thông tin file.
-- Lưu metadata GiayTo vào CSDL (fileName, mimeType, fileSize, entityType, entityId, minioKey, uploadedBy, createdAt).
-- MinIO stub — ghi log key ra console, không lưu binary thực.
-- GET /api/v1/giay-to?entityType=CangCan&entityId=uuid — liệt kê file đính kèm.
-- GET /api/v1/giay-to/:id/download — tải file đã upload.
-- DELETE /api/v1/giay-to/:id — xóa file đính kèm (có xác nhận).
-- Toast thông báo kết quả upload (thành công / không hợp lệ / quá lớn).
-- RBAC kiểm tra @auth.check(authentication, 'giayto:upload') và @auth.check(authentication, 'giayto:delete').
+F-026/F-027 → tab "File đính kèm" → [Upload] → chọn file → upload → hiển thị trong danh sách. Mỗi file có nút [Tải xuống] [Xóa]. File upload trong phiên NHAP/PENDING có thể xóa. File của bản ghi APPROVED: chỉ đọc.
 
-## Out of Scope
+---
 
-- Tích hợp MinIO thực tế — MinIO stub chỉ ghi log ra console.
-- Kiểm tra magic-byte của file bằng Apache Tika — chức năng này được deferred (đàm phán W4).
-- Upload nhiều file cùng lúc (multi-file upload).
-- Preview file inline trong modal (chỉ hiển thị thông tin metadata).
-- Nén, chuyển đổi định dạng hoặc phân tích nội dung file.
-- Tìm kiếm nội dung bên trong file.
-- Quản lý phiên bản file (versioning) — mỗi lần upload tạo một bản ghi GiayTo mới.
-- Tích hợp email/notification khi upload hoặc xóa file.
+## 2. Ai dùng? Dùng như thế nào?
 
-## Roles + Permissions
+| Permission | Hành động |
+|---|---|
+| `dryport:create` | Upload khi tạo mới (F-026) |
+| `dryport:update` | Upload / Xóa khi cập nhật (F-027) |
+| `dryport:read` | Xem danh sách file + tải xuống (F-030) |
 
-| Role | Level | Notes |
+> M-001 quản lý. Admin Cục không giới hạn.
+
+---
+
+## 3. User Stories
+
+### Must
+- **US-106-01:** Upload file từ máy, hiển thị tiến trình upload.
+- **US-106-02:** Xem danh sách file: tên, kích thước, ngày upload.
+- **US-106-03:** Tải xuống file.
+
+### Should
+- **US-106-04:** Xóa file đã upload (khi chưa APPROVED).
+- **US-106-05:** Validation: sai định dạng → thông báo; quá dung lượng → thông báo; vượt số lượng → thông báo.
+
+### Could
+- **US-106-06:** Kéo thả file vào vùng upload.
+- **US-106-07:** Xem trước ảnh (JPG/PNG) ngay trên trình duyệt.
+
+---
+
+## 4. Yêu cầu chức năng (Acceptance Criteria)
+
+### Nhóm 1: Upload
+
+**AC-106-01:** Bấm [Upload] → chọn file → progress bar → upload xong → hiển thị trong danh sách: tên file, kích thước (KB/MB), ngày upload.
+**AC-106-02:** Hỗ trợ chọn nhiều file cùng lúc (≤10 files tổng cộng).
+
+### Nhóm 2: Validation
+
+**AC-106-03:** File sai định dạng → toast "Định dạng không được hỗ trợ. Chấp nhận: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF."
+**AC-106-04:** File >20MB → toast "File vượt quá 20MB."
+**AC-106-05:** Tổng >10 files → toast "Đã đạt giới hạn 10 file."
+
+### Nhóm 3: Quản lý file
+
+**AC-106-06:** Click file → tải xuống (mở tab mới hoặc download).
+**AC-106-07:** Nút [Xóa] cạnh mỗi file → confirm → `DELETE /api/v1/dry-ports/{id}/attachments/{attId}` → file biến mất.
+**AC-106-08:** Bản ghi APPROVED → ẩn nút [Xóa], chỉ hiển thị [Tải xuống].
+
+---
+
+## 5. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Nguồn |
 |---|---|---|
-| Admin | upload + delete + view | Toàn quyền quản lý file đính kèm Cảng cạn |
-| Lãnh đạo | upload + delete + view | Có thể upload, xóa và xem mọi file đính kèm |
-| Chuyên viên | upload + view | Có thể upload và xem file đính kèm, không có quyền xóa |
-| Chuyên viên Cảng vụ | upload + view | Có thể upload và xem file đính kèm Cảng cạn, không có quyền xóa |
-| Doanh nghiệp cảng | upload + view | Có thể upload và xem file đính kèm liên quan đến Cảng cạn của mình |
-| Người dùng tại cảng | upload + view | Có thể upload và xem file đính kèm trong phạm vi Cảng cạn được phân quyền |
-| Nhân viên vận hành | view only | Chỉ có quyền xem, không thể upload hoặc xóa file đính kèm |
+| BR-106-01 | Định dạng: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. | Hạ tầng |
+| BR-106-02 | ≤20MB/file, ≤10 files/Cảng cạn. | Hạ tầng |
+| BR-106-03 | File của bản ghi NHAP/PENDING: có thể xóa. File của APPROVED: chỉ đọc, không xóa được. | Nghiệp vụ |
+| BR-106-04 | File tồn tại vĩnh viễn — không bị xóa khi xóa mềm Cảng cạn. | Thiết kế |
+| BR-106-05 | Tên file giữ nguyên (không rename), hiển thị tên gốc. | UX |
 
-## Entities
+---
 
-- **GiayTo**: id (UUID), entityType (string: cang-bien/ben-cang/cau-cang/cang-can/vung-nuoc), entityId (string), fileName (string), fileSize (Long), mimeType (string, any MIME type), minioKey (string), uploadedBy (string), createdAt (LocalDateTime)
+## 6. Mô hình dữ liệu
 
-## Business Rules
+### `dry_port_attachments` (🔴 mới)
 
-1. MIME type của file là string tự do, hệ thống không giới hạn loại MIME cụ thể (BE chấp nhận bất kỳ MIME type nào).
-2. Không có giới hạn kích thước file được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).
-3. GiayTo phải được liên kết với một thực thể Cảng cạn xác định thông qua entityType="cang-can" và entityId (string) — không cho phép upload file không gắn với thực thể.
-4. Dữ liệu binary của file không được lưu thực tế vào MinIO — chỉ metadata được lưu vào CSDL, binary được stub bằng console logging (đàm phán với W4 cho giai đoạn tiếp theo).
-5. Apache Tika magic-byte content detection được deferred — chỉ dựa vào MIME type client-declared trong header Content-Type (chủ động xác thực lại tại server).
+| Tên trường | Kiểu | Mô tả |
+|---|---|---|
+| id | UUID | PK |
+| dry_port_id | UUID | FK → dry_ports.id |
+| ten_file | NVARCHAR(255) | Tên file gốc |
+| loai_file | NVARCHAR(50) | MIME type |
+| kich_thuoc | BIGINT | Dung lượng (bytes) |
+| duong_dan | NVARCHAR(500) | Đường dẫn lưu trữ |
+| created_by | UUID | Người upload |
+| created_at | TIMESTAMP | Thời điểm upload |
 
-## Testing Strategy
+---
 
-Kiểm thử sẽ bao gồm test đơn vị cho các service phương thức validateMime và validateFileSize, integration test cho POST /api/v1/giay-to với các trường hợp MIME hợp lệ (PDF, DOCX, JPEG) và không hợp lệ (GIF, PNG, EXE), test size boundary tại 10 MB (trước và sau), test RBAC cho từng role với các thao tác upload, delete và view, end-to-end test trên giao diện modal upload: mở trang chi tiết Cảng cạn, nhấn nút upload, chọn file, kiểm tra toast thông báo, xác nhận metadata lưu đúng CSDL, liệt kê file qua endpoint list, thực hiện download và delete. MinIO stub sẽ được kiểm tra bằng cách xác nhận log console được ghi đúng khi upload. Tất cả các test được thực hiện trên môi trường CI/CD với database in-memory.
+## 7. API Endpoints
+
+| Method | Endpoint | Mô tả | Quyền |
+|---|---|---|---|
+| POST | `/api/v1/dry-ports/{id}/attachments` | Upload file (multipart/form-data) | `dryport:create` / `update` |
+| GET | `/api/v1/dry-ports/{id}/attachments` | Danh sách file | `dryport:read` |
+| GET | `/api/v1/dry-ports/{id}/attachments/{attId}/download` | Tải xuống | `dryport:read` |
+| DELETE | `/api/v1/dry-ports/{id}/attachments/{attId}` | Xóa file | `dryport:update` |
+
+---
+
+## 8. Chi tiết nghiệp vụ
+
+### 8.1. Upload
+
+Tab "File đính kèm" trong F-026/F-027 → khu vực upload (có thể kéo thả) → chọn file → progress bar từng file → danh sách cập nhật realtime.
+
+### 8.2. Quản lý
+
+Danh sách file dạng bảng: Tên file | Kích thước | Ngày upload | Hành động [Tải xuống] [Xóa]. Nút [Xóa] chỉ hiển thị khi bản ghi chưa APPROVED.
+
+### 8.3. Lưu cùng form
+
+File upload trong phiên tạo mới/cập nhật được lưu cùng transaction với form. Nếu người dùng hủy form → file đã upload vẫn được giữ (đã lưu vào DB).
+
+---
+
+## 9. Yêu cầu phi chức năng
+
+- **Hiệu năng:** Upload ≤5s/file (20MB); download ≤3s; hỗ trợ upload đồng thời
+- **Bảo mật:** Giới hạn MIME type; scan virus (nếu có); HTTPS
+- **UX:** Progress bar; drag & drop; preview ảnh
+
+---
+
+## 10. Yêu cầu giao diện
+
+> Token từ `theme.ts` + `tokens.ts`.
+
+- **Tab "File đính kèm":** Vùng upload (dashed border, icon upload, text "Kéo thả file vào đây hoặc bấm để chọn") + danh sách file bên dưới
+- **Danh sách file:** Mỗi dòng: icon file type | tên file | kích thước | ngày | [Tải xuống] [Xóa]
+- **Nút:** `borderRadius: radiusPill`, `height:40`
+- **Progress bar:** `statusOperational` (xanh)
+
+---
+
+## Implementation Status
+
+| Layer | Status |
+|-------|--------|
+| Backend | Partial — cần bảng `dry_port_attachments` + API |
+| Frontend | Pending |

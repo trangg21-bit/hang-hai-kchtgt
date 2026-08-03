@@ -7,139 +7,174 @@ status: backend_done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-29T11:10:06Z
+last-updated: 2026-08-03
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Cảng cạn - Cập nhật
+# Đặc tả nghiệp vụ: Quản lý Cảng cạn - Cập nhật
 
-## Description
-Cập nhật thông tin của Cảng cạn đã tồn tại trong hệ thống, bao gồm thay đổi địa chỉ, năng lực, dịch vụ, các trường kỹ thuật và giấy tờ pháp lý liên quan, với lịch sử biến động được ghi nhận tự động.
+**Tài liệu:** BA Feature Brief
+**Feature:** F-027 — Quản lý Cảng cạn - Cập nhật
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Người viết:** Business Analyst
+**Ngày cập nhật:** 2026-08-03
 
-## Business Intent
-Cho phép cập nhật thông tin Cảng cạn khi có thay đổi về điều kiện vận hành, mở rộng năng lực, thay đổi địa chỉ hoặc điều chỉnh giấy tờ pháp lý. Việc cập nhật đúng quy trình đảm bảo cơ sở dữ liệu luôn chính xác và cập nhật, hỗ trợ công tác quản lý và ra quyết định. Mọi thay đổi đều được ghi nhận lịch sử để phục vụ kiểm toán và追溯 nguồn gốc.
+---
 
-## Flow Summary
-Người dùng chọn một Cảng cạn từ danh sách, truy cập giao diện "Cập nhật" và điền thông tin cần thay đổi. Hệ thống so sánh giá trị trước và sau khi cập nhật, ghi nhận lịch sử thay đổi chi tiết. Sau khi lưu, nếu thay đổi ảnh hưởng đến điều kiện phê duyệt (ví dụ: thay đổi năng lực xử lý), hệ thống tự động chuyển trạng thái sang "cần phê duyệt lại" và gửi yêu cầu phê duyệt mới. Người dùng có thể cập nhật nhiều trường cùng lúc trong một lần.
+## 1. Tổng quan
 
-## Acceptance Criteria
-1. Người dùng có thể chọn một Cảng cạn và truy cập giao diện cập nhật
-2. Hệ thống hiển thị giá trị hiện tại và cho phép chỉnh sửa các trường cần thay đổi
-3. Hệ thống tự động ghi nhận lịch sử thay đổi sau khi lưu
-4. Thay đổi quan trọng kích hoạt yêu cầu phê duyệt lại
-5. Dữ liệu được kiểm tra hợp lệ trước khi lưu
+### 1.1. Tính năng này làm gì?
 
-## In Scope
-- Form cập nhật thông tin Cảng cạn
-- Hiển thị giá trị hiện tại và giá trị mới
-- Ghi nhận lịch sử thay đổi tự động
-- Kiểm tra hợp lệ dữ liệu trước khi lưu
-- Kích hoạt phê duyệt lại khi thay đổi quan trọng
+Cập nhật Cảng cạn cho phép chỉnh sửa thông tin Cảng cạn đã tồn tại. **Form giống hệt F-026 (Tạo mới)** — 4 tab, 25 trường — với 2 khác biệt duy nhất:
 
-## Out of Scope
-- Tạo mới Cảng cạn (thuộc F-026)
-- Xóa Cảng cạn (thuộc F-028)
-- Xem chi tiết Cảng cạn (thuộc F-030)
-- Xem lịch sử thay đổi (thuộc F-031)
+| Khác biệt | F-026 (Tạo mới) | F-027 (Cập nhật) |
+|-----------|----------------|-------------------|
+| Dữ liệu ban đầu | Trống / mặc định | **Pre-filled từ DB** qua `GET /api/v1/dry-ports/{id}` |
+| Mã CC-XXXXXX | Tự sinh, RO | **Hiển thị từ DB, RO — không bao giờ đổi** |
 
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Nhân viên Cảng | Cập nhật (khi Cảng cạn không khóa) |
-| Trưởng phòng QL Cảng | Cập nhật, Phê duyệt lại |
-| Quản trị viên | Cập nhật, Khóa/Mở khóa |
+Form vẫn có 2 nút như F-026: **Lưu tạm** và **Lưu và phê duyệt** (nếu có `dryport:approve`). Mọi thay đổi được ghi vào `change_history`.
 
-## Entities
-- **CangCan**: id, ma, ten, diaChi, toDo, loaiHinh, dienTich, nangLxuLy, dichVu, trangThai, ghiChu, createdAt, updatedAt
-- **LichSuCangCan**: id, cangCanId, ngayThayDoi, nguoiThucHien, loaiThayDoi, noiDungTruoc, noiDungSau, ghiChu, createdAt
+> **Gửi phê duyệt** là hành động trên F-083 (Danh sách), không có trên form này.
 
-## Business Rules
-1. Chỉ Cảng cạn ở trạng thái "chờ phê duyệt", "bị từ chối" hoặc "đã kích hoạt" mới được cập nhật
-2. Các trường: tên, địa chỉ và loại hình là bắt buộc khi cập nhật
-3. Thay đổi năng lực xử lý hoặc loại hình phải được phê duyệt lại
-4. Lịch sử thay đổi được ghi nhận tự động cho mọi cập nhật
-5. Người cập nhật được ghi nhận tự động từ tài khoản đăng nhập
+### 1.2. Tại sao cần?
 
-## Testing Strategy
-Kiểm thử cập nhật từng trường đơn lẻ và nhiều trường cùng lúc, kiểm thử ghi nhận lịch sử thay đổi, kiểm thử kích hoạt phê duyệt lại khi thay đổi quan trọng, kiểm thử hợp lệ dữ liệu đầu vào, kiểm thử khi Cảng cạn bị khóa.
+- Cập nhật dữ liệu Cảng cạn theo thực tế vận hành
+- Bổ sung thông tin dần: nháp (F-026) → sửa tiếp (F-027) → gửi duyệt (F-083)
+- Mọi thay đổi được ghi lịch sử đầy đủ
 
-## UI Specification
+### 1.3. Luồng chính
 
-Giao diện cập nhật Cảng cạn (CangCan) cho phép người dùng có quyền chỉnh sửa thông tin của một cảng cạn đã tồn tại trong hệ thống. Form được điền sẵn (pre-filled) với dữ liệu hiện tại của cảng cạn thông qua API GET /api/v1/cang-can/:id. Trường maCangCan được khóa (readonly) để đảm bảo tính toàn vẹn của mã định danh duy nhất. Người dùng có thể chỉnh sửa tenCangCan, diaChi, tinhThanh và ghiChu. Trường tinhThanh được hiển thị dưới dạng dropdown danh sách các tỉnh/thành Việt Nam. Khi người dùng bấm nút "Lưu", hệ thống gọi PUT /api/v1/cang-can/:id với payload chứa các trường đã cập nhật. Backend ghi nhận thay đổi vào bảng LichSuThayDoi và đặt lại trangThaiPheDuyet về CHO_PHE_DUYET để yêu cầu phê duyệt lại. Sau khi cập nhật thành công, hệ thống hiển thị toast "Cập nhật thành công, chờ phê duyệt lại" và giữ nguyên trang cho người dùng tiếp tục thao tác hoặc quay về danh sách.
+F-083/F-084 → "Chỉnh sửa" hoặc "Tiếp tục chỉnh sửa" → `GET /api/v1/dry-ports/{id}` → form pre-filled → sửa → **Lưu tạm** (giữ trạng thái, ở lại form) hoặc **Lưu và phê duyệt** (`approvalStatus=APPROVED`, `change_history`, redirect F-083).
 
-**Business Intent**
+---
 
-Cho phép người dùng có thẩm quyền duy trì và cập nhật thông tin cảng cạn đã tồn tại, đảm bảo mọi thay đổi đều được ghi nhận lịch sử và phải trải qua quy trình phê duyệt lại nhằm bảo toàn tính toàn vẹn và trách nhiệm giải trình của dữ liệu tài sản.
+## 2. Ai dùng? Dùng như thế nào?
 
-**Flow Summary**
-
-Người dùng truy cập trang Chi tiết Cảng cạn (F-084) hoặc chọn nút "Sửa" từ danh sách (F-083), hệ thống điều hướng đến trang Cập nhật (F-086) với entityId tương ứng. Form được pre-filled với toàn bộ thông tin hiện tại của cảng cạn. Trường maCangCan hiển thị ở chế độ readonly không thể chỉnh sửa. Người dùng sửa các trường tenCangCan, diaChi, tinhThanh (từ dropdown), ghiChu theo nhu cầu. Khi bấm "Lưu", hệ thống gọi PUT /api/v1/cang-can/:id. Backend ghi nhận thay đổi vào LichSuThayDoi record, đặt lại trangThaiPheDuyet=CHO_PHE_DUYET. Nếu thành công, toast "Cập nhật thành công, chờ phê duyệt lại" hiển thị. Nếu có lỗi validation hoặc trùng mã (không thể xảy ra vì maCangCan readonly), hiển thị thông báo lỗi tương ứng. Người dùng có thể bấm "Hủy" để đóng form mà không lưu thay đổi.
-
-**Acceptance Criteria (UI)**
-
-1. Khi mở form Cập nhật, hệ thống gọi GET /api/v1/cang-can/:id và điền đầy đủ dữ liệu hiện tại vào form; trường maCangCan hiển thị ở chế độ readonly không thể chỉnh sửa.
-2. Trường tenCangCan, diaChi là các trường bắt buộc — nếu người dùng xóa nội dung và nhấn Lưu, hệ thống hiển thị thông báo lỗi "Đây là trường bắt buộc" tại trường tương ứng.
-3. Trường tinhThanh hiển thị dưới dạng dropdown danh sách các tỉnh/thành; giá trị mặc định là giá trị hiện tại của cảng cạn đang được chỉnh sửa.
-4. Khi bấm "Lưu" với tất cả dữ liệu hợp lệ, hệ thống gọi PUT /api/v1/cang-can/:id với payload chứa các trường đã sửa; backend trả về 200, ghi nhận LichSuThayDoi record và đặt lại trangThaiPheDuyet=CHO_PHE_DUYET.
-5. Sau khi cập nhật thành công, hệ thống hiển thị toast "Cập nhật thành công, chờ phê duyệt lại" và người dùng vẫn ở trên trang form để tiếp tục chỉnh sửa nếu cần.
-6. Nếu người dùng bấm "Hủy" hoặc nhấn Esc, form đóng lại, quay về trang trước đó (F-083 hoặc F-084) mà không lưu bất kỳ thay đổi nào.
-7. Nếu người dùng thay đổi một trường (ví dụ: tenCangCan) và sau đó hủy — hệ thống không gọi API PUT, LichSuThayDoi không có bản ghi mới.
-8. Chỉ vai trò có quyền update mới thấy nút "Sửa" trên trang Danh sách (F-083) và trang Chi tiết (F-084).
-
-**In Scope (UI)**
-
-- Form pre-filled với dữ liệu hiện tại của cảng cạn
-- Trường maCangCan ở chế độ readonly
-- Chỉnh sửa: tenCangCan, diaChi, tinhThanh (dropdown), ghiChu
-- Gửi PUT /api/v1/cang-can/:id
-- Backend ghi nhận LichSuThayDoi record
-- Backend đặt lại trangThaiPheDuyet=CHO_PHE_DUYET
-- Toast "Cập nhật thành công, chờ phê duyệt lại"
-- Xử lý hủy và không lưu
-
-**Out of Scope (UI)**
-
-- Thay đổi maCangCan (bị khóa)
-- Tạo mới Cảng cạn (thuộc F-085)
-- Phê duyệt/reject (thuộc F-087)
-- Xóa cảng cạn (thuộc F-099)
-- Lịch sử thay đổi (thuộc F-100)
-- Tệp đính kèm
-- Phê duyệt tự động — cần lãnh đạo phê duyệt lại
-
-**Roles + Permissions (UI)**
-
-| Role | Level | Notes |
-|---|---|---|
-| NhanVien | read | Không có quyền cập nhật; chỉ xem danh sách, chi tiết và lịch sử |
-| QuanTriCuc | read, update | Xem, chỉnh sửa Cảng cạn; xem danh sách, chi tiết, lịch sử |
-| LanhDaoCuc | read, update, approve | Xem, chỉnh sửa Cảng cạn, phê duyệt/từ chối; xem lịch sử |
-| QuanTriHeThong | read, update, delete, approve | Toàn quyền: xem, tạo, sửa, xóa, phê duyệt, xem lịch sử |
-
-**UI Entities**
-
-| Entity | Fields |
+| Permission | Mô tả |
 |---|---|
-| CangCan | id(UUID), maCangCan(string unique), tenCangCan(string), diaChi(string), tinhThanh(string), ghiChu(text), trangThaiHoatDong(enum), trangThaiPheDuyet(enum), orgUnitId(UUID), createdBy(UUID), updatedBy(UUID), createdAt, updatedAt, deletedAt(nullable) |
-| UpdatePayload | tenCangCan(string), diaChi(string), tinhThanh(string), ghiChu(string) |
-| LichSuThayDoi | id(UUID), cangCanId(UUID), field(string), oldValue(string), newValue(string), changedBy(UUID), changedAt(timestamp), actionType(enum) |
+| `dryport:update` | Thấy nút "Chỉnh sửa"/"Tiếp tục chỉnh sửa", gọi PUT |
+| `dryport:approve` | Thấy thêm nút "Lưu và phê duyệt" |
 
-**UI Business Rules**
+> Phân quyền do M-001 quản lý. Admin Cục không giới hạn đơn vị.
 
-| ID | Rule | Applies-to | Source |
+---
+
+## 3. User Stories
+
+### Must
+- **US-027-01:** Mở form cập nhật từ F-083/F-084, dữ liệu pre-filled đầy đủ.
+- **US-027-02:** Mã CC-XXXXXX hiển thị read-only — thấy nhưng không sửa được.
+- **US-027-03:** "Lưu tạm" giữ nguyên trạng thái, form ở lại để sửa tiếp.
+- **US-027-04:** "Lưu và phê duyệt" (`dryport:approve`) duyệt ngay, ghi change_history.
+
+### Should
+- **US-027-05:** Toast "Cập nhật thành công", redirect F-083.
+- **US-027-06:** Hủy/Esc đóng form, không lưu.
+
+### Could
+- **US-027-07:** Link xem lịch sử thay đổi → F-031.
+
+---
+
+## 4. Yêu cầu chức năng (Acceptance Criteria)
+
+### Nhóm 1: Mở form
+
+**AC-027-01:** `dryport:update` → "Chỉnh sửa"/"Tiếp tục chỉnh sửa" → `GET /api/v1/dry-ports/{id}` → pre-fill 25 trường giống F-026.
+**AC-027-02:** `dryPortCode` hiển thị CC-XXXXXX, disabled, không focus được, không sửa được.
+
+### Nhóm 2: Lưu tạm
+
+**AC-027-03:** Sửa → "Lưu tạm" → `PUT /api/v1/dry-ports/{id}?action=draft` → `approvalStatus` giữ nguyên → toast "Đã lưu nháp" → ở lại form. Tối thiểu: Tên.
+
+### Nhóm 3: Lưu và phê duyệt
+
+**AC-027-04:** Có `dryport:approve` → thấy nút "Lưu và phê duyệt". Đầy đủ 6 trường bắt buộc (giống F-026) → `PUT ?action=approve` → `approvalStatus=APPROVED`, `change_history` ghi nhận từng trường thay đổi → toast "Cập nhật thành công" → redirect F-083.
+**AC-027-05:** Thiếu trường bắt buộc → lỗi từng trường, không gửi API.
+
+### Nhóm 4: Hủy
+
+**AC-027-06:** Hủy/Esc → đóng form, không lưu, không tạo change_history.
+
+---
+
+## 5. Quy tắc nghiệp vụ (Business Rules)
+
+### 5.1. Mã cảng cạn — KHÔNG ĐỔI
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-027-01 | **Mã CC-XXXXXX bất biến vĩnh viễn** — Được sinh khi tạo mới (F-026), không bao giờ sửa được trong suốt vòng đời. Form cập nhật hiển thị read-only. Backend từ chối nếu payload gửi mã khác với DB. | Thiết kế |
+
+### 5.2. Luồng cập nhật
+
+| ID | Quy tắc | Nguồn |
+|---|---|---|
+| BR-027-02 | **Lưu tạm giữ nguyên trạng thái** — `approvalStatus` không đổi. Tối thiểu: Tên. Không tạo change_history. | Nghiệp vụ |
+| BR-027-03 | **Lưu và phê duyệt** — Cần `dryport:approve`. Đầy đủ 6 trường bắt buộc (như F-026). `approvalStatus=APPROVED`, tạo `change_history` + `approval_logs`. | Nghiệp vụ |
+| BR-027-04 | **Ghi nhận lịch sử** — Backend so sánh payload với DB, tạo `change_history` cho từng trường có thay đổi (old_value → new_value). | Thiết kế |
+
+### 5.3. Kế thừa từ F-026
+
+| ID | Quy tắc |
+|---|---|
+| BR-027-05 | Validate dữ liệu như F-026: GPS, diện tích/công suất ≥0, định dạng file. |
+| BR-027-06 | `dryport:update` mới thấy nút sửa. `dryport:approve` mới thấy nút Lưu và phê duyệt. |
+| BR-027-07 | Phạm vi đơn vị — chỉ sửa trong đơn vị của mình. Admin Cục toàn bộ. |
+| BR-027-08 | Audit log mọi thao tác. |
+
+---
+
+## 6. Mô hình dữ liệu
+
+> Kế thừa toàn bộ từ F-026 Section 6. Không thêm bảng mới.
+
+`change_history`: entity_id, entity_type="DRY_PORT", action_type=UPDATE, field_name, old_value, new_value, changed_by, changed_at. Mỗi lần Lưu và phê duyệt tạo 1 record cho mỗi trường thay đổi.
+
+---
+
+## 7. API Endpoints
+
+| Method | Endpoint | Mô tả | Quyền |
 |---|---|---|---|
-| BR-086-01 | maCangCan không được phép chỉnh sửa — luôn hiển thị ở chế độ readonly trên form cập nhật | F-086 | Spec |
-| BR-086-02 | Khi cập nhật Cảng cạn, trangThaiPheDuyet được đặt lại về CHO_PHE_DUYET để chờ phê duyệt lại | F-086 | Spec |
-| BR-086-03 | Mọi thay đổi trên form cập nhật phải được ghi nhận vào LichSuThayDoi record bởi backend | F-086, INT-003 | Spec |
-| BR-086-04 | tenCangCan, diaChi là các trường bắt buộc không được để trống khi cập nhật | F-086 | Spec |
-| BR-086-05 | Soft-delete: CangCan không có thực thể con nên khi xóa chỉ cần đặt deletedAt, không cần kiểm tra guard | F-099 | Spec |
+| GET | `/api/v1/dry-ports/{id}` | Lấy chi tiết pre-fill form | `dryport:read` |
+| PUT | `/api/v1/dry-ports/{id}` | Cập nhật. `?action=draft` hoặc `?action=approve` | `dryport:update` |
 
-**Testing Strategy (UI)**
+---
 
-Kiểm thử đơn vị (unit test) tập trung vào component form cập nhật: pre-fill đúng dữ liệu từ mock API response, maCangCan ở chế độ readonly không cho phép sửa, các trường tenCangCan, diaChi, tinhThanh, ghiChu có thể chỉnh sửa. Component dropdown tinhThanh hiển thị đúng danh sách tỉnh/thành và giá trị mặc định là giá trị hiện tại. Validation client-side: lỗi bắt buộc cho tenCangCan, diaChi khi để trống. Kiểm thử tích hợp (integration test): gọi PUT /api/v1/cang-can/:id với payload hợp lệ, xác nhận phản hồi 200; kiểm tra backend tạo LichSuThayDoi record cho từng trường thay đổi và đặt lại trangThaiPheDuyet=CHO_PHE_DUYET. Kiểm thử nghiệp vụ: thay đổi 2 trường và hủy — xác nhận không có LichSuThayDoi mới được tạo; thay đổi 1 trường và lưu — xác nhận toast "chờ phê duyệt lại" và kiểm tra lại chi tiết sau đó cho thấy trạng thái đã chuyển về CHO_PHE_DUYET. Kiểm thử RBAC: chỉ QuanTriCuc, LanhDaoCuc, QuanTriHeThông thấy nút Sửa; NhanVien không thấy.
+## 8. Chi tiết nghiệp vụ
+
+### 8.1. Mở form
+
+Từ F-083: NHAP → "Tiếp tục chỉnh sửa"; PENDING/APPROVED/REJECTED → "Chỉnh sửa". Từ F-084: nút "Chỉnh sửa". GET pre-fill toàn bộ 25 trường. `dryPortCode` RO.
+
+### 8.2. Sửa và lưu
+
+Người dùng sửa bất kỳ trường nào (trừ mã) → Lưu tạm (giữ trạng thái, ở lại) hoặc Lưu và phê duyệt (APPROVED, history, redirect). Form, tab, trường giống hệt F-026 Section 10.
+
+### 8.3. Mã không đổi
+
+Dù sửa gì, lưu kiểu gì, mã CC-XXXXXX không bao giờ thay đổi. Backend bảo vệ: nếu payload.dryPortCode ≠ DB.dryPortCode → 400 "Mã cảng cạn không được phép thay đổi".
+
+---
+
+## 9. Yêu cầu phi chức năng
+
+PUT ≤2s; HTTPS; RBAC; transaction atomic; audit log ≥2 năm.
+
+---
+
+## 10. Yêu cầu giao diện
+
+> **Form giống hệt F-026 Section 10** — 4 tab, 25 trường, token từ `theme.ts` + `tokens.ts`.
+>
+> Khác biệt duy nhất: dữ liệu pre-filled, mã RO (không tự sinh), footer [Hủy] [Lưu tạm] [Lưu và phê duyệt].
+
+---
 
 ## Implementation Status
-| Layer | Status | Notes |
-|-------|--------|-------|
-| Backend (API) | Done | API endpoints fully implemented |
-| Frontend (UI) | Pending | UI specs exist in merged feature scope; pending implementation |
+
+| Layer | Status |
+|-------|--------|
+| Backend | Partial — PUT có, cần `?action=` + change_history |
+| Frontend | Pending |
