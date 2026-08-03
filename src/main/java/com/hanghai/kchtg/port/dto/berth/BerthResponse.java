@@ -56,4 +56,14 @@ public class BerthResponse {
     private String openingDecision;
     private String investmentAgreement;
     private Integer structureType;
+
+    // ── Two-level approval tracking fields ────────────────
+    private String activityStatus;
+    private LocalDateTime submittedForApprovalAt;
+    private String submittedForApprovalBy;
+    private LocalDateTime portAuthorityApprovedAt;
+    private String portAuthorityApprovedBy;
+    private LocalDateTime departmentApprovedAt;
+    private String departmentApprovedBy;
+    private String rejectionReason;
 }

@@ -1,0 +1,42 @@
+{
+  "triage_id": "TRI-1785496898288-2fed",
+  "created_at": 1785496898288,
+  "request_summary": "FilterBar: remove flexShrink:0 on button container so Reset/Search buttons flow inline when space permits, BerthList: field reorder done",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/list-view/FilterBar.tsx",
+      "frontend/src/pages/port/BerthList.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/components/list-view/FilterBar.tsx",
+      "frontend/src/pages/port/BerthList.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/berth filter bar button positioning",
+  "blast_radius": 2,
+  "done_oracle": "Buttons on same row as filter fields when collapsed, tsc passes",
+  "escalated_from": {
+    "triage_id": "TRI-1785496403960-7a75",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c391df8230ac9a20338258c42975a5451bd00640",
+    "dirty": true,
+    "captured_at": 1785496898473
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

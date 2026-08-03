@@ -22,6 +22,7 @@ export interface FilterBarProps {
   statusOptions?: { value: string | number; label: string }[];
   statusValue?: string | number;
   onStatusChange?: (val: any) => void;
+  centerActions?: boolean;
 }
 
 const labelStyle: React.CSSProperties = {
@@ -38,6 +39,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
   statusOptions,
   statusValue,
   onStatusChange,
+  centerActions,
 }) => {
   const [values, setValues] = useState<Record<string, any>>({});
 
@@ -79,7 +81,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
       }}>
         {fields ? (
           fields.map((field) => (
-            <div key={field.key} style={{ flex: '1 1 160px', minWidth: 140 }}>
+            <div key={field.key} style={{ flex: field.width ? `0 0 ${field.width}px` : '1 1 160px', minWidth: field.width || 140 }}>
               <div style={labelStyle}>{field.label}</div>
               {field.type === 'search' && (
                 <Input placeholder={field.placeholder}
@@ -137,7 +139,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
             )}
           </>
         )}
-        <div style={{ display: 'flex', gap: spaceSm, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: spaceSm, justifyContent: centerActions ? 'center' : undefined, flex: centerActions ? 1 : undefined }}>
           <Button icon={<ReloadOutlined />} onClick={handleReset}
             style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
           <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}

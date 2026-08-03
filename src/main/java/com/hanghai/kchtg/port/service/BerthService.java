@@ -37,6 +37,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 /**
  * Service core for Berth CRUD operations.
@@ -57,9 +58,6 @@ public class BerthService {
 
     @Transactional
     public BerthResponse create(CreateBerthRequest request) {
-        if (berthRepository.existsByBerthCode(request.getBerthCode())) {
-            throw new IllegalArgumentException("Mã " + request.getBerthCode() + " đã tồn tại");
-        }
         Port parent = portRepository.findById(request.getPortId())
                 .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
 
@@ -68,15 +66,15 @@ public class BerthService {
                     "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
 
+        String code = generateBerthCode(request.getPortId());
         Berth entity = Berth.builder()
-                .berthCode(request.getBerthCode()).berthName(request.getBerthName())
+                .berthCode(code).berthName(request.getBerthName())
                 .portId(request.getPortId()).waterway(request.getWaterway())
                 .length(request.getLength()).width(request.getWidth())
                 .berthType(request.getBerthType()).channelDepth(request.getChannelDepth())
                 .operationalFunction(request.getOperationalFunction())
                 .operationalStatus(request.getOperationalStatus())
                 .orgUnitId(parent.getOrgUnitId())
-                .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId())
                 // Extended fields
                 .provinceId(request.getProvinceId())
@@ -95,6 +93,10 @@ public class BerthService {
                 .investmentAgreement(request.getInvestmentAgreement())
                 .structureType(request.getStructureType())
                 .build();
+
+        String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
+        applySaveAction(entity, action);
+
         Berth saved = berthRepository.save(entity);
 
         String coordinates = request.getCoordinates();
@@ -317,7 +319,11 @@ public class BerthService {
         if (request.getStructureType() != null)
             entity.setStructureType(request.getStructureType());
         entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setApprovalStatus(ApprovalStatus.PENDING);
+        if (request.getSaveAction() != null) {
+            applySaveAction(entity, request.getSaveAction());
+        } else {
+            entity.setApprovalStatus(ApprovalStatus.PENDING);
+        }
 
         Berth saved = berthRepository.save(entity);
 
@@ -349,6 +355,10 @@ public class BerthService {
     public void softDelete(UUID id) {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
+        long pierCount = pierRepository.countByBerthIdAndDeletedAtIsNull(id);
+        if (pierCount > 0) {
+            throw new IllegalStateException("Không thể xóa: bến cảng đang có " + pierCount + " cầu cảng liên kết");
+        }
         entity.softDelete(SecurityUtils.getCurrentUserId());
         berthRepository.save(entity);
         if (entity.getSpatialId() != null) {
@@ -423,7 +433,16 @@ public class BerthService {
                 .structureType(e.getStructureType())
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
-                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt());
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                // Two-level approval fields
+                .activityStatus(e.getActivityStatus())
+                .submittedForApprovalAt(e.getSubmittedForApprovalAt())
+                .submittedForApprovalBy(e.getSubmittedForApprovalBy())
+                .portAuthorityApprovedAt(e.getPortAuthorityApprovedAt())
+                .portAuthorityApprovedBy(e.getPortAuthorityApprovedBy())
+                .departmentApprovedAt(e.getDepartmentApprovedAt())
+                .departmentApprovedBy(e.getDepartmentApprovedBy())
+                .rejectionReason(e.getRejectionReason());
 
         if (e.getSpatialId() != null) {
             builder.spatialId(e.getSpatialId());
@@ -433,5 +452,43 @@ public class BerthService {
             });
         }
         return builder.build();
+    }
+
+    public String generateBerthCode(UUID portId) {
+        Port port = portRepository.findById(portId)
+            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
+        String portCode = port.getPortCode();
+        String prefix = portCode + "-B";
+        List<Berth> existing = berthRepository.findByPortIdAndDeletedAtIsNull(portId);
+        int maxNum = 0;
+        for (Berth b : existing) {
+            if (b.getBerthCode() != null && b.getBerthCode().startsWith(prefix)) {
+                try {
+                    int n = Integer.parseInt(b.getBerthCode().substring(prefix.length()));
+                    if (n > maxNum) maxNum = n;
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return prefix + String.format("%02d", maxNum + 1);
+    }
+
+    private void applySaveAction(Berth entity, String action) {
+        switch (action) {
+            case "DRAFT":
+                entity.setApprovalStatus(ApprovalStatus.DRAFT);
+                break;
+            case "SUBMIT":
+                entity.setApprovalStatus(ApprovalStatus.PENDING);
+                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                break;
+            case "SAVE_AND_APPROVE":
+                entity.setApprovalStatus(ApprovalStatus.APPROVED);
+                entity.setDepartmentApprovedAt(LocalDateTime.now());
+                entity.setDepartmentApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                break;
+            default:
+                entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        }
     }
 }

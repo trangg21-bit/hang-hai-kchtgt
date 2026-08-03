@@ -1,9 +1,12 @@
 package com.hanghai.kchtg.port.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.port.dto.berth.ApproveRequest;
 import com.hanghai.kchtg.port.dto.berth.BerthResponse;
 import com.hanghai.kchtg.port.dto.berth.CreateBerthRequest;
+import com.hanghai.kchtg.port.dto.berth.RejectRequest;
 import com.hanghai.kchtg.port.dto.berth.UpdateBerthRequest;
+import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.service.BerthApprovalService;
 import com.hanghai.kchtg.port.service.BerthService;
 import jakarta.validation.Valid;
@@ -27,6 +30,7 @@ public class BerthController {
 
     private final BerthService berthService;
     private final BerthApprovalService berthApprovalService;
+    private final PierRepository pierRepository;
 
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'berth:create')")
@@ -35,6 +39,15 @@ public class BerthController {
         log.info("Creating Berth: code={}", request.getBerthCode());
         BerthResponse response = berthService.create(request);
         return ResponseEntity.ok(ApiResponse.success("Tạo mới bến cảng thành công", response));
+    }
+
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'berth:create')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> generateCode(
+            @RequestParam UUID portId) {
+        log.info("Generating berth code for portId={}", portId);
+        String code = berthService.generateBerthCode(portId);
+        return ResponseEntity.ok(ApiResponse.success("Sinh mã bến thành công", java.util.Map.of("berthCode", code)));
     }
 
     @GetMapping("/{id}")
@@ -87,10 +100,10 @@ public class BerthController {
     @PreAuthorize("@auth.check(authentication, 'berth:approve')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
+            @Valid @RequestBody ApproveRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("Approving Berth: id={}, userId={}", id, userId);
-        berthApprovalService.approve(id, userId, null);
+        log.info("Approving Berth: id={}, cap={}", id, request.getCap());
+        berthApprovalService.approve(id, authentication.getName(), request.getCap());
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt bến cảng thành công", null));
     }
 
@@ -98,11 +111,10 @@ public class BerthController {
     @PreAuthorize("@auth.check(authentication, 'berth:approve')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,
+            @Valid @RequestBody RejectRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("Rejecting Berth: id={}, userId={}", id, userId);
-        berthApprovalService.approve(id, userId, reason);
+        log.info("Rejecting Berth: id={}, cap={}", id, request.getCap());
+        berthApprovalService.reject(id, authentication.getName(), request.getCap(), request.getLyDo());
         return ResponseEntity.ok(ApiResponse.success("Từ chối bến cảng thành công", null));
     }
 
@@ -112,5 +124,12 @@ public class BerthController {
         log.info("Getting Berth history: id={}", id);
         Object history = berthApprovalService.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử bến cảng thành công", history));
+    }
+
+    @GetMapping("/{id}/children")
+    @PreAuthorize("@auth.check(authentication, 'berth:read')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> getChildren(@PathVariable UUID id) {
+        long cauCangCount = pierRepository.countByBerthIdAndDeletedAtIsNull(id);
+        return ResponseEntity.ok(ApiResponse.success("Thành công", java.util.Map.of("cauCangCount", cauCangCount)));
     }
 }

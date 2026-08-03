@@ -3,8 +3,8 @@ import { z } from "zod";
 // ── List filters schema ──────────────────────────────────────────
 export const listFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional(),
-  approvalStatus: z.enum(["CHO_PHE_DUYET", "DUOC_PHE_DUYET", "TU_CHOI"]).optional(),
+  status: z.enum(["DANG_KHAI_THAC", "CHUA_KHAI_THAC", "DUNG_KHAI_THAC"]).optional(),
+  approvalStatus: z.enum(["NHAP", "CHO_PHE_DUYET", "CHO_PD_CAP_CUC", "DA_PHE_DUYET", "TU_CHOI"]).optional(),
   portId: z.string().uuid().optional().or(z.literal("")),
   orgUnitId: z.string().uuid().optional().or(z.literal("")),
   sortBy: z.enum(["berthCode", "berthName", "createdAt", "updatedAt"]).default("createdAt"),
@@ -17,10 +17,10 @@ export type ListFilters = z.infer<typeof listFiltersSchema>;
 
 // ── Create form schema ───────────────────────────────────────────
 export const createSchema = z.object({
-  berthCode: z.string().min(1, "Mã bến không được để trống").max(50, "Mã bến tối đa 50 ký tự"),
   berthName: z.string().min(1, "Tên bến không được để trống").max(255, "Tên bến tối đa 255 ký tự"),
   portId: z.string().uuid("Cảng biển chủ không được để trống"),
   orgUnitId: z.string().uuid().optional().or(z.literal("")),
+  saveAction: z.enum(["DRAFT", "SUBMIT", "SAVE_AND_APPROVE"]).optional(),
   tuyenDuongThuy: z.string().max(255, "Tuyến đường thủy tối đa 255 ký tự").optional().or(z.literal("")),
   latitude: z.coerce.number().min(-90, "Vĩ độ phải từ -90 đến 90").max(90, "Vĩ độ phải từ -90 đến 90").optional().or(z.nan()),
   longitude: z.coerce.number().min(-180, "Kinh độ phải từ -180 đến 180").max(180, "Kinh độ phải từ -180 đến 180").optional().or(z.nan()),
@@ -29,7 +29,7 @@ export const createSchema = z.object({
   berthType: z.string().max(100, "Loại bến tối đa 100 ký tự").optional().or(z.literal("")),
   doSauLuong: z.coerce.number().optional().or(z.nan()),
   operationalCapacity: z.string().optional().or(z.literal("")),
-  operationalStatus: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional().default("HIEN_HANH"),
+  operationalStatus: z.enum(["DANG_KHAI_THAC", "CHUA_KHAI_THAC", "DUNG_KHAI_THAC"]).optional(),
   bieuTuongId: z.string().uuid().optional().or(z.literal("")),
   loaiHinhHoc: z.string().optional(),
   toaDo: z.string().optional(),
@@ -59,6 +59,7 @@ export const updateSchema = z.object({
   berthName: z.string().max(255, "Tên bến tối đa 255 ký tự").optional().or(z.literal("")),
   portId: z.string().uuid().optional(),
   orgUnitId: z.string().uuid().optional().or(z.literal("")),
+  saveAction: z.enum(["DRAFT", "SUBMIT", "SAVE_AND_APPROVE"]).optional(),
   tuyenDuongThuy: z.string().max(255, "Tuyến đường thủy tối đa 255 ký tự").optional().or(z.literal("")),
   latitude: z.coerce.number().min(-90, "Vĩ độ phải từ -90 đến 90").max(90, "Vĩ độ phải từ -90 đến 90").optional().or(z.nan()),
   longitude: z.coerce.number().min(-180, "Kinh độ phải từ -180 đến 180").max(180, "Kinh độ phải từ -180 đến 180").optional().or(z.nan()),
@@ -67,7 +68,7 @@ export const updateSchema = z.object({
   berthType: z.string().max(100, "Loại bến tối đa 100 ký tự").optional().or(z.literal("")),
   doSauLuong: z.coerce.number().optional().or(z.nan()),
   operationalCapacity: z.string().optional().or(z.literal("")),
-  operationalStatus: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional(),
+  operationalStatus: z.enum(["DANG_KHAI_THAC", "CHUA_KHAI_THAC", "DUNG_KHAI_THAC"]).optional(),
   bieuTuongId: z.string().uuid().optional().nullable(),
   loaiHinhHoc: z.string().optional(),
   toaDo: z.string().optional(),
@@ -93,29 +94,30 @@ export type UpdateForm = z.infer<typeof updateSchema>;
 
 // ── Approve schema ───────────────────────────────────────────────
 export const approveSchema = z.object({
-  confirmed: z.boolean().refine((val) => val === true, {
-    message: "Bạn cần xác nhận hành động này",
-  }),
-});
-
-export const rejectSchema = z.object({
-  reason: z.string()
-    .min(10, "Lý do từ chối tối thiểu 10 ký tự")
-    .max(500, "Lý do từ chối tối đa 500 ký tự")
-    .min(1, "Lý do từ chối không được để trống"),
+  cap: z.enum(["CANG_VU", "CUC"], { required_error: "Vui lòng chọn cấp phê duyệt" }),
   confirmed: z.boolean().refine((val) => val === true, {
     message: "Bạn cần xác nhận hành động này",
   }),
 });
 
 export type ApproveForm = z.infer<typeof approveSchema>;
+
+// ── Reject schema ────────────────────────────────────────────────
+export const rejectSchema = z.object({
+  cap: z.enum(["CANG_VU", "CUC"], { required_error: "Vui lòng chọn cấp" }),
+  lyDo: z.string()
+    .min(10, "Lý do từ chối tối thiểu 10 ký tự")
+    .max(500, "Lý do từ chối tối đa 500 ký tự"),
+  confirmed: z.boolean().refine((val) => val === true, {
+    message: "Bạn cần xác nhận hành động này",
+  }),
+});
+
 export type RejectForm = z.infer<typeof rejectSchema>;
 
 // ── Delete confirm schema ────────────────────────────────────────
 export const deleteSchema = z.object({
-  confirmed: z.boolean().refine((val) => val === true, {
-    message: "Bạn cần xác nhận để xóa",
+  confirmationText: z.string().refine((val) => val === "XÓA", {
+    message: 'Vui lòng nhập "XÓA" để xác nhận',
   }),
 });
-
-export type DeleteForm = z.infer<typeof deleteSchema>;

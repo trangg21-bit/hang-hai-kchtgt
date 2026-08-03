@@ -120,4 +120,30 @@ public class Berth extends BaseEntity {
 
     @Column(name = "structure_type")
     private Integer structureType;
+
+    // ── Two-level approval tracking fields ────────────────────────────
+
+    @Column(name = "activity_status", length = 50)
+    private String activityStatus;
+
+    @Column(name = "submitted_for_approval_at")
+    private LocalDateTime submittedForApprovalAt;
+
+    @Column(name = "submitted_for_approval_by", length = 100)
+    private String submittedForApprovalBy;
+
+    @Column(name = "port_authority_approved_at")
+    private LocalDateTime portAuthorityApprovedAt;
+
+    @Column(name = "port_authority_approved_by", length = 100)
+    private String portAuthorityApprovedBy;
+
+    @Column(name = "department_approved_at")
+    private LocalDateTime departmentApprovedAt;
+
+    @Column(name = "department_approved_by", length = 100)
+    private String departmentApprovedBy;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 }

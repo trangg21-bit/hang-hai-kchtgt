@@ -16,7 +16,6 @@ import java.util.UUID;
 @Data
 public class CreateBerthRequest {
 
-    @NotBlank(message = "Mã bến không được để trống")
     @Size(max = 50)
     private String berthCode;
 
@@ -83,4 +82,6 @@ public class CreateBerthRequest {
     private String investmentAgreement;
 
     private Integer structureType;
+
+    private String saveAction; // DRAFT, SUBMIT, SAVE_AND_APPROVE
 }
