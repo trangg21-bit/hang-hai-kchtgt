@@ -143,9 +143,15 @@ export const berthCRUD = {
     berthName?: string;
     portId?: string;
     berthType?: string;
-    tuyenDuongThuy?: string;
+    waterway?: string;
+    operationalFunction?: string;
     operationalStatus?: string;
     approvalStatus?: string;
+    orgUnitId?: string;
+    structureType?: number;
+    provinceId?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Berth>> {
@@ -155,9 +161,15 @@ export const berthCRUD = {
       berthName: params?.berthName,
       portId: params?.portId,
       berthType: params?.berthType,
-      tuyenDuongThuy: params?.tuyenDuongThuy,
+      waterway: params?.waterway,
+      operationalFunction: params?.operationalFunction,
       operationalStatus: params?.operationalStatus,
       approvalStatus: params?.approvalStatus,
+      orgUnitId: params?.orgUnitId,
+      structureType: params?.structureType,
+      provinceId: params?.provinceId,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -412,12 +424,12 @@ export const portApproval = {
 };
 
 export const berthApproval = {
-  async approve(id: string): Promise<void> {
-    await api.post(`/v1/berths/${id}/approve`);
+  async approve(id: string, cap: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/approve`, { cap });
   },
 
-  async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/v1/berths/${id}/reject`, null, { params: { reason } });
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/reject`, { cap, lyDo });
   },
 };
 

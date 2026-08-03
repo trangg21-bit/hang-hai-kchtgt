@@ -53,16 +53,25 @@ export async function deleteBenCang(id: string) {
 }
 
 // ----------------------------------------------------------------
-// Approval
+// Approval (2-level with cap)
 // ----------------------------------------------------------------
 
-export async function approveBenCang(id: string) {
-  const res = await api.post(`${BASE}/${id}/approve`);
+export async function approveBenCang(id: string, cap: string) {
+  const res = await api.post(`${BASE}/${id}/approve`, { cap });
   return res.data.data;
 }
 
-export async function rejectBenCang(id: string, reason: string) {
-  const res = await api.post(`${BASE}/${id}/reject`, null, { params: { reason } });
+export async function rejectBenCang(id: string, cap: string, lyDo: string) {
+  const res = await api.post(`${BASE}/${id}/reject`, { cap, lyDo });
+  return res.data.data;
+}
+
+// ----------------------------------------------------------------
+// Children
+// ----------------------------------------------------------------
+
+export async function fetchBerthChildren(id: string): Promise<{ cauCangCount: number }> {
+  const res = await api.get(`${BASE}/${id}/children`);
   return res.data.data;
 }
 

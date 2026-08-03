@@ -49,6 +49,9 @@ public class ApprovalLog {
     @Column(name = "decided_at", nullable = false)
     private LocalDateTime decidedAt;
 
+    @Column(name = "cap", length = 20)
+    private String cap;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

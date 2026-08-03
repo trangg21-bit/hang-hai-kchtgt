@@ -75,4 +75,6 @@ public class UpdateBerthRequest {
     private String investmentAgreement;
 
     private Integer structureType;
+
+    private String saveAction;
 }

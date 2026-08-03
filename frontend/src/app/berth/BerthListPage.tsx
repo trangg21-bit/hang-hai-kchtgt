@@ -16,6 +16,7 @@ import {
   Typography,
   Descriptions,
   DatePicker,
+  Checkbox,
 } from 'antd';
 import type { TableProps } from 'antd';
 import {
@@ -34,15 +35,16 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   textPrimary, textSecondary, textTertiary,
-  statusOperational, statusAttention, actionPrimary,
+  statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary,
   borderDefault,
-  spaceMd, spaceSm,
-  fontSizeSm,
-  fontWeightMedium,
+  spaceMd, spaceSm, spaceXs, spaceLg, spaceFormField, spaceXl,
+  fontSizeSm, fontSizeMd, fontSizeBase, fontSizeLg,
+  fontWeightMedium, fontWeightBold,
+  radiusMd, radiusPill,
 } from '../../tokens';
 import { berthCRUD, berthApproval } from '../../services/portService';
-import type { Berth } from '../../types/port';
-import { APPROVAL_STATUS_MAP } from '../../types/port';
+import type { Berth, SaveAction } from '../../types/port';
+import { APPROVAL_STATUS_MAP, BERTH_ACTIVITY_STATUS_MAP, BERTH_APPROVAL_STATUS_MAP } from '../../types/port';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -55,13 +57,15 @@ import { documentApi } from '../document/api';
 import dayjs from 'dayjs';
 import { organizationService } from '../../services/organizationService';
 import { z } from 'zod';
-import { createSchema, updateSchema } from './schema';
+import { createSchema, updateSchema, approveSchema, rejectSchema, deleteSchema } from './schema';
+import { fetchBerthChildren } from './api';
 import DocumentUploadModal from '../document/DocumentUploadModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 const ACTIVITY_STATUS_OPTIONS = [
-  { label: 'Hiện hành', value: 'HIEN_HANH' },
-  { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
+  { label: 'Đang khai thác', value: 'DANG_KHAI_THAC' },
+  { label: 'Chưa khai thác', value: 'CHUA_KHAI_THAC' },
+  { label: 'Dừng khai thác', value: 'DUNG_KHAI_THAC' },
 ];
 
 const CONG_NANG_KHAI_THAC_OPTIONS = [
@@ -184,6 +188,15 @@ export default function BerthListPage() {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [approveModalVisible, setApproveModalVisible] = useState(false);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<Berth | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Berth | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Berth | null>(null);
+  const [approveForm] = Form.useForm();
+  const [rejectForm] = Form.useForm();
+  const [deleteForm] = Form.useForm();
   const [selectedRecord, setSelectedRecord] = useState<Berth | null>(null);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
@@ -386,6 +399,11 @@ export default function BerthListPage() {
   const handleDelete = useCallback(
     async (record: Berth) => {
       try {
+        const children = await fetchBerthChildren(record.id);
+        if (children.cauCangCount > 0) {
+          toast.error(`Không thể xóa: bến cảng đang có ${children.cauCangCount} cầu cảng liên kết. Vui lòng xóa các cầu cảng trước.`);
+          return;
+        }
         await berthCRUD.delete(record.id);
         toast.success('Đã xóa bến cảng');
         fetchData();
@@ -397,52 +415,58 @@ export default function BerthListPage() {
   );
 
   const handleApprove = useCallback(
-    async (record: Berth) => {
-      try {
-        await berthApproval.approve(record.id);
-        toast.success('Đã phê duyệt bến cảng');
-        fetchData();
-        if (detailModalVisible && selectedRecord?.id === record.id) {
-          const updated = await berthCRUD.findById(record.id);
-          setSelectedRecord(updated);
-        }
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-      }
+    (record: Berth) => {
+      setApproveTarget(record);
+      approveForm.resetFields();
+      setApproveModalVisible(true);
     },
-    [fetchData, detailModalVisible, selectedRecord],
+    [approveForm],
   );
 
   const handleReject = useCallback(
-    async (record: Berth) => {
-      const reason = window.prompt('Lý do từ chối (tối thiểu 10 ký tự):', '');
-      if (reason === null || reason.length < 10) {
-        if (reason === null) return;
-        toast.warning('Lý do từ chối tối thiểu 10 ký tự');
-        return;
-      }
-      try {
-        await berthApproval.reject(record.id, reason);
-        toast.success('Đã từ chối bến cảng');
-        fetchData();
-        if (detailModalVisible && selectedRecord?.id === record.id) {
-          const updated = await berthCRUD.findById(record.id);
-          setSelectedRecord(updated);
-        }
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
-      }
+    (record: Berth) => {
+      setRejectTarget(record);
+      rejectForm.resetFields();
+      setRejectModalVisible(true);
     },
-    [fetchData, detailModalVisible, selectedRecord],
+    [rejectForm],
   );
+
+  const doApprove = useCallback(async () => {
+    if (!approveTarget) return;
+    try {
+      const values = await approveForm.validateFields();
+      await berthApproval.approve(approveTarget.id, values.cap);
+      toast.success('Đã phê duyệt bến cảng');
+      setApproveModalVisible(false);
+      fetchData();
+    } catch (err: unknown) {
+      if (err instanceof z.ZodError) return;
+      toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
+    }
+  }, [approveTarget, approveForm, fetchData]);
+
+  const doReject = useCallback(async () => {
+    if (!rejectTarget) return;
+    try {
+      const values = await rejectForm.validateFields();
+      await berthApproval.reject(rejectTarget.id, values.cap, values.lyDo);
+      toast.success('Đã từ chối bến cảng');
+      setRejectModalVisible(false);
+      fetchData();
+    } catch (err: unknown) {
+      if (err instanceof z.ZodError) return;
+      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+    }
+  }, [rejectTarget, rejectForm, fetchData]);
 
   const handleCreateFinish = async (values: any) => {
     try {
       const parsed = createSchema.parse({
-        berthCode: values.berthCode,
         berthName: values.berthName,
         portId: values.portId,
         orgUnitId: values.orgUnitId || undefined,
+        saveAction: values.saveAction || undefined,
         tuyenDuongThuy: values.tuyenDuongThuy || undefined,
         latitude: values.latitude ?? undefined,
         longitude: values.longitude ?? undefined,
@@ -506,6 +530,7 @@ export default function BerthListPage() {
         berthName: values.berthName || undefined,
         portId: values.portId || undefined,
         orgUnitId: values.orgUnitId || undefined,
+        saveAction: values.saveAction || undefined,
         tuyenDuongThuy: values.tuyenDuongThuy || undefined,
         latitude: values.latitude,
         longitude: values.longitude,
@@ -1011,16 +1036,14 @@ export default function BerthListPage() {
               </Col>
             </Row>
             <Row gutter={24}>
-              <Col span={12}>
-                <Form.Item
-                  label="Mã bến *"
-                  name="berthCode"
-                  rules={[{ required: true, message: 'Mã bến không được để trống' }, { max: 50, message: 'Mã bến tối đa 50 ký tự' }]}
-                >
-                  <Input placeholder="VD: BC-HAIPHONG-001" maxLength={50} />
+              <Col span={24}>
+                <Form.Item label="Mã bến">
+                  <Input disabled value="Mã bến sẽ được hệ thống tự sinh" style={{ color: textTertiary }} />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+            </Row>
+            <Row gutter={24}>
+              <Col span={24}>
                 <Form.Item
                   label="Tên bến *"
                   name="berthName"
@@ -1204,7 +1227,39 @@ export default function BerthListPage() {
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
               <Button onClick={() => setCreateModalVisible(false)}>Hủy</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>Tạo bến cảng</Button>
+              <Button
+                onClick={async () => {
+                  try { await createForm.validateFields(); }
+                  catch { return; }
+                  createForm.setFieldValue('saveAction', 'DRAFT');
+                  createForm.submit();
+                }}
+                loading={submitting}
+              >
+                Lưu nháp
+              </Button>
+              <Button
+                onClick={async () => {
+                  try { await createForm.validateFields(); }
+                  catch { return; }
+                  createForm.setFieldValue('saveAction', 'SUBMIT');
+                  createForm.submit();
+                }}
+              >
+                Gửi phê duyệt
+              </Button>
+              <Button
+                type="primary"
+                onClick={async () => {
+                  try { await createForm.validateFields(); }
+                  catch { return; }
+                  createForm.setFieldValue('saveAction', 'SAVE_AND_APPROVE');
+                  createForm.submit();
+                }}
+                loading={submitting}
+              >
+                Lưu & Phê duyệt
+              </Button>
             </Space>
           </Form.Item>
         </Form>
@@ -1836,6 +1891,75 @@ export default function BerthListPage() {
           onCancel={() => setUploadModalVisible(false)}
         />
       )}
+
+      {/* Approve Modal */}
+      <Modal
+        title="Phê duyệt bến cảng"
+        open={approveModalVisible}
+        onCancel={() => setApproveModalVisible(false)}
+        onOk={doApprove}
+        confirmLoading={submitting}
+        destroyOnHidden
+        maskClosable={false}
+      >
+        <Form form={approveForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="cap"
+            label="Cấp phê duyệt"
+            rules={[{ required: true, message: 'Vui lòng chọn cấp phê duyệt' }]}
+          >
+            <Select placeholder="Chọn cấp phê duyệt" options={[
+              { label: 'Cảng vụ', value: 'CANG_VU' },
+              { label: 'Cục', value: 'CUC' },
+            ]} />
+          </Form.Item>
+          <Form.Item name="confirmed" valuePropName="checked" rules={[{
+            validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('Bạn cần xác nhận hành động này')),
+          }]}>
+            <Checkbox>Tôi xác nhận phê duyệt bến cảng này</Checkbox>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        title="Từ chối bến cảng"
+        open={rejectModalVisible}
+        onCancel={() => setRejectModalVisible(false)}
+        onOk={doReject}
+        confirmLoading={submitting}
+        destroyOnHidden
+        maskClosable={false}
+      >
+        <Form form={rejectForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="cap"
+            label="Cấp"
+            rules={[{ required: true, message: 'Vui lòng chọn cấp' }]}
+          >
+            <Select placeholder="Chọn cấp" options={[
+              { label: 'Cảng vụ', value: 'CANG_VU' },
+              { label: 'Cục', value: 'CUC' },
+            ]} />
+          </Form.Item>
+          <Form.Item
+            name="lyDo"
+            label="Lý do từ chối"
+            rules={[
+              { required: true, message: 'Vui lòng nhập lý do từ chối' },
+              { min: 10, message: 'Lý do từ chối tối thiểu 10 ký tự' },
+              { max: 500, message: 'Lý do từ chối tối đa 500 ký tự' },
+            ]}
+          >
+            <Input.TextArea rows={4} placeholder="Nhập lý do từ chối (tối thiểu 10 ký tự)" maxLength={500} />
+          </Form.Item>
+          <Form.Item name="confirmed" valuePropName="checked" rules={[{
+            validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('Bạn cần xác nhận hành động này')),
+          }]}>
+            <Checkbox>Tôi xác nhận từ chối bến cảng này</Checkbox>
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 }

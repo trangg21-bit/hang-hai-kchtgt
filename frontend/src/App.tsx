@@ -51,7 +51,8 @@ import PortDetailPage from './services/port/PortDetailPage';
 import PortApprovePage from './services/port/PortApprovePage';
 import PortDeleteConfirm from './services/port/PortDeleteConfirm';
 
-import BerthListPage from './app/berth/BerthListPage';
+import BerthList from './pages/port/BerthList';
+import BerthForm from './pages/port/BerthForm';
 
 import PierListPage from './app/pier/PierListPage';
 import PierDetailPage from './pages/PierDetailPage';
@@ -191,7 +192,9 @@ export default function App() {
                 <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
-                <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthListPage /></PermissionGuard>} />
+                <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
+                <Route path="/berth/create" element={<PermissionGuard permission="berth:create"><BerthForm /></PermissionGuard>} />
+                <Route path="/berth/:id/edit" element={<PermissionGuard permission="berth:update"><BerthForm /></PermissionGuard>} />
 
                 <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
                 <Route path="/pier/:id" element={<PermissionGuard permission="pier:read"><PierDetailPage /></PermissionGuard>} />
