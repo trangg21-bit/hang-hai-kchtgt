@@ -1,15 +1,17 @@
 package com.hanghai.kchtg.dikerevetment.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
-import org.springframework.data.domain.*;
-import org.springframework.data.jpa.repository.*;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UUID> {

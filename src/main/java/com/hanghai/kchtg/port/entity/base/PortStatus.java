@@ -12,7 +12,7 @@ package com.hanghai.kchtg.port.entity.base;
  */
 public enum PortStatus {
     PENDING,
-    HIEN_HANH,
-    CHINH_SUA,
-    DA_XOA
+    PUBLISHED,
+    REVISION,
+    DELETED
 }

@@ -11,10 +11,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
-
-import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Represents an external system data connection (liên thông / chia sẻ dữ liệu).

@@ -1,8 +1,5 @@
 package com.hanghai.kchtg.gis.point.controller;
 
-import java.util.UUID;
-import org.springframework.web.bind.annotation.RequestParam;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.point.dto.CreatePointObjectRequest;
 import com.hanghai.kchtg.gis.point.dto.PointObjectResponse;
@@ -18,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/point-objects")

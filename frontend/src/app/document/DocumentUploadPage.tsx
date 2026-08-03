@@ -12,8 +12,8 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { documentApi } from './api';
-import type { GiayTo, GiayToEntityType } from './types';
-import { GIAYTO_ENTITY_TYPES } from './types';
+import type { Document, DocumentEntityType } from './types';
+import { DOCUMENT_ENTITY_TYPES } from './types';
 import { MAX_FILE_SIZE } from './schema';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -30,7 +30,7 @@ export default function DocumentUploadPage() {
   const navigate = useNavigate();
   const { entityType, entityId } = useParams<{ entityType: string; entityId: string }>();
 
-  const [files, setFiles] = useState<GiayTo[]>([]);
+  const [files, setFiles] = useState<Document[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -52,7 +52,7 @@ export default function DocumentUploadPage() {
     setIsError(false);
     try {
       const res = await documentApi.listByEntity(
-        entityType as GiayToEntityType,
+        entityType as DocumentEntityType,
         entityId,
         { page, size: 20 },
       );
@@ -75,7 +75,7 @@ export default function DocumentUploadPage() {
     try {
       const userId = localStorage.getItem('user_id') || '1';
       await documentApi.upload(
-        entityType as GiayToEntityType,
+        entityType as DocumentEntityType,
         entityId,
         selectedFile,
         userId,
@@ -226,7 +226,7 @@ export default function DocumentUploadPage() {
         )}
         {!isLoading && !isError && files.length > 0 && (
           <>
-            <Table<GiayTo>
+            <Table<Document>
               dataSource={files}
               rowKey="id"
               size="small"
@@ -280,7 +280,7 @@ export default function DocumentUploadPage() {
                   title: 'Hành động',
                   key: 'actions',
                   width: 120,
-                  render: (_: unknown, record: GiayTo) => (
+                  render: (_: unknown, record: Document) => (
                     <Space size="small">
                       <Button
                         type="text"

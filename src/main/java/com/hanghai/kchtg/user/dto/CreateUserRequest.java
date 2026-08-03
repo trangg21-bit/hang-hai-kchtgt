@@ -1,14 +1,11 @@
 package com.hanghai.kchtg.user.dto;
 
-import java.util.UUID;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,8 +13,7 @@ import java.util.UUID;
 /**
  * DTO tạo mới tài khoản người dùng.
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateUserRequest {
@@ -43,6 +39,7 @@ public class CreateUserRequest {
 
     /** Vai trò (e.g. ROLE_USER, ROLE_ADMIN). Mặc định là ROLE_USER. */
     @Size(max = 50, message = "Vai trò không được vượt quá 50 ký tự")
+    @NotBlank(message = "Vui lòng chọn vai trò")
     private String role;
 
     private UUID orgUnitId;

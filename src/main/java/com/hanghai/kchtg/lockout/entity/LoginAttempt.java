@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.lockout.entity;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.UUID;
 
 /**
  * Append-only record of each login attempt (success or failure).

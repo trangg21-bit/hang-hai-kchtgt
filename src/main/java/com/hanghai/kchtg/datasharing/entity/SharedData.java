@@ -1,9 +1,6 @@
 package com.hanghai.kchtg.datasharing.entity;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,6 +12,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Entity representing a shared KCHTGT data record.

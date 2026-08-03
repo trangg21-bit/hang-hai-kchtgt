@@ -1,12 +1,6 @@
 package com.hanghai.kchtg.port.entity;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
-import com.hanghai.kchtg.common.entity.BaseEntity;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
+import com.hanghai.kchtg.common.entity.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -45,6 +39,8 @@ public class Berth extends BaseEntity {
     @Column(name = "waterway", length = 255)
     private String waterway;
 
+
+
     @Column(name = "length", precision = 15, scale = 2)
     private BigDecimal length;
 
@@ -58,8 +54,6 @@ public class Berth extends BaseEntity {
     @Column(name = "channel_depth", precision = 10, scale = 2)
     private BigDecimal channelDepth;
 
-    // ── Legacy DB columns (exist in remote DB vmd_csdl_v2) ──────────
-
     @Column(name = "operational_status")
     @Convert(converter = OperationalStatusConverter.class)
     private OperationalStatus operationalStatus;
@@ -67,11 +61,6 @@ public class Berth extends BaseEntity {
     @Column(name = "approval_status", nullable = false)
     @Convert(converter = ApprovalStatusConverter.class)
     private ApprovalStatus approvalStatus;
-
-    // ── Unified status — DERIVED from legacy columns, NOT a DB column ──
-
-    @Transient
-    private PortStatus portStatus;
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
@@ -87,8 +76,8 @@ public class Berth extends BaseEntity {
 
     // ── Extended fields from hh.csdl legacy Qlkc038Dto ────────────────
 
-    @Column(name = "location_code", length = 100)
-    private String locationCode;
+    @Column(name = "province_id")
+    private Integer provinceId;
 
     @Column(name = "detailed_location", length = 500)
     private String detailedLocation;
@@ -132,56 +121,29 @@ public class Berth extends BaseEntity {
     @Column(name = "structure_type")
     private Integer structureType;
 
-    // ── Lifecycle: derive unified portStatus from legacy columns ──────
+    // ── Two-level approval tracking fields ────────────────────────────
 
-    @PostLoad
-    private void derivePortStatus() {
-        if (getDeletedAt() != null) {
-            this.portStatus = PortStatus.DA_XOA;
-        } else if (approvalStatus == ApprovalStatus.REJECTED) {
-            this.portStatus = PortStatus.TU_CHOI;
-        } else if (approvalStatus == ApprovalStatus.APPROVED) {
-            this.portStatus = (operationalStatus == OperationalStatus.TAM_NGUNG)
-                ? PortStatus.TAM_NGUNG : PortStatus.DA_PHE_DUYET;
-        } else if (approvalStatus == ApprovalStatus.PENDING) {
-            this.portStatus = (operationalStatus == OperationalStatus.HIEN_HANH)
-                ? PortStatus.CHO_PHE_DUYET : PortStatus.NHAP;
-        } else {
-            this.portStatus = PortStatus.NHAP;
-        }
-    }
+    @Column(name = "activity_status", length = 50)
+    private String activityStatus;
 
-    /**
-     * Sync the legacy DB columns (operationalStatus, approvalStatus) from the
-     * unified portStatus. Call this in the service layer before save.
-     */
-    public void syncOldFieldsFromPortStatus() {
-        if (this.portStatus == null) return;
-        switch (this.portStatus) {
-            case NHAP:
-                this.approvalStatus = ApprovalStatus.PENDING;
-                this.operationalStatus = null;
-                break;
-            case CHO_PHE_DUYET:
-                this.approvalStatus = ApprovalStatus.PENDING;
-                this.operationalStatus = OperationalStatus.HIEN_HANH;
-                break;
-            case DA_PHE_DUYET:
-                this.approvalStatus = ApprovalStatus.APPROVED;
-                this.operationalStatus = OperationalStatus.HIEN_HANH;
-                break;
-            case TU_CHOI:
-                this.approvalStatus = ApprovalStatus.REJECTED;
-                this.operationalStatus = OperationalStatus.HIEN_HANH;
-                break;
-            case TAM_NGUNG:
-                this.approvalStatus = ApprovalStatus.APPROVED;
-                this.operationalStatus = OperationalStatus.TAM_NGUNG;
-                break;
-            case DA_XOA:
-                this.approvalStatus = ApprovalStatus.APPROVED;
-                this.operationalStatus = OperationalStatus.TAM_NGUNG;
-                break;
-        }
-    }
+    @Column(name = "submitted_for_approval_at")
+    private LocalDateTime submittedForApprovalAt;
+
+    @Column(name = "submitted_for_approval_by", length = 100)
+    private String submittedForApprovalBy;
+
+    @Column(name = "port_authority_approved_at")
+    private LocalDateTime portAuthorityApprovedAt;
+
+    @Column(name = "port_authority_approved_by", length = 100)
+    private String portAuthorityApprovedBy;
+
+    @Column(name = "department_approved_at")
+    private LocalDateTime departmentApprovedAt;
+
+    @Column(name = "department_approved_by", length = 100)
+    private String departmentApprovedBy;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 }

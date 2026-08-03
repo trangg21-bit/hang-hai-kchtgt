@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Approval request for DikeRevetment (F-045, F-046).

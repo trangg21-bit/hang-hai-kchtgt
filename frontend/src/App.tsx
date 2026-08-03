@@ -51,9 +51,11 @@ import PortDetailPage from './services/port/PortDetailPage';
 import PortApprovePage from './services/port/PortApprovePage';
 import PortDeleteConfirm from './services/port/PortDeleteConfirm';
 
-import BerthListPage from './app/berth/BerthListPage';
+import BerthList from './pages/port/BerthList';
+import BerthForm from './pages/port/BerthForm';
 
 import PierListPage from './app/pier/PierListPage';
+import PierDetailPage from './pages/PierDetailPage';
 
 import DryPortListPage from './app/dryport/DryPortListPage';
 
@@ -122,11 +124,11 @@ export default function App() {
               {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/users" element={<PermissionGuard permission="user:manage"><UsersPage /></PermissionGuard>} />
+                <Route path="/users" element={<PermissionGuard permission="admin:manage"><UsersPage /></PermissionGuard>} />
                 <Route path="/roles" element={<PermissionGuard permission="role:manage"><RolesPage /></PermissionGuard>} />
 
                 {/* Organization — Đơn vị */}
-                <Route path="/organizations" element={<PermissionGuard permission="orgunit:manage"><UnitList /></PermissionGuard>} />
+                <Route path="/organizations" element={<PermissionGuard permission="orgunit:read"><UnitList /></PermissionGuard>} />
                 <Route path="/organizations/create" element={<PermissionGuard permission="orgunit:manage"><UnitForm /></PermissionGuard>} />
                 <Route path="/organizations/:id/edit" element={<PermissionGuard permission="orgunit:manage"><UnitForm /></PermissionGuard>} />
                 <Route path="/organizations/tree/:id" element={<PermissionGuard permission="orgunit:manage"><UnitTree /></PermissionGuard>} />
@@ -183,20 +185,23 @@ export default function App() {
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
-                <Route path="/Port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
-                <Route path="/Port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
-                <Route path="/Port/:id" element={<PermissionGuard permission="port:read"><PortDetailPage /></PermissionGuard>} />
-                <Route path="/Port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
-                <Route path="/Port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
-                <Route path="/Port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
+                <Route path="/port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
+                <Route path="/port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
+                <Route path="/port/:id" element={<PermissionGuard permission="port:read"><PortDetailPage /></PermissionGuard>} />
+                <Route path="/port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
+                <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
+                <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
-                <Route path="/Berth" element={<PermissionGuard permission="berth:read"><BerthListPage /></PermissionGuard>} />
+                <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
+                <Route path="/berth/create" element={<PermissionGuard permission="berth:create"><BerthForm /></PermissionGuard>} />
+                <Route path="/berth/:id/edit" element={<PermissionGuard permission="berth:update"><BerthForm /></PermissionGuard>} />
 
-                <Route path="/Pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/pier/:id" element={<PermissionGuard permission="pier:read"><PierDetailPage /></PermissionGuard>} />
 
-                <Route path="/DryPort" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
+                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
 
-                <Route path="/WaterZone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
+                <Route path="/water-zone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
 
                 <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="port:read"><DocumentUploadPage /></PermissionGuard>} />
 
@@ -250,7 +255,7 @@ export default function App() {
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />
 
                 {/* Nhật ký & Backup */}
-                <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />
+                <Route path="/logs" element={<PermissionGuard permission="admin:view"><LogsPage /></PermissionGuard>} />
 
                 {/* Cấu hình hệ thống */}
                 <Route path="/settings" element={<PermissionGuard permission="admin:manage"><SettingsPage /></PermissionGuard>} />

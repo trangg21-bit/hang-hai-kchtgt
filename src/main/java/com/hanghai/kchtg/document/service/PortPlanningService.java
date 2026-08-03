@@ -1,10 +1,16 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.document.entity.LookupLog;
+import com.hanghai.kchtg.document.entity.PlanningFile;
+import com.hanghai.kchtg.document.entity.PlanningStatus;
+import com.hanghai.kchtg.document.entity.PortPlanning;
+import com.hanghai.kchtg.document.repository.LookupLogRepository;
+import com.hanghai.kchtg.document.repository.PlanningCategoryRepository;
+import com.hanghai.kchtg.document.repository.PlanningFileRepository;
+import com.hanghai.kchtg.document.repository.PortPlanningRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,8 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -63,13 +70,13 @@ public class PortPlanningService {
 
     @Transactional(readOnly = true)
     public List<PortPlanningResponse> findAll() {
-        return portPlanningRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return portPlanningRepository.findAll(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<PortPlanningResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return portPlanningRepository.findAll(pageable).map(this::toResponse);
     }
 
@@ -114,7 +121,7 @@ public class PortPlanningService {
 
     @Transactional(readOnly = true)
     public Page<PortPlanningResponse> searchByProjectNameContaining(String keyword, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return portPlanningRepository.findByProjectNameContaining(keyword, pageable).map(this::toResponse);
     }
 
@@ -130,9 +137,9 @@ public class PortPlanningService {
     @Transactional(readOnly = true)
     public LookupResultResponse traCuu(String keyword, String status, LocalDate yearStart,
                                         LocalDate yearEnd, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        
-        PlanningStatus statusEnum = (status != null && !status.isEmpty()) 
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
+
+        PlanningStatus statusEnum = (status != null && !status.isEmpty())
                 ? PlanningStatus.valueOf(status) : null;
 
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;

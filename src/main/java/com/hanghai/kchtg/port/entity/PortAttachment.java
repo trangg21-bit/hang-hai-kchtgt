@@ -1,30 +1,37 @@
 package com.hanghai.kchtg.port.entity;
 
-import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Entity representing file attachments of a Port (tệp đính kèm cảng biển).
- * Corresponds to table: port_attachments
+ * Entity storing file attachments for a port (Cảng biển).
+ * Each port can have multiple attachments (files) uploaded by users.
+ * <p>
+ * Uses its own BIGINT auto-increment PK (not BaseEntity) because this is
+ * a lightweight child table managed entirely through the parent's cascade.
+ * </p>
  */
 @Entity
 @Table(name = "port_attachments")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@SuperBuilder
-public class PortAttachment extends BaseEntity {
+public class PortAttachment {
 
-    @Column(name = "port_id", nullable = false)
-    private UUID portId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "port_id", nullable = false)
+    @JsonIgnore
+    private Port port;
 
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
@@ -40,4 +47,16 @@ public class PortAttachment extends BaseEntity {
 
     @Column(name = "uploaded_by")
     private UUID uploadedBy;
+
+    @Column(name = "uploaded_at", updatable = false)
+    private LocalDateTime uploadedAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (uploadedAt == null) uploadedAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
 }

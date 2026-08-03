@@ -4,9 +4,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum ApprovalStatus {
-    PENDING(0),
-    APPROVED(1),
-    REJECTED(2);
+    DRAFT(0),
+    PENDING(1),
+    PORT_AUTHORITY(2),
+    APPROVED(3),
+    REJECTED(4);
 
     private final int value;
 
@@ -28,7 +30,16 @@ public enum ApprovalStatus {
                     if (st.getValue() == val) return st;
                 }
             }
-            return ApprovalStatus.valueOf(name.toUpperCase().trim());
+            String upper = name.toUpperCase().trim();
+            // Backward compatibility for old Vietnamese constant values
+            switch (upper) {
+                case "NHAP": return DRAFT;
+                case "CHO_PHE_DUYET": return PENDING;
+                case "CHO_PD_CAP_CUC": return PORT_AUTHORITY;
+                case "DUOC_PHE_DUYET": return APPROVED;
+                case "TU_CHOI": return REJECTED;
+            }
+            return ApprovalStatus.valueOf(upper);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Trạng thái phê duyệt không hợp lệ: " + name);
         }

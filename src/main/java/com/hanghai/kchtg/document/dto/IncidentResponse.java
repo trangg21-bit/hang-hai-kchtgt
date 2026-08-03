@@ -1,9 +1,7 @@
 package com.hanghai.kchtg.document.dto;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.document.entity.SeverityLevel;
 import com.hanghai.kchtg.document.entity.ProcessingStatus;
+import com.hanghai.kchtg.document.entity.SeverityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Response DTO for Incident.

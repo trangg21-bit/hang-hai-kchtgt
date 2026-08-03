@@ -22,7 +22,7 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 | 1 | Tạo nhóm | Tạo nhóm mới với tên, mã, loại nhóm (department/project/custom), mô tả |
 | 2 | Chỉnh sửa nhóm | Cập nhật tên, mô tả, loại nhóm |
 | 3 | Xóa nhóm | Xóa nhóm (chỉ khi không còn thành viên, chỉ Admin) |
-| 4 | Thêm thành viên | Thêm người dùng vào nhóm, ghi nhận roleInGroup và joinedBy |
+| 4 | Thêm thành viên | Thêm người dùng vào nhóm, ghi nhận joinedBy và joinedAt |
 | 5 | Xóa thành viên | Loại bỏ người dùng khỏi nhóm |
 | 6 | Sao chép nhóm | Duplicate nhóm với toàn bộ thành viên gốc |
 | 7 | Danh sách nhóm | Phân trang, tìm kiếm theo tên, lọc theo loại nhóm và số lượng thành viên |
@@ -53,7 +53,7 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 | US-001 | Là Admin, tôi muốn tạo nhóm mới với tên, mã, loại nhóm và mô tả để tổ chức người dùng theo đơn vị/dự án | Must | Tên nhóm unique trong hệ thống; mã nhóm unique; loại nhóm thuộc enum [department, project, custom]; tạo thành công → toast "Đã tạo thành công" |
 | US-002 | Là Admin/Can bo, tôi muốn chỉnh sửa thông tin nhóm để cập nhật tên, mô tả, loại nhóm | Must | Tên nhóm vẫn phải unique sau sửa; không cho phép sửa mã nhóm |
 | US-003 | Là Admin, tôi muốn xóa nhóm khi không còn thành viên để dọn dẹp nhóm không còn sử dụng | Must | Chỉ Admin được xóa; hệ thống kiểm tra member count > 0 → từ chối xóa với thông báo rõ ràng |
-| US-004 | Là Admin/Can bo, tôi muốn thêm người dùng vào nhóm với vai trò trong nhóm (roleInGroup) | Must | Kiểm tra duplicate membership trước khi thêm; ghi nhận joinedBy và joinedAt; toast thông báo thành công |
+| US-004 | Là Admin/Can bo, tôi muốn thêm người dùng vào nhóm | Must | Kiểm tra duplicate membership trước khi thêm; ghi nhận joinedBy và joinedAt; toast thông báo thành công |
 | US-005 | Là Admin/Can bo, tôi muốn xóa người dùng khỏi nhóm | Should | Xóa record GroupMember; không ảnh hưởng đến UserAccount; toast thông báo |
 | US-006 | Là Admin, tôi muốn sao chép nhóm để tạo nhanh nhóm có cấu trúc tương tự | Should | Sao chép tên, mã, loại, mô tả; sao chép toàn bộ GroupMember từ nhóm gốc; tạo GroupHistory entry |
 | US-007 | Là Lanh dao/Can bo/Ca nhan, tôi muốn tìm kiếm và lọc danh sách nhóm theo tên, loại nhóm, số lượng thành viên | Must | Kết quả phân trang; bộ lọc hoạt động độc lập hoặc kết hợp; hiển thị số lượng thành viên mỗi nhóm |
@@ -69,7 +69,7 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 | AC-003 | Tạo nhóm trùng mã | Người dùng là Admin, mã nhóm "DA" đã tồn tại | POST /api/v1/groups với code="DA" (trùng) | Response 409 Conflict, message "Mã nhóm đã tồn tại" | Critical |
 | AC-004 | Xóa nhóm còn thành viên | Nhóm "Đội A" có 2 thành viên, người dùng là Admin | DELETE /api/v1/groups/{id} | Response 409 Conflict, message "Không thể xóa nhóm còn thành viên" | Critical |
 | AC-005 | Xóa nhóm rỗng | Nhóm "Đội A" không còn thành viên, người dùng là Admin | DELETE /api/v1/groups/{id} | Response 200, nhóm bị xóa, toast "Đã xóa thành công" | Critical |
-| AC-006 | Thêm thành viên vào nhóm | Nhóm "Đội A" tồn tại, user "U001" chưa thuộc nhóm | POST /api/v1/groups/{id}/members với userId="U001", roleInGroup="member" | Response 201, GroupMember record được tạo, toast "Đã thêm thành viên" | Critical |
+| AC-006 | Thêm thành viên vào nhóm | Nhóm "Đội A" tồn tại, user "U001" chưa thuộc nhóm | POST /api/v1/groups/{id}/members với userId="U001" | Response 201, GroupMember record được tạo, toast "Đã thêm thành viên" | Critical |
 | AC-007 | Thêm thành viên trùng lặp | Nhóm "Đội A" đã có user "U001" | POST /api/v1/groups/{id}/members với userId="U001" | Response 409 Conflict, message "Người dùng đã thuộc nhóm này" | Major |
 | AC-008 | Xóa thành viên khỏi nhóm | Nhóm "Đội A" có user "U001" | DELETE /api/v1/groups/{id}/members/U001 | Response 200, GroupMember record bị xóa, UserAccount không bị ảnh hưởng | Major |
 | AC-009 | Sao chép nhóm | Nhóm "Đội A" có 3 thành viên | POST /api/v1/groups/{id}/copy với name="Đội A (Copy)" | Response 201, nhóm mới được tạo với 3 thành viên sao chép, GroupHistory entry ghi nhận | Major |
@@ -98,7 +98,7 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 | Entity | Key Fields | FK References | Notes |
 |---|---|---|---|
 | **UserGroup** | id (BIGINT PK), name (VARCHAR 100 NOT NULL), code (VARCHAR 30 UNIQUE NOT NULL), description (TEXT), groupType (VARCHAR 30), status (VARCHAR 20), createdAt, updatedAt | — | Bảng chính quản lý nhóm |
-| **GroupMember** | id (BIGINT PK), groupId (BIGINT FK→UserGroup), userId (BIGINT FK→UserAccount), joinedBy (BIGINT FK→UserAccount), joinedAt, roleInGroup (VARCHAR 30) | UserGroup, UserAccount | Bảng trung gian |
+| **GroupMember** | id (BIGINT PK), groupId (BIGINT FK→UserGroup), userId (BIGINT FK→UserAccount), joinedBy (BIGINT FK→UserAccount), joinedAt | UserGroup, UserAccount | Bảng trung gian |
 | **GroupHistory** | id (BIGINT PK), groupId (BIGINT FK→UserGroup), action (VARCHAR 30), performedBy (BIGINT FK→UserAccount), performedAt, notes (TEXT) | UserGroup, UserAccount | Lịch sử thay đổi nhóm |
 | **UserAccount** | id (BIGINT PK), username, email, passwordHash, roleId, organizationId, status, createdAt, updatedAt, deletedAt, lastLoginAt | Role, Organization | Tham chiếu từ GroupMember |
 | **Role** | id (BIGINT PK), name, code, description, permissions (JSON), isSystem | — | Tham chiếu từ UserAccount |
@@ -157,4 +157,3 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 |---|---|---|---|
 | [AMBIGUITY-001] | Vai trò "Lanh dao" và "Can bo" không rõ ràng trong permission matrix — Can bo có quyền edit nhưng không có quyền delete, trong khi root feature-brief chỉ gán "Full access" cho Admin | Medium | Cần xác nhận chính xác quyền của Can bo: có được xóa nhóm không? Có được sao chép nhóm không? |
 | [AMBIGUITY-002] | Mã nhóm (code) có quy tắc sinh tự động hay do người dùng nhập? | Low | Cần xác định: auto-generated (ví dụ: DA-001) hoặc manual input? |
-| [AMBIGUITY-003] | RoleInGroup — các giá trị enum của roleInGroup chưa được định nghĩa | Low | Cần xác định các vai trò trong nhóm (ví dụ: admin, member, observer) |

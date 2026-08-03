@@ -7,11 +7,11 @@ export interface DryPort {
   latitude: number | null;
   longitude: number | null;
   area: number;
-  congSuatTEU: number | null;
+  teuCapacity: number | null;
   operationalStatus: string; // 'HIEN_HANH' | 'TAM_NGUNG'
   approvalStatus: string; // 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI'
   orgUnitId: string;
-  bieuTuongId?: string | null;
+  symbolId?: string | null;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -25,10 +25,10 @@ export interface CreateCangCanPayload {
   latitude?: number | null;
   longitude?: number | null;
   area: number;
-  congSuatTEU?: number | null;
+  teuCapacity?: number | null;
   operationalStatus?: string;
   approvalStatus?: string;
-  bieuTuongId?: string | null;
+  symbolId?: string | null;
 }
 
 export interface UpdateCangCanPayload {
@@ -39,9 +39,9 @@ export interface UpdateCangCanPayload {
   latitude?: number | null;
   longitude?: number | null;
   area?: number;
-  congSuatTEU?: number | null;
+  teuCapacity?: number | null;
   operationalStatus?: string;
-  bieuTuongId?: string | null;
+  symbolId?: string | null;
 }
 
 export interface dryPortHistoryRecord {

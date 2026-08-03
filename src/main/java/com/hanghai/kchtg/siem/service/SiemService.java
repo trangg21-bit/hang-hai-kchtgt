@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.siem.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.accesslog.entity.AccessLog;
 import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
@@ -81,7 +83,7 @@ public class SiemService {
      */
     public byte[] exportWordReport() throws IOException {
         SiemMetricsResponse metrics = getMetrics();
-        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by("createdAt").descending())).getContent();
+        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by(EntityFields.CREATED_AT).descending())).getContent();
 
         try (XWPFDocument doc = new XWPFDocument()) {
             XWPFParagraph title = doc.createParagraph();
@@ -141,7 +143,7 @@ public class SiemService {
      */
     public byte[] exportExcelReport() throws IOException {
         SiemMetricsResponse metrics = getMetrics();
-        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 50, Sort.by("createdAt").descending())).getContent();
+        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 50, Sort.by(EntityFields.CREATED_AT).descending())).getContent();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             XSSFSheet sheet = workbook.createSheet("SIEM Report");
@@ -215,7 +217,7 @@ public class SiemService {
      */
     public byte[] exportPdfReport() throws IOException {
         SiemMetricsResponse metrics = getMetrics();
-        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by("createdAt").descending())).getContent();
+        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by(EntityFields.CREATED_AT).descending())).getContent();
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(out);
@@ -265,7 +267,7 @@ public class SiemService {
      */
     public byte[] exportHtmlReport() {
         SiemMetricsResponse metrics = getMetrics();
-        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by("createdAt").descending())).getContent();
+        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by(EntityFields.CREATED_AT).descending())).getContent();
 
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html><html><head><meta charset=\"UTF-8\">");
@@ -318,7 +320,7 @@ public class SiemService {
      */
     public byte[] exportXmlReport() {
         SiemMetricsResponse metrics = getMetrics();
-        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by("createdAt").descending())).getContent();
+        List<AccessLog> recentLogs = accessLogRepository.findAll(PageRequest.of(0, 20, Sort.by(EntityFields.CREATED_AT).descending())).getContent();
 
         StringBuilder xml = new StringBuilder();
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");

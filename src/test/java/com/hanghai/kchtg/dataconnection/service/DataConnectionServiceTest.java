@@ -2,7 +2,10 @@ package com.hanghai.kchtg.dataconnection.service;
 
 import com.hanghai.kchtg.dataconnection.dto.*;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
-import com.hanghai.kchtg.dataconnection.enums.*;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
+import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
 import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
 import com.hanghai.kchtg.security.EncryptionUtil;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,8 +24,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)

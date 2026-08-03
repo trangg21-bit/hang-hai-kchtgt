@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.lockout.dto.enums.LockoutStatus;
+import com.hanghai.kchtg.lockout.service.LockoutService;
 import com.hanghai.kchtg.security.TotpValidator;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.MfaChallengeResponse;
@@ -48,17 +48,20 @@ public class TotpAuthService {
     private final TotpValidator totpValidator;
     private final TokenService tokenService;
     private final LoginAuditLogService auditLogService;
+    private final LockoutService lockoutService;
 
     public TotpAuthService(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            TotpValidator totpValidator,
                            TokenService tokenService,
-                           LoginAuditLogService auditLogService) {
+                           LoginAuditLogService auditLogService,
+                           LockoutService lockoutService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.totpValidator = totpValidator;
         this.tokenService = tokenService;
         this.auditLogService = auditLogService;
+        this.lockoutService = lockoutService;
     }
 
     // =========================================================================
@@ -99,55 +102,36 @@ public class TotpAuthService {
             throw new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không hợp lệ");
         }
 
-        // =========================================================================
-        if (user.getStatus() == UserStatus.LOCKED) {
+        LockoutStatus lockoutStatus = lockoutService.checkLockout(user);
+        if (lockoutStatus == LockoutStatus.LOCKED || user.getStatus() == UserStatus.LOCKED) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
                     "Tài khoản bị khóa", request);
             throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
-        if (user.getAccountLockedUntil() != null
-                && LocalDateTime.now().isBefore(user.getAccountLockedUntil())) {
-            auditLogService.logAttempt(user.getId(), user.getUsername(),
-                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
-                    "Tài khoản bị khóa until " + user.getAccountLockedUntil(), request);
-            throw new IllegalArgumentException(
-                    "Tài khoản đã bị khóa until " + user.getAccountLockedUntil().toString());
-        }
-
-        // =========================================================================
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            // Tăng failedLoginCount
-            user.setFailedLoginCount(user.getFailedLoginCount() + 1);
-            userRepository.save(user);
-
-            auditLogService.logAttempt(user.getId(), user.getUsername(),
-                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
-                    "Mật khẩu không hợp lệ (lần thử " + user.getFailedLoginCount() + ")", request);
-
+            LockoutStatus failureStatus = lockoutService.recordFailure(
+                    user, "Mật khẩu không hợp lệ", request);
+            if (failureStatus == LockoutStatus.LOCKED) {
+                throw new IllegalArgumentException(
+                        "Tài khoản đã bị khóa trong 30 phút do đăng nhập sai 5 lần");
+            }
             throw new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không hợp lệ");
         }
 
-        // =========================================================================
-        user.setFailedLoginCount(0);
+        lockoutService.recordSuccess(user, request);
 
         // =========================================================================
         if (Boolean.TRUE.equals(user.getTotpEnabled())) {
             // Yêu cầu phase 2 (mã TOTP)
             MfaChallengeResponse response = MfaChallengeResponse.requireChallenge(user.getId());
-            auditLogService.logAttempt(user.getId(), user.getUsername(),
-                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.SUCCESS,
-                    null, request);
             return response;
         }
 
         // =========================================================================
         // Client có thể gọi endpoint login/totp với skipTotp=true để lấy JWT
         MfaChallengeResponse response = MfaChallengeResponse.skipChallenge(user.getId());
-        auditLogService.logAttempt(user.getId(), user.getUsername(),
-                LoginAttemptType.CREDENTIALS, LoginAttemptResult.SUCCESS,
-                null, request);
         return response;
     }
 
@@ -171,24 +155,14 @@ public class TotpAuthService {
         User user = userRepository.findByIdWithRelations(userId)
                 .orElseThrow(() -> new IllegalArgumentException("ID người dùng không hợp lệ"));
 
-        // =========================================================================
-        if (user.getStatus() == UserStatus.LOCKED) {
+        LockoutStatus lockoutStatus = lockoutService.checkLockout(user);
+        if (lockoutStatus == LockoutStatus.LOCKED || user.getStatus() == UserStatus.LOCKED) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
                     "Tài khoản bị khóa", requestHttp);
             throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
-        if (user.getAccountLockedUntil() != null
-                && LocalDateTime.now().isBefore(user.getAccountLockedUntil())) {
-            auditLogService.logAttempt(user.getId(), user.getUsername(),
-                    LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
-                    "Tài khoản bị khóa until " + user.getAccountLockedUntil(), requestHttp);
-            throw new IllegalArgumentException(
-                    "Tài khoản đã bị khóa until " + user.getAccountLockedUntil().toString());
-        }
-
-        // =========================================================================
         if (!Boolean.TRUE.equals(user.getTotpEnabled())) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
@@ -211,9 +185,10 @@ public class TotpAuthService {
             int newCount = user.getFailedTotpCount() + 1;
             user.setFailedTotpCount(newCount);
 
-            // Nếu đạt ngưỡng -> khóa tài khoản 15 phút
+            // Nếu đạt ngưỡng -> khóa tài khoản 30 phút
             if (newCount >= MAX_TOTP_ATTEMPTS) {
-                user.setAccountLockedUntil(LocalDateTime.now().plusMinutes(15));
+                user.setAccountLockedUntil(LocalDateTime.now().plusMinutes(30));
+                user.setStatus(UserStatus.LOCKED);
             }
 
             userRepository.save(user);

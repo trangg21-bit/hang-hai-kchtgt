@@ -1,11 +1,8 @@
 package com.hanghai.kchtg.port.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.port.dto.document.DocumentResponse;
 import com.hanghai.kchtg.port.service.DocumentService;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

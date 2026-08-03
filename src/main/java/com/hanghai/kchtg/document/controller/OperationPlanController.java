@@ -1,9 +1,8 @@
 package com.hanghai.kchtg.document.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.document.dto.*;
+import com.hanghai.kchtg.document.dto.OperationPlanCreateRequest;
+import com.hanghai.kchtg.document.dto.OperationPlanResponse;
 import com.hanghai.kchtg.document.entity.OperationStatus;
 import com.hanghai.kchtg.document.service.OperationPlanService;
 import jakarta.validation.Valid;
@@ -16,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for F-129 Quản lý thông tin vận hành.

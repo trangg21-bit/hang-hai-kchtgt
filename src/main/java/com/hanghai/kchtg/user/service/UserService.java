@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import java.util.UUID;
 
 import com.hanghai.kchtg.group.entity.UserGroup;
@@ -27,6 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -52,6 +57,13 @@ import java.util.UUID;
 @Service
 @Transactional
 public class UserService {
+
+    private static String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email không được để trống");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
@@ -105,12 +117,12 @@ public class UserService {
             actualSize = MAX_PAGE_SIZE;
         }
         
-        org.springframework.data.domain.Sort sort = pageable.getSort();
+        Sort sort = pageable.getSort();
         if (sort == null || sort.isUnsorted()) {
-            sort = org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt");
+            sort = Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT);
         }
         
-        Pageable cappedPageable = org.springframework.data.domain.PageRequest.of(
+        Pageable cappedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 actualSize,
                 sort
@@ -179,8 +191,9 @@ public class UserService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(email)) {
+            throw new IllegalArgumentException("Email đã tồn tại: " + email);
         }
 
         // BR-002: Validate password policy
@@ -189,10 +202,18 @@ public class UserService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
+
+        if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
+                throw new AccessDeniedException("Chỉ có System Admin mới có quyền tạo System Admin");
+            }
+        }
+
         Role role = roleRepository.findByCode(roleCode)
                 .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + roleCode));
         user.getRoles().add(role);
@@ -232,11 +253,16 @@ public class UserService {
     public User update(UUID id, UpdateUserRequest request) {
         User user = findById(id);
 
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        if (request.getStatus() != null && request.getStatus() != user.getStatus()) {
+            user = changeStatus(id, request.getStatus(), "Cập nhật trạng thái từ biểu mẫu chỉnh sửa");
+        }
+
+        if (request.getEmail() != null) {
+            String email = normalizeEmail(request.getEmail());
+            if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(email, user.getId())) {
+                throw new IllegalArgumentException("Email đã tồn tại: " + email);
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(email);
         }
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
@@ -307,6 +333,14 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
 
+        if (user.getRoles().stream().anyMatch(r -> "ROLE_SYSTEM_ADMIN".equals(r.getCode()))) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
+                throw new AccessDeniedException("Chỉ có System Admin mới có quyền xóa System Admin");
+            }
+        }
+
+
         // BR-003: Data-dependency check — query phanhen/bao cao FK references
         // If FK constraints exist in the DB, this will fail at constraint level.
         // We also check here to provide a user-friendly error message.
@@ -325,46 +359,73 @@ public class UserService {
      * pointing to this user. Blocks delete if any references exist.
      */
     private void checkBusinessDataReferences(User user) {
-        // 1. Check password_history references
-        long historyCount = passwordHistoryRepository.countByUserId(user.getId());
-        if (historyCount > 0) {
-            throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
-        }
-        // 2. Query information_schema for all FK tables referencing app_users
+        List<String> ignoredSystemTables = List.of(
+            "app_users", "password_history", "user_status_log", 
+            "user_roles", "app_user_roles", "user_group_members", 
+            "group_members", "pending_approvals", "password_expiration_log"
+        );
+
+        // 1. Query information_schema for all FK tables AND exact column names referencing app_users
         @SuppressWarnings("unchecked")
-        List<String> fkTables = entityManager.createNativeQuery(
-            "SELECT DISTINCT kcu.table_name FROM information_schema.key_column_usage kcu " +
-            "JOIN information_schema.table_constraints tc " +
-            "ON kcu.constraint_name = tc.constraint_name " +
-            "AND kcu.table_schema = tc.table_schema " +
+        List<Object[]> fkReferences = entityManager.createNativeQuery(
+            "SELECT DISTINCT kcu.table_name, kcu.column_name FROM information_schema.table_constraints AS tc " +
+            "JOIN information_schema.key_column_usage AS kcu " +
+            "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema " +
+            "JOIN information_schema.constraint_column_usage AS ccu " +
+            "ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema " +
             "WHERE tc.constraint_type = 'FOREIGN KEY' " +
-            "AND kcu.referenced_table_name = 'app_users' " +
-            "AND kcu.table_schema = 'public'"
+            "AND ccu.table_name = 'app_users' " +
+            "AND tc.table_schema = 'public'"
         ).getResultList();
-        // 3. Check each dependent table for references to this user
-        for (String table : fkTables) {
-            if ("password_history".equals(table) || "user_status_log".equals(table)) continue;
+
+        // 2. Check each dependent table using its exact foreign key column name
+        for (Object[] row : fkReferences) {
+            String tbl = (String) row[0];
+            String col = (String) row[1];
+            if (ignoredSystemTables.contains(tbl)) continue;
+
             Number count = (Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM " + table + " WHERE user_id = :userId"
+                "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
             ).setParameter("userId", user.getId()).getSingleResult();
             if (count.longValue() > 0) {
                 throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
             }
         }
-        // 4. Check any table with audit columns referencing this user
+
+        // 3. Check any table with audit columns referencing this user
         @SuppressWarnings("unchecked")
         List<Object[]> refColumns = entityManager.createNativeQuery(
-            "SELECT DISTINCT c.table_name, c.column_name FROM information_schema.columns c " +
+            "SELECT DISTINCT c.table_name, c.column_name, c.data_type FROM information_schema.columns c " +
             "WHERE c.table_schema = 'public' " +
             "AND c.column_name IN ('created_by','updated_by','deleted_by','approved_by','assigned_by','changed_by','operator_id') " +
-            "AND c.table_name NOT IN ('app_users','password_history','user_status_log') " +
             "ORDER BY c.table_name"
         ).getResultList();
+
         for (Object[] row : refColumns) {
             String tbl = (String) row[0];
             String col = (String) row[1];
+            if (ignoredSystemTables.contains(tbl)) continue;
+
+            String dataType = (String) row[2];
+            String userIdExpression;
+            if ("uuid".equalsIgnoreCase(dataType)) {
+                userIdExpression = "CAST(:userId AS uuid)";
+            } else if ("character varying".equalsIgnoreCase(dataType)
+                    || "character".equalsIgnoreCase(dataType)
+                    || "text".equalsIgnoreCase(dataType)) {
+                // Some legacy audit columns (for example
+                // adjustment_approvals.approved_by) intentionally remain text.
+                userIdExpression = "CAST(:userId AS text)";
+            } else {
+                // A UUID user identifier cannot meaningfully match numeric/date
+                // audit columns; skip those columns instead of aborting deletion.
+                log.debug("Skipping unsupported audit column type {}.{} ({})", tbl, col, dataType);
+                continue;
+            }
+
             Number count = (Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
+                "SELECT COUNT(*) FROM \"" + tbl.replace("\"", "\"\"") + "\" WHERE \""
+                    + col.replace("\"", "\"\"") + "\" = " + userIdExpression
             ).setParameter("userId", user.getId()).getSingleResult();
             if (count.longValue() > 0) {
                 throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
@@ -470,11 +531,12 @@ public class UserService {
         if (!isAdmin && request.getEmail() != null) {
             throw new AccessDeniedException("Chỉ quản trị viên mới được thay đổi email");
         }
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        if (request.getEmail() != null) {
+            String email = normalizeEmail(request.getEmail());
+            if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(email, user.getId())) {
+                throw new IllegalArgumentException("Email đã tồn tại: " + email);
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(email);
         }
 
         // Self can update fullName and phone

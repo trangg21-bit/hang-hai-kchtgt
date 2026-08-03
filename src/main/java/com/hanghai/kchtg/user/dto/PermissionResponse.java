@@ -1,5 +1,10 @@
 package com.hanghai.kchtg.user.dto;
 
+import com.hanghai.kchtg.user.service.PermissionRoleService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 /**
  * Response body cho việc kiểm tra quyền hạn.
  * <p>
@@ -8,8 +13,11 @@ package com.hanghai.kchtg.user.dto;
  * và PermissionEvaluationService để trả kết quả cho client.
  * </p>
  *
- * @see com.hanghai.kchtg.user.service.PermissionRoleService#checkPermission
+ * @see PermissionRoleService#checkPermission
  */
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
 public class PermissionResponse {
 
     /** True nếu user có quyền, false nếu không. */
@@ -30,9 +38,6 @@ public class PermissionResponse {
     /** Lý do từ chối (chỉ có khi hasPermission = false). */
     private String deniedReason;
 
-    public PermissionResponse() {
-    }
-
     public PermissionResponse(boolean hasPermission, String resource, String action) {
         this.hasPermission = hasPermission;
         this.resource = resource;
@@ -49,45 +54,5 @@ public class PermissionResponse {
         PermissionResponse resp = new PermissionResponse(false, resource, action);
         resp.setDeniedReason(reason);
         return resp;
-    }
-
-    public boolean isHasPermission() {
-        return hasPermission;
-    }
-
-    public void setHasPermission(boolean hasPermission) {
-        this.hasPermission = hasPermission;
-    }
-
-    public String getResource() {
-        return resource;
-    }
-
-    public void setResource(String resource) {
-        this.resource = resource;
-    }
-
-    public String getAction() {
-        return action;
-    }
-
-    public void setAction(String action) {
-        this.action = action;
-    }
-
-    public String getPermissionCode() {
-        return permissionCode;
-    }
-
-    public void setPermissionCode(String permissionCode) {
-        this.permissionCode = permissionCode;
-    }
-
-    public String getDeniedReason() {
-        return deniedReason;
-    }
-
-    public void setDeniedReason(String deniedReason) {
-        this.deniedReason = deniedReason;
     }
 }

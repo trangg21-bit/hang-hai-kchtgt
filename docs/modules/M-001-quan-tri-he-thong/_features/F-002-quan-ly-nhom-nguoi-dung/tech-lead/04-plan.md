@@ -312,7 +312,6 @@ public ResponseEntity<ApiResponse<Page<GroupResponse>>> list(
 | OQ-1 | `GroupMember.user` factory method passes `null` for user entity — is this intentional stub or a bug? | High | **BUG** — must fix in Wave 1. The add member flow needs actual User entity. |
 | OQ-2 | `GroupHistory` uses `UUID userGroupId` and `UUID changedBy` — consistent with `BaseEntity` UUID PK? | Medium | Confirm UUID alignment across all entities (BaseEntity uses UUID PK) |
 | OQ-3 | Should `groupType` values be validated at frontend (select dropdown) or only backend (enum)? | Low | **Recommend**: both — frontend dropdown (department/project/custom) + backend CHECK constraint |
-| OQ-4 | AMBIGUITY-003: `roleInGroup` values — SA spec says VARCHAR(30) open-ended. Frontend uses admin/member/viewer. Align? | Low | Use "admin", "member", "viewer" as documented in frontend; backend validates at frontend level only |
 | OQ-5 | AMBIGUITY-002: Group code generation — SA spec says `GroupCodeFactory` auto-generates (prefix-based like "DA-001"). Frontend generates from name. Implement factory? | Low | **Recommend**: implement basic factory in Wave 1/2 — `GroupCodeFactory.generate(code, groupType)` |
 
 ## 13. Code Reviewer Guidance

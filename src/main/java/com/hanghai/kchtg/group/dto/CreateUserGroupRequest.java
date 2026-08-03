@@ -1,24 +1,20 @@
 package com.hanghai.kchtg.group.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.GroupType;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
-import java.util.UUID;
-
-import lombok.Getter;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Request body cho việc tạo mới UserGroup (BR-012: groupType).
  */
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateUserGroupRequest {
 
     @NotBlank(message = "Tên nhóm không được để trống")

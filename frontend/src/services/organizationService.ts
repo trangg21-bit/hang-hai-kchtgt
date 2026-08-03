@@ -23,6 +23,7 @@ export interface Organization {
   contactPerson?: string;
   contactPhone?: string;
   status: "draft" | "pending" | "approved" | "rejected";
+  operationalStatus: "active" | "inactive";
   childCount: number;
   createdAt: string;
   updatedAt: string;
@@ -40,7 +41,7 @@ export interface CreateOrganizationPayload {
   phone?: string;
   contactPerson?: string;
   contactPhone?: string;
-  status?: string;
+  operationalStatus?: "active" | "inactive";
 }
 
 export interface UpdateOrganizationPayload {
@@ -55,6 +56,7 @@ export interface UpdateOrganizationPayload {
   contactPerson?: string;
   contactPhone?: string;
   status?: "draft" | "pending" | "approved" | "rejected";
+  operationalStatus?: "active" | "inactive";
 }
 
 export interface OrgFilters {
@@ -117,6 +119,7 @@ function mapOrgUnit(
     contactPerson: item.contactPerson,
     contactPhone: item.contactPhone ?? item.phone,
     status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+    operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
     childCount,
     createdAt: item.createdAt
       ? new Date(item.createdAt).toISOString()
@@ -198,6 +201,7 @@ export const organizationService = {
         level: item.level,
         type: item.type as Organization["type"],
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
       }));
 
       // Build parent name lookup map
@@ -216,6 +220,7 @@ export const organizationService = {
           contactPerson: item.contactPerson,
           contactPhone: item.contactPhone ?? item.phone,
           status: item.status as Organization["status"],
+          operationalStatus: item.operationalStatus as Organization["operationalStatus"],
           childCount: 0, // placeholder
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
           updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
@@ -251,6 +256,7 @@ export const organizationService = {
           contactPerson: item.contactPerson,
           contactPhone: item.contactPhone ?? item.phone,
           status: item.status as Organization["status"],
+          operationalStatus: item.operationalStatus as Organization["operationalStatus"],
           childCount,
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
           updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
@@ -337,6 +343,7 @@ export const organizationService = {
         contactPerson: item.contactPerson,
         contactPhone: item.contactPhone ?? item.phone,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
         childCount: 0,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
@@ -358,7 +365,7 @@ export const organizationService = {
    * GET /api/org-units/tree
    * Returns hierarchical tree with children populated.
    */
-  async getTree(): Promise<Organization[]> {
+  async getTree(options?: { allowMockFallback?: boolean }): Promise<Organization[]> {
     try {
       const resp = await api.get("/org-units/tree");
       const items: any[] = extractData(resp) ?? [];
@@ -382,6 +389,7 @@ export const organizationService = {
           detailAddress: node.detailAddress,
           phone: node.phone,
           status: (node.status?.toLowerCase() as Organization["status"]) ?? "draft",
+          operationalStatus: (node.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
           childCount: Array.isArray(node.children) ? node.children.length : 0,
           createdAt: node.createdAt ? new Date(node.createdAt).toISOString() : "",
           updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "", updatedBy: (node.updatedBy ?? undefined), 
@@ -408,7 +416,10 @@ export const organizationService = {
       });
 
       return flatList;
-    } catch {
+    } catch (error) {
+      if (options?.allowMockFallback === false) {
+        throw error;
+      }
       await delay();
       // Build a tree-like flat list from MOCK_ORGANIZATIONS
       const orgMap = new Map<string, Organization>();
@@ -498,6 +509,7 @@ export const organizationService = {
         phone: payload.phone ?? payload.contactPhone,
         contactPerson: payload.contactPerson,
         status: "DRAFT",
+        operationalStatus: payload.operationalStatus?.toUpperCase() ?? "ACTIVE",
       });
       const item: any = extractData(resp);
 
@@ -515,6 +527,7 @@ export const organizationService = {
         contactPerson: item.contactPerson ?? payload.contactPerson,
         contactPhone: payload.contactPhone ?? payload.phone,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
         childCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(), updatedBy: undefined, 
@@ -541,6 +554,7 @@ export const organizationService = {
         contactPerson: payload.contactPerson,
         contactPhone: payload.contactPhone ?? payload.phone,
         status: 'draft',
+        operationalStatus: payload.operationalStatus ?? 'active',
         childCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(), updatedBy: undefined, 
@@ -569,6 +583,7 @@ export const organizationService = {
         phone: payload.phone ?? payload.contactPhone,
         contactPerson: payload.contactPerson,
         status: payload.status?.toUpperCase(),
+        operationalStatus: payload.operationalStatus?.toUpperCase(),
       };
       if (payload.parentId !== undefined) {
         body.parentId = payload.parentId;
@@ -592,6 +607,9 @@ export const organizationService = {
         status:
           (payload.status ?? item.status?.toLowerCase()) as Organization["status"] ??
           "draft",
+        operationalStatus:
+          (payload.operationalStatus ?? item.operationalStatus?.toLowerCase()) as Organization["operationalStatus"] ??
+          "active",
         childCount: 0,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()

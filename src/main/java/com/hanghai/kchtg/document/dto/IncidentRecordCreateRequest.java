@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
 public class IncidentRecordCreateRequest {
 
     @NotNull
-    private java.util.UUID incidentId;
+    private UUID incidentId;
 
     private String detailedDescription;
 

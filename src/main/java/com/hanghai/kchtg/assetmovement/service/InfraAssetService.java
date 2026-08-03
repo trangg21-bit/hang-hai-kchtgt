@@ -1,12 +1,9 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.assetmovement.entity.InfraAsset;
-import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.assetmovement.repository.InfraAssetRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +34,7 @@ public class InfraAssetService {
                 .fundingSource(request.getFundingSource())
                 .originalValue(request.getOriginalValue())
                 .status(AssetStatus.MANAGED)
-                
+
                 .build();
         InfraAsset saved = repository.save(entity);
         return toResponse(saved);

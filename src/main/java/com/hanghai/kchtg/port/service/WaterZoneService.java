@@ -1,21 +1,27 @@
 package com.hanghai.kchtg.port.service;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
-import com.hanghai.kchtg.port.dto.waterzone.*;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.port.dto.waterzone.CreateWaterZoneRequest;
+import com.hanghai.kchtg.port.dto.waterzone.UpdateWaterZoneRequest;
+import com.hanghai.kchtg.port.dto.waterzone.WaterZoneResponse;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.entity.WaterZone;
 import com.hanghai.kchtg.port.entity.WaterZoneType;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +33,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Slf4j
 @Service
@@ -39,8 +44,8 @@ public class WaterZoneService {
     private final ChangeHistoryService changeHistoryService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final UserResolverService userResolverService;
-    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
-    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository gisSpatialObjectRepository;
+    private final UserRepository userRepository;
+    private final GisSpatialObjectRepository gisSpatialObjectRepository;
 
     @Transactional
     public WaterZoneResponse create(CreateWaterZoneRequest request) {
@@ -111,7 +116,7 @@ public class WaterZoneService {
     public Page<WaterZoneResponse> findAll(int page, int size, UUID orgUnitId, UUID portId,
                                           String search, WaterZoneType waterZoneType, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<WaterZone> pageResult = waterZoneRepository.searchWaterZones(orgUnitId, portId, search, waterZoneType, statusEnum, approvalEnum, pageable);
@@ -162,7 +167,7 @@ public class WaterZoneService {
             });
         }
 
-        return pageResult.map(e -> toResponse(e, 
+        return pageResult.map(e -> toResponse(e,
                 parentNameMap.get(e.getPortId()),
                 userNamesMap.get(e.getCreatedBy()),
                 userNamesMap.get(e.getUpdatedBy()),
@@ -259,7 +264,7 @@ public class WaterZoneService {
     public void softDelete(UUID id) {
         WaterZone entity = waterZoneRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + id));
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -283,12 +288,12 @@ public class WaterZoneService {
     private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName, String preResolvedCreatorName, String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
         GisGeometryType geomType = null;
         String coords = null;
-        
+
         GisSpatialObject spatial = preResolvedSpatial;
         if (spatial == null && e.getSpatialId() != null) {
             spatial = gisSpatialObjectRepository.findById(e.getSpatialId()).orElse(null);
         }
-        
+
         if (spatial != null) {
             geomType = spatial.getGeometryType();
             coords = spatial.getCoordinates();

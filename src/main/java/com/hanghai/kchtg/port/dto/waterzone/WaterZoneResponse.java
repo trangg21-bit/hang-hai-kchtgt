@@ -1,15 +1,15 @@
 package com.hanghai.kchtg.port.dto.waterzone;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.port.entity.WaterZoneType;
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 @Builder
@@ -22,9 +22,9 @@ public class WaterZoneResponse {
     private BigDecimal area;
     private BigDecimal maxDepth;
     private BigDecimal avgDepth;
-    private com.hanghai.kchtg.port.entity.WaterZoneType waterZoneType;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
-    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
+    private WaterZoneType waterZoneType;
+    private OperationalStatus operationalStatus;
+    private ApprovalStatus approvalStatus;
     private UUID orgUnitId;
     private UUID createdBy;
     private UUID updatedBy;

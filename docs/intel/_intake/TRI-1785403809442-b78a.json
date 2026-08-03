@@ -1,0 +1,34 @@
+{
+  "triage_id": "TRI-1785403809442-b78a",
+  "created_at": 1785403809442,
+  "request_summary": "BA confirmed: remove \"gửi cảnh báo đến người phụ trách\" from F-128 feature-brief (4 lines)",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-128-quan-ly-van-ban-phap-ly/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-128-quan-ly-van-ban-phap-ly/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Feature brief document for F-128 Quản lý văn bản pháp lý",
+  "blast_radius": 1,
+  "done_oracle": "No notification/alert sending references remain in the brief; In Scope updated to auto-transition only",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "56d2b3a693afaf86ae93bc0d0c64ac53f3327b46",
+    "dirty": true,
+    "captured_at": 1785403809583
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

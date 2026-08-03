@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Request DTO for updating ProcessingProgress progress.
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 public class ProcessingProgressRequest {
 
     @NotNull(message = "incidentId không được để trống")
-    private java.util.UUID incidentId;
+    private UUID incidentId;
 
     private LocalDateTime updatedAt;
     private String progressDescription;

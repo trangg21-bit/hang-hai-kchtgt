@@ -1,12 +1,10 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestResponse;
+import com.hanghai.kchtg.assetmovement.entity.MovementRequest;
 import com.hanghai.kchtg.assetmovement.entity.MovementType;
 import com.hanghai.kchtg.assetmovement.entity.RequestStatus;
-import com.hanghai.kchtg.assetmovement.entity.MovementRequest;
 import com.hanghai.kchtg.assetmovement.repository.MovementRequestRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -44,7 +41,7 @@ public class MovementRequestService {
                 .title(request.getAssetName())
                 .description(request.getDescription())
                 .status(RequestStatus.PENDING)
-                
+
                 .build();
 
         MovementRequest saved = repository.save(entity);

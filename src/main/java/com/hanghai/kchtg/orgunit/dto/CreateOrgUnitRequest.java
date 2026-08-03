@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.orgunit.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
 
 import java.util.UUID;
 
@@ -31,12 +32,13 @@ public class CreateOrgUnitRequest {
     /** Parent unit ID (nullable — root unit if omitted). */
     private UUID parentId;
 
-    @NotNull(message = "Loại đơn vị không được để trống")
+    /** Unit type — optional, auto-inferred from parentId if omitted. */
     private OrgUnitType type;
 
     /** Optional description of the unit. */
     private String description;
 
+    @NotBlank(message = "Địa điểm (Tỉnh/Thành phố) không được để trống")
     @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
     private String address;
 
@@ -52,4 +54,7 @@ public class CreateOrgUnitRequest {
 
     /** Status — defaults to DRAFT on the service layer if not provided. */
     private OrgUnitStatus status;
+
+    /** Operational availability. Defaults to ACTIVE when omitted. */
+    private OrgUnitOperationalStatus operationalStatus;
 }

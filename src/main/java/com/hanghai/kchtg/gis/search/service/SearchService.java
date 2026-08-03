@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.search.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
@@ -16,12 +18,12 @@ import com.hanghai.kchtg.gis.search.dto.SearchResponse.SearchResultItem;
 import com.hanghai.kchtg.gis.search.entity.SearchQuery;
 import com.hanghai.kchtg.gis.search.repository.SearchQueryRepository;
 import lombok.RequiredArgsConstructor;
-import javax.sql.DataSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -428,7 +430,7 @@ public class SearchService {
         PageRequest pageable = PageRequest.of(
                 0,
                 limit,
-                Sort.by(Sort.Direction.ASC, "createdAt")
+                Sort.by(Sort.Direction.ASC, EntityFields.CREATED_AT)
         );
 
         List<SearchQuery> queries = searchQueryRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);

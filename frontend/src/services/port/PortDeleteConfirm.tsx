@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Card, Button, Space, Typography, Tag, Row, Col, Input } from 'antd';
+import { Card, Button, Input, Space, Typography, Tag, Row, Col } from 'antd';
 import toast from '../../components/ToastNotification';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { borderDefault, statusAttention, statusCritical, textPrimary, textSecondary, textTertiary, spaceMd, fontSizeMd, fontSizeSm, radiusPill } from '../../tokens';
-import { fetchCangBienById, deleteCangBien, fetchPortChildren } from './api';
+import { borderDefault, statusAttention, spaceMd } from '../../tokens';
+import { fetchCangBienById, deleteCangBien } from './api';
 import type { CangBienResponse } from './types';
 
 function formatDate(dateStr: string | null): string {
@@ -24,38 +24,47 @@ export default function PortDeleteConfirm() {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const [childrenInfo, setChildrenInfo] = useState<{ berths: number; waterZones: number } | null>(null);
-  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       setIsLoading(true);
       try {
-        const [res, children] = await Promise.all([
-          fetchCangBienById(id),
-          fetchPortChildren(id).catch(() => ({ berths: 0, waterZones: 0 })),
-        ]);
+        const res = await fetchCangBienById(id);
         setData(res);
-        setChildrenInfo(children);
-        if (children.berths > 0 || children.waterZones > 0) {
-          setBlocked(true);
+
+        // Check child guard
+        try {
+          const childRes = await fetch(`/api/v1/ports/${id}/children`);
+          const json = await childRes.json();
+          if (json.data?.hasChildren) {
+            toast.error(`Không thể xóa: Cảng có ${json.data.berthCount} bến cảng và ${json.data.waterZoneCount} vùng nước liên kết`);
+            navigate('/Port');
+            return;
+          }
+        } catch (e) {
+          // Nếu API chưa có (mới thêm), bỏ qua
         }
-      } catch {
-        toast.error('Không thể tải thông tin cảng biển');
-        navigate('/Port');
+      } catch (err) {
+        console.error('Failed to fetch Port:', err);
+        navigate('/port');
       } finally {
         setIsLoading(false);
       }
     })();
   }, [id, navigate]);
 
+  const isConfirmValid = (): boolean => {
+    const trimmed = confirmText.trim();
+    return trimmed === data?.portName || trimmed === 'XÓA';
+  };
+
   const handleDelete = async () => {
-    if (!id || !data) return;
-    if (confirmText !== data.portName) {
-      toast.error('Vui lòng nhập chính xác tên cảng biển để xác nhận');
+    if (!isConfirmValid()) {
+      toast.error('Vui lòng nhập đúng tên cảng hoặc gõ "XÓA" để xác nhận');
       return;
     }
+    if (!id) return;
     setSubmitting(true);
     try {
       await deleteCangBien(id);
@@ -69,124 +78,84 @@ export default function PortDeleteConfirm() {
   };
 
   if (isLoading || !data) {
-    return <div style={{ padding: 40, textAlign: 'center', color: textSecondary }}>Đang tải...</div>;
-  }
-
-  // ── Blocked: has children ─────────────────────────────────────────
-  if (blocked && childrenInfo) {
-    return (
-      <>
-        <Card style={{ marginBottom: 16 }}>
-          <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/Port/${id}`)}>Quay lại</Button>
-            <Typography.Title level={5} style={{ margin: 0, color: statusCritical }}>
-              Không thể xóa — {data.portCode}
-            </Typography.Title>
-          </Space>
-        </Card>
-        <Card style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: 32 }}>
-          <Typography.Text style={{ color: statusCritical, fontSize: fontSizeMd }}>
-            Cảng này có {childrenInfo.berths} bến cảng và {childrenInfo.waterZones} vùng nước liên kết, không thể xóa.
-          </Typography.Text>
-          <br /><br />
-          <Typography.Text style={{ color: textSecondary, fontSize: fontSizeSm }}>
-            Vui lòng xóa các bến cảng và vùng nước trực thuộc trước khi xóa cảng biển này.
-          </Typography.Text>
-          <br /><br />
-          <Button type="primary" onClick={() => navigate(`/Port/${id}`)}
-            style={{ borderRadius: radiusPill, height: 40 }}>
-            Quay lại thông tin cảng
-          </Button>
-        </Card>
-      </>
-    );
+    return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
   }
 
   return (
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/Port/${id}`)}>Quay lại</Button>
+          <Button onClick={() => navigate(`/port/${id}`)}>Quay lại</Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
             Xác nhận xóa — {data.portCode}
           </Typography.Title>
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 600, margin: '0 auto' }}>
-        {/* Thông tin cảng */}
+      <Card style={{ maxWidth: 500, margin: '0 auto' }}>
+        {/* Info Card */}
         <Card size="small" title="Thông tin cảng biển" style={{ marginBottom: 16 }}>
           <Row gutter={[16, 8]}>
             <Col span={12}>
-              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Mã cảng</Typography.Text>
+              <Typography.Text strong>Mã cảng:</Typography.Text>
               <br />
               <Tag color="cyan">{data.portCode}</Tag>
             </Col>
             <Col span={12}>
-              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tên cảng</Typography.Text>
+              <Typography.Text strong>Tên cảng:</Typography.Text>
               <br />
-              <Typography.Text style={{ fontSize: fontSizeMd }}>{data.portName}</Typography.Text>
+              <Typography.Text>{data.portName}</Typography.Text>
             </Col>
             <Col span={12}>
-              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tỉnh/Thành phố</Typography.Text>
+              <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
               <br />
-              <Typography.Text style={{ fontSize: fontSizeMd }}>{data.province || '—'}</Typography.Text>
+              <Typography.Text>{data.province || '—'}</Typography.Text>
             </Col>
             <Col span={12}>
-              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tạo bởi</Typography.Text>
+              <Typography.Text strong>Tạo bởi:</Typography.Text>
               <br />
-              <Typography.Text style={{ fontSize: fontSizeMd }}>{data.createdBy || '—'}</Typography.Text>
+              <Typography.Text>{data.createdBy || '—'}</Typography.Text>
             </Col>
             <Col span={12}>
-              <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Ngày tạo</Typography.Text>
+              <Typography.Text strong>Ngày tạo:</Typography.Text>
               <br />
-              <Typography.Text style={{ fontSize: fontSizeMd }}>{formatDate(data.createdAt)}</Typography.Text>
+              <Typography.Text>{formatDate(data.createdAt)}</Typography.Text>
             </Col>
           </Row>
         </Card>
 
         {/* Warning */}
-        <Card size="small" style={{ marginBottom: spaceMd, borderColor: statusAttention, backgroundColor: `${statusAttention}08` }}>
-          <Typography.Text style={{ color: statusAttention, fontSize: fontSizeSm }}>
-            Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống.
+        <Card size="small" style={{ marginBottom: spaceMd, borderColor: statusAttention, backgroundColor: `${statusAttention}10` }}>
+          <Typography.Text type="warning">
+            ⚠️ Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống.
           </Typography.Text>
         </Card>
 
-        {/* Confirm by typing port name */}
+        {/* Confirm — type port name or "XÓA" */}
         <div style={{ marginBottom: 16 }}>
-          <Typography.Text strong style={{ display: 'block', marginBottom: 8, color: textPrimary, fontSize: fontSizeMd }}>
-            Nhập <strong style={{ color: statusCritical }}>{data.portName}</strong> để xác nhận xóa:
+          <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+            Nhập tên cảng hoặc gõ "XÓA" để xác nhận:
           </Typography.Text>
           <Input
-            placeholder="Nhập tên cảng biển để xác nhận..."
+            placeholder="Nhập tên cảng hoặc XÓA"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            style={{ borderRadius: radiusPill, height: 40 }}
+            style={{ borderRadius: 999, height: 40 }}
           />
-          {confirmText && confirmText !== data.portName && (
-            <span style={{ color: statusCritical, fontSize: fontSizeSm }}>Tên không khớp</span>
-          )}
-          {confirmText === data.portName && (
-            <span style={{ color: '#1BAF7A', fontSize: fontSizeSm }}>Đã xác nhận</span>
-          )}
         </div>
 
         {/* Footer */}
         <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16 }}>
           <Space>
-            <Button onClick={() => navigate(`/Port/${id}`)}
-              style={{ borderRadius: radiusPill, height: 40, borderColor: borderDefault, color: textSecondary }}>
-              Hủy
-            </Button>
+            <Button onClick={() => navigate(`/port/${id}`)}>Hủy</Button>
             <Button
               type="primary"
               danger
               onClick={handleDelete}
               loading={submitting}
-              disabled={confirmText !== data.portName}
-              style={{ borderRadius: radiusPill, height: 40 }}
+              disabled={!isConfirmValid()}
             >
-              Xóa cảng biển
+              Xóa
             </Button>
           </Space>
         </div>

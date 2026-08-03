@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.document.dto;
 
-import com.hanghai.kchtg.document.entity.SeverityLevel;
 import com.hanghai.kchtg.document.entity.ProcessingStatus;
+import com.hanghai.kchtg.document.entity.SeverityLevel;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -16,13 +16,12 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Request DTO for creating a new Port.
- * Supports composite form: action (draft/submit) + coordinates[] + infrastructure[].
- * Port code is auto-generated.
+ * GPS fields (latitude/longitude) must be both present or both absent.
  */
 @Data
 public class CreatePortRequest {
 
-    @Size(max = 20, message = "Mã cảng tối đa 20 ký tự")
+    @Size(max = 50, message = "Mã cảng tối đa 50 ký tự")
     private String portCode;
 
     @NotBlank(message = "Tên cảng không được để trống")
@@ -40,24 +39,19 @@ public class CreatePortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = true, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal maxVesselCapacity;
+
+    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
 
     private UUID orgUnitId;
 
     private Integer portGroup;
     private UUID mapSymbolId;
+    private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
-
-    // ── Managing unit & notes ───────────────────────────────────────
-
-    private UUID managingUnitId;
-
-    @Size(max = 2000, message = "Ghi chú tối đa 2000 ký tự")
-    private String notes;
 
     // ── Extended fields (V53) ────────────────────────────────────────
 
@@ -110,24 +104,23 @@ public class CreatePortRequest {
     @Size(max = 2000, message = "Ghi chú tối đa 2000 ký tự")
     private String remarks;
 
-    // ── Composite form fields ────────────────────────────────────────
+    // ── Child lists ───────────────────────────────────────────────────
 
-    @NotNull(message = "Action không được để trống (draft hoặc submit)")
+    private List<PortCoordinateDto> coordinateList;
+
+    private List<PortInfrastructureDto> infrastructureList;
+
+    private List<PortAttachmentDto> attachments;
+
+    /**
+     * Hành động: "draft" = lưu nháp (chỉ cần portName),
+     * "submit" = gửi phê duyệt (yêu cầu đầy đủ province, portClass, tọa độ GPS).
+     * Mặc định xử lý ở Service: "submit" nếu null hoặc rỗng.
+     */
     private String action;
-
-    private List<CoordinateDto> portCoordinates;
-
-    private List<InfrastructureDto> portInfrastructures;
-
-    // ── Validation helpers ──────────────────────────────────────────
 
     @AssertTrue(message = "Vĩ độ và kinh độ phải được điền đồng thời")
     public boolean isGpsPaired() {
         return (latitude == null && longitude == null) || (latitude != null && longitude != null);
-    }
-
-    @AssertTrue(message = "Action phải là 'draft' hoặc 'submit'")
-    public boolean isValidAction() {
-        return "draft".equals(action) || "submit".equals(action);
     }
 }

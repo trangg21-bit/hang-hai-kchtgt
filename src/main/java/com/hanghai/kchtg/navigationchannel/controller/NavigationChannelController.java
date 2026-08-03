@@ -1,20 +1,19 @@
 package com.hanghai.kchtg.navigationchannel.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.navigationchannel.dto.*;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
 import com.hanghai.kchtg.navigationchannel.service.NavigationChannelService;
+import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for NavigationChannel (F-038 to F-043).
@@ -31,7 +30,7 @@ public class NavigationChannelController {
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> create(
             @RequestBody @Valid NavigationChannelCreateRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Tạo luồng hàng hải thành công", service.create(req, userId)));
     }
 
@@ -55,7 +54,7 @@ public class NavigationChannelController {
             @PathVariable UUID id,
             @RequestBody @Valid NavigationChannelUpdateRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Cập nhật luồng hàng hải thành công", service.update(id, req, userId)));
     }
 
@@ -72,7 +71,7 @@ public class NavigationChannelController {
             @PathVariable UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, userId)));
     }
 
@@ -82,7 +81,7 @@ public class NavigationChannelController {
             @PathVariable UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
     }
 

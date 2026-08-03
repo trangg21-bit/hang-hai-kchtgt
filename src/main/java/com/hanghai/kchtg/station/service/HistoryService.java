@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.station.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSHistoryResponse;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import org.springframework.stereotype.Service;

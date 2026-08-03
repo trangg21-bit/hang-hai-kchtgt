@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
  * @param <T> the type of the payload held in {@code data}
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Getter
 public class ApiResponse<T> {
 
     private final boolean success;

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.security.entity;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.*;

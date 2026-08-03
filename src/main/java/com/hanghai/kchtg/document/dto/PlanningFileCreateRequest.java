@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -13,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class PlanningFileCreateRequest {
 
     @NotNull(message = "portPlanningId không được để trống")
-    private java.util.UUID portPlanningId;
+    private UUID portPlanningId;
 
     @NotNull(message = "fileName không được để trống")
     private String fileName;

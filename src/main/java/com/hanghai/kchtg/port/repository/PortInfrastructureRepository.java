@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface PortInfrastructureRepository extends JpaRepository<PortInfrastructure, UUID> {
+public interface PortInfrastructureRepository extends JpaRepository<PortInfrastructure, Long> {
 
-    List<PortInfrastructure> findByPortIdAndDeletedAtIsNullOrderBySequenceNumberAsc(UUID portId);
+    List<PortInfrastructure> findByPortIdOrderByStt(UUID portId);
 
     void deleteByPortId(UUID portId);
 }

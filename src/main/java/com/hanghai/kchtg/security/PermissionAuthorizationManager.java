@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.security;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;

@@ -2,10 +2,12 @@ package com.hanghai.kchtg.lockout.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.Data;
 
 /**
  * Request DTO for updating lockout policy (F-277).
  */
+@Data
 public class LockoutPolicyUpdateRequest {
 
     @Min(value = 1, message = "maxFailedAttempts must be between 1 and 20")
@@ -22,12 +24,4 @@ public class LockoutPolicyUpdateRequest {
 
     private boolean isEnabled;
 
-    public int getMaxFailedAttempts() { return maxFailedAttempts; }
-    public void setMaxFailedAttempts(int maxFailedAttempts) { this.maxFailedAttempts = maxFailedAttempts; }
-    public int getLockoutDurationMinutes() { return lockoutDurationMinutes; }
-    public void setLockoutDurationMinutes(int lockoutDurationMinutes) { this.lockoutDurationMinutes = lockoutDurationMinutes; }
-    public int getWindowMinutes() { return windowMinutes; }
-    public void setWindowMinutes(int windowMinutes) { this.windowMinutes = windowMinutes; }
-    public boolean isEnabled() { return isEnabled; }
-    public void setEnabled(boolean enabled) { isEnabled = enabled; }
 }

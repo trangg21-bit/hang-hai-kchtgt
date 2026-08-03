@@ -1,22 +1,29 @@
 package com.hanghai.kchtg.port.service;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
-import com.hanghai.kchtg.port.dto.pier.*;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.port.dto.pier.CreatePierRequest;
+import com.hanghai.kchtg.port.dto.pier.PierResponse;
+import com.hanghai.kchtg.port.dto.pier.UpdatePierRequest;
 import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.entity.Pier;
 import com.hanghai.kchtg.port.entity.PierType;
-import com.hanghai.kchtg.port.entity.PortStatus;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +35,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Slf4j
 @Service
@@ -37,11 +43,12 @@ public class PierService {
 
     private final PierRepository pierRepository;
     private final BerthRepository berthRepository;
+    private final PortRepository portRepository;
     private final ChangeHistoryService changeHistoryService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final UserResolverService userResolverService;
-    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
-    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository gisSpatialObjectRepository;
+    private final UserRepository userRepository;
+    private final GisSpatialObjectRepository gisSpatialObjectRepository;
 
     @Transactional
     public PierResponse create(CreatePierRequest request) {
@@ -52,9 +59,36 @@ public class PierService {
         Berth parent = berthRepository.findById(request.getBerthId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBerthId()));
-        if (parent.getPortStatus() != PortStatus.DA_PHE_DUYET) {
+        if (parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
             throw new IllegalArgumentException(
-                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái đã phê duyệt (DA_PHE_DUYET)");
+                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
+        }
+
+        // BR-020-02: Port must be APPROVED and OPERATIONAL if provided
+        if (request.getPortId() != null) {
+            Port port = portRepository.findById(request.getPortId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Cảng biển không tồn tại: " + request.getPortId()));
+            if (port.getApprovalStatus() != ApprovalStatus.APPROVED) {
+                throw new IllegalArgumentException(
+                        "Cảng biển phải ở trạng thái đã phê duyệt");
+            }
+            if (port.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
+                throw new IllegalArgumentException(
+                        "Cảng biển phải ở trạng thái hoạt động (HIEN_HANH)");
+            }
+        }
+
+        // AC-020-06: Conditional ATHH validation
+        if (Boolean.TRUE.equals(request.getReceivesLargeVessel())) {
+            if (request.getDocumentNumber() == null || request.getDocumentNumber().trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Số văn bản là bắt buộc khi tiếp nhận tàu có trọng tải lớn hơn thông số QĐ công bố");
+            }
+            if (request.getDocumentDate() == null) {
+                throw new IllegalArgumentException(
+                        "Ngày văn bản là bắt buộc khi tiếp nhận tàu có trọng tải lớn hơn thông số QĐ công bố");
+            }
         }
 
         UUID pierId = UUID.randomUUID();
@@ -76,6 +110,9 @@ public class PierService {
             spatialId = spatialObj.getId();
         }
 
+        // Default conditionStatus to 1 (Sử dụng) if not provided
+        Integer conditionStatus = request.getConditionStatus() != null ? request.getConditionStatus() : 1;
+
         Pier entity = Pier.builder()
                 .id(pierId)
                 .pierCode(request.getPierCode()).pierName(request.getPierName())
@@ -87,8 +124,44 @@ public class PierService {
                 .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId())
                 .spatialId(spatialId)
+                // ── Spec Group A: Basic info ──
+                .portId(request.getPortId())
+                .navigationChannelId(request.getNavigationChannelId())
+                .province(request.getProvince())
+                .detailedLocation(request.getDetailedLocation())
+                .constructionGrade(request.getConstructionGrade())
+                .structureType(request.getStructureType())
+                .conditionStatus(conditionStatus)
+                // ── Spec Group B: Technical ──
+                .width(request.getWidth())
+                .currentWaterDepth(request.getCurrentWaterDepth())
+                .designBedElevation(request.getDesignBedElevation())
+                .publishedVesselDWT(request.getPublishedVesselDWT())
+                // ── Spec Group C: Dates ──
+                .maintenanceApprovalDate(request.getMaintenanceApprovalDate())
+                .safetyAssessmentDate(request.getSafetyAssessmentDate())
+                .lastInspectionDate(request.getLastInspectionDate())
+                // ── Spec Group D: Quantities ──
+                .operatingPierCount(request.getOperatingPierCount())
+                .publishedPierCount(request.getPublishedPierCount())
+                .investmentAgreementPierCount(request.getInvestmentAgreementPierCount())
+                .cargoThroughput(request.getCargoThroughput())
+                // ── Spec Group E: ATHH ──
+                .receivesLargeVessel(request.getReceivesLargeVessel())
+                .documentNumber(request.getDocumentNumber())
+                .documentDate(request.getDocumentDate())
+                // ── Spec Group F: Opening announcement ──
+                .openingAnnouncementDate(request.getOpeningAnnouncementDate())
+                .openingDecision(request.getOpeningDecision())
+                .investmentAgreementDoc(request.getInvestmentAgreementDoc())
+                // ── Spec Group G: GIS additional ──
+                .waterAreaNeutralScope(request.getWaterAreaNeutralScope())
                 .build();
         Pier saved = pierRepository.save(entity);
+
+        // BR-020-05: Auto audit log for creation
+        changeHistoryService.insertChangeRecord("Pier", saved.getId(), "CREATE", null, "created", saved.getCreatedBy());
+
         log.info("Created Pier [{}] code={}", saved.getId(), saved.getPierCode());
         return toResponse(saved);
     }
@@ -116,11 +189,11 @@ public class PierService {
             String search, UUID berthId, PierType pierType,
             String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, pierType, statusEnum, approvalEnum, pageable);
-        
+
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(Pier::getBerthId)
                 .filter(java.util.Objects::nonNull)
@@ -167,7 +240,7 @@ public class PierService {
             });
         }
 
-        return pageResult.map(e -> toResponse(e, 
+        return pageResult.map(e -> toResponse(e,
                 parentNameMap.get(e.getBerthId()),
                 userNamesMap.get(e.getCreatedBy()),
                 userNamesMap.get(e.getUpdatedBy()),
@@ -185,6 +258,10 @@ public class PierService {
     public PierResponse update(UpdatePierRequest request) {
         Pier entity = pierRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + request.getId()));
+
+        if (entity.getDeletedAt() != null) {
+            throw new IllegalStateException("Không thể cập nhật cầu cảng đã bị xóa");
+        }
 
         Pier snapshot = Pier.builder()
                 .pierCode(entity.getPierCode())
@@ -273,7 +350,15 @@ public class PierService {
     public void softDelete(UUID id) {
         Pier entity = pierRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + id));
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+
+        if (entity.getDeletedAt() != null) {
+            throw new IllegalStateException("Cầu cảng đã bị xóa trước đó");
+        }
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING) {
+            throw new IllegalStateException("Chỉ có thể xóa cầu cảng ở trạng thái Chờ phê duyệt và chưa được gửi duyệt");
+        }
+
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -297,12 +382,12 @@ public class PierService {
     private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName, String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
         GisGeometryType geomType = null;
         String coords = null;
-        
+
         GisSpatialObject spatial = preResolvedSpatial;
         if (spatial == null && e.getSpatialId() != null) {
             spatial = gisSpatialObjectRepository.findById(e.getSpatialId()).orElse(null);
         }
-        
+
         if (spatial != null) {
             geomType = spatial.getGeometryType();
             coords = spatial.getCoordinates();
@@ -331,7 +416,40 @@ public class PierService {
                 .coordinates(coords)
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
-                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                // ── Spec Group A: Basic info ──
+                .portId(e.getPortId())
+                .navigationChannelId(e.getNavigationChannelId())
+                .province(e.getProvince())
+                .detailedLocation(e.getDetailedLocation())
+                .constructionGrade(e.getConstructionGrade())
+                .structureType(e.getStructureType())
+                .conditionStatus(e.getConditionStatus())
+                // ── Spec Group B: Technical ──
+                .width(e.getWidth())
+                .currentWaterDepth(e.getCurrentWaterDepth())
+                .designBedElevation(e.getDesignBedElevation())
+                .publishedVesselDWT(e.getPublishedVesselDWT())
+                // ── Spec Group C: Dates ──
+                .maintenanceApprovalDate(e.getMaintenanceApprovalDate())
+                .safetyAssessmentDate(e.getSafetyAssessmentDate())
+                .lastInspectionDate(e.getLastInspectionDate())
+                // ── Spec Group D: Quantities ──
+                .operatingPierCount(e.getOperatingPierCount())
+                .publishedPierCount(e.getPublishedPierCount())
+                .investmentAgreementPierCount(e.getInvestmentAgreementPierCount())
+                .cargoThroughput(e.getCargoThroughput())
+                // ── Spec Group E: ATHH ──
+                .receivesLargeVessel(e.getReceivesLargeVessel())
+                .documentNumber(e.getDocumentNumber())
+                .documentDate(e.getDocumentDate())
+                // ── Spec Group F: Opening announcement ──
+                .openingAnnouncementDate(e.getOpeningAnnouncementDate())
+                .openingDecision(e.getOpeningDecision())
+                .investmentAgreementDoc(e.getInvestmentAgreementDoc())
+                // ── Spec Group G: GIS additional ──
+                .waterAreaNeutralScope(e.getWaterAreaNeutralScope())
+                .build();
     }
 
     private GisGeometryType parseGeometryType(String typeStr) {

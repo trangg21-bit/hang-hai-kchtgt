@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.security.controller;
 
-import java.util.UUID;
-
-
+import com.hanghai.kchtg.security.config.CookieConfig;
 import com.hanghai.kchtg.security.dto.JwtRefreshRequest;
 import com.hanghai.kchtg.security.entity.JwtSessionEntity;
 import com.hanghai.kchtg.security.service.JwtSessionService;
+import com.hanghai.kchtg.security.service.TokenService;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * REST controller for JWT session management (F-274).
@@ -38,14 +40,14 @@ public class JwtSessionController {
     private static final Logger log = LoggerFactory.getLogger(JwtSessionController.class);
 
     private final JwtSessionService sessionService;
-    private final com.hanghai.kchtg.security.service.TokenService tokenService;
-    private final com.hanghai.kchtg.security.config.CookieConfig cookieConfig;
-    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
+    private final TokenService tokenService;
+    private final CookieConfig cookieConfig;
+    private final UserRepository userRepository;
 
     public JwtSessionController(JwtSessionService sessionService,
-                                com.hanghai.kchtg.security.service.TokenService tokenService,
-                                com.hanghai.kchtg.security.config.CookieConfig cookieConfig,
-                                com.hanghai.kchtg.user.repository.UserRepository userRepository) {
+                                TokenService tokenService,
+                                CookieConfig cookieConfig,
+                                UserRepository userRepository) {
         this.sessionService = sessionService;
         this.tokenService = tokenService;
         this.cookieConfig = cookieConfig;
@@ -232,7 +234,7 @@ public class JwtSessionController {
      */
     private String extractUserId(Authentication auth) {
         Object principal = auth.getPrincipal();
-        if (principal instanceof com.hanghai.kchtg.user.entity.User user) {
+        if (principal instanceof User user) {
             return user.getId().toString();
         }
         return null;
@@ -243,7 +245,7 @@ public class JwtSessionController {
      */
     private String generateNewAccessToken(JwtSessionEntity session) {
         UUID userId = UUID.fromString(session.getUserId());
-        com.hanghai.kchtg.user.entity.User user = userRepository.findByIdWithRelations(userId)
+        User user = userRepository.findByIdWithRelations(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng: " + userId));
         return tokenService.createAccessToken(user);
     }

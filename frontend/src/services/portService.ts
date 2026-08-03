@@ -57,18 +57,30 @@ export const portCRUD = {
   },
 
   async search(params?: {
-    portCode?: string;
     portName?: string;
     province?: string;
-    portStatus?: string;
+    portGroup?: number;
+    portClassification?: number;
+    managingUnitId?: string;
+    status?: string;
+    approvalStatus?: string;
+    operationalStatus?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Port>> {
     const sp = buildSearchParams({
-      portCode: params?.portCode,
       portName: params?.portName,
       province: params?.province,
-      portStatus: params?.portStatus,
+      portGroup: params?.portGroup,
+      portClassification: params?.portClassification,
+      managingUnitId: params?.managingUnitId,
+      status: params?.status,
+      approvalStatus: params?.approvalStatus,
+      operationalStatus: params?.operationalStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -94,29 +106,6 @@ export const portCRUD = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/v1/ports/${id}`);
-  },
-
-  async generateCode(): Promise<string> {
-    const res = await api.get('/v1/ports/generate-code');
-    return res.data.data?.code || '';
-  },
-
-  async getChildren(id: string): Promise<{ berths: number; waterZones: number }> {
-    const res = await api.get(`/v1/ports/${id}/children`);
-    return res.data.data;
-  },
-
-  async uploadAttachment(id: string, file: File): Promise<any> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await api.post(`/v1/ports/${id}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return res.data;
-  },
-
-  async deleteAttachment(id: string, attId: string): Promise<void> {
-    await api.delete(`/v1/ports/${id}/attachments/${attId}`);
   },
 };
 
@@ -148,26 +137,21 @@ export const berthCRUD = {
     return res.data.data;
   },
 
-  async generateCode(): Promise<string> {
-    const res = await api.get('/v1/berths/generate-code');
-    return res.data.data?.code || res.data.data || '';
-  },
-
-  async getChildren(id: string): Promise<{ piers: number }> {
-    const res = await api.get(`/v1/berths/${id}/children`);
-    return res.data.data || { piers: 0 };
-  },
-
   async search(params?: {
     search?: string;
     berthCode?: string;
     berthName?: string;
     portId?: string;
     berthType?: string;
-    tuyenDuongThuy?: string;
-    portStatus?: string;
+    waterway?: string;
+    operationalFunction?: string;
     operationalStatus?: string;
     approvalStatus?: string;
+    orgUnitId?: string;
+    structureType?: number;
+    provinceId?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Berth>> {
@@ -177,10 +161,15 @@ export const berthCRUD = {
       berthName: params?.berthName,
       portId: params?.portId,
       berthType: params?.berthType,
-      tuyenDuongThuy: params?.tuyenDuongThuy,
-      portStatus: params?.portStatus,
+      waterway: params?.waterway,
+      operationalFunction: params?.operationalFunction,
       operationalStatus: params?.operationalStatus,
       approvalStatus: params?.approvalStatus,
+      orgUnitId: params?.orgUnitId,
+      structureType: params?.structureType,
+      provinceId: params?.provinceId,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -435,12 +424,12 @@ export const portApproval = {
 };
 
 export const berthApproval = {
-  async approve(id: string): Promise<void> {
-    await api.post(`/v1/berths/${id}/approve`);
+  async approve(id: string, cap: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/approve`, { cap });
   },
 
-  async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/v1/berths/${id}/reject`, null, { params: { reason } });
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/reject`, { cap, lyDo });
   },
 };
 

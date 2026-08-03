@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.line.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.line.dto.CreateLineObjectRequest;
 import com.hanghai.kchtg.gis.line.dto.LineObjectResponse;

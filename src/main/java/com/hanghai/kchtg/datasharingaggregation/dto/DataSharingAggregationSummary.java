@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.datasharingaggregation.dto;
 
+import lombok.Data;
+
 import java.util.List;
 
+@Data
 public class DataSharingAggregationSummary {
 
     private long totalCount;

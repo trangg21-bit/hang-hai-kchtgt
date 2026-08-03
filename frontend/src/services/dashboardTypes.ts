@@ -49,14 +49,24 @@ export type PeriodType =
 
 /** Asset status summary — counts of all GIS assets */
 export interface AssetStatusDto {
-  totalPoints: number;
-  totalLines: number;
-  totalPolygons: number;
   totalAssets: number;
-  pointsByType: Record<string, number>;
-  linesByType: Record<string, number>;
-  polygonsByType: Record<string, number>;
   assetsByStatus: Record<string, number>;
+  /** Thống kê phê duyệt được trả trong cùng payload trạng thái KCHT. */
+  approvalStats: {
+    total: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+  };
+  breakdown: Array<{
+    sequenceNo: number;
+    code?: string;
+    type: string;
+    total: number;
+    pending: number;
+    operating: number;
+    suspended: number;
+  }>;
 }
 
 /**
@@ -175,7 +185,7 @@ export interface RingKchtData {
   percentage: number;
 }
 
-/** Radar coverage indicator */
+/** Tỷ lệ vận hành của một loại KCHT trên biểu đồ radar */
 export interface RadarIndicator {
   name: string;
   value: number;

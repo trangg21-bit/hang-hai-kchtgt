@@ -1,14 +1,17 @@
 package com.hanghai.kchtg.user.controller;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.CreateRoleRequest;
 import com.hanghai.kchtg.user.dto.RoleResponse;
 import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.service.RoleService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,8 +42,8 @@ public class RoleController {
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         if (page != null && size != null) {
-            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
-            org.springframework.data.domain.Page<RoleResponse> rolesPage = roleService.findAll(pageable).map(RoleResponse::from);
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
+            Page<RoleResponse> rolesPage = roleService.findAll(pageable).map(RoleResponse::from);
             return ResponseEntity.ok(ApiResponse.success(rolesPage));
         } else {
             List<RoleResponse> roles = roleService.findAll().stream()

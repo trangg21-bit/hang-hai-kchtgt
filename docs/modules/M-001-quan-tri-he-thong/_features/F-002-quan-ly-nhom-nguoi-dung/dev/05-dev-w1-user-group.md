@@ -75,8 +75,6 @@ last-updated: "2026-06-28"
 | `dto/UserGroupResponse.java` | **NEW** — Immutable `@Value` DTO with `memberCount`, `groupType`, `status` |
 | `dto/PaginatedGroupResponse.java` | **NEW** — Standard pagination wrapper with `items`, `total`, `page`, `pageSize`, `totalPages` |
 | `dto/GroupCopyRequest.java` | **NEW** — Request body for copy endpoint with `name` + `description` overrides |
-| `dto/AddGroupMemberRequest.java` | **Modified** — Renamed field `role`→`roleInGroup` for clarity |
-| `dto/GroupMemberResponse.java` | **Modified** — Renamed `role`→`roleInGroup`, updated factory method |
 | `dto/GroupResponse.java` | **Unchanged** — Legacy DTO still used by old `GroupService` |
 | `dto/CreateGroupRequest.java` | **Unchanged** — Legacy DTO still used by old `GroupService` |
 | `dto/UpdateGroupRequest.java` | **Unchanged** — Legacy DTO still used by old `GroupService` |

@@ -1,9 +1,9 @@
 package com.hanghai.kchtg.user.dto;
 
+import com.hanghai.kchtg.user.entity.PendingApproval;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -13,8 +13,7 @@ import java.time.LocalDateTime;
  * Dùng cho các endpoint GET /api/v1/users/pending và GET /api/v1/users/{id}/pending-status.
  * </p>
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class PendingApprovalResponse {
@@ -29,9 +28,9 @@ public class PendingApprovalResponse {
     private LocalDateTime createdAt;
 
     /**
-     * Tạo response từ entity {@link com.hanghai.kchtg.user.entity.PendingApproval}.
+     * Tạo response từ entity {@link PendingApproval}.
      */
-    public static PendingApprovalResponse from(com.hanghai.kchtg.user.entity.PendingApproval pa) {
+    public static PendingApprovalResponse from(PendingApproval pa) {
         PendingApprovalResponse resp = new PendingApprovalResponse();
         resp.setId(pa.getId().toString());
         resp.setUsername(pa.getUsername());

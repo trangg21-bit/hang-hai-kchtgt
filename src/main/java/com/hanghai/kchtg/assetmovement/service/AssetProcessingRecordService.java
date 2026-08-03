@@ -1,12 +1,10 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.AssetProcessingRecord;
-import com.hanghai.kchtg.assetmovement.entity.ProcessingType;
 import com.hanghai.kchtg.assetmovement.entity.ProcessingRecordStatus;
+import com.hanghai.kchtg.assetmovement.entity.ProcessingType;
 import com.hanghai.kchtg.assetmovement.repository.AssetProcessingRecordRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +31,7 @@ public class AssetProcessingRecordService {
                 .processingType(parseProcessingType(request.getProcessingType()))
                 .description(request.getDescription())
                 .status(ProcessingRecordStatus.PENDING)
-                
+
                 .build();
         AssetProcessingRecord saved = repository.save(entity);
         return toResponse(saved);

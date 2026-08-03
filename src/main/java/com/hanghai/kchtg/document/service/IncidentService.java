@@ -1,9 +1,12 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.document.repository.IncidentRecordRepository;
+import com.hanghai.kchtg.document.repository.IncidentRepository;
+import com.hanghai.kchtg.document.repository.ProcessingProgressRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,13 +68,13 @@ public class IncidentService {
 
     @Transactional(readOnly = true)
     public List<IncidentResponse> findAll() {
-        return incidentRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return incidentRepository.findAll(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<IncidentResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return incidentRepository.findAll(pageable).map(this::toResponse);
     }
 
@@ -93,7 +97,7 @@ public class IncidentService {
         if (request.getSeverityLevel() != null) sc.setSeverityLevel(request.getSeverityLevel());
         if (request.getProcessingStatus() != null) sc.setProcessingStatus(request.getProcessingStatus());
         if (request.getReporter() != null) sc.setReporter(request.getReporter());
- 
+
         return toResponse(Objects.requireNonNull(incidentRepository.save(sc)));
     }
 
@@ -122,13 +126,13 @@ public class IncidentService {
 
     @Transactional(readOnly = true)
     public Page<IncidentResponse> searchByViTriContaining(String location, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return incidentRepository.findByLocationContainingIgnoreCase(location, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public Page<IncidentResponse> searchByMoTaContaining(String description, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return incidentRepository.findByDescriptionContainingIgnoreCase(description, pageable).map(this::toResponse);
     }
 

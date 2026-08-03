@@ -1,0 +1,106 @@
+{
+  "triage_id": "TRI-1785668559726-6d69",
+  "created_at": 1785668559726,
+  "request_summary": "Merge full UI content from 6 UI feature-brief.md files into 6 BE feature-brief.md files, then delete the 6 old UI directories",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-084-ui-xem-cct-chi-tiet/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-085-ui-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-086-ui-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-087-ui-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-099-ui-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-100-ui-ql-cct-lich-su/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-084-ui-xem-cct-chi-tiet/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-085-ui-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-086-ui-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-087-ui-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-099-ui-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-100-ui-ql-cct-lich-su/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 12 edit-target files exceed the inline gate (12 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "M-002 module feature documentation",
+  "blast_radius": 12,
+  "done_oracle": "All 6 BE files have ## UI Specification section with merged content; all 6 UI directories deleted",
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "line": 67,
+      "quote": "## Implementation Status",
+      "source_hash": "5f015b5357f24f7d36358e8bb5afab82f568faeb4439c8f3c4246510cd6a5a8c",
+      "quote_hash": "fde68d2a3ad1f6b4826f8ed41fd20528dabb95b3d69c627076f8dc85bc7ec7c8",
+      "note": "section to replace with merged content"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: backend_done\nclassification: local",
+      "source_hash": "01de9fdf6dbc03e20df8390ad6c45d92489cd56a9d085a12c6ce9ceb31c58eee",
+      "quote_hash": "bc9713baa908907a5ca68db02e229af5a191620b894e3aca9ce4d33642030c06",
+      "note": "BE file verified"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: backend_done\nclassification: local",
+      "source_hash": "878b1ce853476a4ff395b91c26eff94aeacd094be064ade08d3f9480b74d5058",
+      "quote_hash": "bc9713baa908907a5ca68db02e229af5a191620b894e3aca9ce4d33642030c06",
+      "note": "BE file verified"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: backend_done\nclassification: local",
+      "source_hash": "9e98a0cadb6713a1fd5d0757dbe147d49e8df8099acba87f9f9969969fe4cf01",
+      "quote_hash": "bc9713baa908907a5ca68db02e229af5a191620b894e3aca9ce4d33642030c06",
+      "note": "BE file verified"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: backend_done\nclassification: local",
+      "source_hash": "6dc7d0808a742c6ee34c943db1792adfd1eb9a0819b2b9f14a6d5ffee4592e5b",
+      "quote_hash": "bc9713baa908907a5ca68db02e229af5a191620b894e3aca9ce4d33642030c06",
+      "note": "BE file verified"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: backend_done\nclassification: local",
+      "source_hash": "75c3a06e8fc4bfc9bcda51e50fcf1b4161d2c92fabdfc51c6ee9fe19b2ce5d1c",
+      "quote_hash": "bc9713baa908907a5ca68db02e229af5a191620b894e3aca9ce4d33642030c06",
+      "note": "BE file verified"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "2a95f87e00686b6f3f4b3fa46b6d7878eb40e765",
+    "dirty": true,
+    "captured_at": 1785668560045
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

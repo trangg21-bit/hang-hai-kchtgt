@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.statistics.dto.StatisticsFilter;
 import com.hanghai.kchtg.statistics.dto.StatisticsFormRequest;
 import com.hanghai.kchtg.statistics.dto.StatisticsFormResponse;
@@ -19,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -67,7 +68,7 @@ public class StatisticsService {
         Pageable pageable = PageRequest.of(
                 filter.getPage() != null ? filter.getPage() : 0,
                 filter.getSize() != null ? filter.getSize() : 20,
-                Sort.by("createdAt").descending()
+                Sort.by(EntityFields.CREATED_AT).descending()
         );
 
         if (filter.getFormStatus() != null && !filter.getFormStatus().isBlank()) {

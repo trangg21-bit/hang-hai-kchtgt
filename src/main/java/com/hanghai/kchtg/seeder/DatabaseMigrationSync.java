@@ -21,7 +21,7 @@ public class DatabaseMigrationSync implements CommandLineRunner {
 
         // 1. ports <- cang_bien
         trySyncTable("ports", "cang_bien",
-            "INSERT INTO ports (id, port_code, port_name, province, area, max_vessel_capacity, " +
+            "INSERT INTO ports (id, port_code, port_name, provinceId, area, max_vessel_capacity, " +
             "    operational_status, approval_status, org_unit_id, port_group, map_symbol_id, " +
             "    spatial_id, detailed_location, port_class, coordinate_system, display_rule, " +
             "    water_area_scope, total_berths, total_anchorages_transshipment, " +
@@ -87,7 +87,7 @@ public class DatabaseMigrationSync implements CommandLineRunner {
 
         // 4. dry_ports <- cang_can
         trySyncTable("dry_ports", "cang_can",
-            "INSERT INTO dry_ports (id, dry_port_code, dry_port_name, province, area, teu_capacity, " +
+            "INSERT INTO dry_ports (id, dry_port_code, dry_port_name, provinceId, area, teu_capacity, " +
             "    operational_status, approval_status, org_unit_id, map_symbol_id, spatial_id, " +
             "    created_by, updated_by, created_at, updated_at, deleted_at, deleted_by) " +
             "SELECT id, ma_cang_can, ten_cang_can, tinh_thanh_pho, dien_tich, cong_suat_teu, " +

@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.businessintegration.dto;
 
+import lombok.Data;
+
 import java.io.Serializable;
 
+@Data
 public class BusinessIntegrationStatistics implements Serializable {
     private long totalCount;
     private long successCount;

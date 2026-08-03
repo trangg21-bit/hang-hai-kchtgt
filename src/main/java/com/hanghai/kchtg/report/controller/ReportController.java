@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
+import com.hanghai.kchtg.report.entity.ReportEntity;
 import com.hanghai.kchtg.report.entity.ReportStatus;
 import com.hanghai.kchtg.report.entity.ReportType;
 import com.hanghai.kchtg.report.service.ReportService;
@@ -41,7 +42,7 @@ public class ReportController {
     public ResponseEntity<ApiResponse<ReportResponse>> createReport(
             @Valid @RequestBody ReportRequest request) {
         log.info("Received report generation request: type={}", request.getReportType());
-        com.hanghai.kchtg.report.entity.ReportEntity entity = reportService.createReport(request);
+        ReportEntity entity = reportService.createReport(request);
         reportService.generateReport(request);
         return ResponseEntity.ok(ApiResponse.success(toResponse(entity)));
     }
@@ -172,7 +173,7 @@ public class ReportController {
     /**
      * Helper: convert ReportEntity → ReportResponse.
      */
-    private ReportResponse toResponse(com.hanghai.kchtg.report.entity.ReportEntity entity) {
+    private ReportResponse toResponse(ReportEntity entity) {
         return ReportResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())

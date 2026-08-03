@@ -1,9 +1,16 @@
 package com.hanghai.kchtg.station.service;
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import lombok.*;
 
-import com.hanghai.kchtg.station.dto.inmarsat.*;
-import com.hanghai.kchtg.station.entity.*;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.station.dto.inmarsat.CoastalStationInmarsatHistoryResponse;
+import com.hanghai.kchtg.station.dto.inmarsat.CoastalStationInmarsatRequest;
+import com.hanghai.kchtg.station.dto.inmarsat.CoastalStationInmarsatResponse;
+import com.hanghai.kchtg.station.dto.inmarsat.CoastalStationInmarsatUpdateRequest;
+import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
+import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.station.entity.StationHistoryActionType;
+import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationInmarsatRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -84,7 +91,7 @@ public class CoastalStationInmarsatService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
         String deviceCode = entity.getDeviceCode();
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(
@@ -127,15 +134,15 @@ public class CoastalStationInmarsatService {
             int currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel().ordinal() : 0;
             if (currentLevel == 0 && AdminAutoApproval.isAutoApprover()) {
                 // Administrators clear both levels in one step.
-                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
                 entity.setStatus(StationStatus.APPROVED_L2);
             } else if (currentLevel == 0) {
-                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
                 entity.setStatus(StationStatus.APPROVED_L1);
             } else if (currentLevel == 1) {
-                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
                 entity.setStatus(StationStatus.APPROVED_L2);
             } else {
@@ -232,7 +239,7 @@ public class CoastalStationInmarsatService {
         }
     }
 
-    private String resolveCreatedBy(com.hanghai.kchtg.station.entity.CoastalStationInmarsat entity) {
+    private String resolveCreatedBy(CoastalStationInmarsat entity) {
         return entity.getApprovedBy();
     }
 

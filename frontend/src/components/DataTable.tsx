@@ -2,6 +2,8 @@ import { Table, Button, Space, Tooltip, Tag } from "antd";
 import type { TableProps } from "antd/es/table";
 import { EditOutlined, DeleteOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { ReactNode } from 'react';
+import { colors } from '../theme';
+import { fontWeightBold, fontSizeMd } from '../tokens';
 interface ActionButton {
   key: string;
   label: string;
@@ -89,7 +91,9 @@ export default function DataTable<T extends object>({
       scroll={scroll || { x: 'max-content' }}
       size={size as any}
       sticky={sticky}
-      bordered
+      onHeaderCell={() => ({
+          style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap', textTransform: 'uppercase', padding: '16px 16px' },
+        })}
       rowClassName={(record, index) => {
         const baseClass = 'data-table-row';
         if (onRowClick) return `${baseClass} hoverable`;

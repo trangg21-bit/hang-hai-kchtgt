@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Bean Validation tests for CreatePortRequest (F-008).
@@ -46,7 +47,7 @@ class CreatePortRequestValidationTest {
         assertTrue(violations.isEmpty(), "Expected no violations for valid request but got: " + violations);
     }
 
-    
+
 
     // ── Area (area) ────────────────────────────────────────────────────
 

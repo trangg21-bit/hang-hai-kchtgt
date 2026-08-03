@@ -1,16 +1,17 @@
 package com.hanghai.kchtg.gis.line.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.line.dto.CreateLineObjectRequest;
 import com.hanghai.kchtg.gis.line.dto.LineObjectResponse;
 import com.hanghai.kchtg.gis.line.dto.UpdateLineObjectRequest;
 import com.hanghai.kchtg.gis.line.entity.LineHistory;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
+import com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;
 import com.hanghai.kchtg.gis.line.repository.LineHistoryRepository;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
+import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ public class LineObjectService {
 
     private final LineObjectRepository repository;
     private final LineHistoryRepository historyRepository;
-    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository spatialRepository;
+    private final GisSpatialObjectRepository spatialRepository;
 
     public List<LineObjectResponse> findAll() {
         return repository.findAll().stream()
@@ -128,7 +129,7 @@ public class LineObjectService {
         LineObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("LineObject not found with id: " + id));
         entity.setStatus(Status.DELETED);
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
     }
 
@@ -137,7 +138,7 @@ public class LineObjectService {
         LineObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("LineObject not found with id: " + id));
         entity.setStatus(Status.PENDING_APPROVAL);
-        entity.setApprovalStatus(com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
         repository.save(entity);
     }
 
@@ -152,7 +153,7 @@ public class LineObjectService {
         }
 
         entity.setStatus(Status.APPROVED_L1);
-        entity.setApprovalStatus(com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);

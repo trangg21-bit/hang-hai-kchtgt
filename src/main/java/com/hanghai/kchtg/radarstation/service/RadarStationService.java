@@ -1,30 +1,28 @@
 package com.hanghai.kchtg.radarstation.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.radarstation.dto.*;
-import com.hanghai.kchtg.radarstation.entity.*;
+import com.hanghai.kchtg.radarstation.entity.ApprovalHistory;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
 import com.hanghai.kchtg.radarstation.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.math.BigDecimal;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +31,7 @@ public class RadarStationService {
 
     private final RadarStationRepository repository;
     private final ApprovalHistoryRepository historyRepository;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final GisSpatialObjectService gisSpatialObjectService;
     private final VtsSystemRepository vtsSystemRepository;
 
     public RadarStationResponse create(RadarStationCreateRequest request, UUID createdBy) {

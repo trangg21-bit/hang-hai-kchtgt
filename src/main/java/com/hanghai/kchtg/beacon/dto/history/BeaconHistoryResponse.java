@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.history;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
 import lombok.AllArgsConstructor;

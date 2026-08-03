@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1785499589342-fdba",
+  "created_at": 1785499589342,
+  "request_summary": "Add GET /api/v1/berths/generate-code?portId= endpoint for auto berthCode generation",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "src/main/java/com/hanghai/kchtg/port/controller/BerthController.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "src/main/java/com/hanghai/kchtg/port/controller/BerthController.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/berth/create form - auto-generate berthCode when port is selected",
+  "blast_radius": 3,
+  "done_oracle": "mvn compile passes, BerthService.generateBerthCode is public, BerthController has generate-code endpoint, frontend calls it on port change",
+  "declared_write_scope": [
+    "frontend/src/pages/port/BerthForm.tsx",
+    "src/main/java/com/hanghai/kchtg/port/controller/BerthController.java",
+    "src/main/java/com/hanghai/kchtg/port/service/BerthService.java"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785499350486-0ecd",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c391df8230ac9a20338258c42975a5451bd00640",
+    "dirty": true,
+    "captured_at": 1785499589530
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

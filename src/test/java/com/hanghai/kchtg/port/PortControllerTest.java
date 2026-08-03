@@ -2,6 +2,9 @@ package com.hanghai.kchtg.port;
 
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.controller.PortController;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.service.PortApprovalService;
@@ -11,7 +14,6 @@ import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,26 +24,23 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
-
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Controller slice tests for PortController — security filters disabled.
@@ -95,9 +94,9 @@ class PortControllerTest {
                 .id(id)
                 .portCode("CB-001")
                 .portName("Cảng Biển Demo")
-                .province("Hải Phòng")
+                .provinceId(1)
                 .area(new BigDecimal("5000.00"))
-                .operationalStatus(OperationalStatus.HIEN_HANH)
+                .operationalStatus(OperationalStatus.OPERATIONAL)
                 .approvalStatus(ApprovalStatus.PENDING)
                 .build();
     }
@@ -109,7 +108,7 @@ class PortControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<PortResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(portService.findAll(0, 20, null, null, null, null, null, null, null)).thenReturn(page);
+        when(portService.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/ports")
                         .param("page", "0")
@@ -118,7 +117,7 @@ class PortControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].portCode").value("CB-001"));
 
-        verify(portService).findAll(0, 20, null, null, null, null, null, null, null);
+        verify(portService).findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -127,7 +126,7 @@ class PortControllerTest {
         UUID someUuid = UUID.randomUUID();
         String uuidStr = someUuid.toString();
         Page<PortResponse> page = new PageImpl<>(List.of());
-        when(portService.findAll(2, 10, someUuid, null, null, null, null, null, null)).thenReturn(page);
+        when(portService.findAll(2, 10, someUuid, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/ports")
                         .param("page", "2")
@@ -135,7 +134,7 @@ class PortControllerTest {
                         .param("orgUnitId", uuidStr))
                 .andExpect(status().isOk());
 
-        verify(portService).findAll(2, 10, someUuid, null, null, null, null, null, null);
+        verify(portService).findAll(2, 10, someUuid, null, null, null, null, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/ports/{id} ────────────────────────────────────────

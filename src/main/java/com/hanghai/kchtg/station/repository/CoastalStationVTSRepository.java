@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.station.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.station.entity.CoastalStationVTS;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,7 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 
 @Repository
 public interface CoastalStationVTSRepository extends JpaRepository<CoastalStationVTS, UUID> {

@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.dto.lighthouse;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -11,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import java.util.UUID;
 
 /**
  * Request DTO cho việc cập nhật nhà trạm đèn biển (F-087).

@@ -1,6 +1,10 @@
 package com.hanghai.kchtg.vtssystem.controller;
 
-import com.hanghai.kchtg.vtssystem.dto.*;
+import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.vtssystem.dto.ApprovalRequest;
+import com.hanghai.kchtg.vtssystem.dto.VtsSystemCreateRequest;
+import com.hanghai.kchtg.vtssystem.dto.VtsSystemResponse;
+import com.hanghai.kchtg.vtssystem.dto.VtsSystemUpdateRequest;
 import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,17 +14,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import com.hanghai.kchtg.common.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

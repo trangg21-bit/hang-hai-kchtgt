@@ -1,0 +1,56 @@
+{
+  "triage_id": "TRI-1785494247108-d892",
+  "created_at": 1785494247108,
+  "request_summary": "Sync Berth UI with PortList pattern: update App.tsx routing to use BerthList (PortList-style), add create/edit sub-routes, fix navigation paths from /Berth to /berth in BerthList and BerthForm",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/App.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts"
+    ],
+    "impact_files": [
+      "frontend/src/App.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Frontend route /berth — BerthList page component matching PortList visual pattern",
+  "blast_radius": 5,
+  "done_oracle": "npx tsc --noEmit passes, /berth route renders BerthList with PortList-style UI (filters, StatusTabs, columns), all navigation paths lowercase /berth",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/App.tsx",
+    "frontend/src/pages/port/BerthForm.tsx",
+    "frontend/src/pages/port/BerthList.tsx",
+    "frontend/src/services/portService.ts",
+    "frontend/src/types/port.ts"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785493740369-5206",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c391df8230ac9a20338258c42975a5451bd00640",
+    "dirty": true,
+    "captured_at": 1785494247320
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

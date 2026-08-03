@@ -1,16 +1,9 @@
 package com.hanghai.kchtg.assetmovement.entity;
 
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
-
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

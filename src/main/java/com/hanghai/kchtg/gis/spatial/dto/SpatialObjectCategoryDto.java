@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.spatial.dto;
 
-import java.util.UUID;
-
 import lombok.Data;
 
 import java.util.UUID;

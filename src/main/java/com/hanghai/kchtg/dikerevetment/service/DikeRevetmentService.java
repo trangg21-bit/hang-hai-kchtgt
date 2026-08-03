@@ -1,23 +1,31 @@
 package com.hanghai.kchtg.dikerevetment.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.common.entity.EntityFields;
+
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.*;
+import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentApprovalHistoryRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
-import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentApprovalHistoryRepository;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -68,7 +76,7 @@ public class DikeRevetmentService {
                     objType,
                     req.getCoordinates(),
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.DIKE_REVETMENT
+                    InfrastructureType.DIKE_REVETMENT
             );
             dr.setSpatialId(spatialObj.getId());
             dr = repo.save(dr);
@@ -101,13 +109,13 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<DikeRevetmentResponse> findAll() {
-        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<DikeRevetmentResponse> findAll(int page, int size) {
-        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
+        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
                 .map(this::toResponse);
     }
 
@@ -121,9 +129,9 @@ public class DikeRevetmentService {
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || dikeRevetmentType != null || status != null || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
-            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         }
         return results.map(this::toResponse);
     }
@@ -164,7 +172,7 @@ public class DikeRevetmentService {
                         objType,
                         req.getCoordinates(),
                         refId,
-                        com.hanghai.kchtg.gis.search.dto.InfrastructureType.DIKE_REVETMENT
+                        InfrastructureType.DIKE_REVETMENT
                 );
                 dr.setSpatialId(spatialObj.getId());
             }
@@ -179,7 +187,7 @@ public class DikeRevetmentService {
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
                         refId,
-                        com.hanghai.kchtg.gis.search.dto.InfrastructureType.DIKE_REVETMENT
+                        InfrastructureType.DIKE_REVETMENT
                 );
             });
         }
@@ -294,7 +302,7 @@ public class DikeRevetmentService {
     private void saveApprovalHistory(DikeRevetment dr, Integer cap, String status, String user, String reason) {
         DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder()
                 .dikeRevetment(dr)
-                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.fromInt(cap))
+                .approvalLevel(ApprovalLevel.fromInt(cap))
                 .status(status)
                 .approver(user)
                 .approvalDate(LocalDate.now())
@@ -308,7 +316,7 @@ public class DikeRevetmentService {
         return ApprovalResponse.builder()
                 .id(String.valueOf(dr.getId()))
                 .dikeRevetmentId(dr.getId())
-                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.fromInt(cap))
+                .approvalLevel(ApprovalLevel.fromInt(cap))
                 .status(dr.getApprovalStatus().name())
                 .approver(String.valueOf(cap == 1 ? dr.getApproverLevel1() : dr.getApproverLevel2()))
                 .approvalDate(cap == 1 ? dr.getApprovedDateLevel1() : dr.getApprovedDateLevel2())
@@ -353,7 +361,7 @@ public class DikeRevetmentService {
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         String statusVal = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
-        Page<DikeRevetment> r = repo.searchDocuments(orgUnitId, keywordLike, dikeRevetmentType, statusVal, approvalStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<DikeRevetment> r = repo.searchDocuments(orgUnitId, keywordLike, dikeRevetmentType, statusVal, approvalStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

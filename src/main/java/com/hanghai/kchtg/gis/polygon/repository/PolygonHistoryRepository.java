@@ -1,12 +1,12 @@
 package com.hanghai.kchtg.gis.polygon.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.polygon.entity.PolygonHistory;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonHistory.ActionType;
 import org.springframework.data.jpa.repository.JpaRepository;
+
 import java.util.List;
 import java.util.UUID;
+
 public interface PolygonHistoryRepository extends JpaRepository<PolygonHistory, UUID> {
 
     List<PolygonHistory> findByObjectIdOrderByCreatedAtDesc(String objectId);

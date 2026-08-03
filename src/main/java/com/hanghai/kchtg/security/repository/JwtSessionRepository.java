@@ -1,12 +1,11 @@
 package com.hanghai.kchtg.security.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.security.entity.JwtSessionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;

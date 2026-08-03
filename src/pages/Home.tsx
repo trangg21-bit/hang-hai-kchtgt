@@ -1,31 +1,50 @@
-import { useState, useEffect } from 'react';
-import { Row, Col, Table, Tag } from 'antd';
-import { EnvironmentOutlined, EyeOutlined } from '@ant-design/icons';
-import { FilterProvider, useFilter } from '../context/FilterContext';
+import {useEffect, useState} from 'react';
+import {Col, Row, Table, Tag} from 'antd';
+import {EyeOutlined} from '@ant-design/icons';
+import {FilterProvider, useFilter} from '../context/FilterContext';
 import FilterBar from '../components/FilterBar';
 import DashboardMap from '../components/DashboardMap';
 import ReactECharts from 'echarts-for-react';
-import type { EChartsOption } from 'echarts';
+import type {EChartsOption} from 'echarts';
 import {
-  surfaceCard as surface,
-  textPrimary, textSecondary, textTertiary as ink3,
-  borderDefault as line,
-  radiusXl, radiusSm, radiusPill,
-  shadowMd,
-  fontMono,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontSizeHeading, fontSizeDisplay,
-  chartGrid, chartTooltip, chartTextStyle,
-  dataNavy, dataSea0, dataSea1, dataSea2, dataSea3,
-  statusOperational, statusCritical,
-  cargoSeriesColors,
-  approvalApproved, approvalPending, approvalRejected,
+  approvalApproved,
   approvalBarTrack,
-  pendingActiveBg, pendingActiveColor,
-  pendingZeroBg, pendingZeroColor,
+  approvalPending,
+  approvalRejected,
+  borderDefault as line,
+  cargoSeriesColors,
+  chartGrid,
+  chartTextStyle,
+  chartTooltip,
+  dataNavy,
+  dataSea0,
+  dataSea1,
+  dataSea2,
+  dataSea3,
+  fontMono,
+  fontSizeDisplay,
+  fontSizeHeading,
+  fontSizeLg,
+  fontSizeMd,
+  fontSizeSm,
+  pendingActiveBg,
+  pendingActiveColor,
+  pendingZeroBg,
+  pendingZeroColor,
+  radiusPill,
+  radiusSm,
+  radiusXl,
+  shadowMd,
+  statusCritical,
+  statusOperational,
+  surfaceCard as surface,
+  textPrimary,
+  textSecondary,
+  textTertiary as ink3,
 } from '../tokens-dashboard';
-import { dashboardApi } from '../services/dashboardApi';
-import { MOCK_DATA } from '../services/dashboardMockData';
-import type { DashboardData, BlockState } from '../services/dashboardTypes';
+import {dashboardApi} from '../services/dashboardApi';
+import {MOCK_DATA} from '../services/dashboardMockData';
+import type {BlockState, DashboardData} from '../services/dashboardTypes';
 
 const ink = textPrimary;
 const ink2 = textSecondary;

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.search.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.search.entity.SearchQuery.QueryType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -11,6 +9,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryAsset;
@@ -32,7 +30,7 @@ public class InventoryAssetService {
                 .assetId(request.getAssetId())
                 .inventoryStatus(parseInventoryStatus(request.getInventoryStatus()))
                 .notes(request.getDescription())
-                
+
                 .build();
         InventoryAsset saved = repository.save(entity);
         return toResponse(saved);

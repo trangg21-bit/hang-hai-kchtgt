@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.layer.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.layer.dto.*;
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;

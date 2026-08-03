@@ -193,26 +193,26 @@ PMO Lead
 
 Toàn bộ cấu trúc tài liệu đặc tả nghiệp vụ (feature-brief.md) được định nghĩa tại **1 file duy nhất**:
 
-| File                                      | Vai trò                                          | Agent nào phải đọc        |
-| ----------------------------------------- | ------------------------------------------------ | ------------------------- |
-| `docs/feature-brief-template.md`          | Template 10-section cho mọi feature-brief.md     | **BA** (business analyst) |
+| File                             | Vai trò                                      | Agent nào phải đọc        |
+| -------------------------------- | -------------------------------------------- | ------------------------- |
+| `docs/feature-brief-template.md` | Template 10-section cho mọi feature-brief.md | **BA** (business analyst) |
 
 ### Cấu trúc 10 section bắt buộc
 
 Mọi file `feature-brief.md` **PHẢI** tuân thủ đúng cấu trúc 10 section, đúng thứ tự, đúng tiêu đề:
 
-| #   | Section                              | Nội dung                                                                 |
-| --- | ------------------------------------ | ------------------------------------------------------------------------ |
-| 1   | Tổng quan                            | 1.1 Tính năng này làm gì / 1.2 Tại sao cần / 1.3 Luồng hoạt động chính  |
-| 2   | Ai dùng? Dùng như thế nào?           | Bảng phân quyền RBAC 7 role + logic Admin Cục đặc biệt                   |
-| 3   | User Stories                         | Must / Should / Could, định dạng US-{XXX}-XX                             |
-| 4   | Yêu cầu chức năng (Acceptance Criteria) | AC-{XXX}-XX, mỗi AC kèm xử lý khi lỗi                                |
-| 5   | Quy tắc nghiệp vụ (Business Rules)   | BR-{XXX}-XX, định dạng bảng: ID / Rule / Applies-to / Source             |
-| 6   | Mô hình dữ liệu                      | Bảng DB, 🔴 đỏ = trường mới, ~~gạch ngang~~ = trường cần loại bỏ         |
-| 7   | API Endpoints                        | Bảng Method / Endpoint / Mô tả / Phân quyền                              |
-| 8   | Chi tiết nghiệp vụ từng phần         | Triển khai chi tiết từng phần (bỏ nếu không áp dụng)                     |
-| 9   | Yêu cầu phi chức năng                | Hiệu năng / Mở rộng / Bảo mật / Độ tin cậy / UX / Pháp lý               |
-| 10  | Yêu cầu giao diện người dùng         | Token theme + bảng cột chi tiết (STT/Tên trường/Loại ĐK/Edit/Bắt buộc/Default/Mô tả) |
+| #   | Section                                 | Nội dung                                                                             |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------ |
+| 1   | Tổng quan                               | 1.1 Tính năng này làm gì / 1.2 Tại sao cần / 1.3 Luồng hoạt động chính               |
+| 2   | Ai dùng? Dùng như thế nào?              | Bảng phân quyền RBAC 7 role + logic Admin Cục đặc biệt                               |
+| 3   | User Stories                            | Must / Should / Could, định dạng US-{XXX}-XX                                         |
+| 4   | Yêu cầu chức năng (Acceptance Criteria) | AC-{XXX}-XX, mỗi AC kèm xử lý khi lỗi                                                |
+| 5   | Quy tắc nghiệp vụ (Business Rules)      | BR-{XXX}-XX, định dạng bảng: ID / Rule / Applies-to / Source                         |
+| 6   | Mô hình dữ liệu                         | Bảng DB, 🔴 đỏ = trường mới, ~~gạch ngang~~ = trường cần loại bỏ                     |
+| 7   | API Endpoints                           | Bảng Method / Endpoint / Mô tả / Phân quyền                                          |
+| 8   | Chi tiết nghiệp vụ từng phần            | Triển khai chi tiết từng phần (bỏ nếu không áp dụng)                                 |
+| 9   | Yêu cầu phi chức năng                   | Hiệu năng / Mở rộng / Bảo mật / Độ tin cậy / UX / Pháp lý                            |
+| 10  | Yêu cầu giao diện người dùng            | Token theme + bảng cột chi tiết (STT/Tên trường/Loại ĐK/Edit/Bắt buộc/Default/Mô tả) |
 
 ### Quy tắc bắt buộc
 
@@ -273,9 +273,42 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
    - Tên cột, tên bảng trong CSDL (Database), tên biến Java (Backend) và tên biến ở Frontend (TypeScript/JavaScript) **BẮT BUỘC** phải được đặt bằng **tiếng Anh** chuẩn.
    - Ngược lại, các message hiển thị thông báo lỗi, xử lý ngoại lệ (Exception handle) trả về cho người dùng và toàn bộ nội dung text hiển thị trên giao diện Frontend (Label, Button, Toast...) **BẮT BUỘC** phải là **tiếng Việt có dấu** rõ nghĩa.
 
-6. **Đối chiếu Logic Nghiệp vụ với BA Spec**:
-   - Trước khi lập trình các logic nghiệp vụ (đặc biệt là các dữ liệu/trạng thái ngầm định), AI bắt buộc phải đọc và đối chiếu với tài liệu phân tích nghiệp vụ (BA Spec - ví dụ: các file `00-lean-spec.md` trong thư mục `docs/`).
-   - Nếu phát hiện có logic đang code không có trong tài liệu (hoặc ngược lại), AI phải cảnh báo và hỏi ý kiến người dùng thay vì tự ý giả định.
+6. **Đối chiếu Logic Nghiệp vụ với BA Lean Spec & Brief (BẮT BUỘC)**:
+
+   **Quy tắc vàng:** Trước khi viết BẤT KỲ logic nghiệp vụ nào (Entity, Service, Controller, DTO, Frontend form/validation), AI **BẮT BUỘC** phải đọc và đối chiếu với 2 loại tài liệu BA tương ứng của module/feature đang làm.
+
+   **Cấu trúc tài liệu BA trong dự án:**
+
+   | Loại tài liệu     | Đường dẫn                                                               | Nội dung                                                                                                                                               | Khi nào đọc                                                       |
+   | ----------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+   | **BA Lean Spec**  | `docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md`                        | Use Cases, Business Rules, Domain Model, Trạng thái, Quy trình phê duyệt, Validation rules chi tiết                                                    | **Luôn luôn** — đây là nguồn sự thật duy nhất cho logic nghiệp vụ |
+   | **Module Brief**  | `docs/modules/M-{xxx}-{slug}/module-brief.md`                           | Tổng quan module, danh sách features, status, dependencies                                                                                             | Khi cần hiểu scope tổng thể của module                            |
+   | **Feature Brief** | `docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md` | Flow chi tiết, Acceptance Criteria, DTO fields, REST endpoint, Business Rules, Roles & Permissions, Entities, Validation rules cho từng feature cụ thể | **Luôn luôn** — khi code một feature cụ thể                       |
+
+   **Workflow bắt buộc khi bắt đầu code một module/feature:**
+
+   ```
+   Bước 1: Xác định Module ID (M-xxx) và Feature ID (F-xxx) đang làm
+   Bước 2: Đọc docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md
+           → Nắm Use Cases, Business Rules, Domain Model, Trạng thái, Validation
+   Bước 3: Đọc docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md
+           → Nắm Flow, Acceptance Criteria, DTO fields, REST endpoint, Roles
+   Bước 4: Đối chiếu từng điểm trước khi viết code:
+           ✅ Tên Entity/bảng có khớp tài liệu?
+           ✅ Các trường DTO (required/optional, kiểu dữ liệu, validation) có khớp?
+           ✅ Trạng thái mặc định khi tạo mới có đúng? (VD: PROPOSED)
+           ✅ Quy trình phê duyệt (mấy cấp, chuyển trạng thái) có đúng?
+           ✅ Business Rules (BR-xxx) có được implement đầy đủ?
+           ✅ Roles & Permissions có khớp?
+           ✅ REST endpoint path và method có đúng?
+   Bước 5: Nếu phát hiện BẤT KỲ sai lệch nào giữa code và tài liệu
+           → DỪNG LẠI, báo cáo chi tiết cho người dùng, KHÔNG tự ý giả định
+   ```
+
+   **Ví dụ:** Khi code feature F-038 (Tạo mới Luồng hàng hải) thuộc M-003:
+   - Đọc `docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md`
+   - Đọc `docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-038-quan-ly-luong-hang-hai-tao-moi/feature-brief.md`
+   - Đối chiếu: trạng thái mặc định = PROPOSED, phê duyệt 2 cấp (C1→C2), các trường bắt buộc (loại tàu, số lượng, ngày ghi nhận), validation rules (BR-038-01 đến BR-038-06)
 
 7. **Xử lý Dữ liệu Đầu vào (Input Processing)**:
    - Tất cả các trường nhập liệu văn bản (đặc biệt là ô tìm kiếm, form nhập liệu) bắt buộc phải được xử lý loại bỏ khoảng trắng thừa (`.trim()`) ở đầu và cuối chuỗi trước khi gửi API hoặc đưa vào hàm lọc dữ liệu, tránh trường hợp tìm kiếm không ra kết quả do lỗi gõ phím của người dùng.
@@ -286,14 +319,16 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 # Local Agent Customization Rules (Workspace-Scoped)
 
 > [!IMPORTANT]
-> Đây là file cấu hình hướng dẫn và nguyên tắc hoạt động cho tất cả các AI Coding Assistant (Antigravity, Claude, v.v.) khi làm việc trong Workspace này. 
+> Đây là file cấu hình hướng dẫn và nguyên tắc hoạt động cho tất cả các AI Coding Assistant (Antigravity, Claude, v.v.) khi làm việc trong Workspace này.
 > Mọi AI bắt buộc phải đọc và tuân thủ các chỉ thị trong file này trước khi thực hiện bất kỳ chỉnh sửa nào.
 
 ## 📌 Hướng dẫn & Ràng buộc nghiệp vụ (User Custom Rules)
 
-*Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn ở đây để AI luôn tuân theo mỗi khi pair-programming.*
+_Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn ở đây để AI luôn tuân theo mỗi khi pair-programming._
 
 1. **Nguyên tắc chung**:
+   - **TUÂN THỦ TUYỆT ĐỐ TÀI LIỆU BRIEF (FEATURE BRIEF & LEAN SPEC)**:
+     - AI chỉ được phép lập trình, xây dựng giao diện và xử lý logic nghiệp vụ theo đúng cấu trúc cột, trường dữ liệu, acceptance criteria và business rules đã định nghĩa trong tài liệu brief (`feature-brief.md` và `00-lean-spec.md`).
    - Luôn kiểm tra cấu trúc dữ liệu thực tế và các màn hình quản lý CRUD trước khi đề xuất chỉnh sửa logic báo cáo hoặc nghiệp vụ.
    - Không tự động gán dữ liệu giả lập (placeholder/hardcoded) cho các cột khi database thực tế không hỗ trợ trường tương ứng.
    - **TẠO SCRIPT SQL CHO THAY ĐỔI DB**: Khi thao tác liên quan đến thay đổi cấu trúc DB (schema, index, migrations...), bắt buộc phải tạo script SQL Flyway tương ứng (đặt trong thư mục `src/main/resources/db/migration/`) để khi đưa lên môi trường khác (UAT, Production) cấu trúc DB sẽ khớp 100%.

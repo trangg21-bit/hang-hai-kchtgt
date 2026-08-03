@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.user.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.user.entity.PendingApproval;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Repository cho entity {@link PendingApproval}.

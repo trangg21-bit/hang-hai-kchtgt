@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.port.service.shared;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.entity.base.ApprovalStatus;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;

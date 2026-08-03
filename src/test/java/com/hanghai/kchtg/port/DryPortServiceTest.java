@@ -1,19 +1,17 @@
 package com.hanghai.kchtg.port;
 
-import com.hanghai.kchtg.port.dto.dryport.DryPortResponse;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.dto.dryport.CreateDryPortRequest;
+import com.hanghai.kchtg.port.dto.dryport.DryPortResponse;
 import com.hanghai.kchtg.port.dto.dryport.UpdateDryPortRequest;
 import com.hanghai.kchtg.port.entity.DryPort;
-import com.hanghai.kchtg.port.repository.DryPortRepository;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
+import com.hanghai.kchtg.port.repository.ChangeLogRepository;
+import com.hanghai.kchtg.port.repository.DryPortRepository;
 import com.hanghai.kchtg.port.service.DryPortApprovalService;
 import com.hanghai.kchtg.port.service.DryPortService;
-import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
-import com.hanghai.kchtg.port.service.shared.AuditLogService;
-import com.hanghai.kchtg.port.service.shared.PortNotificationService;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.port.service.shared.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,8 +22,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -85,10 +81,10 @@ class DryPortServiceTest {
             ReflectionTestUtils.setField(testEntity, "id", testId);
             testEntity.setDryPortCode("CC-001");
             testEntity.setDryPortName("Cảng Cạn Demo");
-            testEntity.setProvince("Hà Nội");
+            testEntity.setProvinceId(1);
             testEntity.setArea(new BigDecimal("10000.00"));
             testEntity.setTeuCapacity(new BigDecimal("50000.00"));
-            testEntity.setOperationalStatus(OperationalStatus.HIEN_HANH);
+            testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
             testEntity.setApprovalStatus(ApprovalStatus.PENDING);
         }
 
@@ -134,7 +130,7 @@ class DryPortServiceTest {
             UpdateDryPortRequest request = new UpdateDryPortRequest();
             request.setId(testId);
             request.setDryPortName("Cảng Cạn Cập Nhật");
-            request.setProvince("Hải Phòng");
+            request.setProvinceId(1);
 
             DryPortResponse result = service.update(request);
 
@@ -178,8 +174,8 @@ class DryPortServiceTest {
             CreateDryPortRequest req = new CreateDryPortRequest();
             req.setDryPortCode(dryPortCode);
             req.setDryPortName(dryPortName);
-            req.setProvince("Hà Nội");
-            req.setOperationalStatus(OperationalStatus.HIEN_HANH);
+            req.setProvinceId(1);
+            req.setOperationalStatus(OperationalStatus.OPERATIONAL);
             return req;
         }
     }

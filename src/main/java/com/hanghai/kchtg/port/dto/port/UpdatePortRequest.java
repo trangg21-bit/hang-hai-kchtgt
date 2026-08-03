@@ -17,7 +17,6 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
  * Request DTO for updating an existing Port.
  * The 'code' field is immutable (ignored after creation).
  * GPS fields (latitude/longitude) must be both present or both absent.
- * Supports composite form: replacing coordinates[] and infrastructure[].
  */
 @Data
 public class UpdatePortRequest {
@@ -37,10 +36,11 @@ public class UpdatePortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = true, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal maxVesselCapacity;
+
+    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
 
     private UUID orgUnitId;
 
@@ -48,12 +48,6 @@ public class UpdatePortRequest {
     private UUID mapSymbolId;
     private GisGeometryType geometryType;
     private String coordinates;
-
-    // ── Managing unit & notes ───────────────────────────────────────
-
-    private UUID managingUnitId;
-
-    private String notes;
 
     // ── Extended fields (V53) ────────────────────────────────────────
 
@@ -102,9 +96,12 @@ public class UpdatePortRequest {
 
     private String remarks;
 
-    // ── Composite form fields ────────────────────────────────────────
+    // ── Child lists ───────────────────────────────────────────────────
 
-    private List<CoordinateDto> portCoordinates;
+    private List<PortCoordinateDto> coordinateList;
 
-    private List<InfrastructureDto> portInfrastructures;
+    private List<PortInfrastructureDto> infrastructureList;
+
+    private List<PortAttachmentDto> attachments;
+
 }

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.group.dto.*;
 import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
@@ -7,6 +9,7 @@ import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,15 +48,18 @@ public class UserGroupService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupHistoryRepository groupHistoryRepository;
     private final UserRepository userRepository;
+    private final PermissionCacheService permissionCacheService;
 
     public UserGroupService(GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
             GroupHistoryRepository groupHistoryRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            PermissionCacheService permissionCacheService) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.groupHistoryRepository = groupHistoryRepository;
         this.userRepository = userRepository;
+        this.permissionCacheService = permissionCacheService;
     }
 
     // ── CRUD ────────────────────────────────────────────────────────
@@ -170,9 +176,9 @@ public class UserGroupService {
     public PaginatedGroupResponse list(String search, String groupTypeStr, String statusStr,
             int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
-        String searchParam = (search != null && !search.isBlank()) ? "%" + search + "%" : null;
+        String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;
         Integer groupTypeInt = (groupTypeStr != null && !groupTypeStr.isBlank())
                 ? GroupType.fromValue(groupTypeStr).ordinal()
                 : null;
@@ -211,9 +217,9 @@ public class UserGroupService {
     public PaginatedGroupResponse findMyGroups(UUID userId, String search, String groupTypeStr,
             int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
-        String searchParam = (search != null && !search.isBlank()) ? "%" + search + "%" : null;
+        String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;
         Integer groupTypeInt = (groupTypeStr != null && !groupTypeStr.isBlank())
                 ? GroupType.fromValue(groupTypeStr).ordinal()
                 : null;
@@ -283,20 +289,18 @@ public class UserGroupService {
             }
             // Resurrect member
             existingMember.setStatus(GroupMemberStatus.ACTIVE);
-            existingMember.setRole(request.getRoleInGroup() != null
-                    ? GroupMemberRole.fromValue(request.getRoleInGroup())
-                    : GroupMemberRole.MEMBER);
             existingMember.setAddedBy(operatorId);
             existingMember.setJoinedAt(java.time.LocalDateTime.now());
             saved = groupMemberRepository.save(existingMember);
         } else {
-            GroupMember member = GroupMember.create(user, group,
-                    request.getRoleInGroup() != null
-                            ? GroupMemberRole.fromValue(request.getRoleInGroup())
-                            : GroupMemberRole.MEMBER,
-                    operatorId);
+            GroupMember member = GroupMember.create(user, group, operatorId);
             saved = groupMemberRepository.save(member);
         }
+
+        // Keep the effective-permissions relationship in sync. User#getAllPermissions
+        // resolves inherited permissions through User.groups, while group_members is
+        // the audit/listing projection used by this module.
+        attachGroupToUser(user, group);
 
         // BR-015: Log history
         saveHistory(groupId, group.getName(), group.getCode(), "MEMBER_ADDED",
@@ -324,6 +328,11 @@ public class UserGroupService {
         // BR-015: Log history
         com.hanghai.kchtg.user.entity.User targetUser = getUserById(userId);
         String userRef = targetUser != null ? targetUser.getUsername() : userId.toString();
+        if (targetUser != null) {
+            targetUser.getGroups().removeIf(userGroup -> group.getId().equals(userGroup.getId()));
+            userRepository.save(targetUser);
+            permissionCacheService.invalidateAndIncrementVersion(targetUser.getId());
+        }
         saveHistory(groupId, group.getName(), group.getCode(), "MEMBER_REMOVED",
                 "Đã xóa user " + userRef + " khỏi nhóm", operatorId, operatorName);
 
@@ -334,17 +343,13 @@ public class UserGroupService {
      * Liet ke thanh vien cua nhom (phan trang).
      */
     @Transactional(readOnly = true)
-    public Page<GroupMember> findMembers(UUID groupId, String search, String role, int page, int size) {
+    public Page<GroupMember> findMembers(UUID groupId, String search, int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.ASC, "joinedAt"));
         findEntityById(groupId); // verify group exists
 
         String searchParam = (search != null && !search.isBlank()) ? "%" + search + "%" : null;
-        boolean roleIsNull = (role == null || role.isBlank());
-        GroupMemberRole roleParam = roleIsNull ? GroupMemberRole.MEMBER : GroupMemberRole.fromValue(role);
-
-        return groupMemberRepository.searchAndFilterMembers(groupId, GroupMemberStatus.ACTIVE, searchParam, roleIsNull, roleParam.ordinal(),
-                pageable);
+        return groupMemberRepository.searchMembers(groupId, GroupMemberStatus.ACTIVE, searchParam, pageable);
     }
 
     // ── Copy group (BR-014) ────────────────────────────────────────
@@ -378,11 +383,11 @@ public class UserGroupService {
             GroupMember newMember = new GroupMember();
             newMember.setUser(srcMember.getUser());
             newMember.setUserGroup(savedCopy);
-            newMember.setRole(srcMember.getRole());
             newMember.setAddedBy(operatorId);
             newMember.setJoinedAt(java.time.LocalDateTime.now());
             newMember.setStatus(GroupMemberStatus.ACTIVE);
             groupMemberRepository.save(newMember);
+            attachGroupToUser(srcMember.getUser(), savedCopy);
         }
 
         // BR-015: Log history
@@ -445,5 +450,18 @@ public class UserGroupService {
      */
     private User getUserById(UUID userId) {
         return userRepository.findById(userId).orElse(null);
+    }
+
+    /**
+     * Synchronize the permission-inheritance projection used by User#getAllPermissions.
+     */
+    private void attachGroupToUser(User user, UserGroup group) {
+        boolean groupAttached = user.getGroups().stream()
+                .anyMatch(existingGroup -> group.getId().equals(existingGroup.getId()));
+        if (!groupAttached) {
+            user.getGroups().add(group);
+            userRepository.save(user);
+            permissionCacheService.invalidateAndIncrementVersion(user.getId());
+        }
     }
 }

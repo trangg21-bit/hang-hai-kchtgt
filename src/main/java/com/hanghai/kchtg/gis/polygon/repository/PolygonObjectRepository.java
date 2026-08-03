@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.polygon.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
@@ -10,9 +8,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UUID> {
 
     Optional<PolygonObject> findByCode(String code);

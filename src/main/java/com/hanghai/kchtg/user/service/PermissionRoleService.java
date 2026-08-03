@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.user.service;
 
+import com.hanghai.kchtg.security.PermissionMiddleware;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.slf4j.Logger;
@@ -13,7 +14,7 @@ import java.util.UUID;
 /**
  * Permission evaluation service for 3-level RBAC (F-275).
  * <p>
- * Provides permission-checking methods used by {@link com.hanghai.kchtg.security.PermissionMiddleware}
+ * Provides permission-checking methods used by {@link PermissionMiddleware}
  * and other security components. Supports Super Admin bypass and wildcard matching.
  * </p>
  */
@@ -35,6 +36,9 @@ public class PermissionRoleService {
      * Check if a user has permission for the given resource and action.
      * <p>
      * Super Admin bypass: if the user holds the super-admin role, return true immediately.
+     * Aggregate matching: a feature-level permission like {@code resource:manage}
+     * grants access to that resource so the middleware can continue to the
+     * endpoint's finer-grained {@code @PreAuthorize} check.
      * Wildcard matching: a permission like {@code resource:*} grants all actions on that resource.
      * </p>
      *
@@ -58,7 +62,10 @@ public class PermissionRoleService {
         Set<String> permissions = user.getAllPermissions();
         String requiredPermission = resource + ":" + action;
         String wildcardPermission = resource + ":*";
-        return permissions.contains(requiredPermission) || permissions.contains(wildcardPermission);
+        String aggregatePermission = resource + ":manage";
+        return permissions.contains(requiredPermission)
+                || permissions.contains(wildcardPermission)
+                || permissions.contains(aggregatePermission);
     }
 
     /**

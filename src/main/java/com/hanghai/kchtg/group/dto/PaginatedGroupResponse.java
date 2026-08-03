@@ -1,19 +1,17 @@
 package com.hanghai.kchtg.group.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.List;
 
 /**
  * Paginated group response with total count.
  */
-@Getter
-@Setter
-@AllArgsConstructor
+@Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class PaginatedGroupResponse {
 
     private List<GroupResponse> items;

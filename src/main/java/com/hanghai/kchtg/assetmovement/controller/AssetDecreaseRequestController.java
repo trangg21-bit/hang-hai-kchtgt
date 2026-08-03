@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestResponse;
@@ -47,7 +47,7 @@ public class AssetDecreaseRequestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
-                Sort.by("createdAt").descending());
+                Sort.by(EntityFields.CREATED_AT).descending());
         Page<AssetDecreaseRequestResponse> result;
         if (assetId != null) {
             result = assetDecreaseRequestService.findByAssetId(assetId, pageable);

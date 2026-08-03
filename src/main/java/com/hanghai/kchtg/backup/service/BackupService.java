@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.backup.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.backup.entity.DatabaseBackup;
 import com.hanghai.kchtg.backup.repository.DatabaseBackupRepository;
 import lombok.RequiredArgsConstructor;
@@ -52,14 +50,14 @@ public class BackupService {
     @Transactional
     public DatabaseBackup performBackup(DatabaseBackup.BackupType type) {
         log.info("Starting database backup process ({})", type);
-        
+
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String suffix = datasourceUrl.contains(":h2:") ? ".sql" : ".dump";
         String filename = "db_backup_" + timestamp + suffix;
-        
+
         Path dirPath = Path.of(backupDir);
         Path filePath = dirPath.resolve(filename);
-        
+
         DatabaseBackup record = new DatabaseBackup();
         record.setFilename(filename);
         record.setFilePath(filePath.toAbsolutePath().toString());
@@ -69,7 +67,7 @@ public class BackupService {
 
         try {
             Files.createDirectories(dirPath);
-            
+
             if (datasourceUrl.contains(":h2:")) {
                 backupH2(filePath.toAbsolutePath().toString());
             } else if (datasourceUrl.contains(":postgresql:")) {
@@ -77,23 +75,23 @@ public class BackupService {
             } else {
                 throw new UnsupportedOperationException("Database dialect not supported for backups: " + datasourceUrl);
             }
-            
+
             // Success
             File file = filePath.toFile();
             record.setFileSize(file.length());
             record.setStatus(DatabaseBackup.BackupStatus.SUCCESS);
             log.info("Backup successfully completed: {} ({} bytes)", filename, record.getFileSize());
-            
+
         } catch (Exception e) {
             log.error("Backup failed: {}", e.getMessage(), e);
             record.setErrorDetail(e.getMessage() != null ? e.getMessage() : e.toString());
         }
 
         DatabaseBackup saved = backupRepository.save(record);
-        
+
         // Retain only latest backups
         cleanupOldBackupFiles();
-        
+
         return saved;
     }
 
@@ -112,7 +110,7 @@ public class BackupService {
         }
 
         log.info("Restoring database from backup: {}", record.getFilename());
-        
+
         try {
             Path path = Path.of(record.getFilePath());
             if (!Files.exists(path)) {
@@ -127,7 +125,7 @@ public class BackupService {
                 throw new UnsupportedOperationException("Database dialect not supported for restores: " + datasourceUrl);
             }
             log.info("Database restore successfully completed from: {}", record.getFilename());
-            
+
         } catch (Exception e) {
             log.error("Database restore failed: {}", e.getMessage(), e);
             throw new RuntimeException("Restore failed: " + e.getMessage(), e);

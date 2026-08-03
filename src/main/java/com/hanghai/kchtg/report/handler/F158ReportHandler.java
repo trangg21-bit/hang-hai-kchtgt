@@ -1,14 +1,13 @@
 package com.hanghai.kchtg.report.handler;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
-import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
-import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -136,7 +135,7 @@ public class F158ReportHandler extends BaseReportHandler {
     private String resolveOrgName(UUID orgUnitId) {
         if (orgUnitId == null) return "";
         return orgUnitRepository.findById(orgUnitId)
-                .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                .map(OrgUnit::getName)
                 .orElse("");
     }
 }

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryReport;
@@ -9,12 +7,12 @@ import com.hanghai.kchtg.assetmovement.entity.ReportStatus;
 import com.hanghai.kchtg.assetmovement.repository.InventoryReportRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,7 +49,7 @@ public class InventoryReportService {
                 .status(ReportStatus.PENDING)
                 .createdBy(currentUserId)
                 .updatedBy(currentUserId)
-                
+
                 .build();
         InventoryReport saved = repository.save(entity);
         return toResponse(saved);

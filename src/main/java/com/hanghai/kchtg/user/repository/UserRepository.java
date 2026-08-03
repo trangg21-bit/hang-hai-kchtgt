@@ -1,12 +1,14 @@
 package com.hanghai.kchtg.user.repository;
 
-import java.util.UUID;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 /**
  * Repository cho entity {@link User}.
  */
@@ -22,6 +24,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByEmailIgnoreCase(String email);
+
     /**
      * Kiểm tra tồn tại tên đăng nhập.
      */
@@ -31,6 +35,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * Kiểm tra tồn tại email.
      */
     boolean existsByEmail(String email);
+
+    /**
+     * Kiểm tra email đang được sử dụng, không phân biệt chữ hoa/chữ thường.
+     */
+    boolean existsByEmailIgnoreCase(String email);
+
+    /**
+     * Kiểm tra email đang được một tài khoản chưa xóa sử dụng, không phân biệt hoa/thường.
+     */
+    boolean existsByEmailIgnoreCaseAndDeletedAtIsNull(String email);
+
+    /**
+     * Kiểm tra email trùng khi cập nhật, ngoại trừ chính tài khoản đang được sửa.
+     */
+    boolean existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(String email, UUID id);
 
     /**
      * Kiểm tra tồn tại số điện thoại.
@@ -86,7 +105,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     /**
      * Đếm số lượng người dùng hoạt động (chưa xóa) có vai trò này.
      */
-    @Query("SELECT COUNT(u) FROM User u JOIN u.roles r WHERE r.id = :roleId AND u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED")
+    @Query("SELECT COUNT(u) FROM User u JOIN u.roles r WHERE r.id = :roleId AND u.status <> UserStatus.DELETED")
     long countByRoleId(@org.springframework.data.repository.query.Param("roleId") UUID roleId);
 
     /**
@@ -99,7 +118,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     /**
      * Thống kê số lượng người dùng hoạt động theo từng vai trò (tránh N+1 query).
      */
-    @Query("SELECT r.id, COUNT(u) FROM User u JOIN u.roles r WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED GROUP BY r.id")
+    @Query("SELECT r.id, COUNT(u) FROM User u JOIN u.roles r WHERE u.status <> UserStatus.DELETED GROUP BY r.id")
     List<Object[]> countUsersGroupByRoleId();
 
     @Query("SELECT DISTINCT u FROM User u " +
@@ -113,6 +132,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     org.springframework.data.domain.Page<User> searchUsers(
             @org.springframework.data.repository.query.Param("search") String search,
             @org.springframework.data.repository.query.Param("roleCode") String roleCode,
-            @org.springframework.data.repository.query.Param("status") com.hanghai.kchtg.user.entity.UserStatus status,
+            @org.springframework.data.repository.query.Param("status") UserStatus status,
             org.springframework.data.domain.Pageable pageable);
 }

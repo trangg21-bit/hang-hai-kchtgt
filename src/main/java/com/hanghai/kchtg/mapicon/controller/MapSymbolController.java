@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.mapicon.controller;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.mapicon.dto.CreateMapSymbolRequest;
@@ -8,6 +8,7 @@ import com.hanghai.kchtg.mapicon.dto.MapSymbolResponse;
 import com.hanghai.kchtg.mapicon.dto.UpdateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import com.hanghai.kchtg.mapicon.service.MapSymbolService;
+import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,7 +35,7 @@ public class MapSymbolController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         MapSymbolStatus symbolStatus = (status != null && !status.trim().isEmpty())
                 ? MapSymbolStatus.fromString(status)
                 : null;
@@ -50,7 +51,7 @@ public class MapSymbolController {
     public ResponseEntity<ApiResponse<MapSymbolResponse>> create(
             @Valid @RequestBody CreateMapSymbolRequest request,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         MapSymbolResponse response = service.create(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Ký hiệu bản đồ đã được tạo thành công", response));

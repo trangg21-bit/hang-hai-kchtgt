@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.document.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.entity.PlanningStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,6 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Response DTO for PortPlanning.

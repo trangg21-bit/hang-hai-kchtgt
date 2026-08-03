@@ -1,18 +1,20 @@
 package com.hanghai.kchtg.station.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.lighthouse.CreateLighthouseStationRequest;
 import com.hanghai.kchtg.station.dto.lighthouse.LighthouseStationResponse;
 import com.hanghai.kchtg.station.dto.lighthouse.UpdateLighthouseStationRequest;
 import com.hanghai.kchtg.station.entity.LighthouseStation;
-import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.station.entity.StationHistory;
+import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import com.hanghai.kchtg.station.repository.StationHistoryRepository;
@@ -24,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.Optional;
 
 /**
  * Service cho CRUD + quy trình phê duyệt nhà trạm đèn (F-086 đến F-091).
@@ -40,7 +41,7 @@ public class LighthouseStationService {
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     // -- READ --
 
@@ -174,12 +175,12 @@ public class LighthouseStationService {
         lighthouseRepo.save(entity);
 
         // Sync to GisSpatialObject
-        String toaDo = request.getCoordinates();
-        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
-            toaDo = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        String coordinates = request.getCoordinates();
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (toaDo != null && !toaDo.trim().isEmpty()) {
+        if (coordinates != null && !coordinates.trim().isEmpty()) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_LIGHTHOUSE;
             UUID refId = entity.getId();
@@ -189,7 +190,7 @@ public class LighthouseStationService {
                     "DENBIEN_" + entity.getCode(),
                     geomType,
                     objType,
-                    toaDo,
+                    coordinates,
                     refId,
                     InfrastructureType.LIGHTHOUSE
             );
@@ -238,7 +239,7 @@ public class LighthouseStationService {
         }
 
         entity.setStatus(StationStatus.DELETED);
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         lighthouseRepo.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -417,7 +418,7 @@ public class LighthouseStationService {
             gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
                 builder.geometryType(spatialObj.getGeometryType());
                 builder.coordinates(spatialObj.getCoordinates());
-                
+
                 String coords = spatialObj.getCoordinates();
                 if (coords != null && coords.startsWith("POINT(")) {
                     try {
@@ -439,7 +440,7 @@ public class LighthouseStationService {
         String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
         return "APPROVED_L1".equals(name) || "PUBLISHED".equals(name);
     }
-    
+
     // Fallback signature to prevent compilation errors
     private boolean isApprovedStatus(StationStatus status) {
         return status == StationStatus.APPROVED_L1 || status == StationStatus.PUBLISHED;
@@ -450,7 +451,7 @@ public class LighthouseStationService {
         String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
         return "PENDING_APPROVAL".equals(name) || "APPROVED_L1".equals(name) || "APPROVED_L2".equals(name);
     }
-    
+
     private boolean isInApprovalProcess(StationStatus status) {
         return status == StationStatus.PENDING_APPROVAL || status == StationStatus.APPROVED_L1;
     }

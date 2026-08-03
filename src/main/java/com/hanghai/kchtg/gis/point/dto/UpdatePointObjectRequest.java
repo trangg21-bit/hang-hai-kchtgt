@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.point.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
 import jakarta.validation.constraints.DecimalMax;
@@ -10,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor

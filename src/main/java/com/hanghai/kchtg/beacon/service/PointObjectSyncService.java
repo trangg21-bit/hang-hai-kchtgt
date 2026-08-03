@@ -4,6 +4,7 @@ import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,9 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class PointObjectSyncService {
 
     private final PointObjectRepository pointRepo;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
-    public PointObjectSyncService(PointObjectRepository pointRepo, com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService) {
+    public PointObjectSyncService(PointObjectRepository pointRepo, GisSpatialObjectService gisSpatialObjectService) {
         this.pointRepo = pointRepo;
         this.gisSpatialObjectService = gisSpatialObjectService;
     }
@@ -50,7 +51,7 @@ public class PointObjectSyncService {
         if (entity == null) return;
         PointObject point = pointRepo.findByCode(entity.getCode())
                 .orElse(new PointObject());
-        
+
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.LIGHTHOUSE);
@@ -61,7 +62,7 @@ public class PointObjectSyncService {
         point.setApprovalStatus(PointObject.ApprovalStatus.APPROVED);
         point.setApprovedBy(entity.getApprovedBy());
         point.setApprovedDate(entity.getApprovedDate());
-        
+
         pointRepo.save(point);
     }
 
@@ -86,7 +87,7 @@ public class PointObjectSyncService {
         if (entity == null) return;
         PointObject point = pointRepo.findByCode(entity.getCode())
                 .orElse(new PointObject());
-        
+
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.BUOY);
@@ -97,7 +98,7 @@ public class PointObjectSyncService {
         point.setApprovalStatus(PointObject.ApprovalStatus.APPROVED);
         point.setApprovedBy(entity.getApprovedBy());
         point.setApprovedDate(entity.getApprovedDate());
-        
+
         pointRepo.save(point);
     }
 

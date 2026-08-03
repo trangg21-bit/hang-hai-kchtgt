@@ -1,17 +1,16 @@
 package com.hanghai.kchtg.station.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import lombok.*;
-
-import com.hanghai.kchtg.station.dto.cospas.*;
-import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatHistoryResponse;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatRequest;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatResponse;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatUpdateRequest;
+import com.hanghai.kchtg.station.entity.CoastalStationCospasSarsat;
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
-import com.hanghai.kchtg.station.entity.*;
+import com.hanghai.kchtg.station.entity.StationHistoryActionType;
+import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationCospasSarsatRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -93,7 +92,7 @@ public class CoastalStationCospasSarsatService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
         String stationCode = entity.getCode();
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(

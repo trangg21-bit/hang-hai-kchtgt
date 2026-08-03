@@ -1,19 +1,20 @@
 package com.hanghai.kchtg.station.entity;
 
-import java.util.UUID;
-import lombok.experimental.Accessors;
-
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
-import com.hanghai.kchtg.station.entity.StationStatus;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 
 /**
  * Entity for Coastal Station Cospas-Sarsat equipment and operational data.
- * Extends com.hanghai.kchtg.common.entity.BaseEntity for common station fields.
+ * Extends BaseEntity for common station fields.
  */
 @Entity
 @Table(name = "coastal_station_cospas_sarsat")
@@ -23,20 +24,23 @@ import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 @AllArgsConstructor
 @Accessors(chain = true)
 @SQLRestriction("deleted_at IS NULL")
-public class CoastalStationCospasSarsat extends com.hanghai.kchtg.common.entity.BaseEntity {
+public class CoastalStationCospasSarsat extends BaseEntity {
+    @Column(name = "province_id")
+    private Integer provinceId;
+
 
     @Column(length = 50)
     protected String code;
-    
+
     @Column(length = 255)
     protected String name;
 
     @Column(length = 1000)
     protected String description;
 
-    
 
-    
+
+
 
     @Column(name = "unit_id")
     protected UUID unitId;
@@ -56,11 +60,11 @@ public class CoastalStationCospasSarsat extends com.hanghai.kchtg.common.entity.
     protected StationApprovalStatus approvalStatus;
 
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
-    protected com.hanghai.kchtg.common.enums.ApprovalLevel approvalLevel;
-    
+    protected ApprovalLevel approvalLevel;
+
     @Column(name = "approved_by")
     protected String approvedBy;
-    
+
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;
 

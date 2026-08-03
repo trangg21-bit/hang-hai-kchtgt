@@ -7,6 +7,7 @@ interface JwtPayload {
   roles?: string[];
   permissions?: string[];
   user_id?: string;
+  email?: string;
   totp_enabled?: boolean;
   role_level?: number;
 }
@@ -18,6 +19,7 @@ interface User {
   role: string;
   status: string;
   userId?: string;
+  email?: string;
 }
 
 interface AuthState {
@@ -56,6 +58,7 @@ export const useAuthStore = create<AuthState>((set) => {
       role: claims.role || 'ROLE_USER',
       status: 'authenticated',
       userId: claims.user_id,
+      email: claims.email,
     };
   }
 
@@ -64,17 +67,18 @@ export const useAuthStore = create<AuthState>((set) => {
     isAuthenticated: !!initialUser,
     token: storedToken || null,
 
-    login: (_username: string, _password: string, token: string) => {
+    login: (username: string, _password: string, token: string) => {
       const claims = parseJwt(token);
       const role = claims.role || 'ROLE_USER';
       set({
         user: {
-          username: claims.sub || 'unknown',
-          fullName: claims.sub || 'Unknown User',
+          username: username || claims.sub || 'unknown',
+          fullName: claims.sub || username || 'Unknown User',
           permissions: claims.permissions || [],
           role,
           status: 'authenticated',
           userId: claims.user_id,
+          email: claims.email,
         },
         isAuthenticated: true,
         token,

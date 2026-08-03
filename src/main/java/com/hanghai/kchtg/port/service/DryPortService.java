@@ -1,14 +1,24 @@
 package com.hanghai.kchtg.port.service;
 
-import com.hanghai.kchtg.port.dto.dryport.*;
-import com.hanghai.kchtg.port.entity.DryPort;
-import java.math.BigDecimal;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.port.dto.dryport.CreateDryPortRequest;
+import com.hanghai.kchtg.port.dto.dryport.DryPortResponse;
+import com.hanghai.kchtg.port.dto.dryport.UpdateDryPortRequest;
+import com.hanghai.kchtg.port.entity.DryPort;
 import com.hanghai.kchtg.port.repository.DryPortRepository;
 import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +43,8 @@ public class DryPortService {
     private final ChangeHistoryService changeHistoryService;
     private final AuditLogService auditLogService;
     private final UserResolverService userResolverService;
-    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final UserRepository userRepository;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     @Transactional
     public DryPortResponse create(CreateDryPortRequest request) {
@@ -43,7 +53,7 @@ public class DryPortService {
         }
         DryPort entity = DryPort.builder()
                 .dryPortCode(request.getDryPortCode()).dryPortName(request.getDryPortName())
-                .province(request.getProvince()).area(request.getArea())
+                .provinceId(request.getProvinceId()).area(request.getArea())
                 .teuCapacity(request.getTeuCapacity()).operationalStatus(request.getOperationalStatus())
                 .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId()).build();
@@ -55,10 +65,10 @@ public class DryPortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     saved.getDryPortName(),
                     "DRYPORT_" + saved.getDryPortCode(),
@@ -66,7 +76,7 @@ public class DryPortService {
                     objType,
                     coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.DRY_PORT
+                    InfrastructureType.DRY_PORT
             );
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
@@ -91,7 +101,7 @@ public class DryPortService {
     public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId,
                                              String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, search, statusEnum, approvalEnum, pageable);
@@ -132,7 +142,7 @@ public class DryPortService {
 
         DryPort snapshot = DryPort.builder()
                 .dryPortCode(entity.getDryPortCode())
-                .dryPortName(entity.getDryPortName()).province(entity.getProvince())
+                .dryPortName(entity.getDryPortName()).provinceId(entity.getProvinceId())
                 .area(entity.getArea())
                 .teuCapacity(entity.getTeuCapacity()).operationalStatus(entity.getOperationalStatus())
                 .approvalStatus(entity.getApprovalStatus())
@@ -141,7 +151,7 @@ public class DryPortService {
                 .build();
 
         if (request.getDryPortName() != null) entity.setDryPortName(request.getDryPortName());
-        if (request.getProvince() != null) entity.setProvince(request.getProvince());
+        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
 
         if (request.getArea() != null) entity.setArea(request.getArea());
         if (request.getTeuCapacity() != null) entity.setTeuCapacity(request.getTeuCapacity());
@@ -157,10 +167,10 @@ public class DryPortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(),
                     saved.getDryPortName(),
                     "DRYPORT_" + saved.getDryPortCode(),
@@ -168,7 +178,7 @@ public class DryPortService {
                     objType,
                     coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.DRY_PORT
+                    InfrastructureType.DRY_PORT
             );
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
@@ -185,7 +195,7 @@ public class DryPortService {
     public void softDelete(UUID id) {
         DryPort entity = dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         dryPortRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -203,7 +213,7 @@ public class DryPortService {
 
         DryPortResponse.DryPortResponseBuilder builder = DryPortResponse.builder()
                 .id(e.getId()).dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
-                .province(e.getProvince())
+                .provinceId(e.getProvinceId())
                 .area(e.getArea()).teuCapacity(e.getTeuCapacity())
                 .operationalStatus(e.getOperationalStatus()).approvalStatus(e.getApprovalStatus())
                 .orgUnitId(e.getOrgUnitId())

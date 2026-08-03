@@ -1,17 +1,19 @@
 package com.hanghai.kchtg.radarstation.entity;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import java.util.UUID;
 
 @Entity
 @Table(name = "radar_station")
@@ -20,7 +22,10 @@ import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 @AllArgsConstructor
 @Builder
 @SQLRestriction("is_deleted = false")
-public class RadarStation extends com.hanghai.kchtg.common.entity.BaseEntity {
+public class RadarStation extends BaseEntity {
+    @Column(name = "province_id")
+    private Integer provinceId;
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

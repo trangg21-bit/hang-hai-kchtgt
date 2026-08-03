@@ -1,13 +1,11 @@
 package com.hanghai.kchtg.user.dto;
 
-import java.util.UUID;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+import com.hanghai.kchtg.user.entity.UserStatus;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,8 +14,7 @@ import java.util.UUID;
  * DTO cập nhật tài khoản người dùng - mọi trường đều tuỳ chọn,
  * chỉ cập nhật những trường được gửi (khác {@code null}).
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateUserRequest {
@@ -41,4 +38,6 @@ public class UpdateUserRequest {
     private UUID orgUnitId;
 
     private List<UUID> groupIds;
+
+    private UserStatus status;
 }

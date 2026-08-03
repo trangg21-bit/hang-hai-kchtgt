@@ -1,14 +1,16 @@
 package com.hanghai.kchtg.document.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.entity.DocumentType;
 import com.hanghai.kchtg.document.entity.ValidityStatus;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Request DTO for creating a LegalDocument record.
@@ -22,11 +24,18 @@ public class LegalDocumentCreateRequest {
     @NotBlank(message = "Tên văn bản không được để trống")
     private String documentName;
 
+    @NotBlank(message = "Số hiệu văn bản không được để trống")
     private String documentNumber;
+
+    @NotBlank(message = "Cơ quan ban hành không được để trống")
     private String issuingAuthority;
-    private java.time.LocalDate issueDate;
-    private java.time.LocalDate effectiveDate;
-    private java.time.LocalDate expirationDate;
+
+    @NotNull(message = "Ngày ban hành không được để trống")
+    private LocalDate issueDate;
+
+    @NotNull(message = "Ngày có hiệu lực không được để trống")
+    private LocalDate effectiveDate;
+    private LocalDate expirationDate;
     private DocumentType documentType;
     private String applicationArea;
     private ValidityStatus validityStatus;

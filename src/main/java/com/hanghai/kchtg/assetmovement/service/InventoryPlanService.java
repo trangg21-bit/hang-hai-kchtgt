@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.InventoryPlanRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryPlanResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryPlan;
@@ -9,12 +7,12 @@ import com.hanghai.kchtg.assetmovement.entity.PlanStatus;
 import com.hanghai.kchtg.assetmovement.repository.InventoryPlanRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,7 +60,7 @@ public class InventoryPlanService {
                 .status(PlanStatus.PENDING)
                 .createdBy(currentUserId)
                 .updatedBy(currentUserId)
-                
+
                 .build();
         InventoryPlan saved = repository.save(entity);
         return toResponse(saved);

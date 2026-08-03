@@ -1,16 +1,16 @@
 package com.hanghai.kchtg.security.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /**
  * Request body cho POST /api/auth/revoke/{jti}.
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class JwtRevokeRequest {
 
     /**

@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1785403779402-90ce",
+  "created_at": 1785403779402,
+  "lane": "general-work",
+  "owner": "build",
+  "dispatch_target": "build",
+  "routing_mode": "inline",
+  "request_summary": "BA confirmed: remove \"gửi cảnh báo đến người phụ trách\" from F-128 feature-brief.md — 4 lines to edit in docs/modules/M-006/.../feature-brief.md",
+  "reason": "Document-only edit to feature brief, no code change. SDLC gate blocks direct write to docs/modules/. Need lane-route to authorize.",
+  "signals": [
+    "document edit",
+    "feature-brief.md",
+    "docs/modules/"
+  ]
+}

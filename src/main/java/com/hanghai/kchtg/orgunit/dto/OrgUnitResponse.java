@@ -1,12 +1,10 @@
 package com.hanghai.kchtg.orgunit.dto;
 
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
-import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -35,6 +33,7 @@ public class OrgUnitResponse {
     private UUID parentId;
     private OrgUnitType type;
     private OrgUnitStatus status;
+    private OrgUnitOperationalStatus operationalStatus;
     private String description;
     private String address;
     private String detailAddress;
@@ -64,6 +63,7 @@ public class OrgUnitResponse {
                 .parentId(entity.getParentId())
                 .type(entity.getType())
                 .status(entity.getStatus())
+                .operationalStatus(entity.getOperationalStatus())
                 .description(entity.getDescription())
                 .address(entity.getAddress())
                 .detailAddress(entity.getDetailAddress())

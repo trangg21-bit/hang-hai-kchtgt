@@ -1,13 +1,12 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
-import java.util.UUID;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Response DTO for NavigationChannel attachments (F-038, F-042).

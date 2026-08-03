@@ -100,7 +100,7 @@ export const translateFieldName = (fieldName: string): string => {
     approvalStatus: 'Trạng thái phê duyệt',
     orgUnitId: 'Đơn vị quản lý',
     operationalCapacity: 'Công năng khai thác',
-    bieuTuongId: 'Biểu tượng bản đồ',
+    symbolId: 'Biểu tượng bản đồ',
     iconId: 'Biểu tượng bản đồ',
     lineSymbolId: 'Ký hiệu đường',
     fillSymbolId: 'Ký hiệu vùng',
@@ -180,13 +180,13 @@ export default function DryPortListPage() {
               latitude: data.latitude,
               longitude: data.longitude,
               area: data.area,
-              congSuatTEU: data.congSuatTEU,
+              teuCapacity: data.teuCapacity,
               operationalStatus: data.operationalStatus,
-              loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+              geometryType: data.geometryType || 'POINT',
               gisLocation: {
-                loaiHinhHoc: data.loaiHinhHoc || 'POINT',
-                toaDo: data.toaDo || '',
-                bieuTuongId: data.bieuTuongId
+                geometryType: data.geometryType || 'POINT',
+                coordinates: data.coordinates || '',
+                symbolId: data.symbolId
               }
             });
             setUpdateModalVisible(true);
@@ -200,8 +200,8 @@ export default function DryPortListPage() {
     }
   }, [action, id, updateForm]);
 
-  const createLoaiHinhHoc = Form.useWatch('loaiHinhHoc', createForm) || 'POINT';
-  const updateLoaiHinhHoc = Form.useWatch('loaiHinhHoc', updateForm) || 'POINT';
+  const createGeometryType = Form.useWatch('geometryType', createForm) || 'POINT';
+  const updateGeometryType = Form.useWatch('geometryType', updateForm) || 'POINT';
 
   const fetchSymbols = useCallback(async () => {
     try {
@@ -216,7 +216,7 @@ export default function DryPortListPage() {
     if (!val || val === '(null)' || val === 'null') {
       return '(trống)';
     }
-    if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
+    if (['symbolId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
       const sym = symbols.find(s => s.id === val);
       return sym ? `${sym.name} (${sym.code})` : val;
     }
@@ -350,11 +350,11 @@ export default function DryPortListPage() {
         latitude: values.latitude != null && !Number.isNaN(values.latitude) ? values.latitude : undefined,
         longitude: values.longitude != null && !Number.isNaN(values.longitude) ? values.longitude : undefined,
         area: values.area,
-        congSuatTEU: values.congSuatTEU != null && !Number.isNaN(values.congSuatTEU) ? values.congSuatTEU : undefined,
+        teuCapacity: values.teuCapacity != null && !Number.isNaN(values.teuCapacity) ? values.teuCapacity : undefined,
         operationalStatus: values.operationalStatus || 'HIEN_HANH',
-        bieuTuongId: values.gisLocation?.bieuTuongId || undefined,
-        loaiHinhHoc: values.loaiHinhHoc,
-        toaDo: values.gisLocation?.toaDo,
+        symbolId: values.gisLocation?.symbolId || undefined,
+        geometryType: values.geometryType,
+        coordinates: values.gisLocation?.coordinates,
       });
 
       setSubmitting(true);
@@ -393,11 +393,11 @@ export default function DryPortListPage() {
         latitude: values.latitude != null && !Number.isNaN(values.latitude) ? values.latitude : undefined,
         longitude: values.longitude != null && !Number.isNaN(values.longitude) ? values.longitude : undefined,
         area: values.area,
-        congSuatTEU: values.congSuatTEU,
+        teuCapacity: values.teuCapacity,
         operationalStatus: values.operationalStatus,
-        bieuTuongId: values.gisLocation?.bieuTuongId || null,
-        loaiHinhHoc: values.loaiHinhHoc,
-        toaDo: values.gisLocation?.toaDo,
+        symbolId: values.gisLocation?.symbolId || null,
+        geometryType: values.geometryType,
+        coordinates: values.gisLocation?.coordinates,
       });
 
       setSubmitting(true);
@@ -467,7 +467,7 @@ export default function DryPortListPage() {
     },
     {
       title: 'Công suất TEU',
-      dataIndex: 'congSuatTEU',
+      dataIndex: 'teuCapacity',
       width: 140,
       align: 'right' as const,
       render: (v: number | null) => (v != null ? v.toFixed(2) : '—'),
@@ -541,13 +541,13 @@ export default function DryPortListPage() {
                     latitude: data.latitude,
                     longitude: data.longitude,
                     area: data.area,
-                    congSuatTEU: data.congSuatTEU,
+                    teuCapacity: data.teuCapacity,
                     operationalStatus: data.operationalStatus,
-                    loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                    geometryType: data.geometryType || 'POINT',
                     gisLocation: {
-                      loaiHinhHoc: data.loaiHinhHoc || 'POINT',
-                      toaDo: data.toaDo || '',
-                      bieuTuongId: data.bieuTuongId
+                      geometryType: data.geometryType || 'POINT',
+                      coordinates: data.coordinates || '',
+                      symbolId: data.symbolId
                     }
                   });
                   setUpdateModalVisible(true);
@@ -761,7 +761,7 @@ export default function DryPortListPage() {
 
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+              <Form.Item label="Loại đối tượng" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
                 <Select placeholder="Chọn loại đối tượng" options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },
@@ -773,7 +773,7 @@ export default function DryPortListPage() {
           <Row gutter={24}>
             <Col span={24}>
               <Form.Item name="gisLocation">
-                <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
+                <GisLocationSelector defaultGeometryType={createGeometryType} />
               </Form.Item>
             </Col>
           </Row>
@@ -784,15 +784,14 @@ export default function DryPortListPage() {
           <Row gutter={24}>
             <Col span={12}>
               <Form.Item
-                label="Diện tích (m²) *"
+                label="Diện tích (m²)"
                 name="area"
-                rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}
               >
                 <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 10000.00" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Công suất TEU" name="congSuatTEU">
+              <Form.Item label="Công suất TEU" name="teuCapacity">
                 <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 50000.00" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -870,7 +869,7 @@ export default function DryPortListPage() {
 
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+              <Form.Item label="Loại đối tượng" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
                 <Select placeholder="Chọn loại đối tượng" options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },
@@ -882,7 +881,7 @@ export default function DryPortListPage() {
           <Row gutter={24}>
             <Col span={24}>
               <Form.Item name="gisLocation">
-                <GisLocationSelector defaultGeometryType={updateLoaiHinhHoc} />
+                <GisLocationSelector defaultGeometryType={updateGeometryType} />
               </Form.Item>
             </Col>
           </Row>
@@ -895,13 +894,12 @@ export default function DryPortListPage() {
               <Form.Item
                 label="Diện tích (m²)"
                 name="area"
-                rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}
               >
                 <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 10000.00" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Công suất TEU" name="congSuatTEU">
+              <Form.Item label="Công suất TEU" name="teuCapacity">
                 <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 50000.00" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -971,7 +969,7 @@ export default function DryPortListPage() {
                       <br />
                       <Space>
                         {(() => {
-                          const sym = symbols.find(s => s.id === selectedRecord.bieuTuongId);
+                          const sym = symbols.find(s => s.id === selectedRecord.symbolId);
                           if (sym && sym.hinhAnh) {
                             return (
                               <img
@@ -984,7 +982,7 @@ export default function DryPortListPage() {
                           return null;
                         })()}
                         <Typography.Text>
-                          {translateValue('bieuTuongId', selectedRecord.bieuTuongId)}
+                          {translateValue('symbolId', selectedRecord.symbolId)}
                         </Typography.Text>
                       </Space>
                     </Col>
@@ -995,7 +993,7 @@ export default function DryPortListPage() {
                 <Card title="Thông số kỹ thuật" size="small" style={{ height: '100%' }}>
                   <Typography.Text strong>Diện tích:</Typography.Text> {selectedRecord.area != null ? `${selectedRecord.area.toFixed(2)} m²` : '—'}
                   <br />
-                  <Typography.Text strong style={{ marginTop: 8, display: 'inline-block' }}>Công suất TEU:</Typography.Text> {selectedRecord.congSuatTEU != null ? `${selectedRecord.congSuatTEU.toFixed(2)} TEU` : '—'}
+                  <Typography.Text strong style={{ marginTop: 8, display: 'inline-block' }}>Công suất TEU:</Typography.Text> {selectedRecord.teuCapacity != null ? `${selectedRecord.teuCapacity.toFixed(2)} TEU` : '—'}
                 </Card>
               </Col>
               <Col span={16}>
@@ -1004,10 +1002,10 @@ export default function DryPortListPage() {
                     <Col span={24}>
                       <Typography.Text strong>Loại đối tượng:</Typography.Text>{' '}
                       <Typography.Text>
-                        {selectedRecord.loaiHinhHoc === 'POINT' ? 'Đối tượng điểm'
-                          : selectedRecord.loaiHinhHoc === 'LINE' ? 'Đối tượng đường'
-                            : selectedRecord.loaiHinhHoc === 'POLYGON' ? 'Đối tượng vùng'
-                              : selectedRecord.loaiHinhHoc || 'Đối tượng điểm'}
+                        {selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm'
+                          : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường'
+                            : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng'
+                              : selectedRecord.geometryType || 'Đối tượng điểm'}
                       </Typography.Text>
                     </Col>
                   </Row>
@@ -1105,9 +1103,9 @@ export default function DryPortListPage() {
                       latitude: selectedRecord.latitude,
                       longitude: selectedRecord.longitude,
                       area: selectedRecord.area,
-                      congSuatTEU: selectedRecord.congSuatTEU,
+                      teuCapacity: selectedRecord.teuCapacity,
                       operationalStatus: selectedRecord.operationalStatus,
-                      bieuTuongId: selectedRecord.bieuTuongId,
+                      symbolId: selectedRecord.symbolId,
                     });
                     setUpdateModalVisible(true);
                   }}

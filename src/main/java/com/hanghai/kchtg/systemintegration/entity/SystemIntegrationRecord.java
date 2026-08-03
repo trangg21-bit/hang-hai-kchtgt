@@ -1,10 +1,9 @@
 package com.hanghai.kchtg.systemintegration.entity;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.systemintegration.enums.IntegrationType;
 import com.hanghai.kchtg.systemintegration.enums.IntegrationStatus;
+import com.hanghai.kchtg.systemintegration.enums.IntegrationType;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 

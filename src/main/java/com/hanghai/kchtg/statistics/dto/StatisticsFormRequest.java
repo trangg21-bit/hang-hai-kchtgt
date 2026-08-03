@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.statistics.dto;
 
-import java.util.UUID;
-
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Request DTO for creating / updating a statistics form (Biểu).

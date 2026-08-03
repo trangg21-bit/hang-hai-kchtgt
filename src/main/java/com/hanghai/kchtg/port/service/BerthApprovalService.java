@@ -1,27 +1,27 @@
 package com.hanghai.kchtg.port.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.port.entity.Berth;
-import com.hanghai.kchtg.port.entity.PortStatus;
-import com.hanghai.kchtg.port.entity.ChangeLog;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
+import com.hanghai.kchtg.port.entity.Berth;
+import com.hanghai.kchtg.port.entity.ChangeLog;
+import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
-import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
-import com.hanghai.kchtg.port.service.shared.PortNotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Approval service for Berth entity using unified PortStatus.
+ * Two-level approval service for Berth entity.
+ * Level 1: CANG_VU (Port Authority) — DRAFT/PENDING → PORT_AUTHORITY
+ * Level 2: CUC (Department) — PORT_AUTHORITY → APPROVED
+ * Reject at any level → REJECTED
  */
 @Slf4j
 @Service
@@ -29,48 +29,58 @@ import java.util.UUID;
 public class BerthApprovalService {
 
     private final BerthRepository berthRepository;
-    private final ApprovalWorkflowService approvalWorkflowService;
-    private final PortNotificationService notificationService;
     private final ChangeLogRepository changeLogRepository;
     private final ApprovalLogRepository approvalLogRepository;
 
     @Transactional
-    public void approve(UUID id, String userId, String reason) {
+    public void approve(UUID id, String userId, String cap) {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
 
-        PortStatus currentStatus = entity.getPortStatus();
-        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
-
-        if (reason == null || reason.isBlank()) {
-            approvalWorkflowService.approve(currentStatusStr, "Berth", id.toString(), userId);
-            entity.setPortStatus(PortStatus.DA_PHE_DUYET);
-            entity.syncOldFieldsFromPortStatus();
-            berthRepository.save(entity);
-            log.info("Berth [{}] approved by {}, status=DA_PHE_DUYET", id, userId);
-            notificationService.sendApprovalNotification("Berth", id.toString(), userId, null);
+        if ("CANG_VU".equals(cap)) {
+            if (entity.getApprovalStatus() != ApprovalStatus.DRAFT
+                && entity.getApprovalStatus() != ApprovalStatus.PENDING) {
+                throw new IllegalStateException("Không thể phê duyệt cấp Cảng vụ: trạng thái hiện tại không hợp lệ");
+            }
+            entity.setApprovalStatus(ApprovalStatus.PORT_AUTHORITY);
+            entity.setPortAuthorityApprovedAt(LocalDateTime.now());
+            entity.setPortAuthorityApprovedBy(userId);
+            entity.setRejectionReason(null);
+        } else if ("CUC".equals(cap)) {
+            if (entity.getApprovalStatus() != ApprovalStatus.PORT_AUTHORITY) {
+                throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Cảng vụ trước");
+            }
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setDepartmentApprovedAt(LocalDateTime.now());
+            entity.setDepartmentApprovedBy(userId);
         } else {
-            approvalWorkflowService.reject(currentStatusStr, "Berth", id.toString(), userId, reason);
-            entity.setPortStatus(PortStatus.TU_CHOI);
-            entity.syncOldFieldsFromPortStatus();
-            berthRepository.save(entity);
-            log.info("Berth [{}] rejected by {}: {}, status=TU_CHOI", id, userId, reason);
+            throw new IllegalArgumentException("Cấp phê duyệt không hợp lệ: " + cap);
         }
+
+        ApprovalLog approvalLogRecord = ApprovalLog.builder()
+                .entityType("Berth").entityId(id.toString()).decision("APPROVED").cap(cap)
+                .decidedBy(userId).decidedAt(LocalDateTime.now()).build();
+        approvalLogRepository.save(approvalLogRecord);
+        berthRepository.save(entity);
+
+        log.info("Berth [{}] approved by {} at level {}", id, userId, cap);
     }
 
     @Transactional
-    public void reject(UUID id, String userId, String reason) {
+    public void reject(UUID id, String userId, String cap, String reason) {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
 
-        PortStatus currentStatus = entity.getPortStatus();
-        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
+        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        entity.setRejectionReason(reason);
 
-        approvalWorkflowService.reject(currentStatusStr, "Berth", id.toString(), userId, reason);
-        entity.setPortStatus(PortStatus.TU_CHOI);
-        entity.syncOldFieldsFromPortStatus();
+        ApprovalLog approvalLog = ApprovalLog.builder()
+                .entityType("Berth").entityId(id.toString()).decision("REJECTED").cap(cap)
+                .reason(reason).decidedBy(userId).decidedAt(LocalDateTime.now()).build();
+        approvalLogRepository.save(approvalLog);
         berthRepository.save(entity);
-        log.info("Berth [{}] rejected by {}: {}, status=TU_CHOI", id, userId, reason);
+
+        log.info("Berth [{}] rejected by {} at level {}: {}", id, userId, cap, reason);
     }
 
     @Transactional(readOnly = true)
@@ -87,7 +97,7 @@ public class BerthApprovalService {
         return java.util.Map.of(
                 "entityId", entityId,
                 "entityType", entityType,
-                "currentPortStatus", entity.getPortStatus(),
+                "currentApprovalStatus", entity.getApprovalStatus(),
                 "changeHistory", changeHistory,
                 "approvalLog", approvalLog
         );

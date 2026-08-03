@@ -1,8 +1,5 @@
 package com.hanghai.kchtg.report.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.report.dto.Bcc157CreateRequest;
 import com.hanghai.kchtg.report.dto.Bcc157Response;
 import com.hanghai.kchtg.report.dto.Bcc157SearchRequest;
@@ -15,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 

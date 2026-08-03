@@ -2,6 +2,7 @@ package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ResetPasswordRequest;
+import com.hanghai.kchtg.user.exception.ValidationException;
 import com.hanghai.kchtg.user.service.PasswordResetService;
 import com.hanghai.kchtg.user.service.RateLimiterService;
 import jakarta.validation.Valid;
@@ -45,7 +46,7 @@ public class PasswordResetController {
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody Map<String, String> body) {
         String email = body.get("email");
         if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Email khong duoc để trống"));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email không được để trống"));
         }
 
         // Rate limiting check: 3 requests per 15 minutes per email
@@ -55,7 +56,7 @@ public class PasswordResetController {
             long retryAfter = rateLimiterService.getRetryAfterSeconds(rateKey);
             log.warn("Password reset rate limit exceeded for email: {} (retry after {}s)", email, retryAfter);
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ApiResponse.error("Qua so luot yeu cau đặt lại mật khẩu. Hay thu lai sau " + (retryAfter / 60 + 1) + " phut."));
+                    .body(ApiResponse.error("Quá số lượt yêu cầu đặt lại mật khẩu. Hãy thử lại sau " + (retryAfter / 60 + 1) + " phút."));
         }
 
         try {
@@ -63,11 +64,11 @@ public class PasswordResetController {
             // Increment rate limit counter
             rateLimiterService.increment(rateKey);
             // Always return success (even if email doesn't exist) to prevent email enumeration attacks
-            return ResponseEntity.ok(ApiResponse.success("Yeu cau đặt lại mật khẩu da duoc gui. Kiem tra email cua ban.", null));
+            return ResponseEntity.ok(ApiResponse.success("Yêu cầu đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra email.", null));
         } catch (Exception e) {
             log.error("Password reset request failed for email: {}", email, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Co loi he thong. Hay thu lai sau."));
+                    .body(ApiResponse.error("Có lỗi hệ thống. Vui lòng thử lại sau."));
         }
     }
 
@@ -95,7 +96,7 @@ public class PasswordResetController {
             // Increment rate limit counter
             rateLimiterService.increment(rateKey);
             return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công.", null));
-        } catch (com.hanghai.kchtg.user.exception.ValidationException e) {
+        } catch (ValidationException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             log.error("Password reset failed for token: {}", token, e);

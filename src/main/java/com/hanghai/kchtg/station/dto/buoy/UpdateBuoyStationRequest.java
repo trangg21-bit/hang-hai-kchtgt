@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.dto.buoy;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -11,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import java.util.UUID;
 
 /**
  * Request DTO cho việc cập nhật nhà trạm phao tiêu (F-081).
@@ -53,9 +52,6 @@ public class UpdateBuoyStationRequest {
     private Boolean isActive;
     private Double latitude;
     private Double longitude;
-    private String toaDo;
-
-
     private GisGeometryType geometryType;
     private String coordinates;
 }

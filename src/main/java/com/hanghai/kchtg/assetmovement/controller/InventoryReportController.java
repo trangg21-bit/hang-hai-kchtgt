@@ -1,12 +1,11 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportResponse;
 import com.hanghai.kchtg.assetmovement.service.InventoryReportService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -53,7 +52,7 @@ public class InventoryReportController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
-                Sort.by("createdAt").descending());
+                Sort.by(EntityFields.CREATED_AT).descending());
         Page<InventoryReportResponse> result;
         if (planId != null) {
             result = inventoryReportService.findByPlanId(planId, pageable);

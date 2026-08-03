@@ -1,9 +1,12 @@
 package com.hanghai.kchtg.document;
 
-import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.service.LegalDocumentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;
+import com.hanghai.kchtg.document.dto.LegalDocumentResponse;
+import com.hanghai.kchtg.document.dto.SearchResultResponse;
+import com.hanghai.kchtg.document.entity.DocumentType;
+import com.hanghai.kchtg.document.entity.ValidityStatus;
+import com.hanghai.kchtg.document.service.LegalDocumentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -18,12 +22,11 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import org.springframework.security.test.context.support.WithMockUser;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
@@ -55,9 +58,9 @@ class LegalDocumentControllerTest {
                                 .issuingAuthority("Quốc hội")
                                 .issueDate(LocalDate.of(2014, 6, 25))
                                 .effectiveDate(LocalDate.of(2015, 1, 1))
-                                .documentType(DocumentType.LUAT)
+                                .documentType(DocumentType.LAW)
                                 .applicationArea("Giao thông đường thủy")
-                                .validityStatus(ValidityStatus.CON_HIEU_LUC)
+                                .validityStatus(ValidityStatus.EFFECTIVE)
                                 .createdBy(testUserId)
                                 .build();
 
@@ -66,8 +69,9 @@ class LegalDocumentControllerTest {
                                 .documentNumber("01/2026/NĐ")
                                 .issuingAuthority("Chính phủ")
                                 .issueDate(LocalDate.of(2026, 1, 1))
-                                .documentType(DocumentType.NGHI_DINH)
-                                .validityStatus(ValidityStatus.CON_HIEU_LUC)
+                                .effectiveDate(LocalDate.of(2026, 1, 1))
+                                .documentType(DocumentType.DECREE)
+                                .validityStatus(ValidityStatus.EFFECTIVE)
                                 .createdBy(testUserId)
                                 .build();
         }
@@ -145,12 +149,12 @@ class LegalDocumentControllerTest {
                                 .build();
 
                 when(legalDocumentService.searchDocuments(
-                                eq("Luật"), eq("Quốc hội"), any(), any(), any(), any(), eq(0), eq(20)))
+                                eq("Luật"), eq("Quốc hội"), any(), any(), any(), any(), any(), eq(0), eq(20)))
                                 .thenReturn(searchResult);
 
                 mockMvc.perform(get("/api/v1/legal-documents/search")
                                 .param("keyword", "Luật")
-                                .param("coQuan", "Quốc hội")
+                                .param("issuingAuthority", "Quốc hội")
                                 .param("page", "0").param("size", "20"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.data.totalElements").value(1))

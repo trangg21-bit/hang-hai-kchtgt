@@ -1,11 +1,10 @@
 package com.hanghai.kchtg.user.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.user.entity.LoginAttemptResult;
 import com.hanghai.kchtg.user.entity.LoginAttemptType;
 import com.hanghai.kchtg.user.entity.LoginAuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;

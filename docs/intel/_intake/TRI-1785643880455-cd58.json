@@ -1,0 +1,94 @@
+{
+  "triage_id": "TRI-1785643880455-cd58",
+  "created_at": 1785643880455,
+  "request_summary": "Update frontmatter status from \"done\" to \"backend_done\" and append Implementation Status section to 6 Cảng cạn feature-brief.md files after BE+FE feature merge",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 6 edit-target files exceed the inline gate (6 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "M-002 module feature documentation",
+  "blast_radius": 6,
+  "done_oracle": "All 6 files have status: backend_done in frontmatter and Implementation Status table at end of file",
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: done\nclassification: local",
+      "source_hash": "b8a2feff0a04eca46b198256da131d428a7b86ca17a078eec80954b5c5425a09",
+      "quote_hash": "8209c312cb78bb1f3d2baaeada869618485a130b10b7b6b49624d2a0db76b891",
+      "note": "frontmatter lines 5-7; status: done at line 6 is the target to change"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: done\nclassification: local",
+      "source_hash": "7ab86ce97e597532762bb0467beef3f61d736f1e369393b46f844fcd30260efa",
+      "quote_hash": "8209c312cb78bb1f3d2baaeada869618485a130b10b7b6b49624d2a0db76b891",
+      "note": "frontmatter lines 5-7"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: done\nclassification: local",
+      "source_hash": "af356fd162c711e8e937a456b6bb8b65b896235f69b3a5facd3aa199aad5a35f",
+      "quote_hash": "8209c312cb78bb1f3d2baaeada869618485a130b10b7b6b49624d2a0db76b891",
+      "note": "frontmatter lines 5-7"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: done\nclassification: local",
+      "source_hash": "26247ae8d7e1f5b4ae512adf2258df29e148f80fe00c2f53c9456397859344e7",
+      "quote_hash": "8209c312cb78bb1f3d2baaeada869618485a130b10b7b6b49624d2a0db76b891",
+      "note": "frontmatter lines 5-7"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: done\nclassification: local",
+      "source_hash": "c7908d5d85d628fcd5ce050db661566208a48fad001df835557f7c3af2c8d9e7",
+      "quote_hash": "8209c312cb78bb1f3d2baaeada869618485a130b10b7b6b49624d2a0db76b891",
+      "note": "frontmatter lines 5-7"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "line": 6,
+      "quote": "module-id: M-002\nstatus: done\nclassification: local",
+      "source_hash": "77804e16ff7fe6e6211b99a60eb2a31b42147cb7280fe60c2cba080234cb81a2",
+      "quote_hash": "8209c312cb78bb1f3d2baaeada869618485a130b10b7b6b49624d2a0db76b891",
+      "note": "frontmatter lines 5-7"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "2a95f87e00686b6f3f4b3fa46b6d7878eb40e765",
+    "dirty": true,
+    "captured_at": 1785643880646
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

@@ -1,10 +1,14 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.document.entity.OperationPlan;
+import com.hanghai.kchtg.document.entity.OperationReport;
+import com.hanghai.kchtg.document.entity.OperationStatus;
+import com.hanghai.kchtg.document.repository.OperationDetailRepository;
+import com.hanghai.kchtg.document.repository.OperationPlanRepository;
+import com.hanghai.kchtg.document.repository.OperationReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,13 +60,13 @@ public class OperationPlanService {
 
     @Transactional(readOnly = true)
     public List<OperationPlanResponse> findAll() {
-        return operationPlanRepository.findAll(Sort.by(Sort.Direction.DESC, "createdDate"))
+        return operationPlanRepository.findAll(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<OperationPlanResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return operationPlanRepository.findAll(pageable).map(this::toResponse);
     }
 

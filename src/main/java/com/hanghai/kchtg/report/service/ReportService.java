@@ -1,42 +1,49 @@
 package com.hanghai.kchtg.report.service;
 
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
+import com.hanghai.kchtg.gis.point.entity.PointObject;
+import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
+import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
+import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
+import com.hanghai.kchtg.managedasset.entity.ManagedAsset;
+import com.hanghai.kchtg.managedasset.repository.ManagedAssetRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.port.entity.Berth;
+import com.hanghai.kchtg.port.entity.BerthType;
+import com.hanghai.kchtg.port.entity.Pier;
+import com.hanghai.kchtg.port.entity.Port;
+import com.hanghai.kchtg.port.repository.BerthRepository;
+import com.hanghai.kchtg.port.repository.PierRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
+import com.hanghai.kchtg.report.dto.Bcc157Response;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.report.entity.ReportEntity;
 import com.hanghai.kchtg.report.entity.ReportStatus;
 import com.hanghai.kchtg.report.entity.ReportType;
+import com.hanghai.kchtg.report.handler.ReportHandler;
 import com.hanghai.kchtg.report.repository.ReportEntityRepository;
 import com.hanghai.kchtg.report.repository.ReportRepository;
+import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellReference;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.util.CellReference;
-import java.io.InputStream;
+
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.repository.BerthRepository;
-import com.hanghai.kchtg.port.repository.PierRepository;
-import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
-import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
-import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
-import com.hanghai.kchtg.report.dto.Bcc157Response;
-import com.hanghai.kchtg.report.handler.ReportHandler;
-import com.hanghai.kchtg.managedasset.entity.ManagedAsset;
-import com.hanghai.kchtg.managedasset.repository.ManagedAssetRepository;
+import java.util.*;
 
 /**
  * Service core cho quản lý báo cáo M-016 (Báo cáo & Tổng hợp).
@@ -50,8 +57,8 @@ public class ReportService {
     private final ReportRepository reportRepo;
     private final ReportEntityRepository reportEntityRepo;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
-    private final com.hanghai.kchtg.gis.point.repository.PointObjectRepository pointRepository;
-    private final com.hanghai.kchtg.orgunit.repository.OrgUnitRepository orgUnitRepository;
+    private final PointObjectRepository pointRepository;
+    private final OrgUnitRepository orgUnitRepository;
     private final PortRepository portRepository;
     private final BerthRepository berthRepository;
     private final PierRepository pierRepository;
@@ -241,12 +248,12 @@ public class ReportService {
 
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
 
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId,
+        List<PointObject> points = getFilteredPoints(targetUnitId,
                 LocalDate.now().getYear());
         int sequenceNo = 1;
         long totalVal = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             Map<String, Object> r = new HashMap<>();
 
             r.put("STT", sequenceNo++);
@@ -258,7 +265,7 @@ public class ReportService {
 
             if (p.getUnitId() != null) {
                 unitName = orgUnitRepository.findById(p.getUnitId())
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse("");
             }
 
@@ -354,10 +361,10 @@ public class ReportService {
         }
 
         // 2. Fallback: existing GIS PointObject auto-generate
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        List<PointObject> points = getFilteredPoints(targetUnitId, reportYear);
         long totalOriginalCost = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             totalOriginalCost += getPointAssetValue(p);
         }
 
@@ -587,13 +594,13 @@ public class ReportService {
 
         // 2. Fallback: existing GIS PointObject auto-generate
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPointsForF143(targetUnitId, reportYear,
+        List<PointObject> points = getFilteredPointsForF143(targetUnitId, reportYear,
                 request.getBcNoiDung());
         int sequenceNo = 1;
         long totalOriginalCost = 0;
         long totalResidualValue = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             Map<String, Object> r = new HashMap<>();
 
             r.put("STT", sequenceNo++);
@@ -643,12 +650,12 @@ public class ReportService {
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
 
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        List<PointObject> points = getFilteredPoints(targetUnitId, reportYear);
         int sequenceNo = 1;
         long totalOriginalCost = 0;
         long totalResidualValue = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             Map<String, Object> r = new HashMap<>();
 
             r.put("STT", sequenceNo++);
@@ -700,7 +707,7 @@ public class ReportService {
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
 
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        List<PointObject> points = getFilteredPoints(targetUnitId, reportYear);
         int sequenceNo = 1;
         long totalOriginalCost = 0;
         long totalResidualValue = 0;
@@ -708,7 +715,7 @@ public class ReportService {
         long totalChiPhi = 0;
         long totalNopNsnn = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             Map<String, Object> r = new HashMap<>();
 
             r.put("STT", sequenceNo++);
@@ -765,7 +772,7 @@ public class ReportService {
 
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        List<PointObject> points = getFilteredPoints(targetUnitId, reportYear);
 
         int sequenceNo = 1;
         long totalOriginalCost = 0;
@@ -775,7 +782,7 @@ public class ReportService {
         long totalNopNsnn = 0;
         long totalTienDuAn = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             Map<String, Object> r = new HashMap<>();
 
             r.put("STT", sequenceNo++);
@@ -827,10 +834,10 @@ public class ReportService {
 
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        List<PointObject> points = getFilteredPoints(targetUnitId, reportYear);
         String htxl = request.getBcNoiDung();
         if (htxl != null && !htxl.isBlank()) {
-            List<com.hanghai.kchtg.gis.point.entity.PointObject> filtered = new ArrayList<>();
+            List<PointObject> filtered = new ArrayList<>();
             List<String> listHtxl = java.util.Arrays.asList(htxl.split(","));
             int mod = 2;
             if (listHtxl.contains("BAN"))
@@ -851,7 +858,7 @@ public class ReportService {
         long totalOriginalCost = 0;
         long totalResidualValue = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             Map<String, Object> r = new HashMap<>();
 
             r.put("STT", sequenceNo++);
@@ -888,11 +895,11 @@ public class ReportService {
     private ReportResponse getPreviewGeneric(ReportPreviewRequest request) {
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        List<PointObject> points = getFilteredPoints(targetUnitId, reportYear);
         long count = points.size();
         long totalVal = 0;
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+        for (PointObject p : points) {
             totalVal += getPointAssetValue(p);
         }
 
@@ -934,15 +941,15 @@ public class ReportService {
                 : LocalDate.now().getYear();
 
         // 1. Query Port (ports) as root — matching hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng
-        List<com.hanghai.kchtg.port.entity.Port> allPorts = portRepository.findAll().stream()
+        List<Port> allPorts = portRepository.findAll().stream()
                 .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                 .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                 .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                 .toList();
 
         // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
-        List<com.hanghai.kchtg.port.entity.Port> group1Ports = new ArrayList<>(allPorts);
-        List<com.hanghai.kchtg.port.entity.Port> group2Ports = new ArrayList<>();
+        List<Port> group1Ports = new ArrayList<>(allPorts);
+        List<Port> group2Ports = new ArrayList<>();
 
         // 3. Headers exactly matching Excel template BCKCHT_163.xlsx row 9 columns
         List<String> headers = List.of(
@@ -981,7 +988,7 @@ public class ReportService {
             sectionRow.put("_rowType", "section");
             rows.add(sectionRow);
 
-            for (com.hanghai.kchtg.port.entity.Port port : group1Ports) {
+            for (Port port : group1Ports) {
                 sequenceNo = appendF148Hierarchy(port, sequenceNo, rows, reportYear);
             }
         }
@@ -1004,7 +1011,7 @@ public class ReportService {
             sectionRow.put("_rowType", "section");
             rows.add(sectionRow);
 
-            for (com.hanghai.kchtg.port.entity.Port port : group2Ports) {
+            for (Port port : group2Ports) {
                 sequenceNo = appendF148Hierarchy(port, sequenceNo, rows, reportYear);
             }
         }
@@ -1042,13 +1049,13 @@ public class ReportService {
      * Formats TrangThaiHoatDong enum to a human-readable Vietnamese label.
      */
     private String f148StatusLabel(
-            com.hanghai.kchtg.common.entity.OperationalStatus status) {
+            OperationalStatus status) {
         if (status == null)
             return "";
         switch (status) {
-            case HIEN_HANH:
+            case OPERATIONAL:
                 return "Đang hoạt động";
-            case TAM_NGUNG:
+            case SUSPENDED:
                 return "Tạm ngừng";
             default:
                 return status.name();
@@ -1059,21 +1066,21 @@ public class ReportService {
      * Formats LoaiBen enum to a human-readable Vietnamese label.
      */
     private String f148BerthTypeLabel(
-            com.hanghai.kchtg.port.entity.BerthType berthType) {
+            BerthType berthType) {
         if (berthType == null)
             return "";
         switch (berthType) {
-            case BEN_CONTAINER:
+            case CONTAINER:
                 return "Bến container";
-            case BEN_TONG_HOP:
+            case GENERAL_CARGO:
                 return "Bến tổng hợp";
-            case BEN_CHUYEN_DUNG:
+            case SPECIALIZED:
                 return "Bến chuyên dụng";
-            case BEN_HANH_KHACH:
+            case PASSENGER:
                 return "Bến hành khách";
-            case BEN_PHAO:
+            case MOORING_BUOY:
                 return "Bến phao";
-            case BEN_THUY_NOI_DIA:
+            case INLAND_WATERWAY:
                 return "Bến thủy nội địa";
             default:
                 return berthType.name();
@@ -1117,7 +1124,7 @@ public class ReportService {
      * Port rows carry the sequential STT; berth and wharf rows are indented with empty STT.
      */
     private int appendF148Hierarchy(
-            com.hanghai.kchtg.port.entity.Port port,
+            Port port,
             int sequenceNo,
             List<Map<String, Object>> rows,
             int reportYear) {
@@ -1126,7 +1133,7 @@ public class ReportService {
         String donViPort = "";
         if (port.getOrgUnitId() != null) {
             donViPort = orgUnitRepository.findById(port.getOrgUnitId())
-                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                    .map(OrgUnit::getName)
                     .orElse("");
         }
 
@@ -1135,7 +1142,7 @@ public class ReportService {
         portRow.put("STT", String.valueOf(sequenceNo++));
         portRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", port.getPortName());
         portRow.put("Đơn vị quản lý khai thác cảng", donViPort);
-        portRow.put("Địa điểm, vị trí cảng", port.getProvince() != null ? port.getProvince() : "");
+        portRow.put("Địa điểm, vị trí cảng", port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
         portRow.put("Thời điểm công bố mở", f148FormatThoiDiem(port.getCreatedAt()));
         portRow.put("Công năng khai thác", "");
         portRow.put("Năng lực năm trước", "");
@@ -1150,18 +1157,18 @@ public class ReportService {
         rows.add(portRow);
 
         // ── Berths (Bến cảng) under this port ──
-        List<com.hanghai.kchtg.port.entity.Berth> berths =
+        List<Berth> berths =
                 berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
-        for (com.hanghai.kchtg.port.entity.Berth berth : berths) {
+        for (Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
                 donViBerth = orgUnitRepository.findById(berth.getOrgUnitId())
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse("");
             }
 
-            String berthLocation = berth.getLocationCode() != null ? berth.getLocationCode()
-                    : (port.getProvince() != null ? port.getProvince() : "");
+            String berthLocation = berth.getProvinceId() != null ? String.valueOf(berth.getProvinceId())
+                    : (port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
 
             String thoiDiemBerth = f148FormatThoiDiem(berth.getOpeningAnnouncementDate());
             if (thoiDiemBerth.isEmpty()) {
@@ -1198,9 +1205,9 @@ public class ReportService {
             rows.add(berthRow);
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<com.hanghai.kchtg.port.entity.Pier> wharves =
+            List<Pier> wharves =
                     pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
-            for (com.hanghai.kchtg.port.entity.Pier wharf : wharves) {
+            for (Pier wharf : wharves) {
                 double dwtWharf = wharf.getDesignLoad() != null
                         ? wharf.getDesignLoad().doubleValue() : 0.0;
 
@@ -1238,7 +1245,7 @@ public class ReportService {
         final Integer filterNhom = request.getPortGroup();
         final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear()
                 : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.port.entity.Port> ports = portRepository.findAll().stream()
+        List<Port> ports = portRepository.findAll().stream()
                 .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                 .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                 .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
@@ -1252,11 +1259,11 @@ public class ReportService {
                 "Năng lực tăng thêm");
         List<Map<String, Object>> rows = new ArrayList<>();
         // Group ports by nhomPort (e.g. 1 -> Nhóm 1)
-        Map<String, List<com.hanghai.kchtg.port.entity.Port>> groups = new LinkedHashMap<>();
+        Map<String, List<Port>> groups = new LinkedHashMap<>();
         for (int g = 1; g <= 5; g++) {
             if (filterNhom == null || filterNhom == g) {
                 final int nhomNum = g;
-                List<com.hanghai.kchtg.port.entity.Port> cbInNhom = ports.stream()
+                List<Port> cbInNhom = ports.stream()
                         .filter(cb -> {
                             int n = cb.getPortGroup() != null ? cb.getPortGroup() : 1;
                             return n == nhomNum;
@@ -1267,9 +1274,9 @@ public class ReportService {
                 }
             }
         }
-        for (Map.Entry<String, List<com.hanghai.kchtg.port.entity.Port>> entry : groups.entrySet()) {
+        for (Map.Entry<String, List<Port>> entry : groups.entrySet()) {
             String groupName = entry.getKey();
-            List<com.hanghai.kchtg.port.entity.Port> groupItems = entry.getValue();
+            List<Port> groupItems = entry.getValue();
             // Add Category Header row
             Map<String, Object> headerRow = new LinkedHashMap<>();
             headerRow.put("STT", "");
@@ -1281,9 +1288,9 @@ public class ReportService {
             headerRow.put("_rowType", "section");
             rows.add(headerRow);
             int idx = 1;
-            for (com.hanghai.kchtg.port.entity.Port cb : groupItems) {
+            for (Port cb : groupItems) {
                 // Sum nangLuc from all BenCang children (BCKCHT_164 approach)
-                List<com.hanghai.kchtg.port.entity.Berth> children = berthRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
+                List<Berth> children = berthRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
                 double reportYearCapacity = children.stream()
                         .filter(b -> b.getCurrentThroughput() != null)
                         .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear)
@@ -1297,7 +1304,7 @@ public class ReportService {
                 Map<String, Object> itemRow = new LinkedHashMap<>();
                 itemRow.put("STT", String.valueOf(idx++));
                 itemRow.put("Danh mục cảng", cb.getPortName());
-                itemRow.put("Địa điểm (Tỉnh/TP)", cb.getProvince() != null ? cb.getProvince() : "");
+                itemRow.put("Địa điểm (Tỉnh/TP)", cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "");
                 itemRow.put("Năng lực năm trước (tấn/năm)", capNamTruoc);
                 itemRow.put("Năng lực năm báo cáo (tấn/năm)", reportYearCapacity);
                 itemRow.put("Năng lực tăng thêm", reportYearCapacity - capNamTruoc);
@@ -1650,17 +1657,17 @@ public class ReportService {
                     }
                 } else {
                     // 2. Fallback: existing GIS PointObject logic
-                    List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPointsForF143(targetUnitId,
+                    List<PointObject> points = getFilteredPointsForF143(targetUnitId,
                             reportYear, request.getBcNoiDung());
-                    Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                    Map<ObjectType, String> categoryNames = getCategoryNamesMap();
 
-                    Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
-                    for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                    Map<ObjectType, List<PointObject>> groupedPoints = new LinkedHashMap<>();
+                    for (ObjectType type : categoryNames.keySet()) {
                         groupedPoints.put(type, new ArrayList<>());
                     }
-                    for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                        com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
-                        if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    for (PointObject p : points) {
+                        ObjectType type = p.getObjectType();
+                        if (type == null) type = ObjectType.OTHER;
                         groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                     }
 
@@ -1696,7 +1703,7 @@ public class ReportService {
                             Row srcRow11 = srcSheet.getRow(11);
 
                             for (var entry : groupedPoints.entrySet()) {
-                                List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                                List<PointObject> list = entry.getValue();
                                 int overallIdx = 1;
                                 String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
 
@@ -1718,7 +1725,7 @@ public class ReportService {
                                 }
                                 destRowIdx++;
 
-                                for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                for (PointObject p : list) {
                                     Row detailRow = destSheet.createRow(destRowIdx);
                                     detailRow.setHeight(srcRow11.getHeight());
 
@@ -1797,23 +1804,23 @@ public class ReportService {
                 Map<String, String> replacements = buildReplacements(request, reportYear);
 
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId,
+                List<PointObject> points = getFilteredPoints(targetUnitId,
                         reportYear);
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                Map<ObjectType, String> categoryNames = getCategoryNamesMap();
 
                 // Group points by ObjectType
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                Map<ObjectType, List<PointObject>> groupedPoints = new LinkedHashMap<>();
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                for (ObjectType type : categoryNames.keySet()) {
                     groupedPoints.put(type, new ArrayList<>());
                 }
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                for (PointObject p : points) {
+                    ObjectType type = p.getObjectType();
 
                     if (type == null)
-                        type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                        type = ObjectType.OTHER;
 
                     groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                 }
@@ -1823,7 +1830,7 @@ public class ReportService {
                 int offset = (totalCategoryRows + totalDetailRows) - 2;
                 long totalOriginalCost = 0;
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                for (PointObject p : points) {
                     totalOriginalCost += getPointAssetValue(p);
                 }
 
@@ -1868,7 +1875,7 @@ public class ReportService {
                         Row srcRow10 = srcSheet.getRow(10);
 
                         for (var entry : groupedPoints.entrySet()) {
-                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            List<PointObject> list = entry.getValue();
                             int overallIdx = 1;
                             String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
 
@@ -1880,7 +1887,7 @@ public class ReportService {
 
                             long catOriginalCost = 0;
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 catOriginalCost += getPointAssetValue(p);
                             }
 
@@ -1907,7 +1914,7 @@ public class ReportService {
 
                             // Details
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 Row detailRow = destSheet.createRow(destRowIdx);
 
                                 detailRow.setHeight(srcRow10.getHeight());
@@ -2036,23 +2043,23 @@ public class ReportService {
                 Map<String, String> replacements = buildReplacements(request, reportYear);
 
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId,
+                List<PointObject> points = getFilteredPoints(targetUnitId,
                         reportYear);
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                Map<ObjectType, String> categoryNames = getCategoryNamesMap();
 
                 // Group points by ObjectType
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                Map<ObjectType, List<PointObject>> groupedPoints = new LinkedHashMap<>();
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                for (ObjectType type : categoryNames.keySet()) {
                     groupedPoints.put(type, new ArrayList<>());
                 }
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                for (PointObject p : points) {
+                    ObjectType type = p.getObjectType();
 
                     if (type == null)
-                        type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                        type = ObjectType.OTHER;
 
                     groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                 }
@@ -2062,7 +2069,7 @@ public class ReportService {
                 int offset = (totalCategoryRows + totalDetailRows) - 2;
                 long totalOriginalCost = 0;
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                for (PointObject p : points) {
                     totalOriginalCost += getPointAssetValue(p);
                 }
 
@@ -2151,7 +2158,7 @@ public class ReportService {
                         Row srcRow10 = srcSheet.getRow(10);
 
                         for (var entry : groupedPoints.entrySet()) {
-                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            List<PointObject> list = entry.getValue();
                             int overallIdx = 1;
                             String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
 
@@ -2163,7 +2170,7 @@ public class ReportService {
 
                             long catOriginalCost = 0;
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 catOriginalCost += getPointAssetValue(p);
                             }
 
@@ -2196,7 +2203,7 @@ public class ReportService {
 
                             // Details
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 Row detailRow = destSheet.createRow(destRowIdx);
 
                                 detailRow.setHeight(srcRow10.getHeight());
@@ -2341,15 +2348,15 @@ public class ReportService {
                 Map<String, String> replacements = buildReplacements(request, reportYear);
 
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId,
+                List<PointObject> points = getFilteredPoints(targetUnitId,
                         reportYear);
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                Map<ObjectType, String> categoryNames = getCategoryNamesMap();
 
                 // Distribute points to A, B, C blocks
 
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> pointsA = new ArrayList<>();
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> pointsB = new ArrayList<>();
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> pointsC = new ArrayList<>();
+                List<PointObject> pointsA = new ArrayList<>();
+                List<PointObject> pointsB = new ArrayList<>();
+                List<PointObject> pointsC = new ArrayList<>();
 
                 for (int i = 0; i < points.size(); i++) {
                     var p = points.get(i);
@@ -2364,13 +2371,13 @@ public class ReportService {
 
                 // Group points by ObjectType for each block
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedA = new LinkedHashMap<>();
+                Map<ObjectType, List<PointObject>> groupedA = new LinkedHashMap<>();
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedB = new LinkedHashMap<>();
+                Map<ObjectType, List<PointObject>> groupedB = new LinkedHashMap<>();
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedC = new LinkedHashMap<>();
+                Map<ObjectType, List<PointObject>> groupedC = new LinkedHashMap<>();
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                for (ObjectType type : categoryNames.keySet()) {
                     groupedA.put(type, new ArrayList<>());
                     groupedB.put(type, new ArrayList<>());
                     groupedC.put(type, new ArrayList<>());
@@ -2380,7 +2387,7 @@ public class ReportService {
                     var type = p.getObjectType();
 
                     if (type == null)
-                        type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                        type = ObjectType.OTHER;
 
                     groupedA.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                 }
@@ -2389,7 +2396,7 @@ public class ReportService {
                     var type = p.getObjectType();
 
                     if (type == null)
-                        type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                        type = ObjectType.OTHER;
 
                     groupedB.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                 }
@@ -2398,7 +2405,7 @@ public class ReportService {
                     var type = p.getObjectType();
 
                     if (type == null)
-                        type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                        type = ObjectType.OTHER;
 
                     groupedC.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                 }
@@ -2521,7 +2528,7 @@ public class ReportService {
                         // Render Grouped A
 
                         for (var entry : groupedA.entrySet()) {
-                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            List<PointObject> list = entry.getValue();
 
                             if (list.isEmpty())
                                 continue;
@@ -2571,7 +2578,7 @@ public class ReportService {
 
                             // Details
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 Row detailRow = destSheet.createRow(destRowIdx);
 
                                 detailRow.setHeight(srcRow10.getHeight());
@@ -2695,7 +2702,7 @@ public class ReportService {
                         // Render Grouped B
 
                         for (var entry : groupedB.entrySet()) {
-                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            List<PointObject> list = entry.getValue();
 
                             if (list.isEmpty())
                                 continue;
@@ -2745,7 +2752,7 @@ public class ReportService {
 
                             // Details
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 Row detailRow = destSheet.createRow(destRowIdx);
 
                                 detailRow.setHeight(srcRow13.getHeight());
@@ -2869,7 +2876,7 @@ public class ReportService {
                         // Render Grouped C
 
                         for (var entry : groupedC.entrySet()) {
-                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            List<PointObject> list = entry.getValue();
 
                             if (list.isEmpty())
                                 continue;
@@ -2919,7 +2926,7 @@ public class ReportService {
 
                             // Details
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 Row detailRow = destSheet.createRow(destRowIdx);
 
                                 detailRow.setHeight(srcRow16.getHeight());
@@ -3077,12 +3084,12 @@ public class ReportService {
                 Map<String, String> replacements = buildReplacements(request, reportYear);
 
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId,
+                List<PointObject> points = getFilteredPoints(targetUnitId,
                         reportYear);
                 String htxl = request.getBcNoiDung();
 
                 if (htxl != null && !htxl.isBlank()) {
-                    List<com.hanghai.kchtg.gis.point.entity.PointObject> filtered = new ArrayList<>();
+                    List<PointObject> filtered = new ArrayList<>();
                     List<String> listHtxl = java.util.Arrays.asList(htxl.split(","));
                     int mod = 2;
 
@@ -3102,21 +3109,21 @@ public class ReportService {
                     points = filtered;
                 }
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                Map<ObjectType, String> categoryNames = getCategoryNamesMap();
 
                 // Group points by ObjectType
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                Map<ObjectType, List<PointObject>> groupedPoints = new LinkedHashMap<>();
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                for (ObjectType type : categoryNames.keySet()) {
                     groupedPoints.put(type, new ArrayList<>());
                 }
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                for (PointObject p : points) {
+                    ObjectType type = p.getObjectType();
 
                     if (type == null)
-                        type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                        type = ObjectType.OTHER;
 
                     groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                 }
@@ -3133,7 +3140,7 @@ public class ReportService {
                 int offset = totalExpandedRows - 2;
                 long totalOriginalCost = 0;
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                for (PointObject p : points) {
                     totalOriginalCost += getPointAssetValue(p);
                 }
 
@@ -3193,7 +3200,7 @@ public class ReportService {
                         // Dynamic Categories & Details
 
                         for (var entry : groupedPoints.entrySet()) {
-                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            List<PointObject> list = entry.getValue();
 
                             if (list.isEmpty())
                                 continue;
@@ -3235,7 +3242,7 @@ public class ReportService {
 
                             // Detail Rows
 
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                            for (PointObject p : list) {
                                 Row detailRow = destSheet.createRow(destRowIdx);
 
                                 detailRow.setHeight(srcRow11.getHeight());
@@ -3369,7 +3376,7 @@ public class ReportService {
                 Map<String, String> replacements = buildReplacements(request, reportYear);
 
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId,
+                List<PointObject> points = getFilteredPoints(targetUnitId,
                         reportYear);
 
                 if ("F-148".equalsIgnoreCase(request.getReportCode())) {
@@ -3387,15 +3394,15 @@ public class ReportService {
                     final Integer filterNhom = request.getPortGroup();
 
                     // 1. Query Port as root — same as getPreviewF148
-                    List<com.hanghai.kchtg.port.entity.Port> allPorts = portRepository.findAll().stream()
+                    List<Port> allPorts = portRepository.findAll().stream()
                             .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                             .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                             .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                             .toList();
 
                     // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
-                    List<com.hanghai.kchtg.port.entity.Port> group1Ports = new ArrayList<>(allPorts);
-                    List<com.hanghai.kchtg.port.entity.Port> group2Ports = new ArrayList<>();
+                    List<Port> group1Ports = new ArrayList<>(allPorts);
+                    List<Port> group2Ports = new ArrayList<>();
 
                     Row portTemplateRow = srcSheet.getRow(10); // Port / section header template row
                     Row wharfTemplateRow = srcSheet.getRow(11); // Berth / wharf template row
@@ -3442,7 +3449,7 @@ public class ReportService {
                         }
 
                         // Port rows with hierarchy
-                        for (com.hanghai.kchtg.port.entity.Port port : group1Ports) {
+                        for (Port port : group1Ports) {
                             currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
                                     portTemplateRow, wharfTemplateRow, port, sequenceNo, reportYear);
                             sequenceNo++;
@@ -3469,7 +3476,7 @@ public class ReportService {
                             }
                         }
 
-                        for (com.hanghai.kchtg.port.entity.Port port : group2Ports) {
+                        for (Port port : group2Ports) {
                             currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
                                     portTemplateRow, wharfTemplateRow, port, sequenceNo, reportYear);
                             sequenceNo++;
@@ -3560,7 +3567,7 @@ public class ReportService {
 
                     final Integer filterNhom = request.getPortGroup();
 
-                    List<com.hanghai.kchtg.port.entity.Port> ports = portRepository.findAll().stream()
+                    List<Port> ports = portRepository.findAll().stream()
                             .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                             .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                             .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
@@ -3584,14 +3591,14 @@ public class ReportService {
 
                     int idx1 = 1, idx2 = 1, idx3 = 1, idx4 = 1, idx5 = 1;
 
-                    for (com.hanghai.kchtg.port.entity.Port cb : ports) {
+                    for (Port cb : ports) {
                         Map<String, Object> item = new HashMap<>();
 
                         item.put("tenPort", cb.getPortName());
-                        item.put("diaDiemText", cb.getProvince() != null ? cb.getProvince() : "");
+                        item.put("diaDiemText", cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "");
 
                         // Sum nangLuc from all BenCang children (BCKCHT_164 approach)
-                        List<com.hanghai.kchtg.port.entity.Berth> children = berthRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
+                        List<Berth> children = berthRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
                         double reportYearCapacity = children.stream()
                                 .filter(b -> b.getCurrentThroughput() != null)
                                 .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear)
@@ -4196,7 +4203,7 @@ if (expr != null && (expr.contains("table.")
                         }
                     }
                 }
-                
+
                 // F-151: child rows (column L = Tên trạm QL luồng empty) should not be bold
                 if ("F-151".equalsIgnoreCase(request.getReportCode())) {
                     // Pass 1: clear STT and unbold child rows (only after data section starts)
@@ -4372,7 +4379,7 @@ if (expr != null && (expr.contains("table.")
         if (requestOrgId != null && !requestOrgId.isBlank()) {
             try {
                 if (requestOrgId.endsWith("-demo")) {
-                    List<com.hanghai.kchtg.orgunit.entity.OrgUnit> roots = orgUnitRepository.findAll();
+                    List<OrgUnit> roots = orgUnitRepository.findAll();
 
                     if (!roots.isEmpty())
                         return roots.get(0).getId();
@@ -4389,7 +4396,7 @@ if (expr != null && (expr.contains("table.")
 
 
 
-    private List<com.hanghai.kchtg.gis.point.entity.PointObject> getFilteredPoints(java.util.UUID targetUnitId,
+    private List<PointObject> getFilteredPoints(java.util.UUID targetUnitId,
             int reportYear) {
         boolean isRoot = false;
 
@@ -4407,9 +4414,9 @@ if (expr != null && (expr.contains("table.")
                 .toList();
     }
 
-    private List<com.hanghai.kchtg.gis.point.entity.PointObject> getFilteredPointsForF143(java.util.UUID targetUnitId,
+    private List<PointObject> getFilteredPointsForF143(java.util.UUID targetUnitId,
             int reportYear, String bcNoiDung) {
-        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        List<PointObject> points = getFilteredPoints(targetUnitId, reportYear);
 
         if ("2".equals(bcNoiDung)) {
             return points.stream()
@@ -4452,7 +4459,7 @@ if (expr != null && (expr.contains("table.")
                 /* && !"g17-43-demo".equalsIgnoreCase(request.getOrgUnitId()) */) {
             try {
                 orgName = orgUnitRepository.findById(java.util.UUID.fromString(request.getOrgUnitId()))
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse(orgName);
             } catch (Exception ignored) {
             }
@@ -4544,17 +4551,17 @@ if (expr != null && (expr.contains("table.")
         }
     }
 
-    private Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> getCategoryNamesMap() {
-        Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> map = new LinkedHashMap<>();
+    private Map<ObjectType, String> getCategoryNamesMap() {
+        Map<ObjectType, String> map = new LinkedHashMap<>();
 
-        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.PORT, "Bến cảng, bến phao.");
-        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON,
+        map.put(ObjectType.PORT, "Bến cảng, bến phao.");
+        map.put(ObjectType.BEACON,
                 "Hệ thống giám sát và điều phối giao thông hàng hải (VTS).");
-        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BUOY,
+        map.put(ObjectType.BUOY,
                 "Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ.");
-        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.LIGHTHOUSE,
+        map.put(ObjectType.LIGHTHOUSE,
                 "Luồng hàng hải, vùng đón trả hoa tiêu, vùng kiểm dịch.");
-        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER,
+        map.put(ObjectType.OTHER,
                 "Khu chuyển tải, khu neo đậu, khu tránh, trú bão trong vùng nước cảng biển.");
 
         return map;
@@ -4584,7 +4591,7 @@ if (expr != null && (expr.contains("table.")
     }
 
     private List<Map<String, Object>> buildDynamicResultList(
-            List<com.hanghai.kchtg.gis.point.entity.PointObject> points, String reportCode) {
+            List<PointObject> points, String reportCode) {
         // Custom grouping for F-148 to match production category grouping
 
         if ("F-148".equalsIgnoreCase(reportCode)) {
@@ -4594,9 +4601,9 @@ if (expr != null && (expr.contains("table.")
 
             long[] agg1 = new long[] { 0, 0, 0 };
 
-            for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                if (p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.PORT
-                        || p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON) {
+            for (PointObject p : points) {
+                if (p.getObjectType() == ObjectType.PORT
+                        || p.getObjectType() == ObjectType.BEACON) {
                     agg1[0] += 1;
 
                     agg1[2] += getPointAssetValue(p);
@@ -4613,9 +4620,9 @@ if (expr != null && (expr.contains("table.")
 
             long[] agg2 = new long[] { 0, 0, 0 };
 
-            for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                if (p.getObjectType() != com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.PORT
-                        && p.getObjectType() != com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON) {
+            for (PointObject p : points) {
+                if (p.getObjectType() != ObjectType.PORT
+                        && p.getObjectType() != ObjectType.BEACON) {
                     agg2[0] += 1;
 
                     agg2[2] += getPointAssetValue(p);
@@ -4634,7 +4641,7 @@ if (expr != null && (expr.contains("table.")
         if ("F-153".equalsIgnoreCase(reportCode)) {
             List<Map<String, Object>> arrResult = new ArrayList<>();
 
-            for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            for (PointObject p : points) {
                 Map<String, Object> item = new HashMap<>();
 
                 item.put("ten", p.getName());
@@ -4659,7 +4666,7 @@ if (expr != null && (expr.contains("table.")
 
                 if (p.getUnitId() != null) {
                     donVi = orgUnitRepository.findById(p.getUnitId())
-                            .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                            .map(OrgUnit::getName)
                             .orElse("");
                 }
 
@@ -4679,7 +4686,7 @@ if (expr != null && (expr.contains("table.")
         if (!"F-148".equalsIgnoreCase(reportCode)) {
             List<Map<String, Object>> arrResult = new ArrayList<>();
 
-            for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            for (PointObject p : points) {
                 Map<String, Object> item = new HashMap<>();
 
                 item.put("ten", p.getName());
@@ -4778,21 +4785,21 @@ if (expr != null && (expr.contains("table.")
             return arrResult;
         }
 
-        Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+        Map<ObjectType, String> categoryNames = getCategoryNamesMap();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
 
-        Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, long[]> aggregated = new LinkedHashMap<>();
+        Map<ObjectType, long[]> aggregated = new LinkedHashMap<>();
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+        for (ObjectType type : categoryNames.keySet()) {
             aggregated.put(type, new long[] { 0, 0, 0 });
         }
 
-        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-            com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+        for (PointObject p : points) {
+            ObjectType type = p.getObjectType();
 
             if (type == null)
-                type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                type = ObjectType.OTHER;
 
             long val = getPointAssetValue(p);
 
@@ -5393,7 +5400,7 @@ if (expr != null && (expr.contains("table.")
      *             value source is available.
      */
     @Deprecated
-    private long getPointAssetValue(com.hanghai.kchtg.gis.point.entity.PointObject p) {
+    private long getPointAssetValue(PointObject p) {
         long val = 500000000L;
 
         if (p.getCode() != null) {
@@ -5431,12 +5438,12 @@ if (expr != null && (expr.contains("table.")
         }
     }
 
-    private String getPointAssetUnit(com.hanghai.kchtg.gis.point.entity.PointObject p) {
-        if (p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON ||
+    private String getPointAssetUnit(PointObject p) {
+        if (p.getObjectType() == ObjectType.BEACON ||
 
-                p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.LIGHTHOUSE) {
+                p.getObjectType() == ObjectType.LIGHTHOUSE) {
             return "Hệ thống";
-        } else if (p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BUOY) {
+        } else if (p.getObjectType() == ObjectType.BUOY) {
             return "Quả";
         } else {
             return "Cái";
@@ -5626,7 +5633,7 @@ if (expr != null && (expr.contains("table.")
             int currentDestRow,
             Row portTemplateRow,
             Row wharfTemplateRow,
-            com.hanghai.kchtg.port.entity.Port port,
+            Port port,
             int sequenceNo,
             int reportYear) {
 
@@ -5634,7 +5641,7 @@ if (expr != null && (expr.contains("table.")
         String donViPort = "";
         if (port.getOrgUnitId() != null) {
             donViPort = orgUnitRepository.findById(port.getOrgUnitId())
-                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                    .map(OrgUnit::getName)
                     .orElse("");
         }
 
@@ -5655,7 +5662,7 @@ if (expr != null && (expr.contains("table.")
                 } else if (c == 2) {
                     destCell.setCellValue(donViPort);
                 } else if (c == 3) {
-                    destCell.setCellValue(port.getProvince() != null ? port.getProvince() : "");
+                    destCell.setCellValue(port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
                 } else if (c == 4) {
                     destCell.setCellValue(f148FormatThoiDiem(port.getCreatedAt()));
                 } else if (c == 5) {
@@ -5685,18 +5692,18 @@ if (expr != null && (expr.contains("table.")
 
         // ── Berths (Bến cảng) under this port ──
         int numWharfCols = wharfTemplateRow.getLastCellNum();
-        List<com.hanghai.kchtg.port.entity.Berth> berths =
+        List<Berth> berths =
                 berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
-        for (com.hanghai.kchtg.port.entity.Berth berth : berths) {
+        for (Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
                 donViBerth = orgUnitRepository.findById(berth.getOrgUnitId())
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse("");
             }
 
-            String berthLocation = berth.getLocationCode() != null ? berth.getLocationCode()
-                    : (port.getProvince() != null ? port.getProvince() : "");
+            String berthLocation = berth.getProvinceId() != null ? String.valueOf(berth.getProvinceId())
+                    : (port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
 
             String thoiDiemBerth = f148FormatThoiDiem(berth.getOpeningAnnouncementDate());
             if (thoiDiemBerth.isEmpty()) {
@@ -5765,9 +5772,9 @@ if (expr != null && (expr.contains("table.")
             }
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<com.hanghai.kchtg.port.entity.Pier> wharves =
+            List<Pier> wharves =
                     pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
-            for (com.hanghai.kchtg.port.entity.Pier wharf : wharves) {
+            for (Pier wharf : wharves) {
                 double dwtWharf = wharf.getDesignLoad() != null
                         ? wharf.getDesignLoad().doubleValue() : 0.0;
 

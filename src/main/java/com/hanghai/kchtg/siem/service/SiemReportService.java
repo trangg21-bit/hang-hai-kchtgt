@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.siem.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.siem.dto.SiemReportRequest;
 import com.hanghai.kchtg.siem.dto.SiemReportResponse;
 import com.hanghai.kchtg.siem.entity.SiemReport;

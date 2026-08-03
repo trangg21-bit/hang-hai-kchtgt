@@ -1,16 +1,16 @@
 package com.hanghai.kchtg.orgunit.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitHistoryRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -22,7 +22,10 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -198,18 +201,27 @@ public class OrganizationService {
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Đơn vị cha không tồn tại: " + request.getParentId()));
         }
+        // The form intentionally does not expose a separate unit-level/type
+        // selector. Keep the legacy type column consistent by deriving it
+        // from the hierarchy when the API caller omits it.
+        OrgUnitType type = request.getType() != null
+                ? request.getType()
+                : (parent == null ? OrgUnitType.DEPARTMENT : OrgUnitType.SUB_DEPARTMENT);
+        validateParentEligibility(parent, type);
 
         OrgUnit unit = OrgUnit.builder()
                 .name(request.getName())
                 .code(code)
                 .parentId(request.getParentId())
-                .type(request.getType())
+                .type(type)
                 .description(request.getDescription())
                 .address(request.getAddress())
                 .detailAddress(request.getDetailAddress())
                 .phone(request.getPhone())
                 .contactPerson(request.getContactPerson())
                 .status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)
+                .operationalStatus(request.getOperationalStatus() != null
+                        ? request.getOperationalStatus() : OrgUnitOperationalStatus.ACTIVE)
                 .sortOrder(0)
                 .build();
 
@@ -272,11 +284,15 @@ public class OrganizationService {
                         .orElseThrow(() -> new EntityNotFoundException(
                                 "Đơn vị cha không tồn tại: " + newParentId));
 
+                validateParentEligibility(newParent, request.getType() != null ? request.getType() : unit.getType());
+
                 // BR-016: circular reference detection
                 if (materializedPathService.isAncestor(id, newParentId)) {
                     throw new IllegalArgumentException(
                             "Không thể đặt đơn vị con làm cha của đơn vị cha — sẽ tạo vòng lặp phân cấp");
                 }
+
+                validateSubtreeDepth(unit, newParent);
 
                 // Parent changed — cascade path rebuild
                 if (!newParentId.equals(unit.getParentId())) {
@@ -294,11 +310,54 @@ public class OrganizationService {
         if (request.getDetailAddress() != null) unit.setDetailAddress(request.getDetailAddress());
         if (request.getPhone() != null) unit.setPhone(request.getPhone());
         if (request.getContactPerson() != null) unit.setContactPerson(request.getContactPerson());
+        if (request.getOperationalStatus() != null) unit.setOperationalStatus(request.getOperationalStatus());
+
+        if (unit.getParentId() != null) {
+            OrgUnit currentParent = orgUnitRepo.findById(unit.getParentId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Đơn vị cha không tồn tại: " + unit.getParentId()));
+            validateParentEligibility(currentParent, unit.getType());
+        }
 
         OrgUnit saved = orgUnitRepo.save(unit);
 
         log.info("Updated org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
+    }
+
+    /**
+     * Enforce the hierarchy rules at the API boundary as well as in the UI.
+     * A parent must be an active node below the maximum depth (three levels),
+     * and root-level unit types cannot be attached below another unit.
+     */
+    private void validateParentEligibility(OrgUnit parent, OrgUnitType childType) {
+        if (parent == null) {
+            return;
+        }
+        if (parent.getOperationalStatus() == OrgUnitOperationalStatus.INACTIVE) {
+            throw new IllegalArgumentException("Không thể chọn đơn vị không sử dụng làm đơn vị cha");
+        }
+        if (parent.getLevel() != null && parent.getLevel() >= 3) {
+            throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
+        }
+        if (childType == OrgUnitType.DEPARTMENT || childType == OrgUnitType.GENERAL_DEPARTMENT) {
+            throw new IllegalArgumentException("Cấp đơn vị cao nhất không được chọn đơn vị cha");
+        }
+    }
+
+    private void validateSubtreeDepth(OrgUnit unit, OrgUnit newParent) {
+        if (unit.getLevel() == null || newParent.getLevel() == null) {
+            return;
+        }
+        int deepestRelativeLevel = materializedPathService.getSubtree(unit.getId()).stream()
+                .map(OrgUnit::getLevel)
+                .filter(level -> level != null)
+                .mapToInt(level -> level - unit.getLevel())
+                .max()
+                .orElse(0);
+        if (newParent.getLevel() + 1 + deepestRelativeLevel > 3) {
+            throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
+        }
     }
 
     /**
@@ -319,7 +378,7 @@ public class OrganizationService {
         }
 
         String details = String.format("Xóa đơn vị '%s' (code: %s)", unit.getName(), unit.getCode());
-        unit.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        unit.softDelete(SecurityUtils.getCurrentUserId());
         orgUnitRepo.save(unit);
 
         log.info("Soft-deleted org unit: {} ({})", unit.getCode(), unit.getId());

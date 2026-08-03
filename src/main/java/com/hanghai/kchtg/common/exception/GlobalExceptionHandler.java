@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -111,6 +112,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    /**
+     * Database unique constraints remain the final guard against concurrent requests.
+     * Convert the case-insensitive email constraint into the same validation response
+     * returned by {@code UserService}.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<String>> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex) {
+
+        String detail = ex.getMostSpecificCause().getMessage();
+        if (detail != null && detail.contains("uk_app_users_email_case_insensitive")) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Email đã tồn tại"));
+        }
+
+        log.warn("Data integrity violation: {}", detail);
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error("Dữ liệu đã tồn tại hoặc không hợp lệ"));
     }
 
     @ExceptionHandler(ValidationException.class)

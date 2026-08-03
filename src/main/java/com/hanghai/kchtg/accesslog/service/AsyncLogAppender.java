@@ -4,7 +4,6 @@ import com.hanghai.kchtg.accesslog.entity.AccessLog;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

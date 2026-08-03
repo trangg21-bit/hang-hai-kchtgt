@@ -1,27 +1,34 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.EntityFields;
 
-import com.hanghai.kchtg.navigationchannel.dto.*;
-import com.hanghai.kchtg.navigationchannel.entity.*;
-import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.navigationchannel.repository.ApprovalHistoryRepository;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.navigationchannel.dto.*;
+import com.hanghai.kchtg.navigationchannel.entity.ApprovalHistory;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.navigationchannel.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -42,7 +49,7 @@ public class NavigationChannelService {
         String channelCode = req.getChannelCode();
         if (channelCode == null || channelCode.trim().isEmpty()) {
             String orgCode = orgUnitRepository.findById(req.getOrgUnitId())
-                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getCode)
+                    .map(OrgUnit::getCode)
                     .orElseThrow(() -> new IllegalArgumentException("Khong tim thay don vi voi id: " + req.getOrgUnitId()));
             long count = repo.countByOrgUnitId(req.getOrgUnitId());
             channelCode = orgCode + "-NC-" + String.format("%06d", count + 1);
@@ -105,13 +112,13 @@ public class NavigationChannelService {
 
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> findAll() {
-        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<NavigationChannelResponse> findAll(int page, int size) {
-        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
+        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
                 .map(this::toResponse);
     }
 
@@ -125,9 +132,9 @@ public class NavigationChannelService {
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, approvalStatus,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
-            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         }
         return results.map(this::toResponse);
     }
@@ -364,7 +371,7 @@ public class NavigationChannelService {
             }
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, keywordLike, status, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, keywordLike, status, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
@@ -387,19 +394,25 @@ public class NavigationChannelService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        List<ApprovalResponse> hist = nc.getApprovalHistory() != null
-                ? nc.getApprovalHistory().stream()
-                        .map(h -> ApprovalResponse.builder()
-                                .id(String.valueOf(h.getId()))
-                                .navigationChannelId(h.getNavigationChannel().getId())
-                                .approvalLevel(h.getApprovalLevel())
-                                .status(h.getStatus())
-                                .approvedBy(h.getApprovedBy())
-                                .approvedDate(h.getApprovedDate())
-                                .reason(h.getReason())
-                                .build())
-                        .collect(Collectors.toList())
-                : new ArrayList<>();
+        List<ApprovalResponse> hist;
+        try {
+            hist = nc.getApprovalHistory() != null
+                    ? nc.getApprovalHistory().stream()
+                            .map(h -> ApprovalResponse.builder()
+                                    .id(String.valueOf(h.getId()))
+                                    .navigationChannelId(h.getNavigationChannel().getId())
+                                    .approvalLevel(h.getApprovalLevel())
+                                    .status(h.getStatus())
+                                    .approvedBy(h.getApprovedBy())
+                                    .approvedDate(h.getApprovedDate())
+                                    .reason(h.getReason())
+                                    .build())
+                            .collect(Collectors.toList())
+                    : new ArrayList<>();
+        } catch (Exception e) {
+            log.warn("Could not load approvalHistory for navigation channel {}: {}", nc.getId(), e.getMessage());
+            hist = new ArrayList<>();
+        }
 
         GisGeometryType geomType = null;
         String coords = null;
@@ -488,7 +501,7 @@ public class NavigationChannelService {
     private String resolveOrgUnitName(UUID orgUnitId) {
         if (orgUnitId == null) return null;
         return orgUnitRepository.findById(orgUnitId)
-                .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                .map(OrgUnit::getName)
                 .orElse(null);
     }
 

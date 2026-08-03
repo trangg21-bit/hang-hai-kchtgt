@@ -23,8 +23,7 @@ public class CreateDryPortRequest {
     @Size(max = 255)
     private String dryPortName;
 
-    @Size(max = 100)
-    private String province;
+    private Integer provinceId;
 
     @DecimalMin(value = "-90", message = "Vĩ độ phải từ -90 đến 90")
     @DecimalMax(value = "90", message = "Vĩ độ phải từ -90 đến 90")
@@ -34,7 +33,6 @@ public class CreateDryPortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
-    @DecimalMin(value = "0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal teuCapacity;

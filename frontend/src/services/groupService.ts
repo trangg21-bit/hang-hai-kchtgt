@@ -9,7 +9,6 @@ let memberMap: Record<string, GroupMember[]> = {};
 // Helper to generate mock members for a group
 function generateMembers(groupId: string, count: number): GroupMember[] {
   if (memberMap[groupId]) return memberMap[groupId];
-  const roles: Array<'admin' | 'member' | 'viewer'> = ['admin', 'member', 'member', 'viewer'];
   const names = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', 'Phạm Thị D', 'Hoàng Văn E', 'Vũ Thị F', 'Đỗ Văn G', 'Bùi Thị H', 'Ngô Văn I', 'Dương Thị K', 'Lý Văn L', 'Mai Thị M'];
   const result: GroupMember[] = [];
   for (let i = 0; i < count && i < names.length; i++) {
@@ -21,7 +20,6 @@ function generateMembers(groupId: string, count: number): GroupMember[] {
       email: `${names[i].toLowerCase().replace(/\s/g, '')}@hh.gov.vn`,
       groupId,
       groupName: groups.find(g => g.id === groupId)?.name || '',
-      role: roles[i % roles.length],
       status: 'active',
       joinedAt: '2025-06-01T00:00:00Z',
       createdAt: '2025-06-01T00:00:00Z',
@@ -55,7 +53,6 @@ export interface GroupMember {
   email: string;
   groupId: string;
   groupName: string;
-  role: "admin" | "member" | "viewer";
   status: string;
   joinedAt: string;
   createdAt: string;
@@ -82,7 +79,6 @@ export interface UpdateGroupPayload {
 
 export interface AddMemberPayload {
   userId: string;
-  role: "admin" | "member" | "viewer";
 }
 
 export interface GroupFilters {
@@ -108,7 +104,7 @@ export const groupService = {
    * Frontend applies pagination client-side.
    */
   async list(
-    params?: { page?: number; pageSize?: number; search?: string; status?: string; groupType?: string }
+    params?: { page?: number; pageSize?: number; search?: string; status?: string; groupType?: string; myGroups?: boolean }
   ): Promise<PaginatedResponse<Group> & { activeCount: number; inactiveCount: number }> {
     try {
       // Build query string
@@ -118,6 +114,7 @@ export const groupService = {
       if (params?.search) qParams.append("search", params.search);
       if (params?.status) qParams.append("status", params.status);
       if (params?.groupType) qParams.append("groupType", params.groupType);
+      if (params?.myGroups) qParams.append("myGroups", "true");
 
       const resp = await api.get(`/groups?${qParams.toString()}`);
       const rawData: any = extractData(resp);
@@ -271,13 +268,12 @@ export const groupService = {
   /**
    * GET /api/groups/:id/members
    */
-  async getMembers(groupId: string, params?: { page?: number; pageSize?: number; search?: string; role?: string }): Promise<PaginatedResponse<GroupMember>> {
+  async getMembers(groupId: string, params?: { page?: number; pageSize?: number; search?: string }): Promise<PaginatedResponse<GroupMember>> {
     try {
       const qParams = new URLSearchParams();
       if (params?.page) qParams.append("page", String(params.page - 1));
       if (params?.pageSize) qParams.append("size", String(params.pageSize));
       if (params?.search) qParams.append("search", params.search);
-      if (params?.role) qParams.append("role", params.role);
 
       const resp = await api.get(`/groups/${groupId}/members?${qParams.toString()}`);
       const rawData: any = extractData(resp);
@@ -295,7 +291,6 @@ export const groupService = {
         email: item.email ?? "",
         groupId: item.groupId ?? groupId,
         groupName: item.groupName ?? "",
-        role: (item.roleInGroup as GroupMember["role"]) ?? (item.role as GroupMember["role"]) ?? "member",
         status: item.status ?? "active",
         joinedAt: item.joinedAt
           ? new Date(item.joinedAt).toISOString()
@@ -326,7 +321,6 @@ export const groupService = {
     try {
       await api.post(`/groups/${groupId}/members`, {
         userId: payload.userId,
-        roleInGroup: payload.role,
       });
     } catch (error) {
       throw error;

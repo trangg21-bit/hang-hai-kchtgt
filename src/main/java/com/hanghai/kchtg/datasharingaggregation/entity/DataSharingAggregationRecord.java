@@ -1,10 +1,9 @@
 package com.hanghai.kchtg.datasharingaggregation.entity;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.datasharingaggregation.enums.SharingType;
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingStatus;
+import com.hanghai.kchtg.datasharingaggregation.enums.SharingType;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 

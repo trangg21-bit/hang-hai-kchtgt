@@ -3,16 +3,14 @@ package com.hanghai.kchtg.user.dto;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /**
  * DTO for POST /api/auth/login request body.
  * Accepts login via flexible identifier (email, phone, or username) plus password.
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginRequest {

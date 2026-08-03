@@ -1,14 +1,13 @@
 package com.hanghai.kchtg.report.handler;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
-import com.hanghai.kchtg.report.dto.ReportResponse;
+import com.hanghai.kchtg.gis.line.entity.LineObject;
+import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.port.entity.WaterZone;
 import com.hanghai.kchtg.port.entity.WaterZoneType;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
-import com.hanghai.kchtg.gis.line.entity.LineObject;
-import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
+import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
+import com.hanghai.kchtg.report.dto.ReportResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
@@ -34,16 +33,16 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
     private Set<WaterZoneType> getWaterZoneTypeFilter(String reportCode) {
         Set<WaterZoneType> filterSet = new HashSet<>();
         if ("F-152".equalsIgnoreCase(reportCode)) {
-            filterSet.add(WaterZoneType.DON_TRA_HOA_TIEU);
-            filterSet.add(WaterZoneType.QUAY_TRO_TAU);
-            filterSet.add(WaterZoneType.NEO_DAU);
-            filterSet.add(WaterZoneType.TRANH_BAO);
+            filterSet.add(WaterZoneType.PILOT_BOARDING);
+            filterSet.add(WaterZoneType.TURNING_BASIN);
+            filterSet.add(WaterZoneType.ANCHORAGE);
+            filterSet.add(WaterZoneType.STORM_SHELTER);
         } else if ("F-153".equalsIgnoreCase(reportCode)) {
-            filterSet.add(WaterZoneType.CHUYEN_TAI);
-            filterSet.add(WaterZoneType.NEO_DAU);
+            filterSet.add(WaterZoneType.TRANSSHIPMENT);
+            filterSet.add(WaterZoneType.ANCHORAGE);
         } else if ("F-154".equalsIgnoreCase(reportCode)) {
-            filterSet.add(WaterZoneType.BEN_PHAO);
-            filterSet.add(WaterZoneType.NEO_DAU);
+            filterSet.add(WaterZoneType.MOORING_BUOY);
+            filterSet.add(WaterZoneType.ANCHORAGE);
         }
         return filterSet;
     }
@@ -92,7 +91,7 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             String donVi = "";
             if (v.getOrgUnitId() != null) {
                 donVi = orgUnitRepository.findById(v.getOrgUnitId())
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse("");
             }
             r.put("Đơn vị quản lý khai thác", donVi);
@@ -169,7 +168,7 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             String donVi = "";
             if (v.getOrgUnitId() != null) {
                 donVi = orgUnitRepository.findById(v.getOrgUnitId())
-                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .map(OrgUnit::getName)
                         .orElse("");
             }
             item.put("donViQuanLyVanHanh", donVi);

@@ -1,12 +1,18 @@
 package com.hanghai.kchtg.datasharingaggregation.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
 public class CreateDataSharingAggregationRequest {
 
     @NotNull
@@ -22,52 +28,4 @@ public class CreateDataSharingAggregationRequest {
     private LocalDateTime shareDate;
 
     private UUID createdBy;
-
-    public SharingType getSharingType() {
-        return sharingType;
-    }
-
-    public void setSharingType(SharingType sharingType) {
-        this.sharingType = sharingType;
-    }
-
-    public String getTargetSystem() {
-        return targetSystem;
-    }
-
-    public void setTargetSystem(String targetSystem) {
-        this.targetSystem = targetSystem;
-    }
-
-    public String getSharePeriod() {
-        return sharePeriod;
-    }
-
-    public void setSharePeriod(String sharePeriod) {
-        this.sharePeriod = sharePeriod;
-    }
-
-    public String getDataPayload() {
-        return dataPayload;
-    }
-
-    public void setDataPayload(String dataPayload) {
-        this.dataPayload = dataPayload;
-    }
-
-    public LocalDateTime getShareDate() {
-        return shareDate;
-    }
-
-    public void setShareDate(LocalDateTime shareDate) {
-        this.shareDate = shareDate;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
 }

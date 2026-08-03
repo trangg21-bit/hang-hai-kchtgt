@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.dto.buoy;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import java.util.UUID;
 
 /**
  * Request DTO cho việc tạo mới nhà trạm phao tiêu (F-080).
@@ -65,9 +64,6 @@ public class CreateBuoyStationRequest {
     private String action = "draft";
     private Double latitude;
     private Double longitude;
-    private String toaDo;
-
-
     private GisGeometryType geometryType;
     private String coordinates;
 }

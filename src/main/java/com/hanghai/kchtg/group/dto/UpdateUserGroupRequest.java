@@ -1,18 +1,19 @@
 package com.hanghai.kchtg.group.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.GroupType;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Request body cho việc cập nhật UserGroup (BR-012: groupType).
  */
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateUserGroupRequest {
 

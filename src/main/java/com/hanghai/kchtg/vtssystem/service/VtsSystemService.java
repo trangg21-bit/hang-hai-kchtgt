@@ -1,11 +1,14 @@
 package com.hanghai.kchtg.vtssystem.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.vtssystem.dto.*;
 import com.hanghai.kchtg.vtssystem.entity.ApprovalHistory;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
@@ -29,11 +32,11 @@ public class VtsSystemService {
 
     private final VtsSystemRepository repository;
     private final ApprovalHistoryRepository historyRepository;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     public VtsSystemService(VtsSystemRepository repository,
                             ApprovalHistoryRepository historyRepository,
-                            com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService) {
+                            GisSpatialObjectService gisSpatialObjectService) {
         this.repository = repository;
         this.historyRepository = historyRepository;
         this.gisSpatialObjectService = gisSpatialObjectService;
@@ -104,7 +107,7 @@ public class VtsSystemService {
     }
 
     public Page<VtsSystemResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return repository.findAll(pageable).map(this::toResponse);
     }
 
@@ -112,7 +115,7 @@ public class VtsSystemService {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
         String trimmedConditionStatus = (conditionStatus != null && !conditionStatus.trim().isEmpty()) ? conditionStatus.trim() : null;
         String trimmedApprovalStatus = (approvalStatus != null && !approvalStatus.trim().isEmpty()) ? approvalStatus.trim() : null;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return repository.search(orgUnitId, keywordLike, trimmedConditionStatus, trimmedApprovalStatus, pageable).map(this::toResponse);
     }
 

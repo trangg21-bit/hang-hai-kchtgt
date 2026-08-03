@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.polygon.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;

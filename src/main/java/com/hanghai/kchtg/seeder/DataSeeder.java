@@ -1,5 +1,9 @@
 package com.hanghai.kchtg.seeder;
 
+import com.hanghai.kchtg.beacon.entity.BeaconLight;
+import com.hanghai.kchtg.beacon.entity.Buoy;
+import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.enums.AuthType;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
@@ -12,14 +16,14 @@ import com.hanghai.kchtg.gis.point.entity.ObjectCategory;
 import com.hanghai.kchtg.gis.point.repository.ObjectCategoryRepository;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonCategory;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonCategoryRepository;
-import com.hanghai.kchtg.group.entity.GroupStatus;
-import com.hanghai.kchtg.group.entity.UserGroup;
-import com.hanghai.kchtg.group.entity.GroupMember;
-import com.hanghai.kchtg.group.entity.GroupMemberStatus;
-import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
+import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.mapicon.entity.MapIcon;
+import com.hanghai.kchtg.mapicon.entity.MapSymbol;
+import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
+import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
@@ -27,19 +31,11 @@ import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
-import com.hanghai.kchtg.mapicon.entity.MapSymbol;
-import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
-import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.beacon.entity.BeaconLight;
-import com.hanghai.kchtg.beacon.entity.Buoy;
-import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
-import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -286,7 +282,7 @@ public class DataSeeder implements CommandLineRunner {
         };
 
         String[] names = {
-            "Nhóm Quản Trị Viên", "Nhóm Chuyên Viên Cảng Vụ", "Nhóm Lãnh Đạo Cảng Vụ", 
+            "Nhóm Quản Trị Viên", "Nhóm Chuyên Viên Cảng Vụ", "Nhóm Lãnh Đạo Cảng Vụ",
             "Nhóm Chuyên Viên Tổng Cục", "Nhóm Lãnh Đạo Tổng Cục", "Nhóm Kỹ Thuật Viên Bảo Trì",
             "Nhóm Giám Sát Phao Tiêu", "Nhóm Vận Hành Nhà Trạm", "Nhóm Báo Cáo Thống Kê",
             "Nhóm Tiếp Nhận Hồ Sơ", "Nhóm Phê Duyệt Hồ Sơ", "Nhóm Đối Tác Khai Thác",
@@ -306,7 +302,7 @@ public class DataSeeder implements CommandLineRunner {
                 g.setName(names[i]);
                 g.setCode(codes[i]);
                 g.setDescription("Mô tả nhóm " + names[i]);
-                g.setGroupType(com.hanghai.kchtg.group.entity.GroupType.fromValue(groupTypes[i]));
+                g.setGroupType(GroupType.fromValue(groupTypes[i]));
                 g.setStatus(GroupStatus.ACTIVE);
                 g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
                 groupRepo.save(g);
@@ -335,7 +331,7 @@ public class DataSeeder implements CommandLineRunner {
                 .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SPECIALIST"));
         Role adminModuleRole = roleRepo.findByCode("ROLE_ADMIN")
                 .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_ADMIN"));
-                
+
         // Fetch seeded OrgUnits & UserGroups
         List<OrgUnit> units = orgUnitRepo.findAll();
         List<UserGroup> groups = groupRepo.findAll();
@@ -366,7 +362,7 @@ public class DataSeeder implements CommandLineRunner {
             u.setFullName(fullNames[i]);
             u.setPhone("09123456" + (78 + i));
             u.setStatus(UserStatus.ACTIVE);
-            
+
             // Assign role
             if (i == 0) {
                 u.getRoles().add(adminRole);
@@ -397,7 +393,6 @@ public class DataSeeder implements CommandLineRunner {
                         GroupMember member = new GroupMember();
                         member.setUser(u);
                         member.setUserGroup(group);
-                        member.setRole(offset == 0 ? com.hanghai.kchtg.group.entity.GroupMemberRole.ADMIN : com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER);
                         member.setStatus(GroupMemberStatus.ACTIVE);
                         member.setJoinedAt(java.time.LocalDateTime.now());
                         groupMemberRepo.save(member);

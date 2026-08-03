@@ -34,6 +34,11 @@ public class TokenClaimsBuilder {
         return this;
     }
 
+    public TokenClaimsBuilder role(String role) {
+        claims.put("role", role);
+        return this;
+    }
+
     public TokenClaimsBuilder permissions(List<String> permissions) {
         claims.put("permissions", permissions);
         return this;

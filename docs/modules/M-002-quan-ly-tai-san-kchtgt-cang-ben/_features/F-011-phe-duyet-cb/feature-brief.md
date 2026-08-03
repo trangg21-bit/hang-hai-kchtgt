@@ -15,7 +15,7 @@ consumed_by_modules: []
 
 ## Description
 
-Tính năng cho phép Lãnh đạo phê duyệt thông tin Cảng biển mới được tạo hoặc cập nhật, bao gồm xem chi tiết, đánh giá tính hợp lệ, chấp thuận hoặc từ chối yêu cầu cùng lý do cụ thể. Giao diện CangBienApprovalPage hiển thị danh sách cảng chờ duyệt (trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT), với hành động Phê duyệt/Từ chối kèm confirmation dialog. PheDuyetLog được tạo tự động để ghi nhận quyết định.
+Tính năng cho phép Lãnh đạo phê duyệt thông tin Cảng biển mới được tạo hoặc cập nhật, bao gồm xem chi tiết, đánh giá tính hợp lệ, chấp thuận hoặc từ chối yêu cầu cùng lý do cụ thể. Giao diện PortApprovalPage hiển thị danh sách cảng chờ duyệt (approval_status = PENDING_APPROVAL), với hành động Phê duyệt/Từ chối kèm confirmation dialog. approval_log được tạo tự động để ghi nhận quyết định.
 
 ## Business Intent
 
@@ -27,7 +27,7 @@ Việc phê duyệt Cảng biển là bước kiểm soát chất lượng bắt
 Cảng biển sau khi tạo/cập nhật tự động chuyển trạng thái "Chờ phê duyệt". Lãnh đạo truy cập danh sách chờ duyệt, chọn Cảng cần xem xét. Hệ thống hiển thị đầy đủ thông tin kèm lịch sử thay đổi. Lãnh đạo chọn "Chấp thuận" hoặc "Từ chối" cùng lý do (bắt buộc khi từ chối). Hệ thống cập nhật trạng thái, ghi nhật ký và thông báo cho người tạo.
 
 ### UI Flow
-Lãnh đạo vào trang "Phê duyệt", xem danh sách cảng CHỜ_PHÊ_DUYỆT. Chọn một cảng → xem chi tiết → click "Phê duyệt" → confirmation dialog → xác nhận → `trangThaiPheDuyet = ĐƯỢC_PHÊ_DUYỆT` → tạo PheDuyetLog → toast "Đã phê duyệt thành công". Hoặc click "Từ chối" → confirmation dialog → nhập lý do (tối thiểu 10 ký tự) → xác nhận → `trangThaiPheDuyet = TỪ_CHỐI` → tạo PheDuyetLog với lý do → toast "Đã từ chối".
+Lãnh đạo vào trang "Phê duyệt", xem danh sách cảng PENDING_APPROVAL. Chọn một cảng → xem chi tiết → click "Phê duyệt" → confirmation dialog → xác nhận → `approval_status = APPROVED` → tạo approval_log → toast "Đã phê duyệt thành công". Hoặc click "Từ chối" → confirmation dialog → nhập lý do (tối thiểu 10 ký tự) → xác nhận → `approval_status = REJECTED` → tạo approval_log với lý do → toast "Đã từ chối".
 
 ## Acceptance Criteria
 
@@ -36,7 +36,7 @@ Lãnh đạo vào trang "Phê duyệt", xem danh sách cảng CHỜ_PHÊ_DUYỆT
 3. Lý do từ chối là bắt buộc (tối thiểu 10 ký tự); lý do chấp thuận là tùy chọn.
 4. Sau khi phê duyệt, trạng thái Cảng biển được cập nhật và người tạo nhận thông báo.
 5. [UI] Confirmation dialog hiển thị trước mọi hành động phê duyệt/từ chối.
-6. [UI] PheDuyetLog được tạo tự động, ghi nhận đầy đủ người duyệt, thời gian, quyết định, lý do.
+6. [UI] approval_log được tạo tự động, ghi nhận đầy đủ người duyệt, thời gian, quyết định, lý do.
 
 ## In Scope
 
@@ -45,7 +45,7 @@ Lãnh đạo vào trang "Phê duyệt", xem danh sách cảng CHỜ_PHÊ_DUYỆT
 - Giao diện phê duyệt: chấp thuận hoặc từ chối
 - Trường nhập lý do từ chối (bắt buộc, tối thiểu 10 ký tự)
 - Cập nhật trạng thái sau phê duyệt
-- Ghi nhật ký phê duyệt (PheDuyetLog)
+- Ghi nhật ký phê duyệt (approval_log)
 - Thông báo kết quả đến người tạo
 - Confirmation dialog
 
@@ -67,8 +67,8 @@ Lãnh đạo vào trang "Phê duyệt", xem danh sách cảng CHỜ_PHÊ_DUYỆT
 
 ## Entities
 
-- **CangBien**: id (UUID), maCang (string, unique), tenCang (string), tinhThanhPho (string), viDo (BigDecimal), kinhDo (BigDecimal), dienTich (BigDecimal), khaNangTiepNhan (BigDecimal), trangThaiHoatDong (string), trangThaiPheDuyet (string: CHỜ_PHÊ_DUYỆT/ĐƯỢC_PHÊ_DUYỆT/TỪ_CHỐI), pendingApproval (boolean), rejectedReason (text, nullable)
-- **PheDuyetLog**: id (UUID), cangBienId (UUID), nguoiPheDuyet (UUID), quyetDinh (enum: chap_thuan, tu_choi), lyDo (text), thoiGianPheDuyet (timestamp)
+- **port**: id (UUID), port_code (string, unique), port_name (string), province_city (string), latitude (BigDecimal), longitude (BigDecimal), area (BigDecimal), max_vessel_capacity (BigDecimal), operational_status (string), approval_status (string: PENDING_APPROVAL/APPROVED/REJECTED), pending_approval (boolean), rejection_reason (text, nullable)
+- **approval_log**: id (UUID), port_id (UUID), approved_by (UUID), decision (enum: approved, rejected), reason (text), approved_at (timestamp)
 
 ## Business Rules
 
@@ -81,10 +81,10 @@ Lãnh đạo vào trang "Phê duyệt", xem danh sách cảng CHỜ_PHÊ_DUYỆT
 
 ## UI Scope
 
-- **Component:** `CangBienApprovalPage` — danh sách cảng chờ duyệt + hành động Phê duyệt/Từ chối
-- **API endpoints:** `GET /api/v1/cang-bien?trangThaiPheDuyet=CHỜ_PHÊ_DUYỆT` (danh sách), `POST /api/v1/cang-bien/:id/approve` (phê duyệt), `POST /api/v1/cang-bien/:id/reject` (từ chối)
-- **Phê duyệt:** Chuyển `trangThaiPheDuyet → ĐƯỢC_PHÊ_DUYỆT`, tạo `PheDuyetLog`, toast "Đã phê duyệt thành công"
-- **Từ chối:** Chuyển `trangThaiPheDuyet → TỪ_CHỐI`, bắt buộc nhập lý do (tối thiểu 10 ký tự), tạo `PheDuyetLog` với lý do, toast "Đã từ chối"
+- **Component:** `PortApprovalPage` — danh sách cảng chờ duyệt + hành động Phê duyệt/Từ chối
+- **API endpoints:** `GET /api/v1/ports?approval_status=PENDING_APPROVAL` (danh sách), `POST /api/v1/ports/:id/approve` (phê duyệt), `POST /api/v1/ports/:id/reject` (từ chối)
+- **Phê duyệt:** Chuyển `approval_status → APPROVED`, tạo `approval_log`, toast "Đã phê duyệt thành công"
+- **Từ chối:** Chuyển `approval_status → REJECTED`, bắt buộc nhập lý do (tối thiểu 10 ký tự), tạo `approval_log` với lý do, toast "Đã từ chối"
 - **Confirmation dialog:** Hiển thị trước mọi hành động để tránh thao tác nhầm
 - **RBAC:** Chỉ Lãnh đạo mới thấy và thực hiện được hành động Phê duyệt/Từ chối
 

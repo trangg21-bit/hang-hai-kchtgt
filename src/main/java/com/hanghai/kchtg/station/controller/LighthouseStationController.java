@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.station.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.station.dto.lighthouse.CreateLighthouseStationRequest;
 import com.hanghai.kchtg.station.dto.lighthouse.LighthouseStationResponse;

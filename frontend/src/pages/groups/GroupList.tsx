@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Modal, Form, Input, Spin, Button, Select } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Typography, Modal, Form, Input, Spin, Button, Select, Descriptions } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -11,7 +11,7 @@ import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../../components
 import Pagination from '../../components/list-view/Pagination';
 import { groupService } from '../../services/groupService';
 import type { Group, CreateGroupPayload, UpdateGroupPayload } from '../../services/groupService';
-import { actionPrimary, textSecondary, statusCritical, statusDraft, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusPill, borderDefault, spaceFormField, statusOperational } from '../../tokens';
+import { actionPrimary, textSecondary, statusDraft, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusPill, borderDefault, spaceFormField, statusOperational } from '../../tokens';
 import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
 const { confirm } = Modal;
@@ -27,6 +27,7 @@ export default function GroupList() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterGroupType, setFilterGroupType] = useState<string | undefined>();
+  const [filterMyGroups, setFilterMyGroups] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Group[]>([]);
@@ -40,13 +41,14 @@ export default function GroupList() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [detailGroup, setDetailGroup] = useState<Group | null>(null);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
-      const res = await groupService.list({ page, pageSize, search: search || undefined, status: filterStatus, groupType: filterGroupType });
+      const res = await groupService.list({ page, pageSize, search: search || undefined, status: filterStatus, groupType: filterGroupType, myGroups: filterMyGroups });
       setDataSource(res.data); setTotal(res.total);
       
       // Update counts based on backend stats
@@ -54,12 +56,16 @@ export default function GroupList() {
       setCountInactive(res.inactiveCount);
     } catch (err: unknown) { setIsError(true); setError(err instanceof Error ? err : new Error('Không thể tải danh sách nhóm')); }
     finally { setIsLoading(false); }
-  }, [page, pageSize, search, filterStatus, filterGroupType]);
+  }, [page, pageSize, search, filterStatus, filterGroupType, filterMyGroups]);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
 
   const totalAll = countActive + countInactive;
+
+  const handleViewDetail = useCallback((group: Group) => {
+    setDetailGroup(group);
+  }, []);
 
   const openCreateModal = useCallback(() => { setEditingGroup(null); form.resetFields(); form.setFieldsValue({ status: 'active' }); setModalOpen(true); }, [form]);
 
@@ -104,10 +110,10 @@ export default function GroupList() {
 
 
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setFilterStatus(values.status || undefined); setFilterGroupType(values.groupType || undefined); setPage(1);
+    setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setFilterStatus(values.status || undefined); setFilterGroupType(values.groupType || undefined); setFilterMyGroups(values.scope === 'myGroups'); setPage(1);
   }, []);
 
-  const handleFilterReset = useCallback(() => { setSearch(''); setFilterStatus(undefined); setFilterGroupType(undefined); setPage(1); }, []);
+  const handleFilterReset = useCallback(() => { setSearch(''); setFilterStatus(undefined); setFilterGroupType(undefined); setFilterMyGroups(false); setPage(1); }, []);
 
   const handleTabChange = useCallback((key: string) => {
     setFilterStatus(key === 'all' ? undefined : key); setPage(1);
@@ -117,25 +123,43 @@ export default function GroupList() {
 
   const rowActions = useCallback((record: Group) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean }[] = [];
+    actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
     actions.push({ key: 'members', label: 'Thành viên', icon: <UserOutlined />, onClick: () => navigate(`/groups/${record.id}/members`) });
-    if (hasPerm('group.edit')) {
+    if (hasPerm('group:edit')) {
       actions.push({ key: 'permissions', label: 'Phân quyền', icon: <EditOutlined />, onClick: () => toast.info('Tính năng phân quyền nhóm đang được phát triển') });
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
     }
-    if (hasPerm('group.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    if (hasPerm('group:delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return actions;
-  }, [hasPerm, navigate, openEditModal, handleDelete]);
+  }, [hasPerm, navigate, handleViewDetail, openEditModal, handleDelete]);
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
       render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 200,
-      render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
+      render: (text: string, record: Group) => (
+        <Typography.Text
+          strong
+          style={{ color: actionPrimary, cursor: 'pointer' }}
+          onClick={() => handleViewDetail(record)}
+        >
+          {text}
+        </Typography.Text>
+      ) },
     { key: 'code', label: 'Mã nhóm', dataIndex: 'code', width: 120 },
     { key: 'groupType', label: 'Loại nhóm', dataIndex: 'groupType', width: 140, align: 'center' as const,
       render: (text: string) => {
-        const typeLabels: Record<string, string> = { department: 'Phòng ban', project: 'Dự án', custom: 'Tùy chỉnh' };
-        return <span>{typeLabels[text] || text}</span>;
+        const typeConfig: Record<string, { label: string; color: string }> = {
+          department: { label: 'Phòng ban', color: '#1677ff' },
+          project: { label: 'Dự án', color: '#722ed1' },
+          custom: { label: 'Tùy chỉnh', color: '#8c8c8c' },
+        };
+        const config = typeConfig[text] || { label: text, color: '#8c8c8c' };
+        return (
+          <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${config.color}15`, color: config.color }}>
+            {config.label}
+          </span>
+        );
       } },
     { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 200,
       render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
@@ -149,13 +173,13 @@ export default function GroupList() {
       } },
     { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 170, align: 'center' as const,
       render: (text: string) => text ? dayjs(text).format('DD/MM/YYYY HH:mm') : '—' },
-  ], [page, pageSize]);
+  ], [page, pageSize, handleViewDetail]);
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách nhóm'} onRetry={fetchGroups} />;
     if (dataSource.length === 0) {
-      if (search || filterStatus) return <EmptyState description="Không tìm thấy nhóm nào phù hợp" />;
+      if (search || filterStatus || filterMyGroups) return <EmptyState description="Không tìm thấy nhóm nào phù hợp" />;
       return <EmptyState description="Chưa có nhóm nào" />;
     }
     return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} scroll={{ x: 1000 }} /><Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
@@ -163,6 +187,8 @@ export default function GroupList() {
 
   const filterFields = useMemo(() => [
     { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mô tả...' },
+    { key: 'scope', type: 'select' as const, label: 'My Groups', placeholder: 'Chọn phạm vi nhóm',
+      options: [{ value: 'all', label: 'Tất cả nhóm' }, { value: 'myGroups', label: 'My Groups (Nhóm tôi tham gia)' }] },
     { key: 'groupType', type: 'select' as const, label: 'Loại nhóm', placeholder: 'Chọn loại',
       options: [{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }] },
     { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
@@ -171,7 +197,7 @@ export default function GroupList() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('group.create')) actions.push({ key: 'create', label: 'Thêm nhóm', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    if (hasPerm('group:create')) actions.push({ key: 'create', label: 'Thêm nhóm', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
     return actions;
   }, [hasPerm, openCreateModal]);
 
@@ -183,7 +209,7 @@ export default function GroupList() {
         <StatusTabs
           tabs={[
             { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
-{ key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' },
+            { key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' },
             { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
           ]}
           onChange={handleTabChange}
@@ -193,6 +219,100 @@ export default function GroupList() {
         {renderContent()}
       </div>
 
+      {/* Modal Xem chi tiết */}
+      <Modal
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết nhóm</span>}
+        open={!!detailGroup}
+        onCancel={() => setDetailGroup(null)}
+        footer={[
+          <Button
+            key="members"
+            icon={<UserOutlined />}
+            onClick={() => {
+              const groupId = detailGroup?.id;
+              setDetailGroup(null);
+              if (groupId) navigate(`/groups/${groupId}/members`);
+            }}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}
+          >
+            Thành viên ({detailGroup?.memberCount || 0})
+          </Button>,
+          hasPerm('group:edit') && (
+            <Button
+              key="edit"
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => {
+                const g = detailGroup;
+                setDetailGroup(null);
+                if (g) openEditModal(g);
+              }}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+            >
+              Sửa nhóm
+            </Button>
+          ),
+          <Button
+            key="close"
+            onClick={() => setDetailGroup(null)}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault }}
+          >
+            Đóng
+          </Button>,
+        ].filter(Boolean)}
+        width={640}
+      >
+        {detailGroup && (
+          <Descriptions column={2} bordered size="middle" style={{ marginTop: 16 }}>
+            <Descriptions.Item label="Tên nhóm" span={2}>
+              <Typography.Text strong style={{ fontSize: fontSizeLg, color: colors.sidebarBg }}>{detailGroup.name}</Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Mã nhóm">
+              <code>{detailGroup.code}</code>
+            </Descriptions.Item>
+            <Descriptions.Item label="Loại nhóm">
+              {(() => {
+                const typeConfig: Record<string, { label: string; color: string }> = {
+                  department: { label: 'Phòng ban', color: '#1677ff' },
+                  project: { label: 'Dự án', color: '#722ed1' },
+                  custom: { label: 'Tùy chỉnh', color: '#8c8c8c' },
+                };
+                const config = typeConfig[detailGroup.groupType] || { label: detailGroup.groupType, color: '#8c8c8c' };
+                return (
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${config.color}15`, color: config.color }}>
+                    {config.label}
+                  </span>
+                );
+              })()}
+            </Descriptions.Item>
+            <Descriptions.Item label="Số thành viên">
+              <Typography.Text strong>{detailGroup.memberCount || 0} người</Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              {(() => {
+                const color = detailGroup.status === 'active' ? statusOperational : statusDraft;
+                const label = STATUS_LABELS[detailGroup.status] || detailGroup.status;
+                return (
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>
+                    {label}
+                  </span>
+                );
+              })()}
+            </Descriptions.Item>
+            <Descriptions.Item label="Mô tả" span={2}>
+              {detailGroup.description || <Typography.Text type="secondary">Chưa có mô tả</Typography.Text>}
+            </Descriptions.Item>
+            <Descriptions.Item label="Ngày tạo">
+              {detailGroup.createdAt ? dayjs(detailGroup.createdAt).format('DD/MM/YYYY HH:mm') : '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Cập nhật cuối">
+              {detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
+
+      {/* Modal Thêm/Sửa */}
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingGroup ? 'Sửa nhóm' : 'Thêm nhóm mới'}</span>}
         open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={600} mask={{ closable: false }}

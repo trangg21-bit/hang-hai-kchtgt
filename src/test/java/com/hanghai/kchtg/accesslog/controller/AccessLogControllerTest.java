@@ -41,11 +41,11 @@ class AccessLogControllerTest {
     private AccessLogController controller;
 
     private AccessLogResponse sampleResponse;
-    private Long logId;
+    private UUID logId;
 
     @BeforeEach
     void setUp() {
-        logId = 1L;
+        logId = UUID.randomUUID();
 
         AccessLog logEntity = new AccessLog();
         logEntity.setId(logId);

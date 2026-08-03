@@ -3,12 +3,16 @@ package com.hanghai.kchtg.user.service;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
+import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
+import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.repository.UserStatusLogRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,12 +43,14 @@ class UserServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private PasswordPolicyValidator passwordPolicyValidator;
     @Mock private PermissionCacheService permissionCacheService;
+    @Mock private PasswordHistoryRepository passwordHistoryRepository;
+    @Mock private UserStatusLogRepository userStatusLogRepository;
+    @Mock private EntityManager entityManager;
     @Mock private Authentication authentication;
     @Mock private SecurityContext securityContext;
 
     private UserService userService;
 
-    private MockedStatic<SecurityContextHolder> securityContextHolderMock;
     private Role systemAdminRole;
     private Role userRole;
     private User systemAdminUser;
@@ -54,9 +60,9 @@ class UserServiceTest {
     void setUp() {
         userService = new UserService(
                 userRepository, roleRepository, orgUnitRepository, groupRepository,
-                passwordEncoder, passwordPolicyValidator, permissionCacheService);
+                passwordEncoder, passwordPolicyValidator, permissionCacheService,
+                passwordHistoryRepository, userStatusLogRepository, entityManager);
 
-        securityContextHolderMock = mockStatic(SecurityContextHolder.class);
 
         // Setup roles
         systemAdminRole = new Role();
@@ -76,14 +82,19 @@ class UserServiceTest {
         regularUser = new User();
         regularUser.setId(UUID.randomUUID());
         regularUser.setUsername("regular");
+        regularUser.setStatus(UserStatus.ACTIVE);
         regularUser.setRoles(new HashSet<>(Set.of(userRole)));
+
+        jakarta.persistence.Query mockQuery = mock(jakarta.persistence.Query.class);
+        lenient().when(mockQuery.getResultList()).thenReturn(Collections.emptyList());
+        lenient().when(mockQuery.setParameter(anyString(), any())).thenReturn(mockQuery);
+        lenient().when(mockQuery.getSingleResult()).thenReturn(0L);
+        lenient().when(entityManager.createNativeQuery(anyString())).thenReturn(mockQuery);
     }
 
     @AfterEach
     void tearDown() {
-        if (securityContextHolderMock != null) {
-            securityContextHolderMock.close();
-        }
+        SecurityContextHolder.clearContext();
     }
 
     // =========================================================================
@@ -103,9 +114,8 @@ class UserServiceTest {
         request.setRole("ROLE_SYSTEM_ADMIN");
 
         when(userRepository.existsByUsername("newadmin")).thenReturn(false);
-        when(userRepository.existsByEmail("newadmin@test.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("newadmin@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
-        when(roleRepository.findByCode("ROLE_SYSTEM_ADMIN")).thenReturn(Optional.of(systemAdminRole));
 
         // When/Then: should throw AccessDeniedException
         AccessDeniedException ex = assertThrows(AccessDeniedException.class,
@@ -129,7 +139,7 @@ class UserServiceTest {
         request.setRole("ROLE_SYSTEM_ADMIN");
 
         when(userRepository.existsByUsername("newadmin")).thenReturn(false);
-        when(userRepository.existsByEmail("newadmin@test.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("newadmin@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
         when(roleRepository.findByCode("ROLE_SYSTEM_ADMIN")).thenReturn(Optional.of(systemAdminRole));
         when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
@@ -160,7 +170,7 @@ class UserServiceTest {
         request.setRole("ROLE_USER");
 
         when(userRepository.existsByUsername("regularuser")).thenReturn(false);
-        when(userRepository.existsByEmail("regular@test.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("regular@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
         when(roleRepository.findByCode("ROLE_USER")).thenReturn(Optional.of(userRole));
         when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
@@ -176,6 +186,39 @@ class UserServiceTest {
         // Then
         assertNotNull(result);
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void create_shouldRejectEmailThatDiffersOnlyByCase() {
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("anotheruser");
+        request.setPassword("SecurePass1");
+        request.setEmail("Loan@Gmail.com");
+        request.setFullName("Another User");
+
+        when(userRepository.existsByUsername("anotheruser")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("loan@gmail.com")).thenReturn(true);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> userService.create(request));
+
+        assertEquals("Email đã tồn tại: loan@gmail.com", ex.getMessage());
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void update_shouldChangeStatusAndWriteStatusAuditLog() {
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setStatus(UserStatus.INACTIVE);
+        when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User result = userService.update(regularUser.getId(), request);
+
+        assertEquals(UserStatus.INACTIVE, result.getStatus());
+        verify(userStatusLogRepository).save(argThat(logEntry ->
+                logEntry.getOldStatus() == UserStatus.ACTIVE
+                        && logEntry.getNewStatus() == UserStatus.INACTIVE));
     }
 
     // =========================================================================
@@ -240,10 +283,9 @@ class UserServiceTest {
                 .map(SimpleGrantedAuthority::new)
                 .toList();
 
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getAuthorities())
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(authentication.getAuthorities())
                 .thenReturn((java.util.Collection) grantedAuthorities);
-        securityContextHolderMock.when(SecurityContextHolder::getContext)
-                .thenReturn(securityContext);
+        SecurityContextHolder.setContext(securityContext);
     }
 }

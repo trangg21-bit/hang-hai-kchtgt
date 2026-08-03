@@ -1,20 +1,19 @@
 package com.hanghai.kchtg.group.dto;
 
 import com.hanghai.kchtg.group.entity.GroupMember;
-import com.hanghai.kchtg.group.entity.GroupMemberStatus;
 import com.hanghai.kchtg.user.entity.User;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 /**
  * DTO trả về thông tin thành viên nhóm (with full user details).
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class GroupMemberResponse {
 
     private String id;
@@ -23,7 +22,6 @@ public class GroupMemberResponse {
     private String fullName;
     private String groupId;
     private String groupName;
-    private String roleInGroup;
     private String status;
     private String email;
     private LocalDateTime joinedAt;
@@ -36,7 +34,6 @@ public class GroupMemberResponse {
         GroupMemberResponse resp = new GroupMemberResponse();
         resp.setId(member.getId().toString());
         resp.setStatus(member.getStatus() != null ? member.getStatus().name() : null);
-        resp.setRoleInGroup(member.getRole() != null ? member.getRole().getValue() : null);
         resp.setJoinedAt(member.getJoinedAt());
         resp.setCreatedAt(member.getCreatedAt());
 

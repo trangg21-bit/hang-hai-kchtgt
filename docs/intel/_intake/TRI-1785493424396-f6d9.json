@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1785493424396-f6d9",
+  "created_at": 1785493424396,
+  "request_summary": "Rewrite Berth (Bến cảng) list/detail page following PortList UI pattern, using English field names from BerthResponse DTO, with 19-column table, advanced 2-level filters, StatusTabs, detail modal popup per F-018 feature brief",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Frontend route /Berth — BerthList.tsx page component",
+  "blast_radius": 4,
+  "done_oracle": "npx tsc --noEmit passes on frontend, BerthList renders 19 columns matching F-018 spec, all field names are English (matching BerthResponse.java), UI pattern matches PortList (filters, tabs, modals)",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/port/BerthForm.tsx",
+    "frontend/src/pages/port/BerthList.tsx",
+    "frontend/src/services/portService.ts",
+    "frontend/src/types/port.ts"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c391df8230ac9a20338258c42975a5451bd00640",
+    "dirty": false,
+    "captured_at": 1785493424579
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

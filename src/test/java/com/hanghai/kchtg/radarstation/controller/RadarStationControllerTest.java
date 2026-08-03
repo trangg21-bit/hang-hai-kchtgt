@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.radarstation.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.radarstation.dto.*;
+import com.hanghai.kchtg.radarstation.dto.ApprovalRequest;
+import com.hanghai.kchtg.radarstation.dto.RadarStationCreateRequest;
+import com.hanghai.kchtg.radarstation.dto.RadarStationResponse;
+import com.hanghai.kchtg.radarstation.dto.RadarStationUpdateRequest;
 import com.hanghai.kchtg.radarstation.service.RadarStationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,13 +16,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.beacon.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 
 
 public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> {

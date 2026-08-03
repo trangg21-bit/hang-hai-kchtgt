@@ -1,0 +1,64 @@
+-- V105: Create port_attachments table
+-- Lưu file đính kèm cho mỗi Cảng biển (Port).
+-- Mỗi port có thể có nhiều file đính kèm (tối đa 10 file, mỗi file ≤ 20MB).
+-- Các định dạng hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF
+
+CREATE TABLE IF NOT EXISTS port_attachments (
+    id           BIGSERIAL    PRIMARY KEY,
+    port_id      UUID         NOT NULL,
+    file_name    VARCHAR(255) NOT NULL,
+    file_path    VARCHAR(500) NOT NULL,
+    file_size    BIGINT       NOT NULL CHECK (file_size > 0 AND file_size <= 20971520),
+    content_type VARCHAR(100),
+    uploaded_by  UUID,
+    uploaded_at  TIMESTAMP    DEFAULT NOW(),
+
+    CONSTRAINT fk_port_attachments_port
+        FOREIGN KEY (port_id) REFERENCES ports(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_port_attachments_uploaded_by
+        FOREIGN KEY (uploaded_by) REFERENCES app_users(id)
+);
+
+-- Index để truy vấn nhanh theo port_id
+CREATE INDEX IF NOT EXISTS idx_port_attachments_port_id ON port_attachments(port_id);
+
+
+-- V106: Alter updated_at columns to allow NULL (safe migration for existing rows)
+-- Applied to all 3 port child tables that now have the updatedAt field.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_coordinates' AND column_name = 'updated_at') THEN
+        ALTER TABLE port_coordinates ALTER COLUMN updated_at DROP NOT NULL;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_infrastructure' AND column_name = 'updated_at') THEN
+        ALTER TABLE port_infrastructure ALTER COLUMN updated_at DROP NOT NULL;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_attachments' AND column_name = 'updated_at') THEN
+        ALTER TABLE port_attachments ALTER COLUMN updated_at DROP NOT NULL;
+    END IF;
+END $$;
+
+
+-- V107: Alter sub-tables id column from BIGINT to UUID (idempotent)
+DO $$
+BEGIN
+    -- port_coordinates is a temporary legacy table. Its BIGINT id is needed
+    -- by V20260731141100 while data is migrated to gis_spatial_objects, then
+    -- the table is dropped. Do not change its id type here.
+
+    -- port_infrastructure
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_infrastructure' AND column_name = 'id' AND data_type = 'bigint') THEN
+        ALTER TABLE port_infrastructure ALTER COLUMN id DROP DEFAULT;
+        ALTER TABLE port_infrastructure ALTER COLUMN id TYPE UUID USING gen_random_uuid();
+        ALTER TABLE port_infrastructure ALTER COLUMN id SET DEFAULT gen_random_uuid();
+    END IF;
+
+    -- port_attachments
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_attachments' AND column_name = 'id' AND data_type = 'bigint') THEN
+        ALTER TABLE port_attachments ALTER COLUMN id DROP DEFAULT;
+        ALTER TABLE port_attachments ALTER COLUMN id TYPE UUID USING gen_random_uuid();
+        ALTER TABLE port_attachments ALTER COLUMN id SET DEFAULT gen_random_uuid();
+    END IF;
+END $$;

@@ -1,11 +1,7 @@
 package com.hanghai.kchtg.beacon.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.beacon.dto.history.BeaconHistoryResponse;
-import com.hanghai.kchtg.beacon.entity.BeaconHistory;
-import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
-import com.hanghai.kchtg.beacon.entity.BeaconType;
+import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
@@ -47,7 +43,7 @@ public class BeaconHistoryService {
             BeaconHistoryActionType actionType,
             Long changedBy, LocalDateTime from, LocalDateTime to,
             Pageable pageable) {
-        
+
         java.util.List<UUID> entityIds = null;
         boolean hasEntityIds = false;
 
@@ -58,11 +54,11 @@ public class BeaconHistoryService {
             String cleanCode = entityCode.trim();
             if (beaconType == BeaconType.BEACON_LIGHT) {
                 entityIds = beaconLightRepo.findByCodeContainingIgnoreCase(cleanCode).stream()
-                        .map(com.hanghai.kchtg.beacon.entity.BeaconLight::getId)
+                        .map(BeaconLight::getId)
                         .toList();
             } else {
                 entityIds = buoyRepo.findByCodeContainingIgnoreCase(cleanCode).stream()
-                        .map(com.hanghai.kchtg.beacon.entity.Buoy::getId)
+                        .map(Buoy::getId)
                         .toList();
             }
             if (entityIds.isEmpty()) {
