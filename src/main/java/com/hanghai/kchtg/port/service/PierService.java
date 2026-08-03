@@ -34,6 +34,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -55,6 +56,9 @@ public class PierService {
         if (pierRepository.existsByPierCode(request.getPierCode())) {
             throw new IllegalArgumentException("Mã " + request.getPierCode() + " đã tồn tại");
         }
+        if (pierRepository.existsByPierName(request.getPierName())) {
+            throw new IllegalArgumentException("Tên cầu cảng \"" + request.getPierName() + "\" đã tồn tại");
+        }
 
         Berth parent = berthRepository.findById(request.getBerthId())
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -72,10 +76,6 @@ public class PierService {
             if (port.getApprovalStatus() != ApprovalStatus.APPROVED) {
                 throw new IllegalArgumentException(
                         "Cảng biển phải ở trạng thái đã phê duyệt");
-            }
-            if (port.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
-                throw new IllegalArgumentException(
-                        "Cảng biển phải ở trạng thái hoạt động (HIEN_HANH)");
             }
         }
 
@@ -121,7 +121,7 @@ public class PierService {
                 .operationalFunction(request.getOperationalFunction())
                 .operationalStatus(request.getOperationalStatus())
                 .orgUnitId(parent.getOrgUnitId())
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.DRAFT)
                 .mapSymbolId(request.getMapSymbolId())
                 .spatialId(spatialId)
                 // ── Spec Group A: Basic info ──
@@ -459,6 +459,24 @@ public class PierService {
         } catch (IllegalArgumentException ex) {
             return GisGeometryType.LINE;
         }
+    }
+
+    public String generatePierCode(UUID berthId) {
+        Berth berth = berthRepository.findById(berthId)
+            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng"));
+        String berthCode = berth.getBerthCode();
+        String prefix = berthCode + "-CC";
+        List<Pier> existing = pierRepository.findByBerthIdAndDeletedAtIsNull(berthId);
+        int maxNum = 0;
+        for (Pier p : existing) {
+            if (p.getPierCode() != null && p.getPierCode().startsWith(prefix)) {
+                try {
+                    int n = Integer.parseInt(p.getPierCode().substring(prefix.length()));
+                    if (n > maxNum) maxNum = n;
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return prefix + String.format("%02d", maxNum + 1);
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {

@@ -82,7 +82,7 @@ public class DocumentService {
                 .fileSize(fileSize)
                 .mimeType(contentType != null ? contentType : "application/octet-stream")
                 .storageKey(storageKey)
-
+                .uploadedBy(uploadedBy)
                 .build();
 
         Document saved = documentRepository.save(entity);

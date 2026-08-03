@@ -30,12 +30,6 @@ public class CreateBuoyStationRequest {
     @NotNull(message = "Loại phao không được để trống")
     private String type;
 
-    @NotNull(message = "Vĩ độ không được để trống")
-    @DecimalMin(value = "-90.0", message = "Vĩ độ phải lớn hơn hoặc bằng -90.0")
-    @DecimalMax(value = "90.0", message = "Vĩ độ phải nhỏ hơn hoặc bằng 90.0")
-    @NotNull(message = "Kinh độ không được để trống")
-    @DecimalMin(value = "-180.0", message = "Kinh độ phải lớn hơn hoặc bằng -180.0")
-    @DecimalMax(value = "180.0", message = "Kinh độ phải nhỏ hơn hoặc bằng 180.0")
     @Size(max = 50, message = "Màu sắc không được vượt quá 50 ký tự")
     private String color;
 

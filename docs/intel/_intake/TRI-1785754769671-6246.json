@@ -1,0 +1,40 @@
+{
+  "triage_id": "TRI-1785754769671-6246",
+  "created_at": 1785754769672,
+  "request_summary": "Sửa history: map fieldName tiếng Việt, hiện (null)→trống, map UUID→tên",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/PierList.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/PierList.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "PierList history modal",
+  "blast_radius": 1,
+  "done_oracle": "History hiển thị tên trường tiếng Việt, (null)→—, UUID→tên",
+  "escalated_from": {
+    "triage_id": "TRI-1785754321088-2932",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "de32d3fef310286ee40ba553f3b07e676154ee75",
+    "dirty": true,
+    "captured_at": 1785754769998
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

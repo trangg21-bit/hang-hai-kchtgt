@@ -38,7 +38,15 @@ public class BuoyResponse {
     private ApprovalLevel approvalLevel;
     private UUID approvedBy;
     private LocalDateTime approvedDate;
+    private UUID level1ApprovedBy;
+    private LocalDateTime level1ApprovedDate;
+    private UUID level2ApprovedBy;
+    private LocalDateTime level2ApprovedDate;
+    private Double latitude;
+    private Double longitude;
     private String rejectionReason;
+    private UUID createdBy;
+    private UUID updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

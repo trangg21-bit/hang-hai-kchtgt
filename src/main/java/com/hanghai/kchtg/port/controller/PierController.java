@@ -36,6 +36,15 @@ public class PierController {
         return ResponseEntity.ok(ApiResponse.success("Tạo mới cầu cảng thành công", pierService.create(request)));
     }
 
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'pier:create')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> generateCode(
+            @RequestParam UUID berthId) {
+        log.info("Generating pier code for berthId={}", berthId);
+        String code = pierService.generatePierCode(berthId);
+        return ResponseEntity.ok(ApiResponse.success("Sinh mã cầu thành công", java.util.Map.of("pierCode", code)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'pier:read')")
     public ResponseEntity<ApiResponse<PierResponse>> getById(@PathVariable UUID id) {

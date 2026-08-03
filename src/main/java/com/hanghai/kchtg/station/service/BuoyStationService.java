@@ -74,7 +74,6 @@ public class BuoyStationService {
             throw new IllegalArgumentException("Mã nhà trạm phao tiêu đã tồn tại: " + request.getCode());
         }
 
-        validateCoordinates(request.getLongitude(), request.getLatitude());
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
         BuoyStation entity = BuoyStation.builder()
@@ -184,10 +183,6 @@ public class BuoyStationService {
         }
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
 
-        if (request.getLongitude() != null && request.getLatitude() != null) {
-            validateCoordinates(request.getLongitude(), request.getLatitude());
-        }
-
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus(StationStatus.DRAFT);
             entity.setApprovalStatus(StationApprovalStatus.PENDING);
@@ -263,9 +258,9 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (!StationStatus.DRAFT.equals(entity.getStatus())) {
+        if (!StationStatus.DRAFT.equals(entity.getStatus()) && !StationStatus.REJECTED.equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT hoặc REJECTED");
         }
 
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -340,7 +335,7 @@ public class BuoyStationService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus(StationStatus.DRAFT);
+        entity.setStatus(StationStatus.REJECTED);
         entity.setApprovalStatus(StationApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);

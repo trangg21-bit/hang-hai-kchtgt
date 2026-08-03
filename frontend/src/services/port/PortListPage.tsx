@@ -16,10 +16,10 @@ import {
   InputNumber,
   Typography,
   Descriptions,
+  Divider,
   Tabs,
   Upload,
   message,
-  Collapse,
 } from 'antd';
 import {
   PlusOutlined,
@@ -74,6 +74,7 @@ import {
   spaceSm,
   fontSizeSm,
   fontSizeMd,
+  fontSizeLg,
   fontWeightMedium,
   fontWeightBold,
   cardStyle,
@@ -192,6 +193,7 @@ export default function PortListPage() {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailCollapsed, setDetailCollapsed] = useState<Record<string, boolean>>({});
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<CangBienResponse | null>(null);
@@ -226,7 +228,7 @@ export default function PortListPage() {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [actionType, setActionType] = useState<'draft' | 'submit'>('submit');
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
 
@@ -360,7 +362,7 @@ export default function PortListPage() {
       }
       if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
         const sym = symbols.find((s) => s.id === val);
-        return sym ? `${sym.name} (${sym.code})` : val;
+        return sym ? (sym.code ? `${sym.name} (${sym.code})` : sym.name) : val;
       }
       if (['khongGianId', 'spatialId'].includes(fieldName)) {
         return 'Có tọa độ bản đồ';
@@ -463,7 +465,7 @@ export default function PortListPage() {
         area: values.area as number | undefined,
         maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: actionType === 'draft' ? 'DRAFT' : 'CHO_PHE_DUYET',
+        approvalStatus: actionType === 'draft' ? 'DRAFT' : actionType === 'approve' ? 'DA_PHE_DUYET' : 'CHO_PHE_DUYET',
         orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
         portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         mapSymbolId: (values.gisLocation as any)?.bieuTuongId || (values.bieuTuongId as string) || undefined,
@@ -618,11 +620,6 @@ export default function PortListPage() {
         anchorageCount: n(values.anchorageCount),
         transshipmentCount: n(values.transshipmentCount),
         otherWaterAreas: (values.otherWaterAreas as string) || null,
-        waterAreaScope: (values.phamViVungNuoc as string) || undefined,
-        totalBerths: values.tongSoBenCang != null && !Number.isNaN(values.tongSoBenCang as number)
-          ? Number(values.tongSoBenCang) : undefined,
-        totalAnchoragesTransshipment: values.tongSoKhuNeoDauChuyenTai != null && !Number.isNaN(values.tongSoKhuNeoDauChuyenTai as number)
-          ? Number(values.tongSoKhuNeoDauChuyenTai) : undefined,
         coordinateList,
         infrastructureList: infraList
           .filter((inf) => inf.infraName?.trim())
@@ -824,7 +821,7 @@ export default function PortListPage() {
       const actions: any[] = [
         {
           key: 'view',
-          label: 'Xem chi tiết',
+          label: 'Chi tiết',
           icon: <EyeOutlined />,
           onClick: async () => {
             try {
@@ -951,18 +948,19 @@ export default function PortListPage() {
           <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span>
         ),
       },
-      {
-        key: 'portCode',
-        label: 'Mã cảng',
-        dataIndex: 'portCode',
-        width: 160,
-        render: (portCode: string) => <Tag color="cyan">{portCode}</Tag>,
-      },
+      // Ẩn cột mã cảng theo yêu cầu
+      // {
+      //   key: 'portCode',
+      //   label: 'Mã cảng',
+      //   dataIndex: 'portCode',
+      //   width: 160,
+      //   render: (portCode: string) => <Tag color="cyan">{portCode}</Tag>,
+      // },
       {
         key: 'orgUnitId',
         label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
-        width: 180,
+        width: 250,
         render: (v: string | null) => getOrgUnitName(v),
       },
       {
@@ -989,7 +987,7 @@ export default function PortListPage() {
         key: 'portClass',
         label: 'Phân cấp cảng biển',
         dataIndex: 'portClass',
-        width: 120,
+        width: 180,
         render: (v: number | null) => v != null ? (v === 5 ? 'Cấp đặc biệt' : `Cấp ${v}`) : '—',
       },
       {
@@ -1012,7 +1010,7 @@ export default function PortListPage() {
         key: 'approvalStatus',
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
-        width: 140,
+        width: 160,
         render: (v: string) => {
           if (!v) return '—';
           const badge = trangThaiPheDuyetBadge(v);
@@ -1186,28 +1184,17 @@ export default function PortListPage() {
             }}
           />
 
-          <div style={{ textAlign: 'right', marginBottom: 8, marginTop: -8 }}>
-            <Button
-              type="link"
-              size="small"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              icon={<FilterOutlined />}
-              style={{ color: colors.primaryActive, fontWeight: 500 }}
-            >
-              {showAdvancedFilters ? 'Thu gọn' : 'Bộ lọc nâng cao'}
-            </Button>
-          </div>
-
+          {/* StatusTabs + Filter toggle */}
           <div
             style={{
               ...cardStyle,
               marginBottom: 4,
               display: 'flex',
-              justifyContent: 'center',
               alignItems: 'center',
-              padding: '8px 16px',
+              padding: '4px 16px',
             }}
           >
+            <div style={{ flex: 1 }} />
             <StatusTabs
               tabs={[
                 { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
@@ -1227,6 +1214,17 @@ export default function PortListPage() {
                 setPage(1);
               }}
             />
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="link"
+              size="small"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              icon={<FilterOutlined />}
+              style={{ color: colors.primaryActive, fontWeight: 500, flexShrink: 0 }}
+            >
+              {showAdvancedFilters ? 'Thu gọn' : 'Bộ lọc nâng cao'}
+            </Button>
+            </div>
           </div>
 
           <div style={{ ...cardStyle, padding: '8px 16px' }}>
@@ -1253,7 +1251,7 @@ export default function PortListPage() {
                   rowKey="id"
                   rowActions={rowActions}
                   loading={false}
-                  scroll={{ x: 1400 }}
+                  scroll={{ x: 1400, y: 'calc(100vh - 450px)' }}
                 />
               )}
               <Pagination
@@ -1458,7 +1456,7 @@ export default function PortListPage() {
                   children: (
                     <>
                       <Row gutter={16}>
-                        <Col span={12}>
+                        <Col span={24}>
                           <Form.Item
                             name="waterAreaScope"
                             {...labelProps('Phạm vi vùng nước')}
@@ -1467,7 +1465,9 @@ export default function PortListPage() {
                             <Input.TextArea rows={2} placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} />
                           </Form.Item>
                         </Col>
-                        <Col span={6}>
+                      </Row>
+                      <Row gutter={16}>
+                        <Col span={12}>
                           <Form.Item
                             name="totalBerths"
                             {...labelProps('Tổng bến cảng')}
@@ -1476,7 +1476,7 @@ export default function PortListPage() {
                             <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
-                        <Col span={6}>
+                        <Col span={12}>
                           <Form.Item
                             name="totalAnchoragesTransshipment"
                             {...labelProps('Tổng khu neo đậu, chuyển tải')}
@@ -1640,7 +1640,7 @@ export default function PortListPage() {
                               style={selectStyle}
                             >
                               {symbols.map((sym) => (
-                                <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                                <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
                                   <Space>
                                     {sym.image && (
                                       <img
@@ -1654,7 +1654,7 @@ export default function PortListPage() {
                                       />
                                     )}
                                     <span>
-                                      {sym.name} ({sym.code})
+                                      {sym.code ? `${sym.name} (${sym.code})` : sym.name}
                                     </span>
                                   </Space>
                                 </Select.Option>
@@ -1792,6 +1792,22 @@ export default function PortListPage() {
                   }}
                 >
                   Gửi phê duyệt
+                </Button>
+                )}
+                {canSubmitForApproval && (
+                <Button
+                  onClick={() => { setActionType('approve'); createForm.submit(); }}
+                  loading={submitting}
+                  style={{
+                    borderRadius: radiusPill,
+                    height: 40,
+                    fontSize: fontSizeMd,
+                    background: statusOperational,
+                    borderColor: statusOperational,
+                    color: surfaceCard,
+                  }}
+                >
+                  Phê duyệt
                 </Button>
                 )}
               </Space>
@@ -1963,7 +1979,7 @@ export default function PortListPage() {
                   children: (
                     <>
                       <Row gutter={16}>
-                        <Col span={12}>
+                        <Col span={24}>
                           <Form.Item
                             name="waterAreaScope"
                             {...labelProps('Phạm vi vùng nước')}
@@ -1972,7 +1988,9 @@ export default function PortListPage() {
                             <Input.TextArea rows={2} placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} />
                           </Form.Item>
                         </Col>
-                        <Col span={6}>
+                      </Row>
+                      <Row gutter={16}>
+                        <Col span={12}>
                           <Form.Item
                             name="totalBerths"
                             {...labelProps('Tổng bến cảng')}
@@ -1981,7 +1999,7 @@ export default function PortListPage() {
                             <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
-                        <Col span={6}>
+                        <Col span={12}>
                           <Form.Item
                             name="totalAnchoragesTransshipment"
                             {...labelProps('Tổng khu neo đậu, chuyển tải')}
@@ -2133,7 +2151,7 @@ export default function PortListPage() {
                               style={selectStyle}
                             >
                               {symbols.map((sym) => (
-                                <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                                <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
                                   <Space>
                                     {sym.image && (
                                       <img
@@ -2146,7 +2164,7 @@ export default function PortListPage() {
                                         style={{ width: 20, height: 20, objectFit: 'contain' }}
                                       />
                                     )}
-                                    <span>{sym.name} ({sym.code})</span>
+                                    <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
                                   </Space>
                                 </Select.Option>
                               ))}
@@ -2274,8 +2292,8 @@ export default function PortListPage() {
             isIframeModal
               ? null
               : selectedRecord
-                ? `Chi tiết cảng biển: ${selectedRecord.portCode} — ${selectedRecord.portName}`
-                : 'Chi tiết cảng biển'
+                ? <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết cảng biển: {selectedRecord.portName}</span>
+                : <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết cảng biển</span>
           }
           open={detailModalVisible}
           onCancel={closeDetailModal}
@@ -2295,16 +2313,15 @@ export default function PortListPage() {
           }}
         >
           {selectedRecord && (<>
-            <Collapse
-              defaultActiveKey={['general', 'stats', 'gis', 'files', 'system']}
-              size="small"
-              style={{ background: 'transparent' }}
-              items={[
-                {
-                  key: 'general',
-                  label: '1. Thông tin chung',
-                  children: (
-              <Descriptions bordered column={2} size="small">
+            {(() => {
+              const tg = (k: string) => setDetailCollapsed((p) => ({ ...p, [k]: !p[k] }));
+              return (<>
+                <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer' }}
+                  onClick={() => tg('general')}>
+                  {detailCollapsed.general ? '▶' : '▼'} Thông tin chung
+                </Divider>
+                {!detailCollapsed.general && (
+              <Descriptions bordered column={2} size="small" style={{ tableLayout: 'fixed' }} labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
                 <Descriptions.Item label="Mã cảng">
                   <Tag color="cyan">{selectedRecord.portCode}</Tag>
                 </Descriptions.Item>
@@ -2328,12 +2345,13 @@ export default function PortListPage() {
                   )}
                 </Descriptions.Item>
               </Descriptions>
-            )},
-            {
-              key: 'stats',
-              label: '2. Thống kê tổng hợp',
-              children: (
-              <Descriptions bordered column={2} size="small">
+            )}
+            <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+              onClick={() => tg('stats')}>
+              {detailCollapsed.stats ? '▶' : '▼'} Thống kê tổng hợp
+            </Divider>
+            {!detailCollapsed.stats && (
+              <Descriptions bordered column={2} size="small" style={{ tableLayout: 'fixed' }} labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
                 <Descriptions.Item label="Phạm vi vùng nước">{selectedRecord.waterAreaScope || '—'}</Descriptions.Item>
                 <Descriptions.Item label="Tổng số bến cảng">{selectedRecord.totalBerths ?? '—'}</Descriptions.Item>
                 <Descriptions.Item label="Khu neo đậu, chuyển tải">{selectedRecord.totalAnchoragesTransshipment ?? '—'}</Descriptions.Item>
@@ -2354,12 +2372,13 @@ export default function PortListPage() {
                 <Descriptions.Item label="Các khu nước khác">{selectedRecord.otherWaterAreas || '—'}</Descriptions.Item>
                 <Descriptions.Item label="Ghi chú" span={2}>{selectedRecord.remarks || '—'}</Descriptions.Item>
               </Descriptions>
-            )},
-            {
-              key: 'gis',
-              label: '3. Thông tin địa lý & GIS',
-              children: (
-              <Descriptions bordered column={2} size="small">
+            )}
+            <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+              onClick={() => tg('gis')}>
+              {detailCollapsed.gis ? '▶' : '▼'} Thông tin địa lý & GIS
+            </Divider>
+            {!detailCollapsed.gis && (
+              <Descriptions bordered column={2} size="small" style={{ tableLayout: 'fixed' }} labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
                 <Descriptions.Item label="Vĩ độ">{selectedRecord.latitude != null ? selectedRecord.latitude.toFixed(6) : '—'}</Descriptions.Item>
                 <Descriptions.Item label="Kinh độ">{selectedRecord.longitude != null ? selectedRecord.longitude.toFixed(6) : '—'}</Descriptions.Item>
                 <Descriptions.Item label="Hệ quy chiếu">{selectedRecord.coordinateSystem ?? '—'}</Descriptions.Item>
@@ -2368,46 +2387,41 @@ export default function PortListPage() {
                   {selectedRecord.mapSymbolId ? (symbols.find((s) => s.id === selectedRecord.mapSymbolId)?.name || selectedRecord.mapSymbolId) : '—'}
                 </Descriptions.Item>
               </Descriptions>
-            )},
-            {
-              key: 'files',
-              label: '4. Tài liệu đính kèm',
-              children: (<>
+            )}
+            <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+              onClick={() => tg('files')}>
+              {detailCollapsed.files ? '▶' : '▼'} Tài liệu đính kèm
+            </Divider>
+            {!detailCollapsed.files && (<>
                 {detailFiles.length === 0 ? (
                   <span style={{ color: textTertiary }}>Không có tài liệu đính kèm</span>
                 ) : (
-                  <div>
-                    {detailFiles.map((f) => (
-                      <div
-                        key={f.id}
-                        style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                      >
-                        <div>
-                          <Typography.Text strong>{f.fileName}</Typography.Text>
-                          <br />
-                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                            {f.fileSize} bytes — {new Date(f.createdAt).toLocaleString('vi-VN')}
-                          </Typography.Text>
-                        </div>
-                        <Button type="link" icon={<DownloadOutlined />} onClick={() => window.open(documentApi.downloadUrl(f.minioKey), '_blank')} />
-                      </div>
-                    ))}
-                  </div>
+                  detailFiles.map((f) => (
+                    <div key={f.id} style={{ marginBottom: spaceSm }}>
+                      <FileOutlined style={{ marginRight: 8, color: actionPrimary }} />
+                      <a href={documentApi.downloadUrl(f.minioKey)} target="_blank" rel="noopener noreferrer"
+                        style={{ color: actionPrimary, fontSize: fontSizeMd }}>
+                        {f.fileName} ({(f.fileSize / 1024).toFixed(1)} KB)
+                      </a>
+                    </div>
+                  ))
                 )}
               </>
-            )},
-            {
-              key: 'system',
-              label: '5. Thông tin hệ thống',
-              children: (
-                <Descriptions bordered column={2} size="small">
+            )}
+            <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+              onClick={() => tg('system')}>
+              {detailCollapsed.system ? '▶' : '▼'} Thông tin hệ thống
+            </Divider>
+            {!detailCollapsed.system && (
+                <Descriptions bordered column={2} size="small" style={{ tableLayout: 'fixed' }} labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
                   <Descriptions.Item label="Người tạo">{selectedRecord.createdByName || selectedRecord.createdBy || '—'}</Descriptions.Item>
                   <Descriptions.Item label="Ngày tạo">{selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
                   <Descriptions.Item label="Cập nhật bởi">{selectedRecord.updatedByName || selectedRecord.updatedBy || '—'}</Descriptions.Item>
                   <Descriptions.Item label="Ngày cập nhật">{selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
                 </Descriptions>
-            )},
-          ]} />
+            )}
+              </>);
+            })()}
 
           <div style={{ marginTop: 24, textAlign: 'right' }}>
                 <Space>
@@ -2423,6 +2437,54 @@ export default function PortListPage() {
                   >
                     Đóng
                   </Button>
+                  {hasPerm('port:update') && (
+                    <Button
+                      type="primary"
+                      icon={<EditOutlined />}
+                      onClick={() => {
+                        closeDetailModal();
+                        updateForm.setFieldsValue({
+                          portCode: selectedRecord.portCode,
+                          portName: selectedRecord.portName,
+                          province: selectedRecord.province || undefined,
+                          orgUnitId: selectedRecord.orgUnitId || undefined,
+                          diaDiemChiTiet: selectedRecord.detailedLocation || undefined,
+                          phanCap: selectedRecord.portClass,
+                          phamViVungNuoc: selectedRecord.waterAreaScope || undefined,
+                          tongSoBenCang: selectedRecord.tongSoBenCang,
+                          tongSoKhuNeoDauChuyenTai: selectedRecord.tongSoKhuNeoDauChuyenTai,
+                          tongSoTuyenLuongCongCong: selectedRecord.tongSoTuyenLuongCongCong,
+                          tongSoTuyenLuongChuyenDung: selectedRecord.tongSoTuyenLuongChuyenDung,
+                          tongChieuDaiLuongCongCong: selectedRecord.tongChieuDaiLuongCongCong,
+                          tongChieuDaiLuongChuyenDung: selectedRecord.tongChieuDaiLuongChuyenDung,
+                          tongSoPhaoTieuBaoHieu: selectedRecord.tongSoPhaoTieuBaoHieu,
+                          tongSoDeKe: selectedRecord.tongSoDeKe,
+                          tongChieuDaiDeKe: selectedRecord.tongChieuDaiDeKe,
+                          tongSoDenBienDangTieu: selectedRecord.tongSoDenBienDangTieu,
+                          quantityBenPhao: selectedRecord.quantityBenPhao,
+                          quantityKhuNeoDau: selectedRecord.quantityKhuNeoDau,
+                          quantityKhuChuyenTai: selectedRecord.quantityKhuChuyenTai,
+                          cacKhuNuocKhac: selectedRecord.cacKhuNuocKhac || undefined,
+                          remarks: selectedRecord.remarks || undefined,
+                          gisLocation: {
+                            loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POINT',
+                            toaDo: selectedRecord.toaDo || '',
+                            bieuTuongId: selectedRecord.mapSymbolId,
+                          },
+                        });
+                        setUpdateModalVisible(true);
+                      }}
+                      style={{
+                        background: actionPrimary,
+                        borderColor: actionPrimary,
+                        borderRadius: radiusPill,
+                        height: 40,
+                        fontSize: fontSizeMd,
+                      }}
+                    >
+                      Chỉnh sửa
+                    </Button>
+                  )}
                 </Space>
               </div>
           </>)}

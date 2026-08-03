@@ -23,6 +23,8 @@ import {
   ApiOutlined,
   ContainerOutlined,
   SearchOutlined,
+  EnvironmentOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -231,9 +233,9 @@ export default function AppLayout() {
       icon: <ContainerOutlined />,
       label: 'Quản lý KCHT Hàng Hải',
       children: [
-        canAccessMenu('/port') ? { key: '/port', label: 'Quản lý cảng biển' } : null,
-        canAccessMenu('/berth') ? { key: '/berth', label: 'Quản lý bến cảng' } : null,
-        canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng' } : null,
+        canAccessMenu('/port') ? { key: '/port', label: 'Quản lý cảng biển', icon: <EnvironmentOutlined /> } : null,
+        canAccessMenu('/berth') ? { key: '/berth', label: 'Quản lý bến cảng', icon: <ContainerOutlined /> } : null,
+        canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <ApartmentOutlined /> } : null,
         canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn' } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
