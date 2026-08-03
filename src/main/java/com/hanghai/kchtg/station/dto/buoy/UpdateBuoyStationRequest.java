@@ -43,6 +43,22 @@ public class UpdateBuoyStationRequest {
     private String description;
 
     private UUID unitId;
+    private UUID operatingOrgId;
+    private UUID portId;
+    private UUID waterwayId;
+    private UUID waterwayRouteId;
+    private String province;
+    private String address;
+    private LocalDate constructionDate;
+    private Double totalArea;
+    private Double usableArea;
+    private Integer staffCount;
+    private Integer lastMaintenanceYear;
+    private String note;
+    private String objectType;
+    private String icon;
+    private String coordinateSystem;
+    private String displayFormat;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private Boolean isActive;
