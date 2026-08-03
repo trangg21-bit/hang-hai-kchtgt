@@ -25,14 +25,17 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Cập nhật Cảng cạn cho phép chỉnh sửa thông tin Cảng cạn đã tồn tại. **Form giống hệt F-026 (Tạo mới)** — 4 tab, 25 trường — với 2 khác biệt duy nhất:
+Cập nhật Cảng cạn cho phép chỉnh sửa thông tin Cảng cạn đã tồn tại. **Form giống hệt F-026 (Tạo mới)** — 4 tab, 25 trường — với các khác biệt sau:
 
 | Khác biệt | F-026 (Tạo mới) | F-027 (Cập nhật) |
 |-----------|----------------|-------------------|
 | Dữ liệu ban đầu | Trống / mặc định | **Pre-filled từ DB** qua `GET /api/v1/dry-ports/{id}` |
 | Mã CC-XXXXXX | Tự sinh, RO | **Hiển thị từ DB, RO — không bao giờ đổi** |
+| Đơn vị quản lý | Chọn tự do | **Khóa cứng, không sửa được** (giống mã CC-XXXXXX) |
 
-Form vẫn có 2 nút như F-026: **Lưu tạm** và **Lưu và phê duyệt** (nếu có `dryport:approve`). Mọi thay đổi được ghi vào `change_history`.
+Form có 2 nút: **Lưu tạm** và **Lưu và phê duyệt** (nếu có `dryport:approve`). Mọi thay đổi được ghi vào `change_history`.
+
+> **Quy tắc đặc biệt với bản ghi đã APPROVED:** Vẫn cho phép mở form cập nhật. Nút "Lưu tạm" bị ẩn — người dùng **bắt buộc** dùng nút "Lưu và phê duyệt" để phê duyệt lại. Nếu không có `dryport:approve` thì không được sửa bản ghi APPROVED.
 
 > **Gửi phê duyệt** là hành động trên F-083 (Danh sách), không có trên form này.
 
@@ -44,18 +47,46 @@ Form vẫn có 2 nút như F-026: **Lưu tạm** và **Lưu và phê duyệt** (
 
 ### 1.3. Luồng chính
 
-F-083/F-084 → "Chỉnh sửa" hoặc "Tiếp tục chỉnh sửa" → `GET /api/v1/dry-ports/{id}` → form pre-filled → sửa → **Lưu tạm** (giữ trạng thái, ở lại form) hoặc **Lưu và phê duyệt** (`approvalStatus=APPROVED`, `change_history`, redirect F-083).
+F-083/F-084 → "Chỉnh sửa" → `GET /api/v1/dry-ports/{id}` → form pre-filled → sửa → **Lưu tạm** (giữ trạng thái, ở lại form; không áp dụng cho APPROVED) hoặc **Lưu và phê duyệt** (`approvalStatus=APPROVED`, `change_history`, redirect F-083). Với bản ghi APPROVED: chỉ có **Lưu và phê duyệt**.
 
 ---
 
 ## 2. Ai dùng? Dùng như thế nào?
 
+### 2.1. Phân quyền theo chức năng
+
+Các thao tác trong tính năng được bảo vệ bởi các quyền (permissions) tương ứng. Người dùng chỉ có thể thực hiện những thao tác mà vai trò của họ được cấp quyền:
+
+| Vai trò | Quyền xem | Quyền thao tác | Phạm vi dữ liệu | Ghi chú |
+|---|---|---|---|---|
+| system-admin | `dryport:read` | Tất cả thao tác nếu được gán quyền | Toàn bộ hệ thống | |
+| admin (Security) | `dryport:read` | Theo permission được gán | Theo đơn vị được phân công | |
+| admin-operation | `dryport:read` | Theo permission được gán | Theo đơn vị được phân công | |
+| admin | `dryport:read` | Theo permission được gán | Theo đơn vị quản lý | |
+| Lãnh đạo | `dryport:read` | Không có quyền thao tác | Theo đơn vị được phân công | Chỉ xem |
+| Cán bộ | `dryport:read` | Theo permission được gán | Theo đơn vị công tác | |
+| Cá nhân | Không có quyền | Không có quyền | Không | Không truy cập được |
+
+Chi tiết permission:
+
 | Permission | Mô tả |
 |---|---|
-| `dryport:update` | Thấy nút "Chỉnh sửa"/"Tiếp tục chỉnh sửa", gọi PUT |
-| `dryport:approve` | Thấy thêm nút "Lưu và phê duyệt" |
+| `dryport:update` | Thấy nút "Chỉnh sửa", gọi PUT |
+| `dryport:approve` | Thấy thêm nút "Lưu và phê duyệt". **Bắt buộc để sửa bản ghi APPROVED** |
 
-> Phân quyền do M-001 quản lý. Admin Cục không giới hạn đơn vị.
+> Phân quyền do M-001 quản lý. Các permission trên được gán động cho vai trò thông qua module M-001.
+
+### 2.2. Logic phân quyền đặc biệt cho tài khoản Admin Cục
+
+Đối với tài khoản **Admin Cục**, áp dụng logic phân quyền đặc biệt sau:
+
+- **Xem full dữ liệu:** Admin Cục có quyền xem và cập nhật toàn bộ dữ liệu Cảng cạn, không giới hạn phạm vi đơn vị hay khu vực.
+- **Xem thông tin người tạo:** Admin Cục thấy được `createdBy` (họ tên, tên đăng nhập) của bản ghi Cảng cạn.
+- **Xem thời gian tạo:** Admin Cục thấy được `createdAt` (timestamp) của bản ghi.
+- **Xem thông tin người chỉnh sửa:** Admin Cục thấy được `updatedBy` (họ tên, tên đăng nhập) của lần cập nhật cuối cùng.
+- **Xem thời gian cập nhật:** Admin Cục thấy được `updatedAt` (timestamp) của lần cập nhật cuối cùng.
+
+> Các trường audit này chỉ hiển thị với tài khoản Admin Cục. Với các vai trò khác, các trường này bị ẩn khỏi giao diện.
 
 ---
 
@@ -80,7 +111,7 @@ F-083/F-084 → "Chỉnh sửa" hoặc "Tiếp tục chỉnh sửa" → `GET /ap
 
 ### Nhóm 1: Mở form
 
-**AC-027-01:** `dryport:update` → "Chỉnh sửa"/"Tiếp tục chỉnh sửa" → `GET /api/v1/dry-ports/{id}` → pre-fill 25 trường giống F-026.
+**AC-027-01:** `dryport:update` → "Chỉnh sửa" → `GET /api/v1/dry-ports/{id}` → pre-fill 25 trường giống F-026.
 **AC-027-02:** `dryPortCode` hiển thị CC-XXXXXX, disabled, không focus được, không sửa được.
 
 ### Nhóm 2: Lưu tạm
@@ -100,28 +131,30 @@ F-083/F-084 → "Chỉnh sửa" hoặc "Tiếp tục chỉnh sửa" → `GET /ap
 
 ## 5. Quy tắc nghiệp vụ (Business Rules)
 
-### 5.1. Mã cảng cạn — KHÔNG ĐỔI
+### 5.1. Trường bị khóa khi cập nhật
 
-| ID | Quy tắc | Nguồn |
-|---|---|---|
-| BR-027-01 | **Mã CC-XXXXXX bất biến vĩnh viễn** — Được sinh khi tạo mới (F-026), không bao giờ sửa được trong suốt vòng đời. Form cập nhật hiển thị read-only. Backend từ chối nếu payload gửi mã khác với DB. | Thiết kế |
+| ID | Quy tắc | Áp dụng cho | Nguồn |
+|---|---|---|---|
+| BR-027-01 | **Mã CC-XXXXXX bất biến vĩnh viễn** — Được sinh khi tạo mới (F-026), không bao giờ sửa được trong suốt vòng đời. Form cập nhật hiển thị read-only. Backend từ chối nếu payload gửi mã khác với DB. | Form cập nhật | Thiết kế |
+| BR-027-01a | **Đơn vị quản lý bất biến** — `orgUnitId` được gán khi tạo mới (F-026), không bao giờ sửa được trong suốt vòng đời, giống `dryPortCode`. Form cập nhật hiển thị disabled. Backend từ chối nếu payload gửi giá trị khác với DB. | Form cập nhật | Nghiệp vụ |
 
 ### 5.2. Luồng cập nhật
 
-| ID | Quy tắc | Nguồn |
-|---|---|---|
-| BR-027-02 | **Lưu tạm giữ nguyên trạng thái** — `approvalStatus` không đổi. Tối thiểu: Tên. Không tạo change_history. | Nghiệp vụ |
-| BR-027-03 | **Lưu và phê duyệt** — Cần `dryport:approve`. Đầy đủ 6 trường bắt buộc (như F-026). `approvalStatus=APPROVED`, tạo `change_history` + `approval_logs`. | Nghiệp vụ |
-| BR-027-04 | **Ghi nhận lịch sử** — Backend so sánh payload với DB, tạo `change_history` cho từng trường có thay đổi (old_value → new_value). | Thiết kế |
+| ID | Quy tắc | Áp dụng cho | Nguồn |
+|---|---|---|---|
+| BR-027-02 | **Lưu tạm giữ nguyên trạng thái** — `approvalStatus` không đổi. Tối thiểu: Tên. Không tạo change_history. **Không áp dụng cho bản ghi APPROVED** (xem BR-027-03a). | Form cập nhật | Nghiệp vụ |
+| BR-027-03 | **Lưu và phê duyệt** — Cần `dryport:approve`. Đầy đủ 6 trường bắt buộc (như F-026). `approvalStatus=APPROVED`, tạo `change_history` + `approval_logs`. | Form cập nhật | Nghiệp vụ |
+| BR-027-03a | **Bản ghi APPROVED — bắt buộc phê duyệt lại:** Khi sửa bản ghi đã APPROVED, nút "Lưu tạm" bị ẩn. Người dùng chỉ có một lựa chọn: **"Lưu và phê duyệt"** để cập nhật và phê duyệt lại. Nếu người dùng không có `dryport:approve` → không thể sửa bản ghi APPROVED (nút "Chỉnh sửa" bị ẩn trên F-083). | Form cập nhật | Nghiệp vụ |
+| BR-027-04 | **Ghi nhận lịch sử** — Backend so sánh payload với DB, tạo `change_history` cho từng trường có thay đổi (old_value → new_value). | Backend | Thiết kế |
 
 ### 5.3. Kế thừa từ F-026
 
-| ID | Quy tắc |
-|---|---|
-| BR-027-05 | Validate dữ liệu như F-026: GPS, diện tích/công suất ≥0, định dạng file. |
-| BR-027-06 | `dryport:update` mới thấy nút sửa. `dryport:approve` mới thấy nút Lưu và phê duyệt. |
-| BR-027-07 | Phạm vi đơn vị — chỉ sửa trong đơn vị của mình. Admin Cục toàn bộ. |
-| BR-027-08 | Audit log mọi thao tác. |
+| ID | Quy tắc | Áp dụng cho | Nguồn |
+|---|---|---|---|
+| BR-027-05 | Validate dữ liệu như F-026: GPS, diện tích/công suất ≥0, định dạng file. | Form cập nhật | F-026 |
+| BR-027-06 | `dryport:update` mới thấy nút sửa. `dryport:approve` mới thấy nút Lưu và phê duyệt. | UI | RBAC |
+| BR-027-07 | Phạm vi đơn vị — chỉ sửa trong đơn vị của mình. Admin Cục toàn bộ. | Backend | RBAC |
+| BR-027-08 | Audit log mọi thao tác. | Backend | Bảo mật |
 
 ---
 
@@ -146,11 +179,20 @@ F-083/F-084 → "Chỉnh sửa" hoặc "Tiếp tục chỉnh sửa" → `GET /ap
 
 ### 8.1. Mở form
 
-Từ F-083: NHAP → "Tiếp tục chỉnh sửa"; PENDING/APPROVED/REJECTED → "Chỉnh sửa". Từ F-084: nút "Chỉnh sửa". GET pre-fill toàn bộ 25 trường. `dryPortCode` RO.
+Từ F-083: NHAP, PENDING, REJECTED → "Chỉnh sửa"; APPROVED → "Chỉnh sửa" (chỉ khi có `dryport:approve`, nếu không nút bị ẩn). Từ F-084: nút "Chỉnh sửa". GET pre-fill toàn bộ 25 trường. `dryPortCode` RO.
 
 ### 8.2. Sửa và lưu
 
-Người dùng sửa bất kỳ trường nào (trừ mã) → Lưu tạm (giữ trạng thái, ở lại) hoặc Lưu và phê duyệt (APPROVED, history, redirect). Form, tab, trường giống hệt F-026 Section 10.
+Người dùng sửa bất kỳ trường nào (trừ mã và `orgUnitId` — hai trường này luôn bị khóa) → tùy trạng thái hiện tại:
+
+| Trạng thái hiện tại | Nút hiển thị | Hành vi |
+|---|---|---|
+| NHAP | [Lưu tạm] [Lưu và phê duyệt] | Lưu tạm: giữ NHAP, ở lại form. Lưu & duyệt: → APPROVED, redirect |
+| PENDING | [Lưu tạm] [Lưu và phê duyệt] | Lưu tạm: giữ PENDING, ở lại form. Lưu & duyệt: → APPROVED, redirect |
+| REJECTED | [Lưu tạm] [Lưu và phê duyệt] | Lưu tạm: giữ REJECTED, ở lại form. Lưu & duyệt: → APPROVED, redirect |
+| **APPROVED** | **[Lưu và phê duyệt]** | **Chỉ có nút này. Người dùng phải có `dryport:approve`.** Sau lưu → APPROVED (phê duyệt lại), redirect |
+
+Form, tab, trường giống hệt F-026 Section 10.
 
 ### 8.3. Mã không đổi
 
@@ -160,15 +202,60 @@ Dù sửa gì, lưu kiểu gì, mã CC-XXXXXX không bao giờ thay đổi. Back
 
 ## 9. Yêu cầu phi chức năng
 
-PUT ≤2s; HTTPS; RBAC; transaction atomic; audit log ≥2 năm.
+- **Hiệu năng:** PUT ≤2s; GET pre-fill ≤500ms
+- **Bảo mật:** HTTPS; RBAC từng nút hành động; transaction atomic
+- **Độ tin cậy:** Transaction atomic (ports + change_history + approval_logs)
+- **UX:** Responsive; loading skeleton; toast thành công/lỗi
+- **Pháp lý:** Audit log ≥ 2 năm
 
 ---
 
 ## 10. Yêu cầu giao diện
 
-> **Form giống hệt F-026 Section 10** — 4 tab, 25 trường, token từ `theme.ts` + `tokens.ts`.
->
-> Khác biệt duy nhất: dữ liệu pre-filled, mã RO (không tự sinh), footer [Hủy] [Lưu tạm] [Lưu và phê duyệt].
+> Token từ `theme.ts` + `tokens.ts`. KHÔNG hardcode.
+
+### 10.1. Layout tổng thể
+
+- **Header:** "Cập nhật Cảng cạn — CC-XXXXXX" + nút X đóng
+- **Body:** 4 tab giống hệt F-026 (Thông tin chung | Công bố | Vị trí | File đính kèm), dữ liệu pre-filled từ DB
+- **Khác biệt với F-026:**
+  - `dryPortCode`: hiển thị read-only, không focus được
+  - `orgUnitId`: hiển thị disabled, không sửa được
+  - Tab Thông tin chung active mặc định
+- **Footer:** [Hủy] outlined + [Lưu tạm] outlined (trái) + [Lưu và phê duyệt] primary (phải). Với bản ghi APPROVED: ẩn [Lưu tạm]
+- Tất cả nút `borderRadius: radiusPill`, `height: 40`
+
+### 10.2. Form chi tiết
+
+> Tham chiếu F-026 Section 10.2–10.5 để biết danh sách đầy đủ 25 trường và cách bố trí từng tab.
+
+### 10.3. Phân quyền hiển thị
+
+| Vai trò | Thấy thành phần nào | Ghi chú |
+|---|---|---|
+| system-admin | Nút "Chỉnh sửa" + form đầy đủ + cả 2 nút lưu | Có tất cả quyền nếu được gán |
+| admin (Security) | Nút "Chỉnh sửa" + form + nút theo permission | |
+| admin-operation | Nút "Chỉnh sửa" + form + nút theo permission | |
+| admin | Nút "Chỉnh sửa" + form + nút theo permission | |
+| Lãnh đạo | Không thấy nút "Chỉnh sửa" | Chỉ có quyền xem |
+| Cán bộ | Nút "Chỉnh sửa" nếu có `dryport:update` | |
+| Admin Cục | Toàn bộ + không giới hạn đơn vị | Xem thêm audit fields |
+
+### 10.4. Giao diện trên điện thoại
+
+Khi màn hình nhỏ hơn 768px:
+
+- Layout 2 cột chuyển thành 1 cột
+- Tab điều hướng thu nhỏ, scroll ngang
+- Modal full màn hình
+- Nút footer xếp dọc
+
+### 10.5. UX
+
+- `marginBottom: spaceFormField`, `borderRadius: radiusPill`, `height:40` cho mọi input, select, button
+- Loading skeleton khi GET pre-fill đang chạy
+- Toast `statusOperational` khi lưu thành công, `statusDanger` khi lỗi
+- Focus field đầu tiên khi mở form
 
 ---
 

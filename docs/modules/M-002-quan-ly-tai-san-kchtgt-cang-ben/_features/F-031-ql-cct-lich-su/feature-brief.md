@@ -1,6 +1,6 @@
 ---
 id: F-031
-name: Quản lý Cảng cạn - Lịch sử
+name: Quản lý Cảng cạn - Lịch sử thay đổi
 slug: ql-cct-lich-su
 module-id: M-002
 status: backend_done
@@ -14,7 +14,7 @@ consumed_by_modules: []
 # Đặc tả nghiệp vụ: Quản lý Cảng cạn - Lịch sử thay đổi
 
 **Tài liệu:** BA Feature Brief
-**Feature:** F-031 — Lịch sử Cảng cạn
+**Feature:** F-031 — Lịch sử thay đổi Cảng cạn
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
 **Người viết:** Business Analyst
 **Ngày cập nhật:** 2026-08-03
@@ -25,91 +25,101 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Hiển thị toàn bộ lịch sử thay đổi của một Cảng cạn từ bảng `change_history`. Mỗi dòng thể hiện: loại hành động (Tạo mới / Cập nhật), trường bị thay đổi, giá trị cũ → giá trị mới, người thực hiện, thời gian. Dữ liệu sắp xếp mới nhất lên đầu. Có bộ lọc theo tên trường.
+Tự động ghi nhận mọi thay đổi dữ liệu Cảng cạn vào bảng `change_history` ở tầng backend. Mỗi khi người dùng thực hiện thao tác **Lưu và phê duyệt** (F-026, F-027) hoặc **Xóa** (F-028), hệ thống ghi lại: hành động (CREATE/UPDATE/DELETE), trường bị thay đổi, giá trị cũ → giá trị mới, người thực hiện, thời gian.
+
+> **Lưu ý:** F-031 là **backend-only** — chỉ có bảng `change_history` và API nội bộ phục vụ ghi log. **Không có giao diện người dùng (UI) riêng** cho chức năng này. Việc hiển thị lịch sử thay đổi sẽ được bổ sung trong tương lai nếu có yêu cầu.
 
 ### 1.2. Tại sao cần?
 
 - Truy xuất mọi thay đổi của Cảng cạn — minh bạch, giải trình được
 - Hỗ trợ kiểm toán: ai sửa, sửa gì, khi nào
-- Phát hiện sai sót: so sánh oldValue → newValue
+- Dữ liệu lịch sử là bất biến, không thể xóa hoặc sửa
 
 ### 1.3. Luồng chính
 
-F-083 (dropdown) hoặc F-084 (nút "Lịch sử") → `GET /api/v1/dry-ports/{id}/history` → bảng change_history phân trang. Breadcrumb: "Chi tiết > Lịch sử". Filter dropdown: chọn tên trường → chỉ hiện thay đổi của trường đó.
+Người dùng thao tác trên F-026/F-027/F-028 → backend xử lý → **tự động** ghi vào `change_history` → không có UI riêng cho người dùng xem.
 
 ---
 
 ## 2. Ai dùng? Dùng như thế nào?
 
-| Permission | Mô tả |
-|---|---|
-| `dryport:history` | Xem lịch sử thay đổi |
+### 2.1. Phân quyền theo chức năng
 
-> M-001 quản lý. Tất cả vai trò (trừ Cá nhân) thường được gán quyền này. Admin Cục: không giới hạn đơn vị.
+Không có quyền riêng cho F-031. Bảng `change_history` được ghi tự động bởi backend khi người dùng thực hiện các thao tác trong F-026, F-027, F-028. Không có API công khai cho end-user.
+
+| Vai trò | Tương tác với change_history | Ghi chú |
+|---|---|---|
+| Tất cả vai trò | Không tương tác trực tiếp | Backend tự động ghi log |
+| Admin Cục | Có thể truy vấn qua DB (nội bộ) | Phục vụ kiểm toán nếu cần |
+
+> Phân quyền do M-001 quản lý.
+
+### 2.2. Logic phân quyền đặc biệt cho tài khoản Admin Cục
+
+Đối với tài khoản **Admin Cục**:
+
+- **Truy vấn dữ liệu kiểm toán:** Admin Cục có thể truy xuất dữ liệu từ bảng `change_history` qua các công cụ quản trị nội bộ (không qua UI công khai).
+- **Dữ liệu không giới hạn:** Admin Cục xem được toàn bộ lịch sử thay đổi trên mọi đơn vị, không giới hạn phạm vi.
+
+> Hiện tại chưa có UI cho chức năng này kể cả với Admin Cục.
 
 ---
 
 ## 3. User Stories
 
 ### Must
-- **US-031-01:** Xem danh sách thay đổi, sắp xếp mới nhất lên đầu.
-- **US-031-02:** Phân biệt Tạo mới (badge xanh) và Cập nhật (badge vàng).
-- **US-031-03:** Xem chi tiết từng thay đổi: trường nào, giá trị cũ → mới.
+- **US-031-01:** Là hệ thống, tôi tự động ghi lại mọi thay đổi dữ liệu Cảng cạn khi người dùng Lưu và phê duyệt hoặc Xóa.
+- **US-031-02:** Là hệ thống, tôi ghi nhận đầy đủ: hành động, trường thay đổi, giá trị cũ, giá trị mới, người thực hiện, thời gian.
 
 ### Should
-- **US-031-04:** Lọc theo tên trường (Field filter dropdown).
-- **US-031-05:** Phân trang 20 dòng/trang.
+- **US-031-03:** Là hệ thống, tôi đảm bảo dữ liệu lịch sử là bất biến — không ai có thể sửa hoặc xóa.
 
 ### Could
-- **US-031-06:** Xuất Excel lịch sử thay đổi.
+- Không áp dụng (backend-only, không có nhu cầu người dùng cuối trong scope hiện tại).
 
 ---
 
 ## 4. Yêu cầu chức năng (Acceptance Criteria)
 
-### Nhóm 1: Hiển thị
+### Nhóm 1: Ghi nhận tự động
 
-**AC-031-01:** `GET /api/v1/dry-ports/{id}/history` → bảng các cột: Hành động (badge), Trường, Giá trị cũ, Giá trị mới, Người thay đổi, Thời gian.
-**AC-031-02:** Sắp xếp `changedAt` DESC (mới nhất lên đầu).
-**AC-031-03:** CREATE = badge xanh "Tạo mới", UPDATE = badge vàng "Cập nhật".
+**AC-031-01:** Khi người dùng "Lưu và phê duyệt" trong F-026 (Tạo mới) → backend tạo 1 bản ghi CREATE trong `change_history` cho mỗi trường được điền.
+**AC-031-02:** Khi người dùng "Lưu và phê duyệt" trong F-027 (Cập nhật) → backend so sánh payload với DB, tạo 1 bản ghi UPDATE trong `change_history` cho mỗi trường có thay đổi (old_value → new_value).
+**AC-031-03:** Khi người dùng "Xóa" trong F-028 → backend ghi 1 bản ghi DELETE vào `change_history` với `deletedBy` và `deletedAt`.
 
-### Nhóm 2: Lọc & Phân trang
+### Nhóm 2: Toàn vẹn dữ liệu
 
-**AC-031-04:** Dropdown "Trường" → chọn tên trường → GET `?field=` → chỉ hiện thay đổi của trường đó. Chọn "Tất cả" → hiện toàn bộ.
-**AC-031-05:** Phân trang 20 dòng/trang.
-
-### Nhóm 3: Dữ liệu
-
-**AC-031-06:** `oldValue` hoặc `newValue` null → hiển thị "—".
-**AC-031-07:** `changedBy` hiển thị tên người dùng (resolve UUID → tên qua M-001), không hiển thị UUID.
-**AC-031-08:** `changedAt` hiển thị định dạng dd/MM/yyyy HH:mm:ss.
+**AC-031-04:** Ghi `change_history` và thao tác chính (tạo/cập nhật/xóa) trong cùng một transaction — nếu lỗi thì rollback toàn bộ.
+**AC-031-05:** Dữ liệu trong `change_history` là read-only — không có API nào cho phép sửa hoặc xóa.
 
 ---
 
 ## 5. Quy tắc nghiệp vụ (Business Rules)
 
-| ID | Quy tắc | Nguồn |
-|---|---|---|
-| BR-031-01 | Lịch sử thay đổi là bất biến — không thể xóa hoặc sửa. | Thiết kế |
-| BR-031-02 | Bản ghi CREATE đầu tiên được tạo khi Cảng cạn được tạo mới (F-026 Lưu và phê duyệt). | Nghiệp vụ |
-| BR-031-03 | Bản ghi UPDATE được tạo mỗi lần Lưu và phê duyệt trong F-027. | Nghiệp vụ |
-| BR-031-04 | `changedBy` resolve UUID → tên hiển thị từ M-001. Nếu user đã bị xóa → hiển thị "Người dùng không xác định". | Kỹ thuật |
+| ID | Quy tắc | Áp dụng cho | Nguồn |
+|---|---|---|---|
+| BR-031-01 | **Lịch sử thay đổi là bất biến** — không thể xóa hoặc sửa bản ghi trong `change_history`. | Backend | Thiết kế |
+| BR-031-02 | **Bản ghi CREATE** được tạo khi Cảng cạn được tạo mới và Lưu và phê duyệt (F-026). Mỗi trường được điền tạo 1 dòng CREATE. | F-026 | Nghiệp vụ |
+| BR-031-03 | **Bản ghi UPDATE** được tạo mỗi lần Lưu và phê duyệt trong F-027. Chỉ ghi những trường thực sự thay đổi (old_value ≠ new_value). | F-027 | Nghiệp vụ |
+| BR-031-04 | **Bản ghi DELETE** được tạo khi xóa Cảng cạn trong F-028. Ghi nhận `deletedBy` và `deletedAt`. | F-028 | Nghiệp vụ |
+| BR-031-05 | **Transaction atomic** — thao tác chính và ghi `change_history` trong cùng transaction. Nếu ghi history thất bại → rollback thao tác chính. | Backend | Kỹ thuật |
+| BR-031-06 | **Không có UI** — F-031 là backend-only. Không có trang, popup, hay API công khai cho người dùng cuối xem lịch sử. | Toàn bộ | Thiết kế |
 
 ---
 
 ## 6. Mô hình dữ liệu
 
-### `change_history`
+### 6.1. `change_history`
 
 | Tên trường | Kiểu | Mô tả |
 |---|---|---|
 | id | UUID | PK |
 | entity_id | UUID | FK → dry_ports.id |
 | entity_type | NVARCHAR(50) | "DRY_PORT" |
-| action_type | NVARCHAR(20) | CREATE / UPDATE |
+| action_type | NVARCHAR(20) | CREATE / UPDATE / DELETE |
 | field_name | NVARCHAR(100) | Tên trường thay đổi |
 | old_value | NVARCHAR(1000) | Giá trị cũ (null nếu CREATE) |
-| new_value | NVARCHAR(1000) | Giá trị mới |
+| new_value | NVARCHAR(1000) | Giá trị mới (null nếu DELETE) |
 | changed_by | UUID | Người thực hiện |
 | changed_at | TIMESTAMP | Thời điểm |
 
@@ -117,50 +127,58 @@ F-083 (dropdown) hoặc F-084 (nút "Lịch sử") → `GET /api/v1/dry-ports/{i
 
 ## 7. API Endpoints
 
-| Method | Endpoint | Mô tả | Quyền |
+> Không có API công khai cho end-user. Backend nội bộ ghi trực tiếp vào `change_history` trong cùng transaction với thao tác chính.
+
+| Method | Endpoint | Mô tả | Ghi chú |
 |---|---|---|---|
-| GET | `/api/v1/dry-ports/{id}/history?field=&page=&size=` | Lấy lịch sử thay đổi | `dryport:history` |
+| — | — | Không có API công khai | Ghi tự động trong F-026, F-027, F-028 |
 
 ---
 
 ## 8. Chi tiết nghiệp vụ
 
-### 8.1. Truy cập lịch sử
+### 8.1. Ghi CREATE (từ F-026)
 
-Từ F-083: dropdown hành động → "Lịch sử". Từ F-084: nút "Lịch sử" trong footer. Cả hai truyền `id` → GET history.
+Khi người dùng bấm "Lưu và phê duyệt" trên form Tạo mới (F-026), backend:
+1. INSERT vào `dry_ports`
+2. Với mỗi trường được người dùng điền (khác null/empty):
+   - INSERT vào `change_history`: `action_type=CREATE`, `field_name=<tên trường>`, `old_value=null`, `new_value=<giá trị>`, `changed_by=<currentUser>`, `changed_at=NOW()`
 
-### 8.2. Bảng lịch sử
+### 8.2. Ghi UPDATE (từ F-027)
 
-Dòng đầu tiên luôn là CREATE (từ F-026). Các dòng sau là UPDATE (từ F-027). Mỗi lần Lưu và phê duyệt tạo N dòng UPDATE (N = số trường thay đổi).
+Khi người dùng bấm "Lưu và phê duyệt" trên form Cập nhật (F-027), backend:
+1. SELECT bản ghi hiện tại từ DB
+2. So sánh từng trường trong payload với DB
+3. Với mỗi trường có thay đổi:
+   - INSERT vào `change_history`: `action_type=UPDATE`, `field_name=<tên trường>`, `old_value=<giá trị cũ>`, `new_value=<giá trị mới>`, `changed_by=<currentUser>`, `changed_at=NOW()`
+4. UPDATE `dry_ports`
 
-### 8.3. Lọc
+### 8.3. Ghi DELETE (từ F-028)
 
-Dropdown chứa tất cả tên trường của DryPort (25 trường). Chọn 1 trường → filter. Mặc định: "Tất cả".
+Khi người dùng xác nhận Xóa (F-028), backend:
+1. INSERT vào `change_history`: `action_type=DELETE`, `field_name=null`, `old_value=null`, `new_value=null`, `changed_by=<currentUser>`, `changed_at=NOW()`
+2. Cập nhật `dry_ports`: `approval_status=Lịch sử`, `deleted_by=<currentUser>`, `deleted_at=NOW()`
 
 ---
 
 ## 9. Yêu cầu phi chức năng
 
-- **Hiệu năng:** GET ≤500ms; hỗ trợ ≥50 concurrent
-- **Bảo mật:** HTTPS; RBAC; dữ liệu read-only
-- **UX:** Responsive; loading skeleton; phân trang mượt
+- **Hiệu năng:** Ghi `change_history` không được làm chậm thao tác chính quá 100ms
+- **Độ tin cậy:** Transaction atomic — nếu ghi history thất bại, toàn bộ thao tác rollback
+- **Bảo mật:** Dữ liệu `change_history` là read-only, không có API sửa/xóa
+- **Lưu trữ:** Dữ liệu lịch sử được giữ vĩnh viễn, không tự động xóa
 
 ---
 
 ## 10. Yêu cầu giao diện
 
-> Token từ `theme.ts` + `tokens.ts`.
-
-- **Layout:** Breadcrumb "Quản lý Cảng cạn > CC-XXXXXX > Lịch sử". Bảng lịch sử + filter dropdown + phân trang.
-- **Badge:** CREATE = `statusOperational` (xanh), UPDATE = `statusWarning` (vàng)
-- **Bảng:** cột rõ ràng, oldValue → newValue hiển thị dạng "A → B"
-- `borderRadius: radiusPill`, `height:40` cho dropdown
+> **Không áp dụng** — F-031 là backend-only, không có giao diện người dùng.
 
 ---
 
 ## Implementation Status
 
-| Layer | Status |
-|-------|--------|
-| Backend | Done |
-| Frontend | Pending |
+| Layer | Status | Notes |
+|-------|--------|-------|
+| Backend | Done | Bảng `change_history` + ghi tự động trong F-026/F-027/F-028 |
+| Frontend | Không áp dụng | Backend-only, không có UI |

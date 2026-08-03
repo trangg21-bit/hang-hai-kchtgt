@@ -25,20 +25,17 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Xóa Cảng cạn cho phép người dùng có thẩm quyền loại bỏ một Cảng cạn khỏi danh sách hoạt động thông qua cơ chế **xóa mềm (soft-delete)**. Bản ghi không bị xóa vật lý khỏi database — thay vào đó, trường `deletedAt` được gán timestamp hiện tại. Cảng cạn đã xóa không còn xuất hiện trong danh sách mặc định nhưng vẫn tồn tại để phục vụ truy xuất lịch sử và kiểm toán.
+Cho phép người dùng có thẩm quyền xóa một Cảng cạn có trạng thái "Lưu tạm" trong danh sách.
 
-Để ngăn chặn xóa nhầm, hệ thống yêu cầu người dùng **nhập lại chính xác mã cảng cạn (CC-XXXXXX)** trong hộp thoại xác nhận trước khi thực hiện.
+Sau khi xóa, Cảng cạn chuyển sang trạng thái **"Lịch sử"** — vẫn hiển thị trong danh sách chính, có thể tra cứu và xem lại thông tin để phục vụ đối chiếu. Ở trạng thái này, không ai được phép chỉnh sửa hay thao tác gì thêm.
 
-### 1.2. Tại sao cần?
+### 1.2. Điều kiện được xóa
 
-- Loại bỏ Cảng cạn không còn tồn tại hoặc đã sáp nhập khỏi giao diện hoạt động
-- Soft-delete bảo toàn dữ liệu lịch sử — không mất dữ liệu vĩnh viễn
-- Yêu cầu nhập mã xác nhận — chống xóa nhầm do thao tác vô ý
-- DryPort không có thực thể con nên không cần kiểm tra ràng buộc (child guard)
+**Chỉ được xóa Cảng cạn đang ở trạng thái Lưu tạm (NHAP).** Các trạng thái khác (Đang chờ duyệt, Đã duyệt, Từ chối) không được phép xóa. Điều này đảm bảo chỉ những bản ghi chưa hoàn thiện, chưa đưa vào sử dụng mới có thể xóa.
 
 ### 1.3. Luồng chính
 
-F-083 (Danh sách) hoặc F-084 (Chi tiết) → nút "Xóa" (chỉ hiển thị cho người có `dryport:delete`) → hộp thoại xác nhận: "Bạn có chắc chắn muốn xóa cảng cạn CC-XXXXXX — [Tên]? Hành động này không thể hoàn tác. Vui lòng nhập mã cảng cạn để xác nhận." → nhập đúng mã → "Xác nhận xóa" → `DELETE /api/v1/dry-ports/{id}` → `deletedAt = NOW()` → toast "Đã xóa thành công" → refresh danh sách.
+Từ màn hình Danh sách (F-083), người dùng chọn một Cảng cạn đang ở trạng thái Lưu tạm → bấm "Xóa" → hệ thống hiển thị hộp thoại xác nhận, yêu cầu xác nhận → sau khi xác nhận, trạng thái chuyển thành "Lịch sử" → bản ghi vẫn hiển thị trong danh sách chính với trạng thái Lịch sử, có thể xem lại nhưng không thể chỉnh sửa.
 
 ---
 
@@ -46,93 +43,84 @@ F-083 (Danh sách) hoặc F-084 (Chi tiết) → nút "Xóa" (chỉ hiển thị
 
 ### 2.1. Phân quyền theo chức năng
 
-| Permission | Mô tả |
-|---|---|
-| `dryport:delete` | Xóa Cảng cạn — bắt buộc để thấy nút "Xóa" và gọi API |
+Các thao tác trong tính năng được bảo vệ bởi quyền `dryport:delete`. Người dùng chỉ có thể thực hiện khi vai trò của họ được cấp quyền này:
 
-> **Phân quyền do M-001 — Quản trị hệ thống quản lý.** Tài liệu này chỉ khai báo permission cần có.
+| Vai trò | Quyền xem | Quyền xóa | Phạm vi dữ liệu | Ghi chú |
+|---|---|---|---|---|
+| system-admin | `dryport:read` | `dryport:delete` nếu được gán | Toàn bộ hệ thống | Xem thêm audit fields |
+| admin (Security) | `dryport:read` | `dryport:delete` nếu được gán | Theo đơn vị được phân công | |
+| admin-operation | `dryport:read` | `dryport:delete` nếu được gán | Theo đơn vị được phân công | |
+| admin | `dryport:read` | `dryport:delete` nếu được gán | Theo đơn vị quản lý | |
+| Lãnh đạo | `dryport:read` | Không có quyền xóa | Theo đơn vị được phân công | Chỉ xem |
+| Cán bộ | `dryport:read` | `dryport:delete` nếu được gán | Theo đơn vị công tác | |
+| Cá nhân | Không có quyền | Không có quyền | Không | Không truy cập được |
 
-> **Admin Cục (system-admin):** Khi được gán `dryport:delete`, xóa được toàn bộ Cảng cạn không giới hạn đơn vị. Vai trò khác bị giới hạn trong đơn vị quản lý của mình.
+> Phân quyền do M-001 quản lý. Cần có quyền `dryport:delete`.
+
+### 2.2. Logic phân quyền đặc biệt cho tài khoản Admin Cục
+
+Đối với tài khoản **Admin Cục**, áp dụng logic phân quyền đặc biệt sau:
+
+- **Xem full dữ liệu:** Admin Cục có quyền xem toàn bộ dữ liệu Cảng cạn, không giới hạn phạm vi đơn vị hay khu vực.
+- **Xóa toàn bộ:** Admin Cục được xóa Cảng cạn ở trạng thái NHAP trong mọi đơn vị, không giới hạn.
+- **Xem thông tin người tạo:** Admin Cục thấy được `createdBy` (họ tên, tên đăng nhập) của bản ghi.
+- **Xem thời gian tạo:** Admin Cục thấy được `createdAt` (timestamp) của bản ghi.
+- **Xem thông tin người xóa:** Admin Cục thấy được `deletedBy` (họ tên, tên đăng nhập) của bản ghi đã xóa.
+
+> Các trường audit này chỉ hiển thị với tài khoản Admin Cục. Với các vai trò khác, các trường này bị ẩn khỏi giao diện.
 
 ---
 
 ## 3. User Stories
 
 ### Must
-- **US-028-01:** Là người dùng có `dryport:delete`, tôi muốn thấy nút "Xóa" trên dòng Cảng cạn trong F-083 và trên trang F-084.
-- **US-028-02:** Là người dùng, tôi muốn hệ thống yêu cầu nhập mã CC-XXXXXX trước khi xóa để tránh xóa nhầm.
-- **US-028-03:** Là người dùng, tôi muốn Cảng cạn bị xóa mềm — dữ liệu không mất, chỉ ẩn khỏi danh sách.
+- **US-028-01:** Là Cán bộ quản lý, tôi muốn xóa một Cảng cạn đang ở trạng thái Lưu tạm (ví dụ: tạo nhầm, không còn nhu cầu) để dọn dẹp dữ liệu.
+- **US-028-02:** Là Cán bộ quản lý, tôi muốn được xác nhận trước khi xóa để tránh thao tác nhầm.
 
 ### Should
-- **US-028-04:** Là người dùng, tôi muốn thấy toast "Đã xóa thành công" và danh sách tự động làm mới sau khi xóa.
-- **US-028-05:** Là người dùng, tôi muốn hủy hộp thoại (Esc hoặc nút Hủy) để không thực hiện xóa.
+- **US-028-03:** Là Cán bộ quản lý, tôi muốn sau khi xóa vẫn xem lại được thông tin Cảng cạn đã xóa để đối chiếu khi cần.
 
 ### Could
-- **US-028-06:** Là người dùng, tôi muốn xem danh sách Cảng cạn đã xóa (filter deletedAt != null) — chức năng khôi phục trong tương lai.
+- **US-028-04:** Là Admin Cục, tôi muốn xem được ai đã xóa bản ghi và thời điểm xóa.
 
 ---
 
 ## 4. Yêu cầu chức năng (Acceptance Criteria)
 
-### Nhóm 1: Hiển thị
+### Nhóm 1: Hiển thị nút Xóa
 
-**AC-028-01 — Hiển thị nút Xóa:** Người dùng có `dryport:delete` → thấy nút "Xóa" trên F-083 (dropdown hành động mỗi dòng) và F-084 (footer). Không có quyền → không thấy nút.
+**AC-028-01:** Nút "Xóa" chỉ xuất hiện trên danh sách F-083 khi Cảng cạn đang ở trạng thái **Lưu tạm (NHAP)** và người dùng có quyền `dryport:delete`. Các trạng thái khác (PENDING, APPROVED, REJECTED, Lịch sử) không hiển thị nút Xóa.
 
-### Nhóm 2: Xác nhận
+### Nhóm 2: Xác nhận xóa
 
-**AC-028-02 — Hộp thoại xác nhận:** Bấm "Xóa" → hộp thoại hiển thị: "Bạn có chắc chắn muốn xóa cảng cạn CC-XXXXXX — [Tên cảng cạn]? Hành động này không thể hoàn tác." + ô nhập mã + nút [Hủy] [Xác nhận xóa].
+**AC-028-02:** Khi bấm "Xóa", hệ thống hiển thị hộp thoại xác nhận gồm: tên Cảng cạn, mã Cảng cạn, cảnh báo không thể hoàn tác, và hai nút [Hủy] [Xác nhận].
+**AC-028-03:** Bấm "Hủy" hoặc phím Esc trên hộp thoại xác nhận → đóng hộp thoại, không thực hiện xóa.
 
-**AC-028-03 — Nhập mã:** Nút "Xác nhận xóa" chỉ enabled khi người dùng nhập đúng chính xác mã CC-XXXXXX (case-insensitive). Nhập sai → nút disabled, không gọi API.
+### Nhóm 3: Sau khi xóa
 
-**AC-028-04 — Hủy:** Bấm "Hủy" hoặc Esc → đóng hộp thoại, không thực hiện xóa.
-
-### Nhóm 3: Thực hiện xóa
-
-**AC-028-05 — Xóa mềm:** Nhập đúng mã → "Xác nhận xóa" → `DELETE /api/v1/dry-ports/{id}` → backend set `deletedAt = NOW()` → 200 → toast "Đã xóa thành công" → danh sách F-083 tự động làm mới (bản ghi biến mất).
-
-**AC-028-06 — Không guard:** Cảng cạn không có thực thể con → không kiểm tra ràng buộc trước khi xóa.
-
-**AC-028-07 — Ẩn khỏi danh sách:** Sau khi xóa mềm, bản ghi có `deletedAt != null` → không xuất hiện trong `GET /api/v1/dry-ports` mặc định.
+**AC-028-04:** Sau khi xác nhận, trạng thái Cảng cạn chuyển thành **"Lịch sử"**. Bản ghi vẫn hiển thị trong danh sách với badge Lịch sử. Hiển thị thông báo "Đã chuyển vào Lịch sử".
+**AC-028-05:** Cảng cạn ở trạng thái "Lịch sử" vẫn có thể mở ra xem đầy đủ thông tin, nhưng ở chế độ chỉ xem — không có nút Chỉnh sửa, Xóa, Phê duyệt hay bất kỳ thao tác nào khác.
 
 ---
 
 ## 5. Quy tắc nghiệp vụ (Business Rules)
 
-### 5.1. Cơ chế xóa
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
-|---|---|---|---|---|
-| BR-028-01 | **Xóa mềm (soft-delete)** — Không xóa vật lý bản ghi. Chỉ gán `deletedAt = NOW()`. Dữ liệu vẫn tồn tại trong DB để phục vụ kiểm toán và truy xuất lịch sử. | Xóa | Thiết kế | Không |
-| BR-028-02 | **Không guard** — Cảng cạn (DryPort) không có thực thể con phụ thuộc. Không cần kiểm tra ràng buộc khóa ngoại trước khi xóa. Khác với Cảng biển có Bến cảng/Vùng nước. | Xóa | Thiết kế | Không |
-
-### 5.2. Xác nhận xóa
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
-|---|---|---|---|---|
-| BR-028-03 | **Xác nhận bằng mã** — Bắt buộc nhập đúng mã CC-XXXXXX để xác nhận xóa. Ngăn chặn xóa nhầm do click vô ý. Mã so sánh case-insensitive. | Xóa | Nghiệp vụ | Không |
-| BR-028-04 | **Không thể hoàn tác qua giao diện** — Sau khi xóa mềm, không có nút "Khôi phục" trên giao diện người dùng. Việc khôi phục (set deletedAt = null) chỉ thực hiện được qua database bởi quản trị viên hệ thống. | Xóa | Nghiệp vụ | Không |
-
-### 5.3. Phân quyền
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
-|---|---|---|---|---|
-| BR-028-05 | **Phân quyền xóa** — Chỉ người dùng được gán `dryport:delete` mới thấy nút "Xóa" và gọi được API. | Xóa | RBAC | Không |
-| BR-028-06 | **Phạm vi đơn vị** — Người dùng chỉ xóa được Cảng cạn trong đơn vị quản lý của mình. Admin Cục xóa được toàn bộ. | Xóa | RBAC | Admin Cục |
-| BR-028-07 | **Audit log** — Mọi thao tác xóa được ghi nhận: ai xóa, thời gian, IP, mã cảng cạn bị xóa. | Audit | Bảo mật | Không |
+| ID | Quy tắc | Áp dụng cho | Nguồn |
+|---|---|---|---|
+| BR-028-01 | **Chỉ được xóa bản ghi đang Lưu tạm** — Cảng cạn ở trạng thái NHAP là bản nháp, chưa hoàn thiện, chưa đưa vào sử dụng nên cho phép xóa. Các trạng thái khác (PENDING, APPROVED, REJECTED, Lịch sử) không được xóa vì đã đi vào quy trình hoặc đã được sử dụng. | Danh sách F-083 | Nghiệp vụ |
+| BR-028-02 | **Xác nhận trước khi xóa** — Hiển thị hộp thoại xác nhận trước khi thực hiện, tránh thao tác nhầm. | UI | UX |
+| BR-028-03 | **Sau xóa, trạng thái thành "Lịch sử"** — Bản ghi không bị xóa vật lý mà chuyển sang trạng thái Lịch sử. Ở trạng thái này, bản ghi chỉ để tra cứu, không thể chỉnh sửa hay thao tác gì thêm. | Backend | Nghiệp vụ |
+| BR-028-04 | **Bản ghi Lịch sử là chỉ xem** — Ở trạng thái Lịch sử, mọi nút hành động (Chỉnh sửa, Xóa, Phê duyệt, Gửi phê duyệt) đều bị ẩn. Người dùng chỉ có thể xem thông tin. | UI | Nghiệp vụ |
+| BR-028-05 | **Phân quyền xóa** — Chỉ người dùng có quyền `dryport:delete` mới thấy nút Xóa và thực hiện được. | UI + Backend | RBAC |
+| BR-028-06 | **Ghi nhận thao tác** — Mọi thao tác xóa được ghi lại: ai xóa, xóa lúc nào, mã Cảng cạn bị xóa để phục vụ kiểm toán. | Backend | Bảo mật |
 
 ---
 
 ## 6. Mô hình dữ liệu
 
-> Không thêm bảng mới. Sử dụng cơ chế soft-delete có sẵn trong BaseEntity.
+> Không thêm bảng mới. Sử dụng trường trạng thái có sẵn.
 
-### 6.1. `dry_ports` — trường `deleted_at`
-
-| Tên trường | Kiểu | Mô tả |
-|---|---|---|
-| deleted_at | TIMESTAMP | NULL = đang hoạt động; NOT NULL = đã xóa mềm, thời điểm xóa |
-
-> Backend tự động filter `WHERE deleted_at IS NULL` trong tất cả truy vấn mặc định. Bản ghi đã xóa chỉ truy xuất được qua query đặc biệt (dành cho Admin Cục).
+Cảng cạn có thêm trạng thái **"Lịch sử"** bên cạnh các trạng thái hiện có (NHAP, PENDING, APPROVED, REJECTED). Khi chuyển sang Lịch sử, bản ghi vẫn hiển thị trong danh sách chính với badge Lịch sử, ở chế độ chỉ xem.
 
 ---
 
@@ -140,59 +128,97 @@ F-083 (Danh sách) hoặc F-084 (Chi tiết) → nút "Xóa" (chỉ hiển thị
 
 | Method | Endpoint | Mô tả | Quyền |
 |---|---|---|---|
-| DELETE | `/api/v1/dry-ports/{id}` | Xóa mềm: set `deletedAt = NOW()`. Response 200. | `dryport:delete` |
+| PUT | `/api/v1/dry-ports/{id}/archive` | Chuyển trạng thái Cảng cạn thành "Lịch sử". Chỉ áp dụng cho bản ghi NHAP. | `dryport:delete` |
+| GET | `/api/v1/dry-ports/{id}` | Xem chi tiết Cảng cạn, bao gồm cả bản ghi ở trạng thái Lịch sử (chế độ chỉ xem) | `dryport:read` |
 
 ---
 
 ## 8. Chi tiết nghiệp vụ
 
-### 8.1. Kích hoạt xóa
+### 8.1. Khi nào hiển thị nút Xóa
 
-Từ F-083: dropdown hành động trên mỗi dòng → "Xóa". Từ F-084: nút "Xóa" trên footer trang chi tiết. Cả hai chỉ hiển thị nếu người dùng có `dryport:delete`.
+Trên màn hình Danh sách (F-083), nút "Xóa" chỉ xuất hiện khi thỏa mãn đồng thời hai điều kiện:
+1. Cảng cạn đang ở trạng thái **Lưu tạm (NHAP)**
+2. Người dùng có quyền `dryport:delete`
+
+Với các trạng thái Đang chờ duyệt, Đã duyệt, Từ chối, hoặc Lịch sử, nút Xóa không xuất hiện.
 
 ### 8.2. Hộp thoại xác nhận
 
-Hiển thị tên và mã cảng cạn. Ô nhập mã: placeholder "Nhập mã cảng cạn". Nút "Xác nhận xóa" disabled (màu xám) cho đến khi người dùng nhập đúng mã. Nút "Hủy" luôn enabled.
+Khi bấm "Xóa", hệ thống hiển thị hộp thoại gồm:
+- Dòng thông báo: "Bạn có chắc chắn muốn xóa cảng cạn **CC-XXXXXX — [Tên]**? Hành động này không thể hoàn tác."
+- Nút [Hủy]: đóng hộp thoại, không làm gì
+- Nút [Xác nhận]: màu đỏ
 
-### 8.3. Thực hiện xóa
+### 8.3. Sau khi xóa
 
-Người dùng nhập đúng mã → nút "Xác nhận xóa" enabled (màu đỏ, destructive) → bấm → loading trên nút → `DELETE /api/v1/dry-ports/{id}` → backend set `deletedAt = NOW()`, trả về 200 → toast xanh "Đã xóa thành công" → danh sách F-083 reload (bản ghi biến mất).
-
-### 8.4. Sau khi xóa
-
-Bản ghi không còn xuất hiện trong danh sách mặc định. Lịch sử thay đổi (F-031) vẫn truy xuất được nếu biết ID. Admin Cục có thể xem bản ghi đã xóa qua filter đặc biệt.
+- Trạng thái Cảng cạn chuyển thành **"Lịch sử"**
+- Bản ghi vẫn hiển thị trong danh sách với badge Lịch sử
+- Hiển thị thông báo: "Đã chuyển vào Lịch sử"
+- Vẫn có thể tìm và xem lại bản ghi ở chế độ chỉ xem (không sửa được, không thao tác gì thêm)
 
 ---
 
 ## 9. Yêu cầu phi chức năng
 
-- **Hiệu năng:** DELETE ≤ 500ms; không lock bảng
-- **Bảo mật:** RBAC `dryport:delete`; xác nhận 2 bước (nhập mã); HTTPS
-- **Độ tin cậy:** Soft-delete trong transaction; không ảnh hưởng bảng khác
-- **UX:** Destructive button màu đỏ; confirm rõ ràng; loading state
-- **Pháp lý:** Dữ liệu không mất — đáp ứng yêu cầu kiểm toán; audit log ≥ 2 năm
+- **Hiệu năng:** Thao tác xóa hoàn thành ≤1s, không để người dùng chờ đợi
+- **Bảo mật:** Chỉ người có quyền `dryport:delete` mới thấy và thực hiện được. Xác nhận trước khi thực hiện để tránh xóa nhầm
+- **Độ tin cậy:** Chuyển trạng thái và ghi lịch sử thao tác trong cùng một giao dịch — nếu lỗi thì không có gì thay đổi
+- **Truy vết:** Mọi thao tác xóa đều được ghi lại để kiểm toán
 
 ---
 
 ## 10. Yêu cầu giao diện
 
-> Token từ `theme.ts` + `tokens.ts`.
+> Token từ `theme.ts` + `tokens.ts`. KHÔNG hardcode.
 
 ### 10.1. Nút Xóa
-- F-083: trong dropdown hành động mỗi dòng, màu danger, icon `Trash2`
-- F-084: footer, nút outlined danger, `borderRadius: radiusPill`, `height: 40`
+
+- Trong danh sách F-083: nút "Xóa" trong dropdown hành động, chỉ hiện khi đủ điều kiện (NHAP + có quyền `dryport:delete`)
+- Màu `statusDanger` (đỏ)
 
 ### 10.2. Hộp thoại xác nhận
+
 - **Tiêu đề:** "Xác nhận xóa"
-- **Nội dung:** "Bạn có chắc chắn muốn xóa cảng cạn **[CC-XXXXXX]** — **[Tên]**? Hành động này không thể hoàn tác."
-- **Ô nhập:** "Nhập mã cảng cạn để xác nhận", `borderRadius: radiusPill`, `height: 40`
-- **Footer:** [Hủy] outlined + [Xác nhận xóa] danger primary, disabled đến khi nhập đúng mã
+- **Nội dung:** hiển thị mã và tên Cảng cạn, cảnh báo không thể hoàn tác
+- **Footer:** [Hủy] outlined + [Xác nhận] `statusDanger`, cả hai `borderRadius: radiusPill`, `height: 40`
+
+### 10.3. Trang chi tiết bản ghi Lịch sử
+
+- Hiển thị đầy đủ 25 trường như F-030
+- Badge trạng thái "Lịch sử" (màu `textTertiary`, xám đậm)
+- Ẩn toàn bộ nút hành động: không Chỉnh sửa, không Xóa, không Phê duyệt
+
+### 10.4. Phân quyền hiển thị
+
+| Vai trò | Thấy nút Xóa | Ghi chú |
+|---|---|---|
+| system-admin | Có (nếu được gán `dryport:delete`) | Toàn bộ đơn vị |
+| admin (Security) | Có (nếu được gán) | Trong đơn vị được phân công |
+| admin-operation | Có (nếu được gán) | Trong đơn vị được phân công |
+| admin | Có (nếu được gán) | Trong đơn vị quản lý |
+| Lãnh đạo | Không | Chỉ xem |
+| Cán bộ | Có (nếu được gán) | Trong đơn vị công tác |
+| Admin Cục | Có (nếu được gán) | Toàn bộ đơn vị + xem audit fields |
+
+### 10.5. Giao diện trên điện thoại
+
+Khi màn hình nhỏ hơn 768px:
+
+- Hộp thoại xác nhận thu nhỏ còn 90% chiều rộng
+- Nút xếp dọc trong hộp thoại
+
+### 10.6. UX
+
+- Toast `statusOperational` "Đã chuyển vào Lịch sử" sau khi xóa thành công
+- Toast `statusDanger` nếu lỗi (không có quyền, sai trạng thái)
+- Loading spinner trên nút [Xác nhận] khi đang xử lý
 
 ---
 
 ## Implementation Status
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| Backend (API) | Done | `DELETE /api/v1/dry-ports/{id}` soft-delete đã triển khai |
-| Frontend (UI) | Pending | Spec sẵn sàng, chờ implement |
+| Layer | Status |
+|-------|--------|
+| Backend | Done |
+| Frontend | Pending |
