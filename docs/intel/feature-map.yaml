@@ -237,7 +237,7 @@ features:
     slug: ql-cct-tao-moi
     name: Quản lý Cảng cạn - Tạo mới
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/
-    status: done
+    status: backend_done
     classification: local
     confidence: high
     version: 1
@@ -249,7 +249,7 @@ features:
     slug: ql-cct-cap-nhat
     name: Quản lý Cảng cạn - Cập nhật
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/
-    status: done
+    status: backend_done
     classification: local
     confidence: high
     version: 1
@@ -261,7 +261,7 @@ features:
     slug: ql-cct-xoa
     name: Quản lý Cảng cạn - Xóa
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/
-    status: done
+    status: backend_done
     classification: local
     confidence: high
     version: 1
@@ -273,7 +273,7 @@ features:
     slug: phe-duyet-cct
     name: Phê duyệt Cảng cạn
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/
-    status: done
+    status: backend_done
     classification: local
     confidence: high
     version: 1
@@ -285,7 +285,7 @@ features:
     slug: xem-cct
     name: Xem chi tiết Cảng cạn
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/
-    status: done
+    status: backend_done
     classification: local
     confidence: high
     version: 1
@@ -297,7 +297,7 @@ features:
     slug: ql-cct-lich-su
     name: Quản lý Cảng cạn - Lịch sử
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/
-    status: done
+    status: backend_done
     classification: local
     confidence: high
     version: 1
@@ -575,54 +575,6 @@ features:
     visibility: [PRIVATE]
     consumed_by_modules: []
     depends_on: []
-  F-084:
-    id: F-084
-    slug: ui-xem-cct-chi-tiet
-    name: Chi tiết Cảng cạn
-    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-084-ui-xem-cct-chi-tiet/
-    status: proposed
-    classification: local
-    confidence: high
-    version: 1
-    visibility: [PRIVATE]
-    consumed_by_modules: []
-    depends_on: []
-  F-085:
-    id: F-085
-    slug: ui-ql-cct-tao-moi
-    name: Tạo mới Cảng cạn
-    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-085-ui-ql-cct-tao-moi/
-    status: proposed
-    classification: local
-    confidence: high
-    version: 1
-    visibility: [PRIVATE]
-    consumed_by_modules: []
-    depends_on: []
-  F-086:
-    id: F-086
-    slug: ui-ql-cct-cap-nhat
-    name: Cập nhật Cảng cạn
-    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-086-ui-ql-cct-cap-nhat/
-    status: proposed
-    classification: local
-    confidence: high
-    version: 1
-    visibility: [PRIVATE]
-    consumed_by_modules: []
-    depends_on: []
-  F-087:
-    id: F-087
-    slug: ui-phe-duyet-cct
-    name: Phê duyệt Cảng cạn
-    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-087-ui-phe-duyet-cct/
-    status: proposed
-    classification: local
-    confidence: high
-    version: 1
-    visibility: [PRIVATE]
-    consumed_by_modules: []
-    depends_on: []
   F-088:
     id: F-088
     slug: ui-ql-vn-danh-sach
@@ -748,30 +700,6 @@ features:
     slug: ui-ql-cc-lich-su
     name: Lịch sử Cầu cảng
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-098-ui-ql-cc-lich-su/
-    status: proposed
-    classification: local
-    confidence: high
-    version: 1
-    visibility: [PRIVATE]
-    consumed_by_modules: []
-    depends_on: []
-  F-099:
-    id: F-099
-    slug: ui-ql-cct-xoa
-    name: Xóa Cảng cạn
-    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-099-ui-ql-cct-xoa/
-    status: proposed
-    classification: local
-    confidence: high
-    version: 1
-    visibility: [PRIVATE]
-    consumed_by_modules: []
-    depends_on: []
-  F-100:
-    id: F-100
-    slug: ui-ql-cct-lich-su
-    name: Lịch sử Cảng cạn
-    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-100-ui-ql-cct-lich-su/
     status: proposed
     classification: local
     confidence: high
