@@ -64,7 +64,6 @@ public class NavigationChannel {
     @Column(name = "load_capacity", length = 100) private String loadCapacity;
     @Column(name = "deleted_at") private LocalDateTime deletedAt;
     @Column(name = "deleted_by") private UUID deletedBy;
-    @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<NavigationChannelAttachment> attachments = new ArrayList<>();
     @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<ChannelRouteDetail> channelRouteDetailList = new ArrayList<>();
     @PrePersist protected void onCreate() { this.createdAt = LocalDateTime.now(); }
     @PreUpdate protected void onUpdate() { this.updatedAt = LocalDateTime.now(); }

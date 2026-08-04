@@ -1,10 +1,10 @@
 package com.hanghai.kchtg.vtssystem.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.vtssystem.dto.*;
 import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
-import com.hanghai.kchtg.vtssystem.entity.VtsSystemAttachment;
 import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.validation.Valid;
@@ -189,7 +189,7 @@ public class VtsSystemController {
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attachmentId) {
-        VtsSystemAttachment attachment = service.getAttachment(id, attachmentId);
+        InfrastructureAttachment attachment = service.getAttachment(id, attachmentId);
         Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
         if (!Files.isRegularFile(path)) {
             return ResponseEntity.notFound().build();

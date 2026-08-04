@@ -41,8 +41,6 @@ class ShipRepairFacilityEntityTest {
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
         assertFalse(entity.getIsDeleted());
-        assertNotNull(entity.getAttachments());
-        assertTrue(entity.getAttachments().isEmpty());
     }
 
     @Test
@@ -151,20 +149,6 @@ class ShipRepairFacilityEntityTest {
         entity.prePersist();
 
         assertFalse(entity.getIsDeleted());
-    }
-
-    @Test
-    void testAttachmentsInit() {
-        ShipRepairFacility entity = ShipRepairFacility.builder()
-                .facilityName("ABC")
-                .address("Hà Nội")
-                .provinceId(1)
-                .facilityType(FacilityType.REPAIR)
-                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .build();
-
-        assertNotNull(entity.getAttachments());
-        assertTrue(entity.getAttachments().isEmpty());
     }
 
     @Test
@@ -280,37 +264,6 @@ class ShipRepairFacilityEntityTest {
         assertTrue(entity.getApprovedLevel1());
         assertTrue(entity.getApprovedLevel2());
         assertFalse(entity.getIsDeleted());
-    }
-
-@Test
-    void testAllArgsConstructor_ListType() {
-        UUID uuid = UUID.randomUUID();
-        java.util.List<ShipRepairFacilityAttachment> emptyList = new java.util.ArrayList<>();
-        ShipRepairFacility entity = ShipRepairFacility.builder()
-                .id(uuid)
-                .facilityName("ABC")
-                .address("Hà Nội")
-                .provinceId(1)
-                .phone("0123456789")
-                .email("test@test.com")
-                .facilityType(FacilityType.REPAIR)
-                .capacity("Khả năng 100")
-                .authority("Bộ Quốc phòng")
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
-                .approvedLevel1(true)
-                .approverLevel1(UUID.randomUUID())
-                .approvedDateLevel1(LocalDateTime.now())
-                .approvedLevel2(true)
-                .approverLevel2(UUID.randomUUID())
-                .approvedDateLevel2(LocalDateTime.now())
-                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .createdDate(LocalDateTime.now())
-                .updatedDate(LocalDateTime.now())
-                .updatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .isDeleted(false)
-                .attachments(emptyList)
-                .build();
-        assertEquals(emptyList, entity.getAttachments());
     }
 
     @Test

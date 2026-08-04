@@ -105,10 +105,6 @@ public class ShipRepairFacility extends BaseEntity {
     @Column(name = "deleted_by")
     private UUID deletedBy;
 
-    @OneToMany(mappedBy = "shipRepairFacility", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private java.util.List<ShipRepairFacilityAttachment> attachments = new java.util.ArrayList<>();
-
     @PrePersist
     public void prePersist() {
         if (this.approvalStatus == null) {

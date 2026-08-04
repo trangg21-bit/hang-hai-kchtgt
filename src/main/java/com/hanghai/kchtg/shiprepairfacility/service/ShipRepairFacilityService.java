@@ -9,12 +9,13 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
-import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityAttachmentRepository;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -30,7 +32,7 @@ import java.util.UUID;
 public class ShipRepairFacilityService {
 
     private final ShipRepairFacilityRepository repository;
-    private final ShipRepairFacilityAttachmentRepository attachmentRepository;
+    private final InfrastructureAttachmentRepository attachmentRepository;
     private final ApprovalHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
@@ -57,7 +59,8 @@ public class ShipRepairFacilityService {
         ShipRepairFacility saved = repository.save(entity);
 
         if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             UUID refId = saved.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -68,8 +71,7 @@ public class ShipRepairFacilityService {
                     objType,
                     request.getCoordinates(),
                     refId,
-                    InfrastructureType.SHIP_REPAIR_FACILITY
-            );
+                    InfrastructureType.SHIP_REPAIR_FACILITY);
             saved.setSpatialId(spatialObj.getId());
             saved = repository.save(saved);
         }
@@ -107,7 +109,8 @@ public class ShipRepairFacilityService {
     }
 
     public List<ShipRepairFacilityResponse> findAll(int page, int size) {
-        return repository.findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus.APPROVED).stream().map(this::toResponse).toList();
+        return repository.findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus.APPROVED).stream()
+                .map(this::toResponse).toList();
     }
 
     public ShipRepairFacilityResponse update(UUID id, ShipRepairFacilityUpdateRequest request, UUID updatedBy) {
@@ -123,25 +126,46 @@ public class ShipRepairFacilityService {
         }
 
         java.util.Map<String, String> previousValues = new java.util.LinkedHashMap<>();
-        if (request.getFacilityName() != null && !java.util.Objects.equals(request.getFacilityName(), entity.getFacilityName())) previousValues.put("facilityName", entity.getFacilityName());
-        if (request.getAddress() != null && !java.util.Objects.equals(request.getAddress(), entity.getAddress())) previousValues.put("address", entity.getAddress());
-        if (request.getProvinceId() != null && !java.util.Objects.equals(request.getProvinceId(), entity.getProvinceId())) previousValues.put("provinceId", String.valueOf(entity.getProvinceId()));
-        if (request.getPhone() != null && !java.util.Objects.equals(request.getPhone(), entity.getPhone())) previousValues.put("phone", entity.getPhone());
-        if (request.getEmail() != null && !java.util.Objects.equals(request.getEmail(), entity.getEmail())) previousValues.put("email", entity.getEmail());
-        if (request.getFacilityType() != null && !java.util.Objects.equals(request.getFacilityType(), entity.getFacilityType())) previousValues.put("facilityType", String.valueOf(entity.getFacilityType()));
-        if (request.getCapacity() != null && !java.util.Objects.equals(request.getCapacity(), entity.getCapacity())) previousValues.put("capacity", entity.getCapacity());
-        if (request.getAuthority() != null && !java.util.Objects.equals(request.getAuthority(), entity.getAuthority())) previousValues.put("authority", entity.getAuthority());
-        if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) previousValues.put("orgUnitId", String.valueOf(entity.getOrgUnitId()));
+        if (request.getFacilityName() != null
+                && !java.util.Objects.equals(request.getFacilityName(), entity.getFacilityName()))
+            previousValues.put("facilityName", entity.getFacilityName());
+        if (request.getAddress() != null && !java.util.Objects.equals(request.getAddress(), entity.getAddress()))
+            previousValues.put("address", entity.getAddress());
+        if (request.getProvinceId() != null
+                && !Objects.equals(request.getProvinceId(), entity.getProvinceId()))
+            previousValues.put("provinceId", String.valueOf(entity.getProvinceId()));
+        if (request.getPhone() != null && !java.util.Objects.equals(request.getPhone(), entity.getPhone()))
+            previousValues.put("phone", entity.getPhone());
+        if (request.getEmail() != null && !java.util.Objects.equals(request.getEmail(), entity.getEmail()))
+            previousValues.put("email", entity.getEmail());
+        if (request.getFacilityType() != null
+                && !java.util.Objects.equals(request.getFacilityType(), entity.getFacilityType()))
+            previousValues.put("facilityType", String.valueOf(entity.getFacilityType()));
+        if (request.getCapacity() != null && !java.util.Objects.equals(request.getCapacity(), entity.getCapacity()))
+            previousValues.put("capacity", entity.getCapacity());
+        if (request.getAuthority() != null && !java.util.Objects.equals(request.getAuthority(), entity.getAuthority()))
+            previousValues.put("authority", entity.getAuthority());
+        if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId()))
+            previousValues.put("orgUnitId", String.valueOf(entity.getOrgUnitId()));
 
-        if (request.getFacilityName() != null) entity.setFacilityName(request.getFacilityName());
-        if (request.getAddress() != null) entity.setAddress(request.getAddress());
-        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
-        if (request.getPhone() != null) entity.setPhone(request.getPhone());
-        if (request.getEmail() != null) entity.setEmail(request.getEmail());
-        if (request.getFacilityType() != null) entity.setFacilityType(request.getFacilityType());
-        if (request.getCapacity() != null) entity.setCapacity(request.getCapacity());
-        if (request.getAuthority() != null) entity.setAuthority(request.getAuthority());
-        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getFacilityName() != null)
+            entity.setFacilityName(request.getFacilityName());
+        if (request.getAddress() != null)
+            entity.setAddress(request.getAddress());
+        if (request.getProvinceId() != null)
+            entity.setProvinceId(request.getProvinceId());
+        if (request.getPhone() != null)
+            entity.setPhone(request.getPhone());
+        if (request.getEmail() != null)
+            entity.setEmail(request.getEmail());
+        if (request.getFacilityType() != null)
+            entity.setFacilityType(request.getFacilityType());
+        if (request.getCapacity() != null)
+            entity.setCapacity(request.getCapacity());
+        if (request.getAuthority() != null)
+            entity.setAuthority(request.getAuthority());
+        if (request.getOrgUnitId() != null)
+            entity.setOrgUnitId(request.getOrgUnitId());
 
         if (request.getCoordinates() != null) {
             if (request.getCoordinates().trim().isEmpty()) {
@@ -150,19 +174,20 @@ public class ShipRepairFacilityService {
                     entity.setSpatialId(null);
                 }
             } else {
-                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                        : GisGeometryType.POINT;
                 GisSpatialObjectType objType = getSpatialObjectType(geomType);
                 UUID refId = entity.getId();
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         entity.getSpatialId(),
-                        "Cơ sở sửa chữa tại " + (request.getAddress() != null ? request.getAddress() : entity.getAddress()),
+                        "Cơ sở sửa chữa tại "
+                                + (request.getAddress() != null ? request.getAddress() : entity.getAddress()),
                         "COSO_" + entity.getId(),
                         geomType,
                         objType,
                         request.getCoordinates(),
                         refId,
-                        InfrastructureType.SHIP_REPAIR_FACILITY
-                );
+                        InfrastructureType.SHIP_REPAIR_FACILITY);
                 entity.setSpatialId(spatialObj.getId());
             }
         } else if (entity.getSpatialId() != null && request.getAddress() != null) {
@@ -176,8 +201,7 @@ public class ShipRepairFacilityService {
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
                         refId,
-                        InfrastructureType.SHIP_REPAIR_FACILITY
-                );
+                        InfrastructureType.SHIP_REPAIR_FACILITY);
             });
         }
 
@@ -199,7 +223,7 @@ public class ShipRepairFacilityService {
         return toResponse(saved);
     }
 
-    public void delete(UUID id, java.util.UUID deletedBy) {
+    public void delete(UUID id, UUID deletedBy) {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -207,7 +231,8 @@ public class ShipRepairFacilityService {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
-        entity.setDeletedBy(deletedBy); entity.setIsDeleted(true);
+        entity.setDeletedBy(deletedBy);
+        entity.setIsDeleted(true);
         repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
@@ -220,7 +245,7 @@ public class ShipRepairFacilityService {
                 .reason("Xóa cơ sở sửa chữa, đóng tàu")
                 .build());
 
-        attachmentRepository.deleteByShipRepairFacilityId(id);
+        attachmentRepository.deleteByRefIdAndRefType(id, InfrastructureType.SHIP_REPAIR_FACILITY);
     }
 
     public ShipRepairFacilityResponse approveC1(UUID id, ApprovalRequest request, java.util.UUID approvedBy) {
@@ -284,12 +309,14 @@ public class ShipRepairFacilityService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
         if (entity.getApprovalStatus() != ShipRepairApprovalStatus.UNDER_REVIEW) {
-            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
+            throw new RuntimeException(
+                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
         UUID c1Actor = entity.getApproverLevel1();
         if (c1Actor != null && c1Actor.equals(approvedBy)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
+            throw new IllegalStateException(
+                    "Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
@@ -318,7 +345,9 @@ public class ShipRepairFacilityService {
     }
 
     public List<HistoryEntry> getHistory(UUID shipRepairFacilityId) {
-        return historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY, shipRepairFacilityId)
+        return historyRepository
+                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY,
+                        shipRepairFacilityId)
                 .stream().map(h -> HistoryEntry.builder()
                         .id(h.getId())
                         .approvalLevel(h.getApprovalLevel())
@@ -326,11 +355,13 @@ public class ShipRepairFacilityService {
                         .approvedBy(resolveUserName(h.getApprovedBy()))
                         .approvedDate(h.getApprovedDate())
                         .reason(h.getReason())
-                        .build()).toList();
+                        .build())
+                .toList();
     }
 
     private String resolveUserName(UUID userId) {
-        if (userId == null) return null;
+        if (userId == null)
+            return null;
         return userRepository.findById(userId)
                 .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
                         ? u.getFullName()
@@ -338,25 +369,33 @@ public class ShipRepairFacilityService {
                 .orElse(userId.toString());
     }
 
-    public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, Integer provinceId, String approvalStatus, String reviewStatus) {
-        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        ShipRepairApprovalStatus statusEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty()) ? ShipRepairApprovalStatus.fromString(approvalStatus) : null;
-        ShipRepairApprovalStatus reviewStatusEnum = (reviewStatus != null && !reviewStatus.trim().isEmpty()) ? ShipRepairApprovalStatus.fromString(reviewStatus) : null;
-        return repository.search(orgUnitId, keywordLike, provinceId, statusEnum, reviewStatusEnum).stream().map(this::toResponse).toList();
+    public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, Integer provinceId,
+            String approvalStatus, String reviewStatus) {
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
+                : null;
+        ShipRepairApprovalStatus statusEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty())
+                ? ShipRepairApprovalStatus.fromString(approvalStatus)
+                : null;
+        ShipRepairApprovalStatus reviewStatusEnum = (reviewStatus != null && !reviewStatus.trim().isEmpty())
+                ? ShipRepairApprovalStatus.fromString(reviewStatus)
+                : null;
+        return repository.search(orgUnitId, keywordLike, provinceId, statusEnum, reviewStatusEnum).stream()
+                .map(this::toResponse).toList();
     }
 
     private ShipRepairFacilityResponse toResponse(ShipRepairFacility entity) {
         List<ShipRepairFacilityAttachmentResponse> attachments = attachmentRepository
-                .findByShipRepairFacilityId(entity.getId())
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.SHIP_REPAIR_FACILITY)
                 .stream().map(a -> ShipRepairFacilityAttachmentResponse.builder()
                         .id(a.getId())
                         .fileName(a.getFileName())
                         .filePath(a.getFilePath())
                         .fileSize(a.getFileSize())
-                        .documentType(a.getDocumentType())
-                        .uploadedBy(a.getUploadedBy())
+                        .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
+                        .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
                         .uploadedDate(a.getUploadedDate())
-                        .build()).toList();
+                        .build())
+                .toList();
 
         GisGeometryType geomType = null;
         String coords = null;
@@ -403,8 +442,10 @@ public class ShipRepairFacilityService {
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
-        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
-        if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
+        if (geomType == GisGeometryType.POINT)
+            return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.POLYGON)
+            return GisSpatialObjectType.POLYGON_OTHER;
         return GisSpatialObjectType.LINE_OTHER;
     }
 
@@ -431,18 +472,21 @@ public class ShipRepairFacilityService {
 
     private String formatPreviousValues(java.util.Map<String, String> previousValues) {
         return previousValues.entrySet().stream()
-                .map(entry -> getFieldDisplayName(entry.getKey()) + "=" + formatDisplayValue(entry.getKey(), entry.getValue()))
+                .map(entry -> getFieldDisplayName(entry.getKey()) + "="
+                        + formatDisplayValue(entry.getKey(), entry.getValue()))
                 .collect(java.util.stream.Collectors.joining("; "));
     }
 
     private String formatNewValues(ShipRepairFacility entity, java.util.Map<String, String> previousValues) {
         return previousValues.keySet().stream()
-                .map(field -> getFieldDisplayName(field) + "=" + formatDisplayValue(field, currentFieldValue(entity, field)))
+                .map(field -> getFieldDisplayName(field) + "="
+                        + formatDisplayValue(field, currentFieldValue(entity, field)))
                 .collect(java.util.stream.Collectors.joining("; "));
     }
 
     private String formatDisplayValue(String field, String rawValue) {
-        if (rawValue == null || rawValue.isEmpty()) return "";
+        if (rawValue == null || rawValue.isEmpty())
+            return "";
         if ("orgUnitId".equals(field)) {
             try {
                 String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
@@ -469,5 +513,3 @@ public class ShipRepairFacilityService {
         };
     }
 }
-
-

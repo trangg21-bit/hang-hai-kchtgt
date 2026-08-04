@@ -101,48 +101,4 @@ public class AccessLog {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    public UUID getId() { return id; }
-    public UUID getUserId() { return userId; }
-    public String getUsername() { return username; }
-    public String getAction() { return action; }
-    public String getModule() { return module; }
-    public String getIpAddress() { return ipAddress; }
-    public String getUserAgent() { return userAgent; }
-    public String getEmail() { return email; }
-    public String getOrgUnit() { return orgUnit; }
-    public String getSessionId() { return sessionId; }
-    public AccessLogStatus getStatus() { return status; }
-    public String getDetail() { return detail; }
-    public LogType getType() { return type; }
-    public LogSeverity getSeverity() { return severity; }
-    public String getTargetResource() { return targetResource; }
-    public String getRequestPath() { return requestPath; }
-    public Integer getResponseCode() { return responseCode; }
-    public Integer getDurationMs() { return durationMs; }
-    public String getMetadata() { return metadata; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-
-    public void setId(UUID id) { this.id = id; }
-    public void setUserId(UUID userId) { this.userId = userId; }
-    public void setUsername(String username) { this.username = username; }
-    public void setAction(String action) { this.action = action; }
-    public void setModule(String module) { this.module = module; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
-    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
-    public void setEmail(String email) { this.email = email; }
-    public void setOrgUnit(String orgUnit) { this.orgUnit = orgUnit; }
-    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
-    public void setStatus(AccessLogStatus status) { this.status = status; }
-    public void setDetail(String detail) { this.detail = detail; }
-    public void setType(LogType type) { this.type = type; }
-    public void setSeverity(LogSeverity severity) { this.severity = severity; }
-    public void setTargetResource(String targetResource) { this.targetResource = targetResource; }
-    public void setRequestPath(String requestPath) { this.requestPath = requestPath; }
-    public void setResponseCode(Integer responseCode) { this.responseCode = responseCode; }
-    public void setDurationMs(Integer durationMs) { this.durationMs = durationMs; }
-    public void setMetadata(String metadata) { this.metadata = metadata; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

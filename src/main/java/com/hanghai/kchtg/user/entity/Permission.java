@@ -16,20 +16,17 @@ import lombok.Setter;
  * {@code manhien:read}, {@code manhien:write}, {@code manhien:approve}.
  * </p>
  *
- * @see <a href="https://en.wikipedia.org/wiki/Role-based_access_control">RBAC</a>
+ * @see <a href=
+ *      "https://en.wikipedia.org/wiki/Role-based_access_control">RBAC</a>
  */
 @Entity
-@Table(
-    name = "permissions",
-    uniqueConstraints = {
+@Table(name = "permissions", uniqueConstraints = {
         @UniqueConstraint(name = "uk_permission_code", columnNames = "code"),
-        @UniqueConstraint(name = "uk_permission_feature_action", columnNames = {"resource", "action"})
-    },
-    indexes = {
+        @UniqueConstraint(name = "uk_permission_feature_action", columnNames = { "resource", "action" })
+}, indexes = {
         @Index(name = "idx_permission_code", columnList = "code"),
         @Index(name = "idx_permission_feature_action", columnList = "resource,action")
-    }
-)
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,18 +34,20 @@ public class Permission extends BaseEntity {
 
     // =========================================================================
 
-    /** Mã quyền hạn duy nhất, định dạng {@code feature:action}.
-     *  Ví dụ: {@code manhien:read}, {@code baocao:write}, {@code danhmuc:approve}. */
+    /**
+     * Mã quyền hạn duy nhất, định dạng {@code feature:action}.
+     * Ví dụ: {@code manhien:read}, {@code baocao:write}, {@code danhmuc:approve}.
+     */
     @NotBlank(message = "Mã quyền hạn không được để trống")
-    @Pattern(
-        regexp = "^[a-z][a-z0-9]*:[a-z][a-z0-9]*$",
-        message = "Mã quyền hạn phải theo định dạng {feature}:{action} (chữ thường, không dấu, ký tự hợp lệ)"
-    )
+    @Pattern(regexp = "^[a-z][a-z0-9]*:[a-z][a-z0-9]*$", message = "Mã quyền hạn phải theo định dạng {feature}:{action} (chữ thường, không dấu, ký tự hợp lệ)")
     @Size(max = 100, message = "Mã quyền hạn tối đa 100 ký tự")
     @Column(nullable = false, unique = true, length = 100)
     private String code;
 
-    /** Tên hiển thị của quyền hạn (ví dụ: "Xem danh sách mặt hàng", "Chỉnh sửa báo cáo"). */
+    /**
+     * Tên hiển thị của quyền hạn (ví dụ: "Xem danh sách mặt hàng", "Chỉnh sửa báo
+     * cáo").
+     */
     @NotBlank(message = "Tên quyền hạn không được để trống")
     @Size(max = 200, message = "Tên quyền hạn tối đa 200 ký tự")
     @Column(nullable = false, length = 200)
@@ -58,15 +57,20 @@ public class Permission extends BaseEntity {
     @Column(length = 500)
     private String description;
 
-    /** Nhóm chức năng / module mà quyền này thuộc về.
-     *  Ví dụ: {@code manhien}, {@code baocao}, {@code quanly}. */
+    /**
+     * Nhóm chức năng / module mà quyền này thuộc về.
+     * Ví dụ: {@code manhien}, {@code baocao}, {@code quanly}.
+     */
     @NotBlank(message = "Resource (feature) không được để trống")
     @Size(max = 50, message = "Resource tối đa 50 ký tự")
     @Column(nullable = false, length = 50)
     private String resource;
 
-    /** Hành động được phép trên resource.
-     *  Ví dụ: {@code read}, {@code write}, {@code approve}, {@code delete}, {@code export}. */
+    /**
+     * Hành động được phép trên resource.
+     * Ví dụ: {@code read}, {@code write}, {@code approve}, {@code delete},
+     * {@code export}.
+     */
     @NotBlank(message = "Action không được để trống")
     @Size(max = 30, message = "Action tối đa 30 ký tự")
     @Column(nullable = false, length = 30)
@@ -113,8 +117,6 @@ public class Permission extends BaseEntity {
         return requiredResource.equals(this.resource)
                 && requiredAction.equals(this.action);
     }
-
-    public String getCode() { return code; }
 
     /**
      * Tạo permission code từ resource và action.

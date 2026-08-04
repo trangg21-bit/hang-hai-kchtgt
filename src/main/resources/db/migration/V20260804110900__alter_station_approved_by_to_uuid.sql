@@ -9,6 +9,10 @@ BEGIN
         FROM information_schema.columns
         WHERE table_schema = 'public'
           AND data_type IN ('character varying', 'varchar', 'text')
+          AND table_name NOT IN (
+              'adjustment_approvals', 'port_planning', 'planning_adjustments',
+              'incidents', 'documents', 'planning_files'
+          )
           AND column_name IN ('approved_by', 'approver_level1', 'approver_level2', 'created_by', 'updated_by', 'deleted_by', 'operator_id', 'actor_id', 'org_unit_id', 'unit_id', 'operating_org_id', 'port_id', 'waterway_id', 'waterway_route_id', 'spatial_id')
     LOOP
         EXECUTE format(

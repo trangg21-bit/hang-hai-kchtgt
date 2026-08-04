@@ -193,7 +193,7 @@ export default function GisLocationSelector({
 
   // Sync internal state with incoming props value
   useEffect(() => {
-    const geometryType = defaultGeometryType || value.geometryType;
+    const geometryType = value.geometryType || defaultGeometryType || 'POINT';
     const toaDo = value.coordinates || '';
     const bieuTuongId = value.symbolId;
 
@@ -581,33 +581,36 @@ export default function GisLocationSelector({
     triggerChange(internalGeom, internalToaDo, newSym);
   };
 
-  const geomText = !internalGeom
-    ? 'Chưa xác định'
-    : internalGeom === 'POINT'
-      ? 'Đối tượng điểm'
-      : internalGeom === 'LINE'
-        ? 'Đối tượng đường'
-        : 'Đối tượng vùng';
+  const GEOM_TYPE_OPTIONS = [
+    { value: 'POINT', label: 'Đối tượng điểm (Point)' },
+    { value: 'LINE', label: 'Đối tượng đường (Line)' },
+    { value: 'POLYGON', label: 'Đối tượng vùng (Polygon)' },
+  ];
+
   const pointsCount = vertices.length;
 
   return (
     <>
       <Card styles={{ body: { padding: 12 } }} style={{ border: `1px solid ${colors.borderBase}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <Space orientation="vertical" size={2}>
-            <Typography.Text strong>Vị trí địa lý (GIS): {geomText}</Typography.Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <Space size="middle" align="center" wrap>
+            <Typography.Text strong>Loại đối tượng GIS:</Typography.Text>
+            <Select
+              value={internalGeom || 'POINT'}
+              onChange={handleGeomTypeChange}
+              disabled={disabled}
+              options={GEOM_TYPE_OPTIONS}
+              style={{ width: 200 }}
+            />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {!internalGeom
-                ? 'Vui lòng chọn Loại đối tượng ở trên để bắt đầu định vị.'
-                : `Đã xác định ${pointsCount} điểm tọa độ định vị.`
-              }
+              {`Đã xác định ${pointsCount} điểm tọa độ.`}
             </Typography.Text>
           </Space>
           <Button
             type="primary"
             ghost
             icon={<EnvironmentOutlined />}
-            disabled={disabled || !internalGeom}
+            disabled={disabled}
             onClick={() => setModalOpen(true)}
           >
             Chọn vị trí trên bản đồ

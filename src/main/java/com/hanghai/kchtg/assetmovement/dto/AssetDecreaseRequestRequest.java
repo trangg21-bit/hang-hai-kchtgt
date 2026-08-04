@@ -16,8 +16,4 @@ public class AssetDecreaseRequestRequest {
     private String unitOfMeasure;
     private String reason;
     private String decreaseReason;
-
-    public UUID getAssetId() { return assetId; }
-    public String getReason() { return reason; }
-    public String getDecreaseReason() { return decreaseReason; }
 }

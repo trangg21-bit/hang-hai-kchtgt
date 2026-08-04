@@ -8,7 +8,7 @@ import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
-import com.hanghai.kchtg.vtssystem.repository.VtsSystemAttachmentRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ class VtsSystemServiceTest {
     private ApprovalHistoryRepository historyRepository;
 
     @Mock
-    private VtsSystemAttachmentRepository attachmentRepository;
+    private InfrastructureAttachmentRepository attachmentRepository;
 
     @Mock
     private OrgUnitCacheService orgUnitCacheService;
@@ -65,7 +65,6 @@ class VtsSystemServiceTest {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .attachments(new java.util.ArrayList<>())
                 .build();
         entity.setId(TEST_ID);
 
@@ -79,7 +78,7 @@ class VtsSystemServiceTest {
     void testCreate() {
         VtsSystem saved = VtsSystem.builder()
                 .systemName("VTS ABC").location("Hà Nội").approvalStatus(ApprovalStatus.PROPOSED)
-                .approvedLevel1(false).approvedLevel2(false).attachments(new java.util.ArrayList<>()).build();
+                .approvedLevel1(false).approvedLevel2(false).build();
         saved.setId(TEST_ID);
 
         when(repository.save(any())).thenReturn(saved);
@@ -164,7 +163,7 @@ class VtsSystemServiceTest {
     void testDelete_ApprovedEntity() {
         VtsSystem approvedEntity = VtsSystem.builder()
                 .systemName("ABC").location("Hà Nội").approvalStatus(ApprovalStatus.APPROVED)
-                .approvedLevel1(false).approvedLevel2(false).attachments(new java.util.ArrayList<>()).build();
+                .approvedLevel1(false).approvedLevel2(false).build();
         approvedEntity.setId(TEST_ID);
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));

@@ -15,8 +15,9 @@ import com.hanghai.kchtg.vtssystem.dto.*;
 import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
-import com.hanghai.kchtg.vtssystem.entity.VtsSystemAttachment;
-import com.hanghai.kchtg.vtssystem.repository.VtsSystemAttachmentRepository;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.enums.AttachmentFileType;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -50,7 +51,7 @@ public class VtsSystemService {
     private final ApprovalHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
-    private final VtsSystemAttachmentRepository attachmentRepository;
+    private final InfrastructureAttachmentRepository attachmentRepository;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @Value("${app.upload.attachment-path:uploads/vts-attachments}")
@@ -60,7 +61,7 @@ public class VtsSystemService {
                             ApprovalHistoryRepository historyRepository,
                             GisSpatialObjectService gisSpatialObjectService,
                             OrgUnitCacheService orgUnitCacheService,
-                            VtsSystemAttachmentRepository attachmentRepository,
+                            InfrastructureAttachmentRepository attachmentRepository,
                             com.hanghai.kchtg.user.repository.UserRepository userRepository) {
         this.repository = repository;
         this.historyRepository = historyRepository;
@@ -183,6 +184,29 @@ public class VtsSystemService {
         if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) previousValues.put("orgUnitId", String.valueOf(entity.getOrgUnitId()));
         if (request.getScope() != null && !java.util.Objects.equals(request.getScope(), entity.getScope())) previousValues.put("scope", entity.getScope());
 
+        if (request.getCoordinates() != null) {
+            String oldCoords = null;
+            if (entity.getSpatialId() != null) {
+                oldCoords = gisSpatialObjectService.findById(entity.getSpatialId())
+                        .map(com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject::getCoordinates)
+                        .orElse(null);
+            }
+            if (!java.util.Objects.equals(request.getCoordinates(), oldCoords)) {
+                previousValues.put("coordinates", oldCoords != null ? oldCoords : "Chưa có");
+            }
+        }
+        if (request.getGeometryType() != null) {
+            String oldGeom = null;
+            if (entity.getSpatialId() != null) {
+                oldGeom = gisSpatialObjectService.findById(entity.getSpatialId())
+                        .map(o -> String.valueOf(o.getGeometryType()))
+                        .orElse(null);
+            }
+            if (oldGeom != null && !java.util.Objects.equals(String.valueOf(request.getGeometryType()), oldGeom)) {
+                previousValues.put("geometryType", oldGeom);
+            }
+        }
+
         if (request.getSystemName() != null) entity.setSystemName(request.getSystemName());
         if (request.getLocation() != null) entity.setLocation(request.getLocation());
         if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
@@ -253,8 +277,8 @@ public class VtsSystemService {
                 .approvedBy(userId)
                 .reason("Cập nhật thông tin")
                 .changedField(resubmission ? "approvalStatus, " + formatChangedFields(previousValues) : formatChangedFields(previousValues))
-                .previousValue(resubmission ? "approvalStatus=" + previousApprovalStatus + formatPreviousValues(previousValues) : formatPreviousValues(previousValues))
-                .newValue(resubmission ? "approvalStatus=PROPOSED" + formatNewValues(saved, previousValues) : formatNewValues(saved, previousValues))
+                .previousValue(resubmission ? "approvalStatus=" + previousApprovalStatus + (previousValues.isEmpty() ? "" : "; " + formatPreviousValues(previousValues)) : formatPreviousValues(previousValues))
+                .newValue(resubmission ? "approvalStatus=PROPOSED" + (previousValues.isEmpty() ? "" : "; " + formatNewValues(saved, previousValues)) : formatNewValues(saved, previousValues))
                 .build());
 
 
@@ -410,12 +434,13 @@ public class VtsSystemService {
             throw new RuntimeException("Không thể lưu tài liệu đính kèm", ex);
         }
 
-        VtsSystemAttachment saved = attachmentRepository.save(VtsSystemAttachment.builder()
-                .vtsSystemId(vtsSystemId)
+        InfrastructureAttachment saved = attachmentRepository.save(InfrastructureAttachment.builder()
+                .refId(vtsSystemId)
+                .refType(InfrastructureType.VTS_SYSTEM)
                 .fileName(originalName)
                 .filePath(target.toString())
                 .fileSize(file.getSize())
-                .documentType(file.getContentType())
+                .fileType(AttachmentFileType.fromValue(file.getContentType()))
                 .uploadedBy(userId)
                 .uploadedDate(LocalDateTime.now())
                 .build());
@@ -426,7 +451,7 @@ public class VtsSystemService {
         VtsSystem entity = repository.findById(vtsSystemId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + vtsSystemId));
         ensureAttachmentEditable(entity);
-        VtsSystemAttachment attachment = attachmentRepository.findByIdAndVtsSystemId(attachmentId, vtsSystemId)
+        InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, vtsSystemId, InfrastructureType.VTS_SYSTEM)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu đính kèm"));
         try {
             Files.deleteIfExists(Paths.get(attachment.getFilePath()));
@@ -436,8 +461,8 @@ public class VtsSystemService {
         attachmentRepository.delete(attachment);
     }
 
-    public VtsSystemAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {
-        return attachmentRepository.findByIdAndVtsSystemId(attachmentId, vtsSystemId)
+    public InfrastructureAttachment getAttachment(UUID vtsSystemId, UUID attachmentId) {
+        return attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, vtsSystemId, InfrastructureType.VTS_SYSTEM)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu đính kèm"));
     }
 
@@ -462,7 +487,7 @@ public class VtsSystemService {
     }
 
     private VtsSystemResponse toResponse(VtsSystem entity) {
-        List<VtsSystemAttachmentResponse> attachments = entity.getAttachments().stream()
+        List<VtsSystemAttachmentResponse> attachments = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.VTS_SYSTEM).stream()
                 .map(this::toAttachmentResponse)
                 .collect(Collectors.toList());
 
@@ -521,14 +546,14 @@ public class VtsSystemService {
         return GisSpatialObjectType.LINE_OTHER;
     }
 
-    private VtsSystemAttachmentResponse toAttachmentResponse(VtsSystemAttachment attachment) {
+    private VtsSystemAttachmentResponse toAttachmentResponse(InfrastructureAttachment attachment) {
         return VtsSystemAttachmentResponse.builder()
                 .id(attachment.getId())
                 .fileName(attachment.getFileName())
-                .filePath("/api/v1/he-thong-vts/" + attachment.getVtsSystemId()
+                .filePath("/api/v1/he-thong-vts/" + attachment.getRefId()
                         + "/attachments/" + attachment.getId() + "/download")
                 .fileSize(attachment.getFileSize())
-                .documentType(attachment.getDocumentType())
+                .documentType(attachment.getFileType() != null ? attachment.getFileType().getCode() : "OTHER")
                 .uploadedBy(attachment.getUploadedBy())
                 .uploadedDate(attachment.getUploadedDate())
                 .build();
@@ -582,6 +607,8 @@ public class VtsSystemService {
             case "orgUnitId" -> "Đơn vị quản lý";
             case "scope" -> "Phạm vi áp dụng";
             case "approvalStatus" -> "Trạng thái phê duyệt";
+            case "coordinates" -> "Tọa độ GIS";
+            case "geometryType" -> "Loại đối tượng GIS";
             default -> field;
         };
     }
@@ -623,6 +650,31 @@ public class VtsSystemService {
                 default -> rawValue;
             };
         }
+        if ("geometryType".equals(field)) {
+            return switch (rawValue) {
+                case "POINT" -> "Đối tượng điểm";
+                case "LINE", "LINESTRING" -> "Đối tượng đường";
+                case "POLYGON" -> "Đối tượng vùng";
+                default -> rawValue;
+            };
+        }
+        if ("coordinates".equals(field)) {
+            if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue)) {
+                return "Chưa có";
+            }
+            if (rawValue.startsWith("POLYGON")) {
+                int count = rawValue.split(",").length;
+                return "Vùng bản đồ (" + count + " điểm tọa độ)";
+            }
+            if (rawValue.startsWith("LINESTRING") || rawValue.startsWith("LINE")) {
+                int count = rawValue.split(",").length;
+                return "Đường bản đồ (" + count + " điểm tọa độ)";
+            }
+            if (rawValue.startsWith("POINT")) {
+                return rawValue.replace("POINT(", "Điểm tọa độ (").replace(")", ")");
+            }
+            return rawValue;
+        }
         return rawValue;
     }
 
@@ -636,6 +688,22 @@ public class VtsSystemService {
             case "partner" -> String.valueOf(entity.getPartner());
             case "orgUnitId" -> String.valueOf(entity.getOrgUnitId());
             case "scope" -> String.valueOf(entity.getScope());
+            case "coordinates" -> {
+                if (entity.getSpatialId() != null) {
+                    yield gisSpatialObjectService.findById(entity.getSpatialId())
+                            .map(com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject::getCoordinates)
+                            .orElse("");
+                }
+                yield "";
+            }
+            case "geometryType" -> {
+                if (entity.getSpatialId() != null) {
+                    yield gisSpatialObjectService.findById(entity.getSpatialId())
+                            .map(o -> String.valueOf(o.getGeometryType()))
+                            .orElse("");
+                }
+                yield "";
+            }
             default -> "";
         };
     }

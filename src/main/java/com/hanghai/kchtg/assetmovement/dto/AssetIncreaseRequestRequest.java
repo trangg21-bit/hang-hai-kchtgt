@@ -16,7 +16,4 @@ public class AssetIncreaseRequestRequest {
     private String unitOfMeasure;
     private String reason;
     private String increaseCode;
-
-    public UUID getAssetId() { return assetId; }
-    public String getReason() { return reason; }
 }

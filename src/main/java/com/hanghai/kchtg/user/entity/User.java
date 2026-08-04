@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 /**
  * Tài khoản người dùng hệ thống.
  * <p>
@@ -85,9 +86,7 @@ public class User extends BaseEntity implements java.security.Principal {
      * Mỗi user chỉ có 1 role chính theo business rule.
      */
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "user_roles",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id"))
+    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
     /**
@@ -96,9 +95,9 @@ public class User extends BaseEntity implements java.security.Principal {
      */
     public String getPrimaryRoleCode() {
         return roles.stream()
-            .map(r -> r.getCode())
-            .findFirst()
-            .orElse(null);
+                .map(r -> r.getCode())
+                .findFirst()
+                .orElse(null);
     }
 
     /**
@@ -109,7 +108,7 @@ public class User extends BaseEntity implements java.security.Principal {
         for (Role role : roles) {
             if (role.getPermissions() != null) {
                 perms.addAll(role.getPermissions().stream()
-                    .map(p -> p.getCode()).collect(Collectors.toSet()));
+                        .map(p -> p.getCode()).collect(Collectors.toSet()));
             }
         }
         if (permissionOverrides != null) {
@@ -139,7 +138,7 @@ public class User extends BaseEntity implements java.security.Principal {
 
     /**
      * @deprecated Use {@link #getPrimaryRoleCode()} or {@link #getRoles()} instead.
-     * Kept for backward compatibility with existing services.
+     *             Kept for backward compatibility with existing services.
      */
     @Deprecated(forRemoval = true)
     public String getRole() {
@@ -148,7 +147,7 @@ public class User extends BaseEntity implements java.security.Principal {
 
     /**
      * @deprecated Use {@link #setRoles(Set)} instead.
-     * Kept for backward compatibility with existing services.
+     *             Kept for backward compatibility with existing services.
      */
     @Deprecated(forRemoval = true)
     public void setRole(String role) {
@@ -277,7 +276,4 @@ public class User extends BaseEntity implements java.security.Principal {
     public String getName() {
         return this.username;
     }
-
-    public String getUsername() { return username; }
-    public String getFullName() { return fullName; }
 }

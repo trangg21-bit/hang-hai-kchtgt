@@ -9,7 +9,10 @@ BEGIN
         FROM information_schema.tables 
         WHERE table_schema = 'public' 
           AND table_type = 'BASE TABLE'
-          AND table_name != 'adjustment_approvals'
+          AND table_name NOT IN (
+              'adjustment_approvals', 'port_planning', 'planning_adjustments',
+              'incidents', 'documents', 'planning_files'
+          )
     LOOP
         FOR col IN 
             SELECT column_name, data_type, is_nullable

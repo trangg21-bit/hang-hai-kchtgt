@@ -99,7 +99,14 @@ export default function VtsSystemList() {
       try {
         const resp: any = await organizationService.list({ pageSize: 1000 });
         const list = Array.isArray(resp) ? resp : (resp?.data || resp?.content || []);
-        setOrgUnitOptions(list.map((o: any) => ({ label: o.name || o.unitName || o.tenDonVi || 'Đơn vị', value: String(o.id) })));
+        setOrgUnitOptions(list.map((o: any) => {
+          const code = o.code || o.maDonVi;
+          const name = o.name || o.unitName || o.tenDonVi || 'Đơn vị';
+          return {
+            label: code ? `${code} - ${name}` : name,
+            value: String(o.id),
+          };
+        }));
       } catch (e) {
         console.error('Failed to fetch org units for filter', e);
       }

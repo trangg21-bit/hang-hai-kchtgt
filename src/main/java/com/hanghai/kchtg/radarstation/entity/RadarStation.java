@@ -94,10 +94,6 @@ public class RadarStation extends BaseEntity {
     @Column(name = "radar_range", precision = 20)
     private BigDecimal radarRange;
 
-    @OneToMany(mappedBy = "radarStation", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<RadarStationAttachment> attachments = new ArrayList<>();
-
     @PrePersist
     protected void onCreate() {
         if (approvalStatus == null) approvalStatus = RadarStationApprovalStatus.PROPOSED;

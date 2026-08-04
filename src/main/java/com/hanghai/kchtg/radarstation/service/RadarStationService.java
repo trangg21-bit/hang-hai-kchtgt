@@ -26,6 +26,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -36,6 +40,7 @@ public class RadarStationService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final VtsSystemRepository vtsSystemRepository;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final InfrastructureAttachmentRepository attachmentRepository;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     public RadarStationResponse create(RadarStationCreateRequest request, UUID createdBy) {
@@ -320,14 +325,15 @@ public class RadarStationService {
     }
 
     private RadarStationResponse toResponse(RadarStation entity) {
-        List<RadarStationAttachmentResponse> attachments = entity.getAttachments().stream()
-                .map(a -> RadarStationAttachmentResponse.builder()
+        List<RadarStationAttachmentResponse> attachments = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.RADAR_STATION)
+                .stream().map(a -> RadarStationAttachmentResponse.builder()
                         .id(a.getId())
                         .fileName(a.getFileName())
                         .filePath(a.getFilePath())
                         .fileSize(a.getFileSize())
-                        .documentType(a.getDocumentType())
-                        .uploadedBy(a.getUploadedBy())
+                        .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
+                        .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
                         .uploadedDate(a.getUploadedDate())
                         .build()).toList();
 

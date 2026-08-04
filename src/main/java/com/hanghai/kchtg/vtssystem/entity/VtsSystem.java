@@ -80,10 +80,6 @@ public class VtsSystem extends BaseEntity {
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
-    @OneToMany(mappedBy = "vtsSystem", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<VtsSystemAttachment> attachments = new ArrayList<>();
-
     @OneToMany(mappedBy = "vtsSystem")
     @Builder.Default
     private List<RadarStation> radarStations = new ArrayList<>();

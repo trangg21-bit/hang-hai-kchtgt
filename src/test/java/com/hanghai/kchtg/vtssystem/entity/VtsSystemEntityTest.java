@@ -51,14 +51,6 @@ class VtsSystemEntityTest {
     }
 
     @Test
-    void testAttachmentsInit() {
-        VtsSystem entity = VtsSystem.builder()
-                .systemName("ABC").location("Hà Nội").build();
-        assertNotNull(entity.getAttachments());
-        assertTrue(entity.getAttachments().isEmpty());
-    }
-
-    @Test
     void testFullLifecycle() {
         VtsSystem entity = VtsSystem.builder()
                 .systemName("VTS ABC").location("Hà Nội").build();

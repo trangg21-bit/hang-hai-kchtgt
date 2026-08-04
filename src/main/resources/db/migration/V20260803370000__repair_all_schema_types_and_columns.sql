@@ -9125,6 +9125,9 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'port_planning' AND column_name = 'created_by' AND udt_name = 'uuid') THEN
         ALTER TABLE public.port_planning ALTER COLUMN created_by TYPE VARCHAR(100) USING created_by::text;
     END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'port_planning' AND column_name = 'nguoi_tao') THEN
+        EXECUTE 'UPDATE public.port_planning SET created_by = nguoi_tao WHERE created_by IS NULL';
+    END IF;
 END $$;
 ALTER TABLE public.port_planning ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
 DO $$

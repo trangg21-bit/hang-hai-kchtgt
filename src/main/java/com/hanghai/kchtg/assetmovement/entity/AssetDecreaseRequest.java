@@ -62,18 +62,4 @@ public class AssetDecreaseRequest extends BaseEntity {
     @Version
     private Integer lockVersion;
 
-    public UUID getAssetId() { return assetId; }
-    public void setAssetId(UUID assetId) { this.assetId = assetId; }
-    public DecreaseReason getDecreaseReason() { return decreaseReason; }
-    public void setDecreaseReason(DecreaseReason decreaseReason) { this.decreaseReason = decreaseReason; }
-    public RequestStatus getStatus() { return status; }
-    public void setStatus(RequestStatus status) { this.status = status; }
-    public void setApprovedBy(UUID approvedBy) { this.approvedBy = approvedBy; }
-    public void setApprovedAt(Instant approvedAt) { this.approvedAt = approvedAt; }
-    public void setApprovedRemarks(String approvedRemarks) { this.approvedRemarks = approvedRemarks; }
-    public void setUnapprovedBy(UUID unapprovedBy) { this.unapprovedBy = unapprovedBy; }
-    public void setUnapprovedAt(Instant unapprovedAt) { this.unapprovedAt = unapprovedAt; }
-    public void setUnapprovedRemarks(String unapprovedRemarks) { this.unapprovedRemarks = unapprovedRemarks; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
 }

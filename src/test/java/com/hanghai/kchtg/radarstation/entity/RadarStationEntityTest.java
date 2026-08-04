@@ -46,19 +46,10 @@ class RadarStationEntityTest {
     }
 
     @Test
-    void testPrePersist_TrangThaiDefault() {
-        // @Builder.Default doesn't set approvalStatus, so it's null until @PrePersist
+    void testPrePersist_ApprovalStatusDefault() {
         RadarStation entity = RadarStation.builder()
                 .stationName("ABC").location("Hà Nội").stationType("X").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNull(entity.getApprovalStatus());  // null before persist
-    }
-
-    @Test
-    void testAttachmentsInit() {
-        RadarStation entity = RadarStation.builder()
-                .stationName("ABC").location("Hà Nội").stationType("X").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
-        assertNotNull(entity.getAttachments());
-        assertTrue(entity.getAttachments().isEmpty());
     }
 
     @Test

@@ -70,7 +70,7 @@ export default function VtsSystemForm({ open, editId, initialData, mode, onCance
   const [organizations, setOrganizations] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!open || isDetailMode) return;
+    if (isDetailMode) return;
     (async () => {
       try {
         const resp = await organizationService.list({ pageSize: 1000 });
@@ -79,7 +79,7 @@ export default function VtsSystemForm({ open, editId, initialData, mode, onCance
         console.error('Failed to load organizations', err);
       }
     })();
-  }, [open, isDetailMode]);
+  }, [isDetailMode]);
 
   useEffect(() => {
     if (open) {

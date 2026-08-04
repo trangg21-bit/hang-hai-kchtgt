@@ -68,6 +68,17 @@ const FIELD_LABEL_MAP: Record<string, string> = {
   scope: 'Phạm vi áp dụng',
   approvalStatus: 'Trạng thái phê duyệt',
   operationalStatus: 'Trạng thái hoạt động',
+  coordinates: 'Tọa độ GIS',
+  geometryType: 'Loại đối tượng GIS',
+
+  // Approval fields
+  approvedLevel1: 'Phê duyệt cấp 1',
+  approvedLevel2: 'Phê duyệt cấp 2',
+  approverLevel1: 'Người duyệt cấp 1',
+  approverLevel2: 'Người duyệt cấp 2',
+  approvedDateLevel1: 'Ngày duyệt cấp 1',
+  approvedDateLevel2: 'Ngày duyệt cấp 2',
+  rejectionReason: 'Lý do từ chối',
 
   // ShipRepairFacility
   facilityName: 'Tên cơ sở sửa chữa',
@@ -129,12 +140,75 @@ const FIELD_LABEL_MAP: Record<string, string> = {
   color: 'Màu sắc',
 };
 
+const VALUE_LABEL_MAP: Record<string, string> = {
+  // Approval statuses
+  PROPOSED: 'Chờ duyệt',
+  UNDER_REVIEW: 'Đang xem xét',
+  APPROVED: 'Đã phê duyệt',
+  APPROVED_LEVEL_1: 'Đã duyệt Cấp 1',
+  APPROVED_LEVEL_2: 'Đã duyệt Cấp 2',
+  REJECTED: 'Từ chối',
+  REJECTED_LEVEL_1: 'Từ chối Cấp 1',
+  REJECTED_LEVEL_2: 'Từ chối Cấp 2',
+  REQUEST_CHANGE: 'Yêu cầu sửa đổi',
+  DRAFT: 'Bản nháp',
+
+  // Condition Statuses
+  GOOD: 'Tốt',
+  WARNING: 'Cảnh báo',
+  DAMAGE: 'Hư hỏng',
+  DEGRADED: 'Xuống cấp',
+  UNDER_MAINTENANCE: 'Bảo trì',
+  REPAIRED: 'Đã sửa chữa',
+  PENDING_REPAIR: 'Chờ sửa chữa',
+
+  // Operational Statuses
+  OPERATIONAL: 'Hoạt động',
+  ACTIVE: 'Hoạt động',
+  NON_OPERATIONAL: 'Ngừng hoạt động',
+  INACTIVE: 'Ngừng hoạt động',
+
+  // Boolean strings
+  true: 'Đồng ý',
+  false: 'Không',
+  null: 'Không',
+
+  // GIS Geometry Types
+  POINT: 'Đối tượng điểm',
+  LINE: 'Đối tượng đường',
+  LINESTRING: 'Đối tượng đường',
+  POLYGON: 'Đối tượng vùng',
+};
+
+const formatWktSummary = (text: string): string => {
+  if (!text) return text;
+  return text
+    .replace(/POLYGON\s*\(\(([^)]+)\)\)/gi, (_, coords) => {
+      const count = coords.split(',').length;
+      return `Vùng bản đồ (${count} điểm tọa độ)`;
+    })
+    .replace(/LINESTRING\s*\(([^)]+)\)/gi, (_, coords) => {
+      const count = coords.split(',').length;
+      return `Đường bản đồ (${count} điểm tọa độ)`;
+    })
+    .replace(/POINT\s*\(\s*([0-9.-]+)\s+([0-9.-]+)\s*\)/gi, (_, lng, lat) => {
+      const formatNum = (n: string) => {
+        const num = parseFloat(n);
+        return isNaN(num) ? n : num.toFixed(4) + '°';
+      };
+      return `Điểm tọa độ (${formatNum(lng)}, ${formatNum(lat)})`;
+    });
+};
+
 const translateFieldText = (text?: string): string => {
   if (!text) return '';
-  let result = text;
+  let result = formatWktSummary(text);
   Object.entries(FIELD_LABEL_MAP).forEach(([enKey, vnLabel]) => {
-    // Replace whole word occurrences or key= pattern
     const regex = new RegExp(`\\b${enKey}\\b`, 'g');
+    result = result.replace(regex, vnLabel);
+  });
+  Object.entries(VALUE_LABEL_MAP).forEach(([enVal, vnLabel]) => {
+    const regex = new RegExp(`\\b${enVal}\\b`, 'g');
     result = result.replace(regex, vnLabel);
   });
   return result;

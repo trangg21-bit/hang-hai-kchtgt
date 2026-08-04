@@ -36,6 +36,9 @@ import java.util.stream.Collectors;
 /**
  * Service for NavigationChannel (F-038 to F-043).
  */
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -46,6 +49,7 @@ public class NavigationChannelService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitRepository orgUnitRepository;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final InfrastructureAttachmentRepository attachmentRepository;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @Transactional
@@ -399,17 +403,17 @@ public class NavigationChannelService {
     }
 
     private NavigationChannelResponse toResponse(NavigationChannel nc) {
-        List<NavigationChannelAttachmentResponse> atts = nc.getAttachments() != null
-                ? nc.getAttachments().stream()
-                        .map(a -> NavigationChannelAttachmentResponse.builder()
-                                .id(a.getId())
-                                .fileName(a.getFileName())
-                                .filePath(a.getFilePath())
-                                .fileSize(a.getFileSize())
-                                .uploadDate(a.getUploadDate())
-                                .build())
-                        .collect(Collectors.toList())
-                : new ArrayList<>();
+        List<NavigationChannelAttachmentResponse> atts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(nc.getId(), InfrastructureType.NAVIGATION_CHANNEL)
+                .stream()
+                .map(a -> NavigationChannelAttachmentResponse.builder()
+                        .id(a.getId())
+                        .fileName(a.getFileName())
+                        .filePath(a.getFilePath())
+                        .fileSize(a.getFileSize())
+                        .uploadDate(a.getUploadedDate() != null ? a.getUploadedDate().toLocalDate() : null)
+                        .build())
+                .collect(Collectors.toList());
 
         List<ApprovalResponse> hist;
         try {
