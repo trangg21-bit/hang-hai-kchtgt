@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, Alert, Descriptions, Divider, Collapse,
+  Button, Tag, Modal, Input, Select, Alert, Descriptions, Divider, Collapse, DatePicker,
 } from 'antd';
 import {
   PlusOutlined,
@@ -14,6 +14,9 @@ import {
   ExclamationCircleOutlined,
   EnvironmentOutlined,
   FileOutlined,
+  ClockCircleFilled,
+  UpOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -57,9 +60,35 @@ import {
   spaceMd,
   spaceSm,
   spaceFormField,
+  shadowSm,
+  surfaceCard,
   metaStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
+
+// ── Field name translation ───────────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  berthCode: 'Mã bến cảng', berthName: 'Tên bến cảng', portId: 'Cảng biển chủ',
+  waterway: 'Tuyến đường thủy', operator: 'Đơn vị vận hành', provinceId: 'Tỉnh/Thành phố',
+  detailedLocation: 'Địa điểm chi tiết', structureType: 'Loại kết cấu',
+  operationalFunction: 'Công năng khai thác', totalArea: 'Tổng diện tích',
+  designThroughput: 'Năng lực thiết kế', currentThroughput: 'Năng lực hiện tại',
+  maxVesselSize: 'Cỡ tàu tối đa', plannedThroughput: 'Năng lực quy hoạch',
+  latestCargoVolume: 'Sản lượng gần nhất', openingAnnouncementDate: 'Ngày công bố mở',
+  openingDecision: 'Quyết định mở', investmentAgreement: 'Thỏa thuận đầu tư',
+  length: 'Chiều dài', width: 'Chiều rộng', berthType: 'Loại bến',
+  channelDepth: 'Độ sâu luồng', operationalStatus: 'Trạng thái hoạt động',
+  approvalStatus: 'Trạng thái phê duyệt', orgUnitId: 'Đơn vị quản lý',
+  mapSymbolId: 'Biểu tượng bản đồ', spatialId: 'Vị trí không gian',
+  coordinateSystem: 'Hệ quy chiếu', displayRule: 'Quy tắc hiển thị',
+  submittedForApprovalAt: 'Ngày gửi phê duyệt', submittedForApprovalBy: 'Người gửi phê duyệt',
+  portAuthorityApprovedAt: 'Ngày duyệt Cảng vụ', portAuthorityApprovedBy: 'Người duyệt Cảng vụ',
+  departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
+  rejectionReason: 'Lý do từ chối', activityStatus: 'Trạng thái hoạt động',
+};
+
+const translateField = (fn: string) => FIELD_LABELS[fn] || fn;
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -192,6 +221,30 @@ export default function BerthList() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingRecord, setRejectingRecord] = useState<Berth | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // ── History modal ───────────────────────────────────────────────
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<Berth | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState<Record<number, boolean>>({});
+  const [historyVisible, setHistoryVisible] = useState(10);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+
+  const openHistory = useCallback(async (r: Berth) => {
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistoryExpanded({}); setHistoryVisible(10); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    try {
+      const res = await api.get(`/v1/berths/${r.id}/history`);
+      const d = res.data?.data;
+      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
+      const al = Array.isArray(d?.approvalLog) ? d.approvalLog : [];
+      setHistoryRecords([...ch, ...al]);
+    } catch { toast.error('Không thể tải lịch sử'); }
+    finally { setHistoryLoading(false); }
+  }, []);
 
   // ── Load organizations ──────────────────────────────────────────
   useEffect(() => {
@@ -860,10 +913,10 @@ export default function BerthList() {
 
     // Lịch sử
     actions.push({
-      key: 'history',
-      label: 'Lịch sử',
-      icon: <HistoryOutlined />,
-      onClick: () => navigate(`/berth/${record.id}/history`),
+       key: 'history',
+       label: 'Lịch sử',
+       icon: <HistoryOutlined />,
+       onClick: () => openHistory(record),
     });
 
     // Gửi phê duyệt — khi ở trạng thái Nháp
@@ -936,6 +989,10 @@ export default function BerthList() {
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 2500, y: 'calc(100vh - 450px)' }}
+          onRow={(record) => ({
+            onClick: () => openDetailModal(record),
+            style: { cursor: 'pointer' },
+          })}
         />
         <Pagination
           total={total}
@@ -1073,6 +1130,36 @@ export default function BerthList() {
   };
 
   // ── JSX ─────────────────────────────────────────────────────────
+
+  const translateVal = useCallback((fn: string, val: string) => {
+    if (!val || val === '(null)' || val === 'null') return '—';
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(val)) {
+      try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; }
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      try { return dayjs(val).format('DD/MM/YYYY'); } catch { return val; }
+    }
+    if (fn === 'approvalStatus') {
+      const m: Record<string,string> = { DRAFT:'Nháp', PENDING:'Chờ duyệt', PORT_AUTHORITY:'Chờ Cục duyệt', APPROVED:'Đã duyệt', REJECTED:'Từ chối' };
+      return m[val.toUpperCase()] || val;
+    }
+    if (fn === 'operationalStatus') {
+      const m: Record<string,string> = { DANG_KHAI_THAC:'Đang khai thác', CHUA_KHAI_THAC:'Chưa khai thác', DUNG_KHAI_THAC:'Dừng khai thác' };
+      return m[val.toUpperCase()] || val;
+    }
+    if (fn === 'coordinateSystem') { const m: Record<string,string> = { '1':'WGS-84', '2':'VN-2000' }; return m[val] || val; }
+    if (fn === 'structureType') { const m: Record<string,string> = { '1':'Bến liền bờ', '2':'Bến phao', '3':'Bến nổi' }; return m[val] || val; }
+    if (fn === 'berthType') { const m: Record<string,string> = { 'GENERAL':'Tổng hợp', 'CONTAINER':'Container', 'BULK':'Hàng rời', 'LIQUID':'Hàng lỏng', 'PASSENGER':'Hành khách' }; return m[val.toUpperCase()] || val; }
+    if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val)-1] || val;
+    if (fn === 'spatialId') return 'Có tọa độ bản đồ';
+    if (fn === 'portId') { const p = portOptions.find(o => o.value === val); return p ? p.label : val.substring(0,8)+'…'; }
+    if (fn === 'orgUnitId') { const o = organizations.find((org: any) => org.id === val); return o ? o.name : val.substring(0,8)+'…'; }
+    if (fn === 'mapSymbolId') { const name = symbolMap.get(val); return name || val.substring(0,8)+'…'; }
+    if (['submittedForApprovalBy','portAuthorityApprovedBy','departmentApprovedBy'].includes(fn)) return val.substring(0,8)+'…';
+    if (val === 'true') return 'Có';
+    if (val === 'false') return 'Không';
+    return val;
+  }, [portOptions, organizations, symbolMap]);
 
   return (
     <div style={{ minHeight: '100%', marginTop: -8 }}>
@@ -1329,6 +1416,107 @@ export default function BerthList() {
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
+      </Modal>
+
+      {/* ── History Modal ──────────────────────────────────────── */}
+      <Modal
+        title={<span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: 15 }}>
+          {historyTarget ? `Lịch sử thay đổi — ${historyTarget.berthName}` : 'Lịch sử thay đổi'}
+        </span>}
+        open={historyOpen}
+        onCancel={() => setHistoryOpen(false)}
+        footer={null}
+        width={880}
+        styles={{ body: { padding: spaceMd, maxHeight: '68vh', overflowY: 'auto' } }}
+      >
+        {!historyLoading && (
+          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+            <Input.Search placeholder="Tìm kiếm..." allowClear value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1 }} />
+            <DatePicker placeholder="Từ" value={historyFrom ? dayjs(historyFrom) : null}
+              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+            <DatePicker placeholder="Đến" value={historyTo ? dayjs(historyTo) : null}
+              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+          </div>
+        )}
+        {historyLoading ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+            <div style={{ color: textTertiary, fontSize: 13 }}>Chưa có thay đổi nào</div>
+          </div>
+        ) : (() => {
+          const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+          const sorted = [...historyRecords].sort((a: any, b: any) =>
+            new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
+          const q = historySearch.toLowerCase().trim();
+          const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+          for (const r of sorted) {
+            if (q) {
+              const fn = (r.fieldName || r.fieldChanged || '').toLowerCase();
+              const ov = (r.oldValue || '').toLowerCase(); const nv = (r.newValue || '').toLowerCase();
+              const label = translateField(r.fieldName || r.fieldChanged).toLowerCase();
+              const ovDisp = translateVal(r.fieldName||r.fieldChanged, String(r.oldValue||'')).toLowerCase();
+              const nvDisp = translateVal(r.fieldName||r.fieldChanged, String(r.newValue||'')).toLowerCase();
+              if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !label.includes(q) && !ovDisp.includes(q) && !nvDisp.includes(q)) continue;
+            }
+            if (historyFrom || historyTo) {
+              const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
+              if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
+              if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
+            }
+            const ts = r.changedAt || r.createdAt || ''; const sec = ts ? toSec(ts) : 0;
+            const prev = groups[groups.length - 1];
+            if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
+            else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+          }
+          if (groups.length === 0) return <div style={{ textAlign: 'center', padding: '32px 0', color: textTertiary }}>Không tìm thấy kết quả</div>;
+          if (Object.keys(historyExpanded).length === 0) { const init: Record<number,boolean>={}; groups.forEach((_,i)=>{init[i]=false}); setTimeout(()=>setHistoryExpanded(init),0); }
+          const visible = groups.slice(0, historyVisible);
+          return <div style={{ maxHeight: '62vh', overflowY: 'auto' }}
+            onScroll={e => { const el=e.currentTarget; if(el.scrollHeight-el.scrollTop-el.clientHeight<80&&historyVisible<groups.length) setHistoryVisible(p=>Math.min(p+10,groups.length)); }}>
+            {visible.map((g, gi) => (
+              <div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi<visible.length-1?spaceSm:0 }}>
+                <div style={{ display:'flex',flexDirection:'column',alignItems:'center',width:24,flexShrink:0 }}>
+                  <div style={{ width:24,height:24,borderRadius:'50%',background:surfaceCard,border:`1px solid ${actionPrimary}`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                    <ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} />
+                  </div>
+                  {gi<groups.length-1&&<div style={{ width:1,flex:1,minHeight:24,background:borderDefault,marginTop:4 }} />}
+                </div>
+                <div style={{ ...cardStyle, flex:1, padding:`${spaceSm}px ${spaceFormField}px`, borderRadius:12, boxShadow: shadowSm }}>
+                  <div onClick={()=>setHistoryExpanded(p=>({...p,[gi]:!p[gi]}))} style={{ display:'flex',alignItems:'center',gap:spaceSm,cursor:'pointer' }}>
+                    <span style={{ fontSize:15,color:textPrimary,fontWeight:fontWeightBold }}>
+                      {g.ts ? `${new Date(g.ts).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})} · ${new Date(g.ts).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}` : '—'}
+                    </span>
+                    {g.actor && <span style={{ fontSize:13, color:textSecondary }}>— {g.actor}</span>}
+                    <span style={{ fontSize:13,fontWeight:fontWeightBold,color:actionPrimary,background:`${actionPrimary}12`,borderRadius:radiusPill,padding:'2px 10px',marginLeft:'auto' }}>{g.items.length}</span>
+                    {historyExpanded[gi] ? <UpOutlined style={{ fontSize:12,color:textTertiary }} /> : <DownOutlined style={{ fontSize:12,color:textTertiary }} />}
+                  </div>
+                  {historyExpanded[gi] && <>
+                    <Divider style={{ margin:`${spaceSm}px 0` }} />
+                    <table style={{ width:'100%' }}><tbody>
+                      {g.items.map((r:any,ri:number) => {
+                        const fn = r.fieldName || r.fieldChanged;
+                        const ov = r.oldValue != null && r.oldValue !== undefined && r.oldValue !== '(null)' && r.oldValue !== 'null' ? String(r.oldValue) : null;
+                        const nv = r.newValue != null && r.newValue !== undefined && r.newValue !== '(null)' && r.newValue !== 'null' ? String(r.newValue) : null;
+                        if (r.oldValue === '(null)' || r.oldValue === 'null') { /* treat as null */ }
+                        return <tr key={r.id||ri}>
+                          <td style={{ padding:'4px 8px 4px 0',fontSize:13,fontWeight:fontWeightMedium,color:textPrimary,whiteSpace:'nowrap',width:1 }}>{translateField(fn)}</td>
+                          <td style={{ padding:'4px 0',fontSize:13 }}>
+                            {ov ? <span style={{ textDecoration:'line-through',color:statusCritical }}>{translateVal(fn, String(r.oldValue))}</span> : <span style={{ color:textTertiary }}>—</span>}
+                            <span style={{ color:textTertiary,margin:'0 6px' }}>→</span>
+                            {nv ? <span style={{ color:statusOperational,fontWeight:fontWeightMedium }}>{translateVal(fn, String(r.newValue))}</span> : <span style={{ color:textTertiary }}>—</span>}
+                          </td>
+                        </tr>;
+                      })}
+                    </tbody></table>
+                  </>}
+                </div>
+              </div>
+            ))}
+          </div>;
+        })()}
       </Modal>
     </div>
   );

@@ -117,6 +117,15 @@ export default function PierForm() {
   /* ── Load symbols ── */
   useEffect(() => { (async () => { setLoadingSymbols(true); try { const r = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' }); setSymbols(r.data || (r as any).content || []); } catch {} finally { setLoadingSymbols(false); } })(); }, []);
 
+  /* ── Re-apply mapSymbolId after symbols load (fix race condition: Select chưa có options khi setFieldsValue chạy) ── */
+  useEffect(() => {
+    if (symbols.length === 0 || !isEdit) return;
+    const currentMapSymId = form.getFieldValue('mapSymbolId');
+    if (currentMapSymId) {
+      form.setFieldsValue({ mapSymbolId: currentMapSymId });
+    }
+  }, [symbols, isEdit, form]);
+
   /* ── Load existing (edit mode) ── */
   useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d = await pierCRUD.findById(id); form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, pierCode: d.pierCode, pierName: d.pierName, length: d.length, width: d.width, designLoad: d.designLoad, pierType: d.pierType, operationalFunction: d.operationalFunction, operationalStatus: d.operationalStatus === 'OPERATIONAL' ? 'HIEN_HANH' : 'TAM_NGUNG', province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: d.currentWaterDepth, designBedElevation: d.designBedElevation, publishedVesselDWT: d.publishedVesselDWT, maintenanceApprovalDate: d.maintenanceApprovalDate, safetyAssessmentDate: d.safetyAssessmentDate, lastInspectionDate: d.lastInspectionDate, operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: d.cargoThroughput, receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || 'POINT', mapSymbolId: d.mapSymbolId, gisLocation: d.coordinates ? { geometryType: d.geometryType, coordinates: d.coordinates } : undefined, }); try { const fr = await api.get(`/v1/documents/entity/pier/${id}`, { params: { page: 0, size: 50 } }); setExistingFiles(fr.data?.data?.content || fr.data?.data || []); } catch {} } catch { toast.error('Không thể tải thông tin cầu cảng'); navigate('/Pier'); } })(); }, [isEdit, id, form, navigate]);
 

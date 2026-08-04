@@ -20,6 +20,9 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.repository.ChangeLogRepository;
+import com.hanghai.kchtg.port.entity.ChangeLog;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,6 +49,8 @@ public class BuoyService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final OrgUnitRepository orgUnitRepo;
+    private final ChangeHistoryService changeHistoryService;
+    private final ChangeLogRepository changeLogRepository;
 
     // -- READ --
 
@@ -131,6 +136,7 @@ public class BuoyService {
         }
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
+        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "CREATE", null, "created", entity.getCreatedBy());
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
@@ -149,6 +155,20 @@ public class BuoyService {
         }
 
         String oldJson = toJson(entity);
+
+        // Create snapshot for ChangeLog before modifications
+        Buoy snapshot = Buoy.builder()
+                .code(entity.getCode()).name(entity.getName()).type(entity.getType())
+                .color(entity.getColor()).shape(entity.getShape())
+                .lightCharacteristic(entity.getLightCharacteristic()).range(entity.getRange())
+                .description(entity.getDescription()).unitId(entity.getUnitId())
+                .lastInspectionDate(entity.getLastInspectionDate()).nextInspectionDate(entity.getNextInspectionDate())
+                .isActive(entity.getIsActive()).status(entity.getStatus())
+                .approvalStatus(entity.getApprovalStatus()).approvalLevel(entity.getApprovalLevel())
+                .spatialId(entity.getSpatialId())
+                .provinceId(entity.getProvinceId())
+                .rejectionReason(entity.getRejectionReason())
+                .build();
 
         // Apply mutable fields only
         if (request.getName() != null) entity.setName(request.getName());
@@ -235,6 +255,8 @@ public class BuoyService {
             logHistory(entity, BeaconHistoryActionType.UPDATE,
                     getChangedFields(oldJson, newJson), oldJson, newJson);
         }
+        changeHistoryService.recordChanges("Buoy", entity.getId().toString(),
+                "system", snapshot, entity);
         return toResponse(entity);
     }
 
