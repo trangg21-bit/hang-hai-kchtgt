@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, Alert, Descriptions, Divider, Collapse,
+  Button, Tag, Modal, Input, Select, Alert, Descriptions, Divider, Collapse, DatePicker,
 } from 'antd';
 import {
   PlusOutlined,
@@ -221,6 +221,11 @@ export default function PierList() {
   const [historyRecord, setHistoryRecord] = useState<Pier | null>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState<Record<number, boolean>>({});
+  const [historyVisible, setHistoryVisible] = useState(10);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
 
   // ── Load organizations ──────────────────────────────────────────
   useEffect(() => {
@@ -499,6 +504,11 @@ export default function PierList() {
     setHistoryData([]);
     setHistoryLoading(true);
     setHistoryModalOpen(true);
+    setHistoryExpanded({});
+    setHistoryVisible(10);
+    setHistorySearch('');
+    setHistoryFrom('');
+    setHistoryTo('');
     try {
       const res = await api.get(`/v1/piers/${record.id}/history`);
       const data = res.data?.data;
@@ -628,9 +638,9 @@ export default function PierList() {
     },
     // 3. Thuộc bến cảng
     {
-      key: 'tenBenCang',
+      key: 'berthName',
       label: 'Thuộc bến cảng',
-      dataIndex: 'tenBenCang',
+      dataIndex: 'berthName',
       width: 180,
       ellipsis: true,
       render: (v: string) => (
@@ -706,7 +716,7 @@ export default function PierList() {
       key: 'updatedBy',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedBy',
-      width: 140,
+      width: 120,
       ellipsis: true,
       render: (v: string | null | undefined) => (
         <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
@@ -719,7 +729,7 @@ export default function PierList() {
       key: 'operationalStatus',
       label: 'Tình trạng',
       dataIndex: 'operationalStatus',
-      width: 250,
+      width: 120,
       align: 'center' as const,
       render: (status: string | null | undefined) => {
         if (!status) return <span style={{ color: textTertiary }}>—</span>;
@@ -747,7 +757,7 @@ export default function PierList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
+      width: 150,
       align: 'center' as const,
       render: (status: string | null | undefined) => {
         if (!status) return <span style={{ color: textTertiary }}>—</span>;
@@ -895,6 +905,10 @@ export default function PierList() {
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 2100, y: 'calc(100vh - 450px)' }}
+          onRow={(record) => ({
+            onClick: () => openDetailModal(record),
+            style: { cursor: 'pointer' },
+          })}
         />
         <Pagination
           total={total}
@@ -1044,6 +1058,52 @@ export default function PierList() {
   };
 
   // ── JSX ─────────────────────────────────────────────────────────
+
+  const translateVal = useCallback((fn: string, val: string) => {
+    if (!val || val === '(null)' || val === 'null') return '—';
+    // Date / datetime detection
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(val)) {
+      try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; }
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      try { return dayjs(val).format('DD/MM/YYYY'); } catch { return val; }
+    }
+    // approvalStatus
+    if (fn === 'approvalStatus') {
+      const m: Record<string,string> = { DRAFT:'Nháp', PENDING:'Chờ duyệt', APPROVED:'Đã duyệt', REJECTED:'Từ chối' };
+      return m[val.toUpperCase()] || val;
+    }
+    // operationalStatus / conditionStatus — API trả về English enum name (SUSPENDED, OPERATIONAL) hoặc số ORDINAL
+    if (fn === 'operationalStatus' || fn === 'conditionStatus') {
+      const m: Record<string,string> = {
+        OPERATIONAL:'Đang hoạt động', SUSPENDED:'Tạm ngừng',
+        HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng',
+        '1':'Hiện hành', '0':'Tạm ngừng',
+      };
+      return m[val.toUpperCase()] || m[val] || val;
+    }
+    // pierType — dùng PIER_TYPE_MAP đã có sẵn (TONG_HOP, HANH_KHACH, ...)
+    if (fn === 'pierType') { return PIER_TYPE_MAP[val.toUpperCase()] || PIER_TYPE_MAP[val] || val; }
+    // structureType — lưu số nguyên (ORDINAL): 1=Bến nước, 2=Bến bờ, 3=Bến phao, 4=Khác
+    if (fn === 'structureType') {
+      const m: Record<string,string> = { '1':'Bến nước', '2':'Bến bờ', '3':'Bến phao', '4':'Khác' };
+      return m[val] || val;
+    }
+    // constructionGrade — số 1-5
+    if (fn === 'constructionGrade') { return val.match(/^\d+$/) ? `Cấp ${val}` : val; }
+    // UUID lookups
+    if (fn === 'portId') { const name = portMap.get(val); return name || val.substring(0,8)+'…'; }
+    if (fn === 'mapSymbolId') { const name = symbolMap.get(val); return name || val.substring(0,8)+'…'; }
+    if (fn === 'berthId') { const b = berthOptions.find(o => o.value === val); return b ? b.label : val.substring(0,8)+'…'; }
+    // spatialId
+    if (fn === 'spatialId') return 'Có tọa độ bản đồ';
+    // receivesLargeVessel
+    if (fn === 'receivesLargeVessel') return val === 'true' || val === '1' ? 'Có' : 'Không';
+    // booleans
+    if (val === 'true' || val === '1') return 'Có';
+    if (val === 'false' || val === '0') return 'Không';
+    return val;
+  }, [portMap, symbolMap, berthOptions]);
 
   return (
     <div style={{ minHeight: '100%', marginTop: -8 }}>
@@ -1304,66 +1364,118 @@ export default function PierList() {
 
       {/* ── History Modal ────────────────────────────────────────── */}
       <Modal
-        title={
-          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-            Lịch sử thay đổi{historyRecord ? `: ${historyRecord.pierName}` : ''}
-          </span>
-        }
+        title={<span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: 15 }}>
+          {historyRecord ? `Lịch sử thay đổi — ${historyRecord.pierName}` : 'Lịch sử thay đổi'}
+        </span>}
         open={historyModalOpen}
         onCancel={() => { setHistoryModalOpen(false); setHistoryRecord(null); }}
-        footer={[
-          <Button key="close" onClick={() => { setHistoryModalOpen(false); setHistoryRecord(null); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>
-            Đóng
-          </Button>,
-        ]}
-        width={700}
+        footer={null}
+        width={880}
+        styles={{ body: { padding: spaceMd, maxHeight: '68vh', overflowY: 'auto' } }}
       >
-        <div style={{ maxHeight: '50vh', overflowY: 'auto', padding: '8px 0' }}>
-          {historyLoading ? <LoadingSkeleton rows={4} /> :
-            historyData.length === 0 ? <EmptyState description="Chưa có lịch sử thay đổi" /> :
-            historyData.map((item: any, idx: number) => {
-              // Approval log entry
-              if (item.decision) {
-                return (
-                  <div key={`approval-${idx}`} style={{ padding: '8px 0', borderBottom: `0.5px solid ${borderDefault}` }}>
-                    <div style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>
-                      <Tag color={item.decision === 'APPROVED' ? statusOperational : statusCritical}>
-                        {item.decision === 'APPROVED' ? 'Phê duyệt' : item.decision === 'REJECTED' ? 'Từ chối' : item.decision}
-                      </Tag>
-                      {item.cap && ` — Cấp: ${item.cap}`}
-                    </div>
-                    <div style={{ fontSize: fontSizeSm, color: textTertiary, marginTop: 4 }}>
-                      {item.decidedAt ? formatDate(item.decidedAt) : '—'}
-                      {item.decidedBy && ` — ${userMap.get(item.decidedBy) || item.decidedBy}`}
-                    </div>
-                    {item.reason && <div style={{ fontSize: fontSizeSm, color: textSecondary, marginTop: 2 }}>Lý do: {item.reason}</div>}
-                  </div>
-                );
-              }
-              // Change log entry
-              const label = FIELD_LABEL_MAP[item.fieldName] || item.fieldName;
-              const oldVal = item.oldValue === '(null)' || !item.oldValue ? '—' : item.oldValue;
-              const newVal = item.newValue === '(null)' || !item.newValue ? '—' : item.newValue;
-              return (
-                <div key={`change-${idx}`} style={{ padding: '8px 0', borderBottom: `0.5px solid ${borderDefault}` }}>
-                  <div style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightMedium }}>
-                    {item.fieldName === 'CREATE' ? '🆕 Tạo mới' : label}:{' '}
-                    {item.fieldName !== 'CREATE' && (
-                      <><span style={{ color: statusCritical, textDecoration: 'line-through' }}>{oldVal}</span>
-                      {' → '}
-                      <span style={{ color: statusOperational }}>{newVal}</span></>
-                    )}
-                  </div>
-                  <div style={{ fontSize: fontSizeSm, color: textTertiary, marginTop: 4 }}>
-                    {item.changedAt ? formatDate(item.changedAt) : '—'}
-                    {item.changedBy && ` — ${userMap.get(item.changedBy) || item.changedBy}`}
-                  </div>
-                </div>
-              );
-            })
+        {historyLoading ? <LoadingSkeleton rows={5} /> : historyData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <HistoryOutlined style={{ fontSize: 40, color: textTertiary }} />
+            <div style={{ color: textTertiary, fontSize: 13 }}>Chưa có thay đổi nào</div>
+          </div>
+        ) : (() => {
+          const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+          const sorted = [...historyData].sort((a: any, b: any) =>
+            new Date(b.changedAt || b.createdAt || b.decidedAt || 0).getTime() - new Date(a.changedAt || a.createdAt || a.decidedAt || 0).getTime());
+          const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+          for (const r of sorted) {
+            const q = historySearch.toLowerCase().trim();
+            if (q) {
+              const fn = (r.fieldName || r.fieldChanged || '').toLowerCase();
+              const ov = (r.oldValue || '').toLowerCase(); const nv = (r.newValue || '').toLowerCase();
+              const label = (FIELD_LABEL_MAP[r.fieldName||r.fieldChanged] || '').toLowerCase();
+              if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !label.includes(q)) continue;
+            }
+            if (historyFrom || historyTo) {
+              const cd = (r.changedAt || r.createdAt || r.decidedAt || '').substring(0, 16);
+              if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
+              if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
+            }
+            const ts = r.changedAt || r.createdAt || r.decidedAt || '';
+            const sec = ts ? toSec(ts) : 0;
+            const prev = groups[groups.length - 1];
+            if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || r.decidedBy || '')) prev.items.push(r);
+            else groups.push({ tsSec: sec, ts, actor: r.changedBy || r.decidedBy || '', items: [r] });
           }
-        </div>
+          const fmt = (ts: string) => {
+            const d = new Date(ts);
+            return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+          };
+          if (groups.length === 0) return <div style={{ textAlign: 'center', padding: '32px 0', color: textTertiary }}>Không tìm thấy kết quả</div>;
+          if (Object.keys(historyExpanded).length === 0) {
+            const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = false; });
+            setTimeout(() => setHistoryExpanded(init), 0);
+          }
+          const vis = groups.slice(0, historyVisible);
+          return (<div>
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input.Search placeholder="Tìm kiếm..." allowClear value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1 }} />
+              <DatePicker placeholder="Từ" value={historyFrom ? dayjs(historyFrom) : null}
+                onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+                style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+              <DatePicker placeholder="Đến" value={historyTo ? dayjs(historyTo) : null}
+                onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+                style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+            </div>
+            <div style={{ maxHeight: '62vh', overflowY: 'auto' }}
+              onScroll={e => { const el = e.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 80 && historyVisible < groups.length) setHistoryVisible(p => Math.min(p + 10, groups.length)); }}>
+            {vis.map((g, gi) => (
+              <div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < vis.length - 1 ? spaceSm : 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#fff', border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: actionPrimary }} />
+                  </div>
+                  {gi < groups.length - 1 && <div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: 4 }} />}
+                </div>
+                <div style={{ ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+                  <div onClick={() => setHistoryExpanded(p => ({ ...p, [gi]: !p[gi] }))} style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}>
+                    <span style={{ fontSize: 15, color: textPrimary, fontWeight: fontWeightBold }}>{g.ts ? fmt(g.ts) : '—'}</span>
+                    {g.actor && <span style={{ fontSize: 13, color: textSecondary }}>— {g.actor}</span>}
+                    <span style={{ fontSize: 13, fontWeight: fontWeightBold, color: actionPrimary, background: `${actionPrimary}12`, borderRadius: radiusPill, padding: '2px 10px', marginLeft: 'auto' }}>{g.items.length}</span>
+                    {historyExpanded[gi] ? <span style={{ fontSize: 12, color: textTertiary }}>▲</span> : <span style={{ fontSize: 12, color: textTertiary }}>▼</span>}
+                  </div>
+                  {historyExpanded[gi] && <div>
+                    <Divider style={{ margin: `${spaceSm}px 0` }} />
+                    <table style={{ width: '100%' }}><tbody>
+                      {g.items.map((r: any, ri: number) => {
+                        if (r.decision) return <tr key={`app-${ri}`}>
+                          <td style={{ padding: '4px 8px 4px 0', fontSize: 13, fontWeight: fontWeightMedium, color: textPrimary, whiteSpace: 'nowrap' }}>
+                            <Tag color={r.decision === 'APPROVED' ? statusOperational : statusCritical} style={{ margin: 0 }}>
+                              {r.decision === 'APPROVED' ? 'Phê duyệt' : 'Từ chối'}
+                            </Tag>
+                            {r.cap && ` — Cấp: ${r.cap}`}
+                          </td>
+                          <td style={{ padding: '4px 0', fontSize: 13, color: textTertiary }}>
+                            {r.decidedAt ? dayjs(r.decidedAt).format('DD/MM/YYYY HH:mm') : '—'}
+                            {r.reason && <span style={{ color: textSecondary }}> — {r.reason}</span>}
+                          </td>
+                        </tr>;
+                        const fn = r.fieldName || r.fieldChanged;
+                        const ov = r.oldValue !== undefined && r.oldValue != null && r.oldValue !== '(null)' && r.oldValue !== 'null' ? String(r.oldValue) : null;
+                        const nv = r.newValue !== undefined && r.newValue != null && r.newValue !== '(null)' && r.newValue !== 'null' ? String(r.newValue) : null;
+                        return <tr key={r.id || ri}>
+                          <td style={{ padding: '4px 8px 4px 0', fontSize: 13, fontWeight: fontWeightMedium, color: textPrimary, whiteSpace: 'nowrap', width: 1 }}>{FIELD_LABEL_MAP[fn] || fn}</td>
+                          <td style={{ padding: '4px 0', fontSize: 13 }}>
+                            {ov ? <span style={{ textDecoration: 'line-through', color: statusCritical }}>{translateVal(fn, String(r.oldValue))}</span> : <span style={{ color: textTertiary }}>—</span>}
+                            <span style={{ color: textTertiary, margin: '0 6px' }}>→</span>
+                            {nv ? <span style={{ color: statusOperational, fontWeight: fontWeightMedium }}>{translateVal(fn, String(r.newValue))}</span> : <span style={{ color: textTertiary }}>—</span>}
+                          </td>
+                        </tr>;
+                      })}
+                    </tbody></table>
+                  </div>}
+                </div>
+              </div>
+            ))}
+            </div>
+          </div>);
+        })()}
       </Modal>
     </div>
   );

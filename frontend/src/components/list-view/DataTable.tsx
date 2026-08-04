@@ -103,6 +103,7 @@ const DataTable: React.FC<DataTableProps> = ({
         return (
           <Dropdown menu={{ items }} trigger={['click']}>
             <Button icon={<MoreOutlined />}
+              onClick={(e) => e.stopPropagation()}
               style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }}
             />
           </Dropdown>
