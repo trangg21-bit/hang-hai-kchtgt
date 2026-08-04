@@ -138,21 +138,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      # Flyway owns this schema. "update" let Hibernate alter tables on every boot —
-      # that is how the dead nha_tram_* / tai_* entities kept re-creating their tables
-      # after the migrations had renamed them away.
-      #
-      # Default is "validate": if an entity and the database disagree, startup fails
-      # immediately naming the offending table/column, instead of surfacing as a 500
-      # the first time a user opens that screen. That is what you want on a UAT boot
-      # after a large refactor.
-      #
-      # Override without rebuilding if a mismatch blocks the deploy:
-      #   JPA_DDL_AUTO=none    -> start anyway, fix the migration afterwards
-      #   JPA_DDL_AUTO=update  -> let Hibernate patch the schema (last resort: it
-      #                           re-adds columns under their old names and is how
-      #                           the drift started)
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: ${JPA_DDL_AUTO:none}
 
 server:
   port: ${SERVER_PORT:8080}
