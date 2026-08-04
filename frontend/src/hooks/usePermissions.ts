@@ -1,42 +1,36 @@
-import { ALL_PERMISSIONS } from '../services/mockData';
-import type { PermissionGroup, PermissionTreeNode } from '../types/permission';
+import { useQuery } from '@tanstack/react-query';
+import { permissionService } from '../services/permissionService';
+import type { MenuTreeNode } from '../types/permission';
 
-const GROUP_LABELS: Record<string, string> = {
-  user_management: 'Quản lý người dùng',
-  role_management: 'Quản lý vai trò & phân quyền',
-  admin_management: 'Quản lý tài khoản quản trị',
-  group_management: 'Quản lý nhóm',
-  org_management: 'Quản lý đơn vị',
-  connection_management: 'Quản lý kết nối liên thông',
-  connection: 'Kết nối liên thông',
-  gis: 'Bản đồ GIS',
-  system: 'Hệ thống',
-};
+function flattenKeys(nodes: MenuTreeNode[]): string[] {
+  return nodes.flatMap((node) => [node.key, ...flattenKeys(node.children || [])]);
+}
 
+/**
+ * Cây chức năng AUTH_MENU của project gốc hh.csdl.
+ * Các permission API resource:action vẫn được giữ ở endpoint /permissions,
+ * nhưng không trộn vào cây chức năng hiển thị cho người quản trị.
+ */
 export function usePermissions() {
-  const groups: PermissionGroup[] = Object.entries(
-    ALL_PERMISSIONS.reduce<Record<string, typeof ALL_PERMISSIONS>>((acc, perm) => {
-      if (!acc[perm.group]) acc[perm.group] = [];
-      acc[perm.group].push(perm);
-      return acc;
-    }, {}),
-  ).map(([group, perms]) => ({
-    group,
-    label: GROUP_LABELS[group] || group,
-    permissions: perms,
-  }));
+  const menuQuery = useQuery({
+    queryKey: ['permission-menu-tree'],
+    queryFn: () => permissionService.listMenuTree(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const apiQuery = useQuery({
+    queryKey: ['permission-catalog'],
+    queryFn: () => permissionService.list(),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const tree: PermissionTreeNode[] = groups.map((g) => ({
-    key: g.group,
-    title: g.label,
-    children: g.permissions.map((p) => ({
-      key: p.key,
-      title: p.name,
-    })),
-  }));
-
-  const allKeys = ALL_PERMISSIONS.map((p) => p.key);
-  const allGroupKeys = groups.map((g) => g.group);
-
-  return { groups, tree, allKeys, allGroupKeys };
+  const tree: MenuTreeNode[] = menuQuery.data || [];
+  return {
+    tree,
+    allKeys: flattenKeys(tree),
+    allGroupKeys: [],
+    apiPermissions: apiQuery.data || [],
+    isLoading: menuQuery.isLoading || apiQuery.isLoading,
+    isError: menuQuery.isError || apiQuery.isError,
+    error: menuQuery.error || apiQuery.error,
+  };
 }

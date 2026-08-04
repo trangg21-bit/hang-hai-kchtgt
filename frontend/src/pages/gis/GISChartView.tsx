@@ -967,7 +967,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       
       const orgId = data.orgUnitId || data.orgUnitId || data.unitId || data.donViQuanLy || data.unitId;
       if (orgId) {
-        orgUnitNameResolved = data.donViQuanLy || data.orgName || data.orgUnitName || await resolveName(orgId, 'org');
+        orgUnitNameResolved = data.donViQuanLy || data.orgName || data.orgUnitName || '';
       }
       if (data.portId || data.tenCangBien) {
         cangBienNameResolved = data.tenCangBien || (data.portId ? await resolveName(data.portId, 'Port') : '');

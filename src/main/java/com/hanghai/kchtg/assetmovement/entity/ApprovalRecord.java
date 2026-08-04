@@ -44,4 +44,16 @@ public class ApprovalRecord extends BaseEntity {
     @Version
     private Integer lockVersion;
 
+    public UUID getRequestId() { return requestId; }
+    public void setRequestId(UUID requestId) { this.requestId = requestId; }
+    public ApprovalLevel getApprovalLevel() { return approvalLevel; }
+    public void setApprovalLevel(ApprovalLevel approvalLevel) { this.approvalLevel = approvalLevel; }
+    public UUID getApproverName() { return approverName; }
+    public void setApproverName(UUID approverName) { this.approverName = approverName; }
+    public ApprovalResult getResult() { return result; }
+    public void setResult(ApprovalResult result) { this.result = result; }
+    public Instant getApprovalDate() { return approvalDate; }
+    public void setApprovalDate(Instant approvalDate) { this.approvalDate = approvalDate; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

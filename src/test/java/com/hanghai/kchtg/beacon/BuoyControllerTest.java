@@ -8,6 +8,7 @@ import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
 import com.hanghai.kchtg.beacon.service.BuoyService;
+import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
@@ -61,6 +62,8 @@ class BuoyControllerTest {
     private TokenValidationService tokenValidationService;
     @MockBean
     private JwtUtil jwtUtil;
+    @MockBean
+    private ChangeLogRepository changeLogRepository;
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 

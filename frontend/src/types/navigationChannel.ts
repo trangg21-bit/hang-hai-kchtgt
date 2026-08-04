@@ -29,6 +29,7 @@ export interface NavigationChannelResponse {
   stationArea?: number;
   note?: string;
   orgUnitId?: string;
+  orgUnitName?: string;
   approvalStatus: ApprovalStatus;
   isApprovedLevel1?: boolean;
   approverLevel1?: string;

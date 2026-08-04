@@ -36,10 +36,12 @@ public class LegalDocumentCreateRequest {
     @NotNull(message = "Ngày có hiệu lực không được để trống")
     private LocalDate effectiveDate;
     private LocalDate expirationDate;
+    @NotNull(message = "Loại văn bản không được để trống")
     private DocumentType documentType;
     private String applicationArea;
     private ValidityStatus validityStatus;
     private String signer;
     private String description;
     private UUID createdBy;
+    private Boolean draft;
 }

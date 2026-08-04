@@ -11,14 +11,25 @@ BEGIN
     LOOP
         IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = t_name) THEN
             
-            -- Rename created_date -> created_at
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'created_date') THEN
+            -- Rename created_date -> created_at. If both columns already
+            -- exist, preserve the legacy value only where the new column is null.
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'created_date')
+               AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'created_at') THEN
                 EXECUTE format('ALTER TABLE %I RENAME COLUMN created_date TO created_at;', t_name);
+            ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'created_date')
+               AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'created_at') THEN
+                EXECUTE format('UPDATE %I SET created_at = COALESCE(created_at, created_date);', t_name);
+                EXECUTE format('ALTER TABLE %I DROP COLUMN created_date;', t_name);
             END IF;
 
-            -- Rename updated_date -> updated_at
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'updated_date') THEN
+            -- Apply the same safe merge for updated_date -> updated_at.
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'updated_date')
+               AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'updated_at') THEN
                 EXECUTE format('ALTER TABLE %I RENAME COLUMN updated_date TO updated_at;', t_name);
+            ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'updated_date')
+               AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'updated_at') THEN
+                EXECUTE format('UPDATE %I SET updated_at = COALESCE(updated_at, updated_date);', t_name);
+                EXECUTE format('ALTER TABLE %I DROP COLUMN updated_date;', t_name);
             END IF;
 
             -- Migrate is_deleted -> deleted_at

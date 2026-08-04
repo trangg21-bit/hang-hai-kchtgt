@@ -217,6 +217,32 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    // ── Group Permission (F-002 UC-012) ─────────────────────────────
+
+    /** Lấy các role đã gán cho nhóm để hiển thị trong modal phân quyền. */
+    @GetMapping("/{id}/roles")
+    @PreAuthorize("@auth.check(authentication, 'group:permission')")
+    public ResponseEntity<ApiResponse<List<GroupRoleResponse>>> listGroupRoles(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(service.findGroupRoles(id)));
+    }
+
+    /** Thay thế danh sách role của nhóm và làm mới quyền kế thừa của thành viên. */
+    @PutMapping("/{id}/roles")
+    @PreAuthorize("@auth.check(authentication, 'group:permission')")
+    public ResponseEntity<ApiResponse<List<GroupRoleResponse>>> updateGroupRoles(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateGroupRolesRequest request,
+            Authentication authentication) {
+        UUID operatorId = extractUserId(authentication);
+        String operatorName = extractUserName(authentication);
+        if (operatorId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Yêu cầu xác thực"));
+        }
+        List<GroupRoleResponse> roles = service.updateGroupRoles(id, request, operatorId, operatorName);
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật phân quyền cho nhóm", roles));
+    }
+
     // ── Copy Group (BR-014) ────────────────────────────────────────
 
     /**

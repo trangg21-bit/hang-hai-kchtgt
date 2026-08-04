@@ -1,0 +1,19 @@
+package com.hanghai.kchtg.vtssystem.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.Map;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class VtsSystemListResponse {
+    private List<VtsSystemResponse> items;
+    private long total;
+    private Map<String, Long> statusCounts;
+}

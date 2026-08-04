@@ -28,12 +28,13 @@ public class ShipRepairFacilityResponse {
     private String capacity;
     private String authority;
     private UUID orgUnitId;
+    private String orgUnitName;
     private ShipRepairApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
-    private String approverLevel1;
+    private UUID approverLevel1;
     private LocalDateTime approvedDateLevel1;
     private Boolean approvedLevel2;
-    private String approverLevel2;
+    private UUID approverLevel2;
     private LocalDateTime approvedDateLevel2;
     private String rejectionReason;
     private UUID createdBy;

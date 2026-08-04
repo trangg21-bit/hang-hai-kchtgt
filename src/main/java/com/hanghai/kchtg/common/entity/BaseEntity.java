@@ -38,7 +38,7 @@ public abstract class BaseEntity {
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(updatable = false, nullable = false, length = 36)
+    @Column(updatable = false, nullable = false)
     private UUID id;
 
     /**
@@ -60,6 +60,11 @@ public abstract class BaseEntity {
      */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public UUID getId() { return id; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
 
     /**
      * User ID who soft-deleted the entity (null = not deleted).
@@ -83,6 +88,11 @@ public abstract class BaseEntity {
     @JdbcTypeCode(SqlTypes.UUID)
     @Column(name = "updated_by")
     private UUID updatedBy;
+
+    public UUID getCreatedBy() { return createdBy; }
+    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public UUID getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
 
 
 

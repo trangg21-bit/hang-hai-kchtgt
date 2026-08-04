@@ -49,6 +49,9 @@ class PierServiceTest {
     @Mock
     private UserResolverService userResolverService;
 
+    @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+
     private UUID testId;
     private UUID parentId;
     private Berth activeBerth;
@@ -139,7 +142,7 @@ class PierServiceTest {
         assertNotNull(result);
         assertEquals("CAU-NEW", result.getPierCode());
         assertEquals("Cầu mới", result.getPierName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.DRAFT, result.getApprovalStatus());
         verify(pierRepository).save(any(Pier.class));
     }
 

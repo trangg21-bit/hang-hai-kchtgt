@@ -7,8 +7,9 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -19,7 +20,8 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "infra_assets")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @lombok.experimental.SuperBuilder
@@ -73,4 +75,9 @@ public class InfraAsset extends BaseEntity {
     @Version
     private Integer lockVersion;
 
+    public String getAssetName() { return assetName; }
+    public AssetStatus getStatus() { return status; }
+    public void setStatus(AssetStatus status) { this.status = status; }
+    public void setApprovedBy(UUID approvedBy) { this.approvedBy = approvedBy; }
+    public void setApprovedAt(Instant approvedAt) { this.approvedAt = approvedAt; }
 }

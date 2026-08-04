@@ -74,6 +74,12 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
     void deleteByCode(String code);
 
     /**
+     * Lấy tất cả mã resource phân biệt hiện có trong DB.
+     */
+    @Query("SELECT DISTINCT p.resource FROM Permission p WHERE p.resource IS NOT NULL")
+    List<String> findAllDistinctResources();
+
+    /**
      * Tìm tất cả permission còn tồn tại (chưa soft-delete, được BaseEntity tự xử lý).
      */
     @Override

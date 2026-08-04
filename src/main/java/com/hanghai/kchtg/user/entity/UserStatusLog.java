@@ -26,7 +26,7 @@ public class UserStatusLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(updatable = false, nullable = false, length = 36)
+    @Column(updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "user_id", nullable = false)

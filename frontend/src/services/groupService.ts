@@ -58,6 +58,15 @@ export interface GroupMember {
   createdAt: string;
 }
 
+export interface GroupRole {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  level?: number;
+  hierarchyDepth?: number;
+}
+
 export interface CreateGroupPayload {
   name: string;
   code?: string;
@@ -336,5 +345,35 @@ export const groupService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  /** GET /api/groups/:id/roles — các vai trò đang gán cho nhóm. */
+  async getRoles(groupId: string): Promise<GroupRole[]> {
+    const resp = await api.get(`/groups/${groupId}/roles`);
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData) ? rawData : [];
+    return items.map((item) => ({
+      id: String(item.id ?? ''),
+      name: item.name ?? '',
+      code: item.code ?? '',
+      description: item.description,
+      level: item.level,
+      hierarchyDepth: item.hierarchyDepth,
+    }));
+  },
+
+  /** PUT /api/groups/:id/roles — thay thế toàn bộ role của nhóm. */
+  async updateRoles(groupId: string, roleIds: string[]): Promise<GroupRole[]> {
+    const resp = await api.put(`/groups/${groupId}/roles`, { roleIds });
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData) ? rawData : [];
+    return items.map((item) => ({
+      id: String(item.id ?? ''),
+      name: item.name ?? '',
+      code: item.code ?? '',
+      description: item.description,
+      level: item.level,
+      hierarchyDepth: item.hierarchyDepth,
+    }));
   },
 };

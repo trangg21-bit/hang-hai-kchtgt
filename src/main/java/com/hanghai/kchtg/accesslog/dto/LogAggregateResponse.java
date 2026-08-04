@@ -4,9 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Response DTO for aggregate statistics endpoint.
- */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

@@ -150,6 +150,40 @@ BEGIN
     --    definitions apply unchanged.
     ----------------------------------------------------------------------------
     FOR r IN SELECT fk_table, fk_name, fk_def FROM _v91_fk LOOP
-        EXECUTE format('ALTER TABLE public.%I ADD CONSTRAINT %I %s', r.fk_table, r.fk_name, r.fk_def);
+        -- When legal_documents already existed, V84 intentionally retained the
+        -- old Vietnamese van_ban_phap_ly table. Its bigint key is not compatible
+        -- with the UUID document_id converted above, so its obsolete FK must not
+        -- be restored.
+        IF r.fk_table = 'attached_documents'
+           AND r.fk_def ILIKE '%REFERENCES van_ban_phap_ly%' THEN
+            CONTINUE;
+        END IF;
+        BEGIN
+            EXECUTE format('ALTER TABLE public.%I ADD CONSTRAINT %I %s', r.fk_table, r.fk_name, r.fk_def);
+        EXCEPTION WHEN SQLSTATE '42804' THEN
+            -- An external legacy table can retain a bigint FK to a table this
+            -- migration converted to UUID. It is outside the document entity
+            -- model, so preserve its data and leave the obsolete FK detached.
+            RAISE NOTICE 'V91: skipped incompatible legacy FK %.%', r.fk_table, r.fk_name;
+        END;
     END LOOP;
+
+    -- Recreate the relationship against the UUID-backed entity table. V91 has
+    -- already cleared non-mappable legacy bigint values in document_id.
+    IF to_regclass('public.attached_documents') IS NOT NULL
+       AND to_regclass('public.legal_documents') IS NOT NULL
+       AND EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'attached_documents'
+             AND column_name = 'document_id' AND data_type = 'uuid'
+       )
+       AND NOT EXISTS (
+           SELECT 1 FROM pg_constraint
+           WHERE conrelid = 'public.attached_documents'::regclass
+             AND conname = 'fk_attached_documents_legal_document'
+       ) THEN
+        ALTER TABLE public.attached_documents
+            ADD CONSTRAINT fk_attached_documents_legal_document
+            FOREIGN KEY (document_id) REFERENCES public.legal_documents(id);
+    END IF;
 END $$;

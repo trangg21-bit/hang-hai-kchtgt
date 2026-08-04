@@ -56,13 +56,13 @@ public class AdminAuditLog extends BaseEntity {
                                        String target, String details, String ipAddr,
                                        String userAgent) {
         AdminAuditLog log = new AdminAuditLog();
-        log.setAdminId(adminId);
-        log.setAdminName(adminName);
-        log.setAction(action);
-        log.setTarget(target);
-        log.setDetails(details);
-        log.setIpAddr(ipAddr);
-        log.setUserAgent(userAgent);
+        log.adminId = adminId;
+        log.adminName = adminName;
+        log.action = action;
+        log.target = target;
+        log.details = details;
+        log.ipAddr = ipAddr;
+        log.userAgent = userAgent;
         return log;
     }
 }

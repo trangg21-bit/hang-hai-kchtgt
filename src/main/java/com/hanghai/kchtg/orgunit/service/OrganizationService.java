@@ -59,6 +59,7 @@ public class OrganizationService {
     private final UnitHistoryRepository unitHistoryRepo;
     private final MaterializedPathService materializedPathService;
     private final TransactionTemplate transactionTemplate;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     // ═══════════════════════════════════════════════════════════════════
     // ── Queries ──────────────────────────────────────────────────────
@@ -240,6 +241,7 @@ public class OrganizationService {
         OrgUnit saved = orgUnitRepo.save(unit);
 
         saveHistory(saved, "CREATED", "Tạo mới đơn vị", operatorId, operatorName);
+        orgUnitCacheService.evictAfterCommit();
 
         log.info("Created org unit: {} ({}, path: {}, level: {})", saved.getCode(), saved.getId(),
                  saved.getPath(), saved.getLevel());
@@ -320,6 +322,7 @@ public class OrganizationService {
         }
 
         OrgUnit saved = orgUnitRepo.save(unit);
+        orgUnitCacheService.evictAfterCommit();
 
         log.info("Updated org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
@@ -380,6 +383,7 @@ public class OrganizationService {
         String details = String.format("Xóa đơn vị '%s' (code: %s)", unit.getName(), unit.getCode());
         unit.softDelete(SecurityUtils.getCurrentUserId());
         orgUnitRepo.save(unit);
+        orgUnitCacheService.evictAfterCommit();
 
         log.info("Soft-deleted org unit: {} ({})", unit.getCode(), unit.getId());
     }
@@ -406,6 +410,7 @@ public class OrganizationService {
         unit.setStatus(OrgUnitStatus.PENDING);
         OrgUnit saved = orgUnitRepo.save(unit);
         saveHistory(saved, "SUBMITTED", "Gửi phê duyệt", operatorId, operatorName);
+        orgUnitCacheService.evictAfterCommit();
 
         log.info("Submitted org unit for approval: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
@@ -432,6 +437,7 @@ public class OrganizationService {
         saveHistory(saved, "APPROVED",
                 "Đã phê duyệt bởi " + approverName + (comments != null ? ": " + comments : ""),
                 approverId, approverName);
+        orgUnitCacheService.evictAfterCommit();
 
         log.info("Approved org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
@@ -458,6 +464,7 @@ public class OrganizationService {
         saveHistory(saved, "REJECTED",
                 "Từ chối bởi " + approverName + (comments != null ? ": " + comments : ""),
                 approverId, approverName);
+        orgUnitCacheService.evictAfterCommit();
 
         log.info("Rejected org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
@@ -498,6 +505,7 @@ public class OrganizationService {
 
         OrgUnit saved = orgUnitRepo.save(root);
         saveHistory(saved, "CREATED", "Tạo mới đơn vị gốc", operatorId, operatorName);
+        orgUnitCacheService.evictAfterCommit();
 
         log.info("Seeded root org unit: {} ({}, path: {})", saved.getCode(), saved.getId(), saved.getPath());
         return OrgUnitResponse.from(saved);

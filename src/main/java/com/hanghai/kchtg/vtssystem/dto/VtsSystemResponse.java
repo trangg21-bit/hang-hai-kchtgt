@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,21 +20,23 @@ public class VtsSystemResponse {
     private UUID id;
     private String systemName;
     private String location;
-    private String conditionStatus;
+    private ConditionStatus conditionStatus;
     private String responsibilityLevel;
     private String source;
     private String partner;
     private UUID orgUnitId;
+    private String orgUnitName;
     private String scope;
-    private String approvalStatus;
+    private ApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;
     private LocalDateTime approvedDateLevel1;
     private Boolean approvedLevel2;
-    private String approverLevel2;
+    private UUID approverLevel2;
     private LocalDateTime approvedDateLevel2;
     private String rejectionReason;
     private UUID createdBy;
+    private String createdByName;
     private LocalDateTime createdDate;
     private UUID updatedBy;
     private LocalDateTime updatedDate;

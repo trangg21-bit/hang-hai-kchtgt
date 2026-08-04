@@ -60,6 +60,9 @@ class BeaconLightServiceTest {
     @Mock
     private OrgUnitRepository orgUnitRepo;
 
+    @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+
     @InjectMocks
     private BeaconLightService service;
 

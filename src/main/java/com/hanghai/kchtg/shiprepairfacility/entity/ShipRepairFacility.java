@@ -65,8 +65,8 @@ public class ShipRepairFacility extends BaseEntity {
     @Builder.Default
     private Boolean approvedLevel1 = false;
 
-    @Column(name = "approver_level1", length = 100)
-    private String approverLevel1;
+    @Column(name = "approver_level1")
+    private UUID approverLevel1;
 
     @Column(name = "approved_date_level1")
     private LocalDateTime approvedDateLevel1;
@@ -75,8 +75,8 @@ public class ShipRepairFacility extends BaseEntity {
     @Builder.Default
     private Boolean approvedLevel2 = false;
 
-    @Column(name = "approver_level2", length = 100)
-    private String approverLevel2;
+    @Column(name = "approver_level2")
+    private UUID approverLevel2;
 
     @Column(name = "approved_date_level2")
     private LocalDateTime approvedDateLevel2;
@@ -84,7 +84,7 @@ public class ShipRepairFacility extends BaseEntity {
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
-    @Column(name = "created_by", nullable = false, length = 100)
+    @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
     @CreatedDate
@@ -95,19 +95,15 @@ public class ShipRepairFacility extends BaseEntity {
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
-    @Column(name = "updated_by", length = 100)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
 
-    @Column(name = "deleted_by", length = 100)
+    @Column(name = "deleted_by")
     private UUID deletedBy;
-
-    @OneToMany(mappedBy = "shipRepairFacility", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private java.util.List<ShipRepairFacilityAttachment> attachments = new java.util.ArrayList<>();
 
     @PrePersist
     public void prePersist() {

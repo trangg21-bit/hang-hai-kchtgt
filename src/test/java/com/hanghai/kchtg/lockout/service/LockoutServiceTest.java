@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +46,7 @@ class LockoutServiceTest {
         policy.setEnabled(true);
         policy.setMaxFailedAttempts(5);
         policy.setLockoutDurationMinutes(30);
-        when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
+        lenient().when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lockoutService = new LockoutService(policyRepository, userRepository, loginAuditLogRepository);
         user = new User();
@@ -83,5 +84,30 @@ class LockoutServiceTest {
         assertEquals(UserStatus.ACTIVE, user.getStatus());
         assertEquals(0, user.getFailedLoginCount());
         assertNull(user.getAccountLockedUntil());
+    }
+
+    @Test
+    void recordSuccess_shouldPersistActiveStatusAfterTemporaryLockout() {
+        user.setStatus(UserStatus.LOCKED);
+        user.setFailedLoginCount(5);
+        user.setFailedTotpCount(2);
+        user.setAccountLockedUntil(LocalDateTime.now().minusSeconds(1));
+
+        lockoutService.recordSuccess(user, null);
+
+        assertEquals(UserStatus.ACTIVE, user.getStatus());
+        assertEquals(0, user.getFailedLoginCount());
+        assertEquals(0, user.getFailedTotpCount());
+        assertNull(user.getAccountLockedUntil());
+    }
+
+    @Test
+    void recordSuccess_shouldNotReactivateExplicitLockWithoutExpiry() {
+        user.setStatus(UserStatus.LOCKED);
+        user.setAccountLockedUntil(null);
+
+        lockoutService.recordSuccess(user, null);
+
+        assertEquals(UserStatus.LOCKED, user.getStatus());
     }
 }

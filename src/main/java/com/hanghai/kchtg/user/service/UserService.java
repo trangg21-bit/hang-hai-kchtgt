@@ -216,6 +216,9 @@ public class UserService {
 
         Role role = roleRepository.findByCode(roleCode)
                 .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + roleCode));
+        // Business rule: a user has one primary role; group roles are handled
+        // separately through the group-role assignment table.
+        user.getRoles().clear();
         user.getRoles().add(role);
         user.setStatus(UserStatus.ACTIVE);
 
@@ -279,38 +282,34 @@ public class UserService {
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
+
         boolean roleChanged = false;
         boolean permissionsChanged = false;
         if (request.getRole() != null) {
             Role role = roleRepository.findByCode(request.getRole())
                     .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
+            user.getRoles().clear();
             user.getRoles().add(role);
             roleChanged = true;
         }
+
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
-            user.setOrgUnit(orgUnit);
-        }
-        if (request.getGroupIds() != null) {
-            List<UserGroup> groups = request.getGroupIds().isEmpty()
-                    ? List.of()
-                    : groupRepository.findAllById(request.getGroupIds());
-            user.setGroups(new ArrayList<>(groups));
-            permissionsChanged = true;
+            if (user.getOrgUnit() == null || !user.getOrgUnit().getId().equals(orgUnit.getId())) {
+                user.setOrgUnit(orgUnit);
+                // BR-275-12: Org hierarchy change -> invalidate token version & clear cache
+                roleChanged = true;
+                permissionCacheService.invalidateAndIncrementVersion(user.getId());
+            }
         }
 
-        // Instant permission revocation: a role change alters the JWT's role claim, so
-        // bump the permission version to force re-login on the user's existing tokens.
-        // A group change only affects DB-computed permissions, so invalidating the
-        // cache (below) is enough — no re-login needed.
         if (roleChanged) {
             user.incrementPermissionVersion();
         }
 
         User saved = userRepository.save(user);
-        // BR-014: save to password history if password was changed
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             savePasswordHistory(saved.getId(), saved.getPassword());
         }
@@ -320,7 +319,6 @@ public class UserService {
         log.info("Updated user: {} ({})", saved.getUsername(), saved.getId());
         return saved;
     }
-
     /**
      * T-002: Xoa nguoi dung (BR-003 guard).
      * Kiem tra kha nhien phanhen/bao cao FK references truoc khi soft delete.
@@ -552,6 +550,7 @@ public class UserService {
             if (request.getRole() != null) {
                 Role role = roleRepository.findByCode(request.getRole())
                         .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
+                user.getRoles().clear();
                 user.getRoles().add(role);
             }
             if (request.getOrgUnitId() != null) {

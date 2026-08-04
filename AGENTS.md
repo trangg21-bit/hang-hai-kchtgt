@@ -316,6 +316,16 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 8. **Ghi nhận Dữ liệu Kiểm toán (Audit Logs)**:
    - Khi thực hiện các thao tác thay đổi dữ liệu (đặc biệt là Xóa mềm - Soft Delete, Thêm mới, Cập nhật), AI bắt buộc phải đảm bảo truyền đầy đủ các thông tin kiểm toán (như `operatorId`, `deletedBy`, `updatedBy`...) vào các hàm xử lý tương ứng của Entity (ví dụ: `softDelete(operatorId)`) để lưu lại lịch sử thay đổi chính xác trong cơ sở dữ liệu.
 
+## Cache hiển thị tên đơn vị quản lý (MANDATORY)
+
+- Entity và request chỉ lưu/truyền `orgUnitId` (UUID/FK); response dùng cho hiển thị phải trả cả `orgUnitId` và `orgUnitName`.
+- Backend phải ánh xạ tên bằng `OrgUnitCacheService`; không truy vấn đơn vị theo từng bản ghi và không để frontend gọi API danh sách chỉ để ánh xạ ID sang tên.
+- Frontend chỉ gọi danh sách/cây đơn vị cho Select, Cascader và bộ lọc; cột và màn chi tiết hiển thị trực tiếp `orgUnitName` từ response.
+- Cache `orgUnitDirectory` không có TTL và tồn tại đến khi dữ liệu đơn vị thay đổi.
+- Mọi luồng thêm, sửa, xóa mềm, duyệt, từ chối hoặc thay đổi trạng thái/cây đơn vị phải gọi `orgUnitCacheService.evictAfterCommit()`; chỉ xóa cache sau khi transaction commit thành công.
+- Khi cache miss, nạp một lần toàn bộ đơn vị đang hoạt động thành `Map<UUID, String>`; không gán tên giả nếu ID không còn tồn tại.
+- Nếu triển khai nhiều backend instance, phải bổ sung cơ chế invalidation phân tán (Redis hoặc sự kiện); không dựa riêng vào Caffeine cục bộ.
+
 # Local Agent Customization Rules (Workspace-Scoped)
 
 > [!IMPORTANT]

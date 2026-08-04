@@ -10,6 +10,7 @@ interface ApprovalActionBarProps {
   entityPermissionPrefix: string;
   currentUserId?: string;
   nguoiPheDuyetC1?: string;
+  approvalPermissionStyle?: 'legacy' | 'documented';
   onAction: (action: 'approveC1' | 'approveC2' | 'reject' | 'delete', payload?: Record<string, unknown>) => void;
   loading?: boolean;
 }
@@ -20,6 +21,7 @@ export default function ApprovalActionBar({
   entityPermissionPrefix,
   currentUserId,
   nguoiPheDuyetC1,
+  approvalPermissionStyle = 'legacy',
   onAction,
   loading = false,
 }: ApprovalActionBarProps) {
@@ -27,25 +29,29 @@ export default function ApprovalActionBar({
 
   const hasPermission = (perm: string): boolean => permissions.includes(perm);
 
-  // C1 stage: PROPOSED or REJECTED
-  const isC1Stage = currentStatus === 'PROPOSED' || currentStatus === 'REJECTED';
-  const canApproveC1 = isC1Stage && hasPermission(`${entityPermissionPrefix}:approvec1`);
-  const canRejectAtC1 = isC1Stage && hasPermission(`${entityPermissionPrefix}:approvec1`);
+  const approvalPermission = (level: 'c1' | 'c2') => approvalPermissionStyle === 'documented'
+    ? `${entityPermissionPrefix}:approve:${level}`
+    : `${entityPermissionPrefix}:approve${level}`;
+
+  // C1 is available only for PROPOSED. REJECTED must be edited and resubmitted first.
+  const isC1Stage = currentStatus === 'PROPOSED';
+  const canApproveC1 = isC1Stage && hasPermission(approvalPermission('c1'));
+  const canRejectAtC1 = isC1Stage && hasPermission(approvalPermission('c1'));
 
   // C2 stage: UNDER_REVIEW
   const isC2Stage = currentStatus === 'UNDER_REVIEW';
-  const canApproveC2 = isC2Stage && hasPermission(`${entityPermissionPrefix}:approvec2`);
+  const canApproveC2 = isC2Stage && hasPermission(approvalPermission('c2'));
   const canRejectAtC2 =
     isC2Stage &&
-    (hasPermission(`${entityPermissionPrefix}:approvec1`) || hasPermission(`${entityPermissionPrefix}:approvec2`));
+    !(currentUserId && nguoiPheDuyetC1 === currentUserId) &&
+    (hasPermission(approvalPermission('c1')) || hasPermission(approvalPermission('c2')));
 
   const canDelete = currentStatus === 'APPROVED' && hasPermission(`${entityPermissionPrefix}:delete`);
 
-  // Self-approval guard: disable C2 button if current user is the C1 approver (except for 'admin' user)
+  // C2 must always be performed by a different user than C1.
   const isSelfApprovalC2 = !!(
     canApproveC2 &&
     currentUserId &&
-    currentUserId !== 'admin' &&
     nguoiPheDuyetC1 === currentUserId
   );
 

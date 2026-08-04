@@ -83,6 +83,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [vtsSystemList, setVtsSystemList] = useState<any[]>([]);
 
   useEffect(() => {
+    if (isDetailMode) return;
     (async () => {
       try {
         const resp = await organizationService.list({ pageSize: 1000 });
@@ -91,7 +92,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         console.error('Failed to load organizations', err);
       }
     })();
-  }, []);
+  }, [isDetailMode]);
 
   useEffect(() => {
     (async () => {
@@ -358,7 +359,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 {TINH_TRANG_MAP[record.conditionStatus] || record.conditionStatus || '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
+                {record.orgUnitName || record.orgUnitId || '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Hệ thống VTS" span={2}>
                 {record.vtsSystemName || (record.vtsSystemId ? `VTS-${record.vtsSystemId}` : '—')}

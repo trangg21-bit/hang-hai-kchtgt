@@ -205,8 +205,7 @@ public class TotpAuthService {
         user.setTotpVerifiedAt(LocalDateTime.now());
         user.setLastLoginAt(LocalDateTime.now());
         // Xóa khóa (lock) nếu có (user đã xác thực thành công)
-        user.setAccountLockedUntil(null);
-        userRepository.save(user);
+        lockoutService.recordSuccess(user, requestHttp);
 
         // =========================================================================
         String accessToken = tokenService.createAccessToken(user);

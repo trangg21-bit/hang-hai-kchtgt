@@ -50,6 +50,7 @@ BEGIN
 
     -- port_infrastructure
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_infrastructure' AND column_name = 'id' AND data_type = 'bigint') THEN
+        ALTER TABLE port_infrastructure ALTER COLUMN id DROP IDENTITY IF EXISTS;
         ALTER TABLE port_infrastructure ALTER COLUMN id DROP DEFAULT;
         ALTER TABLE port_infrastructure ALTER COLUMN id TYPE UUID USING gen_random_uuid();
         ALTER TABLE port_infrastructure ALTER COLUMN id SET DEFAULT gen_random_uuid();
@@ -57,6 +58,7 @@ BEGIN
 
     -- port_attachments
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'port_attachments' AND column_name = 'id' AND data_type = 'bigint') THEN
+        ALTER TABLE port_attachments ALTER COLUMN id DROP IDENTITY IF EXISTS;
         ALTER TABLE port_attachments ALTER COLUMN id DROP DEFAULT;
         ALTER TABLE port_attachments ALTER COLUMN id TYPE UUID USING gen_random_uuid();
         ALTER TABLE port_attachments ALTER COLUMN id SET DEFAULT gen_random_uuid();

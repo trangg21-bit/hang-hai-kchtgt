@@ -10,12 +10,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 /**
  * Repository cho entity {@link GroupMember}.
  */
 public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> {
+
+      /** Lấy ID thành viên active để làm mới cache quyền khi role nhóm thay đổi. */
+      @Query("SELECT gm.user.id FROM GroupMember gm "
+                  + "WHERE gm.userGroup.id = :groupId AND gm.status = :status")
+      List<UUID> findUserIdsByUserGroupIdAndStatus(@Param("groupId") UUID groupId,
+                  @Param("status") GroupMemberStatus status);
 
       /**
        * Dem so thanh vien active cua mot nhom (BR-009).

@@ -65,12 +65,7 @@ END $$;
 
 -- 4. Rename FK column he_thong_vts_id → vts_system_id (if still old)
 --    Drop the old FK constraint first, rename the column, then recreate with new name
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_phe_duyet_lich_su_vts') THEN
-    ALTER TABLE approval_history DROP CONSTRAINT fk_phe_duyet_lich_su_vts;
-  END IF;
-END $$;
+ALTER TABLE approval_history DROP CONSTRAINT IF EXISTS fk_phe_duyet_lich_su_vts;
 
 DO $$
 BEGIN
@@ -82,12 +77,7 @@ END $$;
 
 -- 5. Drop other old FK constraints that may reference renamed tables
 --    (fk_phe_duyet_lich_su_luong has column already renamed to navigation_channel_id)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_phe_duyet_lich_su_luong') THEN
-    ALTER TABLE approval_history DROP CONSTRAINT fk_phe_duyet_lich_su_luong;
-  END IF;
-END $$;
+ALTER TABLE approval_history DROP CONSTRAINT IF EXISTS fk_phe_duyet_lich_su_luong;
 
 --    fk_phe_duyet_lich_su_radar was already dropped in V75, but safe to re-try
 DO $$
@@ -112,40 +102,42 @@ BEGIN
   ALTER TABLE approval_history DROP CONSTRAINT IF EXISTS fkiylsseol3iqad0hll1mpsrfm;
 END $$;
 
--- 7. Create new FK constraints for renamed tables (only if column exists and constraint does not)
-
---    FK to vts_system
+-- 7. Create new FK constraints. Legacy audit history may reference a record
+-- removed before this migration; preserve those rows and validate new writes.
 DO $$
+DECLARE
+  foreign_key record;
+  has_orphan boolean;
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'approval_history' AND column_name = 'vts_system_id')
-     AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_approval_history_vts_system') THEN
-    ALTER TABLE approval_history ADD CONSTRAINT fk_approval_history_vts_system FOREIGN KEY (vts_system_id) REFERENCES vts_system(id);
-  END IF;
-END $$;
+  FOR foreign_key IN
+    SELECT * FROM (VALUES
+      ('fk_approval_history_vts_system', 'vts_system_id', 'vts_system'),
+      ('fk_approval_history_navigation_channel', 'navigation_channel_id', 'navigation_channel'),
+      ('fk_approval_history_radar_station', 'radar_station_id', 'radar_station'),
+      ('fk_approval_history_ship_repair', 'ship_repair_facility_id', 'ship_repair_facility')
+    ) AS definitions(constraint_name, column_name, referenced_table)
+  LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'approval_history'
+        AND column_name = foreign_key.column_name
+    ) AND NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'public.approval_history'::regclass
+        AND conname = foreign_key.constraint_name
+    ) THEN
+      EXECUTE format(
+        'SELECT EXISTS (SELECT 1 FROM public.approval_history history LEFT JOIN public.%I reference_row ON reference_row.id = history.%I WHERE reference_row.id IS NULL)',
+        foreign_key.referenced_table, foreign_key.column_name
+      ) INTO has_orphan;
 
---    FK to navigation_channel (column already renamed by V62.1)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'approval_history' AND column_name = 'navigation_channel_id')
-     AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_approval_history_navigation_channel') THEN
-    ALTER TABLE approval_history ADD CONSTRAINT fk_approval_history_navigation_channel FOREIGN KEY (navigation_channel_id) REFERENCES navigation_channel(id);
-  END IF;
-END $$;
-
---    FK to radar_station (already added by V75, but if not yet present, add it)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'approval_history' AND column_name = 'radar_station_id')
-     AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_approval_history_radar_station') THEN
-    ALTER TABLE approval_history ADD CONSTRAINT fk_approval_history_radar_station FOREIGN KEY (radar_station_id) REFERENCES radar_station(id);
-  END IF;
-END $$;
-
---    FK to ship_repair_facility (already added by V73, but if not yet present, add it)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'approval_history' AND column_name = 'ship_repair_facility_id')
-     AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_approval_history_ship_repair') THEN
-    ALTER TABLE approval_history ADD CONSTRAINT fk_approval_history_ship_repair FOREIGN KEY (ship_repair_facility_id) REFERENCES ship_repair_facility(id);
-  END IF;
+      EXECUTE format(
+        'ALTER TABLE public.approval_history ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES public.%I(id)%s',
+        foreign_key.constraint_name,
+        foreign_key.column_name,
+        foreign_key.referenced_table,
+        CASE WHEN has_orphan THEN ' NOT VALID' ELSE '' END
+      );
+    END IF;
+  END LOOP;
 END $$;

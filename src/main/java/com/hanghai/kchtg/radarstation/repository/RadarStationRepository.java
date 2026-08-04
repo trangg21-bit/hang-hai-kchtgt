@@ -15,7 +15,7 @@ import java.util.UUID;
 @Repository
 public interface RadarStationRepository extends JpaRepository<RadarStation, UUID> {
 
-    List<RadarStation> findByApprovalStatusAndIsDeletedFalse(RadarStationApprovalStatus approvalStatus);
+    List<RadarStation> findByApprovalStatusAndDeletedAtIsNull(RadarStationApprovalStatus approvalStatus);
 
     List<RadarStation> findByVtsSystemId(UUID vtsSystemId);
 
@@ -30,7 +30,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
             LOWER(t.stationType) LIKE :keyword)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
-        ORDER BY t.createdDate DESC
+        ORDER BY t.createdAt DESC
     """)
     Page<RadarStation> search(
         @Param("orgUnitId") UUID orgUnitId,
@@ -41,7 +41,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
     );
 
     @Query("SELECT t FROM RadarStation t WHERE " +
-           "t.isDeleted = false AND " +
+           "t.deletedAt IS NULL AND " +
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
            "(:search IS NULL OR LOWER(t.stationName) LIKE :search OR LOWER(t.location) LIKE :search)")
     List<RadarStation> searchFiltered(

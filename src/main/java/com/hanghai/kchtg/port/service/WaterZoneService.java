@@ -22,6 +22,7 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,7 @@ public class WaterZoneService {
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public WaterZoneResponse create(CreateWaterZoneRequest request) {
@@ -314,7 +316,7 @@ public class WaterZoneService {
                 .area(e.getArea())
                 .maxDepth(e.getMaxDepth()).avgDepth(e.getAvgDepth())
                 .waterZoneType(e.getWaterZoneType()).operationalStatus(e.getOperationalStatus())
-                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId())
+                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
                 .spatialId(e.getSpatialId())
                 .geometryType(geomType)

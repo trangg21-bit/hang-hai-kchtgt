@@ -58,6 +58,9 @@ class BerthRbacSecurityTest {
     @MockBean
     private BerthApprovalService berthApprovalService;
 
+    @MockBean
+    private com.hanghai.kchtg.port.repository.PierRepository pierRepository;
+
     // The @auth bean — mocked to control grant/deny decision
     @MockBean(name = "auth")
     private PermissionAuthorizationManager auth;
@@ -112,6 +115,8 @@ class BerthRbacSecurityTest {
                 .thenReturn(true);
 
         mockMvc.perform(post("/api/v1/berths/{id}/approve", id)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"cap\":\"CUC_DUONG_THUY\"}")
                         .with(principalOf("approver-user")))
                 .andExpect(status().isOk());
     }
@@ -141,7 +146,9 @@ class BerthRbacSecurityTest {
                 .thenReturn(false);
 
         Exception thrown = assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/berths/{id}/approve", id)),
+                mockMvc.perform(post("/api/v1/berths/{id}/approve", id)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"cap\":\"CUC_DUONG_THUY\"}")),
                 "Expected AccessDeniedException propagated for denied berth:approve");
 
         // Verify the root cause is AccessDeniedException

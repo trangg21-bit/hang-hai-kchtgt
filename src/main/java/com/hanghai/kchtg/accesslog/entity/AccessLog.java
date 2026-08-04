@@ -42,7 +42,7 @@ public class AccessLog {
     private UUID id;
 
     /** ID of the user who performed the action. */
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private UUID userId;
 
     /** Login name at the time of the action (denormalised for query convenience). */

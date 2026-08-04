@@ -20,6 +20,10 @@ export function useUsers(params: ListParams) {
     queryKey: ['users', params],
     queryFn: () => userService.list(params),
     staleTime: 30_000,
+    // The account lockout can expire and be cleared by a login outside the
+    // admin screen. Poll so an already-open user list reflects that change.
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 

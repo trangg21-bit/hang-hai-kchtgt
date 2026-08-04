@@ -21,6 +21,7 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -54,6 +55,7 @@ public class BerthService {
     private final AuditLogService auditLogService;
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
     private final GisSpatialObjectService gisSpatialObjectService;
 
     @Transactional
@@ -422,7 +424,7 @@ public class BerthService {
                 .width(e.getWidth()).berthType(e.getBerthType())
                 .channelDepth(e.getChannelDepth()).operationalFunction(e.getOperationalFunction())
                 .operationalStatus(e.getOperationalStatus())
-                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId())
+                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
                 .latitude(latitude)
                 .longitude(longitude)
