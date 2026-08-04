@@ -17,6 +17,7 @@ import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.persistence.EntityNotFoundException;
@@ -70,6 +71,7 @@ public class PortService {
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
     private final PortAttachmentRepository portAttachmentRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Value("${app.upload.attachment-path:uploads/port-attachments}")
     private String uploadPath;
@@ -120,11 +122,6 @@ public class PortService {
         if (portCode == null || portCode.trim().isEmpty()) {
             portCode = generatePortCode();
             log.info("Auto-generated port code: {}", portCode);
-        }
-
-        // Section 8.1: Tampering detection — mã cảng phải đúng format tự sinh CB-XXXXXX
-        if (!portCode.matches("^CB-\\d{6}$")) {
-            throw new IllegalArgumentException("Mã cảng không hợp lệ");
         }
 
         Port entity = Port.builder()
@@ -601,7 +598,7 @@ public class PortService {
                 .maxVesselCapacity(entity.getMaxVesselCapacity())
                 .operationalStatus(entity.getOperationalStatus())
                 .approvalStatus(entity.getApprovalStatus())
-                .orgUnitId(entity.getOrgUnitId())
+                .orgUnitId(entity.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .portGroup(entity.getPortGroup())
                 .mapSymbolId(entity.getMapSymbolId())
                 .createdBy(entity.getCreatedBy())

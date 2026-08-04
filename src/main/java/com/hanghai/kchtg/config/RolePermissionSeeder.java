@@ -3,8 +3,10 @@ package com.hanghai.kchtg.config;
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
+import com.hanghai.kchtg.user.entity.SystemMenu;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
+import com.hanghai.kchtg.user.repository.SystemMenuRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -47,6 +49,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final SystemMenuRepository systemMenuRepository;
 
     @Override
     @Transactional
@@ -60,6 +63,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 log.info("⏭️ Role '{}' already exists, skipping role/permission seeding...", roleCode);
                 // Still attempt to update permissions for existing roles.
                 upsertMissingPermissions();
+                assignSystemAdminMenus();
                 return;
             }
         }
@@ -102,6 +106,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "Sao chép nhóm người dùng");
         seedPermission(permissionsByCode, "group", "history", "Xem lịch sử nhóm",
                 "Xem lịch sử thay đổi nhóm");
+        seedPermission(permissionsByCode, "group", "permission", "Phân quyền nhóm",
+                "Gán vai trò cho nhóm và cấp quyền kế thừa cho thành viên");
         seedPermission(permissionsByCode, "groupmember", "manage", "Quản lý thành viên nhóm",
                 "Thêm, xóa thành viên khỏi nhóm");
 
@@ -211,20 +217,20 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "Xem lịch sử thay đổi đề kế");
 
         // shiprepair
-        seedPermission(permissionsByCode, "shiprepair", "create", "Tạo cơ sở chữa chạy",
-                "Tạo mới cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "shiprepair", "read", "Xem cơ sở chữa chạy",
-                "Xem danh sách và chi tiết cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "shiprepair", "update", "Cập nhật cơ sở chữa chạy",
-                "Chỉnh sửa cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "shiprepair", "delete", "Xóa cơ sở chữa chạy",
-                "Xóa cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "shiprepair", "approvec1", "Phê duyệt C1 cơ sở chữa chạy",
-                "Phê duyệt cấp 1 cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "shiprepair", "approvec2", "Phê duyệt C2 cơ sở chữa chạy",
-                "Phê duyệt cấp 2 cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "shiprepair", "history", "Xem lịch sử cơ sở chữa chạy",
-                "Xem lịch sử thay đổi cơ sở chữa chạy");
+        seedPermission(permissionsByCode, "shiprepair", "create", "Tạo cơ sở sửa chữa",
+                "Tạo mới cơ sở sửa chữa đóng tàu");
+        seedPermission(permissionsByCode, "shiprepair", "read", "Xem cơ sở sửa chữa",
+                "Xem danh sách và chi tiết cơ sở sửa chữa đóng tàu");
+        seedPermission(permissionsByCode, "shiprepair", "update", "Cập nhật cơ sở sửa chữa",
+                "Chỉnh sửa cơ sở sửa chữa đóng tàu");
+        seedPermission(permissionsByCode, "shiprepair", "delete", "Xóa cơ sở sửa chữa",
+                "Xóa cơ sở sửa chữa đóng tàu");
+        seedPermission(permissionsByCode, "shiprepair", "approvec1", "Phê duyệt C1 cơ sở sửa chữa",
+                "Phê duyệt cấp 1 cơ sở sửa chữa đóng tàu");
+        seedPermission(permissionsByCode, "shiprepair", "approvec2", "Phê duyệt C2 cơ sở sửa chữa",
+                "Phê duyệt cấp 2 cơ sở sửa chữa đóng tàu");
+        seedPermission(permissionsByCode, "shiprepair", "history", "Xem lịch sử cơ sở sửa chữa",
+                "Xem lịch sử thay đổi cơ sở sửa chữa đóng tàu");
 
         // radarstation
         seedPermission(permissionsByCode, "radarstation", "create", "Tạo trạm radar",
@@ -251,9 +257,9 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "Chỉnh sửa hệ thống VTS");
         seedPermission(permissionsByCode, "vts", "delete", "Xóa VTS",
                 "Xóa hệ thống VTS");
-        seedPermission(permissionsByCode, "vts", "approvec1", "Phê duyệt C1 VTS",
+        seedPermission(permissionsByCode, "vts", "approve:c1", "Phê duyệt C1 VTS",
                 "Phê duyệt cấp 1 VTS");
-        seedPermission(permissionsByCode, "vts", "approvec2", "Phê duyệt C2 VTS",
+        seedPermission(permissionsByCode, "vts", "approve:c2", "Phê duyệt C2 VTS",
                 "Phê duyệt cấp 2 VTS");
         seedPermission(permissionsByCode, "vts", "history", "Xem lịch sử VTS",
                 "Xem lịch sử thay đổi VTS");
@@ -277,20 +283,20 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "radarstation:create", "radarstation:read", "radarstation:update", "radarstation:delete",
                 "radarstation:approvec1", "radarstation:approvec2", "radarstation:history",
                 "vts:create", "vts:read", "vts:update", "vts:delete",
-                "vts:approvec1", "vts:approvec2", "vts:history"
+                "vts:approve:c1", "vts:approve:c2", "vts:history"
         ));
         rolePermissionMap.put("ROLE_ADMIN", List.of(
                 "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
                 "admin:view",
                 "document:read", "document:create", "document:update", "document:delete",
-                "group:create", "group:edit", "group:delete", "group:copy", "group:history", "groupmember:manage",
+                "group:create", "group:edit", "group:delete", "group:copy", "group:history", "group:permission", "groupmember:manage",
                 "report:read", "connection:read", "data:read", "data:approve",
                 // M-003 read + approve actions
                 "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
                 "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-                "vts:read", "vts:approvec1", "vts:approvec2"
+                "vts:read", "vts:approve:c1", "vts:approve:c2"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
                 "orgunit:read", "data:approve", "report:read", "approve:action",
@@ -301,7 +307,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
                 "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-                "vts:read", "vts:approvec1", "vts:approvec2"
+                "vts:read", "vts:approve:c1", "vts:approve:c2"
         ));
         rolePermissionMap.put("ROLE_SPECIALIST", List.of(
                 "orgunit:read", "data:create", "data:update", "data:read",
@@ -388,6 +394,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 .toList();
 
         roleRepository.saveAll(roles);
+        assignSystemAdminMenus();
 
         log.info("✅ Seeded {} roles:", roles.size());
         for (Role role : roles) {
@@ -395,6 +402,20 @@ public class RolePermissionSeeder implements CommandLineRunner {
         }
 
         log.info("✅ Role/permission seeding completed successfully!");
+    }
+
+    /** Đồng bộ toàn bộ cây chức năng AUTH_MENU cho quản trị hệ thống. */
+    @Transactional
+    void assignSystemAdminMenus() {
+        roleRepository.findByCode("ROLE_SYSTEM_ADMIN").ifPresent(role -> {
+            List<SystemMenu> menus = systemMenuRepository
+                    .findByAppCodeAndStatusAndHideMenuOrderByOrderNoAscMenuCodeAsc("VMD_MTIS", 1, false);
+            if (!menus.isEmpty()) {
+                role.setMenuPermissions(new HashSet<>(menus));
+                roleRepository.save(role);
+                log.info("Synchronized {} original menu permissions to ROLE_SYSTEM_ADMIN", menus.size());
+            }
+        });
     }
 
     /**
@@ -422,6 +443,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "group", "delete", "Xóa nhóm", "Xóa nhóm người dùng");
         seedPermission(newPerms, "group", "copy", "Sao chép nhóm", "Sao chép nhóm người dùng");
         seedPermission(newPerms, "group", "history", "Xem lịch sử nhóm", "Xem lịch sử thay đổi nhóm");
+        seedPermission(newPerms, "group", "permission", "Phân quyền nhóm", "Gán vai trò cho nhóm và cấp quyền kế thừa cho thành viên");
         seedPermission(newPerms, "groupmember", "manage", "Quản lý thành viên nhóm", "Thêm, xóa thành viên khỏi nhóm");
         seedPermission(newPerms, "document", "read", "Xem văn bản pháp lý", "Xem danh sách và chi tiết văn bản pháp lý");
         seedPermission(newPerms, "document", "create", "Tạo văn bản pháp lý", "Tạo mới văn bản pháp lý");
@@ -460,13 +482,13 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "dikerevetment", "approvec1", "Phê duyệt C1 đề kế", "Phê duyệt cấp 1 đề kế");
         seedPermission(newPerms, "dikerevetment", "approvec2", "Phê duyệt C2 đề kế", "Phê duyệt cấp 2 đề kế");
         seedPermission(newPerms, "dikerevetment", "history", "Xem lịch sử đề kế", "Xem lịch sử thay đổi đề kế");
-        seedPermission(newPerms, "shiprepair", "create", "Tạo cơ sở chữa chạy", "Tạo mới cơ sở chữa chạy");
-        seedPermission(newPerms, "shiprepair", "read", "Xem cơ sở chữa chạy", "Xem danh sách và chi tiết cơ sở chữa chạy");
-        seedPermission(newPerms, "shiprepair", "update", "Cập nhật cơ sở chữa chạy", "Chỉnh sửa cơ sở chữa chạy");
-        seedPermission(newPerms, "shiprepair", "delete", "Xóa cơ sở chữa chạy", "Xóa cơ sở chữa chạy");
-        seedPermission(newPerms, "shiprepair", "approvec1", "Phê duyệt C1 cơ sở chữa chạy", "Phê duyệt cấp 1 cơ sở chữa chạy");
-        seedPermission(newPerms, "shiprepair", "approvec2", "Phê duyệt C2 cơ sở chữa chạy", "Phê duyệt cấp 2 cơ sở chữa chạy");
-        seedPermission(newPerms, "shiprepair", "history", "Xem lịch sử cơ sở chữa chạy", "Xem lịch sử thay đổi cơ sở chữa chạy");
+        seedPermission(newPerms, "shiprepair", "create", "Tạo cơ sở sửa chữa", "Tạo mới cơ sở sửa chữa đóng tàu");
+        seedPermission(newPerms, "shiprepair", "read", "Xem cơ sở sửa chữa", "Xem danh sách và chi tiết cơ sở sửa chữa đóng tàu");
+        seedPermission(newPerms, "shiprepair", "update", "Cập nhật cơ sở sửa chữa", "Chỉnh sửa cơ sở sửa chữa đóng tàu");
+        seedPermission(newPerms, "shiprepair", "delete", "Xóa cơ sở sửa chữa", "Xóa cơ sở sửa chữa đóng tàu");
+        seedPermission(newPerms, "shiprepair", "approvec1", "Phê duyệt C1 cơ sở sửa chữa", "Phê duyệt cấp 1 cơ sở sửa chữa đóng tàu");
+        seedPermission(newPerms, "shiprepair", "approvec2", "Phê duyệt C2 cơ sở sửa chữa", "Phê duyệt cấp 2 cơ sở sửa chữa đóng tàu");
+        seedPermission(newPerms, "shiprepair", "history", "Xem lịch sử cơ sở sửa chữa", "Xem lịch sử thay đổi cơ sở sửa chữa đóng tàu");
         seedPermission(newPerms, "radarstation", "create", "Tạo trạm radar", "Tạo mới trạm radar");
         seedPermission(newPerms, "radarstation", "read", "Xem trạm radar", "Xem danh sách và chi tiết trạm radar");
         seedPermission(newPerms, "radarstation", "update", "Cập nhật trạm radar", "Chỉnh sửa trạm radar");
@@ -503,13 +525,13 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermMap.put("ROLE_ADMIN", List.of(
             "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
             "admin:view", "document:read", "document:create", "document:update", "document:delete",
-            "group:create", "group:edit", "group:delete", "group:copy", "group:history", "groupmember:manage",
+            "group:create", "group:edit", "group:delete", "group:copy", "group:history", "group:permission", "groupmember:manage",
             "report:read", "connection:read", "data:read", "data:approve",
             "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
             "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
             "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
             "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-            "vts:read", "vts:approvec1", "vts:approvec2"
+            "vts:read", "vts:approve:c1", "vts:approve:c2"
         ));
         rolePermMap.put("ROLE_LEADER", List.of(
             "orgunit:read", "data:approve", "report:read", "approve:action",
@@ -518,7 +540,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
             "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
             "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
             "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-            "vts:read", "vts:approvec1", "vts:approvec2"
+            "vts:read", "vts:approve:c1", "vts:approve:c2"
         ));
         rolePermMap.put("ROLE_SPECIALIST", List.of(
             "document:read", "document:create", "document:update"

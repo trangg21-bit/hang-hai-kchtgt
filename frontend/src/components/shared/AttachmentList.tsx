@@ -1,7 +1,7 @@
 import { Upload, Table, Empty, Button, Space, message } from 'antd';
 import { DeleteOutlined, DownloadOutlined, EyeOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
-import type { UploadFile, UploadChangeParam } from 'antd/es/upload/interface';
+import type { UploadFile } from 'antd/es/upload/interface';
 import { useState } from 'react';
 
 interface Attachment {
@@ -45,17 +45,16 @@ export default function AttachmentList({
     return true;
   };
 
-  const handleUpload = async (info: UploadChangeParam<UploadFile<unknown>>) => {
-    const file = info.file as RcFile;
-    if (!file || !onUpload) return;
-    if (info.file.status !== 'done') return;
-
+  const handleUpload = async ({ file, onSuccess, onError }: any) => {
+    if (!onUpload) return;
     setUploading(true);
     try {
-      await onUpload(file);
+      await onUpload(file as File);
+      onSuccess?.({}, file);
       message.success('Tải lên tài liệu thành công');
       setFileList([]);
     } catch (error) {
+      onError?.(error);
       message.error(`Lỗi tải lên: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
     } finally {
       setUploading(false);
@@ -107,7 +106,12 @@ export default function AttachmentList({
           >
             Tải xuống
           </Button>
-          <Button type="link" size="small" icon={<EyeOutlined />}>
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => window.open(record.filePath, '_blank', 'noopener,noreferrer')}
+          >
             Xem
           </Button>
           {!readonly && (
@@ -134,7 +138,7 @@ export default function AttachmentList({
           name="file"
           multiple={false}
           beforeUpload={handleBeforeUpload}
-          onChange={handleUpload}
+          customRequest={handleUpload}
           fileList={fileList}
           disabled={uploading}
           aria-label="Tải lên tài liệu đính kèm"

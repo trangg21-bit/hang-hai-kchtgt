@@ -14,7 +14,7 @@ in-progress — current stage: engineering-business-analyst
 
 ## Features in scope (8)
 
-- **F-128** Quản lý văn bản pháp lý — status: `proposed`
+- **F-128** Quản lý văn bản pháp lý — status: `done`
 - **F-129** Quản lý thông tin vận hành — status: `proposed`
 - **F-130** Quản lý thông tin bảo trì — status: `proposed`
 - **F-131** Quản lý thông tin sự cố — status: `proposed`

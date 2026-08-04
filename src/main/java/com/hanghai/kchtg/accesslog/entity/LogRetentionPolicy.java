@@ -9,14 +9,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Singleton configurable retention policy for access-log cleanup.
- * <p>
- * System-admin can view/update this via {@code PUT /api/logs/retention}.
- * The {@code LogCleanupScheduler} reads the active row at runtime
- * instead of using a hardcoded constant.
- * </p>
- */
 @Entity
 @Table(name = "log_retention_policies")
 @Getter
@@ -50,4 +42,20 @@ public class LogRetentionPolicy {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public Long getId() { return id; }
+    public Integer getRetentionDays() { return retentionDays; }
+    public Integer getMaxExportRows() { return maxExportRows; }
+    public String getCleanupSchedule() { return cleanupSchedule; }
+    public Boolean getIsActive() { return isActive; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public void setId(Long id) { this.id = id; }
+    public void setRetentionDays(Integer retentionDays) { this.retentionDays = retentionDays; }
+    public void setMaxExportRows(Integer maxExportRows) { this.maxExportRows = maxExportRows; }
+    public void setCleanupSchedule(String cleanupSchedule) { this.cleanupSchedule = cleanupSchedule; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

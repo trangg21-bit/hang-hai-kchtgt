@@ -23,4 +23,7 @@ public class UpdateRoleRequest {
 
     private List<String> permissions;
 
+    /** Mã chức năng/menu được chọn trong cây phân quyền theo project gốc. */
+    private List<String> menuCodes;
+
 }

@@ -21,6 +21,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 @Data
 public class CreatePortRequest {
 
+    @NotBlank(message = "Mã cảng không được để trống")
     @Size(max = 50, message = "Mã cảng tối đa 50 ký tự")
     private String portCode;
 
@@ -39,6 +40,7 @@ public class CreatePortRequest {
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
     private BigDecimal longitude;
 
+    @DecimalMin(value = "0", inclusive = false, message = "Diện tích phải lớn hơn 0")
     private BigDecimal area;
 
     private BigDecimal maxVesselCapacity;

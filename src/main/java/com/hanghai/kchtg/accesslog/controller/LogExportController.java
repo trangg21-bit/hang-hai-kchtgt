@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * REST Controller cho việc xuat log, xem thong ke, canh bao, va config retention policy.
@@ -53,7 +54,7 @@ public class LogExportController {
     @GetMapping(value = "/export/csv", produces = MediaType.TEXT_PLAIN_VALUE)
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<StreamingResponseBody> exportCsv(
-            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) String module,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String from,

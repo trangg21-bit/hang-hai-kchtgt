@@ -139,22 +139,9 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         logEntry.setOrgUnit(resolveOrgUnit(username));
         logEntry.setSessionId(resolveSessionId(request));
 
-        // Resolve userId from username
-        String userIdStr = resolveUserId(username);
-        if (userIdStr != null) {
-            try {
-                java.util.UUID uuid = java.util.UUID.fromString(userIdStr);
-                logEntry.setUserId(uuid.getMostSignificantBits());
-            } catch (IllegalArgumentException e) {
-                try {
-                    logEntry.setUserId(Long.parseLong(userIdStr));
-                } catch (NumberFormatException nfe) {
-                    logEntry.setUserId(0L);
-                }
-            }
-        } else {
-            logEntry.setUserId(0L);
-        }
+        // A user ID is a UUID throughout the system. Anonymous and failed-login
+        // requests intentionally have no user ID, while retaining the username/IP.
+        logEntry.setUserId(resolveUserId(username));
 
         // ── Status, severity, response code, duration ───────────────────
         int statusCode = response.getStatus();
@@ -246,7 +233,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
      * Check if this request was already logged recently (same user, method, path within 3 seconds).
      * If yes, skip. If no, record the timestamp and return false.
      */
-    private boolean isDuplicateRequest(Long userId, String method, String path) {
+    private boolean isDuplicateRequest(java.util.UUID userId, String method, String path) {
         String key = userId + ":" + method + ":" + path;
         long now = System.currentTimeMillis();
         Long lastTime = recentLogCache.put(key, now);
@@ -479,10 +466,10 @@ public class AccessLogInterceptor implements HandlerInterceptor {
     }
 
     /** Resolve userId from username by querying UserRepository. */
-    private String resolveUserId(String username) {
+    private java.util.UUID resolveUserId(String username) {
         try {
             User user = userRepository.findByUsername(username).orElse(null);
-            return user != null ? String.valueOf(user.getId()) : null;
+            return user != null ? user.getId() : null;
         } catch (Exception e) {
             log.warn("Failed to resolve userId for user '{}': {}", username, e.getMessage());
             return null;

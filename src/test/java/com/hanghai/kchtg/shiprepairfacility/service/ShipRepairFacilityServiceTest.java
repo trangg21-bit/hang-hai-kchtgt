@@ -1,11 +1,14 @@
 package com.hanghai.kchtg.shiprepairfacility.service;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
-import com.hanghai.kchtg.shiprepairfacility.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityAttachmentRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +42,12 @@ class ShipRepairFacilityServiceTest {
 
     @Mock
     private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
+    @Mock
+    private OrgUnitCacheService orgUnitCacheService;
+
+    @Mock
+    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @InjectMocks
     private ShipRepairFacilityService service;
@@ -311,7 +320,7 @@ class ShipRepairFacilityServiceTest {
 
         assertEquals(ShipRepairApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
-        assertEquals("00000000-0000-0000-0000-000000000001", entity.getApproverLevel1());
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getApproverLevel1());
         verify(repository, times(1)).save(any());
     }
 
@@ -356,7 +365,7 @@ class ShipRepairFacilityServiceTest {
 
         assertEquals(ShipRepairApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel2());
-        assertEquals("00000000-0000-0000-0000-000000000002", entity.getApproverLevel2());
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), entity.getApproverLevel2());
         verify(repository, times(1)).save(any());
     }
 
@@ -392,7 +401,7 @@ class ShipRepairFacilityServiceTest {
     void testApproveC2_sameActorAsC1_throwsException() {
         entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
         entity.setApprovedLevel1(true);
-        entity.setApproverLevel1("00000000-0000-0000-0000-000000000001");
+        entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -406,28 +415,28 @@ class ShipRepairFacilityServiceTest {
     void testGetHistory() {
         ApprovalHistory history = ApprovalHistory.builder()
                 .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .shipRepairFacilityId(TEST_ID)
+                .refId(TEST_ID).refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
-                .status("APPROVED")
+                .status(ApprovalHistoryStatus.fromValue("APPROVED"))
                 .approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now())
                 .reason("Duyệt")
                 .build();
 
-        when(historyRepository.findByShipRepairFacilityIdOrderByApprovedDateDesc(TEST_ID)).thenReturn(Arrays.asList(history));
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY, TEST_ID)).thenReturn(Arrays.asList(history));
 
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
 
         assertNotNull(entries);
         assertEquals(1, entries.size());
-        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entries.get(0).getApprovedBy());
+        assertEquals("00000000-0000-0000-0000-000000000001", entries.get(0).getApprovedBy());
         assertEquals(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1, entries.get(0).getApprovalLevel());
         assertEquals("Duyệt", entries.get(0).getReason());
     }
 
     @Test
     void testGetHistory_Empty() {
-        when(historyRepository.findByShipRepairFacilityIdOrderByApprovedDateDesc(TEST_ID)).thenReturn(Collections.emptyList());
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY, TEST_ID)).thenReturn(Collections.emptyList());
 
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
 

@@ -83,7 +83,7 @@ public class Permission extends BaseEntity {
             return resource;
         }
         // Fallback: parse from code
-        String code = getCode();
+        String code = this.code;
         if (code != null && code.contains(":")) {
             return code.split(":")[0];
         }
@@ -99,7 +99,7 @@ public class Permission extends BaseEntity {
             return action;
         }
         // Fallback: parse from code
-        String code = getCode();
+        String code = this.code;
         if (code != null && code.contains(":")) {
             return code.split(":")[1];
         }
@@ -113,6 +113,8 @@ public class Permission extends BaseEntity {
         return requiredResource.equals(this.resource)
                 && requiredAction.equals(this.action);
     }
+
+    public String getCode() { return code; }
 
     /**
      * Tạo permission code từ resource và action.

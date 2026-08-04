@@ -2,6 +2,7 @@ package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.report.entity.ReportStatus;
@@ -18,6 +19,9 @@ public abstract class BaseReportHandler implements ReportHandler {
 
     @Autowired
     protected OrgUnitRepository orgUnitRepository;
+
+    @Autowired
+    protected OrgUnitCacheService orgUnitCacheService;
 
     protected UUID resolveOrgUnitId(String requestOrgId) {
         if (requestOrgId == null || requestOrgId.trim().isEmpty() || "null".equalsIgnoreCase(requestOrgId.trim())) {

@@ -130,17 +130,17 @@ public class OrgUnit extends BaseEntity {
     public static OrgUnit createRoot(String name, String code, OrgUnitType type,
                                       String description, String address, String phone) {
         OrgUnit unit = new OrgUnit();
-        unit.setName(name);
-        unit.setCode(code);
-        unit.setType(type);
-        unit.setDescription(description);
-        unit.setAddress(address);
-        unit.setPhone(phone);
-        unit.setStatus(OrgUnitStatus.DRAFT);
-        unit.setOperationalStatus(OrgUnitOperationalStatus.ACTIVE);
-        unit.setPath("");   // set later by MaterializedPathService
-        unit.setLevel(0);
-        unit.setSortOrder(0);
+        unit.name = name;
+        unit.code = code;
+        unit.type = type;
+        unit.description = description;
+        unit.address = address;
+        unit.phone = phone;
+        unit.status = OrgUnitStatus.DRAFT;
+        unit.operationalStatus = OrgUnitOperationalStatus.ACTIVE;
+        unit.path = "";   // set later by MaterializedPathService
+        unit.level = 0;
+        unit.sortOrder = 0;
         return unit;
     }
 }

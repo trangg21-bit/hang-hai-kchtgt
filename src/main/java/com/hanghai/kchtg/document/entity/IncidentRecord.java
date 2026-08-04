@@ -22,7 +22,7 @@ import java.util.UUID;
 public class IncidentRecord {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "incident_id")

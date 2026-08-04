@@ -261,12 +261,8 @@ BEGIN
 END $$;
 
 -- 9. Drop old FK constraint on attachment and recreate with new column name
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_he_thong_vts_attachment_vts') THEN
-    ALTER TABLE vts_system_attachment DROP CONSTRAINT fk_he_thong_vts_attachment_vts;
-  END IF;
-END $$;
+ALTER TABLE vts_system_attachment
+  DROP CONSTRAINT IF EXISTS fk_he_thong_vts_attachment_vts;
 
 DO $$
 BEGIN
@@ -287,9 +283,5 @@ END $$;
 
 -- 11. Drop old FK name on radar_station referencing vts_system (constraint still works after table rename)
 --     The column he_thong_vts_id in radar_station is NOT renamed here; it will be handled separately.
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_tram_radar_he_thong_vts') THEN
-    ALTER TABLE radar_station DROP CONSTRAINT fk_tram_radar_he_thong_vts;
-  END IF;
-END $$;
+ALTER TABLE radar_station
+  DROP CONSTRAINT IF EXISTS fk_tram_radar_he_thong_vts;

@@ -18,8 +18,20 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+.vts-list-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.vts-list-content::-webkit-scrollbar {
+  display: none;
+}
+
 /* ---- Table row transition (không có trong globalCssVars) ---- */
 .ant-table-row { transition: background 0.15s; }
+.list-view-table .ant-table-container,
+.list-view-table .ant-table-content {
+  overflow-y: hidden !important;
+}
 
 /* ---- GIS Map: Sidebar tabs fill height ---- */
 .gis-sidebar-tabs .ant-tabs-content-holder {

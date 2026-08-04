@@ -7,6 +7,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.port.controller.BerthController;
 import com.hanghai.kchtg.port.dto.berth.BerthResponse;
+import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.service.BerthApprovalService;
 import com.hanghai.kchtg.port.service.BerthService;
 import com.hanghai.kchtg.security.JwtUtil;
@@ -58,6 +59,9 @@ class BerthControllerTest {
 
     @MockBean
     private BerthApprovalService berthApprovalService;
+
+    @MockBean
+    private PierRepository pierRepository;
 
     // Infrastructure stubs
     @MockBean
@@ -197,12 +201,12 @@ class BerthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/berths — returns 400 when berthCode is blank")
-    void create_blankBerthCode_returns400() throws Exception {
+    @DisplayName("POST /api/v1/berths — returns 400 when berthName is blank")
+    void create_blankBerthName_returns400() throws Exception {
         String json = """
                 {
-                  "berthCode": "",
-                  "berthName": "Bến thiếu mã",
+                  "berthCode": "BEN-001",
+                  "berthName": "",
                   "portId": "00000000-0000-0000-0000-000000000001"
                 }
                 """;
@@ -235,11 +239,13 @@ class BerthControllerTest {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/berths/{id}/approve", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cap\":\"CUC_DUONG_THUY\"}")
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(berthApprovalService).approve(id, "test-approver", null);
+        verify(berthApprovalService).approve(id, "test-approver", "CUC_DUONG_THUY");
     }
 
     // ── GET /api/v1/berths/{id}/history ─────────────────────────────────

@@ -25,7 +25,7 @@ public class LookupResultEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "quy_hoach_id")
+    @Column(name = "planning_id")
     private java.util.UUID planningId;
 
     @Column(name = "ten_do_an", length = 300)

@@ -17,6 +17,7 @@ export interface RadarStationResponse {
   source?: string;
   conditionStatus?: string;
   orgUnitId?: string;
+  orgUnitName?: string;
   approvalStatus: string;
   approvedLevel1?: boolean;
   approverLevel1?: string;

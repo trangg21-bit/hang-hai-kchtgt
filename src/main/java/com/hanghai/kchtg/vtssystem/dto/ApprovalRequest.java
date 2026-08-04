@@ -2,6 +2,7 @@ package com.hanghai.kchtg.vtssystem.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,4 +19,10 @@ public class ApprovalRequest {
 
     @Size(max = 500)
     private String reason;
+
+    @AssertTrue(message = "Lý do từ chối là bắt buộc")
+    public boolean isReasonValid() {
+        return !"REJECTED".equalsIgnoreCase(quyetDinh)
+                || (reason != null && !reason.trim().isEmpty());
+    }
 }

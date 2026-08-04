@@ -366,6 +366,11 @@ export const organizationService = {
    * Returns hierarchical tree with children populated.
    */
   async getTree(options?: { allowMockFallback?: boolean }): Promise<Organization[]> {
+    const cached = getCachedOrgs();
+    if (cached) {
+      return cached;
+    }
+
     try {
       const resp = await api.get("/org-units/tree");
       const items: any[] = extractData(resp) ?? [];
@@ -415,6 +420,7 @@ export const organizationService = {
         }
       });
 
+      setCachedOrgs(flatList);
       return flatList;
     } catch (error) {
       if (options?.allowMockFallback === false) {
@@ -433,7 +439,9 @@ export const organizationService = {
           }
         }
       });
-      return [...organizations];
+      const fallback = [...organizations];
+      setCachedOrgs(fallback);
+      return fallback;
     }
   },
 
@@ -496,7 +504,6 @@ export const organizationService = {
   async create(
     payload: CreateOrganizationPayload
   ): Promise<Organization> {
-    clearCachedOrgs();
     try {
       const resp = await api.post("/org-units", {
         name: payload.name,
@@ -512,6 +519,7 @@ export const organizationService = {
         operationalStatus: payload.operationalStatus?.toUpperCase() ?? "ACTIVE",
       });
       const item: any = extractData(resp);
+      clearCachedOrgs();
 
       return {
         id: item.id ?? "",
@@ -560,6 +568,7 @@ export const organizationService = {
         updatedAt: new Date().toISOString(), updatedBy: undefined, 
       };
       organizations.push(newOrg);
+      clearCachedOrgs();
       return { ...newOrg };
     }
   },
@@ -571,7 +580,6 @@ export const organizationService = {
     id: string,
     payload: UpdateOrganizationPayload
   ): Promise<Organization> {
-    clearCachedOrgs();
     try {
       const body: Record<string, any> = {
         name: payload.name,
@@ -590,6 +598,7 @@ export const organizationService = {
       }
       const resp = await api.put(`/org-units/${id}`, body);
       const item: any = extractData(resp);
+      clearCachedOrgs();
 
       return {
         id: item.id ?? id,
@@ -627,6 +636,7 @@ export const organizationService = {
         ...payload,
         updatedAt: new Date().toISOString(), updatedBy: undefined, 
       };
+      clearCachedOrgs();
       return { ...organizations[idx] };
     }
   },
@@ -635,14 +645,15 @@ export const organizationService = {
    * DELETE /api/org-units/:id
    */
   async delete(id: string): Promise<void> {
-    clearCachedOrgs();
     try {
       await api.delete(`/org-units/${id}`);
+      clearCachedOrgs();
     } catch {
       await delay();
       const idx = organizations.findIndex(o => o.id === id);
       if (idx === -1) throw new Error("Đơn vị không tồn tại");
       organizations.splice(idx, 1);
+      clearCachedOrgs();
     }
   },
 
@@ -650,10 +661,10 @@ export const organizationService = {
    * POST /api/org-units/:id/submit
    */
   async submit(id: string): Promise<Organization> {
-    clearCachedOrgs();
     try {
       const resp = await api.post(`/org-units/${id}/submit`);
       const item: any = extractData(resp);
+      clearCachedOrgs();
       return {
         id: item.id ?? id,
         name: item.name ?? "",
@@ -675,6 +686,7 @@ export const organizationService = {
       const idx = organizations.findIndex(o => o.id === id);
       if (idx === -1) throw new Error("Đơn vị không tồn tại");
       organizations[idx] = { ...organizations[idx], status: 'pending', updatedAt: new Date().toISOString() };
+      clearCachedOrgs();
       return { ...organizations[idx] };
     }
   },
@@ -683,12 +695,12 @@ export const organizationService = {
    * POST /api/org-units/:id/approve
    */
   async approve(id: string, comments?: string): Promise<Organization> {
-    clearCachedOrgs();
     try {
       const resp = await api.post(`/org-units/${id}/approve`, null, {
         params: comments ? { comments } : undefined,
       });
       const item: any = extractData(resp);
+      clearCachedOrgs();
       return {
         id: item.id ?? id,
         name: item.name ?? "",
@@ -710,6 +722,7 @@ export const organizationService = {
       const idx = organizations.findIndex(o => o.id === id);
       if (idx === -1) throw new Error("Đơn vị không tồn tại");
       organizations[idx] = { ...organizations[idx], status: 'approved', updatedAt: new Date().toISOString() };
+      clearCachedOrgs();
       return { ...organizations[idx] };
     }
   },
@@ -718,12 +731,12 @@ export const organizationService = {
    * POST /api/org-units/:id/reject
    */
   async reject(id: string, comments?: string): Promise<Organization> {
-    clearCachedOrgs();
     try {
       const resp = await api.post(`/org-units/${id}/reject`, null, {
         params: comments ? { comments } : undefined,
       });
       const item: any = extractData(resp);
+      clearCachedOrgs();
       return {
         id: item.id ?? id,
         name: item.name ?? "",
@@ -745,6 +758,7 @@ export const organizationService = {
       const idx = organizations.findIndex(o => o.id === id);
       if (idx === -1) throw new Error("Đơn vị không tồn tại");
       organizations[idx] = { ...organizations[idx], status: 'rejected', updatedAt: new Date().toISOString() };
+      clearCachedOrgs();
       return { ...organizations[idx] };
     }
   },

@@ -24,7 +24,7 @@ import java.util.UUID;
 public class MaintenanceReport {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "report_type", length = 100)
@@ -42,7 +42,7 @@ public class MaintenanceReport {
     @Column(name = "file_path", length = 500)
     private String filePath;
 
-    @Column(name = "created_by", length = 100)
+    @Column(name = "created_by")
     private java.util.UUID createdBy;
 
     @Column(name = "created_at", updatable = false)

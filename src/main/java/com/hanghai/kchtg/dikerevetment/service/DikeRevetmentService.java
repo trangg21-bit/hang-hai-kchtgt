@@ -2,10 +2,13 @@ package com.hanghai.kchtg.dikerevetment.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
 
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.*;
-import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import java.time.LocalDateTime;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -13,6 +16,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.AdminAutoApproval;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,8 +42,9 @@ public class DikeRevetmentService {
 
     private final DikeRevetmentRepository repo;
     private final DikeRevetmentAttachmentRepository attachmentRepo;
-    private final DikeRevetmentApprovalHistoryRepository approvalHistoryRepo;
+    private final ApprovalHistoryRepository approvalHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public DikeRevetmentResponse create(DikeRevetmentCreateRequest req, java.util.UUID userId) {
@@ -227,7 +232,7 @@ public class DikeRevetmentService {
         }
 
         dr.setIsApprovedLevel1(true);
-        dr.setApproverLevel1(approvedBy != null ? approvedBy.toString() : null);
+        dr.setApproverLevel1(approvedBy);
         dr.setApprovedDateLevel1(LocalDate.now());
 
         String actor = approvedBy != null ? approvedBy.toString() : null;
@@ -237,7 +242,7 @@ public class DikeRevetmentService {
             if (AdminAutoApproval.isAutoApprover()) {
                 // Administrators clear both levels in one step.
                 dr.setIsApprovedLevel2(true);
-                dr.setApproverLevel2(actor);
+                dr.setApproverLevel2(approvedBy);
                 dr.setApprovedDateLevel2(LocalDate.now());
                 dr.setApprovalStatus(DikeRevetmentApprovalStatus.APPROVED);
                 autoApproved = true;
@@ -265,14 +270,13 @@ public class DikeRevetmentService {
             throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
         }
 
-        String c1Actor = dr.getApproverLevel1();
-        String approvedByStr = approvedBy != null ? approvedBy.toString() : null;
-        if (c1Actor != null && c1Actor.equals(approvedByStr)) {
+        UUID c1Actor = dr.getApproverLevel1();
+        if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
         }
 
         dr.setIsApprovedLevel2(true);
-        dr.setApproverLevel2(approvedByStr);
+        dr.setApproverLevel2(approvedBy);
         dr.setApprovedDateLevel2(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getDecision())) {
@@ -282,7 +286,7 @@ public class DikeRevetmentService {
             dr.setRejectionReason(req.getReason());
         }
 
-        saveApprovalHistory(dr, 2, req.getDecision(), approvedByStr, req.getReason());
+        saveApprovalHistory(dr, 2, req.getDecision(), approvedBy != null ? approvedBy.toString() : null, req.getReason());
         return buildApprovalResponse(dr, 2);
     }
 
@@ -300,16 +304,16 @@ public class DikeRevetmentService {
     }
 
     private void saveApprovalHistory(DikeRevetment dr, Integer cap, String status, String user, String reason) {
-        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder()
-                .dikeRevetment(dr)
+        ApprovalHistory hist = ApprovalHistory.builder()
+                .refId(dr.getId())
+                .refType(InfrastructureType.DIKE_REVETMENT)
                 .approvalLevel(ApprovalLevel.fromInt(cap))
-                .status(status)
-                .approver(user)
-                .approvalDate(LocalDate.now())
+                .status(ApprovalHistoryStatus.fromValue(status))
+                .approvedBy(user != null ? UUID.fromString(user) : null)
+                .approvedDate(LocalDateTime.now())
                 .reason(reason)
                 .build();
         approvalHistoryRepo.save(hist);
-        dr.getApprovalHistory().add(hist);
     }
 
     private ApprovalResponse buildApprovalResponse(DikeRevetment dr, Integer cap) {
@@ -326,17 +330,17 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getApprovalHistory(UUID id) {
-        DikeRevetment dr = repo.findById(id)
+        repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        List<DikeRevetmentApprovalHistory> history = approvalHistoryRepo.findByDikeRevetmentIdOrderByApprovalDateDesc(id);
+        List<ApprovalHistory> history = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, id);
         return history.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
-                .dikeRevetmentId(h.getDikeRevetment().getId())
+                .dikeRevetmentId(h.getRefId())
                 .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus())
-                .approver(h.getApprover())
-                .approvalDate(h.getApprovalDate())
+                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                .approver(h.getApprovedBy() != null ? h.getApprovedBy().toString() : null)
+                .approvalDate(h.getApprovedDate() != null ? h.getApprovedDate().toLocalDate() : null)
                 .reason(h.getReason())
                 .build()).collect(Collectors.toList());
     }
@@ -386,19 +390,18 @@ public class DikeRevetmentService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        List<ApprovalResponse> hist = dr.getApprovalHistory() != null
-                ? dr.getApprovalHistory().stream()
-                        .map(h -> ApprovalResponse.builder()
-                                .id(String.valueOf(h.getId()))
-                                .dikeRevetmentId(h.getDikeRevetment().getId())
-                                .approvalLevel(h.getApprovalLevel())
-                                .status(h.getStatus())
-                                .approver(h.getApprover())
-                                .approvalDate(h.getApprovalDate())
-                                .reason(h.getReason())
-                                .build())
-                        .collect(Collectors.toList())
-                : new ArrayList<>();
+        List<ApprovalHistory> histories = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, dr.getId());
+        List<ApprovalResponse> hist = histories.stream()
+                .map(h -> ApprovalResponse.builder()
+                        .id(String.valueOf(h.getId()))
+                        .dikeRevetmentId(h.getRefId())
+                        .approvalLevel(h.getApprovalLevel())
+                        .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                        .approver(h.getApprovedBy() != null ? h.getApprovedBy().toString() : null)
+                        .approvalDate(h.getApprovedDate() != null ? h.getApprovedDate().toLocalDate() : null)
+                        .reason(h.getReason())
+                        .build())
+                .collect(Collectors.toList());
 
         GisGeometryType geomType = null;
         String coords = null;
@@ -424,6 +427,7 @@ public class DikeRevetmentService {
                 .status(dr.getStatus())
                 .note(dr.getNote())
                 .orgUnitId(dr.getOrgUnitId())
+                .orgUnitName(orgUnitCacheService.getName(dr.getOrgUnitId()))
                 .approvalStatus(dr.getApprovalStatus())
                 .isApprovedLevel1(dr.getIsApprovedLevel1())
                 .approverLevel1(dr.getApproverLevel1())

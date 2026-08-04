@@ -19,6 +19,7 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class DryPortService {
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public DryPortResponse create(CreateDryPortRequest request) {
@@ -216,7 +218,7 @@ public class DryPortService {
                 .provinceId(e.getProvinceId())
                 .area(e.getArea()).teuCapacity(e.getTeuCapacity())
                 .operationalStatus(e.getOperationalStatus()).approvalStatus(e.getApprovalStatus())
-                .orgUnitId(e.getOrgUnitId())
+                .orgUnitId(e.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())

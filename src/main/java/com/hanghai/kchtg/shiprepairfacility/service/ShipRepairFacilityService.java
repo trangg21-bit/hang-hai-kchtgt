@@ -6,12 +6,14 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
-import com.hanghai.kchtg.shiprepairfacility.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityAttachmentRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,8 @@ public class ShipRepairFacilityService {
     private final ShipRepairFacilityAttachmentRepository attachmentRepository;
     private final ApprovalHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final OrgUnitCacheService orgUnitCacheService;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     public ShipRepairFacilityResponse create(ShipRepairFacilityCreateRequest request, UUID createdBy) {
         ShipRepairFacility entity = ShipRepairFacility.builder()
@@ -71,9 +75,10 @@ public class ShipRepairFacilityService {
         }
 
         historyRepository.save(ApprovalHistory.builder()
-                .shipRepairFacilityId(saved.getId())
+                .refId(saved.getId())
+                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("CREATE")
+                .status(ApprovalHistoryStatus.CREATED)
                 .approvedBy(createdBy)
                 .approvedDate(LocalDateTime.now())
                 .reason("Tạo mới cơ sở sửa chữa, đóng tàu")
@@ -116,6 +121,17 @@ public class ShipRepairFacilityService {
         if (entity.getApprovalStatus() == ShipRepairApprovalStatus.APPROVED) {
             entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
         }
+
+        java.util.Map<String, String> previousValues = new java.util.LinkedHashMap<>();
+        if (request.getFacilityName() != null && !java.util.Objects.equals(request.getFacilityName(), entity.getFacilityName())) previousValues.put("facilityName", entity.getFacilityName());
+        if (request.getAddress() != null && !java.util.Objects.equals(request.getAddress(), entity.getAddress())) previousValues.put("address", entity.getAddress());
+        if (request.getProvinceId() != null && !java.util.Objects.equals(request.getProvinceId(), entity.getProvinceId())) previousValues.put("provinceId", String.valueOf(entity.getProvinceId()));
+        if (request.getPhone() != null && !java.util.Objects.equals(request.getPhone(), entity.getPhone())) previousValues.put("phone", entity.getPhone());
+        if (request.getEmail() != null && !java.util.Objects.equals(request.getEmail(), entity.getEmail())) previousValues.put("email", entity.getEmail());
+        if (request.getFacilityType() != null && !java.util.Objects.equals(request.getFacilityType(), entity.getFacilityType())) previousValues.put("facilityType", String.valueOf(entity.getFacilityType()));
+        if (request.getCapacity() != null && !java.util.Objects.equals(request.getCapacity(), entity.getCapacity())) previousValues.put("capacity", entity.getCapacity());
+        if (request.getAuthority() != null && !java.util.Objects.equals(request.getAuthority(), entity.getAuthority())) previousValues.put("authority", entity.getAuthority());
+        if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) previousValues.put("orgUnitId", String.valueOf(entity.getOrgUnitId()));
 
         if (request.getFacilityName() != null) entity.setFacilityName(request.getFacilityName());
         if (request.getAddress() != null) entity.setAddress(request.getAddress());
@@ -168,12 +184,16 @@ public class ShipRepairFacilityService {
         ShipRepairFacility saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
-                .shipRepairFacilityId(saved.getId())
+                .refId(saved.getId())
+                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("UPDATE")
+                .status(ApprovalHistoryStatus.UPDATED)
                 .approvedBy(updatedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason("Cập nhật cơ sở sửa chữa, đóng tàu")
+                .changedField(formatChangedFields(previousValues))
+                .previousValue(formatPreviousValues(previousValues))
+                .newValue(formatNewValues(saved, previousValues))
                 .build());
 
         return toResponse(saved);
@@ -191,9 +211,10 @@ public class ShipRepairFacilityService {
         repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
-                .shipRepairFacilityId(entity.getId())
+                .refId(entity.getId())
+                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("DELETE")
+                .status(ApprovalHistoryStatus.DELETED)
                 .approvedBy(deletedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason("Xóa cơ sở sửa chữa, đóng tàu")
@@ -216,13 +237,13 @@ public class ShipRepairFacilityService {
             entity.setRejectionReason(request.getReason());
         } else {
             entity.setApprovedLevel1(true);
-            entity.setApproverLevel1(approvedBy != null ? approvedBy.toString() : null);
+            entity.setApproverLevel1(approvedBy);
             entity.setApprovedDateLevel1(LocalDateTime.now());
 
             if (AdminAutoApproval.isAutoApprover()) {
                 // Administrators clear both levels in one step.
                 entity.setApprovedLevel2(true);
-                entity.setApproverLevel2(approvedBy != null ? approvedBy.toString() : null);
+                entity.setApproverLevel2(approvedBy);
                 entity.setApprovedDateLevel2(LocalDateTime.now());
                 entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
                 autoApproved = true;
@@ -234,9 +255,10 @@ public class ShipRepairFacilityService {
         ShipRepairFacility saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
-                .shipRepairFacilityId(saved.getId())
+                .refId(saved.getId())
+                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_1)
-                .status(request.getQuyetDinh())
+                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason(request.getReason())
@@ -244,9 +266,10 @@ public class ShipRepairFacilityService {
 
         if (autoApproved) {
             historyRepository.save(ApprovalHistory.builder()
-                    .shipRepairFacilityId(saved.getId())
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(request.getQuyetDinh())
+                    .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
                     .approvedBy(approvedBy)
                     .approvedDate(LocalDateTime.now())
                     .reason(request.getReason())
@@ -264,8 +287,8 @@ public class ShipRepairFacilityService {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
-        String c1Actor = entity.getApproverLevel1();
-        if (c1Actor != null && c1Actor.equals(approvedBy != null ? approvedBy.toString() : null) && !"admin".equals(approvedBy)) {
+        UUID c1Actor = entity.getApproverLevel1();
+        if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
@@ -275,16 +298,17 @@ public class ShipRepairFacilityService {
         } else {
             entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
             entity.setApprovedLevel2(true);
-            entity.setApproverLevel2(approvedBy != null ? approvedBy.toString() : null);
+            entity.setApproverLevel2(approvedBy);
             entity.setApprovedDateLevel2(LocalDateTime.now());
         }
 
         ShipRepairFacility saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
-                .shipRepairFacilityId(saved.getId())
+                .refId(saved.getId())
+                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_2)
-                .status(request.getQuyetDinh())
+                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason(request.getReason())
@@ -294,15 +318,24 @@ public class ShipRepairFacilityService {
     }
 
     public List<HistoryEntry> getHistory(UUID shipRepairFacilityId) {
-        return historyRepository.findByShipRepairFacilityIdOrderByApprovedDateDesc(shipRepairFacilityId)
+        return historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY, shipRepairFacilityId)
                 .stream().map(h -> HistoryEntry.builder()
                         .id(h.getId())
                         .approvalLevel(h.getApprovalLevel())
-                        .status(h.getStatus())
-                        .approvedBy(h.getApprovedBy())
+                        .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                        .approvedBy(resolveUserName(h.getApprovedBy()))
                         .approvedDate(h.getApprovedDate())
                         .reason(h.getReason())
                         .build()).toList();
+    }
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId)
+                .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
+                        ? u.getFullName()
+                        : u.getUsername())
+                .orElse(userId.toString());
     }
 
     public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, Integer provinceId, String approvalStatus, String reviewStatus) {
@@ -348,6 +381,7 @@ public class ShipRepairFacilityService {
                 .capacity(entity.getCapacity())
                 .authority(entity.getAuthority())
                 .orgUnitId(entity.getOrgUnitId())
+                .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .approvalStatus(entity.getApprovalStatus())
                 .approvedLevel1(entity.getApprovedLevel1())
                 .approverLevel1(entity.getApproverLevel1())
@@ -372,6 +406,67 @@ public class ShipRepairFacilityService {
         if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
         if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
         return GisSpatialObjectType.LINE_OTHER;
+    }
+
+    private String getFieldDisplayName(String field) {
+        return switch (field) {
+            case "facilityName" -> "Tên cơ sở sửa chữa";
+            case "facilityType" -> "Loại cơ sở";
+            case "address" -> "Địa chỉ";
+            case "phone" -> "Số điện thoại";
+            case "email" -> "Email";
+            case "capacity" -> "Công suất";
+            case "authority" -> "Cơ quan thẩm quyền";
+            case "orgUnitId" -> "Đơn vị quản lý";
+            case "provinceId" -> "Tỉnh / Thành phố";
+            default -> field;
+        };
+    }
+
+    private String formatChangedFields(java.util.Map<String, String> previousValues) {
+        return previousValues.keySet().stream()
+                .map(this::getFieldDisplayName)
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
+
+    private String formatPreviousValues(java.util.Map<String, String> previousValues) {
+        return previousValues.entrySet().stream()
+                .map(entry -> getFieldDisplayName(entry.getKey()) + "=" + formatDisplayValue(entry.getKey(), entry.getValue()))
+                .collect(java.util.stream.Collectors.joining("; "));
+    }
+
+    private String formatNewValues(ShipRepairFacility entity, java.util.Map<String, String> previousValues) {
+        return previousValues.keySet().stream()
+                .map(field -> getFieldDisplayName(field) + "=" + formatDisplayValue(field, currentFieldValue(entity, field)))
+                .collect(java.util.stream.Collectors.joining("; "));
+    }
+
+    private String formatDisplayValue(String field, String rawValue) {
+        if (rawValue == null || rawValue.isEmpty()) return "";
+        if ("orgUnitId".equals(field)) {
+            try {
+                String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
+                return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        return rawValue;
+    }
+
+    private String currentFieldValue(ShipRepairFacility entity, String field) {
+        return switch (field) {
+            case "facilityName" -> String.valueOf(entity.getFacilityName());
+            case "facilityType" -> String.valueOf(entity.getFacilityType());
+            case "address" -> String.valueOf(entity.getAddress());
+            case "phone" -> String.valueOf(entity.getPhone());
+            case "email" -> String.valueOf(entity.getEmail());
+            case "capacity" -> String.valueOf(entity.getCapacity());
+            case "authority" -> String.valueOf(entity.getAuthority());
+            case "orgUnitId" -> String.valueOf(entity.getOrgUnitId());
+            case "provinceId" -> String.valueOf(entity.getProvinceId());
+            default -> "";
+        };
     }
 }
 

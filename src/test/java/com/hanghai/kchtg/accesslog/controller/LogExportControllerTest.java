@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,7 +40,7 @@ class LogExportControllerTest {
         when(logService.exportToCsvStreaming(any(AccessLogFilterRequest.class))).thenReturn(dummyStream);
 
         ResponseEntity<StreamingResponseBody> response = controller.exportCsv(
-                1L,
+                UUID.randomUUID(),
                 "USER",
                 "CREATE_USER",
                 null,

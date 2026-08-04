@@ -18,6 +18,7 @@ export interface LegalDocumentCreateRequest {
   signer?: string;
   validityStatus?: string;
   description?: string;
+  draft?: boolean;
 }
 
 export interface LegalDocumentResponse {
@@ -36,7 +37,18 @@ export interface LegalDocumentResponse {
   attachedDocuments?: Array<{
     id: string; documentName: string; filePath: string; fileSize?: number; uploadedAt: string;
   }>;
-  createdBy?: string; createdByName?: string; createdAt: string; updatedAt: string;
+  draft?: boolean;
+  createdBy?: string; createdByName?: string; createdDate?: string; updatedBy?: string; updatedByName?: string; updatedDate?: string;
+}
+
+export interface LegalDocumentHistoryResponse {
+  id: string;
+  action: string;
+  changedBy?: string;
+  changedAt: string;
+  documentName: string;
+  documentNumber?: string;
+  validityStatus?: string;
 }
 
 export interface SuCoCreateRequest {

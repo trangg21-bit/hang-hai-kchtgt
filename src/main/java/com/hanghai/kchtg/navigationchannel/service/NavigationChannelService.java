@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
-
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -9,13 +8,15 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.navigationchannel.dto.*;
-import com.hanghai.kchtg.navigationchannel.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
-import com.hanghai.kchtg.navigationchannel.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.AdminAutoApproval;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -43,9 +45,11 @@ public class NavigationChannelService {
     private final ApprovalHistoryRepository approvalHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitRepository orgUnitRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @Transactional
-    public NavigationChannelResponse create(NavigationChannelCreateRequest req, java.util.UUID userId) {
+    public NavigationChannelResponse create(NavigationChannelCreateRequest req, UUID userId) {
         String channelCode = req.getChannelCode();
         if (channelCode == null || channelCode.trim().isEmpty()) {
             String orgCode = orgUnitRepository.findById(req.getOrgUnitId())
@@ -211,7 +215,6 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        // Only approved records can be soft-deleted
         if (nc.getApprovalStatus() != NavigationChannelApprovalStatus.APPROVED) {
             throw new IllegalStateException("Chi co luong hang hai da duyet moi co the xoa mem");
         }
@@ -225,7 +228,7 @@ public class NavigationChannelService {
     }
 
     @Transactional
-    public ApprovalResponse approveC1(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
+    public ApprovalResponse approveC1(UUID id, ApprovalRequest req, UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -235,7 +238,7 @@ public class NavigationChannelService {
         }
 
         nc.setIsApprovedLevel1(true);
-        nc.setApproverLevel1(approvedBy != null ? approvedBy.toString() : null);
+        nc.setApproverLevel1(approvedBy);
         nc.setApprovedDateLevel1(LocalDate.now());
 
         String actor = approvedBy != null ? approvedBy.toString() : null;
@@ -243,9 +246,8 @@ public class NavigationChannelService {
 
         if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
             if (AdminAutoApproval.isAutoApprover()) {
-                // Administrators clear both levels in one step.
                 nc.setIsApprovedLevel2(true);
-                nc.setApproverLevel2(actor);
+                nc.setApproverLevel2(approvedBy);
                 nc.setApprovedDateLevel2(LocalDate.now());
                 nc.setApprovalStatus(NavigationChannelApprovalStatus.APPROVED);
                 autoApproved = true;
@@ -265,7 +267,7 @@ public class NavigationChannelService {
     }
 
     @Transactional
-    public ApprovalResponse approveC2(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
+    public ApprovalResponse approveC2(UUID id, ApprovalRequest req, UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -273,13 +275,13 @@ public class NavigationChannelService {
             throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
         }
 
-        String c1Actor = nc.getApproverLevel1();
-        if (c1Actor != null && approvedBy != null && c1Actor.equals(approvedBy.toString())) {
+        UUID c1Actor = nc.getApproverLevel1();
+        if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
         }
 
         nc.setIsApprovedLevel2(true);
-        nc.setApproverLevel2(approvedBy != null ? approvedBy.toString() : null);
+        nc.setApproverLevel2(approvedBy);
         nc.setApprovedDateLevel2(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
@@ -294,7 +296,7 @@ public class NavigationChannelService {
     }
 
     @Transactional
-    public ApprovalResponse reject(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
+    public ApprovalResponse reject(UUID id, ApprovalRequest req, UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -308,15 +310,15 @@ public class NavigationChannelService {
 
     private void saveApprovalHistory(NavigationChannel nc, Integer cap, String status, String user, String reason) {
         ApprovalHistory hist = ApprovalHistory.builder()
-                .navigationChannel(nc)
+                .refId(nc.getId())
+                .refType(InfrastructureType.NAVIGATION_CHANNEL)
                 .approvalLevel(ApprovalLevel.fromInt(cap))
-                .status(status)
-                .approvedBy(user != null ? java.util.UUID.fromString(user) : null)
-                .approvedDate(LocalDate.now())
+                .status(ApprovalHistoryStatus.fromValue(status))
+                .approvedBy(user != null ? UUID.fromString(user) : null)
+                .approvedDate(LocalDateTime.now())
                 .reason(reason)
                 .build();
         approvalHistoryRepo.save(hist);
-        nc.getApprovalHistory().add(hist);
     }
 
     private ApprovalResponse buildApprovalResponse(NavigationChannel nc, Integer cap) {
@@ -325,27 +327,42 @@ public class NavigationChannelService {
                 .navigationChannelId(nc.getId())
                 .approvalLevel(ApprovalLevel.fromInt(cap))
                 .status(nc.getApprovalStatus().name())
-                .approvedBy(cap == 1 ? (nc.getApproverLevel1() != null ? java.util.UUID.fromString(nc.getApproverLevel1()) : null) : (nc.getApproverLevel2() != null ? java.util.UUID.fromString(nc.getApproverLevel2()) : null))
-                .approvedDate(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2())
+                .approvedBy(cap == 1 ? nc.getApproverLevel1() : nc.getApproverLevel2())
+                .approvedDate(toDateTime(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2()))
                 .reason(nc.getRejectionReason())
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public List<HistoryEntry> getApprovalHistory(UUID id) {
-        NavigationChannel nc = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
-
-        List<ApprovalHistory> history = approvalHistoryRepo.findByNavigationChannelIdOrderByApprovedDateDesc(id);
+    public List<HistoryEntry> getHistory(UUID id) {
+        List<ApprovalHistory> history = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.NAVIGATION_CHANNEL, id);
         return history.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
-                .navigationChannelId(h.getNavigationChannel().getId())
+                .navigationChannelId(h.getRefId())
                 .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus())
-                .approvedBy(h.getApprovedBy())
+                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                .approvedBy(resolveUserName(h.getApprovedBy()))
                 .approvedDate(h.getApprovedDate())
                 .reason(h.getReason())
                 .build()).collect(Collectors.toList());
+    }
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId)
+                .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
+                        ? u.getFullName()
+                        : u.getUsername())
+                .orElse(userId.toString());
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getApprovalHistory(UUID id) {
+        return getHistory(id);
+    }
+
+    private LocalDateTime toDateTime(LocalDate date) {
+        return date == null ? null : date.atStartOfDay();
     }
 
     @Transactional(readOnly = true)
@@ -396,19 +413,18 @@ public class NavigationChannelService {
 
         List<ApprovalResponse> hist;
         try {
-            hist = nc.getApprovalHistory() != null
-                    ? nc.getApprovalHistory().stream()
-                            .map(h -> ApprovalResponse.builder()
-                                    .id(String.valueOf(h.getId()))
-                                    .navigationChannelId(h.getNavigationChannel().getId())
-                                    .approvalLevel(h.getApprovalLevel())
-                                    .status(h.getStatus())
-                                    .approvedBy(h.getApprovedBy())
-                                    .approvedDate(h.getApprovedDate())
-                                    .reason(h.getReason())
-                                    .build())
-                            .collect(Collectors.toList())
-                    : new ArrayList<>();
+            List<ApprovalHistory> histories = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.NAVIGATION_CHANNEL, nc.getId());
+            hist = histories.stream()
+                    .map(h -> ApprovalResponse.builder()
+                            .id(String.valueOf(h.getId()))
+                            .navigationChannelId(h.getRefId())
+                            .approvalLevel(h.getApprovalLevel())
+                            .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                            .approvedBy(h.getApprovedBy())
+                            .approvedDate(h.getApprovedDate())
+                            .reason(h.getReason())
+                            .build())
+                    .collect(Collectors.toList());
         } catch (Exception e) {
             log.warn("Could not load approvalHistory for navigation channel {}: {}", nc.getId(), e.getMessage());
             hist = new ArrayList<>();
@@ -499,10 +515,7 @@ public class NavigationChannelService {
     }
 
     private String resolveOrgUnitName(UUID orgUnitId) {
-        if (orgUnitId == null) return null;
-        return orgUnitRepository.findById(orgUnitId)
-                .map(OrgUnit::getName)
-                .orElse(null);
+        return orgUnitCacheService.getName(orgUnitId);
     }
 
     private GisGeometryType parseGeometryType(String typeStr) {

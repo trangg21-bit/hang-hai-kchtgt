@@ -24,7 +24,7 @@ class RadarStationEntityTest {
                 .stationName("ABC").location("Hà Nội").stationType("Radar X").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
-        assertFalse(entity.getIsDeleted());
+        assertNull(entity.getDeletedAt());
     }
 
     @Test
@@ -37,12 +37,12 @@ class RadarStationEntityTest {
         entity.setStationType("Radar X");
         entity.setApprovalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED);
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        entity.setUpdatedDate(LocalDateTime.now());
+        entity.setUpdatedAt(LocalDateTime.now());
 
         assertEquals(uuid, entity.getId());
         assertEquals("Tram ABC", entity.getStationName());
         assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED, entity.getApprovalStatus());
-        assertNotNull(entity.getUpdatedDate());
+        assertNotNull(entity.getUpdatedAt());
     }
 
     @Test
@@ -73,7 +73,7 @@ class RadarStationEntityTest {
         entity.setApprovedLevel2(true);
         assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED, entity.getApprovalStatus());
 
-        entity.setIsDeleted(true);
-        assertTrue(entity.getIsDeleted());
+        entity.softDelete(java.util.UUID.randomUUID());
+        assertNotNull(entity.getDeletedAt());
     }
 }

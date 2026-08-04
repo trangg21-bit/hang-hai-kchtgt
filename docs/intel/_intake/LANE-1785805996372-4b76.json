@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1785805996372-4b76",
+  "created_at": 1785805996372,
+  "lane": "general-work",
+  "owner": "build",
+  "dispatch_target": "build",
+  "routing_mode": "inline",
+  "request_summary": "Update M-006 module-brief.md and F-128 feature-brief.md: change status from proposed to done",
+  "reason": "Status update only — F-128 implementation verified complete. Not a code change, not a pipeline operation.",
+  "signals": [
+    "no code changes",
+    "docs-only status update",
+    "F-128 implementation verified both BE+FE"
+  ]
+}

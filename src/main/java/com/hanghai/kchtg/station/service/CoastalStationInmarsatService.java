@@ -149,7 +149,7 @@ public class CoastalStationInmarsatService {
                 entity.setStatus(StationStatus.PUBLISHED);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
             }
-            entity.setApprovedBy(String.valueOf(userId));
+            entity.setApprovedBy(userId != null ? new UUID(0L, userId) : null);
             entity.setApprovedDate(LocalDateTime.now());
             entity.setRejectionReason(null);
 
@@ -240,7 +240,7 @@ public class CoastalStationInmarsatService {
     }
 
     private String resolveCreatedBy(CoastalStationInmarsat entity) {
-        return entity.getApprovedBy();
+        return entity.getApprovedBy() != null ? entity.getApprovedBy().toString() : null;
     }
 
     public CoastalStationInmarsatResponse buildResponse(CoastalStationInmarsat entity) {
@@ -258,7 +258,7 @@ public class CoastalStationInmarsatService {
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
+                .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

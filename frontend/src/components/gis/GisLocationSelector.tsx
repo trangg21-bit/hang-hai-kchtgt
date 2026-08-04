@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Form, Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
 import { PlusOutlined, DeleteOutlined, CompassOutlined, EnvironmentOutlined, HolderOutlined } from '@ant-design/icons';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol } from '../../services/symbolService';
 import { colors } from '../../theme';
 
 interface GisLocationSelectorValue {
@@ -163,7 +161,6 @@ export default function GisLocationSelector({
   disabled,
 }: GisLocationSelectorProps) {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
-  const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [vertices, setVertices] = useState<{ lng: number; lat: number }[]>([]);
   const [internalGeom, setInternalGeom] = useState<string>('POINT');
   const [internalToaDo, setInternalToaDo] = useState<string>('');
@@ -212,23 +209,6 @@ export default function GisLocationSelector({
       setVertices([]);
     }
   }, [value.geometryType, value.coordinates, value.symbolId, defaultGeometryType]);
-
-  // Load symbols list
-  useEffect(() => {
-    const parentSymbols = (window.parent as any)?.kchtSymbols || (window as any)?.kchtSymbols;
-    if (parentSymbols && parentSymbols.length > 0) {
-      setSymbols(parentSymbols);
-      return;
-    }
-    (async () => {
-      try {
-        const res = await symbolService.list({ pageSize: 100 });
-        setSymbols(res.data || []);
-      } catch (err) {
-        console.error('Không thể tải danh sách biểu tượng bản đồ', err);
-      }
-    })();
-  }, []);
 
   // Load Leaflet and Geoman CDN scripts
   useEffect(() => {

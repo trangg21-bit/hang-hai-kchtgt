@@ -63,7 +63,7 @@ public class CoastalStationHaiphong extends BaseEntity {
     protected ApprovalLevel approvalLevel;
 
     @Column(name = "approved_by")
-    protected String approvedBy;
+    protected UUID approvedBy;
 
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;

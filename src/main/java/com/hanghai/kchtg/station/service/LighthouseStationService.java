@@ -290,7 +290,7 @@ public class LighthouseStationService {
 
         entity.setStatus(StationStatus.APPROVED_L1);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
-        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         lighthouseRepo.save(entity);
 
@@ -313,7 +313,7 @@ public class LighthouseStationService {
 
         entity.setStatus(StationStatus.PUBLISHED);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
-        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         lighthouseRepo.save(entity);
 
@@ -407,7 +407,7 @@ public class LighthouseStationService {
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .approvalStatus(entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : null)
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
+                .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
@@ -465,7 +465,7 @@ public class LighthouseStationService {
     }
 
     private String resolveCreatedBy(LighthouseStation entity) {
-        return entity.getApprovedBy();
+        return entity.getApprovedBy() != null ? entity.getApprovedBy().toString() : null;
     }
 
     // -- JSON Comparison --

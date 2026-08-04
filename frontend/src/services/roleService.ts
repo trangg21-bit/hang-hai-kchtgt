@@ -31,6 +31,7 @@ export const roleService = {
       code: item.code ?? '',
       description: item.description ?? '',
       permissions: item.permissions ?? [],
+      menuCodes: item.menuCodes ?? [],
       userCount: item.userCount ?? 0,
       createdAt: item.createdAt
         ? new Date(item.createdAt).toISOString()
@@ -57,6 +58,24 @@ export const roleService = {
     return result;
   },
 
+  /** GET /api/roles/active — chỉ các vai trò có thể gán cho nhóm. */
+  async listActive(): Promise<Role[]> {
+    const resp = await api.get('/roles/active');
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData) ? rawData : [];
+    return items.map((item) => ({
+      id: item.id ?? '',
+      name: item.name ?? '',
+      code: item.code ?? '',
+      description: item.description ?? '',
+      permissions: item.permissions ?? [],
+      menuCodes: item.menuCodes ?? [],
+      userCount: item.userCount ?? 0,
+      createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : '',
+    }));
+  },
+
   /**
    * GET /api/roles/:id
    */
@@ -73,6 +92,7 @@ export const roleService = {
         code: item.code ?? '',
         description: item.description ?? '',
         permissions: item.permissions ?? [],
+        menuCodes: item.menuCodes ?? [],
         userCount: item.userCount ?? 0,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
@@ -93,6 +113,7 @@ export const roleService = {
       code: payload.code,
       description: payload.description,
       permissions: payload.permissions,
+      menuCodes: payload.menuCodes,
     });
     const item: any = extractData(resp);
 
@@ -104,6 +125,7 @@ export const roleService = {
         code: item.code ?? payload.code,
         description: item.description ?? payload.description,
         permissions: item.permissions ?? payload.permissions,
+        menuCodes: item.menuCodes ?? payload.menuCodes,
         userCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -129,6 +151,7 @@ export const roleService = {
         code: item.code ?? payload.code ?? '',
         description: item.description ?? payload.description ?? '',
         permissions: item.permissions ?? payload.permissions ?? [],
+        menuCodes: item.menuCodes ?? payload.menuCodes ?? [],
         userCount: item.userCount ?? 0,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
@@ -146,5 +169,29 @@ export const roleService = {
   async delete(id: string): Promise<ApiResponse<null>> {
     await api.delete(`/roles/${id}`);
     return { success: true, data: null };
+  },
+
+  /**
+   * GET /api/v1/roles/:id/permissions
+   */
+  async getRolePermissions(roleId: string): Promise<any[]> {
+    const resp = await api.get(`/v1/roles/${roleId}/permissions`);
+    return extractData<any[]>(resp) || [];
+  },
+
+  /**
+   * POST /api/v1/roles/:id/permissions
+   */
+  async assignRolePermissions(roleId: string, permissionCodes: string[]): Promise<ApiResponse<Role>> {
+    const resp = await api.post(`/v1/roles/${roleId}/permissions`, permissionCodes);
+    return { success: true, data: extractData<Role>(resp) };
+  },
+
+  /**
+   * DELETE /api/v1/roles/:id/permissions/:permissionId
+   */
+  async revokeRolePermission(roleId: string, permissionId: string): Promise<ApiResponse<Role>> {
+    const resp = await api.delete(`/v1/roles/${roleId}/permissions/${permissionId}`);
+    return { success: true, data: extractData<Role>(resp) };
   },
 };

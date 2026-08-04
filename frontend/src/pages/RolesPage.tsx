@@ -34,17 +34,11 @@ import ErrorState from '../components/ErrorState';
 import { ScreenHeader, FilterBar, DataTable } from '../components/list-view';
 import Pagination from '../components/list-view/Pagination';
 import type { Role, CreateRolePayload, UpdateRolePayload } from '../types/role';
-import { ALL_PERMISSIONS } from '../services/mockData';
 import { actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, statusOperational, statusCritical } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
 
 const { confirm } = Modal;
-
-function getPermissionName(key: string): string {
-  const perm = ALL_PERMISSIONS.find((p) => p.key === key);
-  return perm ? perm.name : key;
-}
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
@@ -53,6 +47,9 @@ export default function RolesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
+  const [checkedPermissionKeys, setCheckedPermissionKeys] = useState<string[]>([]);
+  const [menuSearch, setMenuSearch] = useState('');
+  const [permissionSearch, setPermissionSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const [page, setPage] = useState(1);
@@ -60,7 +57,44 @@ export default function RolesPage() {
 
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const { tree, allGroupKeys } = usePermissions();
+  const { tree, apiPermissions, isLoading: permissionsLoading, isError: permissionsError } = usePermissions();
+  const filteredTree = useMemo(() => {
+    const keyword = menuSearch.trim().toLowerCase();
+    if (!keyword) return tree;
+    const filter = (nodes: typeof tree): typeof tree => nodes.flatMap((node) => {
+      const children = filter(node.children || []);
+      const matches = node.title.toLowerCase().includes(keyword) || node.key.toLowerCase().includes(keyword);
+      return matches || children.length ? [{ ...node, children }] : [];
+    });
+    return filter(tree);
+  }, [tree, menuSearch]);
+  const expandedMenuKeys = useMemo(() => {
+    const keys = (nodes: typeof tree): string[] => nodes.flatMap((node) => [node.key, ...keys(node.children || [])]);
+    return keys(filteredTree);
+  }, [filteredTree]);
+  const parentByKey = useMemo(() => {
+    const parents: Record<string, string> = {};
+    const visit = (nodes: typeof tree) => nodes.forEach((node) => {
+      (node.children || []).forEach((child) => {
+        parents[child.key] = node.key;
+      });
+      visit(node.children || []);
+    });
+    visit(tree);
+    return parents;
+  }, [tree]);
+  const filteredApiPermissions = useMemo(() => {
+    const keyword = permissionSearch.trim().toLowerCase();
+    return apiPermissions
+      .filter((permission) => !keyword
+        || permission.key.toLowerCase().includes(keyword)
+        || permission.name.toLowerCase().includes(keyword)
+        || permission.group.toLowerCase().includes(keyword))
+      .map((permission) => ({
+        key: permission.key,
+        title: `${permission.name} (${permission.key})`,
+      }));
+  }, [apiPermissions, permissionSearch]);
 
   const { data: rolesData, isLoading, isError, error, refetch } = useRoles({
     page,
@@ -78,20 +112,27 @@ export default function RolesPage() {
   const openCreateModal = useCallback(() => {
     setEditingRole(null);
     setCheckedKeys([]);
+    setCheckedPermissionKeys([]);
+    setMenuSearch('');
+    setPermissionSearch('');
     form.resetFields();
-    form.setFieldsValue({ permissions: [] });
+    form.setFieldsValue({ menuCodes: [], permissions: [] });
     setModalOpen(true);
   }, [form]);
 
   const openEditModal = useCallback(
     (role: Role) => {
       setEditingRole(role);
-      setCheckedKeys(role.permissions);
+      setCheckedKeys(role.menuCodes ?? []);
+      setCheckedPermissionKeys(role.permissions ?? []);
+      setMenuSearch('');
+      setPermissionSearch('');
       form.setFieldsValue({
         name: role.name,
         code: role.code,
         description: role.description,
-        permissions: role.permissions,
+        menuCodes: role.menuCodes ?? [],
+        permissions: role.permissions ?? [],
       });
       setModalOpen(true);
     },
@@ -101,9 +142,26 @@ export default function RolesPage() {
   const handleTreeCheck: TreeProps['onCheck'] = useCallback(
     (checked) => {
       const keys = Array.isArray(checked) ? checked : checked.checked;
-      const mapped = keys.map(String);
+      const selected = new Set(keys.map(String));
+      keys.map(String).forEach((key) => {
+        let parent = parentByKey[key];
+        while (parent) {
+          selected.add(parent);
+          parent = parentByKey[parent];
+        }
+      });
+      const mapped = Array.from(selected);
       setCheckedKeys(mapped);
-      form.setFieldsValue({ permissions: mapped });
+      form.setFieldsValue({ menuCodes: mapped });
+    },
+    [form, parentByKey],
+  );
+
+  const handleApiPermissionCheck: TreeProps['onCheck'] = useCallback(
+    (checked) => {
+      const keys = (Array.isArray(checked) ? checked : checked.checked).map(String);
+      setCheckedPermissionKeys(keys);
+      form.setFieldsValue({ permissions: keys });
     },
     [form],
   );
@@ -113,7 +171,8 @@ export default function RolesPage() {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const actualPermissions = checkedKeys.filter((k) => !allGroupKeys.includes(k));
+      const actualMenuCodes = checkedKeys;
+      const actualPermissions = checkedPermissionKeys;
 
       if (editingRole) {
         const payload: UpdateRolePayload = {
@@ -121,6 +180,7 @@ export default function RolesPage() {
           code: values.code,
           description: values.description,
           permissions: actualPermissions,
+          menuCodes: actualMenuCodes,
         };
         await updateRole.mutateAsync({ id: editingRole.id, payload });
       } else {
@@ -129,6 +189,7 @@ export default function RolesPage() {
           code: values.code,
           description: values.description,
           permissions: actualPermissions,
+          menuCodes: actualMenuCodes,
         };
         await createRole.mutateAsync(payload);
       }
@@ -140,7 +201,7 @@ export default function RolesPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRole, form, checkedKeys, allGroupKeys, createRole, updateRole]);
+  }, [editingRole, form, checkedKeys, checkedPermissionKeys, createRole, updateRole]);
 
   const handleDelete = useCallback(
     (role: Role) => {
@@ -177,7 +238,7 @@ export default function RolesPage() {
     setPageSize(ps);
   }, []);
 
-  const getCheckedCount = () => checkedKeys.filter((k) => !allGroupKeys.includes(k)).length;
+  const getCheckedCount = () => checkedKeys.length + checkedPermissionKeys.length;
 
   // ---- Row actions ----
   const rowActions = useCallback((record: Role) => {
@@ -200,9 +261,10 @@ export default function RolesPage() {
       </span>
     ) },
     { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 260, align: 'left' as const, render: (text?: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
-    { key: 'permissions', label: 'Quyền hạn', dataIndex: 'permissions', width: 130, align: 'center' as const, render: (perms: string[]) => (
-      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{perms.length} quyền</span>
-    ) },
+    { key: 'permissions', label: 'Chức năng', dataIndex: 'menuCodes', width: 130, align: 'center' as const, render: (_: string[], record: Role) => {
+      const count = (record.menuCodes?.length ?? 0) || record.permissions.length;
+      return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{count} chức năng</span>;
+    } },
     { key: 'userCount', label: 'Người dùng', dataIndex: 'userCount', width: 120, align: 'center' as const, render: (count: number) => (
       <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: count > 0 ? `${statusOperational}15` : `${textSecondary}15`, color: count > 0 ? statusOperational : textSecondary }}>{count}</span>
     ) },
@@ -267,12 +329,12 @@ export default function RolesPage() {
               <Input placeholder="vd: senior_admin" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
             <Form.Item
-              name="permissions"
+              name="menuCodes"
               {...labelProps('Phân quyền')}
               style={{ marginBottom: spaceFormField }}
               rules={[{
                 validator: (_: unknown, value: string[]) => {
-                  if (!value || value.length === 0) return Promise.reject(new Error('Vui lòng chọn ít nhất một quyền cho vai trò'));
+                  if ((!value || value.length === 0) && checkedPermissionKeys.length === 0) return Promise.reject(new Error('Vui lòng chọn ít nhất một quyền cho vai trò'));
                   return Promise.resolve();
                 },
               }]}
@@ -288,14 +350,48 @@ export default function RolesPage() {
                 }
                 style={{ borderColor: borderDefault }}
               >
-                <Tree
-                  checkable
-                  defaultExpandAll
-                  checkedKeys={checkedKeys}
-                  onCheck={handleTreeCheck}
-                  treeData={tree}
-                  style={{ maxHeight: 320, overflow: 'auto' }}
-                />
+                <Spin spinning={permissionsLoading} tip="Đang tải danh sách quyền...">
+                  {permissionsError ? (
+                    <Typography.Text type="danger">Không thể tải danh sách quyền từ hệ thống.</Typography.Text>
+                  ) : (
+                    <>
+                      <Input
+                        allowClear
+                        value={menuSearch}
+                        onChange={(event) => setMenuSearch(event.target.value)}
+                        placeholder="Tìm tên chức năng"
+                        style={{ borderRadius: radiusPill, height: 40, marginBottom: 8 }}
+                      />
+                      <Tree
+                        checkable
+                        expandedKeys={expandedMenuKeys}
+                        autoExpandParent
+                        checkedKeys={checkedKeys}
+                        onCheck={handleTreeCheck}
+                        treeData={filteredTree}
+                        style={{ maxHeight: 320, overflow: 'auto' }}
+                      />
+                      <Typography.Text strong style={{ display: 'block', margin: '16px 0 8px' }}>
+                        Quyền thao tác API
+                      </Typography.Text>
+                      <Input
+                        allowClear
+                        value={permissionSearch}
+                        onChange={(event) => setPermissionSearch(event.target.value)}
+                        placeholder="Tìm theo mã hoặc tên quyền"
+                        style={{ borderRadius: radiusPill, height: 40, marginBottom: 8 }}
+                      />
+                      <Tree
+                        checkable
+                        checkedKeys={checkedPermissionKeys}
+                        onCheck={handleApiPermissionCheck}
+                        treeData={filteredApiPermissions}
+                        selectable={false}
+                        style={{ maxHeight: 240, overflow: 'auto' }}
+                      />
+                    </>
+                  )}
+                </Spin>
               </Card>
             </Form.Item>
             <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: 0 }} rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}>

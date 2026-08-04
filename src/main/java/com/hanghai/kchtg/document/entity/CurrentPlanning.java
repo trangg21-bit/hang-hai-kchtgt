@@ -22,7 +22,7 @@ import java.util.UUID;
 public class CurrentPlanning {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "ten_do_an", length = 300)

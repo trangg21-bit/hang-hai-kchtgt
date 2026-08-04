@@ -36,10 +36,10 @@ public class NavigationChannelResponse {
     private String orgUnitName;
     private NavigationChannelApprovalStatus approvalStatus;
     private Boolean isApprovedLevel1;
-    private String approverLevel1;
+    private UUID approverLevel1;
     private LocalDate approvedDateLevel1;
     private Boolean isApprovedLevel2;
-    private String approverLevel2;
+    private UUID approverLevel2;
     private LocalDate approvedDateLevel2;
     private String rejectionReason;
     private Boolean isDeleted;

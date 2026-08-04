@@ -48,6 +48,9 @@ class OrganizationServiceTest {
     @Mock
     private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
+    @Mock
+    private OrgUnitCacheService orgUnitCacheService;
+
     @InjectMocks
     private OrganizationService service;
 

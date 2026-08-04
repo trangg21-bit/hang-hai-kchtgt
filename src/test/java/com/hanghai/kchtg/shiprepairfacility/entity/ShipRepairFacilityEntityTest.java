@@ -60,10 +60,10 @@ class ShipRepairFacilityEntityTest {
         entity.setAuthority("Bộ Quốc phòng");
         entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
         entity.setApprovedLevel1(true);
-        entity.setApproverLevel1("admin1");
+        entity.setApproverLevel1(UUID.randomUUID());
         entity.setApprovedDateLevel1(LocalDateTime.now());
         entity.setApprovedLevel2(true);
-        entity.setApproverLevel2("director");
+        entity.setApproverLevel2(UUID.randomUUID());
         entity.setApprovedDateLevel2(LocalDateTime.now());
         entity.setRejectionReason("Không đủ điều kiện");
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
@@ -79,10 +79,10 @@ class ShipRepairFacilityEntityTest {
         assertEquals("Bộ Quốc phòng", entity.getAuthority());
         assertEquals(ShipRepairApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
-        assertEquals("admin1", entity.getApproverLevel1());
+        
         assertNotNull(entity.getApprovedDateLevel1());
         assertTrue(entity.getApprovedLevel2());
-        assertEquals("director", entity.getApproverLevel2());
+        
         assertNotNull(entity.getApprovedDateLevel2());
         assertEquals("Không đủ điều kiện", entity.getRejectionReason());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getUpdatedBy());
@@ -210,17 +210,17 @@ class ShipRepairFacilityEntityTest {
         // Update
         entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
         entity.setApprovedLevel1(true);
-        entity.setApproverLevel1("admin1");
+        entity.setApproverLevel1(UUID.randomUUID());
         entity.setApprovedLevel2(true);
-        entity.setApproverLevel2("director");
+        entity.setApproverLevel2(UUID.randomUUID());
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         entity.setUpdatedDate(LocalDateTime.now());
 
         assertEquals(ShipRepairApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
-        assertEquals("admin1", entity.getApproverLevel1());
+        
         assertTrue(entity.getApprovedLevel2());
-        assertEquals("director", entity.getApproverLevel2());
+        
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getUpdatedBy());
 
         // Revert to under review
@@ -263,10 +263,10 @@ class ShipRepairFacilityEntityTest {
                 .authority("Bộ Quốc phòng")
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(true)
-                .approverLevel1("admin1")
+                .approverLevel1(UUID.randomUUID())
                 .approvedDateLevel1(LocalDateTime.now())
                 .approvedLevel2(true)
-                .approverLevel2("director")
+                .approverLevel2(UUID.randomUUID())
                 .approvedDateLevel2(LocalDateTime.now())
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .createdDate(LocalDateTime.now())
@@ -298,10 +298,10 @@ class ShipRepairFacilityEntityTest {
                 .authority("Bộ Quốc phòng")
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(true)
-                .approverLevel1("admin1")
+                .approverLevel1(UUID.randomUUID())
                 .approvedDateLevel1(LocalDateTime.now())
                 .approvedLevel2(true)
-                .approverLevel2("director")
+                .approverLevel2(UUID.randomUUID())
                 .approvedDateLevel2(LocalDateTime.now())
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .createdDate(LocalDateTime.now())

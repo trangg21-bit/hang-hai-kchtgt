@@ -29,7 +29,7 @@ export interface DataTableProps {
   emptyState?: React.ReactNode;
   rowActions?: (record: any) => {
     key: string; label: string; icon?: React.ReactNode;
-    onClick: () => void; danger?: boolean;
+    onClick: () => void; danger?: boolean; disabled?: boolean;
   }[];
   onSort?: (key: string, order: 'asc' | 'desc') => void;
   children?: React.ReactNode;
@@ -59,34 +59,58 @@ const DataTable: React.FC<DataTableProps> = ({
     );
   }
 
-  const antdColumns: ColumnsType<any> | undefined = columns?.map((col) => ({
-    key: col.key, dataIndex: col.dataIndex || col.key, title: col.label,
-    width: col.width, sorter: col.sortable || col.sorter, sortOrder: col.sortOrder,
-    align: col.align,
-    render: col.render ? col.render
-      : col.type === 'mono'
-        ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
-        : col.type === 'date'
-          ? (val: any) => <span style={{ color: textSecondary }}>{val}</span>
-          : col.type === 'status'
-            ? (val: any) => {
-                const color = STATUS_COLOR_MAP[val?.toLowerCase()] || textTertiary;
-                return (
-                  <span style={{
-                    display: 'inline-flex', padding: '2px 8px', borderRadius: 999,
-                    fontSize: fontSizeMd, fontWeight: fontWeightMedium,
-                    background: `${color}15`, color,
-                  }}>{val}</span>
-                );
-              }
-            : undefined,
-    onHeaderCell: () => ({
-      style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap', textTransform: 'uppercase', padding: '16px 16px' },
-    }),
-    onCell: () => ({
-      style: { fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    }),
-  }));
+  const antdColumns: ColumnsType<any> | undefined = columns?.map((col) => {
+    const dataKey = col.dataIndex || col.key;
+    const isSortable = Boolean(col.sortable || col.sorter);
+    const sorterFn = typeof col.sorter === 'function'
+      ? col.sorter
+      : isSortable
+        ? (a: any, b: any) => {
+            const aVal = a[dataKey] ?? '';
+            const bVal = b[dataKey] ?? '';
+            if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
+            return String(aVal).localeCompare(String(bVal), 'vi');
+          }
+        : undefined;
+
+    const colObj: any = {
+      key: col.key,
+      dataIndex: dataKey,
+      title: col.label,
+      width: col.width,
+      sorter: sorterFn,
+      align: col.align,
+      render: col.render ? col.render
+        : col.type === 'mono'
+          ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
+          : col.type === 'date'
+            ? (val: any) => <span style={{ color: textSecondary }}>{val}</span>
+            : col.type === 'status'
+              ? (val: any) => {
+                  const color = STATUS_COLOR_MAP[val?.toLowerCase()] || textTertiary;
+                  return (
+                    <span style={{
+                      display: 'inline-flex', padding: '2px 8px', borderRadius: 999,
+                      fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+                      background: `${color}15`, color,
+                    }}>{val}</span>
+                  );
+                }
+              : undefined,
+      onHeaderCell: () => ({
+        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap', textTransform: 'uppercase', padding: '16px 16px' },
+      }),
+      onCell: () => ({
+        style: { fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      }),
+    };
+
+    if (col.sortOrder !== undefined) {
+      colObj.sortOrder = col.sortOrder;
+    }
+
+    return colObj;
+  });
 
   // Auto-append actions column when rowActions is provided and no actions column already exists
   if (rowActions && columns && !columns.some((c) => c.key === 'actions')) {
@@ -97,7 +121,7 @@ const DataTable: React.FC<DataTableProps> = ({
       align: 'center',
       render: (_: unknown, record: any) => {
         const items = rowActions(record).map((a) => ({
-          key: a.key, icon: a.icon, label: a.label, danger: a.danger,
+          key: a.key, icon: a.icon, label: a.label, danger: a.danger, disabled: a.disabled,
           onClick: a.onClick,
         }));
         return (
@@ -111,14 +135,21 @@ const DataTable: React.FC<DataTableProps> = ({
     });
   }
 
+  const handleTableChange = (pagination: any, filters: any, sorter: any, extra: any) => {
+    if (onSort && sorter.field) {
+      onSort(sorter.field as string, sorter.order === 'ascend' ? 'asc' : 'desc');
+    }
+    if (rest.onChange) {
+      rest.onChange(pagination, filters, sorter, extra);
+    }
+  };
+
   return (
     <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
       className="list-view-table"
       pagination={false}
-        locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
-        onChange={(_pagination, _filters, sorter: any) => {
-          if (onSort && sorter.field) onSort(sorter.field as string, sorter.order === 'ascend' ? 'asc' : 'desc');
-        }}
+      locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+      onChange={handleTableChange}
       {...rest} />
   );
 };

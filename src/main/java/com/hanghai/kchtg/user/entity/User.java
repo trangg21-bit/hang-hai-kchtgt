@@ -96,7 +96,7 @@ public class User extends BaseEntity implements java.security.Principal {
      */
     public String getPrimaryRoleCode() {
         return roles.stream()
-            .map(Role::getCode)
+            .map(r -> r.getCode())
             .findFirst()
             .orElse(null);
     }
@@ -109,13 +109,28 @@ public class User extends BaseEntity implements java.security.Principal {
         for (Role role : roles) {
             if (role.getPermissions() != null) {
                 perms.addAll(role.getPermissions().stream()
-                    .map(Permission::getCode).collect(Collectors.toSet()));
+                    .map(p -> p.getCode()).collect(Collectors.toSet()));
             }
+        }
+        if (permissionOverrides != null) {
+            perms.addAll(permissionOverrides.stream()
+                    .filter(override -> override.getDeletedAt() == null)
+                    .map(o -> o.getPermissionCode())
+                    .collect(Collectors.toSet()));
         }
         if (groups != null) {
             for (UserGroup group : groups) {
                 if (group.getPermissions() != null) {
                     perms.addAll(group.getPermissions());
+                }
+                if (group.getRoles() != null) {
+                    for (Role groupRole : group.getRoles()) {
+                        if (groupRole.getPermissions() != null) {
+                            perms.addAll(groupRole.getPermissions().stream()
+                                    .map(p -> p.getCode())
+                                    .collect(Collectors.toSet()));
+                        }
+                    }
                 }
             }
         }
@@ -147,6 +162,10 @@ public class User extends BaseEntity implements java.security.Principal {
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_group_membership", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "user_group_id"))
     private List<UserGroup> groups = new ArrayList<>();
+
+    /** Quyền cấp trực tiếp ngoài quyền kế thừa từ Role/Group. */
+    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserPermissionOverride> permissionOverrides = new ArrayList<>();
 
     /**
      * Trạng thái tài khoản.
@@ -256,6 +275,9 @@ public class User extends BaseEntity implements java.security.Principal {
     @Override
     @jakarta.persistence.Transient
     public String getName() {
-        return getUsername();
+        return this.username;
     }
+
+    public String getUsername() { return username; }
+    public String getFullName() { return fullName; }
 }

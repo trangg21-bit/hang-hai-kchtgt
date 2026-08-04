@@ -25,11 +25,10 @@ import type {
   ApprovalRequest,
   HistoryEntry,
 } from '../../types/vtsSystem';
-import { CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
 import { colors } from '../../theme';
 import { fontWeightBold, fontSizeLg } from '../../tokens';
 
-type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
@@ -39,12 +38,13 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 export interface VtsSystemFormProps {
   open?: boolean;
   editId?: string | null;
+  initialData?: VtsSystemResponse | null;
   mode?: 'create' | 'edit' | 'detail';
   onCancel?: () => void;
   onSuccess?: () => void;
 }
 
-export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess }: VtsSystemFormProps = {}) {
+export default function VtsSystemForm({ open, editId, initialData, mode, onCancel, onSuccess }: VtsSystemFormProps = {}) {
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -70,6 +70,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
   const [organizations, setOrganizations] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!open || isDetailMode) return;
     (async () => {
       try {
         const resp = await organizationService.list({ pageSize: 1000 });
@@ -78,7 +79,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
         console.error('Failed to load organizations', err);
       }
     })();
-  }, []);
+  }, [open, isDetailMode]);
 
   useEffect(() => {
     if (open) {
@@ -94,7 +95,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
         setFormError(null);
         try {
           const cached = (window.parent as any)?.kchtDetailCache?.[id];
-          const data = cached || await vtsSystemCRUD.getById(id);
+          const data = initialData || cached || await vtsSystemCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
             systemName: data.systemName,
@@ -106,8 +107,8 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
             scope: data.scope,
             orgUnitId: data.orgUnitId,
             spatialData: {
-              loaiHinhHoc: data.loaiHinhHoc,
-              toaDo: data.toaDo,
+              geometryType: data.geometryType,
+              coordinates: data.coordinates,
             }
           });
         } catch (err) {
@@ -122,11 +123,16 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
       setRecord(null);
       setFormError(null);
     }
-  }, [id, isEditMode, form]);
+  }, [id, isEditMode, form, initialData]);
 
   // Fetch history
   useEffect(() => {
     if (id && isDetailMode) {
+      if (initialData?.history && initialData.history.length > 0) {
+        setHistory(initialData.history);
+        setIsLoadingHistory(false);
+        return;
+      }
       const loadHistory = async () => {
         setIsLoadingHistory(true);
         setHistoryError(null);
@@ -141,7 +147,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
       };
       loadHistory();
     }
-  }, [id, isDetailMode]);
+  }, [id, isDetailMode, initialData]);
 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
@@ -156,8 +162,8 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
         partner: values.partner,
         scope: values.scope,
         orgUnitId: values.orgUnitId,
-        loaiHinhHoc: spatialData?.loaiHinhHoc,
-        toaDo: spatialData?.toaDo,
+        geometryType: spatialData?.geometryType,
+        coordinates: spatialData?.coordinates,
       };
 
       if (isCreateMode) {
@@ -227,19 +233,20 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
           reason: payload?.lyDo as string,
         };
 
-        let updatedRecord;
-        if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED') {
+        let updatedRecord: VtsSystemResponse | null = null;
+        if (record.approvalStatus === ApprovalStatus.PROPOSED) {
           updatedRecord = await vtsSystemApproval.approveC1(id, pheDuyetData);
-        } else if (record.approvalStatus === 'UNDER_REVIEW') {
+        } else if (record.approvalStatus === ApprovalStatus.UNDER_REVIEW) {
           updatedRecord = await vtsSystemApproval.approveC2(id, pheDuyetData);
+        } else {
+          throw new Error('Chỉ được từ chối bản ghi đang chờ C1 hoặc C2');
         }
         if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
         toast.success('Từ chối thành công');
-        const updated = { ...record, rejectionReason: payload?.lyDo as string };
-        setRecord(updated);
+        setRecord(updatedRecord);
         setHasChanges(true);
       } else if (action === 'delete') {
         await vtsSystemCRUD.delete(id);
@@ -257,6 +264,18 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleUploadAttachment = async (file: File) => {
+    if (!id) throw new Error('Cần lưu hệ thống VTS trước khi tải tài liệu lên');
+    await vtsSystemApproval.uploadAttachment(id, file);
+    setRecord(await vtsSystemCRUD.getById(id));
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!id) return;
+    await vtsSystemApproval.deleteAttachment(id, attachmentId);
+    setRecord(await vtsSystemCRUD.getById(id));
   };
 
   const handleCloseModal = () => {
@@ -312,7 +331,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
               <Descriptions.Item label="Đối tác">{record.partner ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Phạm vi áp dụng" span={2}>{record.scope ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
+                {record.orgUnitName || record.orgUnitId || '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.approvalStatus} />
@@ -322,7 +341,9 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
                   {record.rejectionReason}
                 </Descriptions.Item>
               )}
-              <Descriptions.Item label="Người tạo">{record.createdBy ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Người tạo">
+                {record.createdByName || (record.createdBy && record.createdBy !== '00000000-0000-0000-0000-000000000000' ? record.createdBy : 'Hệ thống')}
+              </Descriptions.Item>
               <Descriptions.Item label="Ngày tạo">
                 {record.createdDate ? dayjs(record.createdDate).format('DD/MM/YYYY') : '—'}
               </Descriptions.Item>
@@ -345,7 +366,8 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
               currentStatus={record.approvalStatus as ApprovalStatus}
               permissions={userPermissions}
               entityPermissionPrefix="vts"
-              currentUserId={currentUser?.username}
+              approvalPermissionStyle="documented"
+              currentUserId={currentUser?.userId}
               nguoiPheDuyetC1={record.approverLevel1}
               onAction={handleApprovalAction}
               loading={isSubmitting}
@@ -423,6 +445,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
             <Form.Item
               label="Tên hệ thống"
               name="systemName"
+              rules={[{ required: true, message: 'Vui lòng nhập tên hệ thống' }]}
             >
               <Input placeholder="Nhập tên hệ thống" />
             </Form.Item>
@@ -484,6 +507,20 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
               />
             </Form.Item>
 
+            <Form.Item label="Tài liệu đính kèm">
+              <AttachmentList
+                attachments={record?.attachments}
+                readonly={isCreateMode}
+                hasUploadEndpoint={Boolean(id && isEditMode)}
+                onUpload={handleUploadAttachment}
+                onDelete={handleDeleteAttachment}
+              />
+            </Form.Item>
+
+            <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">
+              <GisLocationSelector defaultGeometryType="POINT" />
+            </Form.Item>
+
             <Form.Item>
               <Space style={{ display: 'flex', justifyContent: 'end', marginTop: 16 }}>
                 <Button onClick={onCancel}>Hủy</Button>
@@ -515,6 +552,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
           <Form.Item
             label="Tên hệ thống"
             name="systemName"
+            rules={[{ required: true, message: 'Vui lòng nhập tên hệ thống' }]}
           >
             <Input placeholder="Nhập tên hệ thống" />
           </Form.Item>
@@ -533,11 +571,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
           >
             <Select
               placeholder="Chọn tình trạng"
-              options={[
-                { label: 'Tốt', value: 'Tốt' },
-                { label: 'Xuống cấp', value: 'Xuống cấp' },
-                { label: 'Hư hỏng', value: 'Hư hỏng' },
-              ]}
+              options={CONDITION_STATUS_OPTIONS}
             />
           </Form.Item>
 
@@ -584,7 +618,13 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
             label="Tài liệu đính kèm"
             name="attachments"
           >
-            <AttachmentList readonly={isDetailMode} />
+            <AttachmentList
+              attachments={record?.attachments}
+              readonly={isCreateMode || isDetailMode}
+              hasUploadEndpoint={Boolean(id && isEditMode)}
+              onUpload={handleUploadAttachment}
+              onDelete={handleDeleteAttachment}
+            />
           </Form.Item>
 
           <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">

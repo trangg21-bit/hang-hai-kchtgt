@@ -18,7 +18,7 @@ import java.util.UUID;
 public class VtsSystemAttachment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "vts_system_id", nullable = false)
@@ -40,8 +40,8 @@ public class VtsSystemAttachment {
     @Column(name = "document_type", length = 50)
     private String documentType;
 
-    @Column(name = "uploaded_by", length = 100)
-    private String uploadedBy;
+    @Column(name = "uploaded_by")
+    private UUID uploadedBy;
 
     @Column(name = "uploaded_date")
     private LocalDateTime uploadedDate;

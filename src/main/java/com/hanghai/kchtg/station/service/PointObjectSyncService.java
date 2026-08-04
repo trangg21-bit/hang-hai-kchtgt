@@ -37,7 +37,7 @@ public class PointObjectSyncService {
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
         point.setApprovalStatus(PointObject.ApprovalStatus.APPROVED);
-        point.setApprovedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null);
+        point.setApprovedBy(entity.getApprovedBy());
         point.setApprovedDate(entity.getApprovedDate());
 
         pointRepo.save(point);
@@ -71,7 +71,7 @@ public class PointObjectSyncService {
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
         point.setApprovalStatus(PointObject.ApprovalStatus.APPROVED);
-        point.setApprovedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null);
+        point.setApprovedBy(entity.getApprovedBy());
         point.setApprovedDate(entity.getApprovedDate());
 
         pointRepo.save(point);

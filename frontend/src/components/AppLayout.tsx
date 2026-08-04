@@ -744,6 +744,7 @@ export default function AppLayout() {
 
         {/* Content */}
         <Content
+          className={location.pathname === '/vts-system' ? 'vts-list-content' : undefined}
           style={{
             padding: location.pathname === '/gis/map' ? 0 : 24,
             height: 'calc(100vh - 64px)',

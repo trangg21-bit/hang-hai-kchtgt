@@ -60,6 +60,9 @@ class BuoyServiceTest {
     @Mock
     private OrgUnitRepository orgUnitRepo;
 
+    @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+
     @InjectMocks
     private BuoyService service;
 
@@ -583,10 +586,10 @@ class BuoyServiceTest {
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo("DRAFT");
+            assertThat(saved.getStatus()).isEqualTo("REJECTED");
             assertThat(saved.getApprovalStatus()).isEqualTo("REJECTED");
             assertThat(saved.getRejectionReason()).isEqualTo("Lý do từ chối hợp lệ (đủ 10 ký tự)");
-            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getStatus()).isEqualTo("REJECTED");
             assertThat(result.getApprovalStatus()).isEqualTo("REJECTED");
             verify(notificationService).sendRejectionNotificationBuoy(entity,
                     "Lý do từ chối hợp lệ (đủ 10 ký tự)");

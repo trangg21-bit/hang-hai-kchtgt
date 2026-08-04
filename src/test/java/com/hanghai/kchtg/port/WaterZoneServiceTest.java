@@ -55,6 +55,9 @@ class WaterZoneServiceTest {
     @Mock
     private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
+    @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+
     private UUID testId;
     private UUID portId;
     private UUID orgUnitId;

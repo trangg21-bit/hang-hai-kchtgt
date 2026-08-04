@@ -60,11 +60,13 @@ public class LockoutService implements CommandLineRunner {
             return LockoutStatus.UNRESTRICTED;
         }
 
-        if (user.getAccountLockedUntil() != null && user.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lockedUntil = user.getAccountLockedUntil();
+        if (lockedUntil != null && lockedUntil.isAfter(now)) {
             return LockoutStatus.LOCKED;
         }
 
-        if (user.getAccountLockedUntil() != null && user.getAccountLockedUntil().isBefore(LocalDateTime.now())) {
+        if (lockedUntil != null && !lockedUntil.isAfter(now)) {
             user.setAccountLockedUntil(null);
             user.setFailedLoginCount(0);
             user.setFailedTotpCount(0);
@@ -124,9 +126,20 @@ public class LockoutService implements CommandLineRunner {
      */
     @Transactional
     public void recordSuccess(User user, HttpServletRequest httpRequest) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lockedUntil = user.getAccountLockedUntil();
+        boolean expiredTemporaryLock = user.getStatus() == UserStatus.LOCKED
+                && lockedUntil != null
+                && !lockedUntil.isAfter(now);
+
         user.setFailedLoginCount(0);
         user.setFailedTotpCount(0);
         user.setAccountLockedUntil(null);
+        // Only an expired temporary lock is cleared here. An administrator's
+        // explicit lock without an expiry must not be reactivated by login.
+        if (expiredTemporaryLock) {
+            user.setStatus(UserStatus.ACTIVE);
+        }
         userRepo.save(user);
         saveAuditLog(user, LoginAttemptResult.SUCCESS, null, httpRequest);
     }
@@ -140,6 +153,7 @@ public class LockoutService implements CommandLineRunner {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
         user.setFailedLoginCount(0);
         user.setAccountLockedUntil(null);
+        user.setStatus(UserStatus.ACTIVE);
         // BR-013: bump password hash version to allow new login after unlock
         user.setPasswordHashVersion(user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1);
         userRepo.save(user);
