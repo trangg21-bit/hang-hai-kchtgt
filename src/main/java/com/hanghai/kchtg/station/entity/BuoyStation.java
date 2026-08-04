@@ -26,7 +26,6 @@ public class BuoyStation extends BaseEntity {
     @Column(name = "province_id")
     private Integer provinceId;
 
-
     @Column(length = 50)
     protected String code;
 
@@ -36,12 +35,56 @@ public class BuoyStation extends BaseEntity {
     @Column(length = 1000)
     protected String description;
 
-
-
-
-
     @Column(name = "unit_id")
     protected UUID unitId;
+
+    @Column(name = "operating_org_id")
+    protected UUID operatingOrgId;
+
+    @Column(name = "port_id")
+    protected UUID portId;
+
+    @Column(name = "waterway_id")
+    protected UUID waterwayId;
+
+    @Column(name = "waterway_route_id")
+    protected UUID waterwayRouteId;
+
+    @Column(length = 100)
+    protected String province;
+
+    @Column(length = 500)
+    protected String address;
+
+    @Column(name = "construction_date")
+    protected LocalDate constructionDate;
+
+    @Column(name = "total_area")
+    protected Double totalArea;
+
+    @Column(name = "usable_area")
+    protected Double usableArea;
+
+    @Column(name = "staff_count")
+    protected Integer staffCount;
+
+    @Column(name = "last_maintenance_year")
+    protected Integer lastMaintenanceYear;
+
+    @Column(length = 1000)
+    protected String note;
+
+    @Column(name = "object_type", length = 20)
+    protected String objectType;
+
+    @Column(length = 100)
+    protected String icon;
+
+    @Column(name = "coordinate_system", length = 50)
+    protected String coordinateSystem;
+
+    @Column(name = "display_format", length = 50)
+    protected String displayFormat;
 
     @Column(name = "spatial_id")
     protected UUID spatialId;
@@ -69,20 +112,11 @@ public class BuoyStation extends BaseEntity {
     @Column(length = 1000)
     protected String rejectionReason;
 
-
-
     private String type;
-
     private String color;
     private String shape;
     private String lightCharacteristic;
     private Double range;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
-
-
-
-
-
 }
-

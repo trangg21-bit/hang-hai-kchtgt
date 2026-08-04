@@ -232,6 +232,8 @@ export const pierCRUD = {
     berthId?: string;
     loaiCau?: string;
     operationalStatus?: string;
+    orgUnitId?: string;
+    approvalStatus?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Pier>> {
@@ -241,6 +243,8 @@ export const pierCRUD = {
       berthId: params?.berthId,
       loaiCau: params?.loaiCau,
       operationalStatus: params?.operationalStatus,
+      orgUnitId: params?.orgUnitId,
+      approvalStatus: params?.approvalStatus,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });

@@ -105,11 +105,12 @@ public class PortService {
         if (action == null || action.trim().isEmpty()) {
             action = "submit";
         }
-        if (!"draft".equals(action) && !"submit".equals(action)) {
-            throw new IllegalArgumentException("Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft' hoặc 'submit'");
+        if (!"draft".equals(action) && !"submit".equals(action) && !"approve".equals(action)) {
+            throw new IllegalArgumentException("Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft', 'submit' hoặc 'approve'");
         }
 
         boolean isDraft = "draft".equals(action);
+        boolean isApprove = "approve".equals(action);
 
         if (portRepository.existsByPortCode(request.getPortCode())) {
             throw new IllegalArgumentException("Mã " + request.getPortCode() + " đã tồn tại");
@@ -133,7 +134,7 @@ public class PortService {
                 .area(request.getArea())
                 .maxVesselCapacity(request.getMaxVesselCapacity())
                 .operationalStatus(request.getOperationalStatus())
-                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : ApprovalStatus.PENDING)
+                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING)
                 .orgUnitId(request.getOrgUnitId())
                 .portGroup(request.getPortGroup())
                 .mapSymbolId(request.getMapSymbolId())

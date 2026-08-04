@@ -47,15 +47,14 @@ import PasswordResetPage from './pages/PasswordResetPage';
 import PortList from './services/port/PortListPage';
 import PortCreatePage from './services/port/PortCreatePage';
 import PortUpdatePage from './services/port/PortUpdatePage';
-import PortDetailPage from './services/port/PortDetailPage';
 import PortApprovePage from './services/port/PortApprovePage';
 import PortDeleteConfirm from './services/port/PortDeleteConfirm';
 
 import BerthList from './pages/port/BerthList';
 import BerthForm from './pages/port/BerthForm';
 
-import PierListPage from './app/pier/PierListPage';
-import PierDetailPage from './pages/PierDetailPage';
+import PierList from './pages/port/PierList';
+import PierForm from './pages/port/PierForm';
 
 import DryPortListPage from './app/dryport/DryPortListPage';
 
@@ -87,6 +86,7 @@ import PortPlanningList from './pages/document/PortPlanningList';
 // M-014 & M-015: Nhà trạm & Đài duyên hải
 import LighthouseStationList from './pages/station/LighthouseStationList';
 import BuoyStationList from './pages/station/BuoyStationList';
+import BuoyStationForm from './pages/station/BuoyStationForm';
 import CoastalStationList from './pages/station/CoastalStationList';
 import SpecialStationList from './pages/station/SpecialStationList';
 
@@ -180,24 +180,24 @@ export default function App() {
                 <Route path="/beacon-lights/create" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
                 <Route path="/beacon-lights/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
                 <Route path="/buoys" element={<PermissionGuard permission="data:read"><BuoyList /></PermissionGuard>} />
-                <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
-                <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
+                <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
+                <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
                 <Route path="/port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
                 <Route path="/port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
-                <Route path="/port/:id" element={<PermissionGuard permission="port:read"><PortDetailPage /></PermissionGuard>} />
                 <Route path="/port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
                 <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
-                <Route path="/berth/create" element={<PermissionGuard permission="berth:create"><BerthForm /></PermissionGuard>} />
-                <Route path="/berth/:id/edit" element={<PermissionGuard permission="berth:update"><BerthForm /></PermissionGuard>} />
+                <Route path="/berth/create" element={<PermissionGuard permission="berth:create"><><BerthList /><BerthForm /></></PermissionGuard>} />
+                <Route path="/berth/:id/edit" element={<PermissionGuard permission="berth:update"><><BerthList /><BerthForm /></></PermissionGuard>} />
 
-                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
-                <Route path="/pier/:id" element={<PermissionGuard permission="pier:read"><PierDetailPage /></PermissionGuard>} />
+                <Route path="/Pier" element={<PermissionGuard permission="pier:read"><PierList /></PermissionGuard>} />
+                <Route path="/Pier/create" element={<PermissionGuard permission="pier:create"><><PierList /><PierForm /></></PermissionGuard>} />
+                <Route path="/Pier/:id/edit" element={<PermissionGuard permission="pier:update"><><PierList /><PierForm /></></PermissionGuard>} />
 
                 <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
 
@@ -246,6 +246,8 @@ export default function App() {
                 {/* M-014: Quản lý Nhà trạm */}
                 <Route path="/lighthouse-station" element={<PermissionGuard permission="data:read"><LighthouseStationList /></PermissionGuard>} />
                 <Route path="/buoy-station" element={<PermissionGuard permission="data:read"><BuoyStationList /></PermissionGuard>} />
+                <Route path="/buoy-station/create" element={<PermissionGuard permission="data:read"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
+                <Route path="/buoy-station/:id" element={<PermissionGuard permission="data:read"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="data:read"><CoastalStationList /></PermissionGuard>} />

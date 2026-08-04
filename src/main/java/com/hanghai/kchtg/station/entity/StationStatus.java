@@ -6,5 +6,6 @@ public enum StationStatus {
     APPROVED_L1,
     APPROVED_L2,
     PUBLISHED,
-    DELETED
+    DELETED,
+    REJECTED
 }

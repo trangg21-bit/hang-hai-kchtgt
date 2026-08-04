@@ -61,9 +61,9 @@ public class BerthService {
         Port parent = portRepository.findById(request.getPortId())
                 .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
 
-        if (parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
+        if (parent.getApprovalStatus() != ApprovalStatus.APPROVED) {
             throw new IllegalArgumentException(
-                    "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
+                    "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
         String code = generateBerthCode(request.getPortId());
@@ -143,7 +143,7 @@ public class BerthService {
             String waterway, String berthType,
             String operationalStatus, String approvalStatus, String search) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus)
                 : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus)

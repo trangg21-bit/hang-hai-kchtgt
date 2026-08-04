@@ -1,0 +1,14 @@
+{
+  "route_id": "LANE-1785749477724-760b",
+  "created_at": 1785749477724,
+  "lane": "general-work",
+  "owner": "build",
+  "dispatch_target": "build",
+  "routing_mode": "inline",
+  "request_summary": "Sửa tài liệu F-078 và F-080 feature-brief: thay tên cột tiếng Việt lai bằng tên cột tiếng Anh thực tế trong DB (pierCode, pierName, berthId, portId, length, width, pierType, province, operationalStatus, approvalStatus, orgUnitId)",
+  "reason": "Đây là sửa tài liệu BA feature brief để khớp với schema database thực tế, không phải code change",
+  "signals": [
+    "user said sửa tài liệu",
+    "feature-brief.md under docs/modules/"
+  ]
+}

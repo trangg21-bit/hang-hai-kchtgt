@@ -22,6 +22,8 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
 
     boolean existsByPierCode(String pierCode);
 
+    boolean existsByPierName(String pierName);
+
     @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId)")
     Page<Pier> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
