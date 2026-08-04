@@ -227,7 +227,7 @@ export default function BuoyForm() {
     if (!isEdit && !code) { toast.error('Mã phao tiêu là bắt buộc'); return; }
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
     if (!values.type) { toast.error('Loại phao tiêu là bắt buộc'); return; }
-    if (values.range == null || values.range <= 0 || values.range > 100) {
+    if (values.range == null || Number(values.range) <= 0 || Number(values.range) > 100) {
       toast.error('Phạm vi quan sát phải trong khoảng (0, 100] hải lý'); return;
     }
 

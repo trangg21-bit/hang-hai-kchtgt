@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, DatePicker, Alert,
+  Button, Tag, Modal, Input, Select, DatePicker, Alert, Descriptions, Divider,
 } from 'antd';
 import {
   PlusOutlined,
@@ -174,6 +174,11 @@ export default function PortList() {
   const [deletingRecord, setDeletingRecord] = useState<Port | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
+  // ── Detail modal ────────────────────────────────────────────────
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailRecord, setDetailRecord] = useState<Port | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   // ── Reject modal ────────────────────────────────────────────────
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingRecord, setRejectingRecord] = useState<Port | null>(null);
@@ -287,6 +292,14 @@ export default function PortList() {
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
     setPage(1);
+  }, []);
+
+  // ── Detail modal ────────────────────────────────────────────────
+
+  const openDetailModal = useCallback(async (record: Port) => {
+    setDetailModalOpen(true); setDetailRecord(record); setDetailLoading(true);
+    try { const fresh = await portCRUD.findById(record.id); setDetailRecord(fresh); } catch {}
+    finally { setDetailLoading(false); }
   }, []);
 
   // ── Delete confirmation ─────────────────────────────────────────
@@ -557,7 +570,7 @@ export default function PortList() {
       key: 'view',
       label: 'Xem chi tiết',
       icon: <EyeOutlined />,
-      onClick: () => navigate(`/Port/${record.id}`),
+      onClick: () => openDetailModal(record),
     });
 
     // Sửa — Admin / Cán bộ
@@ -610,7 +623,7 @@ export default function PortList() {
     }
 
     return actions;
-  }, [hasPerm, navigate, handleApprove, openDeleteModal, openRejectModal]);
+  }, [hasPerm, navigate, handleApprove, openDeleteModal, openRejectModal, openDetailModal]);
 
   // ── Render content ──────────────────────────────────────────────
 
@@ -645,6 +658,7 @@ export default function PortList() {
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 1400 }}
+          onRow={(record) => ({ onClick: () => openDetailModal(record), style: { cursor: 'pointer' } })}
         />
         <Pagination
           total={total}
@@ -843,6 +857,33 @@ export default function PortList() {
       <div style={{ ...cardStyle, padding: '8px 16px' }}>
         {renderContent()}
       </div>
+
+      {/* ── Detail Modal ─────────────────────────────────────────── */}
+      <Modal title={<span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: 15 }}>Chi tiết cảng biển</span>}
+        open={detailModalOpen} onCancel={() => { setDetailModalOpen(false); setDetailRecord(null); }}
+        footer={null} width={700} styles={{ body: { padding: spaceMd, maxHeight: '68vh', overflowY: 'auto' } }}>
+        {detailLoading ? <LoadingSkeleton rows={6} /> : detailRecord ? (
+          <Descriptions column={2} size="small" bordered labelStyle={{ width: 170 }}>
+            <Descriptions.Item label="Mã cảng">{detailRecord.portCode || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Tên cảng">{detailRecord.portName || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Tỉnh/TP">{detailRecord.province || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Địa điểm">{detailRecord.diaDiemChiTiet || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Đơn vị quản lý" span={2}>{orgMap.get(detailRecord.orgUnitId || '') || detailRecord.orgUnitId || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Diện tích (km²)">{detailRecord.area != null ? detailRecord.area : '—'}</Descriptions.Item>
+            <Descriptions.Item label="KN tiếp nhận (DWT)">{detailRecord.khaNangTiepNhan != null ? detailRecord.khaNangTiepNhan : '—'}</Descriptions.Item>
+            <Descriptions.Item label="Tình trạng">
+              <Tag color={detailRecord.operationalStatus === 'OPERATIONAL' ? statusOperational : statusCritical}>
+                {detailRecord.operationalStatus === 'OPERATIONAL' ? 'Đang hoạt động' : detailRecord.operationalStatus || '—'}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              <Tag color={detailRecord.approvalStatus === 'APPROVED' ? statusOperational : detailRecord.approvalStatus === 'REJECTED' ? statusCritical : 'blue'}>
+                {{ DRAFT: 'Nháp', PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' }[detailRecord.approvalStatus || ''] || detailRecord.approvalStatus || '—'}
+              </Tag>
+            </Descriptions.Item>
+          </Descriptions>
+        ) : null}
+      </Modal>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
