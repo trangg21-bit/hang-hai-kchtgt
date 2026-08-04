@@ -25,6 +25,8 @@ import {
   SearchOutlined,
   EnvironmentOutlined,
   ApartmentOutlined,
+  AimOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -221,9 +223,9 @@ export default function AppLayout() {
       label: 'Báo hiệu hàng hải',
       children: [
         canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển' } : null,
-        canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu' } : null,
+        canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu', icon: <AimOutlined /> } : null,
         canAccessMenu('/lighthouse-station') ? { key: '/lighthouse-station', label: 'Nhà trạm đèn biển' } : null,
-        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Nhà trạm phao tiêu' } : null,
+        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Nhà trạm phao tiêu', icon: <HomeOutlined /> } : null,
         canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
       ].filter(Boolean),
     },

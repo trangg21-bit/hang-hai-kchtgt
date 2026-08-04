@@ -11,7 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.hanghai.kchtg.port.repository.ChangeLogRepository;
+import com.hanghai.kchtg.port.entity.ChangeLog;
+
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -23,6 +27,7 @@ import java.util.UUID;
 public class BuoyController {
 
     private final BuoyService buoyService;
+    private final ChangeLogRepository changeLogRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<BuoyResponse>>> findAll() {
@@ -101,5 +106,16 @@ public class BuoyController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Đã từ chối",
                 buoyService.reject(id, rejectReason, approverId)));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getHistory(@PathVariable UUID id) {
+        List<ChangeLog> changeHistory = changeLogRepository
+                .findByEntityTypeAndEntityId("Buoy", id.toString());
+        Map<String, Object> result = Map.of(
+                "changeHistory", changeHistory,
+                "approvalLog", List.of()
+        );
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

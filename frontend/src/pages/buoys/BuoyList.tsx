@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Tag, Modal, Input, Alert, Descriptions, Divider,
+  Button, Tag, Modal, Input, Alert, Descriptions, Divider, DatePicker, Space,
 } from 'antd';
 import {
   PlusOutlined,
@@ -10,6 +10,7 @@ import {
   CloseCircleOutlined,
   EyeOutlined,
   HistoryOutlined,
+  ClockCircleFilled,
   ExclamationCircleOutlined,
   EnvironmentOutlined,
   FileOutlined,
@@ -18,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { buoyCRUD, approval } from '../../services/beaconService';
 import type { Buoy } from '../../types/beacon';
+import api from '../../services/api';
 import {
   BEACON_STATUS_MAP,
   BUOY_TYPE_OPTIONS,
@@ -107,6 +109,17 @@ const LIGHT_CHAR_LABEL_MAP: Record<string, string> = {
   F: 'F - Cố định',
 };
 
+const BUOY_FIELD_MAP: Record<string, string> = {
+  name: 'Tên phao tiêu', code: 'Mã phao tiêu', type: 'Loại phao',
+  latitude: 'Vĩ độ', longitude: 'Kinh độ', color: 'Màu sắc', shape: 'Hình dạng',
+  lightCharacteristic: 'Đặc tính ánh sáng', range: 'Phạm vi (HL)',
+  description: 'Mô tả', unitId: 'Đơn vị quản lý',
+  lastInspectionDate: 'KT gần nhất', nextInspectionDate: 'KT kế tiếp',
+  isActive: 'Hoạt động', status: 'Trạng thái', approvalStatus: 'Trạng thái duyệt',
+  rejectionReason: 'Lý do từ chối', approvalLevel: 'Cấp duyệt',
+  provinceId: 'Tỉnh/TP', spatialId: 'Vị trí GIS',
+};
+
 // ── Helper: format date ──────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -179,6 +192,18 @@ export default function BuoyList() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<Buoy | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  // ── History modal ───────────────────────────────────────────────
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyRecord, setHistoryRecord] = useState<Buoy | null>(null);
+  const [historyData, setHistoryData] = useState<BeaconHistoryResponse[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+  const [historyExpanded, setHistoryExpanded] = useState<Record<number,boolean>>({});
+  const [historyVisible, setHistoryVisible] = useState(10);
+  const historySearchRef = useRef('');
 
   // ── Reject modal ────────────────────────────────────────────────
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -308,6 +333,33 @@ export default function BuoyList() {
       setDetailLoading(false);
     }
   }, []);
+
+  // ── History modal ───────────────────────────────────────────────
+
+  const openHistoryModal = useCallback(async (record: Buoy) => {
+    setHistoryModalOpen(true); setHistoryRecord(record); setHistoryLoading(true);
+    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    setHistoryExpanded({}); setHistoryVisible(10); historySearchRef.current = '';
+    try {
+      const res = await api.get(`/buoys/${record.id}/history`);
+      const d = res.data?.data;
+      setHistoryData(Array.isArray(d?.changeHistory) ? d.changeHistory : []);
+    } catch { setHistoryData([]); }
+    finally { setHistoryLoading(false); }
+  }, []);
+
+  const translateBuoyVal = useCallback((fn: string, val: string) => {
+    if (!val || val === 'null' || val === '(null)') return '—';
+    if (fn === 'isActive') return val === 'true' ? 'Có' : 'Ngừng';
+    if (fn === 'type') return BUOY_TYPE_OPTIONS.find(o=>o.value===val)?.label || val;
+    if (fn === 'color') return COLOR_LABEL_MAP[val] || val;
+    if (fn === 'shape') return SHAPE_LABEL_MAP[val] || val;
+    if (fn === 'lightCharacteristic') return LIGHT_CHAR_LABEL_MAP[val] || val;
+    if (fn === 'unitId') return orgMap.get(val) || val;
+    if (fn === 'status') return BEACON_STATUS_MAP[val as BeaconStatus]?.label || val;
+    if (fn === 'lastInspectionDate'||fn==='nextInspectionDate') return formatDateOnly(val);
+    return val;
+  }, [orgMap]);
 
   // ── Delete confirmation ─────────────────────────────────────────
 
@@ -525,38 +577,7 @@ export default function BuoyList() {
         return m ? <Tag color={m.color}>{label}</Tag> : <span>{type || '—'}</span>;
       },
     },
-    // 5. Trạng thái (theo BA: ngay sau Loại)
-    {
-      key: 'status',
-      label: 'Trạng thái',
-      dataIndex: 'status' as keyof Buoy,
-      width: 150,
-      align: 'center' as const,
-      render: (status: string | null | undefined) => {
-        if (!status) return <span style={{ color: textTertiary }}>—</span>;
-        const s = APPROVAL_STYLE_MAP[status] || { color: 'default', label: BEACON_STATUS_MAP[status as BeaconStatus]?.label || status };
-        let color = textTertiary;
-        if (s.color === statusOperational) color = statusOperational;
-        else if (s.color === statusCritical) color = statusCritical;
-        else if (s.color === statusAttention) color = statusAttention;
-        else if (s.color === actionPrimary) color = actionPrimary;
-        else if (s.color === statusDraft) color = statusDraft;
-        return (
-          <span style={{
-            display: 'inline-flex',
-            padding: '2px 10px',
-            borderRadius: 999,
-            fontSize: fontSizeMd,
-            fontWeight: fontWeightMedium,
-            background: `${color}15`,
-            color,
-          }}>
-            {s.label}
-          </span>
-        );
-      },
-    },
-    // 6. Vĩ độ
+    // 5. Vĩ độ
     {
       key: 'latitude',
       label: 'Vĩ độ',
@@ -687,6 +708,37 @@ export default function BuoyList() {
         <Tag color={v ? 'green' : 'default'}>{v ? 'Có' : 'Ngừng'}</Tag>
       ),
     },
+    // 17. Trạng thái
+    {
+      key: 'status',
+      label: 'Trạng thái',
+      dataIndex: 'status' as keyof Buoy,
+      width: 150,
+      align: 'center' as const,
+      render: (status: string | null | undefined) => {
+        if (!status) return <span style={{ color: textTertiary }}>—</span>;
+        const s = APPROVAL_STYLE_MAP[status] || { color: 'default', label: BEACON_STATUS_MAP[status as BeaconStatus]?.label || status };
+        let color = textTertiary;
+        if (s.color === statusOperational) color = statusOperational;
+        else if (s.color === statusCritical) color = statusCritical;
+        else if (s.color === statusAttention) color = statusAttention;
+        else if (s.color === actionPrimary) color = actionPrimary;
+        else if (s.color === statusDraft) color = statusDraft;
+        return (
+          <span style={{
+            display: 'inline-flex',
+            padding: '2px 10px',
+            borderRadius: 999,
+            fontSize: fontSizeMd,
+            fontWeight: fontWeightMedium,
+            background: `${color}15`,
+            color,
+          }}>
+            {s.label}
+          </span>
+        );
+      },
+    },
   ], [page, pageSize, orgMap]);
 
   // ── Row actions with RBAC ───────────────────────────────────────
@@ -735,7 +787,7 @@ export default function BuoyList() {
       key: 'history',
       label: 'Lịch sử',
       icon: <HistoryOutlined />,
-      onClick: () => navigate(`/history?type=BUOY&entityId=${record.id}`),
+      onClick: () => openHistoryModal(record),
     });
 
     // Gửi phê duyệt — khi ở trạng thái Nháp hoặc Từ chối
@@ -1184,6 +1236,111 @@ export default function BuoyList() {
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
+      </Modal>
+
+      {/* ── History Modal ────────────────────────────────────────── */}
+      <Modal title={<Space><HistoryOutlined style={{ color: actionPrimary, fontSize: 20 }} /><span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: 15 }}>{historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi'}</span></Space>}
+        open={historyModalOpen} onCancel={() => { setHistoryModalOpen(false); setHistoryRecord(null); }}
+        footer={null} width={880} styles={{ body: { padding: spaceMd, maxHeight: '68vh', overflowY: 'auto' } }}>
+        {!historyLoading && (
+          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+            <Input.Search placeholder="Tìm kiếm..." allowClear value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1 }} />
+            <DatePicker placeholder="Từ" value={historyFrom ? dayjs(historyFrom) : null}
+              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+            <DatePicker placeholder="Đến" value={historyTo ? dayjs(historyTo) : null}
+              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              style={{ width: 170 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+          </div>
+        )}
+        {historyLoading ? <LoadingSkeleton rows={5} /> : historyData.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <HistoryOutlined style={{ fontSize: 40, color: textTertiary }} />
+            <div style={{ color: textTertiary, fontSize: 13 }}>Chưa có thay đổi nào</div>
+          </div>
+        ) : (() => {
+          const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+          const sorted = [...historyData].sort((a: any, b: any) =>
+            new Date(b.changedAt||b.createdAt||0).getTime() - new Date(a.changedAt||a.createdAt||0).getTime());
+          const q = historySearch.toLowerCase().trim();
+          const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+          for (const r of sorted) {
+            if (q) {
+              const fn = (r.fieldName||r.fieldChanged||'').toLowerCase();
+              const ov = (r.oldValue||'').toLowerCase(); const nv = (r.newValue||'').toLowerCase();
+              const label = (BUOY_FIELD_MAP[r.fieldName||r.fieldChanged]||'').toLowerCase();
+              if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !label.includes(q)) continue;
+            }
+            if (historyFrom || historyTo) {
+              const cd = (r.changedAt||r.createdAt||'').substring(0,16);
+              if (historyFrom && cd < historyFrom.replace(' ','T')) continue;
+              if (historyTo && cd > historyTo.replace(' ','T')+':59') continue;
+            }
+            const ts = r.changedAt||r.createdAt||'';
+            const sec = ts ? toSec(ts) : 0;
+            const prev = groups[groups.length-1];
+            if (prev && prev.tsSec===sec && prev.actor===(r.changedBy||'')) prev.items.push(r);
+            else groups.push({ tsSec:sec, ts, actor:r.changedBy||'', items:[r] });
+          }
+          if (groups.length===0) return <div style={{ textAlign:'center',padding:'32px 0' }}>
+            <HistoryOutlined style={{ fontSize:40,color:textTertiary,marginBottom:spaceMd }} />
+            <div style={{ color:textTertiary,fontSize:13 }}>{q?'Không tìm thấy kết quả phù hợp':'Chưa có thay đổi nào'}</div>
+          </div>;
+          const fmt = (ts: string) => {
+            const d = new Date(ts);
+            return `${d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}  ·  ${d.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})}`;
+          };
+          if (q.length>0 && historySearchRef.current !== q) {
+            historySearchRef.current = q;
+            const init: Record<number,boolean>={}; groups.forEach((_,i)=>{init[i]=true});
+            setTimeout(()=>setHistoryExpanded(init),0);
+          } else if (q.length===0 && historySearchRef.current !== '') {
+            historySearchRef.current = '';
+            const init: Record<number,boolean>={}; groups.forEach((_,i)=>{init[i]=false});
+            setTimeout(()=>setHistoryExpanded(init),0);
+          }
+          const vis = groups.slice(0, historyVisible);
+          return <div style={{ maxHeight:'62vh', overflowY:'auto' }}
+            onScroll={e=>{ const el=e.currentTarget; if(el.scrollHeight-el.scrollTop-el.clientHeight<80&&historyVisible<groups.length) setHistoryVisible(p=>Math.min(p+10,groups.length)); }}>
+            {vis.map((g, gi) => (
+              <div key={gi} style={{ display:'flex', gap:spaceSm, marginBottom: gi<vis.length-1?spaceSm:0 }}>
+                <div style={{ display:'flex',flexDirection:'column',alignItems:'center',width:24,flexShrink:0 }}>
+                  <div style={{ width:24,height:24,borderRadius:'50%',background:'#fff',border:`1px solid ${actionPrimary}`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                    <ClockCircleFilled style={{ color:actionPrimary,fontSize:14 }} />
+                  </div>
+                  {gi<groups.length-1&&<div style={{ width:1,flex:1,minHeight:24,background:borderDefault,marginTop:4 }} />}
+                </div>
+                <div style={{ ...cardStyle, flex:1, padding:`${spaceSm}px ${spaceFormField}px`, borderRadius:12, boxShadow:'0 1px 2px rgba(0,0,0,0.04)' }}>
+                  <div onClick={()=>setHistoryExpanded(p=>({...p,[gi]:!p[gi]}))} style={{ display:'flex',alignItems:'center',gap:spaceSm,cursor:'pointer' }}>
+                    <span style={{ fontSize:15,color:textPrimary,fontWeight:fontWeightBold }}>{g.ts?fmt(g.ts):'—'}</span>
+                    {g.actor&&<span style={{ fontSize:13,color:textSecondary }}>— {g.actor}</span>}
+                    <span style={{ fontSize:13,fontWeight:fontWeightBold,color:actionPrimary,background:`${actionPrimary}12`,borderRadius:radiusPill,padding:'2px 10px',marginLeft:'auto' }}>{g.items.length}</span>
+                    {historyExpanded[gi]?<span style={{ fontSize:12,color:textTertiary }}>▲</span>:<span style={{ fontSize:12,color:textTertiary }}>▼</span>}
+                  </div>
+                  {historyExpanded[gi]&&<div>
+                    <Divider style={{ margin:`${spaceSm}px 0` }} />
+                    <table style={{ width:'100%' }}><tbody>
+                      {g.items.map((r: any, ri: number) => {
+                        const fn = r.fieldName||r.fieldChanged||'';
+                        const ov = r.oldValue!==undefined&&r.oldValue!=null&&r.oldValue!=='null'?String(r.oldValue):null;
+                        const nv = r.newValue!==undefined&&r.newValue!=null&&r.newValue!=='null'?String(r.newValue):null;
+                        return <tr key={r.id||ri}>
+                          <td style={{ padding:'4px 8px 4px 0',fontSize:13,fontWeight:fontWeightMedium,color:textPrimary,whiteSpace:'nowrap',width:1 }}>{BUOY_FIELD_MAP[fn]||fn}</td>
+                          <td style={{ padding:'4px 0',fontSize:13 }}>
+                            {ov?<span style={{ textDecoration:'line-through',color:statusCritical }}>{translateBuoyVal(fn,ov)}</span>:<span style={{ color:textTertiary }}>—</span>}
+                            <span style={{ color:textTertiary,margin:'0 6px' }}>→</span>
+                            {nv?<span style={{ color:statusOperational,fontWeight:fontWeightMedium }}>{translateBuoyVal(fn,nv)}</span>:<span style={{ color:textTertiary }}>—</span>}
+                          </td>
+                        </tr>;
+                      })}
+                    </tbody></table>
+                  </div>}
+                </div>
+              </div>
+            ))}
+          </div>;
+        })()}
       </Modal>
     </div>
   );

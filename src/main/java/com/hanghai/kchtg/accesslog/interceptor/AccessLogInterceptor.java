@@ -13,6 +13,7 @@ import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -139,9 +140,210 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         logEntry.setOrgUnit(resolveOrgUnit(username));
         logEntry.setSessionId(resolveSessionId(request));
 
+<<<<<<< HEAD
         // A user ID is a UUID throughout the system. Anonymous and failed-login
         // requests intentionally have no user ID, while retaining the username/IP.
         logEntry.setUserId(resolveUserId(username));
+=======
+        // Resolve userId from username
+        String userIdStr = resolveUserId(username);
+        if (userIdStr != null) {
+            try {
+                logEntry.setUserId(java.util.UUID.fromString(userIdStr));
+            } catch (IllegalArgumentException e) {
+                logEntry.setUserId(null);
+            }
+        }
+>>>>>>> company/main
+
+        // ── Status, severity, response code, duration ───────────────────
+        int statusCode = response.getStatus();
+        Long startTimeObj = (Long) request.getAttribute("requestStartTime");
+        if (startTimeObj != null) {
+            logEntry.setDurationMs((int) (System.currentTimeMillis() - startTimeObj));
+        }
+        logEntry.setResponseCode(statusCode);
+
+        String moduleForSeverity = (auditLog != null) ? auditLog.module() : logEntry.getModule();
+
+        if (ex != null || statusCode >= 400) {
+            logEntry.setStatus(AccessLogStatus.FAILED);
+            String detailMsg = ex != null ? ex.getMessage() : "HTTP error status: " + statusCode;
+            logEntry.setDetail(sanitize(detailMsg));
+            logEntry.setSeverity(autoAssignSeverity(moduleForSeverity, statusCode, ex));
+        } else {
+            logEntry.setStatus(AccessLogStatus.SUCCESS);
+            logEntry.setDetail("HTTP " + statusCode);
+            logEntry.setSeverity(LogSeverity.INFO);
+        }
+
+        // ── Metadata (JSON string, currently null; populated by annotating controllers) ─
+        logEntry.setMetadata(null);
+
+        // ── Timestamps ──────────────────────────────────────────────────
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        logEntry.setCreatedAt(now);
+        logEntry.setUpdatedAt(now);
+
+        // ── Deduplication: skip if same user+method+path within 3 seconds ─
+        if (isDuplicateRequest(logEntry.getUserId(), request.getMethod(), logEntry.getRequestPath())) {
+            return;
+        }
+
+        // ── Async batch queue (replaces sync repository.save()) ─────────
+        asyncLogAppender.queue(logEntry);
+
+        // Also save to AdminAuditLog if the user has admin authority
+        String actionForAdminLog = (auditLog != null) ? auditLog.action() : logEntry.getAction();
+        User user = null;
+
+        if (auth != null && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getName())) {
+            boolean isAdminRole = auth.getAuthorities().stream()
+                    .anyMatch(a -> "ROLE_SYSTEM_ADMIN".equals(a.getAuthority()) || "ROLE_ADMIN".equals(a.getAuthority()));
+
+            if (isAdminRole) {
+                if (auth.getPrincipal() instanceof User) {
+                    user = (User) auth.getPrincipal();
+                } else {
+                    String currentUsername = auth.getName();
+                    user = userRepository.findByUsername(currentUsername).orElse(null);
+                }
+            }
+        } else {
+            User reqUser = (User) request.getAttribute("authenticatedUser");
+            if (reqUser != null) {
+                String role = (String) request.getAttribute("authenticatedUserRole");
+                if ("ROLE_SYSTEM_ADMIN".equals(role) || "ROLE_ADMIN".equals(role)) {
+                    user = reqUser;
+                }
+            }
+        }
+
+        if (user != null) {
+            try {
+                log.info("Saving AdminAuditLog for admin: {}, action: {}, target: {}",
+                        user.getUsername(), actionForAdminLog, logEntry.getTargetResource());
+                AdminAuditLog adminLog = AdminAuditLog.create(
+                    user.getId(),
+                    user.getUsername(),
+                    actionForAdminLog,
+                    logEntry.getTargetResource(),
+                    logEntry.getDetail(),
+                    logEntry.getIpAddress(),
+                    logEntry.getUserAgent()
+                );
+                adminAuditLogRepository.save(adminLog);
+            } catch (Exception e) {
+                log.error("Failed to save AdminAuditLog in AccessLogInterceptor", e);
+            }
+        }
+    }
+
+    // ── Deduplication helpers ─────────────────────────────────────────
+     * Simple in-memory cache to prevent duplicate log entries from the same user
+     * to the same endpoint within a short time window.
+     * Key: "userId:method:path", Value: timestamp of last log entry.
+     */
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> recentLogCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final long DEDUP_WINDOW_MS = 3000; // 3 seconds
+
+    public AccessLogInterceptor(AsyncLogAppender asyncLogAppender, UserRepository userRepository,
+                                AdminAuditLogRepository adminAuditLogRepository) {
+        this.asyncLogAppender = asyncLogAppender;
+        this.userRepository = userRepository;
+        this.adminAuditLogRepository = adminAuditLogRepository;
+    }
+
+    /** Record the start time for duration calculation. */
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        if (handler instanceof HandlerMethod handlerMethod) {
+            request.setAttribute("requestStartTime", System.currentTimeMillis());
+        }
+        return true;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+                                Object handler, Exception ex) throws Exception {
+        if (!(handler instanceof HandlerMethod handlerMethod)) {
+            return;
+        }
+
+        // ── Skip OPTIONS preflight ──────────────────────────────────────
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return;
+        }
+
+        AuditLog auditLog = handlerMethod.getMethodAnnotation(AuditLog.class);
+
+        // ── Skip sub-resource calls (tree, search, counts) unless @AuditLog annotated ──
+        if (auditLog == null && !isPrimaryRequest(request)) {
+            return;
+        }
+
+        AccessLog logEntry = new AccessLog();
+
+        // ── Action / Module / Type: annotation overrides, else auto-detect ─
+        if (auditLog != null) {
+            logEntry.setAction(auditLog.action());
+            logEntry.setModule(auditLog.module());
+            logEntry.setType(mapModuleToType(auditLog.module()));
+        } else {
+            logEntry.setAction(detectAction(request));
+            logEntry.setModule(detectModule(request));
+            logEntry.setType(detectLogType(logEntry.getModule(), request.getMethod()));
+        }
+
+        // ── Request path ────────────────────────────────────────────────
+        logEntry.setRequestPath(request.getRequestURI());
+        logEntry.setTargetResource(extractTargetResource(request));
+
+        // ── Client IP ───────────────────────────────────────────────────
+        String ip = extractClientIp(request);
+        logEntry.setIpAddress(ip);
+
+        // ── User-Agent ──────────────────────────────────────────────────
+        String userAgent = request.getHeader("User-Agent");
+        logEntry.setUserAgent(sanitize(userAgent));
+
+        // ── User authentication context ─────────────────────────────────
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = "anonymousUser";
+
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+            username = auth.getName();
+        } else {
+            User reqUser = (User) request.getAttribute("authenticatedUser");
+            if (reqUser != null) {
+                username = reqUser.getUsername();
+            } else {
+                // Fallback: check if username was sent in the request parameter
+                String reqUsername = request.getParameter("username");
+                if (reqUsername != null && !reqUsername.isBlank()) {
+                    username = sanitize(reqUsername);
+                }
+            }
+        }
+        logEntry.setUsername(username);
+
+        // ── Email, orgUnit, sessionId (F-005) ─────────────────────────────
+        logEntry.setEmail(resolveEmail(username));
+        logEntry.setOrgUnit(resolveOrgUnit(username));
+        logEntry.setSessionId(resolveSessionId(request));
+
+        // Resolve userId from username
+        String userIdStr = resolveUserId(username);
+        if (userIdStr != null) {
+            try {
+                logEntry.setUserId(java.util.UUID.fromString(userIdStr));
+            } catch (IllegalArgumentException e) {
+                logEntry.setUserId(null);
+            }
+        }
 
         // ── Status, severity, response code, duration ───────────────────
         int statusCode = response.getStatus();
@@ -234,11 +436,6 @@ public class AccessLogInterceptor implements HandlerInterceptor {
      * If yes, skip. If no, record the timestamp and return false.
      */
     private boolean isDuplicateRequest(java.util.UUID userId, String method, String path) {
-        String key = userId + ":" + method + ":" + path;
-        long now = System.currentTimeMillis();
-        Long lastTime = recentLogCache.put(key, now);
-
-        // Periodically clean old entries (every ~100 requests)
         if (recentLogCache.size() > 500) {
             recentLogCache.entrySet().removeIf(e -> (now - e.getValue()) > DEDUP_WINDOW_MS * 2);
         }

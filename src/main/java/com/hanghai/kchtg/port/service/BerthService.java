@@ -249,6 +249,16 @@ public class BerthService {
                 .openingDecision(entity.getOpeningDecision())
                 .investmentAgreement(entity.getInvestmentAgreement())
                 .structureType(entity.getStructureType())
+                .spatialId(entity.getSpatialId())
+                // Approval tracking fields
+                .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .portAuthorityApprovedAt(entity.getPortAuthorityApprovedAt())
+                .portAuthorityApprovedBy(entity.getPortAuthorityApprovedBy())
+                .departmentApprovedAt(entity.getDepartmentApprovedAt())
+                .departmentApprovedBy(entity.getDepartmentApprovedBy())
+                .rejectionReason(entity.getRejectionReason())
+                .activityStatus(entity.getActivityStatus())
                 .build();
 
         if (request.getBerthName() != null)
@@ -347,7 +357,8 @@ public class BerthService {
             saved = berthRepository.save(saved);
         }
 
-        // changeHistoryService.recordChanges
+        // Record field-level change history
+        changeHistoryService.recordChanges("Berth", saved.getId().toString(), "system", snapshot, saved);
 
         log.info("Updated Berth [{}] code={}", saved.getId(), saved.getBerthCode());
         return toResponse(saved);
