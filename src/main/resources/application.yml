@@ -138,7 +138,10 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:none}
+      ddl-auto: none
+    properties:
+      hibernate:
+        hbm2ddl.auto: none
 
 server:
   port: ${SERVER_PORT:8080}
