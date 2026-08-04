@@ -348,6 +348,7 @@ public class PortService {
                 .operationalStatus(entity.getOperationalStatus())
                 .approvalStatus(entity.getApprovalStatus())
                 .mapSymbolId(entity.getMapSymbolId())
+                .spatialId(entity.getSpatialId())
                 // Extended fields (pre-image)
                 .detailedLocation(entity.getDetailedLocation())
                 .portClass(entity.getPortClass())

@@ -51,7 +51,7 @@ class LogServiceTest {
     private LogService logService;
 
     private UUID logId;
-    private Long userId;
+    private UUID userId;
 
     @BeforeEach
     void setUp() {
@@ -59,7 +59,7 @@ class LogServiceTest {
         ReflectionTestUtils.setField(logService, "accessLogService", accessLogService);
 
         logId = UUID.randomUUID();
-        userId = 42L;
+        userId = UUID.randomUUID();
     }
 
     @Test

@@ -27,7 +27,7 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, UUID>,
     // ── Original queries (unchanged) ──────────────────────────────────
 
     /** Find all log entries for a given user, ordered newest-first. */
-    List<AccessLog> findByUserIdOrderByCreatedAtDesc(Long userId);
+    List<AccessLog> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     /** Find all log entries for a given module, ordered newest-first. */
     List<AccessLog> findByModuleOrderByCreatedAtDesc(String module);

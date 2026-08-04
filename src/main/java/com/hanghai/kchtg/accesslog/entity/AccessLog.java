@@ -42,8 +42,8 @@ public class AccessLog {
     private UUID id;
 
     /** ID of the user who performed the action. */
-    @Column(name = "userId", nullable = false)
-    private Long userId;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
     /** Login name at the time of the action (denormalised for query convenience). */
     @NotBlank(message = "Tên đăng nhập không được để trống")

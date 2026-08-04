@@ -13,6 +13,7 @@ import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -143,17 +144,10 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         String userIdStr = resolveUserId(username);
         if (userIdStr != null) {
             try {
-                java.util.UUID uuid = java.util.UUID.fromString(userIdStr);
-                logEntry.setUserId(uuid.getMostSignificantBits());
+                logEntry.setUserId(java.util.UUID.fromString(userIdStr));
             } catch (IllegalArgumentException e) {
-                try {
-                    logEntry.setUserId(Long.parseLong(userIdStr));
-                } catch (NumberFormatException nfe) {
-                    logEntry.setUserId(0L);
-                }
+                logEntry.setUserId(null);
             }
-        } else {
-            logEntry.setUserId(0L);
         }
 
         // ── Status, severity, response code, duration ───────────────────
@@ -246,7 +240,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
      * Check if this request was already logged recently (same user, method, path within 3 seconds).
      * If yes, skip. If no, record the timestamp and return false.
      */
-    private boolean isDuplicateRequest(Long userId, String method, String path) {
+    private boolean isDuplicateRequest(UUID userId, String method, String path) {
         String key = userId + ":" + method + ":" + path;
         long now = System.currentTimeMillis();
         Long lastTime = recentLogCache.put(key, now);
