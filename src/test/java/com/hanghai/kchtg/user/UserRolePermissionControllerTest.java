@@ -40,7 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 
-@WebMvcTest(UserController.class)
+@WebMvcTest(controllers = UserController.class)
+@org.springframework.test.context.ContextConfiguration(classes = com.hanghai.kchtg.KchtgApplication.class)
 @AutoConfigureMockMvc(addFilters = false)
 class UserRolePermissionControllerTest {
 

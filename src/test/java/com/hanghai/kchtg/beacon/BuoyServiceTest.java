@@ -63,6 +63,12 @@ class BuoyServiceTest {
     @Mock
     private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
 
+    @Mock
+    private com.hanghai.kchtg.port.service.shared.ChangeHistoryService changeHistoryService;
+
+    @Mock
+    private com.hanghai.kchtg.port.repository.ChangeLogRepository changeLogRepository;
+
     @InjectMocks
     private BuoyService service;
 

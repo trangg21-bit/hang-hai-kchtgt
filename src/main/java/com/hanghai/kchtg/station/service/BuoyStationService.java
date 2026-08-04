@@ -98,7 +98,15 @@ public class BuoyStationService {
                 .province(request.getProvince())
                 .address(request.getAddress())
                 .constructionDate(request.getConstructionDate())
+                .totalArea(request.getTotalArea())
+                .usableArea(request.getUsableArea())
+                .staffCount(request.getStaffCount())
+                .lastMaintenanceYear(request.getLastMaintenanceYear())
                 .note(request.getNote())
+                .objectType(request.getObjectType())
+                .icon(request.getIcon())
+                .coordinateSystem(request.getCoordinateSystem())
+                .displayFormat(request.getDisplayFormat())
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
@@ -217,7 +225,15 @@ public class BuoyStationService {
         if (request.getProvince() != null) entity.setProvince(request.getProvince());
         if (request.getAddress() != null) entity.setAddress(request.getAddress());
         if (request.getConstructionDate() != null) entity.setConstructionDate(request.getConstructionDate());
+        if (request.getTotalArea() != null) entity.setTotalArea(request.getTotalArea());
+        if (request.getUsableArea() != null) entity.setUsableArea(request.getUsableArea());
+        if (request.getStaffCount() != null) entity.setStaffCount(request.getStaffCount());
+        if (request.getLastMaintenanceYear() != null) entity.setLastMaintenanceYear(request.getLastMaintenanceYear());
         if (request.getNote() != null) entity.setNote(request.getNote());
+        if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
+        if (request.getIcon() != null) entity.setIcon(request.getIcon());
+        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayFormat() != null) entity.setDisplayFormat(request.getDisplayFormat());
         if (request.getLastInspectionDate() != null) {
             entity.setLastInspectionDate(request.getLastInspectionDate());
         }
@@ -335,7 +351,7 @@ public class BuoyStationService {
 
         entity.setStatus(StationStatus.APPROVED_L1);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
-        entity.setApprovedBy(approverId);
+        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
 
@@ -358,7 +374,7 @@ public class BuoyStationService {
 
         entity.setStatus(StationStatus.PUBLISHED);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
-        entity.setApprovedBy(approverId);
+        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
 
@@ -453,14 +469,22 @@ public class BuoyStationService {
                 .province(entity.getProvince())
                 .address(entity.getAddress())
                 .constructionDate(entity.getConstructionDate())
+                .totalArea(entity.getTotalArea())
+                .usableArea(entity.getUsableArea())
+                .staffCount(entity.getStaffCount())
+                .lastMaintenanceYear(entity.getLastMaintenanceYear())
                 .note(entity.getNote())
+                .objectType(entity.getObjectType())
+                .icon(entity.getIcon())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayFormat(entity.getDisplayFormat())
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .approvalStatus(entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : null)
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy())
+                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
@@ -509,7 +533,7 @@ public class BuoyStationService {
     }
 
     private String resolveCreatedBy(BuoyStation entity) {
-        return entity.getApprovedBy() != null ? entity.getApprovedBy().toString() : null;
+        return entity.getApprovedBy();
     }
 
     // -- JSON Comparison --

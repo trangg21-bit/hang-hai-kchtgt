@@ -36,7 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 
-@WebMvcTest(PermissionController.class)
+@WebMvcTest(controllers = PermissionController.class)
+@org.springframework.test.context.ContextConfiguration(classes = com.hanghai.kchtg.KchtgApplication.class)
 @AutoConfigureMockMvc(addFilters = false)
 class PermissionCrudAndEvaluateTest {
 

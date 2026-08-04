@@ -18,7 +18,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
@@ -48,13 +48,9 @@ public class BuoyService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
-<<<<<<< HEAD
-    private final OrgUnitCacheService orgUnitCacheService;
-=======
     private final OrgUnitRepository orgUnitRepo;
     private final ChangeHistoryService changeHistoryService;
     private final ChangeLogRepository changeLogRepository;
->>>>>>> company/main
 
     // -- READ --
 
@@ -429,7 +425,12 @@ public class BuoyService {
     }
 
     private BuoyResponse toResponse(Buoy entity) {
-        String unitName = orgUnitCacheService.getName(entity.getUnitId());
+        String unitName = null;
+        if (entity.getUnitId() != null) {
+            unitName = orgUnitRepo.findById(entity.getUnitId())
+                    .map(unit -> unit.getName())
+                    .orElse(null);
+        }
 
         Double latitude = null;
         Double longitude = null;

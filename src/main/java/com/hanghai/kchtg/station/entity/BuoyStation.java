@@ -59,23 +59,32 @@ public class BuoyStation extends BaseEntity {
     @Column(name = "construction_date")
     protected LocalDate constructionDate;
 
-    @Column(name = "commissioning_date")
-    protected LocalDate commissioningDate;
+    @Column(name = "total_area")
+    protected Double totalArea;
 
-    @Column(name = "investment_capital")
-    protected Double investmentCapital;
+    @Column(name = "usable_area")
+    protected Double usableArea;
 
-    @Column(name = "capital_source", length = 255)
-    protected String capitalSource;
+    @Column(name = "staff_count")
+    protected Integer staffCount;
 
-    @Column(name = "management_agency", length = 255)
-    protected String managementAgency;
+    @Column(name = "last_maintenance_year")
+    protected Integer lastMaintenanceYear;
 
-    @Column(name = "operating_agency", length = 255)
-    protected String operatingAgency;
-
-    @Column(length = 255)
+    @Column(length = 1000)
     protected String note;
+
+    @Column(name = "object_type", length = 20)
+    protected String objectType;
+
+    @Column(length = 100)
+    protected String icon;
+
+    @Column(name = "coordinate_system", length = 50)
+    protected String coordinateSystem;
+
+    @Column(name = "display_format", length = 50)
+    protected String displayFormat;
 
     @Column(name = "spatial_id")
     protected UUID spatialId;
@@ -95,7 +104,7 @@ public class BuoyStation extends BaseEntity {
     protected ApprovalLevel approvalLevel;
 
     @Column(name = "approved_by")
-    protected UUID approvedBy;
+    protected String approvedBy;
 
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;

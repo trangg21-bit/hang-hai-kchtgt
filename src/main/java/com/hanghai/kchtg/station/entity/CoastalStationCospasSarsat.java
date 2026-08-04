@@ -63,7 +63,7 @@ public class CoastalStationCospasSarsat extends BaseEntity {
     protected ApprovalLevel approvalLevel;
 
     @Column(name = "approved_by")
-    protected UUID approvedBy;
+    protected String approvedBy;
 
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;
