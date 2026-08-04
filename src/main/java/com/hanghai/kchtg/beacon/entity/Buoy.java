@@ -89,6 +89,18 @@ public class Buoy extends BaseEntity {
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;
 
+    @Column(name = "level1_approved_by")
+    private java.util.UUID level1ApprovedBy;
+
+    @Column(name = "level1_approved_date")
+    private java.time.LocalDateTime level1ApprovedDate;
+
+    @Column(name = "level2_approved_by")
+    private java.util.UUID level2ApprovedBy;
+
+    @Column(name = "level2_approved_date")
+    private java.time.LocalDateTime level2ApprovedDate;
+
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 

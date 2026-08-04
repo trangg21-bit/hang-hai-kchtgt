@@ -169,7 +169,13 @@ export interface Buoy {
   approvalLevel?: number;
   approvedBy?: number;
   approvedDate?: string;
+  level1ApprovedBy?: number;
+  level1ApprovedDate?: string;
+  level2ApprovedBy?: number;
+  level2ApprovedDate?: string;
   rejectionReason?: string;
+  createdBy?: number;
+  updatedBy?: number;
   createdAt: string;
   updatedAt: string;
 }

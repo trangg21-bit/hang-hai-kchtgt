@@ -23,6 +23,7 @@ export interface FilterBarProps {
   statusValue?: string | number;
   onStatusChange?: (val: any) => void;
   centerActions?: boolean;
+  onFieldChange?: (key: string, value: any) => void;
 }
 
 const labelStyle: React.CSSProperties = {
@@ -40,11 +41,14 @@ const FilterBar: React.FC<FilterBarProps> = ({
   statusValue,
   onStatusChange,
   centerActions,
+  onFieldChange,
 }) => {
   const [values, setValues] = useState<Record<string, any>>({});
 
-  const handleFieldChange = (key: string, value: any) =>
+  const handleFieldChange = (key: string, value: any) => {
     setValues((prev) => ({ ...prev, [key]: value }));
+    if (onFieldChange) onFieldChange(key, value);
+  };
 
   const handleSearch = () => {
     if (onSearch) onSearch(values);
@@ -92,7 +96,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
                   style={{ borderRadius: radiusPill, height: 40 }} />
               )}
               {field.type === 'select' && (
-                <Select placeholder={field.placeholder} allowClear
+                <Select placeholder={field.placeholder} allowClear showSearch
+                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                   value={values[field.key] || undefined}
                   onChange={(val) => handleFieldChange(field.key, val)}
                   options={field.options}

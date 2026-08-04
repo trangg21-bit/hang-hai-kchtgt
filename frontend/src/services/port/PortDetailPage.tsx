@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Card, Button, Space, Tag, Typography, Row, Col, Popconfirm, Table,
-  Tabs, Breadcrumb, Spin, Divider, Collapse,
+  Tabs, Breadcrumb, Spin, Divider, Descriptions, Modal,
 } from 'antd';
 import {
   UploadOutlined, DownloadOutlined, ArrowLeftOutlined,
@@ -310,209 +310,62 @@ export default function PortDetailPage() {
   };
   const isAdmin = hasPermission('admin:manage');
 
-  // ── Tab items ─────────────────────────────────────────────────────
-
-  const tabItems = [
-    {
-      key: 'general',
-      label: 'Thông tin chung',
-      children: renderGeneralTab(data, berths, totalBenCangs, waterZones, totalVungNuocs, files, childrenLoading, id!, navigate, getOrgUnitName, getSymbolName, isAdmin),
-    },
-    { key: 'infrastructure', label: 'Kết cấu hạ tầng khác', children: <PlaceholderTab tabName="Kết cấu hạ tầng khác" /> },
-    { key: 'planning', label: 'Thông tin quy hoạch', children: <PlaceholderTab tabName="Thông tin quy hoạch" /> },
-    { key: 'operation', label: 'Vận hành khai thác', children: <PlaceholderTab tabName="Vận hành khai thác" /> },
-    { key: 'maintenance', label: 'Bảo trì', children: <PlaceholderTab tabName="Bảo trì" /> },
-    { key: 'incidents', label: 'Sự cố', children: <PlaceholderTab tabName="Sự cố" /> },
-  ];
-
   return (
-    <div style={{ padding: spaceLg, background: surfacePage, minHeight: '100vh' }}>
-      {/* ── Breadcrumb ──────────────────────────────────────────── */}
-      <Breadcrumb items={breadcrumbItems} style={{ marginBottom: spaceMd }} />
-
-      {/* ── Header card ─────────────────────────────────────────── */}
-      <Card
-        style={{
-          marginBottom: spaceMd,
-          borderRadius: radiusLg,
-          border: `0.5px solid ${borderDefault}`,
-        }}
-        styles={{ body: { padding: `${spaceMd}px ${spaceLg}px` } }}
-      >
-        <Row align="middle" justify="space-between" wrap>
-          <Col>
-            <Space size="middle">
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/Port')}
-                style={{ borderRadius: radiusPill }}
-              >
-                Quay lại
-              </Button>
-              <div>
-                <Typography.Title level={4} style={{ margin: 0, color: colors.sidebarBg, fontWeight: fontWeightBold }}>
-                  {data.portCode} — {data.portName}
-                </Typography.Title>
-                <Space style={{ marginTop: spaceXs }}>
-                  {data.operationalStatus && (
-                    <Tag
-                      color={trangThaiHoatDongBadge(data.operationalStatus).color}
-                      style={{ borderRadius: radiusPill, padding: '2px 12px' }}
-                    >
-                      {trangThaiHoatDongBadge(data.operationalStatus).label}
-                    </Tag>
-                  )}
-                  {data.approvalStatus && (
-                    <Tag
-                      color={trangThaiPheDuyetBadge(data.approvalStatus).color}
-                      style={{ borderRadius: radiusPill, padding: '2px 12px' }}
-                    >
-                      {trangThaiPheDuyetBadge(data.approvalStatus).label}
-                    </Tag>
-                  )}
-                  {data.province && <Tag>{data.province}</Tag>}
-                </Space>
-              </div>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* ── Action toolbar ──────────────────────────────────────────── */}
-      <Card
-        style={{
-          marginBottom: spaceMd,
-          borderRadius: radiusLg,
-          border: `0.5px solid ${borderDefault}`,
-        }}
-        styles={{ body: { padding: `${spaceSm}px ${spaceLg}px` } }}
-      >
-        <Row justify="space-between" align="middle" wrap>
-          <Col>
-            <Typography.Text style={{ color: textSecondary, fontSize: fontSizeSm }}>
-              Cập nhật lần cuối: {formatDate(data.updatedAt)}
-            </Typography.Text>
-          </Col>
-          <Col>
-            <Space wrap size="small">
-              {canEdit && (
-                <Button
-                  icon={<EditOutlined />}
-                  onClick={() => navigate(`/Port/${data.id}/edit`)}
-                  style={{ borderRadius: radiusPill }}
-                >
-                  Chỉnh sửa
-                </Button>
-              )}
-              {canDelete && (
-                <Popconfirm
-                  title="Xác nhận xóa"
-                  description={`Bạn có chắc muốn xóa cảng biển "${data.portName}"?`}
-                  okText="Xóa"
-                  okType="danger"
-                  cancelText="Hủy"
-                  onConfirm={async () => {
-                    try {
-                      await deleteCangBien(data.id);
-                      toast.success('Xóa thành công');
-                      navigate('/Port');
-                    } catch (err: unknown) {
-                      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
-                    }
-                  }}
-                >
-                  <Button danger icon={<DeleteOutlined />} style={{ borderRadius: radiusPill }}>
-                    Xóa
-                  </Button>
-                </Popconfirm>
-              )}
-              {data.approvalStatus === 'CHO_PHE_DUYET' && (
-                <>
-                  {canApprove && (
-                    <Popconfirm
-                      title="Phê duyệt cảng biển này?"
-                      okText="Phê duyệt"
-                      cancelText="Hủy"
-                      onConfirm={async () => {
-                        try {
-                          await approveCangBien(data.id);
-                          toast.success('Phê duyệt thành công');
-                          loadData();
-                        } catch (err: unknown) {
-                          toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-                        }
-                      }}
-                    >
-                      <Button type="primary" icon={<CheckCircleOutlined />} style={{ borderRadius: radiusPill }}>
-                        Phê duyệt
-                      </Button>
-                    </Popconfirm>
-                  )}
-                  {canApprove && (
-                    <Popconfirm
-                      title="Từ chối cảng biển này?"
-                      okText="Từ chối"
-                      cancelText="Hủy"
-                      onConfirm={async () => {
-                        const reason = window.prompt('Lý do từ chối (tối thiểu 10 ký tự):', '');
-                        if (reason === null || reason.length < 10) {
-                          if (reason != null) toast.error('Lý do từ chối tối thiểu 10 ký tự');
-                          return;
-                        }
-                        try {
-                          await rejectCangBien(data.id, reason);
-                          toast.success('Từ chối thành công');
-                          loadData();
-                        } catch (err: unknown) {
-                          toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
-                        }
-                      }}
-                    >
-                      <Button danger icon={<CloseCircleOutlined />} style={{ borderRadius: radiusPill }}>
-                        Từ chối
-                      </Button>
-                    </Popconfirm>
-                  )}
-                </>
-              )}
-              {canViewHistory && (
-                <Button
-                  icon={<HistoryOutlined />}
-                  onClick={() => navigate(`/Port/${data.id}/history`)}
-                  style={{ borderRadius: radiusPill }}
-                >
-                  Lịch sử
-                </Button>
-              )}
-              <Button
-                icon={<UploadOutlined />}
-                onClick={() => navigate(`/document/upload/port/${data.id}`)}
-                style={{ borderRadius: radiusPill }}
-              >
-                Upload tài liệu
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* ── Tabs ───────────────────────────────────────────────── */}
-      <Card
-        style={{
-          borderRadius: radiusLg,
-          border: `0.5px solid ${borderDefault}`,
-        }}
-        styles={{ body: { padding: `${spaceMd}px ${spaceLg}px` } }}
-      >
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-          size="large"
-          style={{ color: textPrimary }}
-        />
-      </Card>
-    </div>
+    <Modal
+      title={
+        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
+          Chi tiết cảng biển: {data.portName}
+        </span>
+      }
+      open
+      onCancel={() => navigate('/Port')}
+      styles={{ body: { paddingTop: 0 } }}
+      footer={[
+        <Button
+          key="close"
+          onClick={() => navigate('/Port')}
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}
+        >
+          Đóng
+        </Button>,
+        canEdit ? (
+          <Button
+            key="edit"
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => navigate(`/Port/${data.id}/edit`)}
+            style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+          >
+            Chỉnh sửa
+          </Button>
+        ) : null,
+        canDelete ? (
+          <Button
+            key="delete"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={async () => {
+              try {
+                await deleteCangBien(data.id);
+                toast.success('Xóa thành công');
+                navigate('/Port');
+              } catch (err: unknown) {
+                toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+              }
+            }}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+          >
+            Xóa
+          </Button>
+        ) : null,
+      ].filter(Boolean)}
+      width={800}
+      style={{ top: 20 }}
+    >
+      <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px 0' }}>
+        {renderGeneralTab(data, berths, totalBenCangs, waterZones, totalVungNuocs, files, childrenLoading, id!, navigate, getOrgUnitName, getSymbolName, isAdmin)}
+      </div>
+    </Modal>
   );
 }
 

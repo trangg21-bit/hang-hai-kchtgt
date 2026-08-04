@@ -110,3 +110,22 @@ export async function updateBuoyStation(id: string, payload: CreateBuoyStationRe
 export async function deleteBuoyStation(id: string): Promise<void> {
   await api.delete(`/v1/buoy-station/${id}`);
 }
+
+export async function submitBuoyStationForApproval(id: string): Promise<void> {
+  await api.post(`/v1/buoy-station/${id}/submit-approval`);
+}
+
+export async function approveBuoyStationL1(id: string, approverId: string): Promise<BuoyStationResponse> {
+  const res = await api.post(`/v1/buoy-station/${id}/approve-l1`, null, { params: { approverId } });
+  return res.data.data;
+}
+
+export async function approveBuoyStationL2(id: string, approverId: string): Promise<BuoyStationResponse> {
+  const res = await api.post(`/v1/buoy-station/${id}/approve-l2`, null, { params: { approverId } });
+  return res.data.data;
+}
+
+export async function rejectBuoyStation(id: string, rejectReason: string, approverId: string): Promise<BuoyStationResponse> {
+  const res = await api.post(`/v1/buoy-station/${id}/reject`, null, { params: { rejectReason, approverId } });
+  return res.data.data;
+}

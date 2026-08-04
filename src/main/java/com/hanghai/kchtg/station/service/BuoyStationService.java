@@ -74,7 +74,6 @@ public class BuoyStationService {
             throw new IllegalArgumentException("Mã nhà trạm phao tiêu đã tồn tại: " + request.getCode());
         }
 
-        validateCoordinates(request.getLongitude(), request.getLatitude());
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
         BuoyStation entity = BuoyStation.builder()
@@ -87,6 +86,22 @@ public class BuoyStationService {
                 .range(request.getRange())
                 .description(request.getDescription())
                 .unitId(request.getUnitId())
+                .operatingOrgId(request.getOperatingOrgId())
+                .portId(request.getPortId())
+                .waterwayId(request.getWaterwayId())
+                .waterwayRouteId(request.getWaterwayRouteId())
+                .province(request.getProvince())
+                .address(request.getAddress())
+                .constructionDate(request.getConstructionDate())
+                .totalArea(request.getTotalArea())
+                .usableArea(request.getUsableArea())
+                .staffCount(request.getStaffCount())
+                .lastMaintenanceYear(request.getLastMaintenanceYear())
+                .note(request.getNote())
+                .objectType(request.getObjectType())
+                .icon(request.getIcon())
+                .coordinateSystem(request.getCoordinateSystem())
+                .displayFormat(request.getDisplayFormat())
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
@@ -176,6 +191,22 @@ public class BuoyStationService {
         if (request.getRange() != null) entity.setRange(request.getRange());
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
         if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
+        if (request.getOperatingOrgId() != null) entity.setOperatingOrgId(request.getOperatingOrgId());
+        if (request.getPortId() != null) entity.setPortId(request.getPortId());
+        if (request.getWaterwayId() != null) entity.setWaterwayId(request.getWaterwayId());
+        if (request.getWaterwayRouteId() != null) entity.setWaterwayRouteId(request.getWaterwayRouteId());
+        if (request.getProvince() != null) entity.setProvince(request.getProvince());
+        if (request.getAddress() != null) entity.setAddress(request.getAddress());
+        if (request.getConstructionDate() != null) entity.setConstructionDate(request.getConstructionDate());
+        if (request.getTotalArea() != null) entity.setTotalArea(request.getTotalArea());
+        if (request.getUsableArea() != null) entity.setUsableArea(request.getUsableArea());
+        if (request.getStaffCount() != null) entity.setStaffCount(request.getStaffCount());
+        if (request.getLastMaintenanceYear() != null) entity.setLastMaintenanceYear(request.getLastMaintenanceYear());
+        if (request.getNote() != null) entity.setNote(request.getNote());
+        if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
+        if (request.getIcon() != null) entity.setIcon(request.getIcon());
+        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayFormat() != null) entity.setDisplayFormat(request.getDisplayFormat());
         if (request.getLastInspectionDate() != null) {
             entity.setLastInspectionDate(request.getLastInspectionDate());
         }
@@ -183,10 +214,6 @@ public class BuoyStationService {
             entity.setNextInspectionDate(request.getNextInspectionDate());
         }
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
-
-        if (request.getLongitude() != null && request.getLatitude() != null) {
-            validateCoordinates(request.getLongitude(), request.getLatitude());
-        }
 
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus(StationStatus.DRAFT);
@@ -263,9 +290,9 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (!StationStatus.DRAFT.equals(entity.getStatus())) {
+        if (!StationStatus.DRAFT.equals(entity.getStatus()) && !StationStatus.REJECTED.equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT hoặc REJECTED");
         }
 
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -340,7 +367,7 @@ public class BuoyStationService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus(StationStatus.DRAFT);
+        entity.setStatus(StationStatus.REJECTED);
         entity.setApprovalStatus(StationApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);
@@ -406,6 +433,22 @@ public class BuoyStationService {
                 .range(entity.getRange())
                 .description(entity.getDescription())
                 .unitId(entity.getUnitId())
+                .operatingOrgId(entity.getOperatingOrgId())
+                .portId(entity.getPortId())
+                .waterwayId(entity.getWaterwayId())
+                .waterwayRouteId(entity.getWaterwayRouteId())
+                .province(entity.getProvince())
+                .address(entity.getAddress())
+                .constructionDate(entity.getConstructionDate())
+                .totalArea(entity.getTotalArea())
+                .usableArea(entity.getUsableArea())
+                .staffCount(entity.getStaffCount())
+                .lastMaintenanceYear(entity.getLastMaintenanceYear())
+                .note(entity.getNote())
+                .objectType(entity.getObjectType())
+                .icon(entity.getIcon())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayFormat(entity.getDisplayFormat())
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())

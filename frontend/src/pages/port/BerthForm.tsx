@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import dayjs from 'dayjs';
 import {
-  Alert, Modal, Tabs, Form, Button, Typography, Row, Col, InputNumber,
+  Alert, Modal, Tabs, Space, Form, Button, Typography, Row, Col, InputNumber,
   Select, Input, Upload, DatePicker,
 } from 'antd';
 import type { UploadFile } from 'antd';
@@ -12,17 +13,21 @@ import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 import { berthCRUD, portCRUD } from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol } from '../../services/symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { BERTH_ACTIVITY_STATUS_MAP } from '../../types/port';
 import type { Berth, SaveAction } from '../../types/port';
 import {
-  actionPrimary, statusOperational, spaceFormField, radiusPill, radiusLg,
-  surfaceCard, borderDefault, textSecondary, textTertiary, spaceMd, spaceSm,
-  spaceLg, spaceXs, fontSans, fontWeightBold, fontSizeMd, fontSizeLg,
-  fontWeightMedium,
+  actionPrimary, statusOperational, spaceFormField, radiusPill,
+  surfaceCard, borderDefault, textPrimary, textSecondary, textTertiary,
+  spaceMd, spaceSm, spaceXs,
+  fontSans, fontWeightBold, fontWeightMedium,
+  fontSizeMd, fontSizeSm,
 } from '../../tokens';
+import { colors } from '../../theme';
 
 /* ───────────────────────────────────────────────
    Constant option lists
@@ -45,14 +50,6 @@ const COORD_SYS_OPTIONS = [
   { value: 2, label: 'VN-2000' },
 ];
 
-const SYMBOL_OPTIONS = [
-  { value: 'anchorage', label: 'Khu neo đậu' },
-  { value: 'berth', label: 'Bến cảng' },
-  { value: 'lighthouse', label: 'Đèn biển' },
-  { value: 'port', label: 'Cảng biển' },
-  { value: 'buoy', label: 'Phao tiêu' },
-];
-
 const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const MAX_FILE_COUNT = 10;
@@ -60,93 +57,76 @@ const MAX_FILE_COUNT = 10;
 /* ───────────────────────────────────────────────
    Helpers
    ─────────────────────────────────────────────── */
-const sectionHeader: React.CSSProperties = {
-  fontSize: fontSizeLg,
-  fontWeight: fontWeightBold,
-  color: textSecondary,
-  marginBottom: spaceMd,
-  marginTop: spaceLg,
-  fontFamily: fontSans,
-};
+// ── Styles — đồng bộ với PortListPage create modal ──
+const labelProps = (text: string) => ({
+  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
+});
 
-// Card-style wrapper for every tab — background surfaceCard, radiusLg, hairline border, spaceMd padding
-const tabContentStyle: React.CSSProperties = {
-  background: surfaceCard,
-  borderRadius: radiusLg,
-  border: `0.5px solid ${borderDefault}`,
-  padding: spaceMd,
-};
-
-const pillStyle: React.CSSProperties = {
+const inputStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   height: 40,
 };
 
-/* ── Parse WKT coordinates from GisLocationSelector value into lat/lng pairs ── */
+const selectStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+};
+
+const numberInputStyle: React.CSSProperties = {
+  width: '100%',
+  borderRadius: radiusPill,
+  height: 40,
+};
+
+/* ── Parse WKT coordinates from GisLocationSelector value ── */
 const parseGisCoordinates = (
   gisLocation: { geometryType?: string; coordinates?: string } | undefined | null,
 ): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
   if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  const geomType = (gisLocation?.geometryType || 'POINT').toUpperCase();
   try {
-    if (geomType === 'POINT') {
-      if (wkt.startsWith('MULTIPOINT(')) {
-        const match = wkt.match(/MULTIPOINT\(([^)]+)\)/);
-        if (match) {
-          return match[1]
-            .split('),(')
-            .map((pt) => {
-              const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
-              return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
-            })
-            .filter((c) => !Number.isNaN(c.latitude) && !Number.isNaN(c.longitude));
-        }
-      } else if (wkt.startsWith('POINT(')) {
-        const match = wkt.match(/POINT\(([^)]+)\)/);
-        if (match) {
-          const parts = match[1].split(' ');
-          const latitude = parseFloat(parts[1]);
-          const longitude = parseFloat(parts[0]);
-          if (!Number.isNaN(latitude) && !Number.isNaN(longitude)) {
-            return [{ latitude, longitude }];
-          }
-        }
-      }
-    } else if (geomType === 'LINE' && wkt.startsWith('LINESTRING(')) {
-      const match = wkt.match(/LINESTRING\(([^)]+)\)/);
+    // LINESTRING(lng1 lat1, lng2 lat2, ...)
+    if (wkt.startsWith('LINESTRING(')) {
+      const match = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
       if (match) {
-        return match[1]
-          .split(',')
-          .map((pt) => {
-            const parts = pt.trim().split(/\s+/);
-            return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
-          })
-          .filter((c) => !Number.isNaN(c.latitude) && !Number.isNaN(c.longitude));
+        return match[1].split(',').map((pt) => {
+          const parts = pt.trim().split(/\s+/);
+          return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
+        }).filter((c) => !Number.isNaN(c.latitude) && !Number.isNaN(c.longitude));
       }
-    } else if (geomType === 'POLYGON' && wkt.startsWith('POLYGON((')) {
-      const match = wkt.match(/POLYGON\(\(([^)]+)\)\)/);
+    }
+    // POLYGON((lng1 lat1, lng2 lat2, ...))
+    if (wkt.startsWith('POLYGON((')) {
+      const match = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
       if (match) {
-        const pts = match[1]
-          .split(',')
-          .map((pt) => {
-            const parts = pt.trim().split(/\s+/);
-            return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
-          })
-          .filter((c) => !Number.isNaN(c.latitude) && !Number.isNaN(c.longitude));
-        // Remove the closing duplicate vertex added by WKT polygon serialization
-        if (
-          pts.length > 1 &&
-          pts[0].longitude === pts[pts.length - 1].longitude &&
-          pts[0].latitude === pts[pts.length - 1].latitude
-        ) {
+        const pts = match[1].split(',').map((pt) => {
+          const parts = pt.trim().split(/\s+/);
+          return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
+        }).filter((c) => !Number.isNaN(c.latitude) && !Number.isNaN(c.longitude));
+        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) {
           pts.pop();
         }
         return pts;
       }
     }
+    // MULTIPOINT((lng1 lat1),(lng2 lat2),...)
+    const multiMatch = wkt.match(/MULTIPOINT\s*\(([^)]+(?:\),[^)]+)*)/);
+    if (multiMatch) {
+      return multiMatch[1]
+        .split('),(')
+        .map((pt) => {
+          const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
+          return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
+        })
+        .filter((c) => !Number.isNaN(c.latitude) && !Number.isNaN(c.longitude));
+    }
+    // POINT(lng lat)
+    const match = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+    if (match) {
+      return [{ latitude: parseFloat(match[2]), longitude: parseFloat(match[1]) }];
+    }
   } catch {
-    /* invalid WKT — fall back to manual GPS sub-table */
+    /* invalid WKT */
   }
   return [];
 };
@@ -185,8 +165,22 @@ export default function BerthForm() {
     { latitude: null, longitude: null },
   ]);
 
+  // ── Symbol state ──
+  const [symbols, setSymbols] = useState<Symbol[]>([]);
+
   // ── File upload state ──
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [existingFiles, setExistingFiles] = useState<any[]>([]);
+
+  // ── Load symbols ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+        setSymbols(res.data || []);
+      } catch { console.error('Failed to load symbols'); }
+    })();
+  }, []);
 
   // ── Load organization units from API ──
   useEffect(() => {
@@ -226,13 +220,11 @@ export default function BerthForm() {
 
   // ── Load port options when orgUnitId changes ──
   const loadPortOptions = async (orgUnitId: string) => {
-    if (!orgUnitId) {
-      setPortOptions([]);
-      return;
-    }
     setLoadingPorts(true);
     try {
-      const res = await portCRUD.findAll({ page: 1, size: 1000, orgUnitId });
+      const params: any = { page: 1, size: 1000 };
+      if (orgUnitId) params.orgUnitId = orgUnitId;
+      const res = await portCRUD.findAll(params);
       const ports = (res.data || []).map((p: any) => ({
         value: p.id,
         label: p.portName || p.name || p.id,
@@ -248,17 +240,10 @@ export default function BerthForm() {
 
   // ── When orgUnitId changes (manual select or auto-fill) → reload ports ──
   useEffect(() => {
-    if (watchedOrgUnitId) {
-      // During edit-mode data load, portId + berthCode are set together with orgUnitId
-      // in the same setFieldsValue call — keep them. A manual orgUnit change always
-      // clears portId/berthCode first via handleOrgUnitChange.
-      if (!isEdit || !form.getFieldValue('portId')) {
-        form.setFieldsValue({ portId: undefined, berthCode: undefined });
-      }
-      loadPortOptions(watchedOrgUnitId);
-    } else {
-      setPortOptions([]);
+    if (watchedOrgUnitId && (!isEdit || !form.getFieldValue('portId'))) {
+      form.setFieldsValue({ portId: undefined, berthCode: undefined });
     }
+    loadPortOptions(watchedOrgUnitId || '');
   }, [watchedOrgUnitId, isEdit, form]);
 
   // ── When orgUnitId changes → clear portId/berthCode + reset GPS rows ──
@@ -294,26 +279,28 @@ export default function BerthForm() {
       (async () => {
         try {
           const data: Berth = await berthCRUD.findById(id);
-          // Parse coordinates JSON string if present
-          let parsedCoords: Array<{ latitude: number | null; longitude: number | null }> = [{ latitude: null, longitude: null }];
-          if (data.coordinates) {
-            try {
-              const arr = typeof data.coordinates === 'string' ? JSON.parse(data.coordinates) : data.coordinates;
-              if (Array.isArray(arr) && arr.length > 0) {
-                parsedCoords = arr.map((c: any) => ({
-                  latitude: c.latitude ?? c.lat ?? null,
-                  longitude: c.longitude ?? c.lng ?? null,
-                }));
-              }
-            } catch { /* keep default */ }
-          }
-
-          setCoordinateList(parsedCoords);
+          // Parse coordinates from WKT or JSON
+          const effectiveCoords = data.coordinates
+            ? parseGisCoordinates({ geometryType: data.geometryType, coordinates: data.coordinates })
+            : [];
+          setCoordinateList(
+            effectiveCoords.length > 0
+              ? effectiveCoords.map((c) => ({ latitude: c.latitude, longitude: c.longitude }))
+              : data.latitude != null && data.longitude != null
+                ? [{ latitude: data.latitude, longitude: data.longitude }]
+                : [{ latitude: null, longitude: null }]
+          );
 
           // Load port options for the berth's orgUnitId
           if (data.orgUnitId) {
             await loadPortOptions(data.orgUnitId);
           }
+
+          // Load existing attachments
+          try {
+            const fileRes = await api.get(`/v1/documents/entity/berth/${id}`, { params: { page: 0, size: 50 } });
+            setExistingFiles(fileRes.data?.data?.content || fileRes.data?.data || []);
+          } catch { setExistingFiles([]); }
 
           // Remember the loaded portId BEFORE filling the form so the portId watch
           // cascade skips regenerating berthCode for the unchanged port
@@ -338,8 +325,10 @@ export default function BerthForm() {
             maxVesselSize: data.maxVesselSize,
             plannedThroughput: data.plannedThroughput,
             latestCargoVolume: data.latestCargoVolume,
-            operationalStatus: data.operationalStatus,
-            openingAnnouncementDate: data.openingAnnouncementDate ? data.openingAnnouncementDate : undefined,
+            operationalStatus: data.operationalStatus === 'OPERATIONAL' ? 'DANG_KHAI_THAC'
+              : data.operationalStatus === 'SUSPENDED' ? 'DUNG_KHAI_THAC'
+              : data.operationalStatus || undefined,
+            openingAnnouncementDate: data.openingAnnouncementDate ? dayjs(data.openingAnnouncementDate) : undefined,
             openingDecision: data.openingDecision,
             investmentAgreement: data.investmentAgreement,
             geometryType: data.geometryType || 'POINT',
@@ -347,6 +336,7 @@ export default function BerthForm() {
             spatialId: data.spatialId,
             coordinateSystem: data.coordinateSystem,
             displayRule: data.displayRule,
+            gisLocation: data.coordinates ? { geometryType: data.geometryType, coordinates: data.coordinates } : undefined,
           });
         } catch {
           toast.error('Không thể tải thông tin bến cảng');
@@ -453,10 +443,6 @@ export default function BerthForm() {
 
     setSubmitting(true);
     try {
-      // Resolve provinceId from selected province name
-      const provinceIdx = provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) : -1;
-      const provinceId = provinceIdx >= 0 ? provinceIdx + 1 : undefined;
-
       // Build base payload
       const payload: Record<string, unknown> = {
         saveAction,
@@ -468,7 +454,7 @@ export default function BerthForm() {
         latitude: effectiveCoords.length > 0 ? effectiveCoords[0].latitude : undefined,
         longitude: effectiveCoords.length > 0 ? effectiveCoords[0].longitude : undefined,
         operator: values.operator || undefined,
-        provinceId,
+        provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
         detailedLocation: values.detailedLocation || undefined,
         structureType: values.structureType !== undefined && values.structureType !== null ? Number(values.structureType) : undefined,
         operationalFunction: values.operationalFunction || undefined,
@@ -478,18 +464,15 @@ export default function BerthForm() {
         maxVesselSize: values.maxVesselSize !== undefined && values.maxVesselSize !== null && !Number.isNaN(Number(values.maxVesselSize)) ? Number(values.maxVesselSize) : undefined,
         plannedThroughput: values.plannedThroughput !== undefined && values.plannedThroughput !== null && !Number.isNaN(Number(values.plannedThroughput)) ? Number(values.plannedThroughput) : undefined,
         latestCargoVolume: values.latestCargoVolume !== undefined && values.latestCargoVolume !== null && !Number.isNaN(Number(values.latestCargoVolume)) ? Number(values.latestCargoVolume) : undefined,
-        operationalStatus: values.operationalStatus || undefined,
+        operationalStatus: values.operationalStatus === 'DANG_KHAI_THAC' ? 'OPERATIONAL' : 'SUSPENDED',
         openingAnnouncementDate: values.openingAnnouncementDate
-          ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD'))
+          ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD') + 'T00:00:00')
           : undefined,
         openingDecision: values.openingDecision || undefined,
         investmentAgreement: values.investmentAgreement || undefined,
-        geometryType: values.geometryType || 'POINT',
         mapSymbolId: values.mapSymbolId || undefined,
-        spatialId: values.spatialId || undefined,
         coordinateSystem: values.coordinateSystem !== undefined && values.coordinateSystem !== null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule || undefined,
-        coordinateList: effectiveCoords,
+        displayRule: values.displayRule !== undefined && values.displayRule !== null ? Number(values.displayRule) : undefined,
       };
 
       // Remove undefined fields
@@ -509,19 +492,6 @@ export default function BerthForm() {
         createdBerthId = res.data?.data?.id ?? res.data?.id;
       }
 
-      // Upload files after berth is saved
-      if (createdBerthId && uploadedFiles.length > 0) {
-        for (const fileItem of uploadedFiles) {
-          const originFile = fileItem.originFileObj as File;
-          if (!originFile) continue;
-          const formData = new FormData();
-          formData.append('files', originFile);
-          await api.post(`/v1/berths/${createdBerthId}/attachments`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
-        }
-      }
-
       const successMsg =
         saveAction === 'DRAFT'
           ? 'Lưu tạm thành công'
@@ -529,6 +499,27 @@ export default function BerthForm() {
             ? 'Phê duyệt thành công'
             : 'Gửi phê duyệt thành công';
       toast.success(successMsg);
+
+      // Upload files after berth is saved (non-blocking on error)
+      if (createdBerthId && uploadedFiles.length > 0) {
+        let uploaded = 0;
+        for (const fileItem of uploadedFiles) {
+          const originFile = fileItem.originFileObj as File;
+          if (!originFile) continue;
+          try {
+            const formData = new FormData();
+            formData.append('file', originFile);
+            await api.post(`/v1/documents/upload/berth/${createdBerthId}`, formData, {
+              headers: { 'Content-Type': undefined as any },
+            });
+            uploaded++;
+          } catch {
+            toast.error(`Tải lên tệp "${fileItem.name}" thất bại`);
+          }
+        }
+        if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
+      }
+
       navigate('/berth');
     } catch (err: unknown) {
       const msg =
@@ -542,80 +533,23 @@ export default function BerthForm() {
   };
 
   /* ── UI ── */
-  const btnStyle: React.CSSProperties = {
-    ...pillStyle,
-    fontFamily: fontSans,
-    fontWeight: fontWeightMedium,
-  };
-
   return (
     <Modal
+      title={
+        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+          {isEdit ? 'Chỉnh sửa Bến cảng' : 'Tạo mới Bến cảng'}
+        </span>
+      }
       open
-      title={isEdit ? 'Chỉnh sửa Bến cảng' : 'Tạo mới Bến cảng'}
-      width={900}
       onCancel={() => navigate('/berth')}
-      maskClosable={false}
-      styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', paddingTop: 8 } }}
-      footer={[
-        <Button
-          key="cancel"
-          style={{
-            ...btnStyle,
-            borderColor: borderDefault,
-            minWidth: 100,
-          }}
-          onClick={() => navigate('/berth')}
-        >
-          Hủy
-        </Button>,
-        <Button
-          key="draft"
-          style={{
-            ...btnStyle,
-            borderColor: borderDefault,
-            minWidth: 140,
-          }}
-          loading={submitting}
-          onClick={() => handleSave('DRAFT')}
-        >
-          Lưu tạm
-        </Button>,
-        isSystemAdmin && (
-          <Button
-            key="submit"
-            type="primary"
-            style={{
-              ...btnStyle,
-              minWidth: 140,
-            }}
-            loading={submitting}
-            onClick={() => handleSave('SUBMIT')}
-          >
-            Gửi phê duyệt
-          </Button>
-        ),
-        isSystemAdmin && (
-          <Button
-            key="approve"
-            style={{
-              ...btnStyle,
-              background: statusOperational,
-              borderColor: statusOperational,
-              color: surfaceCard,
-              minWidth: 140,
-            }}
-            loading={submitting}
-            onClick={() => handleSave('SAVE_AND_APPROVE')}
-          >
-            Phê duyệt
-          </Button>
-        ),
-      ]}
+      footer={null}
+      width={900}
+      forceRender
+      styles={{ body: { maxHeight: 'calc(100vh - 80px)', overflowY: 'auto', overflowX: 'hidden', paddingTop: 8 } }}
     >
       <Form
         form={form}
         layout="vertical"
-        style={{ fontFamily: fontSans }}
         initialValues={{
           geometryType: 'POINT',
           coordinateSystem: 1,
@@ -629,478 +563,253 @@ export default function BerthForm() {
               key: 'general',
               label: 'Thông tin chung',
               children: (
-                <div style={tabContentStyle}>
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Đơn vị quản lý"
-                        name="orgUnitId"
-                        style={{ marginBottom: spaceFormField }}
-                        rules={[{ required: true, message: 'Đơn vị quản lý không được để trống' }]}
-                      >
-                        <Select
-                          placeholder="Chọn đơn vị quản lý..."
-                          style={{ fontFamily: fontSans }}
-                          loading={loadingOrgs}
-                          disabled={!isSystemAdmin}
-                          options={orgUnitOptions}
-                          showSearch
-                          filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                          }
-                          onChange={handleOrgUnitChange}
-                        />
+                <>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }}>
+                        <Select placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} options={orgUnitOptions} showSearch filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} onChange={handleOrgUnitChange} style={selectStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Cảng biển"
-                        name="portId"
-                        style={{ marginBottom: spaceFormField }}
-                        rules={[{ required: true, message: 'Cảng biển không được để trống' }]}
-                      >
-                        <Select
-                          placeholder={watchedOrgUnitId ? 'Chọn cảng biển...' : 'Vui lòng chọn Đơn vị quản lý trước'}
-                          style={{ fontFamily: fontSans }}
-                          loading={loadingPorts}
-                          disabled={!watchedOrgUnitId}
-                          options={portOptions}
-                          showSearch
-                          filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                          }
-                        />
+                    <Col span={12}>
+                      <Form.Item name="portId" {...labelProps('Cảng biển')} required style={{ marginBottom: spaceFormField }}>
+                        <Select placeholder={watchedOrgUnitId ? 'Chọn cảng biển...' : 'Vui lòng chọn Đơn vị quản lý trước'} loading={loadingPorts} disabled={!watchedOrgUnitId} options={portOptions} showSearch filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} style={selectStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Mã bến"
-                        name="berthCode"
-                        style={{ marginBottom: spaceFormField }}
-                        tooltip="Mã bến được sinh tự động, không thể chỉnh sửa"
-                      >
-                        <Input
-                          disabled
-                          placeholder={berthCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'}
-                          style={{
-                            ...pillStyle,
-                            fontFamily: fontSans,
-                            color: textTertiary,
-                            cursor: 'not-allowed',
-                          }}
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="berthCode" {...labelProps('Mã bến')} required style={{ marginBottom: spaceFormField }} tooltip="Mã bến cảng được sinh tự động, không thể chỉnh sửa">
+                        <Input disabled placeholder={berthCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Tên bến cảng"
-                        name="berthName"
-                        rules={[
-                          { required: true, message: 'Tên bến cảng không được để trống' },
-                          { max: 255, message: 'Tên bến cảng tối đa 255 ký tự' },
-                        ]}
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: Bến cảng Hải Phòng"
-                          maxLength={255}
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                    <Col span={12}>
+                      <Form.Item name="structureType" {...labelProps('Loại bến')} style={{ marginBottom: spaceFormField }}>
+                        <Select placeholder="Chọn loại bến..." options={STRUCTURE_TYPE_OPTIONS} style={selectStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Tuyến đường thủy"
-                        name="waterway"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: Tuyến sông Bạch Đằng"
-                          maxLength={255}
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="berthName" {...labelProps('Tên bến cảng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên bến cảng không được để trống' }, { max: 255, message: 'Tên bến cảng tối đa 255 ký tự' }]}>
+                        <Input placeholder="VD: Bến cảng Hải Phòng" maxLength={255} style={inputStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Đơn vị khai thác"
-                        name="operator"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: Công ty CP Cảng Hải Phòng"
-                          maxLength={255}
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                    <Col span={12}>
+                      <Form.Item name="waterway" {...labelProps('Tuyến đường thủy')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="VD: Tuyến sông Bạch Đằng" maxLength={255} style={inputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Tỉnh/Thành phố"
-                        name="provinceId"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          showSearch
-                          placeholder="Chọn tỉnh/thành phố..."
-                          style={{ fontFamily: fontSans }}
-                          filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                          }
-                          options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="provinceId" {...labelProps('Tỉnh/Thành phố')} style={{ marginBottom: spaceFormField }}>
+                        <Select showSearch placeholder="Chọn tỉnh/thành phố..." filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))} style={selectStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Địa điểm chi tiết"
-                        name="detailedLocation"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: Khu bến cảng Lạch Huyện"
-                          maxLength={500}
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                    <Col span={12}>
+                      <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="VD: Khu bến cảng Lạch Huyện" maxLength={500} style={inputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Loại bến"
-                        name="structureType"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          placeholder="Chọn loại bến..."
-                          style={{ fontFamily: fontSans }}
-                          options={STRUCTURE_TYPE_OPTIONS}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Chức năng khai thác"
-                        name="operationalFunction"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: Bốc xếp hàng container"
-                          maxLength={500}
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                  <Row gutter={16}>
+                    <Col span={24}>
+                      <Form.Item name="operator" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="VD: Công ty CP Cảng Hải Phòng" maxLength={255} style={inputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Diện tích (km²)"
-                        name="totalArea"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          step={0.01}
-                          precision={2}
-                          style={{ width: '100%', borderRadius: radiusPill, fontFamily: fontSans }}
-                          placeholder="0"
-                        />
+                </>
+              ),
+            },
+            {
+              key: 'capacity',
+              label: 'Năng lực',
+              children: (
+                <>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="operationalFunction" {...labelProps('Chức năng khai thác')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="VD: Bốc xếp hàng container" maxLength={500} style={inputStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Năng lực thiết kế (tấn/năm)"
-                        name="designThroughput"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          step={0.01}
-                          precision={2}
-                          style={{ width: '100%', borderRadius: radiusPill, fontFamily: fontSans }}
-                          placeholder="0"
-                        />
+                    <Col span={12}>
+                      <Form.Item name="totalArea" {...labelProps('Diện tích (km²)')} style={{ marginBottom: spaceFormField }}>
+                        <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Năng lực hiện tại (tấn/năm)"
-                        name="currentThroughput"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          step={0.01}
-                          precision={2}
-                          style={{ width: '100%', borderRadius: radiusPill, fontFamily: fontSans }}
-                          placeholder="0"
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="designThroughput" {...labelProps('Năng lực thiết kế (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                        <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Cỡ tàu lớn nhất (DWT)"
-                        name="maxVesselSize"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          step={0.01}
-                          precision={2}
-                          style={{ width: '100%', borderRadius: radiusPill, fontFamily: fontSans }}
-                          placeholder="0"
-                        />
+                    <Col span={12}>
+                      <Form.Item name="currentThroughput" {...labelProps('Năng lực hiện tại (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                        <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Năng lực quy hoạch (tấn/năm)"
-                        name="plannedThroughput"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          step={0.01}
-                          precision={2}
-                          style={{ width: '100%', borderRadius: radiusPill, fontFamily: fontSans }}
-                          placeholder="0"
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="plannedThroughput" {...labelProps('Năng lực quy hoạch (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                        <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Sản lượng mới nhất (tấn/năm)"
-                        name="latestCargoVolume"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          step={0.01}
-                          precision={2}
-                          style={{ width: '100%', borderRadius: radiusPill, fontFamily: fontSans }}
-                          placeholder="0"
-                        />
+                    <Col span={12}>
+                      <Form.Item name="latestCargoVolume" {...labelProps('Sản lượng mới nhất (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
+                        <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Trạng thái hoạt động"
-                        name="operationalStatus"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          placeholder="Chọn trạng thái..."
-                          style={{ fontFamily: fontSans }}
-                          options={Object.entries(BERTH_ACTIVITY_STATUS_MAP).map(([value, { label }]) => ({
-                            value,
-                            label,
-                          }))}
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="maxVesselSize" {...labelProps('Cỡ tàu lớn nhất (DWT)')} style={{ marginBottom: spaceFormField }}>
+                        <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }}>
+                        <Select placeholder="Chọn trạng thái..." options={Object.entries(BERTH_ACTIVITY_STATUS_MAP).map(([value, { label }]) => ({ value, label }))} style={selectStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-                </div>
+                </>
               ),
             },
             {
               key: 'announcement',
               label: 'Thông tin công bố',
               children: (
-                <div style={tabContentStyle}>
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Ngày công bố mở cảng"
-                        name="openingAnnouncementDate"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <DatePicker
-                          placeholder="Chọn ngày..."
-                          format="DD/MM/YYYY"
-                          style={{ width: '100%', ...pillStyle, fontFamily: fontSans }}
-                        />
+                <>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="openingAnnouncementDate" {...labelProps('Ngày công bố mở cảng')} style={{ marginBottom: spaceFormField }}>
+                        <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Quyết định mở cảng"
-                        name="openingDecision"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: Số 123/QĐ-BGTVT"
-                          maxLength={500}
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                    <Col span={12}>
+                      <Form.Item name="openingDecision" {...labelProps('Quyết định mở cảng')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="VD: Số 123/QĐ-BGTVT" maxLength={500} style={inputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Thỏa thuận đầu tư"
-                        name="investmentAgreement"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: Số 456/HĐ-ĐT"
-                          maxLength={500}
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="investmentAgreement" {...labelProps('Thỏa thuận đầu tư')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="VD: Số 456/HĐ-ĐT" maxLength={500} style={inputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-                </div>
+                </>
               ),
             },
             {
               key: 'location',
               label: 'Vị trí',
               children: (
-                <div style={tabContentStyle}>
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Loại đối tượng"
-                        name="geometryType"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          style={{ fontFamily: fontSans }}
-                          options={GEOMETRY_TYPE_OPTIONS}
-                        />
+                <>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+                        <Select options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Biểu tượng bản đồ"
-                        name="mapSymbolId"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          placeholder="Chọn biểu tượng..."
-                          style={{ fontFamily: fontSans }}
-                          options={SYMBOL_OPTIONS}
-                        />
+                    <Col span={12}>
+                      <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng bản đồ')} style={{ marginBottom: spaceFormField }}>
+                        <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label" style={selectStyle}>
+                          {symbols.map((sym) => (
+                            <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                              <Space>
+                                {sym.image && (
+                                  <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />
+                                )}
+                                <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                              </Space>
+                            </Select.Option>
+                          ))}
+                        </Select>
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  <Row gutter={24}>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Hệ quy chiếu"
-                        name="coordinateSystem"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          style={{ fontFamily: fontSans }}
-                          options={COORD_SYS_OPTIONS}
-                        />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
+                        <Select options={COORD_SYS_OPTIONS} style={selectStyle} />
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        label="Quy tắc hiển thị"
-                        name="displayRule"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input
-                          placeholder="VD: display_rule_1"
-                          style={{ ...pillStyle, fontFamily: fontSans }}
-                        />
+                    <Col span={12}>
+                      <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
+                        <Input placeholder="VD: Hiển thị mặc định" style={inputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
-
-                  {/* ── GisLocationSelector — map-based coordinate picker ── */}
-                  <Row gutter={24}>
-                    <Col xs={24}>
-                      <Form.Item
-                        name="gisLocation"
-                        label={<span style={{ color: actionPrimary, fontFamily: fontSans }}>Tọa độ GPS</span>}
-                        required
-                        style={{ marginBottom: spaceFormField }}
-                      >
+                  <Row gutter={16}>
+                    <Col span={24}>
+                      <Form.Item name="gisLocation" {...labelProps('Tọa độ GPS')} required style={{ marginBottom: spaceFormField }}>
                         <GisLocationSelector defaultGeometryType={watchedGeometryType || 'POINT'} />
                       </Form.Item>
                     </Col>
                   </Row>
-                </div>
+                </>
               ),
             },
             {
               key: 'files',
               label: 'File đính kèm',
               children: (
-                <div style={tabContentStyle}>
-                  <div
-                    style={{
-                      border: `0.5px solid ${borderDefault}`,
-                      borderRadius: radiusLg,
-                      padding: spaceMd,
-                      background: surfaceCard,
-                      marginBottom: spaceMd,
-                    }}
-                  >
-                    <Upload
-                      beforeUpload={handleBeforeUpload}
-                      onRemove={handleRemoveFile}
-                      fileList={uploadedFiles}
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                    >
-                      <Button
-                        icon={<UploadOutlined />}
-                        style={{
-                          borderRadius: radiusPill,
-                          fontFamily: fontSans,
-                          height: 40,
-                        }}
-                      >
-                        Chọn file
-                      </Button>
-                    </Upload>
-                    <Typography.Text
-                      style={{
-                        display: 'block',
-                        marginTop: spaceXs,
-                        fontSize: fontSizeMd,
-                        color: textTertiary,
-                        fontFamily: fontSans,
-                      }}
-                    >
-                      Định dạng hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file,
-                      20MB/file.
-                    </Typography.Text>
-                  </div>
-                </div>
+                <>
+                  {existingFiles.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceSm }}>
+                      {existingFiles.map((f: any) => {
+                        const isImage = (f.mimeType || f.contentType || '').startsWith('image/');
+                        return (
+                          <div key={f.id} style={{
+                            border: `0.5px solid ${borderDefault}`,
+                            borderRadius: radiusPill,
+                            padding: spaceSm,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: spaceSm,
+                          }}>
+                            {isImage ? (
+                              <img src={`/api/v1/documents/${f.id}/file`} alt={f.fileName || f.name}
+                                style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, cursor: 'pointer' }}
+                                onClick={() => window.open(`/api/v1/documents/${f.id}/file`, '_blank')} />
+                            ) : (
+                              <UploadOutlined style={{ fontSize: 24, color: actionPrimary }} />
+                            )}
+                            <div>
+                              <div style={{ fontSize: fontSizeMd, color: textPrimary }}>{f.fileName || f.name}</div>
+                              <div style={{ fontSize: fontSizeSm, color: textTertiary }}>{(f.fileSize / 1024).toFixed(1)} KB</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Upload beforeUpload={handleBeforeUpload} onRemove={handleRemoveFile} fileList={uploadedFiles} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif">
+                    <Button icon={<UploadOutlined />}>Chọn file (≤10 files, ≤20MB)</Button>
+                  </Upload>
+                </>
               ),
             },
           ]}
         />
+
+        <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
+          <Space>
+            <Button onClick={() => navigate('/berth')} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
+            <Button onClick={() => handleSave('DRAFT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Lưu tạm</Button>
+            {isSystemAdmin && (
+              <Button type="primary" onClick={() => handleSave('SUBMIT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Gửi phê duyệt</Button>
+            )}
+            {isSystemAdmin && (
+              <Button onClick={() => handleSave('SAVE_AND_APPROVE')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: statusOperational, borderColor: statusOperational, color: surfaceCard }}>Phê duyệt</Button>
+            )}
+          </Space>
+        </Form.Item>
       </Form>
     </Modal>
   );

@@ -44,6 +44,8 @@ public class UpdateBuoyRequest {
     @Size(max = 1000)
     private String description;
 
+    private Double latitude;
+    private Double longitude;
     private java.util.UUID unitId;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;

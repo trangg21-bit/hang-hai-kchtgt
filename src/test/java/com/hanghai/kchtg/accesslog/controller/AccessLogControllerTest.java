@@ -49,7 +49,7 @@ class AccessLogControllerTest {
 
         AccessLog logEntity = new AccessLog();
         logEntity.setId(logId);
-        logEntity.setUserId(42L);
+        logEntity.setUserId(UUID.randomUUID());
         logEntity.setUsername("testuser");
         logEntity.setAction("CREATE_USER");
         logEntity.setModule("USER");

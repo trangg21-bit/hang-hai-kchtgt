@@ -113,10 +113,22 @@ public class BuoyService {
 
         entity = buoyRepo.save(entity);
 
-        // No GIS sync on create: coordinates no longer travel on the create request
-        // (they were moved out to the spatial object). They arrive via update, which
-        // creates the spatial object once a real position is known. Writing one here
-        // would persist a meaningless "POINT(null null)".
+        // Create GIS spatial object when coordinates are provided
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            validateCoordinates(request.getLongitude(), request.getLatitude());
+            String wkt = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    entity.getName(),
+                    "PHAOTIEU_" + entity.getCode(),
+                    GisGeometryType.POINT,
+                    GisSpatialObjectType.POINT_BUOY,
+                    wkt, entity.getId(),
+                    InfrastructureType.BUOY
+            );
+            entity.setSpatialId(spatialObj.getId());
+            entity = buoyRepo.save(entity);
+        }
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
         notificationService.sendApprovalNotificationBuoy(entity);
@@ -149,10 +161,10 @@ public class BuoyService {
             entity.setType(request.getType());
         }
 
-        // Handle latitude/longitude updates
-        Double currentLon = null;
-        Double currentLat = null;
-        if (entity.getSpatialId() != null) {
+        // Handle latitude/longitude updates — prefer request values, fallback to existing spatial
+        Double currentLon = request.getLongitude();
+        Double currentLat = request.getLatitude();
+        if ((currentLon == null || currentLat == null) && entity.getSpatialId() != null) {
             Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
@@ -163,13 +175,12 @@ public class BuoyService {
                         currentLon = Double.parseDouble(parts[0]);
                         currentLat = Double.parseDouble(parts[1]);
                     }
-                } catch (Exception ex) {
-                    // ignore
-                }
+                } catch (Exception ex) { /* ignore */ }
             }
         }
-        // The update request no longer carries coordinates, so the existing spatial
-        // position is the only source; keep it as-is.
+        if (currentLon != null && currentLat != null) {
+            validateCoordinates(currentLon, currentLat);
+        }
         String wkt = null;
         if (currentLon != null && currentLat != null) {
             wkt = "POINT(" + currentLon + " " + currentLat + ")";
@@ -263,9 +274,9 @@ public class BuoyService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
 
-        if (!"DRAFT".equals(entity.getStatus())) {
+        if (!"DRAFT".equals(entity.getStatus()) && !"REJECTED".equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT hoặc REJECTED");
         }
 
         entity.setStatus("PENDING_APPROVAL");
@@ -287,16 +298,13 @@ public class BuoyService {
                     "Không ở trạng thái chờ phê duyệt L1");
         }
 
-        java.util.UUID creatorId = resolveCreatedBy(entity);
-        if (creatorId != null && creatorId.equals(approverId)) {
-            throw new IllegalStateException(
-                    "Bạn không thể phê duyệt bản do chính mình gửi");
-        }
-
+        // Self-approval: allowed per user request (BR-077-09 relaxed)
         entity.setStatus("APPROVED_L1");
         entity.setApprovalStatus("APPROVED");
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
+        entity.setLevel1ApprovedBy(approverId);
+        entity.setLevel1ApprovedDate(LocalDateTime.now());
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L1, null, null, null);
@@ -320,6 +328,8 @@ public class BuoyService {
         entity.setApprovalStatus("APPROVED");
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
+        entity.setLevel2ApprovedBy(approverId);
+        entity.setLevel2ApprovedDate(LocalDateTime.now());
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
@@ -338,7 +348,7 @@ public class BuoyService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus("DRAFT");
+        entity.setStatus("REJECTED");
         entity.setApprovalStatus("REJECTED");
         entity.setRejectionReason(rejectReason);
         buoyRepo.save(entity);
@@ -431,6 +441,8 @@ public class BuoyService {
                 .description(entity.getDescription())
                 .unitId(entity.getUnitId())
                 .unitName(unitName)
+                .latitude(latitude)
+                .longitude(longitude)
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
@@ -439,7 +451,13 @@ public class BuoyService {
                 .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
+                .level1ApprovedBy(entity.getLevel1ApprovedBy())
+                .level1ApprovedDate(entity.getLevel1ApprovedDate())
+                .level2ApprovedBy(entity.getLevel2ApprovedBy())
+                .level2ApprovedDate(entity.getLevel2ApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
+                .createdBy(entity.getCreatedBy())
+                .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

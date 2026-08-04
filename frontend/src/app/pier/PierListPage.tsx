@@ -69,11 +69,23 @@ import {
   spaceFormField,
   radiusPill,
   radiusSm,
+  radiusMd,
   radiusLg,
   surfaceCard,
   borderDefault,
-  shadowSm,
+  fontSizeSm,
+  fontSizeMd,
+  fontSizeLg,
+  fontWeightMedium,
+  fontWeightBold,
+  statusOperational,
+  statusAttention,
+  statusCritical,
+  statusDraft,
+  cardStyle,
 } from '../../tokens';
+import { colors } from '../../theme';
+import Pagination from '../../components/list-view/Pagination';
 import { documentApi } from '../document/api';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';

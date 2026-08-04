@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, Alert, Descriptions, Divider,
+  Button, Tag, Modal, Input, Select, Alert, Descriptions, Divider, Collapse,
 } from 'antd';
 import {
   PlusOutlined,
@@ -13,6 +13,7 @@ import {
   FilterOutlined,
   ExclamationCircleOutlined,
   EnvironmentOutlined,
+  FileOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -23,8 +24,13 @@ import {
 } from '../../services/portService';
 import type { Berth } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
+import { symbolService } from '../../services/symbolService';
+import api from '../../services/api';
+import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
+import { trangThaiPheDuyetBadge } from '../../services/port/schema';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -49,6 +55,7 @@ import {
   fontWeightBold,
   radiusPill,
   spaceMd,
+  spaceSm,
   spaceFormField,
   metaStyle,
 } from '../../tokens';
@@ -57,22 +64,26 @@ import { colors } from '../../theme';
 // ── Constants ────────────────────────────────────────────────────────
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  NHAP: { color: statusDraft, label: 'Nháp' },
   DRAFT: { color: statusDraft, label: 'Nháp' },
-  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
+  PENDING: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
+  CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
+  PORT_AUTHORITY: { color: statusAttention, label: 'Chờ Cục duyệt' },
+  CHO_PD_CAP_CUC: { color: statusAttention, label: 'Chờ Cục duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Được phê duyệt' },
   DUOC_PHE_DUYET: { color: statusOperational, label: 'Được phê duyệt' },
   APPROVED: { color: statusOperational, label: 'Được phê duyệt' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
-  TAM_NGUNG: { color: statusAttention, label: 'Tạm ngừng' },
-  SUSPENDED: { color: statusAttention, label: 'Tạm ngừng' },
-  DELETED: { color: statusDraft, label: 'Đã xóa' },
 };
 
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
+  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
   CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
   DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
+  SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -83,9 +94,10 @@ const STRUCTURE_TYPE_OPTIONS = [
 ];
 
 const TAB_STATUS_LIST = [
-  { key: 'all', label: 'Tất cả', color: textSecondary },
+  { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: statusAttention },
+  { key: 'PENDING', label: 'Chờ Cảng vụ duyệt', color: actionPrimary },
+  { key: 'PORT_AUTHORITY', label: 'Chờ Cục duyệt', color: statusAttention },
   { key: 'APPROVED', label: 'Được phê duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
@@ -93,7 +105,8 @@ const TAB_STATUS_LIST = [
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined,
   DRAFT: 'DRAFT',
-  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  PENDING: 'PENDING',
+  PORT_AUTHORITY: 'PORT_AUTHORITY',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 };
@@ -114,6 +127,8 @@ function formatDate(dateStr: string | null | undefined): string {
 export default function BerthList() {
   const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
+  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
 
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
@@ -141,12 +156,14 @@ export default function BerthList() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // ── Organizations for lookup ─────────────────────────────────────
+  // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+  const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const orgMap = useMemo(() => {
     const map = new Map<string, string>();
     organizations.forEach((o) => {
-      map.set(o.id, o.code ? `${o.code} - ${o.name}` : o.name);
+      map.set(o.id, o.name);
     });
     return map;
   }, [organizations]);
@@ -164,6 +181,7 @@ export default function BerthList() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Berth | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailFiles, setDetailFiles] = useState<any[]>([]);
 
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -185,17 +203,41 @@ export default function BerthList() {
         console.error('Failed to load organizations', err);
       }
     })();
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const users = resp.data || (resp as any).content || [];
+        const map = new Map<string, string>();
+        users.forEach((u: any) => map.set(u.id, u.fullName || u.username || u.id));
+        setUserMap(map);
+      } catch (err) {
+        console.error('Failed to load users', err);
+      }
+    })();
+    (async () => {
+      try {
+        const resp = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+        const symbols = resp.data || (resp as any).content || [];
+        const map = new Map<string, string>();
+        symbols.forEach((s: any) => map.set(s.id, s.name));
+        setSymbolMap(map);
+      } catch (err) {
+        console.error('Failed to load symbols', err);
+      }
+    })();
   }, []);
 
   // ── Load port options ──────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const res = await portCRUD.search({ page: 1, pageSize: 1000 });
+        const params: any = { page: 1, pageSize: 1000 };
+        if (managingUnitId) params.orgUnitId = managingUnitId;
+        const res = await portCRUD.search(params);
         setPortOptions((res.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
       } catch { /* ignore */ }
     })();
-  }, []);
+  }, [managingUnitId]);
 
   // ── Fetch tab counts ────────────────────────────────────────────
   const fetchCounts = useCallback(async (orgId: string | undefined) => {
@@ -220,17 +262,12 @@ export default function BerthList() {
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
-    if (!managingUnitId) {
-      setDataSource([]);
-      setTotal(0);
-      return;
-    }
     setIsLoading(true);
     setIsError(false);
     setError(null);
     try {
       const res = await berthCRUD.search({
-        orgUnitId: managingUnitId,
+        orgUnitId: managingUnitId || undefined,
         berthName: filterBerthName || undefined,
         berthCode: filterBerthCode || undefined,
         portId: filterPortId,
@@ -238,7 +275,7 @@ export default function BerthList() {
         operationalFunction: filterOperationalFunction || undefined,
         structureType: filterStructureType,
         operationalStatus: filterOperationalStatus,
-        approvalStatus: TAB_QUERY_MAP[activeTab],
+        approvalStatus: filterApprovalStatus || TAB_QUERY_MAP[activeTab],
         provinceId: filterProvince || undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
@@ -255,7 +292,9 @@ export default function BerthList() {
     }
   }, [
     managingUnitId, filterBerthName, filterPortId, filterWaterway,
-    filterBerthCode, filterOperationalFunction, filterOperationalStatus, activeTab, page, pageSize,
+    filterBerthCode, filterOperationalFunction, filterOperationalStatus, filterApprovalStatus,
+    filterStructureType, filterProvince, filterUpdatedFrom, filterUpdatedTo,
+    activeTab, page, pageSize,
   ]);
 
   // Fetch data when filters change
@@ -269,7 +308,9 @@ export default function BerthList() {
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
     setManagingUnitId(values.managingUnitId || undefined);
     setFilterBerthName(values.search || '');
-    setFilterOperationalStatus(values.operationalStatus || undefined);
+    setFilterOperationalStatus(
+      values.operationalStatus === 'DANG_KHAI_THAC' ? 'OPERATIONAL' : 'SUSPENDED'
+    );
     setFilterPortId(values.portId || undefined);
     setFilterWaterway(values.waterway || '');
     setFilterBerthCode(values.berthCode || '');
@@ -280,7 +321,11 @@ export default function BerthList() {
     setFilterUpdatedFrom(values.updatedFrom || undefined);
     setFilterUpdatedTo(values.updatedTo || undefined);
     setPage(1);
-    setActiveTab('all');
+    if (values.approvalStatus) {
+      setActiveTab('');
+    } else {
+      setActiveTab('all');
+    }
   }, []);
 
   const handleFilterReset = useCallback(() => {
@@ -311,7 +356,12 @@ export default function BerthList() {
   const openDetailModal = useCallback(async (record: Berth) => {
     setDetailModalOpen(true);
     setDetailRecord(record);
+    setDetailFiles([]);
     setDetailLoading(true);
+    try {
+      const res = await api.get(`/v1/documents/entity/berth/${record.id}`, { params: { page: 0, size: 50 } });
+      setDetailFiles(res.data?.data?.content || res.data?.data || []);
+    } catch { setDetailFiles([]); }
     try {
       const fresh = await berthCRUD.findById(record.id);
       setDetailRecord(fresh);
@@ -355,12 +405,27 @@ export default function BerthList() {
   const handleApprove = useCallback(
     async (record: Berth) => {
       try {
-        await berthApproval.approve(record.id);
+        const cap = record.approvalStatus === 'PORT_AUTHORITY' ? 'CUC' : 'CANG_VU';
+        await berthApproval.approve(record.id, cap);
         toast.success('Đã phê duyệt bến cảng');
         void fetchData();
         void fetchCounts(managingUnitId);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
+      }
+    },
+    [fetchData, fetchCounts, managingUnitId],
+  );
+
+  const handleSubmitApproval = useCallback(
+    async (record: Berth) => {
+      try {
+        await berthCRUD.update({ id: record.id, saveAction: 'SUBMIT' });
+        toast.success('Đã gửi phê duyệt bến cảng');
+        void fetchData();
+        void fetchCounts(managingUnitId);
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại');
       }
     },
     [fetchData, fetchCounts, managingUnitId],
@@ -374,12 +439,21 @@ export default function BerthList() {
 
   const handleConfirmReject = useCallback(async () => {
     if (!rejectingRecord) return;
-    if (!rejectReason.trim()) {
+    const reason = rejectReason.trim();
+    if (!reason) {
       toast.error('Vui lòng nhập lý do từ chối');
       return;
     }
+    if (reason.length < 10) {
+      toast.error('Lý do từ chối tối thiểu 10 ký tự');
+      return;
+    }
+    if (reason.length > 500) {
+      toast.error('Lý do từ chối tối đa 500 ký tự');
+      return;
+    }
     try {
-      await berthApproval.reject(rejectingRecord.id, rejectReason.trim());
+      await berthApproval.reject(rejectingRecord.id, 'CANG_VU', reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false);
       setRejectingRecord(null);
@@ -440,14 +514,14 @@ export default function BerthList() {
       {
         key: 'structureType',
         type: 'select' as const,
-        label: 'Loại kết cấu',
+        label: 'Loại bến',
         placeholder: 'Chọn loại kết cấu',
         options: STRUCTURE_TYPE_OPTIONS.map((o) => ({ value: String(o.value), label: o.label })),
       },
       {
         key: 'operationalFunction',
         type: 'search' as const,
-        label: 'Công năng khai thác',
+        label: 'Chức năng khai thác',
         placeholder: 'Nhập công năng',
         width: 320,
       },
@@ -510,7 +584,7 @@ export default function BerthList() {
       key: 'orgUnitId',
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitId',
-      width: 160,
+      width: 250,
       ellipsis: true,
       render: (orgId: string) => (
         <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
@@ -529,16 +603,18 @@ export default function BerthList() {
         <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
       ),
     },
-    // 4. Tuyến đường thủy
+    // 7. Loại kết cấu
     {
-      key: 'waterway',
-      label: 'Tuyến đường thủy',
-      dataIndex: 'waterway',
-      width: 160,
-      ellipsis: true,
-      render: (v: string) => (
-        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v || '—'}</span>
-      ),
+      key: 'structureType',
+      label: 'Loại bến',
+      dataIndex: 'structureType',
+      width: 120,
+      align: 'center' as const,
+      render: (v: number | null | undefined) => {
+        if (v == null) return <span style={{ color: textTertiary }}>—</span>;
+        const label = STRUCTURE_TYPE_OPTIONS.find((o) => o.value === v)?.label || `Loại ${v}`;
+        return <Tag color="blue">{label}</Tag>;
+      },
     },
     // 5. Tên bến cảng
     {
@@ -552,7 +628,21 @@ export default function BerthList() {
         </span>
       ),
     },
-    // 6. Địa điểm
+    // 6. Địa điểm (Tỉnh/TP)
+    {
+      key: 'provinceId',
+      label: 'Tỉnh/Thành phố',
+      dataIndex: 'provinceId',
+      width: 140,
+      ellipsis: true,
+      render: (v: number | null | undefined) => (
+        <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
+          {v != null && v > 0 && v <= VIETNAM_PROVINCES.length ? VIETNAM_PROVINCES[v - 1] : '—'}
+        </span>
+      ),
+    },
+    // 7. Địa điểm chi tiết
+    // 6. Địa điểm chi tiết
     {
       key: 'detailedLocation',
       label: 'Địa điểm',
@@ -562,28 +652,15 @@ export default function BerthList() {
         <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
       ),
     },
-    // 7. Loại kết cấu
-    {
-      key: 'structureType',
-      label: 'Loại kết cấu',
-      dataIndex: 'structureType',
-      width: 120,
-      align: 'center' as const,
-      render: (v: number | null | undefined) => {
-        if (v == null) return <span style={{ color: textTertiary }}>—</span>;
-        const label = STRUCTURE_TYPE_OPTIONS.find((o) => o.value === v)?.label || `Loại ${v}`;
-        return <Tag color="blue">{label}</Tag>;
-      },
-    },
-    // 8. Công năng khai thác
+    // 8. Chức năng khai thác
     {
       key: 'operationalFunction',
-      label: 'Công năng khai thác',
+      label: 'Chức năng khai thác',
       dataIndex: 'operationalFunction',
-      width: 160,
-      ellipsis: true,
+      width: 180,
+      ellipsis: { showTitle: false },
       render: (v: string) => (
-        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v || '—'}</span>
+        <span title={v} style={{ fontSize: fontSizeMd, color: textSecondary }}>{v || '—'}</span>
       ),
     },
     // 9. Ngày cập nhật
@@ -591,9 +668,10 @@ export default function BerthList() {
       key: 'updatedAt',
       label: 'Ngày cập nhật',
       dataIndex: 'updatedAt',
+      width: 160,
       align: 'center' as const,
       render: (v: string | null | undefined) => (
-        <span style={{ ...metaStyle }}>
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
           {formatDate(v)}
         </span>
       ),
@@ -607,64 +685,134 @@ export default function BerthList() {
       ellipsis: true,
       render: (v: string | null | undefined) => (
         <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
-          {v || '—'}
+          {v ? (userMap.get(v) || v) : '—'}
         </span>
       ),
     },
-    // 11. Tình trạng (operationalStatus badge)
+    ...(isAuditViewer ? [{
+      key: 'submittedForApprovalAt',
+      label: 'Ngày gửi phê duyệt',
+      width: 180,
+      dataIndex: 'submittedForApprovalAt' as keyof Berth,
+      align: 'center' as const,
+      render: (v: string | null | undefined) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{formatDate(v)}</span>
+      ),
+    }] : []),
+    ...(isAuditViewer ? [{
+      key: 'submittedForApprovalBy',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'submittedForApprovalBy' as keyof Berth,
+      width: 190,
+      ellipsis: true,
+      render: (v: string | null | undefined) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v ? (userMap.get(v) || v) : '—'}</span>
+      ),
+    }] : []),
+    // 13. Ngày PD cấp Cảng vụ/Chi cục (audit only)
+    ...(isAuditViewer ? [{
+      key: 'portAuthorityApprovedAt',
+      label: 'Ngày PD cấp Cảng vụ/Chi cục',
+      width: 230,
+      dataIndex: 'portAuthorityApprovedAt' as keyof Berth,
+      align: 'center' as const,
+      render: (v: string | null | undefined) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{formatDate(v)}</span>
+      ),
+    }] : []),
+    // 14. Cán bộ PD cấp Cảng vụ/Chi cục (audit only)
+    ...(isAuditViewer ? [{
+      key: 'portAuthorityApprovedBy',
+      label: 'Cán bộ PD cấp Cảng vụ/Chi cục',
+      dataIndex: 'portAuthorityApprovedBy' as keyof Berth,
+      width: 250,
+      ellipsis: true,
+      render: (v: string | null | undefined) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v ? (userMap.get(v) || v) : '—'}</span>
+      ),
+    }] : []),
+    // 15. Ngày PD cấp Cục (audit only)
+    ...(isAuditViewer ? [{
+      key: 'departmentApprovedAt',
+      label: 'Ngày PD cấp Cục',
+      width: 160,
+      dataIndex: 'departmentApprovedAt' as keyof Berth,
+      align: 'center' as const,
+      render: (v: string | null | undefined) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{formatDate(v)}</span>
+      ),
+    }] : []),
+    // 16. Cán bộ PD cấp Cục (audit only)
+    ...(isAuditViewer ? [{
+      key: 'departmentApprovedBy',
+      label: 'Cán bộ PD cấp Cục',
+      dataIndex: 'departmentApprovedBy' as keyof Berth,
+      width: 160,
+      ellipsis: true,
+      render: (v: string | null | undefined) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v ? (userMap.get(v) || v) : '—'}</span>
+      ),
+    }] : []),
+    // 17. Tình trạng (operationalStatus badge)
     {
       key: 'operationalStatus',
       label: 'Tình trạng',
       dataIndex: 'operationalStatus',
-      width: 160,
+      width: 250,
       align: 'center' as const,
       render: (status: string | null | undefined) => {
-        const s = OPERATIONAL_STYLE_MAP[status || ''] || {
-          color: textTertiary,
-          label: status || '—',
-        };
+        if (!status) return <span style={{ color: textTertiary }}>—</span>;
+        const s = OPERATIONAL_STYLE_MAP[status] || { color: 'default', label: status };
+        let color = textTertiary;
+        if (s.color === statusOperational) color = statusOperational;
+        else if (s.color === statusCritical) color = statusCritical;
+        else if (s.color === statusAttention) color = statusAttention;
         return (
           <span style={{
             display: 'inline-flex',
             padding: '2px 10px',
-            borderRadius: radiusPill,
+            borderRadius: 999,
             fontSize: fontSizeMd,
             fontWeight: fontWeightMedium,
-            background: `${s.color}15`,
-            color: s.color,
+            background: `${color}15`,
+            color,
           }}>
             {s.label}
           </span>
         );
       },
     },
-    // 12. Trạng thái (approvalStatus badge)
+    // 18. Trạng thái (approvalStatus badge)
     {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
+      width: 180,
       align: 'center' as const,
       render: (status: string | null | undefined) => {
-        const s = APPROVAL_STYLE_MAP[status || ''] || {
-          color: textTertiary,
-          label: status || '—',
-        };
+        if (!status) return <span style={{ color: textTertiary }}>—</span>;
+        const s = APPROVAL_STYLE_MAP[status] || { color: 'default', label: status };
+        let color = textTertiary;
+        if (s.color === statusOperational) color = statusOperational;
+        else if (s.color === statusCritical) color = statusCritical;
+        else if (s.color === statusAttention) color = statusAttention;
+        else if (s.color === actionPrimary) color = actionPrimary;
         return (
           <span style={{
             display: 'inline-flex',
             padding: '2px 10px',
-            borderRadius: radiusPill,
+            borderRadius: 999,
             fontSize: fontSizeMd,
             fontWeight: fontWeightMedium,
-            background: `${s.color}15`,
-            color: s.color,
+            background: `${color}15`,
+            color,
           }}>
             {s.label}
           </span>
         );
       },
     },
-  ], [page, pageSize, orgMap]);
+  ], [page, pageSize, orgMap, isAuditViewer, userMap]);
 
   // ── Row actions with RBAC ───────────────────────────────────────
 
@@ -680,7 +828,7 @@ export default function BerthList() {
     // Xem chi tiết
     actions.push({
       key: 'view',
-      label: 'Xem chi tiết',
+      label: 'Chi tiết',
       icon: <EyeOutlined />,
       onClick: () => openDetailModal(record),
     });
@@ -689,7 +837,7 @@ export default function BerthList() {
     if (hasPerm('berth:update')) {
       actions.push({
         key: 'edit',
-        label: 'Sửa',
+        label: 'Chỉnh sửa',
         icon: <EditOutlined />,
         onClick: () => navigate(`/berth/${record.id}/edit`),
       });
@@ -718,9 +866,20 @@ export default function BerthList() {
       onClick: () => navigate(`/berth/${record.id}/history`),
     });
 
+    // Gửi phê duyệt — khi ở trạng thái Nháp
+    const draftStatuses = ['DRAFT', 'NHAP'];
+    if (hasPerm('berth:update') && draftStatuses.includes(record.approvalStatus || '')) {
+      actions.push({
+        key: 'submit',
+        label: 'Gửi phê duyệt',
+        icon: <CheckCircleOutlined />,
+        onClick: () => handleSubmitApproval(record),
+      });
+    }
+
     // Phê duyệt / Từ chối — Lãnh đạo / Admin
     const canApprove = hasPerm('berth:approve');
-    const pendingStatuses = ['PENDING_APPROVAL', 'CHO_PHE_DUYET'];
+    const pendingStatuses = ['PENDING', 'PORT_AUTHORITY', 'PENDING_APPROVAL', 'CHO_PHE_DUYET', 'CHO_PD_CAP_CUC'];
     if (canApprove && pendingStatuses.includes(record.approvalStatus || '')) {
       actions.push({
         key: 'approve',
@@ -766,15 +925,7 @@ export default function BerthList() {
     }
 
     if (dataSource.length === 0) {
-      if (managingUnitId) {
-        return <EmptyState description="Không tìm thấy bến cảng nào phù hợp" />;
-      }
-      return (
-        <EmptyState
-          description="Vui lòng chọn Đơn vị quản lý để xem danh sách"
-          image={<ExclamationCircleOutlined style={{ fontSize: 48, color: textTertiary }} />}
-        />
-      );
+      return <EmptyState description="Không tìm thấy bến cảng nào phù hợp" />;
     }
 
     return (
@@ -784,7 +935,7 @@ export default function BerthList() {
           dataSource={dataSource}
           rowKey="id"
           rowActions={rowActions}
-          scroll={{ x: 1800 }}
+          scroll={{ x: 2500, y: 'calc(100vh - 450px)' }}
         />
         <Pagination
           total={total}
@@ -796,7 +947,8 @@ export default function BerthList() {
     );
   };
 
-  // ── Detail modal content ────────────────────────────────────────
+  // ── Detail collapsed sections state ────────────────────────────
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const renderDetailContent = () => {
     if (!detailRecord) return null;
@@ -806,34 +958,53 @@ export default function BerthList() {
     const opStatusLabel = OPERATIONAL_STYLE_MAP[r.operationalStatus || '']?.label || r.operationalStatus || '—';
     const approvalLabel = APPROVAL_STYLE_MAP[r.approvalStatus || '']?.label || r.approvalStatus || '—';
 
+    const toggleSection = (key: string) => {
+      setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
     return (
       <div>
         {/* Group 1: Thông tin chung */}
-        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
-          Thông tin chung
+        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer' }}
+          onClick={() => toggleSection('general')}>
+          {collapsedSections['general'] ? '▶' : '▼'} Thông tin chung
         </Divider>
-        <Descriptions column={2} size="small" bordered>
-          <Descriptions.Item label="Đơn vị quản lý" span={2}>
-            {orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Thuộc cảng biển">{r.portName || '—'}</Descriptions.Item>
-          <Descriptions.Item label="Tuyến đường thủy">{r.waterway || '—'}</Descriptions.Item>
-          <Descriptions.Item label="Mã bến cảng">{r.berthCode}</Descriptions.Item>
-          <Descriptions.Item label="Tên bến cảng">{r.berthName}</Descriptions.Item>
-          <Descriptions.Item label="Địa điểm">{r.detailedLocation || '—'}</Descriptions.Item>
-          <Descriptions.Item label="Tỉnh/TP">{r.provinceId || '—'}</Descriptions.Item>
-          <Descriptions.Item label="Loại kết cấu">
-            {r.structureType != null
-              ? STRUCTURE_TYPE_OPTIONS.find((o) => o.value === r.structureType)?.label || `Loại ${r.structureType}`
-              : '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Công năng khai thác">{r.operationalFunction || '—'}</Descriptions.Item>
-          <Descriptions.Item label="Tổng diện tích">{r.totalArea != null ? `${r.totalArea} m²` : '—'}</Descriptions.Item>
-          <Descriptions.Item label="Năng lực thiết kế">{r.designThroughput != null ? r.designThroughput : '—'}</Descriptions.Item>
-          <Descriptions.Item label="Năng lực hiện trạng">{r.currentThroughput != null ? r.currentThroughput : '—'}</Descriptions.Item>
-          <Descriptions.Item label="Cỡ tàu tiếp nhận">{r.maxVesselSize != null ? r.maxVesselSize : '—'}</Descriptions.Item>
-          <Descriptions.Item label="QH năng lực">{r.plannedThroughput != null ? r.plannedThroughput : '—'}</Descriptions.Item>
-          <Descriptions.Item label="Sản lượng gần nhất">{r.latestCargoVolume != null ? r.latestCargoVolume : '—'}</Descriptions.Item>
+        {!collapsedSections['general'] && (
+        <Descriptions column={2} size="small" bordered style={{ tableLayout: 'fixed' }}
+          labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
+                <Descriptions.Item label="Đơn vị quản lý" span={2}>
+                  {orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Thuộc cảng biển">{r.portName || '—'}</Descriptions.Item>
+                <Descriptions.Item label="Tuyến đường thủy">{r.waterway || '—'}</Descriptions.Item>
+                <Descriptions.Item label="Mã bến cảng">{r.berthCode}</Descriptions.Item>
+                <Descriptions.Item label="Tên bến cảng">{r.berthName}</Descriptions.Item>
+                <Descriptions.Item label="Địa điểm">{r.detailedLocation || '—'}</Descriptions.Item>
+                <Descriptions.Item label="Tỉnh/TP">{r.provinceId != null && r.provinceId > 0 && r.provinceId <= VIETNAM_PROVINCES.length ? VIETNAM_PROVINCES[r.provinceId - 1] : '—'}</Descriptions.Item>
+                <Descriptions.Item label="Loại kết cấu">
+                  {r.structureType != null
+                    ? STRUCTURE_TYPE_OPTIONS.find((o) => o.value === r.structureType)?.label || `Loại ${r.structureType}`
+                    : '—'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Đơn vị khai thác">{r.operator || '—'}</Descriptions.Item>
+                </Descriptions>
+        )}
+
+        {/* Group 2: Năng lực */}
+        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+          onClick={() => toggleSection('capacity')}>
+          {collapsedSections['capacity'] ? '▶' : '▼'} Năng lực
+        </Divider>
+        {!collapsedSections['capacity'] && (
+        <Descriptions column={2} size="small" bordered style={{ tableLayout: 'fixed' }}
+          labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
+          <Descriptions.Item label="Chức năng khai thác">{r.operationalFunction || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Tổng diện tích">{r.totalArea != null ? `${r.totalArea} km²` : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Năng lực thiết kế">{r.designThroughput != null ? `${r.designThroughput} tấn/năm` : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Năng lực hiện trạng">{r.currentThroughput != null ? `${r.currentThroughput} tấn/năm` : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Cỡ tàu tiếp nhận">{r.maxVesselSize != null ? `${r.maxVesselSize} DWT` : '—'}</Descriptions.Item>
+          <Descriptions.Item label="QH năng lực">{r.plannedThroughput != null ? `${r.plannedThroughput} tấn/năm` : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Sản lượng gần nhất" span={2}>{r.latestCargoVolume != null ? `${r.latestCargoVolume} tấn/năm` : '—'}</Descriptions.Item>
           <Descriptions.Item label="Tình trạng" span={1}>
             <Tag color={OPERATIONAL_STYLE_MAP[r.operationalStatus || '']?.color || 'default'}>{opStatusLabel}</Tag>
           </Descriptions.Item>
@@ -841,39 +1012,62 @@ export default function BerthList() {
             <Tag color={APPROVAL_STYLE_MAP[r.approvalStatus || '']?.color || 'default'}>{approvalLabel}</Tag>
           </Descriptions.Item>
         </Descriptions>
+        )}
 
-        {/* Group 2: Thông tin công bố */}
-        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, marginTop: spaceMd }}>
-          Thông tin công bố
+        {/* Group 3: Thông tin công bố */}
+        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+          onClick={() => toggleSection('announcement')}>
+          {collapsedSections['announcement'] ? '▶' : '▼'} Thông tin công bố
         </Divider>
-        <Descriptions column={1} size="small" bordered>
-          <Descriptions.Item label="Thời điểm công bố">
+        {!collapsedSections['announcement'] && (
+        <Descriptions column={2} size="small" bordered style={{ tableLayout: 'fixed' }}
+          labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
+          <Descriptions.Item label="Thời điểm công bố" span={2}>
             {r.openingAnnouncementDate ? formatDate(r.openingAnnouncementDate) : '—'}
           </Descriptions.Item>
-          <Descriptions.Item label="Quyết định công bố">{r.openingDecision || '—'}</Descriptions.Item>
-          <Descriptions.Item label="Văn bản thỏa thuận đầu tư">{r.investmentAgreement || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Quyết định công bố" span={2}>{r.openingDecision || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Văn bản thỏa thuận đầu tư" span={2}>{r.investmentAgreement || '—'}</Descriptions.Item>
         </Descriptions>
+        )}
 
         {/* Group 3: Thông tin vị trí */}
-        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, marginTop: spaceMd }}>
-          Thông tin vị trí
+        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+          onClick={() => toggleSection('location')}>
+          {collapsedSections['location'] ? '▶' : '▼'} Thông tin vị trí
         </Divider>
-        <Descriptions column={2} size="small" bordered>
-          <Descriptions.Item label="Loại đối tượng">{r.geometryType || '—'}</Descriptions.Item>
-          <Descriptions.Item label="Hệ quy chiếu">{r.coordinateSystem || '—'}</Descriptions.Item>
+        {!collapsedSections['location'] && (
+        <Descriptions column={2} size="small" bordered style={{ tableLayout: 'fixed' }}
+          labelStyle={{ width: 180, whiteSpace: 'nowrap' }}>
+          <Descriptions.Item label="Loại đối tượng">
+            {{ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }[r.geometryType || ''] || r.geometryType || '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Biểu tượng bản đồ">{symbolMap.get(r.mapSymbolId || '') || r.mapSymbolId || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Hệ quy chiếu">{r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'}</Descriptions.Item>
           <Descriptions.Item label="Quy tắc hiển thị">{r.displayRule || '—'}</Descriptions.Item>
           <Descriptions.Item label="Kinh độ">{r.longitude != null ? r.longitude : '—'}</Descriptions.Item>
-          <Descriptions.Item label="Vĩ độ" span={1}>{r.latitude != null ? r.latitude : '—'}</Descriptions.Item>
-          <Descriptions.Item label="Tọa độ" span={1}>{r.coordinates || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Vĩ độ">{r.latitude != null ? r.latitude : '—'}</Descriptions.Item>
+          <Descriptions.Item label="Tọa độ" span={2}>{r.coordinates || '—'}</Descriptions.Item>
         </Descriptions>
+        )}
 
         {/* Group 4: File đính kèm */}
-        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, marginTop: spaceMd }}>
-          File đính kèm
+        <Divider orientation="left" style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, cursor: 'pointer', marginTop: spaceMd }}
+          onClick={() => toggleSection('files')}>
+          {collapsedSections['files'] ? '▶' : '▼'} File đính kèm
         </Divider>
-        <Descriptions column={1} size="small" bordered>
-          <Descriptions.Item label="Đơn vị khai thác">{r.operator || '—'}</Descriptions.Item>
-        </Descriptions>
+        {!collapsedSections['files'] && (
+          detailFiles.length === 0
+            ? <EmptyState description="Chưa có file đính kèm" />
+            : detailFiles.map((f: any) => (
+                <div key={f.id} style={{ marginBottom: spaceSm }}>
+                  <a href={`/api/v1/documents/${f.id}/file`} target="_blank" rel="noopener noreferrer"
+                    style={{ color: actionPrimary, fontSize: fontSizeMd }}>
+                    <FileOutlined style={{ marginRight: 8 }} />
+                    {f.fileName || f.name} ({(f.fileSize / 1024).toFixed(1)} KB)
+                  </a>
+                </div>
+              ))
+        )}
       </div>
     );
   };
@@ -883,7 +1077,7 @@ export default function BerthList() {
   return (
     <div style={{ minHeight: '100%', marginTop: -8 }}>
       <ScreenHeader
-        breadcrumb={[{ label: 'Quản lý bến cảng' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Bến cảng' }]}
         actions={headerActions}
       />
 
@@ -891,32 +1085,23 @@ export default function BerthList() {
         fields={filterFields}
         onSearch={handleFilterSearch}
         onReset={handleFilterReset}
+        onFieldChange={(key, value) => {
+          if (key === 'managingUnitId') setManagingUnitId(value || undefined);
+        }}
         centerActions={!showAdvancedFilters}
       />
 
-      <div style={{ textAlign: 'right', marginBottom: 8, marginTop: -8 }}>
-        <Button
-          type="link"
-          size="small"
-          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-          icon={<FilterOutlined />}
-          style={{ color: colors.primaryActive, fontWeight: 500 }}
-        >
-          {showAdvancedFilters ? 'Thu gọn' : 'Bộ lọc nâng cao'}
-        </Button>
-      </div>
-
-      {/* StatusTabs */}
+      {/* StatusTabs + Filter toggle */}
       <div
         style={{
           ...cardStyle,
-          marginBottom: spaceMd,
+          marginBottom: 4,
           display: 'flex',
-          justifyContent: 'center',
           alignItems: 'center',
-          padding: '8px 16px',
+          padding: '4px 16px',
         }}
       >
+        <div style={{ flex: 1 }} />
         <StatusTabs
           tabs={TAB_STATUS_LIST.map((tab) => ({
             key: tab.key,
@@ -927,6 +1112,17 @@ export default function BerthList() {
           }))}
           onChange={handleTabChange}
         />
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          type="link"
+          size="small"
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          icon={<FilterOutlined />}
+          style={{ color: colors.primaryActive, fontWeight: 500, flexShrink: 0 }}
+        >
+          {showAdvancedFilters ? 'Thu gọn' : 'Bộ lọc nâng cao'}
+        </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -938,7 +1134,7 @@ export default function BerthList() {
       <Modal
         title={
           <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-            Chi tiết bến cảng
+            Chi tiết bến cảng{detailRecord ? `: ${detailRecord.berthName}` : ''}
           </span>
         }
         open={detailModalOpen}
@@ -946,6 +1142,7 @@ export default function BerthList() {
           setDetailModalOpen(false);
           setDetailRecord(null);
         }}
+        styles={{ body: { paddingTop: 0 } }}
         footer={[
           <Button
             key="close"
@@ -1123,10 +1320,12 @@ export default function BerthList() {
             </p>
           )}
           <Input.TextArea
-            placeholder="Nhập lý do từ chối..."
+            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
+            maxLength={500}
+            showCount
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>

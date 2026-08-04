@@ -20,7 +20,7 @@ import java.util.UUID;
 public class AccessLogResponse {
 
     private final UUID id;
-    private final Long userId;
+    private final UUID userId;
     private final String username;
     private final String action;
     private final String module;
