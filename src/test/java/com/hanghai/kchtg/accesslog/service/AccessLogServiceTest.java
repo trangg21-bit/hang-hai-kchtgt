@@ -40,12 +40,12 @@ class AccessLogServiceTest {
 
     private AccessLog sampleLog;
     private UUID logId;
-    private Long userId;
+    private UUID userId;
 
     @BeforeEach
     void setUp() {
         logId = UUID.randomUUID();
-        userId = 42L;
+        userId = UUID.randomUUID();
 
         sampleLog = new AccessLog();
         sampleLog.setId(logId);

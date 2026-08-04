@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Request DTO for filtering access-log entries in the list endpoint.
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class AccessLogFilterRequest {
 
-    private Long userId;
+    private UUID userId;
     private String module;
     private String action;
     private LocalDateTime from;
