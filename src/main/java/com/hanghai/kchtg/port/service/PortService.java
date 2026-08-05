@@ -15,6 +15,7 @@ import com.hanghai.kchtg.port.repository.PortAttachmentRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -67,6 +68,7 @@ public class PortService {
     private final WaterZoneRepository waterZoneRepository;
     private final PierRepository pierRepository;
     private final ChangeTrackingService changeTrackingService;
+    private final ChangeHistoryService changeHistoryService;
     private final UserResolverService userResolverService;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
@@ -240,6 +242,10 @@ public class PortService {
                 saved = portRepository.save(saved);
             }
         }
+
+        // Record all fields as new in change history
+        Port emptySnapshot = new Port();
+        changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", emptySnapshot, saved);
 
         log.info("Created Port [{}] code={}", saved.getId(), saved.getPortCode());
         return toResponse(saved);
@@ -500,8 +506,29 @@ public class PortService {
             throw new IllegalArgumentException(msg.toString());
         }
 
+        // Capture snapshot before soft-delete for change history
+        Port snapshot = Port.builder()
+                .id(entity.getId()).portCode(entity.getPortCode()).portName(entity.getPortName())
+                .province(entity.getProvince()).area(entity.getArea()).maxVesselCapacity(entity.getMaxVesselCapacity())
+                .orgUnitId(entity.getOrgUnitId()).portGroup(entity.getPortGroup())
+                .operationalStatus(entity.getOperationalStatus()).approvalStatus(entity.getApprovalStatus())
+                .mapSymbolId(entity.getMapSymbolId()).spatialId(entity.getSpatialId())
+                .detailedLocation(entity.getDetailedLocation()).portClass(entity.getPortClass())
+                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
+                .waterAreaScope(entity.getWaterAreaScope()).totalBerths(entity.getTotalBerths())
+                .totalAnchoragesTransshipment(entity.getTotalAnchoragesTransshipment())
+                .totalPublicChannels(entity.getTotalPublicChannels()).totalDedicatedChannels(entity.getTotalDedicatedChannels())
+                .totalPublicChannelLength(entity.getTotalPublicChannelLength()).totalDedicatedChannelLength(entity.getTotalDedicatedChannelLength())
+                .totalBuoysBeacons(entity.getTotalBuoysBeacons()).totalDikes(entity.getTotalDikes())
+                .totalDikeLength(entity.getTotalDikeLength()).totalLighthouses(entity.getTotalLighthouses())
+                .buoyBerthCount(entity.getBuoyBerthCount()).anchorageCount(entity.getAnchorageCount())
+                .transshipmentCount(entity.getTransshipmentCount()).otherWaterAreas(entity.getOtherWaterAreas())
+                .remarks(entity.getRemarks()).build();
+
         entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         portRepository.save(entity);
+        changeTrackingService.recordChanges("Port", entity.getId().toString(), "system", snapshot, entity);
+        changeHistoryService.insertChangeRecord("Port", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }

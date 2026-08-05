@@ -1,25 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Typography, Modal, Form, Input, Tag, Button, Spin, Alert, message, Tooltip, Row, Col, Grid, Statistic } from 'antd';
-import { EyeOutlined } from '@ant-design/icons';
+import { useState, useEffect, useCallback } from 'react';
+import { Modal, Descriptions, Select, Input, Tag, Button, message, Row, Col, Statistic, Tooltip } from 'antd';
+import { EyeOutlined, DownloadOutlined, DownOutlined, UpOutlined, SearchOutlined, FileTextOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { ScreenHeader, FilterBar, StatusTabs, DataTable, Pagination } from '../components/list-view';
 import type { DataTableColumn } from '../components/list-view/DataTable';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import EmptyState from '../components/EmptyState';
+import ErrorState from '../components/ErrorState';
 import {
   textPrimary, textSecondary, textTertiary, surfaceCard, actionPrimary,
   statusOperational, statusAttention, statusCritical,
   spaceFormField, spaceMd, spaceSm, radiusPill, radiusSm,
   fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl,
   fontWeightMedium, fontWeightBold,
-  badgeBaseStyle, metaStyle, fontMono, borderDefault,
+  badgeBaseStyle, metaStyle, fontMono, borderDefault, cardStyle, radiusLg,
 } from '../tokens';
 import { colors } from '../theme';
 import { logService, type AccessLogEntry } from '../services/logService';
 import { organizationService } from '../services/organizationService';
 import { useAuthStore } from '../store/authStore';
-
-const { Text } = Typography;
-
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -47,6 +46,27 @@ const TAB_COLORS: Record<string, string> = {
   error: statusCritical,
   account: statusAttention,
   configuration: '#E87BA4',
+};
+
+const TYPE_OPTIONS = [
+  { value: 'access', label: 'Thao tác' },
+  { value: 'login', label: 'Đăng nhập' },
+  { value: 'error', label: 'Lỗi hệ thống' },
+  { value: 'account', label: 'Tài khoản' },
+  { value: 'configuration', label: 'Cấu hình' },
+];
+
+const SEVERITY_OPTIONS = [
+  { value: 'info', label: 'Thông tin' },
+  { value: 'warning', label: 'Cảnh báo' },
+  { value: 'error', label: 'Lỗi' },
+  { value: 'critical', label: 'Nghiêm trọng' },
+];
+
+const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
+  SUCCESS: { color: statusOperational, label: 'Thành công' },
+  FAILED: { color: statusCritical, label: 'Thất bại' },
+  FAILURE: { color: statusCritical, label: 'Thất bại' },
 };
 
 const SEVERITY_CONFIG: Record<string, { color: string; label: string }> = {
@@ -186,6 +206,14 @@ export default function LogsPage() {
   const [orgOptions, setOrgOptions] = useState<{ value: string; label: string }[]>([]);
   const [filters, setFilters] = useState<Record<string, any>>({});
 
+  // ── Advanced filter state ──────────────────────────────────────
+  const [filterSeverity, setFilterSeverity] = useState<string | undefined>();
+  const [filterOrgUnit, setFilterOrgUnit] = useState<string | undefined>();
+  const [filterEmail, setFilterEmail] = useState('');
+
+  // ---- Advanced filter toggle ----
+  const [advancedVisible, setAdvancedVisible] = useState(false);
+
   // ---- Auth ----
   const user = useAuthStore((s) => s.user);
   const role = user?.role || '';
@@ -197,17 +225,13 @@ export default function LogsPage() {
   // ---- Role-based tab visibility ----
   const visibleTabKeys = isAdminOp ? (['access', 'login'] as const) : TAB_KEYS;
 
-  // ---- Aggregate statistics ----
-  const [aggregate, setAggregate] = useState<{ totalAccesses: number; uniqueUsers: number;   successRate: string; avgDuration: number } | null>(null);
+  // ---- Daily statistics ----
+  const [dailyStats, setDailyStats] = useState<{ total: number; success: number; failed: number } | null>(null);
 
   // ---- Detail modal state ----
   const [selectedLog, setSelectedLog] = useState<AccessLogEntry | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-
-  const { useBreakpoint } = Grid;
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
 
   // ---- Load org options ----
   const loadOrgOptions = () => {
@@ -222,21 +246,27 @@ export default function LogsPage() {
     loadOrgOptions();
   }, []);
 
-  // ---- Build API params from filters ----
+  // ---- Build API params from basic FilterBar ----
   const buildApiParams = (fv: Record<string, any>) => {
     const params: Record<string, any> = {};
-    if (fv.dateRange?.[0]) {
-      params.from = dayjs(fv.dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss');
-    }
-    if (fv.dateRange?.[1]) {
-      params.to = dayjs(fv.dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss');
-    }
-    if (fv.orgUnit) params.orgUnit = fv.orgUnit;
-    if (fv.email) params.email = fv.email;
+    if (fv.dateRange?.[0]) params.from = dayjs(fv.dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss');
+    if (fv.dateRange?.[1]) params.to = dayjs(fv.dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss');
     if (fv.keyword) params.keyword = fv.keyword;
-    if (isSelfOnly && username) {
-      params.username = username;
-    }
+    return params;
+  };
+
+  // ---- Build full params combining basic + advanced filters ----
+  const buildFullParams = () => {
+    const params: Record<string, any> = {
+      page: page - 1,
+      size: pageSize,
+      type: activeTab,
+      ...buildApiParams(filters),
+    };
+    if (filterSeverity) params.severity = filterSeverity;
+    if (filterOrgUnit) params.orgUnit = filterOrgUnit;
+    if (filterEmail) params.email = filterEmail;
+    if (isSelfOnly && username) params.username = username;
     return params;
   };
 
@@ -245,13 +275,7 @@ export default function LogsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: Record<string, any> = {
-        page: page - 1,
-        size: pageSize,
-        type: activeTab,
-        ...buildApiParams(filters),
-      };
-      const res = await logService.listAccessLogs(params);
+      const res = await logService.listAccessLogs(buildFullParams());
       setData(res.content);
       setTotal(res.totalElements);
     } catch (e: any) {
@@ -263,7 +287,7 @@ export default function LogsPage() {
 
   // ---- Fetch tab counts ----
   const fetchTabCounts = async () => {
-    const baseParams = buildApiParams(filters);
+    const baseParams = buildFullParams();
     const counts: Record<string, number> = {};
     await Promise.all(
       visibleTabKeys.map(async (key) => {
@@ -285,22 +309,21 @@ export default function LogsPage() {
   // ---- Effects ----
   useEffect(() => {
     fetchData();
-  }, [filters, page, pageSize, activeTab]);
+  }, [filters, page, pageSize, activeTab, filterSeverity, filterOrgUnit, filterEmail]);
 
   useEffect(() => {
     fetchTabCounts();
-  }, [filters]);
+  }, [filters, filterSeverity, filterOrgUnit, filterEmail]);
 
   // Auto-refresh when navigating back to this page (React Router v6 remounts components)
   useEffect(() => {
     fetchData();
     fetchTabCounts();
-    fetchAggregate();
+    fetchDailyStats();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Event handlers ----
   const handleSearch = (values: Record<string, any>) => {
-    // Validate date range
     if (
       values.dateRange?.[0] &&
       values.dateRange?.[1] &&
@@ -311,13 +334,23 @@ export default function LogsPage() {
     }
     loadOrgOptions();
     setFilters(values);
+    setFilterSeverity(values.severity || undefined);
+    setFilterOrgUnit(values.orgUnit || undefined);
+    setFilterEmail(values.email || '');
     setPage(1);
   };
 
   const handleReset = () => {
     setFilters({});
+    setFilterSeverity(undefined);
+    setFilterOrgUnit(undefined);
+    setFilterEmail('');
     setPage(1);
   };
+
+  const handleAdvancedSearch = useCallback(() => {
+    setPage(1);
+  }, []);
 
   const handlePageChange = (newPage: number, newPageSize: number) => {
     setPage(newPage);
@@ -349,59 +382,77 @@ export default function LogsPage() {
     setSelectedLog(null);
   };
 
-  // ---- Fetch aggregate stats ----
-  const fetchAggregate = async () => {
+  const handleExport = async () => {
     try {
-      const data = await logService.getLogAggregate();
-      if (data && data.length > 0) {
-        setAggregate(data[data.length - 1]); // latest aggregate
-      }
-    } catch { /* silent */ }
+      message.loading({ content: 'Đang xuất CSV...', key: 'export' });
+      const blob = await logService.exportCsv(buildFullParams());
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `access_logs_${dayjs().format('YYYY-MM-DD_HHmmss')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      message.success({ content: 'Xuất CSV thành công', key: 'export' });
+    } catch (e: any) {
+      message.error({ content: e?.message || 'Xuất CSV thất bại', key: 'export' });
+    }
   };
 
-  // ---- Render aggregate stats ----
-  const renderAggregateStats = () => {
-    if (!aggregate) return null;
+  // ---- Fetch daily stats ----
+  const fetchDailyStats = async () => {
+    try {
+      const data = await logService.getDailyStats();
+      let success = 0, failed = 0;
+      data.forEach((item) => {
+        if (item.status === 'SUCCESS') success = item.count;
+        else failed += item.count;
+      });
+      setDailyStats({ total: success + failed, success, failed });
+    } catch { setDailyStats(null); }
+  };
+
+  // ---- Render stats ----
+  const renderStats = () => {
+    if (!dailyStats) return null;
+    const items = [
+      { label: 'Tổng số log', value: dailyStats.total, icon: <FileTextOutlined />, color: actionPrimary },
+      { label: 'Thành công', value: dailyStats.success, icon: <CheckCircleOutlined />, color: statusOperational },
+      { label: 'Thất bại', value: dailyStats.failed, icon: <CloseCircleOutlined />, color: statusCritical },
+    ];
     return (
-      <Row gutter={[spaceMd, spaceMd]} style={{ marginBottom: spaceMd }}>
-        <Col xs={12} sm={12} md={6}>
-          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
-            <Statistic
-              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Tổng lượt truy cập</span>}
-              value={aggregate.totalAccesses}
-              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
-            />
-          </div>
-        </Col>
-        <Col xs={12} sm={12} md={6}>
-          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
-            <Statistic
-              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Người dùng duy nhất</span>}
-              value={aggregate.uniqueUsers}
-              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
-            />
-          </div>
-        </Col>
-        <Col xs={12} sm={12} md={6}>
-          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
-            <Statistic
-              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Tỷ lệ thành công</span>}
-              value={aggregate.successRate}
-              suffix="%"
-              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
-            />
-          </div>
-        </Col>
-        <Col xs={12} sm={12} md={6}>
-          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
-            <Statistic
-              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Thời gian phản hồi TB</span>}
-              value={aggregate.avgDuration}
-              suffix="ms"
-              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
-            />
-          </div>
-        </Col>
+      <Row gutter={[spaceMd, spaceMd]} style={{ marginBottom: spaceSm }}>
+        {items.map((item) => (
+          <Col xs={8} sm={8} md={8} key={item.label}>
+            <div style={{
+              background: surfaceCard,
+              borderRadius: radiusLg,
+              border: `0.5px solid ${borderDefault}`,
+              padding: `${spaceMd}px ${spaceMd}px`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: spaceMd,
+            }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: radiusSm,
+                background: `${item.color}15`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 22, color: item.color,
+              }}>
+                {item.icon}
+              </div>
+              <div>
+                <div style={{ color: colors.sidebarBg, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+                  {item.label}
+                </div>
+                <div style={{ color: item.color, fontSize: fontSizeXl, fontWeight: fontWeightBold, lineHeight: 1.2 }}>
+                  {item.value.toLocaleString()}
+                </div>
+              </div>
+            </div>
+          </Col>
+        ))}
       </Row>
     );
   };
@@ -420,6 +471,16 @@ export default function LogsPage() {
     ...item,
     _rowIndex: (page - 1) * pageSize + idx + 1,
   }));
+
+  // ---- Row actions ----
+  const rowActions = useCallback((record: AccessLogEntry) => [
+    {
+      key: 'view',
+      label: 'Xem chi tiết',
+      icon: <EyeOutlined />,
+      onClick: () => openDetail(record),
+    },
+  ], []);
 
   const columns: DataTableColumn[] = [
     {
@@ -446,6 +507,7 @@ export default function LogsPage() {
     {
       key: 'action',
       label: 'Chức năng',
+      width: 180,
       dataIndex: 'action',
       render: (val: any) => (
         <Tag
@@ -460,6 +522,53 @@ export default function LogsPage() {
           {translateAction(val)}
         </Tag>
       ),
+    },
+    {
+      key: 'type',
+      label: 'Loại log',
+      dataIndex: 'type',
+      width: 110,
+      render: (val: any) => {
+        const label = LOG_TYPE_LABEL[val?.toLowerCase()] || val || '—';
+        const color = TAB_COLORS[val?.toLowerCase()] || textTertiary;
+        return (
+          <span style={{ ...badgeBaseStyle, background: `${color}15`, color: color }}>
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'severity',
+      label: 'Mức độ',
+      dataIndex: 'severity',
+      width: 110,
+      render: (val: any) => {
+        const cfg = val ? SEVERITY_CONFIG[val.toLowerCase()] : null;
+        return cfg ? (
+          <span style={{ ...badgeBaseStyle, background: `${cfg.color}15`, color: cfg.color }}>
+            {cfg.label}
+          </span>
+        ) : (
+          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Trạng thái',
+      dataIndex: 'status',
+      width: 120,
+      render: (val: any) => {
+        const cfg = val ? STATUS_CONFIG[val] : null;
+        return cfg ? (
+          <span style={{ ...badgeBaseStyle, background: `${cfg.color}15`, color: cfg.color }}>
+            {cfg.label}
+          </span>
+        ) : (
+          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
+        );
+      },
     },
     {
       key: 'ipAddress',
@@ -516,29 +625,31 @@ export default function LogsPage() {
       ),
     },
     {
-      key: 'actions',
-      label: 'Thao tác',
-      width: 80,
+      key: 'responseCode',
+      label: 'Mã',
+      dataIndex: 'responseCode',
+      width: 70,
       align: 'center',
-      render: (_val: any, record: any) => (
-        <Button
-          type="text"
-          icon={<EyeOutlined />}
-          style={{ color: actionPrimary }}
-          onClick={() => openDetail(record as AccessLogEntry)}
-        />
-      ),
+      render: (val: any) => {
+        if (val == null) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
+        const isSuccess = val >= 200 && val < 400;
+        return (
+          <Tag
+            color={isSuccess ? 'green' : 'red'}
+            style={{
+              borderRadius: radiusSm,
+              fontSize: fontSizeSm,
+              fontWeight: fontWeightMedium,
+              fontFamily: fontMono,
+              margin: 0,
+            }}
+          >
+            {val}
+          </Tag>
+        );
+      },
     },
   ];
-
-  // ---- Empty state ----
-  const emptyState = (
-    <div style={{ textAlign: 'center', padding: '40px 0' }}>
-      <Text style={{ color: textSecondary, fontSize: fontSizeMd }}>
-        Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm.
-      </Text>
-    </div>
-  );
 
   // ---- Detail modal fields ----
   const r = selectedLog;
@@ -554,34 +665,50 @@ export default function LogsPage() {
             { label: 'Quản lý log truy cập' },
           ]}
         />
-        {renderAggregateStats()}
+        {renderStats()}
       </div>
     );
   }
 
   // ---- Render ----
   return (
-    <div style={{ padding: spaceMd }}>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
       {/* 1. ScreenHeader */}
       <ScreenHeader
         breadcrumb={[
           { label: 'Quản trị hệ thống' },
           { label: 'Quản lý log truy cập' },
         ]}
+        actions={[
+          { key: 'export', label: 'Xuất CSV', icon: <DownloadOutlined />, variant: 'outline', onClick: handleExport },
+        ]}
       />
 
       {/* 2. Aggregate stats */}
-      {renderAggregateStats()}
+      {renderStats()}
 
       {/* 3. FilterBar */}
       <FilterBar
-        fields={[
+        fields={advancedVisible ? [
           {
             key: 'dateRange',
             type: 'dateRange',
             label: 'Khoảng thời gian',
             placeholder: 'Từ ngày - Đến ngày',
           } as any,
+          {
+            key: 'keyword',
+            type: 'search',
+            label: 'Từ khóa',
+            placeholder: 'Tìm kiếm...',
+          },
+          {
+            key: 'severity',
+            type: 'select',
+            label: 'Mức độ',
+            placeholder: 'Chọn mức độ',
+            options: SEVERITY_OPTIONS,
+          },
           {
             key: 'orgUnit',
             type: 'select',
@@ -595,6 +722,13 @@ export default function LogsPage() {
             label: 'Email',
             placeholder: 'Tìm theo email...',
           },
+        ] : [
+          {
+            key: 'dateRange',
+            type: 'dateRange',
+            label: 'Khoảng thời gian',
+            placeholder: 'Từ ngày - Đến ngày',
+          } as any,
           {
             key: 'keyword',
             type: 'search',
@@ -606,221 +740,112 @@ export default function LogsPage() {
         onReset={handleReset}
       />
 
-      {/* 4. StatusTabs */}
-      <div style={{ marginBottom: spaceMd }}>
+      {/* 4. StatusTabs + Bộ lọc nâng cao */}
+      <div
+        style={{
+          ...cardStyle,
+          marginBottom: spaceSm,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '8px 16px',
+          position: 'relative',
+        }}
+      >
         <StatusTabs tabs={statusTabs} onChange={handleTabChange} />
+        <Button
+          type="link"
+          size="small"
+          icon={advancedVisible ? <UpOutlined /> : <DownOutlined />}
+          onClick={() => setAdvancedVisible((v) => { if (v) { setFilterSeverity(undefined); setFilterOrgUnit(undefined); setFilterEmail(''); } return !v; })}
+          style={{
+            position: 'absolute',
+            right: 16,
+            color: actionPrimary,
+            fontSize: fontSizeMd,
+            fontWeight: fontWeightMedium,
+            padding: 0,
+          }}
+        >
+          {advancedVisible ? 'Ẩn bộ lọc nâng cao' : 'Bộ lọc nâng cao'}
+        </Button>
       </div>
 
-      {/* Error state */}
-      {error && (
-        <Alert
-          type="error"
-          message="Lỗi tải dữ liệu"
-          description={error}
-          showIcon
-          style={{ marginBottom: spaceMd }}
-          action={
-            <Button
-              size="small"
-              style={{ color: actionPrimary }}
-              onClick={fetchData}
-            >
-              Thử lại
-            </Button>
-          }
-        />
-      )}
-
-      {/* 5. DataTable */}
-      <DataTable
-        columns={columns}
-        dataSource={tableData}
-        rowKey="id"
-        loading={loading}
-        emptyState={emptyState}
-      />
-
-      {/* 6. Pagination */}
-      <Pagination
-        total={total}
-        current={page}
-        pageSize={pageSize}
-        pageSizeOptions={[10, 20, 50]}
-        onChange={handlePageChange}
-      />
+      {/* 5. Table */}
+      <div style={{ ...cardStyle, padding: '8px 16px' }}>
+        {loading ? (
+          <LoadingSkeleton rows={8} />
+        ) : error ? (
+          <ErrorState message={error} onRetry={fetchData} />
+        ) : data.length === 0 ? (
+          <EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              dataSource={tableData}
+              rowKey="id"
+              rowActions={rowActions}
+              scroll={{ x: 1200, y: 500 }}
+            />
+            <Pagination
+              total={total}
+              current={page}
+              pageSize={pageSize}
+              pageSizeOptions={[10, 20, 50]}
+              onChange={handlePageChange}
+            />
+          </>
+        )}
+      </div>
 
       {/* 7. Detail Modal */}
       <Modal
+        title={<span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết log truy cập</span>}
         open={modalVisible}
         onCancel={closeDetail}
-        footer={
-          <Button
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-              borderColor: borderDefault,
-              color: textSecondary,
-            }}
-            onClick={closeDetail}
-          >
-            Đóng
-          </Button>
-        }
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Chi tiết log truy cập
-          </span>
-        }
-        width={isMobile ? '90vw' : 800}
-        destroyOnClose
+        footer={null}
+        width={700}
+        styles={{ body: { padding: spaceMd, maxHeight: '68vh', overflowY: 'auto' } }}
       >
-        <div style={{ borderTop: `1px solid ${borderDefault}`, marginBottom: spaceMd }} />
-        <Spin spinning={detailLoading}>
-          <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: spaceSm }}>
-            {r && (
-            <Form layout="vertical">
-              {/* Row 1 */}
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Thời gian')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss')} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Loại log')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={LOG_TYPE_LABEL[r.type?.toLowerCase()] || r.type || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              {/* Row 2 */}
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Mức độ')} style={{ marginBottom: spaceFormField }}>
-                    {severityEntry ? (
-                      <span style={{ ...badgeBaseStyle, background: `${severityEntry.color}15`, color: severityEntry.color }}>
-                        {severityEntry.label}
-                      </span>
-                    ) : (
-                      <span style={{ ...badgeBaseStyle, background: `${textTertiary}15`, color: textTertiary }}>{r.severity || 'N/A'}</span>
-                    )}
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Người dùng')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.username} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              {/* Row 3 */}
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Email')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.email || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.orgUnit || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              {/* Row 4 */}
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Địa chỉ IP')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.ipAddress} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Trình duyệt')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.userAgent || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              {/* Row 5 */}
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Phiên đăng nhập')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.sessionId || 'N/A'} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Hành động')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={translateAction(r.action)} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              {/* Row 6 */}
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Đường dẫn')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.requestPath || 'N/A'} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Mã phản hồi')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.responseCode != null ? String(r.responseCode) : 'N/A'} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              {/* Row 7 */}
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Thời gian xử lý')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.durationMs != null ? `${r.durationMs}ms` : 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Nội dung')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.detail || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-
-              {/* Metadata */}
-              <Form.Item {...labelProps('Metadata')} style={{ marginBottom: 0 }}>
-                {r.metadata ? (
-                  <pre
-                    style={{
-                      fontFamily: fontMono,
-                      fontSize: fontSizeSm,
-                      maxHeight: 200,
-                      overflow: 'auto',
-                      background: surfaceCard,
-                      padding: spaceSm,
-                      borderRadius: radiusSm,
-                      border: `0.5px solid ${borderDefault}`,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      margin: 0,
-                    }}
-                  >
-                    {formatMetadata(r.metadata)}
-                  </pre>
-                ) : (
-                  <Text style={{ color: textTertiary, fontSize: fontSizeMd }}>
-                    N/A
-                  </Text>
-                )}
-              </Form.Item>
-            </Form>
-          )}
-        </div>
-      </Spin>
+        {detailLoading ? <LoadingSkeleton rows={6} /> : r ? (
+          <Descriptions column={2} size="small" bordered labelStyle={{ width: 150 }}>
+            <Descriptions.Item label="Thời gian">{dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss')}</Descriptions.Item>
+            <Descriptions.Item label="Loại log">
+              <Tag color="blue">{LOG_TYPE_LABEL[r.type?.toLowerCase()] || r.type || '—'}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Mức độ">
+              {severityEntry ? (
+                <span style={{ ...badgeBaseStyle, background: `${severityEntry.color}15`, color: severityEntry.color }}>{severityEntry.label}</span>
+              ) : '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">
+              {r.status ? (
+                <Tag color={r.status === 'SUCCESS' ? 'green' : 'red'}>{r.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}</Tag>
+              ) : '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Người dùng">{r.username || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Email">{r.email || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Đơn vị">{r.orgUnit || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Hành động">{translateAction(r.action)}</Descriptions.Item>
+            <Descriptions.Item label="Địa chỉ IP"><span style={{ fontFamily: fontMono }}>{r.ipAddress}</span></Descriptions.Item>
+            <Descriptions.Item label="Trình duyệt">{r.userAgent || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Phiên đăng nhập"><span style={{ fontFamily: fontMono }}>{r.sessionId || '—'}</span></Descriptions.Item>
+            <Descriptions.Item label="Đường dẫn"><span style={{ fontFamily: fontMono }}>{r.requestPath || '—'}</span></Descriptions.Item>
+            <Descriptions.Item label="Mã phản hồi">
+              <Tag color={r.responseCode != null && r.responseCode >= 200 && r.responseCode < 400 ? 'green' : 'red'}>{r.responseCode ?? '—'}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Thời gian xử lý">{r.durationMs != null ? `${r.durationMs}ms` : '—'}</Descriptions.Item>
+            <Descriptions.Item label="Nội dung" span={2}>{r.detail || '—'}</Descriptions.Item>
+            {r.metadata && (
+              <Descriptions.Item label="Metadata" span={2}>
+                <pre style={{ fontFamily: fontMono, fontSize: fontSizeSm, maxHeight: 200, overflow: 'auto', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {formatMetadata(r.metadata)}
+                </pre>
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        ) : null}
       </Modal>
     </div>
   );

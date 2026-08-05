@@ -827,14 +827,6 @@ export default function PierList() {
       });
     }
 
-    // Lịch sử
-    actions.push({
-      key: 'history',
-      label: 'Lịch sử',
-      icon: <HistoryOutlined />,
-      onClick: () => openHistoryModal(record),
-    });
-
     // Gửi phê duyệt — khi ở trạng thái Nháp
     const draftStatuses = ['DRAFT', 'NHAP'];
     if (hasPerm('pier:update') && draftStatuses.includes(record.approvalStatus || '')) {
@@ -877,6 +869,14 @@ export default function PierList() {
       });
     }
 
+    // Lịch sử
+    actions.push({
+      key: 'history',
+      label: 'Lịch sử',
+      icon: <HistoryOutlined />,
+      onClick: () => openHistoryModal(record),
+    });
+
     return actions;
   }, [hasPerm, navigate, handleApprove, openDeleteModal, openRejectModal, openDetailModal]);
 
@@ -905,10 +905,6 @@ export default function PierList() {
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 2100, y: 'calc(100vh - 450px)' }}
-          onRow={(record) => ({
-            onClick: () => openDetailModal(record),
-            style: { cursor: 'pointer' },
-          })}
         />
         <Pagination
           total={total}
@@ -1210,6 +1206,26 @@ export default function PierList() {
             >
               Chỉnh sửa
             </Button>
+          ) : null,
+          hasPerm('pier:history') && detailRecord ? (
+            <Button key="history" icon={<HistoryOutlined />}
+              onClick={() => { const r = detailRecord; setDetailModalOpen(false); openHistoryModal(r); }}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Lịch sử</Button>
+          ) : null,
+          hasPerm('pier:delete') && detailRecord && ['DRAFT','TU_CHOI','REJECTED','TAM_NGUNG','SUSPENDED'].includes(detailRecord.approvalStatus || '') ? (
+            <Button key="delete" danger icon={<DeleteOutlined />}
+              onClick={() => { setDetailModalOpen(false); openDeleteModal(detailRecord); }}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xóa</Button>
+          ) : null,
+          hasPerm('pier:approve') && detailRecord && ['PENDING','PENDING_APPROVAL','CHO_PHE_DUYET'].includes(detailRecord.approvalStatus || '') ? (
+            <>
+              <Button key="reject" danger icon={<CloseCircleOutlined />}
+                onClick={() => { setDetailModalOpen(false); openRejectModal(detailRecord); }}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Từ chối</Button>
+              <Button key="approve" icon={<CheckCircleOutlined />}
+                onClick={() => { setDetailModalOpen(false); handleApprove(detailRecord); }}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, color: statusOperational, borderColor: statusOperational }}>Phê duyệt</Button>
+            </>
           ) : null,
         ].filter(Boolean)}
         width={800}

@@ -199,8 +199,8 @@ export default function BuoyStationForm() {
         <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
           <Space>
             <Button onClick={() => navigate('/buoy-station')} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
-            {!isEdit && <Button onClick={() => handleSave('DRAFT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Lưu nháp</Button>}
-            <Button type="primary" onClick={() => handleSave('SUBMIT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{isEdit ? 'Cập nhật & Gửi duyệt' : 'Gửi phê duyệt'}</Button>
+            {!isEdit && <Button onClick={() => handleSave('DRAFT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Lưu tạm</Button>}
+            <Button type="primary" onClick={() => handleSave('SUBMIT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Lưu và phê duyệt</Button>
           </Space>
         </Form.Item>
       </Form>

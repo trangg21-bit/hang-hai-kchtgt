@@ -782,14 +782,6 @@ export default function BuoyList() {
       });
     }
 
-    // Lịch sử
-    actions.push({
-      key: 'history',
-      label: 'Lịch sử',
-      icon: <HistoryOutlined />,
-      onClick: () => openHistoryModal(record),
-    });
-
     // Gửi phê duyệt — khi ở trạng thái Nháp hoặc Từ chối
     if ((hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'REJECTED')) {
       actions.push({
@@ -846,6 +838,14 @@ export default function BuoyList() {
         danger: true,
       });
     }
+
+    // Lịch sử
+    actions.push({
+      key: 'history',
+      label: 'Lịch sử',
+      icon: <HistoryOutlined />,
+      onClick: () => openHistoryModal(record),
+    });
 
     return actions;
   }, [hasPerm, navigate, handleSubmitApproval, handleApproveL1, handleApproveL2, openDeleteModal, openRejectModal, openDetailModal]);
