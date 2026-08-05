@@ -276,15 +276,26 @@ export const pierCRUD = {
 // ── DryPort CRUD ────────────────────────────────────────────────────
 
 export const dryPortCRUD = {
+  async generateCode(): Promise<{ code: string }> {
+    const res = await api.get('/v1/dry-ports/generate-code');
+    return res.data.data;
+  },
+
   async findAll(params?: {
     page?: number;
     size?: number;
     orgUnitId?: string;
+    search?: string;
+    status?: string;
+    approvalStatus?: string;
   }): Promise<PaginatedResponse<DryPort>> {
     const sp = buildSearchParams({
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
       orgUnitId: params?.orgUnitId,
+      search: params?.search,
+      status: params?.status,
+      approvalStatus: params?.approvalStatus,
     });
     const res = await api.get(`/v1/dry-ports?${sp}`);
     const pageData = res.data.data;
@@ -302,18 +313,12 @@ export const dryPortCRUD = {
   },
 
   async search(params?: {
-    dryPortCode?: string;
-    dryPortName?: string;
-    province?: string;
-    operationalStatus?: string;
+    search?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<DryPort>> {
     const sp = buildSearchParams({
-      dryPortCode: params?.dryPortCode,
-      dryPortName: params?.dryPortName,
-      province: params?.province,
-      operationalStatus: params?.operationalStatus,
+      search: params?.search,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -332,8 +337,13 @@ export const dryPortCRUD = {
     return res.data.data;
   },
 
-  async update(payload: UpdateDryPortRequest & { id: string }): Promise<DryPort> {
+  async update(payload: UpdateDryPortRequest): Promise<DryPort> {
     const res = await api.put('/v1/dry-ports', payload);
+    return res.data.data;
+  },
+
+  async submit(id: string): Promise<DryPort> {
+    const res = await api.put(`/v1/dry-ports/${id}/submit`);
     return res.data.data;
   },
 
@@ -536,24 +546,21 @@ export const pierHistory = {
 };
 
 export const dryPortHistory = {
-  async getHistory(entityId: string, params?: { page?: number; size?: number }): Promise<{
-    data: unknown[];
-    total: number;
-    page: number;
-    pageSize: number;
-  }> {
+  async getHistory(entityId: string, params?: { page?: number; size?: number }): Promise<any> {
     const sp = buildSearchParams({
-      page: params?.page !== undefined ? params.page - 1 : undefined,
+      page: params?.page !== undefined ? params.page : undefined,
       size: params?.size,
     });
     const res = await api.get(`/v1/dry-ports/${entityId}/history?${sp}`);
-    const pageData = res.data.data;
-    return {
-      data: pageData.content || [],
-      total: pageData.totalElements ?? 0,
-      page: (pageData.number ?? 0) + 1,
-      pageSize: pageData.size ?? 20,
-    };
+    return res.data.data;
+  },
+  async getAll(params?: { page?: number; size?: number }): Promise<any> {
+    const sp = buildSearchParams({
+      page: params?.page !== undefined ? params.page : undefined,
+      size: params?.size,
+    });
+    const res = await api.get(`/v1/dry-ports/history/all?${sp}`);
+    return res.data.data;
   },
 };
 

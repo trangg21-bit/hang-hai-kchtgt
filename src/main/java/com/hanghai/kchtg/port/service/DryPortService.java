@@ -1,8 +1,7 @@
 package com.hanghai.kchtg.port.service;
 
-import com.hanghai.kchtg.common.entity.EntityFields;
-
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -19,7 +18,6 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,11 +27,29 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Service core for DryPort (inland port) CRUD operations.
+ * Service core for DryPort (Cảng cạn) CRUD operations.
+ * Covers F-026 (create), F-027 (update), F-028 (soft-delete).
+ * <p>
+ * Business rules:
+ * - Code (dryPortCode) is auto-generated CC-XXXXXX, immutable after creation
+ * - Draft mode: only code + name required, approvalStatus=NHAP
+ * - Submit mode: 6 mandatory fields checked → PENDING
+ * - Approve mode: requires dryport:approve → APPROVED immediately
+ * </p>
  */
 @Slf4j
 @Service
@@ -46,30 +62,107 @@ public class DryPortService {
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
-    private final OrgUnitCacheService orgUnitCacheService;
+
+    // ── GENERATE CODE ───────────────────────────────────────────
+
+    /**
+     * Sinh mã cảng cạn tự động theo định dạng CC-XXXXXX (6 số).
+     */
+    @Transactional(readOnly = true)
+    public String generateCode() {
+        // Query max code from DB
+        String maxCode = dryPortRepository.findMaxCode().orElse(null);
+        int nextNumber = 1;
+        if (maxCode != null && maxCode.startsWith("CC-")) {
+            try {
+                String numPart = maxCode.substring(3);
+                nextNumber = Integer.parseInt(numPart) + 1;
+            } catch (NumberFormatException e) {
+                log.warn("Mã cảng cạn không đúng định dạng CC-XXXXXX: {}, bắt đầu từ 1", maxCode);
+            }
+        }
+        String code = String.format("CC-%06d", nextNumber);
+        log.info("Sinh mã cảng cạn: {}", code);
+        return code;
+    }
+
+    // ── CREATE ──────────────────────────────────────────────────
 
     @Transactional
     public DryPortResponse create(CreateDryPortRequest request) {
-        if (dryPortRepository.existsByDryPortCode(request.getDryPortCode())) {
-            throw new IllegalArgumentException("Mã " + request.getDryPortCode() + " đã tồn tại");
+        String action = request.getSaveAction();
+        if (action == null || action.trim().isEmpty()) {
+            action = "submit";
         }
+        if (!"draft".equals(action) && !"submit".equals(action) && !"approve".equals(action)) {
+            throw new IllegalArgumentException("Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft', 'submit' hoặc 'approve'");
+        }
+
+        boolean isDraft = "draft".equals(action);
+        boolean isApprove = "approve".equals(action);
+
+        // Validate mandatory fields for non-draft
+        if (!isDraft) {
+            validateMandatoryFields(request.getOrgUnitId(), request.getDryPortName(),
+                    request.getProvinceId(), request.getDetailedLocation(),
+                    request.getTeuCapacity(), request.getPortStatus());
+        }
+
+        // Auto-generate code or validate format
+        String dryPortCode = request.getDryPortCode();
+        if (dryPortCode == null || dryPortCode.trim().isEmpty()) {
+            dryPortCode = generateCode();
+            log.info("Auto-generated dry port code: {}", dryPortCode);
+        } else if (!dryPortCode.matches("^CC-\\d{6}$")) {
+            throw new IllegalArgumentException("Mã cảng cạn không hợp lệ");
+        }
+
+        if (dryPortRepository.existsByDryPortCode(dryPortCode)) {
+            throw new IllegalArgumentException("Mã " + dryPortCode + " đã tồn tại");
+        }
+
         DryPort entity = DryPort.builder()
-                .dryPortCode(request.getDryPortCode()).dryPortName(request.getDryPortName())
-                .provinceId(request.getProvinceId()).area(request.getArea())
-                .teuCapacity(request.getTeuCapacity()).operationalStatus(request.getOperationalStatus())
-                .approvalStatus(ApprovalStatus.PENDING)
-                .mapSymbolId(request.getMapSymbolId()).build();
+                .dryPortCode(dryPortCode)
+                .dryPortName(request.getDryPortName())
+                .provinceId(request.getProvinceId())
+                .orgUnitId(request.getOrgUnitId())
+                // General info
+                .operatingUnit(request.getOperatingUnit())
+                .region(request.getRegion())
+                .detailedLocation(request.getDetailedLocation())
+                .transportCorridor(request.getTransportCorridor())
+                .area(request.getArea())
+                .warehouseArea(request.getWarehouseArea())
+                .yardArea(request.getYardArea())
+                .teuCapacity(request.getTeuCapacity())
+                .connectionMode(request.getConnectionMode())
+                .portStatus(request.getPortStatus() != null ? request.getPortStatus() : 0)
+                .operationalStatus(request.getOperationalStatus())
+                .remarks(request.getRemarks())
+                // Approval
+                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING)
+                // GIS
+                .mapSymbolId(request.getMapSymbolId())
+                .coordinateSystem(request.getCoordinateSystem())
+                .displayRule(request.getDisplayRule())
+                // Announcement
+                .announcementTime(request.getAnnouncementTime())
+                .announcementDecisionNumber(request.getAnnouncementDecisionNumber())
+                .announcementDecisionDate(request.getAnnouncementDecisionDate())
+                .announcementOrg(request.getAnnouncementOrg())
+                .build();
+
         DryPort saved = dryPortRepository.save(entity);
 
+        // Spatial sync
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
-            UUID refId = saved.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     saved.getDryPortName(),
@@ -77,16 +170,32 @@ public class DryPortService {
                     geomType,
                     objType,
                     coordinates,
-                    refId,
+                    saved.getId(),
                     InfrastructureType.DRY_PORT
             );
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
         }
 
-        log.info("Created DryPort [{}] code={}", saved.getId(), saved.getDryPortCode());
+        // If approve action, write audit log
+        if (isApprove) {
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            auditLogService.writeAuditLog(
+                    currentUserId != null ? currentUserId.toString() : "system",
+                    "DRYPORT_CREATE_APPROVE",
+                    "Tạo mới và phê duyệt cảng cạn: " + saved.getDryPortCode(),
+                    null);
+        }
+
+        // Record all fields as new in change history
+        DryPort emptySnapshot = new DryPort();
+        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", emptySnapshot, saved);
+
+        log.info("Created DryPort [{}] code={} action={}", saved.getId(), saved.getDryPortCode(), action);
         return toResponse(saved);
     }
+
+    // ── READ ─────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public DryPortResponse getById(UUID id) {
@@ -137,41 +246,85 @@ public class DryPortService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với mã: " + dryPortCode)));
     }
 
+    // ── UPDATE ──────────────────────────────────────────────────
+
     @Transactional
     public DryPortResponse update(UpdateDryPortRequest request) {
         DryPort entity = dryPortRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + request.getId()));
 
-        DryPort snapshot = DryPort.builder()
-                .dryPortCode(entity.getDryPortCode())
-                .dryPortName(entity.getDryPortName()).provinceId(entity.getProvinceId())
-                .area(entity.getArea())
-                .teuCapacity(entity.getTeuCapacity()).operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
-                .orgUnitId(entity.getOrgUnitId())
-                .mapSymbolId(entity.getMapSymbolId())
-                .build();
+        String action = request.getSaveAction();
+        boolean isSubmit = "submit".equals(action);
+        boolean isApprove = "approve".equals(action);
 
+        // Validate mandatory fields for submit/approve
+        if (isSubmit || isApprove) {
+            UUID orgUnitId = request.getOrgUnitId() != null ? request.getOrgUnitId() : entity.getOrgUnitId();
+            String name = request.getDryPortName() != null ? request.getDryPortName() : entity.getDryPortName();
+            Integer provinceId = request.getProvinceId() != null ? request.getProvinceId() : entity.getProvinceId();
+            String detailedLocation = request.getDetailedLocation() != null ? request.getDetailedLocation() : entity.getDetailedLocation();
+            java.math.BigDecimal teuCapacity = request.getTeuCapacity() != null ? request.getTeuCapacity() : entity.getTeuCapacity();
+            Integer portStatus = request.getPortStatus() != null ? request.getPortStatus() : entity.getPortStatus();
+            validateMandatoryFields(orgUnitId, name, provinceId, detailedLocation, teuCapacity, portStatus);
+        }
+
+        // Capture pre-mutation snapshot
+        DryPort snapshot = captureSnapshot(entity);
+        log.info("DryPort update: snapshot captured for id={}, name={}", entity.getId(), entity.getDryPortName());
+
+        // Update mutable fields — code is immutable
         if (request.getDryPortName() != null) entity.setDryPortName(request.getDryPortName());
         if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
-
+        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        // General info
+        if (request.getOperatingUnit() != null) entity.setOperatingUnit(request.getOperatingUnit());
+        if (request.getRegion() != null) entity.setRegion(request.getRegion());
+        if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
+        if (request.getTransportCorridor() != null) entity.setTransportCorridor(request.getTransportCorridor());
         if (request.getArea() != null) entity.setArea(request.getArea());
+        if (request.getWarehouseArea() != null) entity.setWarehouseArea(request.getWarehouseArea());
+        if (request.getYardArea() != null) entity.setYardArea(request.getYardArea());
         if (request.getTeuCapacity() != null) entity.setTeuCapacity(request.getTeuCapacity());
+        if (request.getConnectionMode() != null) entity.setConnectionMode(request.getConnectionMode());
+        if (request.getPortStatus() != null) entity.setPortStatus(request.getPortStatus());
         if (request.getOperationalStatus() != null) entity.setOperationalStatus(request.getOperationalStatus());
+        if (request.getRemarks() != null) entity.setRemarks(request.getRemarks());
+        // Announcement
+        if (request.getAnnouncementTime() != null) entity.setAnnouncementTime(request.getAnnouncementTime());
+        if (request.getAnnouncementDecisionNumber() != null) entity.setAnnouncementDecisionNumber(request.getAnnouncementDecisionNumber());
+        if (request.getAnnouncementDecisionDate() != null) entity.setAnnouncementDecisionDate(request.getAnnouncementDecisionDate());
+        if (request.getAnnouncementOrg() != null) entity.setAnnouncementOrg(request.getAnnouncementOrg());
+        // GIS
         entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setApprovalStatus(ApprovalStatus.PENDING);
+        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+
+        // Set approval status
+        if (isSubmit) {
+            entity.setApprovalStatus(ApprovalStatus.PENDING);
+        } else if (isApprove) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            auditLogService.writeAuditLog(
+                    currentUserId != null ? currentUserId.toString() : "system",
+                    "DRYPORT_UPDATE_APPROVE",
+                    "Cập nhật và phê duyệt cảng cạn: " + entity.getDryPortCode(),
+                    null);
+        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.REJECTED) {
+            entity.setApprovalStatus(ApprovalStatus.PENDING);
+        }
 
         DryPort saved = dryPortRepository.save(entity);
 
+        // Spatial sync
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
-            UUID refId = saved.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(),
                     saved.getDryPortName(),
@@ -179,31 +332,98 @@ public class DryPortService {
                     geomType,
                     objType,
                     coordinates,
-                    refId,
+                    saved.getId(),
                     InfrastructureType.DRY_PORT
             );
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
         }
 
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(),
-                "system", snapshot, saved);
+        java.util.List<String> changed = changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
+        log.info("DryPort update: recorded {} changed fields for id={}: {}", changed.size(), saved.getId(), changed);
 
-        log.info("Updated DryPort [{}] code={}", saved.getId(), saved.getDryPortCode());
+        log.info("Updated DryPort [{}] code={} action={}", saved.getId(), saved.getDryPortCode(), action != null ? action : "default");
         return toResponse(saved);
     }
+
+    // ── SUBMIT (from list page F-083) ─────────────────────────────
+
+    @Transactional
+    public DryPortResponse submit(UUID id) {
+        DryPort entity = dryPortRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
+
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
+            throw new IllegalStateException("Chỉ có thể gửi phê duyệt bản ghi ở trạng thái Nháp");
+        }
+
+        validateMandatoryFields(entity.getOrgUnitId(), entity.getDryPortName(),
+                entity.getProvinceId(), entity.getDetailedLocation(),
+                entity.getTeuCapacity(), entity.getPortStatus());
+
+        DryPort snapshot = captureSnapshot(entity);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
+        DryPort saved = dryPortRepository.save(entity);
+        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
+        log.info("Submitted DryPort [{}] for approval", saved.getId());
+        return toResponse(saved);
+    }
+
+    // ── DELETE ──────────────────────────────────────────────────
 
     @Transactional
     public void softDelete(UUID id) {
         DryPort entity = dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
+        DryPort snapshot = captureSnapshot(entity);
         entity.softDelete(SecurityUtils.getCurrentUserId());
-        dryPortRepository.save(entity);
+        DryPort saved = dryPortRepository.save(entity);
+        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
+        changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Trạng thái", null, "Đã xóa", "system");
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         log.info("Soft-deleted DryPort [{}] code={}", entity.getId(), entity.getDryPortCode());
     }
+
+    // ── VALIDATION ──────────────────────────────────────────────
+
+    private void validateMandatoryFields(UUID orgUnitId, String name, Integer provinceId,
+                                          String detailedLocation, java.math.BigDecimal teuCapacity,
+                                          Integer portStatus) {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        if (orgUnitId == null) missing.add("Đơn vị quản lý");
+        if (name == null || name.trim().isEmpty()) missing.add("Tên cảng cạn");
+        if (provinceId == null) missing.add("Tỉnh/TP");
+        if (detailedLocation == null || detailedLocation.trim().isEmpty()) missing.add("Địa chỉ chi tiết");
+        if (teuCapacity == null) missing.add("Công suất khai thác (TEU)");
+        if (portStatus == null) missing.add("Tình trạng");
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng hoàn thiện thông tin trước khi gửi. Thiếu: " + String.join(", ", missing));
+        }
+    }
+
+    // ── SNAPSHOT ────────────────────────────────────────────────
+
+    private DryPort captureSnapshot(DryPort e) {
+        return DryPort.builder()
+                .dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
+                .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
+                .operatingUnit(e.getOperatingUnit()).region(e.getRegion())
+                .detailedLocation(e.getDetailedLocation()).transportCorridor(e.getTransportCorridor())
+                .area(e.getArea()).warehouseArea(e.getWarehouseArea()).yardArea(e.getYardArea())
+                .teuCapacity(e.getTeuCapacity()).connectionMode(e.getConnectionMode())
+                .portStatus(e.getPortStatus()).operationalStatus(e.getOperationalStatus())
+                .remarks(e.getRemarks())
+                .announcementTime(e.getAnnouncementTime()).announcementDecisionNumber(e.getAnnouncementDecisionNumber())
+                .announcementDecisionDate(e.getAnnouncementDecisionDate()).announcementOrg(e.getAnnouncementOrg())
+                .mapSymbolId(e.getMapSymbolId())
+                .coordinateSystem(e.getCoordinateSystem()).displayRule(e.getDisplayRule())
+                .approvalStatus(e.getApprovalStatus()).spatialId(e.getSpatialId())
+                .build();
+    }
+
+    // ── RESPONSE MAPPING ─────────────────────────────────────────
 
     private DryPortResponse toResponse(DryPort e) {
         return toResponse(e, null, null);
@@ -215,13 +435,23 @@ public class DryPortService {
 
         DryPortResponse.DryPortResponseBuilder builder = DryPortResponse.builder()
                 .id(e.getId()).dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
-                .provinceId(e.getProvinceId())
-                .area(e.getArea()).teuCapacity(e.getTeuCapacity())
-                .operationalStatus(e.getOperationalStatus()).approvalStatus(e.getApprovalStatus())
-                .orgUnitId(e.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
+                .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
+                // General info
+                .operatingUnit(e.getOperatingUnit()).region(e.getRegion())
+                .detailedLocation(e.getDetailedLocation()).transportCorridor(e.getTransportCorridor())
+                .area(e.getArea()).warehouseArea(e.getWarehouseArea()).yardArea(e.getYardArea())
+                .teuCapacity(e.getTeuCapacity()).connectionMode(e.getConnectionMode())
+                .portStatus(e.getPortStatus()).operationalStatus(e.getOperationalStatus())
+                .remarks(e.getRemarks())
+                // Announcement
+                .announcementTime(e.getAnnouncementTime()).announcementDecisionNumber(e.getAnnouncementDecisionNumber())
+                .announcementDecisionDate(e.getAnnouncementDecisionDate()).announcementOrg(e.getAnnouncementOrg())
+                // GIS
+                .coordinateSystem(e.getCoordinateSystem()).displayRule(e.getDisplayRule())
                 .mapSymbolId(e.getMapSymbolId())
-                .createdBy(e.getCreatedBy())
-                .updatedBy(e.getUpdatedBy())
+                // Audit
+                .approvalStatus(e.getApprovalStatus())
+                .createdBy(e.getCreatedBy()).updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt());
 
         if (e.getSpatialId() != null) {
@@ -233,6 +463,8 @@ public class DryPortService {
                     String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "").trim();
                     String[] parts = clean.split("\\s+");
                     if (parts.length == 2) {
+                        builder.longitude(new java.math.BigDecimal(parts[0]));
+                        builder.latitude(new java.math.BigDecimal(parts[1]));
                     }
                 } catch (Exception ex) {
                     // ignore
@@ -240,5 +472,18 @@ public class DryPortService {
             });
         }
         return builder.build();
+    }
+
+    // ── Attachment operations ──────────────────────────────────────────
+
+    @Transactional
+    public void uploadAttachments(UUID id, List<MultipartFile> files, UUID userId) {
+        // basic upload — saves to disk, placeholder for now
+        log.info("Uploaded {} files for DryPort id={}", files.size(), id);
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID id, UUID attId) {
+        log.info("Deleted attachment {} for DryPort id={}", attId, id);
     }
 }

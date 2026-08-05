@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Button,
   Space,
@@ -15,6 +15,7 @@ import {
   InputNumber,
   Typography,
   Descriptions,
+  Divider,
 } from 'antd';
 import type { TableProps } from 'antd';
 import {
@@ -29,6 +30,10 @@ import {
   HistoryOutlined,
   DownloadOutlined,
   UploadOutlined,
+  ClockCircleFilled,
+  ArrowRightOutlined,
+  UpOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { DryPort } from './types';
@@ -58,6 +63,7 @@ import type { Symbol } from '../../services/symbolService';
 import { documentApi } from '../document/api';
 import UserResolver from '../../components/UserResolver';
 import { z } from 'zod';
+import { actionPrimary, textPrimary, textSecondary, textTertiary, statusCritical, statusOperational, cardStyle, radiusLg, radiusPill, shadowSm, spaceXs, spaceSm, spaceMd, spaceFormField, surfaceCard, borderDefault, fontSizeMd, fontSizeLg, fontWeightBold, fontWeightMedium } from '../../tokens';
 import { createCangCanSchema, updateCangCanSchema } from './schema';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
@@ -86,6 +92,23 @@ export const translateFieldName = (fieldName: string): string => {
     loaiCau: 'Loại cầu',
     dryPortCode: 'Mã cảng cạn',
     dryPortName: 'Tên cảng cạn',
+    provinceId: 'Tỉnh/Thành phố',
+    operatingUnit: 'Đơn vị vận hành',
+    region: 'Vùng',
+    detailedLocation: 'Địa chỉ chi tiết',
+    transportCorridor: 'Hành lang vận tải',
+    warehouseArea: 'Diện tích kho (m²)',
+    yardArea: 'Diện tích bãi (m²)',
+    teuCapacity: 'Công suất TEU',
+    connectionMode: 'Phương thức kết nối',
+    portStatus: 'Tình trạng cảng',
+    mapSymbolId: 'Biểu tượng bản đồ',
+    coordinateSystem: 'Hệ tọa độ',
+    displayRule: 'Quy tắc hiển thị',
+    announcementTime: 'Thời điểm công bố',
+    announcementDecisionNumber: 'Số quyết định công bố',
+    announcementDecisionDate: 'Ngày quyết định công bố',
+    announcementOrg: 'Đơn vị công bố',
     viTri: 'Vị trí',
     dienTichDat: 'Diện tích đất (ha)',
     dienTichNuoc: 'Diện tích nước (ha)',
@@ -133,6 +156,11 @@ export default function DryPortListPage() {
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState<Record<number, boolean>>({});
+  const [historySearch, setHistorySearch] = useState('');
+  const historySearchRef = useRef('');
+  const [historyDateFrom, setHistoryDateFrom] = useState('');
+  const [historyDateTo, setHistoryDateTo] = useState('');
 
   // Forms definition
   const [createForm] = Form.useForm();
@@ -230,6 +258,10 @@ export default function DryPortListPage() {
         'TU_CHOI': 'Từ chối',
       };
       return approvalMap[val.toUpperCase()] || val;
+    }
+    if (fieldName === 'portStatus') {
+      const psMap: Record<string, string> = { '0': 'Hiện hữu', '1': 'Đang xây dựng', '2': 'Đã quy hoạch' };
+      return psMap[val] || val;
     }
     if (fieldName === 'operationalStatus') {
       const statusMap: Record<string, string> = {
@@ -606,9 +638,14 @@ export default function DryPortListPage() {
                   setLoadingHistory(true);
                   setSelectedRecord(record);
                   setHistoryModalVisible(true);
+                  setHistoryExpanded({});
+                  setHistorySearch('');
+                  historySearchRef.current = '';
+                  setHistoryDateFrom('');
+                  setHistoryDateTo('');
                   const { fetchdryPortHistory } = await import('./api');
                   const histData = await fetchdryPortHistory(record.id);
-                  setHistoryRecords(histData || []);
+                  setHistoryRecords(histData.changeHistory || []);
                 } catch (err) {
                   toast.error('Không thể tải lịch sử thay đổi');
                 } finally {
@@ -1122,84 +1159,168 @@ export default function DryPortListPage() {
 
       {/* History Modal */}
       <Modal
-        title={selectedRecord ? `Lịch sử thay đổi: ${selectedRecord.dryPortCode} — ${selectedRecord.dryPortName}` : 'Lịch sử thay đổi'}
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Space size={spaceSm}>
+              <HistoryOutlined style={{ color: actionPrimary, fontSize: 20 }} />
+              <span style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
+                {selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.dryPortName}` : 'Lịch sử thay đổi'}
+              </span>
+            </Space>
+          </div>
+        }
         open={historyModalVisible}
         onCancel={() => setHistoryModalVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setHistoryModalVisible(false)}>
-            Đóng
-          </Button>
-        ]}
-        width={700}
+        footer={null}
+        width={880}
+        styles={{ body: { padding: `${spaceMd}px`, maxHeight: '68vh', overflowY: 'auto' } }}
       >
+        {!loadingHistory && (
+          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+            <Input.Search placeholder="Tìm kiếm nội dung thay đổi..." allowClear
+              value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} style={{ flex: 1 }} />
+          </div>
+        )}
         {loadingHistory ? (
           <LoadingSkeleton rows={5} />
         ) : historyRecords.length === 0 ? (
-          <EmptyState description="Chưa có thay đổi nào được ghi nhận." />
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+            <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+          </div>
         ) : (
-          <div style={{ borderLeft: '2px solid #f0f0f0', paddingLeft: 24, marginLeft: 8, marginTop: 16, maxHeight: '60vh', overflowY: 'auto' }}>
-            {historyRecords
-              .sort((a, b) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime())
-              .map((record: any, idx: number) => {
-                return (
-                  <div key={record.id || idx} style={{ position: 'relative', marginBottom: 24, paddingBottom: 12, borderBottom: idx < historyRecords.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
-                    {/* Timeline dot */}
-                    <div style={{ position: 'absolute', left: -29, top: 4, width: 12, height: 12, borderRadius: '50%', background: '#1890ff', border: '2px solid #fff', boxShadow: '0 0 0 2px #1890ff' }} />
-                    
-                    {/* Timestamp */}
-                    <div style={{ marginBottom: 4 }}>
-                      <Typography.Text strong>
-                        {record.changedAt || record.createdAt ? new Date(record.changedAt || record.createdAt).toLocaleString('vi-VN') : '—'}
-                      </Typography.Text>
-                      {record.actionType && (
-                        <Tag color="blue" style={{ marginLeft: 8 }}>{record.actionType}</Tag>
-                      )}
-                    </div>
+          (() => {
+            const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+            const sorted = [...historyRecords].sort((a: any, b: any) =>
+              new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
+            const q = historySearch.toLowerCase().trim();
 
-                    {/* Actor */}
-                    {record.changedBy && (
-                      <div style={{ marginBottom: 4 }}>
-                        <Typography.Text type="secondary">Người thực hiện: </Typography.Text>
-                        <Typography.Text strong>{record.changedBy}</Typography.Text>
-                      </div>
-                    )}
+            const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+            for (const r of sorted) {
+              if (q) {
+                const fn = (r.fieldName || r.fieldChanged || '').toLowerCase();
+                const ov = (r.oldValue || '').toLowerCase();
+                const nv = (r.newValue || '').toLowerCase();
+                const label = translateFieldName(r.fieldName || r.fieldChanged).toLowerCase();
+                const oldDisp = translateValue(r.fieldName || r.fieldChanged, r.oldValue).toLowerCase();
+                const newDisp = translateValue(r.fieldName || r.fieldChanged, r.newValue).toLowerCase();
+                if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q)
+                    && !label.includes(q) && !oldDisp.includes(q) && !newDisp.includes(q)) continue;
+              }
+              const ts = r.changedAt || r.createdAt || '';
+              const sec = ts ? toSec(ts) : 0;
+              const prev = groups[groups.length - 1];
+              if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
+              else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+            }
 
-                    {/* Field change */}
-                    {(record.fieldName || record.fieldChanged) && (
-                      <div style={{ marginBottom: 4 }}>
-                        <Typography.Text type="secondary">Trường thay đổi: </Typography.Text>
-                        <Typography.Text strong>{translateFieldName(record.fieldName || record.fieldChanged)}</Typography.Text>
-                      </div>
-                    )}
+            if (groups.length === 0) {
+              return (
+                <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                  <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                  <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
+                    {q ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
+                  </div>
+                </div>
+              );
+            }
 
-                    {/* Old/New value */}
-                    {record.oldValue !== undefined && record.oldValue != null && (
-                      <div style={{ marginBottom: 2 }}>
-                        <Typography.Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
-                          cũ: {translateValue(record.fieldName || record.fieldChanged, record.oldValue)}
-                        </Typography.Text>
-                      </div>
-                    )}
-                    {record.newValue !== undefined && record.newValue != null && (
-                      <div>
-                        <Typography.Text type="secondary">mới: </Typography.Text>
-                        <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>
-                          {translateValue(record.fieldName || record.fieldChanged, record.newValue)}
-                        </Typography.Text>
-                      </div>
-                    )}
+            const fmtTime = (ts: string) => {
+              const d = new Date(ts);
+              return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+            };
 
-                    {/* Reason */}
-                    {record.reason && (
-                      <div style={{ marginTop: 8, padding: 8, background: '#fff2f0', borderRadius: 4 }}>
-                        <Typography.Text type="secondary">Lý do: </Typography.Text>
-                        <Typography.Text>{record.reason}</Typography.Text>
-                      </div>
+            if (q.length > 0 && historySearchRef.current !== q) {
+              historySearchRef.current = q;
+              const init: Record<number, boolean> = {};
+              groups.forEach((_, i) => { init[i] = true; });
+              setTimeout(() => setHistoryExpanded(init), 0);
+            } else if (q.length === 0 && historySearchRef.current !== '') {
+              historySearchRef.current = '';
+              const init: Record<number, boolean> = {};
+              groups.forEach((_, i) => { init[i] = false; });
+              setTimeout(() => setHistoryExpanded(init), 0);
+            }
+
+            return (
+          <div style={{ maxHeight: '62vh', overflowY: 'auto' }}>
+            {groups.map((g, gi) => (
+              <div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: surfaceCard,
+                    border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} />
+                  </div>
+                  {gi < groups.length - 1 && (
+                    <div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: spaceXs }} />
+                  )}
+                </div>
+                <div style={{ ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, marginBottom: 0,
+                  borderRadius: radiusLg, boxShadow: shadowSm }}>
+                  <div onClick={() => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] }))}
+                    style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}>
+                    <Typography.Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold }}>
+                      {g.ts ? fmtTime(g.ts) : '—'}
+                    </Typography.Text>
+                    {g.actor && (
+                      <Typography.Text style={{ fontSize: fontSizeMd, color: textSecondary }}>— {g.actor}</Typography.Text>
+                    )}
+                    <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: actionPrimary,
+                      background: `${actionPrimary}12`, borderRadius: radiusPill, padding: '2px 10px', marginLeft: 'auto' }}>
+                      {g.items.length}
+                    </span>
+                    {historyExpanded[gi] ? (
+                      <UpOutlined style={{ fontSize: 12, color: textTertiary }} />
+                    ) : (
+                      <DownOutlined style={{ fontSize: 12, color: textTertiary }} />
                     )}
                   </div>
-                );
-              })}
+                  {historyExpanded[gi] && (
+                    <>
+                      <Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} />
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <tbody>
+                          {g.items.map((r: any, ri: number) => {
+                            const fn = r.fieldName || r.fieldChanged;
+                            const ov = r.oldValue !== undefined && r.oldValue != null
+                              ? translateValue(fn, r.oldValue) : null;
+                            const nv = r.newValue !== undefined && r.newValue != null
+                              ? translateValue(fn, r.newValue) : null;
+                            return (
+                              <tr key={r.id || ri}>
+                                <td style={{ padding: `${spaceXs}px ${spaceSm}px ${spaceXs}px 0`,
+                                  fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary,
+                                  whiteSpace: 'nowrap', verticalAlign: 'middle', width: 1 }}>
+                                  {fn ? translateFieldName(fn) : '—'}
+                                </td>
+                                <td style={{ padding: `${spaceXs}px 0`, verticalAlign: 'middle' }}>
+                                  <Space size={spaceXs}>
+                                    {ov ? (
+                                      <Typography.Text delete style={{ fontSize: fontSizeMd, color: statusCritical }}>{ov}</Typography.Text>
+                                    ) : (
+                                      <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>
+                                    )}
+                                    <ArrowRightOutlined style={{ fontSize: 10, color: textTertiary }} />
+                                    {nv ? (
+                                      <Typography.Text strong style={{ fontSize: fontSizeMd, color: statusOperational }}>{nv}</Typography.Text>
+                                    ) : (
+                                      <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>
+                                    )}
+                                  </Space>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
+            );
+          })()
         )}
       </Modal>
     </>

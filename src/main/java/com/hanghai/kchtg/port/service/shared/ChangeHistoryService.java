@@ -52,8 +52,11 @@ public class ChangeHistoryService {
 
         List<String> changedFields = new ArrayList<>();
         Class<?> clazz = oldEntity.getClass();
+        java.lang.reflect.Field[] fields = clazz.getDeclaredFields();
 
-        for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
+        log.info("ChangeHistory: comparing {} fields for {} [{}]", fields.length, entityName, entityId);
+
+        for (java.lang.reflect.Field field : fields) {
             if (isSkippedField(field)) {
                 continue;
             }
@@ -68,7 +71,7 @@ public class ChangeHistoryService {
                     String oldValueStr = formatValue(oldValue);
                     String newValueStr = formatValue(newValue);
 
-                    log.debug("Change in {} [{}]: {} = [{}] -> [{}]",
+                    log.info("ChangeHistory: FIELD CHANGE {} [{}] {} = [{}] -> [{}]",
                             entityName, entityId, fieldName, oldValueStr, newValueStr);
 
                     // Insert a ChangeLog record into the database
@@ -150,7 +153,15 @@ public class ChangeHistoryService {
      */
     @Transactional
     public UUID insertChangeRecord(String entityType, UUID entityId, String fieldName,
-                                    String oldValue, String newValue, UUID changedBy) {
+                                    String oldValue, String newValue, String changedBy) {
+        String actualActor = changedBy;
+        if ("system".equals(changedBy) || changedBy == null || changedBy.trim().isEmpty()) {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+                actualActor = auth.getName();
+            }
+        }
         log.debug("ChangeHistory INSERT: {} [{}] {} = [{}] -> [{}]",
                 entityType, entityId, fieldName, oldValue, newValue);
 
@@ -160,7 +171,7 @@ public class ChangeHistoryService {
                 .fieldName(fieldName)
                 .oldValue(oldValue)
                 .newValue(newValue)
-                .changedBy(changedBy.toString())
+                .changedBy(actualActor)
                 .changedAt(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -180,7 +191,7 @@ public class ChangeHistoryService {
      */
     @Transactional
     public List<UUID> bulkInsertChangeRecords(String entityType, UUID entityId,
-                                               List<Map<String, String>> changes, UUID changedBy) {
+                                               List<Map<String, String>> changes, String changedBy) {
         List<UUID> ids = new ArrayList<>();
         for (Map<String, String> change : changes) {
             ids.add(insertChangeRecord(

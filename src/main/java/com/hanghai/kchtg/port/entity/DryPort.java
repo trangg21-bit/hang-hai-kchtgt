@@ -9,6 +9,8 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -58,4 +60,54 @@ public class DryPort extends BaseEntity {
 
     @Column(name = "spatial_id")
     private UUID spatialId;
+
+    // ── Extended fields (V113 — from F-026 feature brief) ──────────────
+
+    // General info
+    @Column(name = "operating_unit", length = 255)
+    private String operatingUnit;
+
+    @Column(name = "region", length = 255)
+    private String region;
+
+    @Column(name = "detailed_location", length = 500)
+    private String detailedLocation;
+
+    @Column(name = "transport_corridor", length = 255)
+    private String transportCorridor;
+
+    @Column(name = "warehouse_area", precision = 15, scale = 2)
+    private BigDecimal warehouseArea;
+
+    @Column(name = "yard_area", precision = 15, scale = 2)
+    private BigDecimal yardArea;
+
+    @Column(name = "connection_mode", length = 500)
+    private String connectionMode;
+
+    @Column(name = "port_status", nullable = false)
+    private Integer portStatus;
+
+    @Column(name = "remarks", length = 1000)
+    private String remarks;
+
+    // Announcement
+    @Column(name = "announcement_time")
+    private LocalDateTime announcementTime;
+
+    @Column(name = "announcement_decision_number", length = 100)
+    private String announcementDecisionNumber;
+
+    @Column(name = "announcement_decision_date")
+    private LocalDate announcementDecisionDate;
+
+    @Column(name = "announcement_org", length = 255)
+    private String announcementOrg;
+
+    // GIS (coordinates + geometry_type managed by gis_spatial_objects via spatial_id)
+    @Column(name = "coordinate_system")
+    private Integer coordinateSystem;
+
+    @Column(name = "display_rule")
+    private Integer displayRule;
 }
