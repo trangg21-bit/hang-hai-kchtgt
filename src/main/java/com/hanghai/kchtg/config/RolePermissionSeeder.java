@@ -185,36 +185,36 @@ public class RolePermissionSeeder implements CommandLineRunner {
 
         // ---- M-003 entity permissions (5 entities × 7 actions) ----
         // navigationchannel
-        seedPermission(permissionsByCode, "navigationchannel", "create", "Tạo lương hàng hải",
-                "Tạo mới lương hàng hải");
-        seedPermission(permissionsByCode, "navigationchannel", "read", "Xem lương hàng hải",
-                "Xem danh sách và chi tiết lương hàng hải");
-        seedPermission(permissionsByCode, "navigationchannel", "update", "Cập nhật lương hàng hải",
-                "Chỉnh sửa lương hàng hải");
-        seedPermission(permissionsByCode, "navigationchannel", "delete", "Xóa lương hàng hải",
-                "Xóa lương hàng hải");
-        seedPermission(permissionsByCode, "navigationchannel", "approvec1", "Phê duyệt C1 lương hàng hải",
-                "Phê duyệt cấp 1 lương hàng hải");
-        seedPermission(permissionsByCode, "navigationchannel", "approvec2", "Phê duyệt C2 lương hàng hải",
-                "Phê duyệt cấp 2 lương hàng hải");
-        seedPermission(permissionsByCode, "navigationchannel", "history", "Xem lịch sử lương hàng hải",
-                "Xem lịch sử thay đổi lương hàng hải");
+        seedPermission(permissionsByCode, "navigationchannel", "create", "Tạo luồng hàng hải",
+                "Tạo mới luồng hàng hải");
+        seedPermission(permissionsByCode, "navigationchannel", "read", "Xem luồng hàng hải",
+                "Xem danh sách và chi tiết luồng hàng hải");
+        seedPermission(permissionsByCode, "navigationchannel", "update", "Cập nhật luồng hàng hải",
+                "Chỉnh sửa luồng hàng hải");
+        seedPermission(permissionsByCode, "navigationchannel", "delete", "Xóa luồng hàng hải",
+                "Xóa luồng hàng hải");
+        seedPermission(permissionsByCode, "navigationchannel", "approvec1", "Phê duyệt C1 luồng hàng hải",
+                "Phê duyệt cấp 1 luồng hàng hải");
+        seedPermission(permissionsByCode, "navigationchannel", "approvec2", "Phê duyệt C2 luồng hàng hải",
+                "Phê duyệt cấp 2 luồng hàng hải");
+        seedPermission(permissionsByCode, "navigationchannel", "history", "Xem lịch sử luồng hàng hải",
+                "Xem lịch sử thay đổi luồng hàng hải");
 
         // dikerevetment
-        seedPermission(permissionsByCode, "dikerevetment", "create", "Tạo đề kế",
-                "Tạo mới đề kế");
-        seedPermission(permissionsByCode, "dikerevetment", "read", "Xem đề kế",
-                "Xem danh sách và chi tiết đề kế");
-        seedPermission(permissionsByCode, "dikerevetment", "update", "Cập nhật đề kế",
-                "Chỉnh sửa đề kế");
-        seedPermission(permissionsByCode, "dikerevetment", "delete", "Xóa đề kế",
-                "Xóa đề kế");
-        seedPermission(permissionsByCode, "dikerevetment", "approvec1", "Phê duyệt C1 đề kế",
-                "Phê duyệt cấp 1 đề kế");
-        seedPermission(permissionsByCode, "dikerevetment", "approvec2", "Phê duyệt C2 đề kế",
-                "Phê duyệt cấp 2 đề kế");
-        seedPermission(permissionsByCode, "dikerevetment", "history", "Xem lịch sử đề kế",
-                "Xem lịch sử thay đổi đề kế");
+        seedPermission(permissionsByCode, "dikerevetment", "create", "Tạo đê kè",
+                "Tạo mới đê kè");
+        seedPermission(permissionsByCode, "dikerevetment", "read", "Xem đê kè",
+                "Xem danh sách và chi tiết đê kè");
+        seedPermission(permissionsByCode, "dikerevetment", "update", "Cập nhật đê kè",
+                "Chỉnh sửa đê kè");
+        seedPermission(permissionsByCode, "dikerevetment", "delete", "Xóa đê kè",
+                "Xóa đê kè");
+        seedPermission(permissionsByCode, "dikerevetment", "approvec1", "Phê duyệt C1 đê kè",
+                "Phê duyệt cấp 1 đê kè");
+        seedPermission(permissionsByCode, "dikerevetment", "approvec2", "Phê duyệt C2 đê kè",
+                "Phê duyệt cấp 2 đê kè");
+        seedPermission(permissionsByCode, "dikerevetment", "history", "Xem lịch sử đê kè",
+                "Xem lịch sử thay đổi đê kè");
 
         // shiprepair
         seedPermission(permissionsByCode, "shiprepair", "create", "Tạo cơ sở sửa chữa",
@@ -468,20 +468,20 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "security", "read", "Xem báo cáo an ninh", "Xem báo cáo an ninh, cảnh báo");
 
         // M-003
-        seedPermission(newPerms, "navigationchannel", "create", "Tạo lương hàng hải", "Tạo mới lương hàng hải");
-        seedPermission(newPerms, "navigationchannel", "read", "Xem lương hàng hải", "Xem danh sách và chi tiết lương hàng hải");
-        seedPermission(newPerms, "navigationchannel", "update", "Cập nhật lương hàng hải", "Chỉnh sửa lương hàng hải");
-        seedPermission(newPerms, "navigationchannel", "delete", "Xóa lương hàng hải", "Xóa lương hàng hải");
-        seedPermission(newPerms, "navigationchannel", "approvec1", "Phê duyệt C1 lương hàng hải", "Phê duyệt cấp 1 lương hàng hải");
-        seedPermission(newPerms, "navigationchannel", "approvec2", "Phê duyệt C2 lương hàng hải", "Phê duyệt cấp 2 lương hàng hải");
-        seedPermission(newPerms, "navigationchannel", "history", "Xem lịch sử lương hàng hải", "Xem lịch sử thay đổi lương hàng hải");
-        seedPermission(newPerms, "dikerevetment", "create", "Tạo đề kế", "Tạo mới đề kế");
-        seedPermission(newPerms, "dikerevetment", "read", "Xem đề kế", "Xem danh sách và chi tiết đề kế");
-        seedPermission(newPerms, "dikerevetment", "update", "Cập nhật đề kế", "Chỉnh sửa đề kế");
-        seedPermission(newPerms, "dikerevetment", "delete", "Xóa đề kế", "Xóa đề kế");
-        seedPermission(newPerms, "dikerevetment", "approvec1", "Phê duyệt C1 đề kế", "Phê duyệt cấp 1 đề kế");
-        seedPermission(newPerms, "dikerevetment", "approvec2", "Phê duyệt C2 đề kế", "Phê duyệt cấp 2 đề kế");
-        seedPermission(newPerms, "dikerevetment", "history", "Xem lịch sử đề kế", "Xem lịch sử thay đổi đề kế");
+        seedPermission(newPerms, "navigationchannel", "create", "Tạo luồng hàng hải", "Tạo mới luồng hàng hải");
+        seedPermission(newPerms, "navigationchannel", "read", "Xem luồng hàng hải", "Xem danh sách và chi tiết luồng hàng hải");
+        seedPermission(newPerms, "navigationchannel", "update", "Cập nhật luồng hàng hải", "Chỉnh sửa luồng hàng hải");
+        seedPermission(newPerms, "navigationchannel", "delete", "Xóa luồng hàng hải", "Xóa luồng hàng hải");
+        seedPermission(newPerms, "navigationchannel", "approvec1", "Phê duyệt C1 luồng hàng hải", "Phê duyệt cấp 1 luồng hàng hải");
+        seedPermission(newPerms, "navigationchannel", "approvec2", "Phê duyệt C2 luồng hàng hải", "Phê duyệt cấp 2 luồng hàng hải");
+        seedPermission(newPerms, "navigationchannel", "history", "Xem lịch sử luồng hàng hải", "Xem lịch sử thay đổi luồng hàng hải");
+        seedPermission(newPerms, "dikerevetment", "create", "Tạo đê kè", "Tạo mới đê kè");
+        seedPermission(newPerms, "dikerevetment", "read", "Xem đê kè", "Xem danh sách và chi tiết đê kè");
+        seedPermission(newPerms, "dikerevetment", "update", "Cập nhật đê kè", "Chỉnh sửa đê kè");
+        seedPermission(newPerms, "dikerevetment", "delete", "Xóa đê kè", "Xóa đê kè");
+        seedPermission(newPerms, "dikerevetment", "approvec1", "Phê duyệt C1 đê kè", "Phê duyệt cấp 1 đê kè");
+        seedPermission(newPerms, "dikerevetment", "approvec2", "Phê duyệt C2 đê kè", "Phê duyệt cấp 2 đê kè");
+        seedPermission(newPerms, "dikerevetment", "history", "Xem lịch sử đê kè", "Xem lịch sử thay đổi đê kè");
         seedPermission(newPerms, "shiprepair", "create", "Tạo cơ sở sửa chữa", "Tạo mới cơ sở sửa chữa đóng tàu");
         seedPermission(newPerms, "shiprepair", "read", "Xem cơ sở sửa chữa", "Xem danh sách và chi tiết cơ sở sửa chữa đóng tàu");
         seedPermission(newPerms, "shiprepair", "update", "Cập nhật cơ sở sửa chữa", "Chỉnh sửa cơ sở sửa chữa đóng tàu");
@@ -500,23 +500,47 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "vts", "read", "Xem VTS", "Xem danh sách và chi tiết hệ thống VTS");
         seedPermission(newPerms, "vts", "update", "Cập nhật VTS", "Chỉnh sửa hệ thống VTS");
         seedPermission(newPerms, "vts", "delete", "Xóa VTS", "Xóa hệ thống VTS");
-        seedPermission(newPerms, "vts", "approvec1", "Phê duyệt C1 VTS", "Phê duyệt cấp 1 VTS");
-        seedPermission(newPerms, "vts", "approvec2", "Phê duyệt C2 VTS", "Phê duyệt cấp 2 VTS");
+        seedPermission(newPerms, "vts", "approve:c1", "Phê duyệt C1 VTS", "Phê duyệt cấp 1 VTS");
+        seedPermission(newPerms, "vts", "approve:c2", "Phê duyệt C2 VTS", "Phê duyệt cấp 2 VTS");
         seedPermission(newPerms, "vts", "history", "Xem lịch sử VTS", "Xem lịch sử thay đổi VTS");
 
         int inserted = 0;
+        int updated = 0;
         Map<String, Permission> savedPerms = new LinkedHashMap<>();
         for (Permission perm : newPerms.values()) {
-            if (!permissionRepository.existsByCode(perm.getCode())) {
+            var existingOpt = permissionRepository.findByCode(perm.getCode());
+            if (existingOpt.isEmpty()) {
                 permissionRepository.save(perm);
                 savedPerms.put(perm.getCode(), perm);
                 inserted++;
             } else {
-                savedPerms.put(perm.getCode(), permissionRepository.findByCode(perm.getCode()).orElse(perm));
+                Permission existing = existingOpt.get();
+                boolean changed = false;
+                if (!Objects.equals(existing.getName(), perm.getName())) {
+                    existing.setName(perm.getName());
+                    changed = true;
+                }
+                if (!Objects.equals(existing.getDescription(), perm.getDescription())) {
+                    existing.setDescription(perm.getDescription());
+                    changed = true;
+                }
+                if (!Objects.equals(existing.getResource(), perm.getResource())) {
+                    existing.setResource(perm.getResource());
+                    changed = true;
+                }
+                if (!Objects.equals(existing.getAction(), perm.getAction())) {
+                    existing.setAction(perm.getAction());
+                    changed = true;
+                }
+                if (changed) {
+                    existing = permissionRepository.save(existing);
+                    updated++;
+                }
+                savedPerms.put(perm.getCode(), existing);
             }
         }
-        if (inserted > 0) {
-            log.info("✅ Upserted {} missing permission(s)", inserted);
+        if (inserted > 0 || updated > 0) {
+            log.info("✅ Upserted permissions: {} inserted, {} updated", inserted, updated);
         }
 
         // Assign missing permissions to existing roles.
