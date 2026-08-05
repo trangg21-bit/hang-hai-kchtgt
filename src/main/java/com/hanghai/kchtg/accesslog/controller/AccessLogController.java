@@ -27,7 +27,7 @@ import java.util.UUID;
  * </p>
  */
 @RestController
-@RequestMapping("/api/access-logs")
+@RequestMapping({"/api/access-logs", "/api/v1/audit-logs"})
 public class AccessLogController {
 
     private static final Logger log = LoggerFactory.getLogger(AccessLogController.class);

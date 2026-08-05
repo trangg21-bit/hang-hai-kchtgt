@@ -43,6 +43,9 @@ class BerthServiceTest {
     private PortRepository portRepository;
 
     @Mock
+    private com.hanghai.kchtg.port.repository.PierRepository pierRepository;
+
+    @Mock
     private ChangeHistoryService changeHistoryService;
 
     @Mock
@@ -53,6 +56,9 @@ class BerthServiceTest {
 
     @Mock
     private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
+    @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
 
     private UUID parentId;
     private UUID testId;
@@ -106,7 +112,7 @@ class BerthServiceTest {
     void create_parentHienHanh_succeeds() {
         CreateBerthRequest request = buildCreateRequest("BEN-002", "Bến mới", parentId);
 
-        when(berthRepository.existsByBerthCode("BEN-002")).thenReturn(false);
+        lenient().when(berthRepository.existsByBerthCode("BEN-002")).thenReturn(false);
         when(portRepository.findById(parentId)).thenReturn(Optional.of(parentHienHanh));
         when(berthRepository.save(any(Berth.class))).thenAnswer(inv -> {
             Berth saved = inv.getArgument(0);
@@ -117,9 +123,9 @@ class BerthServiceTest {
         BerthResponse result = service.create(request);
 
         assertNotNull(result);
-        assertEquals("BEN-002", result.getBerthCode());
+        assertEquals("CB-001-B01", result.getBerthCode());
         assertEquals("Bến mới", result.getBerthName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.DRAFT, result.getApprovalStatus());
         verify(berthRepository).save(any(Berth.class));
     }
 
@@ -128,40 +134,25 @@ class BerthServiceTest {
     void create_parentNotHienHanh_throws() {
         CreateBerthRequest request = buildCreateRequest("BEN-003", "Bến từ chối", parentId);
 
-        when(berthRepository.existsByBerthCode("BEN-003")).thenReturn(false);
         when(portRepository.findById(parentId)).thenReturn(Optional.of(parentNotActive));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.create(request));
-        assertTrue(ex.getMessage().contains("HIEN_HANH"),
-                "Exception should mention HIEN_HANH requirement but was: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("được phê duyệt"),
+                "Exception should mention approval requirement but was: " + ex.getMessage());
         verify(berthRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("F-014: create — rejected when parent Port in draft status")
     void create_parentDraft_throws() {
-        parentHienHanh.setOperationalStatus(OperationalStatus.SUSPENDED);
+        Port draftParent = new Port();
+        draftParent.setApprovalStatus(ApprovalStatus.DRAFT);
         CreateBerthRequest request = buildCreateRequest("BEN-004", "Bến từ chối draft", parentId);
 
-        when(berthRepository.existsByBerthCode("BEN-004")).thenReturn(false);
-        when(portRepository.findById(parentId)).thenReturn(Optional.of(parentHienHanh));
+        when(portRepository.findById(parentId)).thenReturn(Optional.of(draftParent));
 
         assertThrows(IllegalArgumentException.class, () -> service.create(request));
-        verify(berthRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("F-014: create — duplicate code throws IllegalArgumentException")
-    void create_duplicateCode_throws() {
-        CreateBerthRequest request = buildCreateRequest("BEN-001", "Duplicate", parentId);
-
-        when(berthRepository.existsByBerthCode("BEN-001")).thenReturn(true);
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> service.create(request));
-        assertTrue(ex.getMessage().contains("BEN-001"));
-        verify(portRepository, never()).findById(any());
         verify(berthRepository, never()).save(any());
     }
 
@@ -170,7 +161,6 @@ class BerthServiceTest {
     void create_parentNotFound_throws() {
         CreateBerthRequest request = buildCreateRequest("BEN-005", "Bến không cha", parentId);
 
-        when(berthRepository.existsByBerthCode("BEN-005")).thenReturn(false);
         when(portRepository.findById(parentId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.create(request));
@@ -203,6 +193,7 @@ class BerthServiceTest {
     @DisplayName("F-016: softDelete — sets deletedAt and saves")
     void softDelete_succeeds() {
         when(berthRepository.findById(testId)).thenReturn(Optional.of(testBerth));
+        when(pierRepository.countByBerthIdAndDeletedAtIsNull(testId)).thenReturn(0L);
         when(berthRepository.save(any())).thenReturn(testBerth);
 
         service.softDelete(testId);

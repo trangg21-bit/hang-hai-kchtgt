@@ -8,9 +8,9 @@ ALTER TABLE ports ADD COLUMN IF NOT EXISTS notes VARCHAR(2000);
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ports' AND column_name='approval_status') THEN
     UPDATE ports SET port_status = CASE
-      WHEN approval_status = 1 THEN 2 WHEN approval_status = 2 THEN 3
-      WHEN operational_status = 0 THEN 4
-      WHEN approval_status = 0 AND operational_status = 1 THEN 1
+      WHEN approval_status::text = '1' THEN 2 WHEN approval_status::text = '2' THEN 3
+      WHEN operational_status::text = '0' THEN 4
+      WHEN approval_status::text = '0' AND operational_status::text = '1' THEN 1
       ELSE 0 END
     WHERE deleted_at IS NULL AND port_status = 0;
   END IF;
@@ -21,9 +21,9 @@ ALTER TABLE berths ADD COLUMN IF NOT EXISTS port_status SMALLINT NOT NULL DEFAUL
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='berths' AND column_name='approval_status') THEN
     UPDATE berths SET port_status = CASE
-      WHEN approval_status = 1 THEN 2 WHEN approval_status = 2 THEN 3
-      WHEN operational_status = 0 THEN 4
-      WHEN approval_status = 0 AND operational_status = 1 THEN 1
+      WHEN approval_status::text = '1' THEN 2 WHEN approval_status::text = '2' THEN 3
+      WHEN operational_status::text = '0' THEN 4
+      WHEN approval_status::text = '0' AND operational_status::text = '1' THEN 1
       ELSE 0 END
     WHERE deleted_at IS NULL AND port_status = 0;
   END IF;

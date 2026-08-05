@@ -43,7 +43,7 @@ public abstract class BaseEntity {
     private Instant createdAt;
 
     @CreatedBy
-    @Column(name = "created_by", length = 36)
+    @Column(name = "created_by")
     private UUID createdBy;
 
     @LastModifiedDate
@@ -51,6 +51,6 @@ public abstract class BaseEntity {
     private Instant updatedAt;
 
     @LastModifiedBy
-    @Column(name = "updated_by", length = 36)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 }

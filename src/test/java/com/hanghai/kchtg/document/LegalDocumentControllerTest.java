@@ -2,11 +2,17 @@ package com.hanghai.kchtg.document;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;
+import com.hanghai.kchtg.document.dto.LegalDocumentHistoryResponse;
 import com.hanghai.kchtg.document.dto.LegalDocumentResponse;
 import com.hanghai.kchtg.document.dto.SearchResultResponse;
+import com.hanghai.kchtg.document.dto.SearchSuggestionResponse;
 import com.hanghai.kchtg.document.entity.DocumentType;
+import com.hanghai.kchtg.document.entity.LegalDocumentHistoryAction;
 import com.hanghai.kchtg.document.entity.ValidityStatus;
 import com.hanghai.kchtg.document.service.LegalDocumentService;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.canvas.parser.PdfTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +23,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -149,7 +156,8 @@ class LegalDocumentControllerTest {
                                 .build();
 
                 when(legalDocumentService.searchDocuments(
-                                eq("Luật"), eq("Quốc hội"), any(), any(), any(), any(), any(), eq(0), eq(20)))
+                                eq("Luật"), any(), eq("Quốc hội"), any(), any(), any(),
+                                any(), any(), any(), any(), eq(0), eq(20)))
                                 .thenReturn(searchResult);
 
                 mockMvc.perform(get("/api/v1/legal-documents/search")
@@ -160,5 +168,74 @@ class LegalDocumentControllerTest {
                                 .andExpect(jsonPath("$.data.totalElements").value(1))
                                 .andExpect(jsonPath("$.data.results[0].documentName")
                                                 .value("Luật Giao thông đường thủy nội địa"));
+        }
+
+        @Test
+        void exportPdf_shouldKeepVietnameseTextAndDisplayLabels() throws Exception {
+                LegalDocumentResponse exportResponse = LegalDocumentResponse.builder()
+                                .id(testId)
+                                .documentName("Quyết định thử nghiệm")
+                                .documentNumber("QD-01")
+                                .issuingAuthority("Cục Hàng hải Việt Nam")
+                                .signer("Nguyễn Văn A")
+                                .issueDate(LocalDate.of(2026, 8, 3))
+                                .effectiveDate(LocalDate.of(2026, 8, 3))
+                                .expirationDate(LocalDate.of(2026, 8, 30))
+                                .documentType(DocumentType.DECISION)
+                                .validityStatus(ValidityStatus.EFFECTIVE)
+                                .build();
+                when(legalDocumentService.getById(testId)).thenReturn(exportResponse);
+
+                byte[] pdfBytes = mockMvc.perform(get("/api/v1/legal-documents/" + testId + "/export"))
+                                .andExpect(status().isOk())
+                                .andReturn().getResponse().getContentAsByteArray();
+
+                try (PdfDocument pdf = new PdfDocument(new PdfReader(new ByteArrayInputStream(pdfBytes)))) {
+                        String text = PdfTextExtractor.getTextFromPage(pdf.getFirstPage());
+                        org.junit.jupiter.api.Assertions.assertTrue(text.contains("VĂN BẢN PHÁP LÝ"));
+                        org.junit.jupiter.api.Assertions.assertTrue(text.contains("Loại văn bản: Quyết định"));
+                        org.junit.jupiter.api.Assertions.assertTrue(text.contains("Trạng thái: Còn hiệu lực"));
+                        org.junit.jupiter.api.Assertions.assertTrue(text.contains("Ngày ban hành: 03/08/2026"));
+                }
+        }
+
+        @Test
+        void history_shouldReturnHistoryList() throws Exception {
+                LegalDocumentHistoryResponse historyResp = LegalDocumentHistoryResponse.builder()
+                                .id(UUID.randomUUID())
+                                .action(LegalDocumentHistoryAction.CREATED)
+                                .documentName("Luật Giao thông")
+                                .build();
+                when(legalDocumentService.getHistory(testId)).thenReturn(List.of(historyResp));
+
+                mockMvc.perform(get("/api/v1/legal-documents/" + testId + "/history"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.data[0].action").value("CREATED"));
+        }
+
+        @Test
+        void invalidate_shouldReturnSuccess() throws Exception {
+                doNothing().when(legalDocumentService).invalidate(testId);
+
+                mockMvc.perform(post("/api/v1/legal-documents/" + testId + "/invalidate"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.message").value("Vô hiệu hóa văn bản thành công"));
+        }
+
+        @Test
+        void suggestions_shouldReturnSuggestionsList() throws Exception {
+                SearchSuggestionResponse suggestionResp = SearchSuggestionResponse.builder()
+                                .id(UUID.randomUUID())
+                                .keyword("Luật giao thông")
+                                .searchCount(10)
+                                .build();
+                when(legalDocumentService.getSearchSuggestion("Luật")).thenReturn(List.of(suggestionResp));
+
+                mockMvc.perform(get("/api/v1/legal-documents/suggestions").param("keyword", "Luật"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.data[0].keyword").value("Luật giao thông"));
         }
 }

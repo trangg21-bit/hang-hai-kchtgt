@@ -298,11 +298,6 @@ export default function PortDetailPage() {
     { title: `Chi tiết cảng ${data.portCode}` },
   ];
 
-  const getOrgUnitName = (oid: string | null) => {
-    if (!oid) return '—';
-    const u = orgUnits.find((o: any) => o.id === oid);
-    return u ? u.name : oid.substring(0, 8) + '…';
-  };
   const getSymbolName = (sid: string | null) => {
     if (!sid) return '—';
     const s = symbols.find((x: Symbol) => x.id === sid);
@@ -363,7 +358,7 @@ export default function PortDetailPage() {
       style={{ top: 20 }}
     >
       <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px 0' }}>
-        {renderGeneralTab(data, berths, totalBenCangs, waterZones, totalVungNuocs, files, childrenLoading, id!, navigate, getOrgUnitName, getSymbolName, isAdmin)}
+        {renderGeneralTab(data, berths, totalBenCangs, waterZones, totalVungNuocs, files, childrenLoading, id!, navigate, getSymbolName, isAdmin)}
       </div>
     </Modal>
   );
@@ -381,7 +376,6 @@ function renderGeneralTab(
   childrenLoading: boolean,
   portId: string,
   navigate: ReturnType<typeof useNavigate>,
-  getOrgUnitName: (id: string | null) => string,
   getSymbolName: (id: string | null) => string,
   isAdmin: boolean,
 ) {
@@ -401,7 +395,7 @@ function renderGeneralTab(
             value={<Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0 }}>{data.portCode}</Tag>}
           />
           <InfoRow label="Tên cảng" value={data.portName} />
-          <InfoRow label="Đơn vị quản lý" value={getOrgUnitName(data.orgUnitId)} />
+          <InfoRow label="Đơn vị quản lý" value={data.orgUnitName || '—'} />
           <InfoRow label="Nhóm cảng" value={data.portGroup != null ? `Nhóm ${data.portGroup}` : '—'} />
           <InfoRow label="Tỉnh/Thành phố" value={data.province || '—'} />
           <InfoRow label="Địa điểm chi tiết" value={data.detailedLocation || '—'} span={12} />

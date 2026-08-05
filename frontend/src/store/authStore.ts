@@ -47,7 +47,7 @@ const parseJwt = (token: string): JwtPayload => {
 };
 
 export const useAuthStore = create<AuthState>((set) => {
-  const storedToken = localStorage.getItem('auth_token');
+  const storedToken = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
   let initialUser: User | null = null;
   if (storedToken) {
     const claims = parseJwt(storedToken);

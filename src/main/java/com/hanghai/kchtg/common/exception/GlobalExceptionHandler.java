@@ -130,6 +130,18 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("Email đã tồn tại"));
         }
 
+        if (detail != null && detail.contains("loai_van_ban_check")) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Loại văn bản không hợp lệ"));
+        }
+
+        if (detail != null && detail.contains("tinh_trang_hieu_luc_check")) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Tình trạng hiệu lực không hợp lệ"));
+        }
+
         log.warn("Data integrity violation: {}", detail);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)

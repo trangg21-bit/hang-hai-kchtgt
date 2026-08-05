@@ -40,13 +40,13 @@ public class BusinessDataIntegrationRecord {
     @Column(name = "retry_count", nullable = false)
     private int retryCount;
 
-    @Column(name = "created_by", length = 50)
+    @Column(name = "created_by")
     private UUID createdBy;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_by", length = 50)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "updated_at")

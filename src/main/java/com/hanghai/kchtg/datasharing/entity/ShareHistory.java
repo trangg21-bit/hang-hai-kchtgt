@@ -17,7 +17,7 @@ import java.util.UUID;
 public class ShareHistory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "shared_data_id")

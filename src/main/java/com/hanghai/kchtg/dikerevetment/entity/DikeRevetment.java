@@ -66,8 +66,8 @@ public class DikeRevetment {
     @Builder.Default
     private Boolean isApprovedLevel1 = false;
 
-    @Column(name = "approver_level1", length = 100)
-    private String approverLevel1;
+    @Column(name = "approver_level1")
+    private UUID approverLevel1;
 
     @Column(name = "approved_date_level1")
     private LocalDate approvedDateLevel1;
@@ -76,8 +76,8 @@ public class DikeRevetment {
     @Builder.Default
     private Boolean isApprovedLevel2 = false;
 
-    @Column(name = "approver_level2", length = 100)
-    private String approverLevel2;
+    @Column(name = "approver_level2")
+    private UUID approverLevel2;
 
     @Column(name = "approved_date_level2")
     private LocalDate approvedDateLevel2;
@@ -95,10 +95,10 @@ public class DikeRevetment {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "created_by", length = 100)
+    @Column(name = "created_by")
     private UUID createdBy;
 
-    @Column(name = "updated_by", length = 100)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "spatial_id")
@@ -107,16 +107,12 @@ public class DikeRevetment {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @Column(name = "deleted_by", length = 100)
+    @Column(name = "deleted_by")
     private UUID deletedBy;
 
     @OneToMany(mappedBy = "dikeRevetment", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<DikeRevetmentAttachment> attachments = new ArrayList<>();
-
-    @OneToMany(mappedBy = "dikeRevetment", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<DikeRevetmentApprovalHistory> approvalHistory = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

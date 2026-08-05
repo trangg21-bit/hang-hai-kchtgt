@@ -15,4 +15,8 @@ public class ApprovalRecordRequest {
     private String result;
     private String approverName;
     private String notes;
+
+    public UUID getRequestId() { return requestId; }
+    public String getResult() { return result; }
+    public String getNotes() { return notes; }
 }

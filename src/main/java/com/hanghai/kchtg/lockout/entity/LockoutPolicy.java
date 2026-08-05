@@ -39,7 +39,7 @@ public class LockoutPolicy {
     @Column(name = "is_enabled", nullable = false)
     private boolean enabled = true;
 
-    @Column(name = "updated_by", length = 100)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "updated_at")

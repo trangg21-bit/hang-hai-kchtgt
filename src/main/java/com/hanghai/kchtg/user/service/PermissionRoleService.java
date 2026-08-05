@@ -63,9 +63,14 @@ public class PermissionRoleService {
         String requiredPermission = resource + ":" + action;
         String wildcardPermission = resource + ":*";
         String aggregatePermission = resource + ":manage";
+        // Keep compatibility with the legacy catalog where write was the
+        // aggregate for create/update/delete operations.
+        boolean legacyWritePermission = Set.of("create", "update", "delete").contains(action)
+                && permissions.contains(resource + ":write");
         return permissions.contains(requiredPermission)
                 || permissions.contains(wildcardPermission)
-                || permissions.contains(aggregatePermission);
+                || permissions.contains(aggregatePermission)
+                || legacyWritePermission;
     }
 
     /**

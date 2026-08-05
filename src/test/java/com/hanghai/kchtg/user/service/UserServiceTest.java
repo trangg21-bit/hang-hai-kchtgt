@@ -207,10 +207,38 @@ class UserServiceTest {
     }
 
     @Test
+    void create_shouldThrowWhenUsernameExists() {
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("existinguser");
+        request.setPassword("SecurePass1");
+        request.setEmail("newemail@test.com");
+
+        when(userRepository.existsByUsername("existinguser")).thenReturn(true);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> userService.create(request));
+
+        assertTrue(ex.getMessage().contains("Tên đăng nhập đã tồn tại"));
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void update_shouldThrowWhenUserNotFound() {
+        UUID nonExistentId = UUID.randomUUID();
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setFullName("Updated Name");
+
+        when(userRepository.findByIdWithRelations(nonExistentId)).thenReturn(Optional.empty());
+
+        assertThrows(jakarta.persistence.EntityNotFoundException.class,
+                () -> userService.update(nonExistentId, request));
+    }
+
+    @Test
     void update_shouldChangeStatusAndWriteStatusAuditLog() {
         UpdateUserRequest request = new UpdateUserRequest();
         request.setStatus(UserStatus.INACTIVE);
-        when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User result = userService.update(regularUser.getId(), request);

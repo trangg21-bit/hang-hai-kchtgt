@@ -46,15 +46,15 @@ public class LegalDocument extends BaseEntity {
     @Column(name = "expiration_date")
     private LocalDate expirationDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "document_type", length = 30)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "document_type")
     private DocumentType documentType;
 
     @Column(name = "application_area", length = 100)
     private String applicationArea;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 30)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "status")
     private ValidityStatus validityStatus;
 
     @Column(name = "signer", length = 100)

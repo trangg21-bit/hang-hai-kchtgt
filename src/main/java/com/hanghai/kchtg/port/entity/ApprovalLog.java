@@ -28,7 +28,7 @@ public class ApprovalLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(updatable = false, nullable = false, length = 36)
+    @Column(updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "entity_type", nullable = false, length = 50)

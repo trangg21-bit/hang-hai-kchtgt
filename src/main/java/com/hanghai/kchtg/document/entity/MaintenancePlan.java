@@ -24,7 +24,7 @@ import java.util.UUID;
 public class MaintenancePlan {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "equipment", nullable = false, length = 200)
@@ -47,13 +47,13 @@ public class MaintenancePlan {
     @Column(name = "estimated_cost", precision = 15, scale = 2)
     private BigDecimal estimatedCost;
 
-    @Column(name = "created_by", length = 100)
+    @Column(name = "created_by")
     private UUID createdBy;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdDate;
 
-    @Column(name = "updated_by", length = 100)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "updated_at")

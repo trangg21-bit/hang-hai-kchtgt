@@ -2,6 +2,7 @@ package com.hanghai.kchtg.user.dto;
 
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
+import com.hanghai.kchtg.user.entity.SystemMenu;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,7 @@ public class RoleResponse {
     private String code;
     private String description;
     private List<String> permissions;
+    private List<String> menuCodes;
     private String status;
     private int userCount;
     private LocalDateTime createdAt;
@@ -35,6 +37,7 @@ public class RoleResponse {
         resp.setCode(role.getCode());
         resp.setDescription(role.getDescription());
         resp.setPermissions(role.getPermissions().stream().map(Permission::getCode).collect(Collectors.toList()));
+        resp.setMenuCodes(role.getMenuPermissions().stream().map(SystemMenu::getMenuCode).collect(Collectors.toList()));
         resp.setStatus(role.getStatus() != null ? role.getStatus().name() : null);
         resp.setUserCount(role.getUserCount());
         resp.setCreatedAt(role.getCreatedAt());

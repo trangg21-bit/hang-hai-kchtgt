@@ -40,7 +40,7 @@ class LogExportControllerTest {
         when(logService.exportToCsvStreaming(any(AccessLogFilterRequest.class))).thenReturn(dummyStream);
 
         ResponseEntity<StreamingResponseBody> response = controller.exportCsv(
-                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                UUID.randomUUID(),
                 "USER",
                 "CREATE_USER",
                 null,

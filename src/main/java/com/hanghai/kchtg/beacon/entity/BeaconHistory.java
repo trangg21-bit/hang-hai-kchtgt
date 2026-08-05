@@ -24,7 +24,7 @@ public class BeaconHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(updatable = false, nullable = false, length = 36)
+    @Column(updatable = false, nullable = false)
     private UUID id;
 
     @Enumerated(EnumType.STRING)

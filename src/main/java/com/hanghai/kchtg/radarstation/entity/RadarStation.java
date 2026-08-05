@@ -6,8 +6,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.SQLRestriction;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,17 +21,11 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@SQLRestriction("is_deleted = false")
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
 public class RadarStation extends BaseEntity {
     @Column(name = "province_id")
     private Integer provinceId;
-
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
 
     @Column(name = "station_name", nullable = false, length = 255)
     private String stationName;
@@ -64,7 +59,7 @@ public class RadarStation extends BaseEntity {
     @Builder.Default
     private Boolean approvedLevel1 = false;
 
-    @Column(name = "approver_level1", length = 100)
+    @Column(name = "approver_level1")
     private UUID approverLevel1;
 
     @Column(name = "approved_date_level1")
@@ -74,7 +69,7 @@ public class RadarStation extends BaseEntity {
     @Builder.Default
     private Boolean approvedLevel2 = false;
 
-    @Column(name = "approver_level2", length = 100)
+    @Column(name = "approver_level2")
     private UUID approverLevel2;
 
     @Column(name = "approved_date_level2")
@@ -82,25 +77,6 @@ public class RadarStation extends BaseEntity {
 
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
-
-    @Column(name = "created_by", nullable = false, length = 100)
-    private UUID createdBy;
-
-    @Column(name = "created_date", nullable = false)
-    private LocalDateTime createdDate;
-
-    @Column(name = "updated_by", length = 100)
-    private UUID updatedBy;
-
-    @Column(name = "updated_date")
-    private LocalDateTime updatedDate;
-
-    @Column(name = "is_deleted")
-    @Builder.Default
-    private Boolean isDeleted = false;
-
-    @Column(name = "deleted_by", length = 100)
-    private UUID deletedBy;
 
     @Column(name = "spatial_id")
     private UUID spatialId;
@@ -117,10 +93,6 @@ public class RadarStation extends BaseEntity {
 
     @Column(name = "radar_range", precision = 20)
     private BigDecimal radarRange;
-
-    @OneToMany(mappedBy = "radarStation", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<RadarStationAttachment> attachments = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

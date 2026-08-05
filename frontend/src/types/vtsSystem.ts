@@ -1,20 +1,34 @@
+export enum ConditionStatus {
+  GOOD = 'GOOD',
+  DEGRADED = 'DEGRADED',
+  DAMAGED = 'DAMAGED',
+}
+
+export enum ApprovalStatus {
+  PROPOSED = 'PROPOSED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 export interface VtsSystemAttachment {
   id: string;
   fileName: string;
-  fileUrl: string;
+  filePath: string;
 }
 
 export interface VtsSystemResponse {
   id: string;
   systemName?: string;
   location: string;
-  conditionStatus?: string;
+  conditionStatus?: ConditionStatus;
   responsibilityLevel?: string;
   source?: string;
   partner?: string; // partner field unique to VTS
   orgUnitId?: string;
+  orgUnitName?: string;
   scope?: string;
-  approvalStatus: string; // status as plain String
+  approvalStatus: ApprovalStatus; // status as plain String
   approvedLevel1?: boolean;
   approverLevel1?: string;
   approvedDateLevel1?: string;
@@ -28,22 +42,22 @@ export interface VtsSystemResponse {
   updatedDate?: string;
   attachments?: VtsSystemAttachment[];
   history?: HistoryEntry[];
-  khongGianId?: string;
-  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
-  toaDo?: string;
+  spatialId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
 }
 
 export interface CreateVtsSystemRequest {
   systemName?: string;
   location: string;
-  conditionStatus?: string;
+  conditionStatus?: ConditionStatus;
   responsibilityLevel?: string;
   source?: string;
   partner?: string;
   orgUnitId?: string;
   scope?: string;
-  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
-  toaDo?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
 }
 
 export interface UpdateVtsSystemRequest extends CreateVtsSystemRequest {}
@@ -54,12 +68,15 @@ export interface ApprovalRequest {
 }
 
 export interface HistoryEntry {
-  id: number;
-  approvalLevel?: number;
+  id: string;
+  approvalLevel?: number | string;
   status: string;
   approvedBy: string;
   approvedDate: string;
   reason?: string;
+  changedField?: string;
+  previousValue?: string;
+  newValue?: string;
 }
 
 export interface ListParams {
@@ -67,8 +84,9 @@ export interface ListParams {
   size?: number;
   orgUnitId?: string;
   keyword?: string;
-  conditionStatus?: string;
-  approvalStatus?: string;
+  conditionStatus?: ConditionStatus;
+  approvalStatus?: ApprovalStatus;
+  year?: number;
 }
 
 export interface SearchResponse<T> {
@@ -80,13 +98,13 @@ export interface SearchResponse<T> {
 
 // Vietnamese display labels (keep Vietnamese labels)
 export const CONDITION_STATUS_OPTIONS = [
-  { value: 'TOT', label: 'Tốt' },
-  { value: 'XUONG_CAP', label: 'Xuống cấp' },
-  { value: 'HU_HONG', label: 'Hư hỏng' },
+  { value: ConditionStatus.GOOD, label: 'Tốt' },
+  { value: ConditionStatus.DEGRADED, label: 'Xuống cấp' },
+  { value: ConditionStatus.DAMAGED, label: 'Hư hỏng' },
 ];
 
-export const CONDITION_STATUS_MAP: Record<string, string> = {
-  'TOT': 'Tốt',
-  'XUONG_CAP': 'Xuống cấp',
-  'HU_HONG': 'Hư hỏng',
+export const CONDITION_STATUS_MAP: Record<ConditionStatus, string> = {
+  [ConditionStatus.GOOD]: 'Tốt',
+  [ConditionStatus.DEGRADED]: 'Xuống cấp',
+  [ConditionStatus.DAMAGED]: 'Hư hỏng',
 };

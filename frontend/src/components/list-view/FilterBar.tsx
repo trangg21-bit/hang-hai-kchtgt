@@ -9,7 +9,7 @@ import { colors } from '../../theme';
 
 export interface FilterField {
   key: string; type: 'search' | 'select' | 'dateRange' | 'date'; label: string;
-  placeholder?: string; options?: { value: string; label: string }[]; width?: number;
+  placeholder?: string; options?: { value: string | number; label: string }[]; width?: number;
 }
 
 export interface FilterBarProps {

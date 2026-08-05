@@ -59,10 +59,17 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
   backupLightModel: 'Đèn dự phòng',
   powerSupply: 'Nguồn cung cấp năng lượng',
   staffCount: 'Nhân sự bố trí',
-  stationArea: 'Diện tích sử dụng trạm',
+  approvalStatus: 'Trạng thái phê duyệt',
+  approvedLevel1: 'Phê duyệt cấp 1',
+  approvedLevel2: 'Phê duyệt cấp 2',
+  approverLevel1: 'Người duyệt cấp 1',
+  approverLevel2: 'Người duyệt cấp 2',
 };
 
 const VALUE_TRANSLATIONS: Record<string, string> = {
+  PROPOSED: 'Chờ duyệt',
+  UNDER_REVIEW: 'Đang xem xét',
+  APPROVED: 'Đã phê duyệt',
   // BeaconLightType
   LIGHTHOUSE: 'Hải đăng',
   BEACON_LIGHT: 'Đèn biển',

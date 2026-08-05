@@ -1,19 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  DatePicker,
-  message,
-  Popconfirm,
-  Tooltip,
-  Select,
-  Upload,
-} from 'antd';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
@@ -21,6 +7,7 @@ import {
   ReloadOutlined,
   InboxOutlined,
   DownloadOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import {
   fetchLegalDocumentList,
@@ -28,44 +15,123 @@ import {
   updateLegalDocument,
   deleteLegalDocument,
   uploadLegalDocumentAttachment,
+  fetchLegalDocumentHistory,
 } from '../../services/document/api';
-import type { LegalDocumentResponse, LegalDocumentCreateRequest } from '../../services/document/types';
-import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg, spaceMd, spaceFormField, radiusPill } from '../../tokens';
+import type {
+  LegalDocumentResponse,
+  LegalDocumentCreateRequest,
+  LegalDocumentHistoryResponse,
+} from '../../services/document/types';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import EmptyState from '../../components/EmptyState';
+import ErrorState from '../../components/ErrorState';
+import {
+  ScreenHeader,
+  FilterBar,
+  StatusTabs,
+  DataTable,
+} from '../../components/list-view';
+import Pagination from '../../components/list-view/Pagination';
+import type { UploadFile } from 'antd/es/upload/interface';
+import toast from '../../components/ToastNotification';
+import {
+  actionPrimary,
+  textSecondary,
+  fontWeightBold,
+  fontWeightMedium,
+  fontSizeMd,
+  fontSizeLg,
+  cardStyle,
+  radiusPill,
+  borderDefault,
+  spaceFormField,
+  spaceMd,
+  statusOperational,
+  statusDraft,
+  radiusSm,
+} from '../../tokens';
+import { colors } from '../../theme';
 
 const { Dragger } = Upload;
 
+const DOCUMENT_TYPE_MAP: Record<string, string> = {
+  DECISION: 'Quyết định',
+  CIRCULAR: 'Thông tư',
+  DECREE: 'Nghị định',
+  LAW: 'Luật',
+};
+
+const VALIDITY_STATUS_MAP: Record<string, string> = {
+  DRAFT: 'Lưu tạm',
+  EFFECTIVE: 'Còn hiệu lực',
+  EXPIRING_SOON: 'Sắp hết hiệu lực',
+  EXPIRED: 'Đã hết hiệu lực',
+};
+
+const HISTORY_ACTION_MAP: Record<string, string> = {
+  CREATED: 'Tạo mới',
+  UPDATED: 'Cập nhật',
+  DELETED: 'Xóa',
+  EXPIRED: 'Hết hiệu lực',
+  DRAFT_SAVED: 'Lưu bản nháp',
+  ATTACHMENT_UPLOADED: 'Tải lên tệp đính kèm',
+  ATTACHMENT_DELETED: 'Xóa tệp đính kèm',
+};
+
+const VALIDITY_STATUS_COLOR: Record<string, string> = {
+  DRAFT: textSecondary,
+  EFFECTIVE: statusOperational,
+  EXPIRING_SOON: '#faad14',
+  EXPIRED: statusDraft,
+};
+
+function formatDate(value: string | undefined): string {
+  return value ? dayjs(value).format('DD/MM/YYYY HH:mm') : '—';
+}
+
+function formatDateShort(value: string | undefined): string {
+  return value ? dayjs(value).format('DD/MM/YYYY') : '—';
+}
+
 export default function LegalDocumentList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const [dataSource, setDataSource] = useState<LegalDocumentResponse[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [total, setTotal] = useState(0);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // Filter states
-  const [filterKeyword, setFilterKeyword] = useState('');
-  const [filterCoQuan, setFilterCoQuan] = useState('');
-  const [filterLoai, setFilterLoai] = useState<string | undefined>(undefined);
-  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
-  const [filterApplicationArea, setFilterApplicationArea] = useState('');
-  const [filterIssueDateStart, setFilterIssueDateStart] = useState<string | null>(null);
-  const [filterIssueDateEnd, setFilterIssueDateEnd] = useState<string | null>(null);
+  const [keyword, setKeyword] = useState('');
+  const [documentType, setDocumentType] = useState<string | undefined>(undefined);
+  const [status, setStatus] = useState<string | undefined>(undefined);
+  const [issuingAuthority, setIssuingAuthority] = useState('');
+  const [applicationArea, setApplicationArea] = useState('');
+  const [issueDateStart, setIssueDateStart] = useState<string | null>(null);
+  const [issueDateEnd, setIssueDateEnd] = useState<string | null>(null);
 
-  // Form states
+  const [dataSource, setDataSource] = useState<LegalDocumentResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LegalDocumentResponse | null>(null);
+  const [history, setHistory] = useState<LegalDocumentHistoryResponse[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<UploadFile[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
 
-  const attachedFileList = (editingItem?.attachedDocuments || []).map((doc) => ({
-    uid: doc.id,
-    name: doc.documentName,
-    status: 'done' as const,
-    url: doc.filePath,
-    size: doc.fileSize,
-  }));
+  const attachedFileList = useMemo(() => {
+    const existing = (editingItem?.attachedDocuments || []).map((doc) => ({
+      uid: doc.id,
+      name: doc.documentName,
+      status: 'done' as const,
+      size: doc.fileSize,
+    }));
+    return [...existing, ...pendingAttachments];
+  }, [editingItem, pendingAttachments]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -73,30 +139,47 @@ export default function LegalDocumentList() {
       const res = await fetchLegalDocumentList({
         page: page - 1,
         size: pageSize,
-        keyword: filterKeyword ? filterKeyword.trim() : undefined,
-        issuingAuthority: filterCoQuan ? filterCoQuan.trim() : undefined,
-        type: filterLoai || undefined,
-        status: filterStatus || undefined,
-        applicationArea: filterApplicationArea || undefined,
-        yearStart: filterIssueDateStart || undefined,
-        yearEnd: filterIssueDateEnd || undefined,
+        keyword: keyword.trim() || undefined,
+        issuingAuthority: issuingAuthority.trim() || undefined,
+        type: documentType || undefined,
+        status: status || undefined,
+        applicationArea: applicationArea.trim() || undefined,
+        issueDateStart: issueDateStart || undefined,
+        issueDateEnd: issueDateEnd || undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
+      const sc = res.statusCounts || {};
+      const draft = Number(sc.DRAFT) || 0;
+      const effective = Number(sc.EFFECTIVE) || 0;
+      const expiring = Number(sc.EXPIRING_SOON) || 0;
+      const expired = Number(sc.EXPIRED) || 0;
+      setCountDraft(draft);
+      setCountEffective(effective);
+      setCountExpiring(expiring);
+      setCountExpired(expired);
+      setCountAll(draft + effective + expiring + expired);
+      setIsError(false);
     } catch (err: any) {
-      message.error(err.message || 'Không thể tải danh sách văn bản pháp lý');
+      setErrorMessage(err.message || 'Không thể tải danh sách văn bản pháp lý');
+      setIsError(true);
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filterKeyword, filterCoQuan, filterLoai, filterStatus, filterApplicationArea, filterIssueDateStart, filterIssueDateEnd]);
+  }, [page, pageSize, keyword, issuingAuthority, documentType, status, applicationArea, issueDateStart, issueDateEnd]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const handleOpenModal = (record?: LegalDocumentResponse) => {
+  const [countAll, setCountAll] = useState(0);
+  const [countDraft, setCountDraft] = useState(0);
+  const [countEffective, setCountEffective] = useState(0);
+  const [countExpiring, setCountExpiring] = useState(0);
+  const [countExpired, setCountExpired] = useState(0);
+
+  const handleOpenModal = useCallback((record?: LegalDocumentResponse) => {
     if (record) {
       setEditingItem(record);
+      setPendingAttachments([]);
       form.setFieldsValue({
         documentNumber: record.documentNumber,
         documentName: record.documentName,
@@ -112,53 +195,73 @@ export default function LegalDocumentList() {
       });
     } else {
       setEditingItem(null);
+      setPendingAttachments([]);
       form.resetFields();
     }
     setIsModalOpen(true);
-  };
+  }, [form]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setIsModalOpen(false);
+    setPendingAttachments([]);
     form.resetFields();
-  };
+  }, [form]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
+      setSubmitting(true);
       const payload: LegalDocumentCreateRequest = {
         ...values,
-        issueDate: values.issueDate ? values.issueDate.toISOString() : '',
-        effectiveDate: values.effectiveDate ? values.effectiveDate.toISOString() : '',
-        expirationDate: values.expirationDate ? values.expirationDate.toISOString() : undefined,
+        issueDate: values.issueDate ? values.issueDate.format('YYYY-MM-DD') : '',
+        effectiveDate: values.effectiveDate ? values.effectiveDate.format('YYYY-MM-DD') : '',
+        expirationDate: values.expirationDate ? values.expirationDate.format('YYYY-MM-DD') : undefined,
       };
 
+      let documentId: string;
       if (editingItem) {
         await updateLegalDocument(editingItem.id, payload);
-        message.success('Cập nhật văn bản pháp lý thành công!');
+        documentId = editingItem.id;
+        toast.success('Cập nhật văn bản pháp lý thành công!');
       } else {
-        await createLegalDocument(payload);
-        message.success('Tạo văn bản pháp lý thành công!');
+        const created = await createLegalDocument(payload);
+        documentId = created.id;
+        setEditingItem(created);
+        toast.success('Tạo văn bản pháp lý thành công!');
+      }
+
+      for (const pendingFile of pendingAttachments) {
+        if (!pendingFile.originFileObj) continue;
+        try {
+          await uploadLegalDocumentAttachment(documentId, pendingFile.originFileObj);
+        } catch (err: any) {
+          toast.error(err.message || 'Lỗi tải lên tệp đính kèm');
+        }
       }
 
       setIsModalOpen(false);
+      setPendingAttachments([]);
       form.resetFields();
       loadData();
     } catch (err: any) {
-      message.error(err.message || 'Có lỗi xảy ra khi lưu văn bản');
+      if (err.errorFields) return;
+      toast.error(err.message || 'Có lỗi xảy ra khi lưu văn bản');
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }, [editingItem, form, pendingAttachments, loadData]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteLegalDocument(id);
-      message.success('Xóa văn bản pháp lý thành công!');
+      toast.success('Xóa văn bản pháp lý thành công!');
       loadData();
     } catch (err: any) {
-      message.error(err.message || 'Lỗi khi xóa văn bản');
+      toast.error(err.message || 'Lỗi khi xóa văn bản');
     }
-  };
+  }, [loadData]);
 
-  const handleExportPdf = async (id: string) => {
+  const handleExportPdf = useCallback(async (id: string) => {
     try {
       const token = localStorage.getItem('auth_token');
       const resp = await fetch(`/api/v1/legal-documents/${id}/export`, {
@@ -175,327 +278,271 @@ export default function LegalDocumentList() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      message.error(err.message || 'Lỗi tải PDF');
+      toast.error(err.message || 'Lỗi tải PDF');
     }
-  };
+  }, []);
 
-  const columns = [
-    {
-      title: 'Số hiệu văn bản',
-      dataIndex: 'documentNumber',
-      key: 'documentNumber',
-    },
-    {
-      title: 'Tên văn bản pháp lý',
-      dataIndex: 'documentName',
-      key: 'documentName',
-    },
-    {
-      title: 'Loại văn bản',
-      dataIndex: 'documentType',
-      key: 'documentType',
+  const handleHistory = useCallback(async (record: LegalDocumentResponse) => {
+    try {
+      setHistory(await fetchLegalDocumentHistory(record.id));
+      setHistoryOpen(true);
+    } catch (err: any) {
+      toast.error(err.message || 'Không thể tải lịch sử văn bản');
+    }
+  }, []);
+
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setKeyword(values.keyword?.trim() || '');
+    setIssuingAuthority(values.issuingAuthority?.trim() || '');
+    setDocumentType(values.type || undefined);
+    setStatus(values.status || undefined);
+    setApplicationArea(values.applicationArea?.trim() || '');
+    if (values.issueDateRange) {
+      setIssueDateStart(values.issueDateRange[0]?.format('YYYY-MM-DD') || null);
+      setIssueDateEnd(values.issueDateRange[1]?.format('YYYY-MM-DD') || null);
+    } else {
+      setIssueDateStart(null);
+      setIssueDateEnd(null);
+    }
+    setPage(1);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setKeyword('');
+    setIssuingAuthority('');
+    setDocumentType(undefined);
+    setStatus(undefined);
+    setApplicationArea('');
+    setIssueDateStart(null);
+    setIssueDateEnd(null);
+    setPage(1);
+  }, []);
+
+  const handleTabChange = useCallback((key: string) => {
+    setStatus(key === 'all' ? undefined : key);
+    setPage(1);
+  }, []);
+
+  const columns = useMemo(() => [
+    { key: 'stt', label: 'STT', width: 60, align: 'center' as const,
+      render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1 },
+    { key: 'documentNumber', label: 'Số hiệu văn bản', dataIndex: 'documentNumber', width: 160, sortable: true },
+    { key: 'documentName', label: 'Tên văn bản pháp lý', dataIndex: 'documentName', width: 280, sortable: true,
+      render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
+    { key: 'issueDate', label: 'Ngày ban hành', dataIndex: 'issueDate', width: 130, sortable: true, align: 'center' as const,
+      render: (val: string) => formatDateShort(val) },
+    { key: 'effectiveDate', label: 'Ngày hiệu lực', dataIndex: 'effectiveDate', width: 130, sortable: true, align: 'center' as const,
+      render: (val: string) => formatDateShort(val) },
+    { key: 'documentType', label: 'Loại văn bản', dataIndex: 'documentType', width: 130, sortable: true, align: 'center' as const,
+      render: (val: string) => DOCUMENT_TYPE_MAP[val] || val || '—' },
+    { key: 'issuingAuthority', label: 'Cơ quan ban hành', dataIndex: 'issuingAuthority', width: 200, sortable: true },
+    { key: 'signer', label: 'Người ký', dataIndex: 'signer', width: 140 },
+    { key: 'validityStatus', label: 'Trạng thái', dataIndex: 'validityStatus', width: 150, sortable: true, align: 'center' as const,
       render: (val: string) => {
-        if (val === 'DECISION') return 'Quyết định';
-        if (val === 'CIRCULAR') return 'Thông tư';
-        if (val === 'DECREE') return 'Nghị định';
-        if (val === 'LAW') return 'Luật';
-        return val || '';
-      }
-    },
-    {
-      title: 'Cơ quan ban hành',
-      dataIndex: 'issuingAuthority',
-      key: 'issuingAuthority',
-    },
-    {
-      title: 'Người ký',
-      dataIndex: 'signer',
-      key: 'signer',
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'validityStatus',
-      key: 'validityStatus',
-      render: (val: string) => {
-        if (val === 'EFFECTIVE') return 'Còn hiệu lực';
-        if (val === 'EXPIRING_SOON') return 'Sắp hết hiệu lực';
-        if (val === 'EXPIRED') return 'Đã hết hiệu lực';
-        return val || '';
-      }
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      render: (_: any, record: LegalDocumentResponse) => (
-        <Space size="middle">
-          {hasPerm('document:read') && (
-            <Tooltip title="Xuất PDF">
-              <Button type="text" icon={<DownloadOutlined />} onClick={() => handleExportPdf(record.id)} />
-            </Tooltip>
-          )}
-          {hasPerm('document:update') && (
-            <Tooltip title="Chỉnh sửa">
-              <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenModal(record)} />
-            </Tooltip>
-          )}
-          {hasPerm('document:delete') && (
-            <Popconfirm
-              title="Bạn có chắc chắn muốn xóa văn bản này?"
-              onConfirm={() => handleDelete(record.id)}
-              okText="Có"
-              cancelText="Không"
-            >
-              <Tooltip title="Xóa">
-                <Button type="text" danger icon={<DeleteOutlined />} />
-              </Tooltip>
-            </Popconfirm>
-          )}
-        </Space>
-      ),
-    },
-  ];
+        const color = VALIDITY_STATUS_COLOR[val] || textSecondary;
+        const label = VALIDITY_STATUS_MAP[val] || val || '';
+        return <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
+          borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+          background: `${color}15`, color,
+        }}>{label}</span>;
+      }},
+    { key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 150, sortable: true, align: 'center' as const,
+      render: (val: string) => formatDate(val) },
+  ], [page, pageSize]);
+
+  const rowActions = useCallback((record: LegalDocumentResponse) => {
+    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
+    if (hasPerm('document:read')) {
+      actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => handleOpenModal(record) });
+      actions.push({ key: 'history', label: 'Lịch sử', icon: <EyeOutlined />, onClick: () => handleHistory(record) });
+      actions.push({ key: 'export-pdf', label: 'Xuất PDF', icon: <DownloadOutlined />, onClick: () => handleExportPdf(record.id) });
+    }
+    if (hasPerm('document:update') && record.validityStatus !== 'EXPIRED') {
+      actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
+    }
+    if (hasPerm('document:delete')) {
+      actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => handleDelete(record.id) });
+    }
+    return actions;
+  }, [hasPerm, handleHistory, handleExportPdf, handleOpenModal, handleDelete]);
+
+  const statusTabs = useMemo(() => [
+    { key: 'all', label: 'Tất cả', count: countAll, color: textSecondary, active: !status },
+    { key: 'DRAFT', label: 'Lưu tạm', count: countDraft, color: textSecondary, active: status === 'DRAFT' },
+    { key: 'EFFECTIVE', label: 'Còn hiệu lực', count: countEffective, color: statusOperational, active: status === 'EFFECTIVE' },
+    { key: 'EXPIRING_SOON', label: 'Sắp hết hiệu lực', count: countExpiring, color: '#faad14', active: status === 'EXPIRING_SOON' },
+    { key: 'EXPIRED', label: 'Đã hết hiệu lực', count: countExpired, color: statusDraft, active: status === 'EXPIRED' },
+  ], [status, countAll, countDraft, countEffective, countExpiring, countExpired]);
+
+  const filterFields = useMemo(() => [
+    { key: 'keyword', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên văn bản...' },
+    { key: 'issuingAuthority', type: 'search' as const, label: 'Cơ quan', placeholder: 'Cơ quan ban hành...' },
+    { key: 'applicationArea', type: 'search' as const, label: 'Phạm vi', placeholder: 'Phạm vi áp dụng...' },
+    { key: 'type', type: 'select' as const, label: 'Loại văn bản', placeholder: 'Chọn loại',
+      options: [{ label: 'Luật', value: 'LAW' }, { label: 'Nghị định', value: 'DECREE' }, { label: 'Thông tư', value: 'CIRCULAR' }, { label: 'Quyết định', value: 'DECISION' }] },
+    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
+      options: [{ label: 'Lưu tạm', value: 'DRAFT' }, { label: 'Còn hiệu lực', value: 'EFFECTIVE' }, { label: 'Sắp hết hiệu lực', value: 'EXPIRING_SOON' }, { label: 'Đã hết hiệu lực', value: 'EXPIRED' }] },
+    { key: 'issueDateRange', type: 'dateRange' as const, label: 'Ngày ban hành', placeholder: 'Từ — Đến' },
+  ], []);
 
   return (
-    <Card
-      title="Danh sách văn bản pháp lý"
-      extra={
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadData} />
-          {hasPerm('document:create') && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>Tạo văn bản</Button>
-          )}
-        </Space>
-      }
-    >
-      <div style={{ marginBottom: 16 }}>
-        <Space wrap>
-          <Input
-            placeholder="Tìm theo tên/tóm tắt..."
-            value={filterKeyword}
-            onChange={(e) => {
-              setFilterKeyword(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 180 }}
-          />
-          <Input
-            placeholder="Cơ quan ban hành..."
-            value={filterCoQuan}
-            onChange={(e) => {
-              setFilterCoQuan(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 150 }}
-          />
-          <Select
-            placeholder="Loại văn bản"
-            value={filterLoai}
-            onChange={(val) => {
-              setFilterLoai(val);
-              setPage(1);
-            }}
-            style={{ width: 140 }}
-            allowClear
-            options={[
-              { label: 'Quyết định', value: 'DECISION' },
-              { label: 'Thông tư', value: 'CIRCULAR' },
-              { label: 'Nghị định', value: 'DECREE' },
-              { label: 'Luật', value: 'LAW' },
-            ]}
-          />
-          <Select
-            placeholder="Trạng thái hiệu lực"
-            value={filterStatus}
-            onChange={(val) => {
-              setFilterStatus(val);
-              setPage(1);
-            }}
-            style={{ width: 160 }}
-            allowClear
-            options={[
-              { label: 'Còn hiệu lực', value: 'EFFECTIVE' },
-              { label: 'Sắp hết hiệu lực', value: 'EXPIRING_SOON' },
-              { label: 'Đã hết hiệu lực', value: 'EXPIRED' },
-            ]}
-          />
-          <Input
-            placeholder="Phạm vi áp dụng..."
-            value={filterApplicationArea}
-            onChange={(e) => {
-              setFilterApplicationArea(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 150 }}
-          />
-          <Input
-            placeholder="Ngày ban hành từ..."
-            value={filterIssueDateStart || ''}
-            onChange={(e) => {
-              setFilterIssueDateStart(e.target.value);
-              setPage(1);
-            }}
-            type="date"
-            style={{ width: 150 }}
-          />
-          <Input
-            placeholder="Ngày ban hành đến..."
-            value={filterIssueDateEnd || ''}
-            onChange={(e) => {
-              setFilterIssueDateEnd(e.target.value);
-              setPage(1);
-            }}
-            type="date"
-            style={{ width: 150 }}
-          />
-          <Button
-            onClick={() => {
-              setFilterKeyword('');
-              setFilterCoQuan('');
-              setFilterLoai(undefined);
-              setFilterStatus(undefined);
-              setFilterApplicationArea('');
-              setFilterIssueDateStart(null);
-              setFilterIssueDateEnd(null);
-              setPage(1);
-            }}
-          >
-            Xóa bộ lọc
-          </Button>
-        </Space>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
+      <ScreenHeader
+        breadcrumb={[{ label: 'Văn bản pháp lý' }]}
+        actions={
+          hasPerm('document:create')
+            ? [{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => handleOpenModal() }]
+            : []
+        }
+      />
+      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+
+      <div style={{ ...cardStyle, marginBottom: spaceMd, display: 'flex', justifyContent: 'center', padding: '8px 16px' }}>
+        <StatusTabs tabs={statusTabs} onChange={handleTabChange} />
       </div>
 
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          onChange: (p, s) => {
-            setPage(p);
-            setPageSize(s);
-          },
-          showSizeChanger: true,
-        }}
-      />
+      <div style={{ ...cardStyle, padding: spaceMd }}>
+        {loading ? <LoadingSkeleton rows={8} /> :
+         isError ? <ErrorState message={errorMessage} onRetry={loadData} /> :
+         dataSource.length === 0 ? <EmptyState description="Chưa có văn bản pháp lý nào" /> :
+         <>
+           <div style={{ overflowX: 'auto' }}>
+             <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1500 }} />
+           </div>
+           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+         </>
+        }
+      </div>
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa văn bản pháp lý' : 'Thêm mới văn bản pháp lý'}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
+          {editingItem ? (editingItem.validityStatus === 'EXPIRED' ? 'Chi tiết văn bản (Đã hết hiệu lực)' : 'Chỉnh sửa văn bản pháp lý') : 'Thêm mới văn bản pháp lý'}
+        </span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
-        okText="Lưu"
-        cancelText="Hủy"
+        confirmLoading={submitting}
+        width={700}
+        footer={[
+          <Button key="cancel" onClick={handleCancel}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          editingItem?.validityStatus !== 'EXPIRED' && (
+            <Button key="submit" type="primary" onClick={handleSubmit} loading={submitting}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Lưu</Button>
+          ),
+        ].filter(Boolean)}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="documentNumber"
-            label="Số hiệu văn bản"
-            rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
-          >
-            <Input placeholder="Ví dụ: QĐ-BGTVT-2026-01" />
-          </Form.Item>
-
-          <Form.Item
-            name="documentName"
-            label="Tên văn bản"
-            rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
-          >
-            <Input placeholder="Nhập tiêu đề văn bản..." />
-          </Form.Item>
-
-          <Form.Item
-            name="documentType"
-            label="Loại văn bản"
-            rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
-          >
-            <Select placeholder="Chọn loại văn bản...">
-              <Select.Option value="DECISION">Quyết định</Select.Option>
-              <Select.Option value="CIRCULAR">Thông tư</Select.Option>
-              <Select.Option value="DECREE">Nghị định</Select.Option>
-              <Select.Option value="LAW">Luật</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="issuingAuthority"
-            label="Cơ quan ban hành"
-            rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
-          >
-            <Input placeholder="Bộ Giao thông vận tải, Cục Hàng hải..." />
-          </Form.Item>
-
-          <Form.Item
-            name="signer"
-            label="Người ký"
-            rules={[{ required: true, message: 'Vui lòng nhập người ký' }]}
-          >
-            <Input placeholder="Nhập họ và tên người ký..." />
-          </Form.Item>
-
-          <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}>
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}>
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="expirationDate" label="Ngày hết hiệu lực">
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="applicationArea" label="Phạm vi áp dụng">
-            <Input placeholder="Nhập phạm vi áp dụng..." />
-          </Form.Item>
-
-          <Form.Item name="validityStatus" label="Trạng thái hiệu lực" initialValue="EFFECTIVE">
-            <Select placeholder="Chọn trạng thái hiệu lực...">
-              <Select.Option value="EFFECTIVE">Còn hiệu lực</Select.Option>
-              <Select.Option value="EXPIRING_SOON">Sắp hết hiệu lực</Select.Option>
-              <Select.Option value="EXPIRED">Đã hết hiệu lực</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="description" label="Mô tả tóm tắt nội dung">
-            <Input.TextArea placeholder="Tóm tắt nội dung văn bản..." rows={3} />
-          </Form.Item>
-
-          <Form.Item label="Tệp đính kèm">
-            <Dragger
-              name="file"
-              multiple
-              maxCount={5}
-              accept=".pdf,.doc,.docx,.xls,.xlsx"
-              fileList={attachedFileList}
-              showUploadList={{ showPreviewIcon: true, showRemoveIcon: false, showDownloadIcon: true }}
-              customRequest={async (options) => {
-                const { file, onSuccess, onError } = options as any;
-                if (!editingItem?.id) {
-                  onError?.(new Error('Vui lòng lưu văn bản trước khi tải tệp đính kèm'));
-                  return;
-                }
-                try {
-                  const result = await uploadLegalDocumentAttachment(editingItem.id, file as File);
-                  onSuccess?.(result, file);
-                  message.success(`Đã tải lên: ${(file as File).name}`);
-                } catch (err: any) {
-                  onError?.(err);
-                  message.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`);
-                }
-              }}
-            >
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined />
-              </p>
-              <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây để tải lên</p>
-              <p className="ant-upload-hint">Hỗ trợ PDF, Word, Excel. Tối đa 5 tệp.</p>
-            </Dragger>
-          </Form.Item>
-        </Form>
+        <Spin spinning={submitting}>
+          {editingItem?.validityStatus === 'EXPIRED' && (
+            <Alert
+              message="Văn bản đã hết hiệu lực"
+              description="Văn bản ở trạng thái Đã hết hiệu lực không được phép chỉnh sửa nội dung."
+              type="warning"
+              showIcon
+              style={{ marginTop: 8, marginBottom: 8 }}
+            />
+          )}
+          <Form form={form} layout="vertical" disabled={editingItem?.validityStatus === 'EXPIRED'} style={{ marginTop: 16 }}>
+            <Form.Item name="documentNumber" label="Số hiệu văn bản" rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="Số hiệu văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="documentName" label="Tên văn bản" rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="Nhập tiêu đề văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="documentType" label="Loại văn bản" rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <Select placeholder="Chọn loại văn bản..." style={{ borderRadius: radiusPill, height: 40 }}>
+                <Select.Option value="LAW">Luật</Select.Option>
+                <Select.Option value="DECREE">Nghị định</Select.Option>
+                <Select.Option value="CIRCULAR">Thông tư</Select.Option>
+                <Select.Option value="DECISION">Quyết định</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item name="issuingAuthority" label="Cơ quan ban hành" rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="Cơ quan ban hành..." style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="signer" label="Người ký" style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="Người ký (nếu có)..." style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="expirationDate" label="Ngày hết hiệu lực" style={{ marginBottom: spaceFormField }}>
+              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="applicationArea" label="Phạm vi áp dụng" style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="Phạm vi áp dụng..." style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="description" label="Mô tả" style={{ marginBottom: spaceFormField }}>
+              <Input.TextArea placeholder="Mô tả..." rows={3} style={{ borderRadius: radiusSm }} />
+            </Form.Item>
+            <Form.Item label="Tệp đính kèm" style={{ marginBottom: spaceFormField }}>
+              <Dragger name="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                beforeUpload={(file) => {
+                  if (file.size > 10 * 1024 * 1024) { toast.error('Kích thước mỗi tệp không được vượt quá 10MB'); return Upload.LIST_IGNORE; }
+                  return true;
+                }}
+                fileList={attachedFileList}
+                showUploadList={{ showPreviewIcon: true, showRemoveIcon: true, showDownloadIcon: true }}
+                customRequest={async (options: any) => {
+                  const { file, onSuccess, onError } = options;
+                  if (!editingItem?.id) {
+                    setPendingAttachments((current) => [...current, {
+                      uid: String(Date.now()), name: (file as File).name, status: 'done' as const,
+                      originFileObj: file as File, size: (file as File).size,
+                    }]);
+                    onSuccess?.({}, file);
+                    return;
+                  }
+                  try {
+                    const result = await uploadLegalDocumentAttachment(editingItem.id, file as File);
+                    onSuccess?.(result, file);
+                    toast.success(`Đã tải lên: ${(file as File).name}`);
+                  } catch (err: any) { onError?.(err); toast.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`); }
+                }}
+              >
+                <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây</p>
+                <p className="ant-upload-hint">Hỗ trợ PDF, Word, ảnh. Tối đa 10MB/tệp.</p>
+              </Dragger>
+            </Form.Item>
+          </Form>
+        </Spin>
       </Modal>
-    </Card>
+
+      <Modal
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Lịch sử văn bản</span>}
+        open={historyOpen} onCancel={() => setHistoryOpen(false)} footer={null} width={880}
+      >
+        <DataTable
+          columns={[
+            { key: 'changedAt', label: 'Thời điểm', dataIndex: 'changedAt', width: 160, render: (val: string) => formatDate(val) },
+            { key: 'action', label: 'Thao tác', dataIndex: 'action', width: 170, render: (val: string) => HISTORY_ACTION_MAP[val] || val || '—' },
+            { key: 'changedBy', label: 'Người thực hiện', dataIndex: 'changedByName', width: 160, render: (val: string) => val || '—' },
+            {
+              key: 'note',
+              label: 'Ghi chú',
+              dataIndex: 'note',
+              render: (val: string) => (
+                <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', minWidth: 200, maxWidth: 340, padding: '4px 0' }}>
+                  {val || '—'}
+                </div>
+              ),
+            },
+          ]}
+          dataSource={history} rowKey="id" loading={false}
+          scroll={{ y: 400 }}
+        />
+      </Modal>
+    </div>
   );
 }

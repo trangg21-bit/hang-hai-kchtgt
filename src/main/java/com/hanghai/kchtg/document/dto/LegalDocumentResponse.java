@@ -36,6 +36,9 @@ public class LegalDocumentResponse {
     private UUID createdBy;
     private LocalDateTime createdDate;
     private UUID updatedBy;
+    /** Display name resolved from app_users; updatedBy remains the audit UUID. */
+    private String updatedByName;
     private LocalDateTime updatedDate;
     private List<AttachedDocumentResponse> attachedDocuments;
+    private boolean draft;
 }

@@ -1,12 +1,15 @@
 package com.hanghai.kchtg.shiprepairfacility.service;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
-import com.hanghai.kchtg.shiprepairfacility.repository.ApprovalHistoryRepository;
-import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityAttachmentRepository;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,13 +35,19 @@ class ShipRepairFacilityServiceTest {
     private ShipRepairFacilityRepository repository;
 
     @Mock
-    private ShipRepairFacilityAttachmentRepository attachmentRepository;
+    private InfrastructureAttachmentRepository attachmentRepository;
 
     @Mock
     private ApprovalHistoryRepository historyRepository;
 
     @Mock
     private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
+    @Mock
+    private OrgUnitCacheService orgUnitCacheService;
+
+    @Mock
+    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @InjectMocks
     private ShipRepairFacilityService service;
@@ -65,7 +74,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         createRequest = ShipRepairFacilityCreateRequest.builder()
@@ -76,7 +84,7 @@ class ShipRepairFacilityServiceTest {
                 .build();
 
         // Mock attachmentRepository to return empty list so toResponse doesn't fail
-        lenient().when(attachmentRepository.findByShipRepairFacilityId(any(UUID.class))).thenReturn(Collections.emptyList());
+        lenient().when(attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(any(UUID.class), any())).thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -92,7 +100,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         when(repository.save(any())).thenReturn(saved);
@@ -138,7 +145,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         List<ShipRepairFacility> entities = Arrays.asList(approvedEntity);
@@ -181,7 +187,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
         when(repository.save(any())).thenReturn(updatedEntity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
@@ -208,7 +213,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(true)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         ShipRepairFacilityUpdateRequest updateReqDto = ShipRepairFacilityUpdateRequest.builder()
@@ -238,7 +242,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(true)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         ShipRepairFacilityUpdateRequest updateReqDto = ShipRepairFacilityUpdateRequest.builder()
@@ -269,7 +272,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
@@ -280,7 +282,7 @@ class ShipRepairFacilityServiceTest {
 
         assertTrue(approvedEntity.getIsDeleted());
         verify(repository, times(1)).save(any());
-        verify(attachmentRepository, times(1)).deleteByShipRepairFacilityId(TEST_ID);
+        verify(attachmentRepository, times(1)).deleteByRefIdAndRefType(TEST_ID, InfrastructureType.SHIP_REPAIR_FACILITY);
         verify(historyRepository, times(1)).save(any());
     }
 
@@ -311,7 +313,7 @@ class ShipRepairFacilityServiceTest {
 
         assertEquals(ShipRepairApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
-        assertEquals("00000000-0000-0000-0000-000000000001", entity.getApproverLevel1());
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getApproverLevel1());
         verify(repository, times(1)).save(any());
     }
 
@@ -356,7 +358,7 @@ class ShipRepairFacilityServiceTest {
 
         assertEquals(ShipRepairApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel2());
-        assertEquals("00000000-0000-0000-0000-000000000002", entity.getApproverLevel2());
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), entity.getApproverLevel2());
         verify(repository, times(1)).save(any());
     }
 
@@ -392,7 +394,7 @@ class ShipRepairFacilityServiceTest {
     void testApproveC2_sameActorAsC1_throwsException() {
         entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
         entity.setApprovedLevel1(true);
-        entity.setApproverLevel1("00000000-0000-0000-0000-000000000001");
+        entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -406,28 +408,28 @@ class ShipRepairFacilityServiceTest {
     void testGetHistory() {
         ApprovalHistory history = ApprovalHistory.builder()
                 .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .shipRepairFacilityId(TEST_ID)
+                .refId(TEST_ID).refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
-                .status("APPROVED")
+                .status(ApprovalHistoryStatus.fromValue("APPROVED"))
                 .approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now())
                 .reason("Duyệt")
                 .build();
 
-        when(historyRepository.findByShipRepairFacilityIdOrderByApprovedDateDesc(TEST_ID)).thenReturn(Arrays.asList(history));
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY, TEST_ID)).thenReturn(Arrays.asList(history));
 
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
 
         assertNotNull(entries);
         assertEquals(1, entries.size());
-        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entries.get(0).getApprovedBy());
+        assertEquals("00000000-0000-0000-0000-000000000001", entries.get(0).getApprovedBy());
         assertEquals(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1, entries.get(0).getApprovalLevel());
         assertEquals("Duyệt", entries.get(0).getReason());
     }
 
     @Test
     void testGetHistory_Empty() {
-        when(historyRepository.findByShipRepairFacilityIdOrderByApprovedDateDesc(TEST_ID)).thenReturn(Collections.emptyList());
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY, TEST_ID)).thenReturn(Collections.emptyList());
 
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
 
@@ -459,7 +461,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         when(repository.search(null, "%abc%", null, null, null)).thenReturn(Arrays.asList(resultEntity));
@@ -485,7 +486,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         when(repository.search(null, null, 1, null, null)).thenReturn(Arrays.asList(resultEntity));
@@ -510,7 +510,6 @@ class ShipRepairFacilityServiceTest {
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .attachments(new java.util.ArrayList<>())
                 .build();
 
         when(repository.search(null, null, null, ShipRepairApprovalStatus.REJECTED, null)).thenReturn(Arrays.asList(resultEntity));

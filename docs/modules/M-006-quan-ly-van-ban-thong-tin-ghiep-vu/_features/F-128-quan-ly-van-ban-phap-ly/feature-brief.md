@@ -3,11 +3,11 @@ id: F-128
 name: Quản lý văn bản pháp lý
 slug: quan-ly-van-ban-phap-ly
 module-id: M-006
-status: proposed
+status: implemented
 classification: local
 priority: high
 created: 2026-06-16T04:40:21Z
-last-updated: 2026-07-21T08:29:20Z
+last-updated: 2026-08-04T01:14:56Z
 locked-fields: []
 consumed_by_modules: []
 source-paths:

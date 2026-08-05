@@ -2,6 +2,7 @@ package com.hanghai.kchtg.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.PermissionRoleService;
 import jakarta.servlet.FilterChain;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -40,12 +42,15 @@ public class PermissionMiddleware extends OncePerRequestFilter {
 
     private final PermissionRoleService permissionRoleService;
     private final UserRepository userRepository;
+    private final PermissionRepository permissionRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PermissionMiddleware(PermissionRoleService permissionRoleService,
-                                UserRepository userRepository) {
+                                UserRepository userRepository,
+                                @Nullable PermissionRepository permissionRepository) {
         this.permissionRoleService = permissionRoleService;
         this.userRepository = userRepository;
+        this.permissionRepository = permissionRepository;
     }
 
     @Override
@@ -65,7 +70,7 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         // Extract resource from path
         String resource = extractResource(path);
         // Map HTTP method to action
-        String action = mapMethodToAction(method);
+        String action = mapMethodToAction(method, path);
 
         // Resolve authenticated user
         UUID userId = resolveUserId();
@@ -121,10 +126,53 @@ public class PermissionMiddleware extends OncePerRequestFilter {
 
     /**
      * Normalize a URL path segment to the permission resource code used in DB.
-     * Controllers use kebab-case paths but permissions use camelCase / shorthand codes.
+     * Uses explicit override map first, then applies automatic convention rules:
+     * 1. Remove hyphens/underscores
+     * 2. Convert plural to singular (-s, -es, -ies)
+     * 3. Match against dynamic database resources if available
      */
     private String normalizeResource(String urlSegment) {
-        return URL_TO_PERMISSION.getOrDefault(urlSegment, urlSegment);
+        if (urlSegment == null || urlSegment.isBlank()) {
+            return "unknown";
+        }
+        String clean = urlSegment.toLowerCase(java.util.Locale.ROOT).trim();
+
+        // 1. Explicit override map lookup for special legacy alias mappings
+        if (URL_TO_PERMISSION.containsKey(clean)) {
+            return URL_TO_PERMISSION.get(clean);
+        }
+
+        // 2. Convention rule: Strip hyphens/underscores (e.g. legal-documents -> legaldocuments)
+        String noDash = clean.replace("-", "").replace("_", "");
+        if (isKnownDbResource(noDash)) {
+            return noDash;
+        }
+
+        // 3. Convention rule: Singularization (e.g. documents -> document, users -> user, categories -> category)
+        String singular = noDash;
+        if (singular.endsWith("ies") && singular.length() > 3) {
+            singular = singular.substring(0, singular.length() - 3) + "y";
+        } else if (singular.endsWith("es") && singular.length() > 3) {
+            singular = singular.substring(0, singular.length() - 2);
+        } else if (singular.endsWith("s") && singular.length() > 2) {
+            singular = singular.substring(0, singular.length() - 1);
+        }
+
+        if (isKnownDbResource(singular)) {
+            return singular;
+        }
+
+        // 4. Default fallback: return singularized form or cleaned string
+        return singular;
+    }
+
+    private boolean isKnownDbResource(String resource) {
+        if (permissionRepository == null) return false;
+        try {
+            return permissionRepository.countByResource(resource) > 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static final java.util.Map<String, String> URL_TO_PERMISSION = java.util.Map.ofEntries(
@@ -178,10 +226,27 @@ public class PermissionMiddleware extends OncePerRequestFilter {
     /**
      * Map HTTP method to CRUD action.
      */
-    private String mapMethodToAction(String method) {
+    private String mapMethodToAction(String method, String path) {
+        String normalizedPath = path.toLowerCase(java.util.Locale.ROOT);
+        if (normalizedPath.contains("approve-c1") || normalizedPath.contains("approvec1")) {
+            return "approvec1";
+        }
+        if (normalizedPath.contains("approve-c2") || normalizedPath.contains("approvec2")) {
+            return "approvec2";
+        }
+        if (normalizedPath.contains("approve") || normalizedPath.contains("reject")) {
+            return "approve";
+        }
+        if (normalizedPath.contains("history")) {
+            return "history";
+        }
+        if (normalizedPath.contains("submit")) {
+            return "submit";
+        }
         return switch (method.toUpperCase()) {
             case "GET" -> "read";
-            case "POST", "PUT", "PATCH" -> "write";
+            case "POST" -> "create";
+            case "PUT", "PATCH" -> "update";
             case "DELETE" -> "delete";
             default -> "read";
         };

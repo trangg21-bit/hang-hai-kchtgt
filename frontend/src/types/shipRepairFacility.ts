@@ -17,6 +17,7 @@ export interface ShipRepairFacilityResponse {
   capacity?: string;
   authority?: string;
   orgUnitId?: string;
+  orgUnitName?: string;
   approvalStatus: string; // status as plain String, not enum
   approvedC1?: boolean;
   approverLevel1?: string;

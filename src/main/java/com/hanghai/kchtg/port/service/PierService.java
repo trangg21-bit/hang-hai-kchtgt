@@ -22,6 +22,7 @@ import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -50,6 +51,7 @@ public class PierService {
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public PierResponse create(CreatePierRequest request) {
@@ -436,7 +438,7 @@ public class PierService {
                 .designLoad(e.getDesignLoad()).pierType(e.getPierType())
                 .operationalFunction(e.getOperationalFunction())
                 .operationalStatus(e.getOperationalStatus()).approvalStatus(e.getApprovalStatus())
-                .orgUnitId(e.getOrgUnitId())
+                .orgUnitId(e.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
                 .spatialId(e.getSpatialId())
                 .geometryType(geomType)

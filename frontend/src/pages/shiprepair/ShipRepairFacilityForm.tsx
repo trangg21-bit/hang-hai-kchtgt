@@ -69,6 +69,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
   const [organizations, setOrganizations] = useState<any[]>([]);
 
   useEffect(() => {
+    if (isDetailMode) return;
     (async () => {
       try {
         const resp = await organizationService.list({ pageSize: 1000 });
@@ -77,7 +78,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
         console.error('Failed to load organizations', err);
       }
     })();
-  }, []);
+  }, [isDetailMode]);
 
   // Fetch detail data
   useEffect(() => {
@@ -307,7 +308,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
                 {record.authority ?? '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
+                {record.orgUnitName || record.orgUnitId || '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.approvalStatus} />

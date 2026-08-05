@@ -5,6 +5,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' AND table_name = 'port_coordinates' 
         AND column_name = 'id' AND data_type IN ('bigint', 'integer', 'smallint', 'numeric')
+        AND is_identity = 'NO'
     ) THEN
         IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'port_coordinates_id_seq') THEN
             CREATE SEQUENCE port_coordinates_id_seq;
@@ -23,6 +24,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' AND table_name = 'port_infrastructure' 
         AND column_name = 'id' AND data_type IN ('bigint', 'integer', 'smallint', 'numeric')
+        AND is_identity = 'NO'
     ) THEN
         IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'port_infrastructure_id_seq') THEN
             CREATE SEQUENCE port_infrastructure_id_seq;
@@ -41,6 +43,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' AND table_name = 'port_attachments' 
         AND column_name = 'id' AND data_type IN ('bigint', 'integer', 'smallint', 'numeric')
+        AND is_identity = 'NO'
     ) THEN
         IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'port_attachments_id_seq') THEN
             CREATE SEQUENCE port_attachments_id_seq;
@@ -51,4 +54,3 @@ BEGIN
         ALTER SEQUENCE port_attachments_id_seq OWNED BY port_attachments.id;
     END IF;
 END $$;
-

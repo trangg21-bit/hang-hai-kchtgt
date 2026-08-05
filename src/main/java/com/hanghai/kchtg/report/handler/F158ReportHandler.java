@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.report.handler;
 
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
@@ -36,8 +35,8 @@ public class F158ReportHandler extends BaseReportHandler {
 
         List<RadarStation> stationList = radarStationRepository.findAll().stream()
                 .filter(t -> t.getApprovalStatus() == RadarStationApprovalStatus.APPROVED)
-                .filter(t -> t.getIsDeleted() == null || !t.getIsDeleted())
-                .filter(t -> t.getUpdatedDate() == null || t.getUpdatedDate().getYear() <= reportYear)
+                .filter(t -> t.getDeletedAt() == null)
+                .filter(t -> t.getUpdatedAt() == null || t.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
         List<String> headers = List.of(
@@ -57,9 +56,9 @@ public class F158ReportHandler extends BaseReportHandler {
                 vtsSystemRepository.findById(id).orElse(null));
             if (vts == null) continue;
             if (!"APPROVED".equals(vts.getApprovalStatus())) continue;
-            if (vts.getIsDeleted() != null && vts.getIsDeleted()) continue;
+            if (vts.getDeletedAt() != null) continue;
             if (!skipFilter && !targetUnitId.equals(vts.getOrgUnitId())) continue;
-            if (vts.getUpdatedDate() != null && vts.getUpdatedDate().getYear() > reportYear) continue;
+            if (vts.getUpdatedAt() != null && vts.getUpdatedAt().getYear() > reportYear) continue;
 
             boolean isFirst = seenVtsIds.add(vtsId);
             String donVi = resolveOrgName(vts.getOrgUnitId());
@@ -90,8 +89,8 @@ public class F158ReportHandler extends BaseReportHandler {
 
         List<RadarStation> stationList = radarStationRepository.findAll().stream()
                 .filter(t -> t.getApprovalStatus() == RadarStationApprovalStatus.APPROVED)
-                .filter(t -> t.getIsDeleted() == null || !t.getIsDeleted())
-                .filter(t -> t.getUpdatedDate() == null || t.getUpdatedDate().getYear() <= reportYear)
+                .filter(t -> t.getDeletedAt() == null)
+                .filter(t -> t.getUpdatedAt() == null || t.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
@@ -104,9 +103,9 @@ public class F158ReportHandler extends BaseReportHandler {
                 vtsSystemRepository.findById(id).orElse(null));
             if (vts == null) continue;
             if (!"APPROVED".equals(vts.getApprovalStatus())) continue;
-            if (vts.getIsDeleted() != null && vts.getIsDeleted()) continue;
+            if (vts.getDeletedAt() != null) continue;
             if (!skipFilter && !targetUnitId.equals(vts.getOrgUnitId())) continue;
-            if (vts.getUpdatedDate() != null && vts.getUpdatedDate().getYear() > reportYear) continue;
+            if (vts.getUpdatedAt() != null && vts.getUpdatedAt().getYear() > reportYear) continue;
 
             boolean isFirst = seenVtsIds.add(vtsId);
 
@@ -134,8 +133,7 @@ public class F158ReportHandler extends BaseReportHandler {
 
     private String resolveOrgName(UUID orgUnitId) {
         if (orgUnitId == null) return "";
-        return orgUnitRepository.findById(orgUnitId)
-                .map(OrgUnit::getName)
-                .orElse("");
+        String name = orgUnitCacheService.getName(orgUnitId);
+        return name != null ? name : "";
     }
 }

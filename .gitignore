@@ -9,6 +9,9 @@ Thumbs.db
 # Env
 .env
 .env.local
+application-local.properties
+application-local.yml
+application-local-h2.yml
 
 
 # ai-kit machine-local state (regenerable / local-only) — see specs/workspace-footprint.md
