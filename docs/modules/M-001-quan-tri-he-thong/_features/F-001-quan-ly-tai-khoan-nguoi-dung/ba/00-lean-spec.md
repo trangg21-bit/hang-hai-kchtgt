@@ -2,7 +2,7 @@
 feature-id: F-001
 document: lean-spec
 output-mode: lean
-last-updated: "2026-06-28T08:52:52Z"
+last-updated: "2026-08-05T00:00:00Z"
 module-id: M-001
 slug: quan-ly-tai-khoan-nguoi-dung
 ---
@@ -60,7 +60,7 @@ slug: quan-ly-tai-khoan-nguoi-dung
 | Role | Level | Permissions | Actor ID |
 |---|---|---|---|
 | **Admin** | Full access | Tạo, sửa, xóa, khóa/mở khóa, reset mật khẩu, phân quyền | A-001 (Quản trị hệ thống) |
-| **Lanh dao** (Lãnh đạo) | View + Approve | Xem danh sách, duyệt yêu cầu tạo/xóa tài khoản | A-002 (Lãnh đạo) |
+| **Lanh dao** (Lãnh đạo) | View only | Xem danh sách người dùng (read-only); phê duyệt tài khoản tự đăng ký (F-271) | A-002 (Lãnh đạo) |
 | **Can bo** (Cán bộ) | View + Edit | Xem danh sách, chỉnh sửa thông tin, khóa/mở khóa | A-003 (Chuyên viên) |
 | **Ca nhan** (Cá nhân) | Self only | Chỉ xem và sửa thông tin cá nhân của chính mình | A-005 (Cá nhân/Tổ chức bên ngoài) |
 
@@ -85,23 +85,19 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A[Admin/Lãnh đạo truy cập module<br/>Quản lý tài khoản từ sidebar] --> B{Thao tác}
+    A[Admin truy cập module<br/>Quản lý tài khoản từ sidebar] --> B{Thao tác}
     B -->|Tạo mới| C[Nhập thông tin: tên, email,<br/>mật khẩu, vai trò, đơn vị]
     B -->|Chỉnh sửa| D[Chọn tài khoản → chỉnh sửa<br/>thông tin hoặc phân quyền]
-    B -->|Xóa| E[Xác nhận xóa mềm<br/>kiểm tra dữ liệu liên quan]
     B -->|Khóa/Mở khóa| F[Nhập lý do → xác nhận]
     B -->|Reset mật khẩu| G[Admin đặt mật khẩu mới<br/>hoặc gửi link tự động]
 
     C --> H{Kiểm tra validation}
     H -->|Email trùng| H1[Hiển thị lỗi "Email đã tồn tại"]
     H -->|Mật khẩu yếu| H2[Hiển thị lỗi validation mật khẩu]
-    H -->|Hợp lệ| I[Tạo tài khoản → ghi log → toast thành công]
+    H -->|Hợp lệ| I[Tạo tài khoản → trạng thái ACTIVE<br/>→ ghi log → toast thành công]
 
     D --> J[Cập nhật thông tin → ghi log<br/>→ toast thành công]
 
-    E --> K{Kiểm tra dữ liệu liên quan}
-    K -->|Có phanhen/bao cao| K1[Hiển thị lỗi "Không thể xóa —<br/>tài khoản còn dữ liệu nghiệp vụ"]
-    K -->|Không có| L[Xóa mềm (deletedAt = now)<br/>→ ghi log → toast thành công]
 
     F --> M[Thay đổi status → ghi log<br/>→ toast thành công]
 
@@ -114,11 +110,9 @@ flowchart TD
 |---|---|---|---|
 | Email trùng khi tạo | BR-001 | Hiển thị lỗi "Email đã tồn tại" | Nhập email khác |
 | Mật khẩu yếu khi tạo | BR-002 | Hiển thị lỗi validation mật khẩu | Nhập mật khẩu đáp ứng yêu cầu |
-| Xóa tài khoản có dữ liệu liên quan | BR-003 | Hiển thị lỗi "Không thể xóa — tài khoản còn dữ liệu nghiệp vụ" | Liên hệ quản trị viên để xử lý dữ liệu |
 | Tài khoản bị khóa khi đăng nhập | BR-004 | Hiển thị lỗi "Tài khoản đã bị khóa" | Liên hệ Admin để mở khóa |
 | Token reset mật khẩu hết hạn | BR-006 | Hiển thị lỗi "Link hết hạn" | Yêu cầu gửi link mới |
 | Tài khoản tự động khóa sau 5 lần sai | BR-007 | Hiển thị lỗi "Tài khoản bị khóa do nhiều lần đăng nhập sai" | Đợi 30 phút hoặc liên hệ Admin |
-| Cán bộ cố xóa tài khoản | BR-005 | Hiển thị lỗi 403 Forbidden | Không thể thực hiện |
 | Cá nhân cố sửa tài khoản khác | BR-005 | Hiển thị lỗi 403 Forbidden | Chỉ sửa thông tin cá nhân |
 
 ---
@@ -133,7 +127,7 @@ flowchart TD
 | US-004 | Là **Admin**, tôi muốn khóa/mở khóa tài khoản người dùng để ngăn/tiếp tục truy cập khi cần. | Must | Feature-brief In Scope #4 |
 | US-005 | Là **Admin**, tôi muốn reset mật khẩu cho người dùng khi họ quên mật khẩu. | Must | Feature-brief In Scope #5 |
 | US-006 | Là **Admin**, tôi muốn phân quyền theo vai trò (RBAC) để kiểm soát truy cập. | Must | Feature-brief In Scope #6 |
-| US-007 | Là **Lanh dao**, tôi muốn xem danh sách người dùng và duyệt yêu cầu tạo/xóa tài khoản. | Should | Feature-brief Roles table |
+| US-007 | Là **Lanh dao**, tôi muốn xem danh sách người dùng. | Should | Feature-brief Roles table |
 | US-008 | Là **Can bo**, tôi muốn xem danh sách, chỉnh sửa thông tin và khóa/mở khóa tài khoản. | Must | Feature-brief Roles table |
 | US-009 | Là **Ca nhan**, tôi muốn xem và chỉnh sửa thông tin cá nhân của chính mình. | Should | Feature-brief Roles table |
 | US-010 | Là **người dùng hệ thống**, tôi muốn tìm kiếm và lọc danh sách người dùng theo tên, email, vai trò, trạng thái với phân trang chính xác. | Must | Feature-brief AC-4 |
@@ -149,8 +143,7 @@ flowchart TD
 | AC-003 | Tạo tài khoản thất bại — mật khẩu yếu | Người dùng đã đăng nhập với vai trò Admin | Nhập mật khẩu không đáp ứng yêu cầu (dưới 8 ký tự, thiếu chữ hoa, chữ thường, số) và nhấn Tạo | Hệ thống hiển thị lỗi validation mật khẩu, tài khoản không được tạo | Critical | BR-002 |
 | AC-004 | Khóa tài khoản thành công | Người dùng đã đăng nhập với vai trò Admin hoặc Cán bộ | Chọn tài khoản cần khóa, nhập lý do, nhấn Khóa | Tài khoản chuyển sang trạng thái blocked, không thể đăng nhập, toast "Khóa thành công" hiển thị | Critical | BR-004 |
 | AC-005 | Mở khóa tài khoản thành công | Người dùng đã đăng nhập với vai trò Admin hoặc Cán bộ | Chọn tài khoản blocked, nhập lý do, nhấn Mở khóa | Tài khoản chuyển sang active, có thể đăng nhập lại, toast "Mở khóa thành công" hiển thị | Critical | BR-004 |
-| AC-006 | Xóa tài khoản thất bại — có dữ liệu liên quan | Người dùng đã đăng nhập với vai trò Admin | Chọn tài khoản còn dữ liệu phanhen/bao cao liên quan và nhấn Xóa | Hệ thống hiển thị lỗi "Không thể xóa — tài khoản còn dữ liệu nghiệp vụ", tài khoản không bị xóa | Critical | BR-003 |
-| AC-007 | Xóa tài khoản thành công | Người dùng đã đăng nhập với vai trò Admin | Chọn tài khoản không có dữ liệu liên quan, xác nhận xóa | Tài khoản bị xóa mềm (deletedAt = current timestamp), toast "Xóa thành công" hiển thị | Major | BR-003 |
+
 | AC-008 | Tìm kiếm & lọc danh sách người dùng | Người dùng đã đăng nhập | Nhập từ khóa tìm kiếm và chọn bộ lọc (vai trò, trạng thái) | Bảng hiển thị kết quả đúng, phân trang hoạt động, tổng số record hiển thị | Major | — |
 | AC-009 | Reset mật khẩu thành công | Người dùng đã đăng nhập với vai trò Admin | Chọn tài khoản, nhập mật khẩu mới đáp ứng policy, nhấn Reset | Mật khẩu được hash và lưu, token cũ bị invalidate, toast "Reset thành công" hiển thị | Major | BR-006 |
 | AC-010 | Không thể đăng nhập khi tài khoản bị khóa | Người dùng chưa đăng nhập | Nhập thông tin đăng nhập cho tài khoản đã bị khóa | Hệ thống hiển thị lỗi "Tài khoản đã bị khóa", không cho đăng nhập | Critical | BR-004 |
@@ -158,7 +151,7 @@ flowchart TD
 | AC-012 | Chỉ Admin phân quyền cho vai trò khác | Người dùng đã đăng nhập với vai trò Cán bộ | Cố gắng thay đổi vai trò của người dùng khác thành Admin | Hệ thống từ chối (403 Forbidden), không có thay đổi | Critical | BR-005 |
 | AC-013 | Cá nhân chỉ sửa thông tin của chính mình | Người dùng đã đăng nhập với vai trò Cá nhân | Cố gắng sửa thông tin tài khoản của người dùng khác | Hệ thống từ chối (403 Forbidden), chỉ cho phép sửa thông tin cá nhân | Critical | BR-005 |
 | AC-014 | Token reset mật khẩu hết hạn | Người dùng đã yêu cầu reset mật khẩu | Đợi hơn 1 giờ rồi click vào link reset trong email | Hệ thống hiển thị lỗi "Link hết hạn", yêu cầu gửi link mới | Major | BR-006 |
-| AC-015 | Lãnh đạo chỉ xem và duyệt, không sửa | Người dùng đã đăng nhập với vai trò Lãnh đạo | Cố gắng chỉnh sửa thông tin tài khoản hoặc khóa/mở khóa | Hệ thống từ chối (403 Forbidden), chỉ cho phép xem và duyệt | Major | Feature-brief Roles table |
+| AC-015 | Lãnh đạo chỉ xem (read-only), không sửa | Người dùng đã đăng nhập với vai trò Lãnh đạo | Cố gắng chỉnh sửa thông tin tài khoản hoặc khóa/mở khóa | Hệ thống từ chối (403 Forbidden), chỉ cho phép xem | Major | Feature-brief Roles table |
 
 ---
 
@@ -170,7 +163,6 @@ flowchart TD
 |---|---|---|---|---|
 | **BR-001** | Email phải unique trong hệ thống; không cho phép trùng email khi tạo mới hoặc sửa | Tạo/Sửa UserAccount | Feature-brief BR-001 | — |
 | **BR-002** | Mật khẩu tối thiểu 8 ký tự, có chữ hoa, chữ thường, số | Tạo/Sửa UserAccount | Feature-brief BR-002 | Admin reset password: chỉ yêu cầu ≥8 ký tự, có chữ và số (không bắt buộc ký tự đặc biệt) |
-| **BR-003** | Không được xóa tài khoản có dữ liệu liên quan (phanhien, bao cao) | Delete UserAccount | Feature-brief BR-003 | — |
 | **BR-004** | Tài khoản bị khóa không được đăng nhập | Login | Feature-brief BR-004 | — |
 | **BR-005** | Chỉ Admin mới có quyền phân quyền cho vai trò khác; Cán bộ chỉ sửa thông tin và khóa/mở khóa; Cá nhân chỉ sửa thông tin cá nhân | Role Assignment | Feature-brief BR-005 | — |
 | **BR-006** | Token reset mật khẩu hết hạn sau 1 giờ | Password Reset | Feature-brief BR-006 | — |
@@ -233,7 +225,6 @@ flowchart TD
 | GET | `/api/v1/users/{id}` | Chi tiết người dùng | JWT |
 | POST | `/api/v1/users` | Tạo người dùng mới | Admin |
 | PUT | `/api/v1/users/{id}` | Chỉnh sửa người dùng | Admin, Can bo |
-| DELETE | `/api/v1/users/{id}` | Xóa người dùng (soft) | Admin |
 | PUT | `/api/v1/users/{id}/lock` | Khóa/mở khóa tài khoản | Admin, Can bo |
 | POST | `/api/v1/users/{id}/reset-password` | Reset mật khẩu | Admin |
 | GET | `/api/v1/roles` | Danh sách vai trò | JWT |
@@ -274,8 +265,6 @@ flowchart TD
 | TS-003 | Tạo user với mật khẩu yếu → lỗi validation | Unit | Critical | AC-003 |
 | TS-004 | Khóa tài khoản → không thể đăng nhập | Integration | Critical | AC-004, AC-010 |
 | TS-005 | Mở khóa tài khoản → đăng nhập lại được | Integration | Critical | AC-005 |
-| TS-006 | Xóa user có dữ liệu liên quan → lỗi | Integration | Critical | AC-006 |
-| TS-007 | Xóa user không có dữ liệu liên quan → thành công | Integration | Major | AC-007 |
 | TS-008 | Reset password → token expiry 1 giờ | Unit | Major | AC-009, AC-014 |
 | TS-009 | 5 lần đăng nhập sai → tự động khóa | Integration | Critical | AC-011 |
 | TS-010 | Chỉ Admin phân quyền cho vai trò khác | Integration | Critical | AC-012 |
@@ -283,7 +272,7 @@ flowchart TD
 | TS-012 | E2E: tạo user → login → verify permissions | E2E | Major | AC-001 |
 | TS-013 | E2E: filter/search danh sách user với pagination | E2E | Major | AC-008 |
 | TS-014 | E2E: lock/unlock với confirmation modal | E2E | Major | AC-004, AC-005 |
-| TS-015 | E2E: Lãnh đạo chỉ xem và duyệt, không sửa | E2E | Major | AC-015 |
+| TS-015 | E2E: Lãnh đạo chỉ xem, không sửa | E2E | Major | AC-015 |
 | TS-016 | Security: JWT không tiết lộ thông tin nhạy cảm | Security | Critical | — |
 | TS-017 | Security: password hash không lưu plaintext | Security | Critical | — |
 | TS-018 | UI: responsive sidebar trên mobile | UI | Normal | — |
@@ -358,7 +347,7 @@ flowchart TD
     E -->|Có|F{BR-002: Password mạnh?}
     F -->|Không|pw_err[F: 400 Bad Request — Mật khẩu không đáp ứng yêu cầu]
     F -->|Có|G[Hash mật khẩu (bcrypt/argon2)]
-    G --> H[Tạo UserAccount + UserRole]
+    G --> H[Tạo UserAccount với status = ACTIVE + UserRole]
     H --> I[Commit transaction]
     I --> J[Toast "Tạo tài khoản thành công"]
 ```
@@ -420,7 +409,7 @@ flowchart TD
 | Module | Dependency | Notes |
 |---|---|---|
 | **M-002 (Xác thực & đăng nhập)** | JWT auth, login flow | F-001 tạo tài khoản → M-002 xử lý đăng nhập; BR-004, BR-007 enforcement tại M-002 |
-| **M-003 (Quản lý dữ liệu nghiệp vụ)** | UserAccount FK | phanhen, bao cao tham chiếu UserAccount; BR-003 kiểm tra FK integrity trước khi xóa |
+| **M-003 (Quản lý dữ liệu nghiệp vụ)** | UserAccount FK | phanhen, bao cao tham chiếu UserAccount |
 
 ---
 
@@ -439,7 +428,7 @@ flowchart TD
 
 | ID | Description | Impact | Question | Options |
 |---|---|---|---|---|
-| [AMBIGUITY-001] | Không rõ quy trình phê duyệt tạo/xóa tài khoản cho vai trò Lãnh đạo | Trung bình | Lãnh đạo "duyệt yêu cầu" — ai là người gửi yêu cầu? | (A) Admin gửi yêu cầu → Lãnh đạo duyệt; (B) Lãnh đạo tự tạo và tự duyệt; (C) Không cần phê duyệt, chỉ xem |
+| [AMBIGUITY-001] ✅ ĐÃ GIẢI QUYẾT — Admin tạo tài khoản = kích hoạt trực tiếp, không cần Lãnh đạo duyệt. Lãnh đạo chỉ xem danh sách (read-only). Phê duyệt chỉ áp dụng cho tài khoản tự đăng ký qua F-271. | Đã đóng | PO/BA quyết định 05/08/2026 | (C) Không cần phê duyệt, chỉ xem |
 | [AMBIGUITY-002] | Không rõ thời gian tự động mở khóa sau 5 lần đăng nhập sai | Trung bình | BR-007 nói "tự động khóa" — có tự mở khóa sau thời gian nhất định không? | (A) Tự mở khóa sau 30 phút; (B) Chỉ Admin mở khóa thủ công; (C) Tự mở khóa sau 24 giờ |
 | [AMBIGUITY-003] | AdminAccount — tách biệt hay tích hợp với UserAccount? | Thấp | Có bảng AdminAccount riêng — Admin có phải là một UserAccount đặc biệt hay là tài khoản độc lập? | (A) AdminAccount độc lập; (B) AdminAccount là UserAccount với roleId = Admin; (C) Không rõ, cần kiến trúc quyết định |
 | [AMBIGUITY-004] | Không có yêu cầu về phân quyền chi tiết (permission granularity) | Thấp | JSON permissions trong Role — định nghĩa cụ thể như thế nào? | (A) Định nghĩa trong Phase 2 (SA); (B) Sử dụng permission matrix từ actor-registry.json; (C) Không rõ |

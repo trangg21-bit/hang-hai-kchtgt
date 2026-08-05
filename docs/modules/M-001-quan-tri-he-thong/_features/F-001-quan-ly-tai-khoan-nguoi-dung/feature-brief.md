@@ -7,269 +7,698 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-08-05T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý tài khoản người dùng
+# Đặc tả nghiệp vụ: Quản lý tài khoản người dùng
 
-## Description
+**Tài liệu:** BA Feature Brief
+**Feature:** F-001
+**Module:** M-001 — Quản trị hệ thống
+**Người viết:** Business Analyst
+**Ngày cập nhật:** 2026-08-05
 
-Quản lý toàn bộ vòng đời tài khoản người dùng trong hệ thống, bao gồm tạo mới, chỉnh sửa thông tin, xóa mềm, khóa/mở khóa tài khoản, phân quyền theo vai trò (RBAC — Role-Based Access Control), đặt lại mật khẩu, và phê duyệt tài khoản đăng ký mới. Tính năng cung cấp giao diện quản lý tập trung cho tất cả người dùng hệ thống.
+---
 
-## Business Intent
+## 1. Tổng quan
 
-Hệ thống cần cơ chế quản lý tài khoản người dùng an toàn và linh hoạt, cho phép các vai trò Quản trị hệ thống, Lãnh đạo và Chuyên viên thực hiện đầy đủ các thao tác tạo, sửa, xóa, khóa/mở khóa tài khoản theo quy trình nghiệp vụ được thiết định.
+### 1.1. Tính năng này làm gì?
 
-## Flow Summary
+Quản lý toàn bộ vòng đời tài khoản người dùng trong hệ thống, bao gồm tạo mới, chỉnh sửa thông tin, khóa/mở khóa tài khoản, phân quyền theo vai trò (RBAC — Role-Based Access Control), đặt lại mật khẩu, và phê duyệt tài khoản đăng ký mới từ người dùng bên ngoài. **Hệ thống không có chức năng xóa tài khoản** — thay vào đó, Admin khóa tài khoản để vô hiệu hóa. Tính năng cung cấp giao diện quản lý tập trung cho tất cả người dùng hệ thống.
 
-Người dùng tự đăng ký tài khoản qua form công khai → hệ thống tạo bản ghi chờ phê duyệt (PendingApproval) → Admin hoặc Admin-Operation xem danh sách đăng ký chờ → phê duyệt (tạo User + gán vai trò + gửi thông báo) hoặc từ chối (kèm lý do). Sau khi được phê duyệt, tài khoản được kích hoạt và người dùng có thể đăng nhập.
+### 1.2. Tại sao cần tính năng này?
 
-Admin hoặc Cán bộ tạo yêu cầu tài khoản mới cho người dùng → Lãnh đạo xem danh sách yêu cầu chờ duyệt → duyệt (kích hoạt tài khoản) hoặc từ chối. Trường hợp Lãnh đạo tự tạo tài khoản thì được phép tự duyệt luôn.
+Hệ thống cần cơ chế quản lý tài khoản người dùng an toàn và linh hoạt, cho phép các vai trò Quản trị hệ thống, Lãnh đạo và Chuyên viên thực hiện đầy đủ các thao tác tạo, sửa, khóa/mở khóa tài khoản theo quy trình nghiệp vụ được thiết định, thay thế cho việc thao tác thủ công trực tiếp trên cơ sở dữ liệu như hiện tại.
 
-Quản trị hệ thống hoặc Lãnh đạo truy cập vào module Quản lý tài khoản từ sidebar chính → chọn thao tác tạo mới hoặc chỉnh sửa tài khoản hiện có → hệ thống xác thực quyền và kiểm tra tính hợp lệ của dữ liệu đầu vào (email unique, mật khẩu mạnh) → thực hiện thao tác CRUD → ghi nhận log audit → hiển thị thông báo thành công hoặc lỗi qua toast notification. Quy trình bao gồm: (1) tạo tài khoản với thông tin cơ bản và gán vai trò; (2) chỉnh sửa thông tin cá nhân hoặc phân quyền; (3) xóa mềm (không xóa cứng khi có dữ liệu liên quan); (4) khóa/mở khóa để ngăn/tiếp tục truy cập; (5) reset mật khẩu bằng admin hoặc tự động gửi link; (6) phê duyệt tài khoản đăng ký mới từ người dùng.
+### 1.3. Luồng hoạt động chính
 
-## Acceptance Criteria
+Có 2 luồng tạo tài khoản:
 
-- Tạo tài khoản người dùng mới thành công với đầy đủ thông tin (tên, email, mật khẩu, vai trò, đơn vị) và mật khẩu đáp ứng yêu cầu bảo mật (tối thiểu 8 ký tự, có chữ hoa, chữ thường, số)
-- Phân quyền theo vai trò RBAC chính xác: mỗi vai trò (Admin, Lãnh đạo, Cán bộ, Cá nhân) chỉ có quyền truy cập phù hợp với phân cấp được quy định
-- Khóa/Mở khóa tài khoản thành công: tài khoản bị khóa không thể đăng nhập, mọi session đang hoạt động bị vô hiệu ngay lập tức; tài khoản mở khóa có thể đăng nhập lại bình thường
-- Tự động khóa sau 5 lần đăng nhập sai, tự động mở khóa sau 30 phút hoặc Admin mở thủ công
-- Tìm kiếm và lọc danh sách người dùng theo tên, email, vai trò, trạng thái với kết quả phân trang chính xác
-- Xóa mềm tài khoản không thành công khi tài khoản còn dữ liệu nghiệp vụ liên quan (phanhien, bao cao)
-- Phê duyệt tài khoản đăng ký: admin xem danh sách chờ, phê duyệt (tạo user + kích hoạt + gán vai trò) hoặc từ chối (kèm lý do) — thao tác phê duyệt là atomic transaction
-- Chống tự phê duyệt: admin không thể phê duyệt tài khoản đăng ký của chính mình
+**Luồng 1 — Admin tạo tài khoản trực tiếp (kích hoạt ngay):**
+Admin truy cập vào module Quản lý tài khoản từ sidebar chính → chọn thao tác tạo mới → hệ thống xác thực quyền và kiểm tra tính hợp lệ của dữ liệu đầu vào (email unique, mật khẩu mạnh) → tài khoản được tạo ở trạng thái **kích hoạt (active) ngay lập tức, không cần qua bước phê duyệt** → ghi nhận log audit → hiển thị thông báo thành công.
 
-## In Scope
+**Luồng 2 — Người dùng tự đăng ký (cần phê duyệt):**
+Người dùng tự đăng ký tài khoản qua form công khai (F-271) → hệ thống tạo bản ghi chờ phê duyệt (PendingApproval) → Admin hoặc Admin-Operation xem danh sách đăng ký chờ → phê duyệt (tạo User + gán vai trò + gửi thông báo) hoặc từ chối (kèm lý do). Sau khi được phê duyệt, tài khoản được kích hoạt và người dùng có thể đăng nhập.
 
-- Tạo tài khoản người dùng mới (tên, email, mật khẩu, vai trò, đơn vị)
-- Chỉnh sửa thông tin tài khoản (tên, email, vai trò, đơn vị)
-- Xóa tài khoản (cần xác nhận, không xóa nếu có dữ liệu liên quan)
-- Khóa/Mở khóa tài khoản (ngăn/tiếp tục truy cập)
-- Reset mật khẩu (tự động hoặc bằng admin)
-- Quên mật khẩu: người dùng gửi email → nhận link reset → đặt mật khẩu mới
-- Phân quyền theo vai trò (RBAC — Role-Based Access Control)
-- Xem danh sách người dùng với bộ lọc (tên, email, vai trò, trạng thái)
-- Tìm kiếm người dùng (theo tên hoặc email)
-- Phân trang danh sách người dùng
-- Tạo yêu cầu tài khoản mới: Admin/Cán bộ tạo yêu cầu → Lãnh đạo duyệt (Lãnh đạo tự tạo thì tự duyệt)
-- Tạo yêu cầu tài khoản mới: Admin/Cán bộ tạo yêu cầu → Lãnh đạo duyệt (Lãnh đạo tự tạo thì tự duyệt)
-- Duyệt/từ chối tài khoản đăng ký: admin xem danh sách chờ → phê duyệt (tạo User + gán vai trò + gửi thông báo) hoặc từ chối (kèm lý do)
-- Chống tự phê duyệt: admin không thể duyệt tài khoản đăng ký của chính mình
-- UI: Sidebar cố định, header avatar, table sticky header, toast notification, modal xác nhận
+Các thao tác khác: chỉnh sửa thông tin, khóa/mở khóa, reset mật khẩu. **Không có chức năng xóa tài khoản** — Admin khóa tài khoản để vô hiệu hóa vĩnh viễn.
 
-## Out of Scope
+---
 
-- Quản lý SSO/OAuth (tích hợp bên thứ ba)
-- Quản lý Multi-Factor Authentication (MFA)
-- Audit log cho hoạt động quản lý tài khoản (F-005 sẽ đảm nhận)
-- Tự động provision từ danh bạ công ty
+## 2. Ai dùng? Dùng như thế nào?
 
-## Roles + Permissions
+Quyền thao tác và xem tính năng được áp dụng theo hệ thống phân quyền tập trung của hệ thống. Mỗi vai trò người dùng sẽ có phạm vi truy cập và thao tác khác nhau trên tính năng này, được kiểm soát bởi cơ chế RBAC (Role-Based Access Control).
 
-| Role | Level | Notes |
+### 2.1. Cơ chế phân quyền
+
+Hệ thống sử dụng cơ chế phân quyền linh hoạt dựa trên **tài khoản** và **nhóm** (RBAC — Role-Based Access Control). Không có rule phân quyền cố định theo vai trò — thay vào đó:
+
+- Mỗi **tài khoản người dùng** được gán một hoặc nhiều **vai trò** (Role). Mỗi vai trò chứa một tập hợp **quyền** (Permissions).
+- Mỗi **nhóm người dùng** (UserGroup) có thể được gán quyền riêng. Thành viên trong nhóm sẽ kế thừa quyền từ nhóm.
+- Admin có thể tùy chỉnh quyền cho từng tài khoản hoặc nhóm thông qua màn hình **Phân quyền** (F-002).
+- Phạm vi dữ liệu (toàn hệ thống / đơn vị / cá nhân) được xác định bởi tổ hợp vai trò + đơn vị trực thuộc của tài khoản.
+
+### 2.2. Logic phân quyền đặc biệt cho tài khoản Admin Cục
+
+Đối với tài khoản **Admin Cục**, áp dụng logic phân quyền đặc biệt sau:
+
+- **Xem full dữ liệu:** Admin Cục có quyền xem toàn bộ dữ liệu trên hệ thống, không giới hạn phạm vi đơn vị hay khu vực.
+- **Xem thông tin người chỉnh sửa:** Với mỗi bản ghi, Admin Cục thấy được thông tin người chỉnh sửa cuối cùng (họ tên, tên đăng nhập).
+- **Xem thời gian cập nhật:** Admin Cục thấy được thời gian cập nhật cuối cùng của dữ liệu (timestamp).
+- **Xem người tạo mới:** Admin Cục thấy được thông tin người tạo mới bản ghi (họ tên, tên đăng nhập).
+- **Xem thời gian tạo mới:** Admin Cục thấy được thời gian tạo mới dữ liệu (timestamp).
+
+> **Ghi chú:** Các trường `người tạo mới`, `thời gian tạo mới`, `người chỉnh sửa`, `thời gian cập nhật` cần được bổ sung vào bảng dữ liệu tương ứng và chỉ hiển thị đối với tài khoản Admin Cục. Với các vai trò khác, các trường này bị ẩn khỏi giao diện.
+
+---
+
+## 3. User Stories
+
+Dưới đây là các câu chuyện người dùng, sắp xếp theo mức độ ưu tiên (Must > Should > Could):
+
+### Mức Must (bắt buộc có)
+
+- **US-001-01:** Là **Admin**, tôi muốn tạo tài khoản người dùng mới với đầy đủ thông tin (tên, email, mật khẩu, vai trò, đơn vị) để quản lý người dùng mới vào hệ thống. Tài khoản được tạo ở trạng thái active ngay lập tức, không cần phê duyệt.
+- **US-001-02:** Là **Admin**, tôi muốn chỉnh sửa thông tin tài khoản (tên, email, vai trò, đơn vị) của người dùng để cập nhật thông tin.
+- **US-001-03:** Là **Admin**, tôi muốn khóa tài khoản người dùng để vô hiệu hóa tài khoản không còn sử dụng. Hệ thống không có chức năng xóa tài khoản.
+- **US-001-04:** Là **Admin**, tôi muốn mở khóa tài khoản người dùng để khôi phục truy cập khi cần.
+- **US-001-05:** Là **Admin**, tôi muốn reset mật khẩu cho người dùng khi họ quên mật khẩu.
+- **US-001-06:** Là **Admin**, tôi muốn phân quyền theo vai trò (RBAC) để kiểm soát truy cập.
+- **US-001-07:** Là **Cán bộ**, tôi muốn xem danh sách, chỉnh sửa thông tin và khóa/mở khóa tài khoản trong đơn vị mình.
+- **US-001-08:** Là **người dùng hệ thống**, tôi muốn tìm kiếm và lọc danh sách người dùng theo tên, email, vai trò, trạng thái với phân trang chính xác.
+
+### Mức Should (nên có)
+
+- **US-001-09:** Là **Lãnh đạo**, tôi muốn xem danh sách người dùng trong đơn vị để nắm được nhân sự.
+- **US-001-10:** Là **Lãnh đạo**, tôi muốn phê duyệt tài khoản tự đăng ký từ người dùng bên ngoài (F-271).
+- **US-001-11:** Là **Cá nhân**, tôi muốn xem và chỉnh sửa thông tin cá nhân của chính mình.
+- **US-001-12:** Là **Admin/Cán bộ/Lãnh đạo**, tôi muốn xem chi tiết tài khoản người dùng (thông tin + phân quyền hiện tại) ở chế độ read-only.
+
+### Mức Could (có thể có sau)
+
+- **US-001-12:** Là **Admin**, tôi muốn xuất danh sách người dùng ra file Excel để báo cáo.
+
+---
+
+## 4. Yêu cầu chức năng (Acceptance Criteria)
+
+Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm được, kèm theo cách xử lý khi có lỗi hoặc dữ liệu không như mong đợi.
+
+**AC-001-01 — Tạo tài khoản thành công:** Admin nhập đầy đủ thông tin hợp lệ (tên, email chưa tồn tại, mật khẩu mạnh, vai trò, đơn vị) và nhấn Tạo. Hệ thống tạo tài khoản với trạng thái **ACTIVE**, hash mật khẩu, gán vai trò, trả về toast "Tạo tài khoản thành công". Nếu email đã tồn tại → hiển thị lỗi "Email đã tồn tại". Nếu mật khẩu không đáp ứng yêu cầu → hiển thị lỗi validation mật khẩu.
+
+**AC-001-02 — Chỉnh sửa tài khoản thành công:** Admin hoặc Cán bộ chọn tài khoản, sửa thông tin (tên, email, vai trò, đơn vị) hợp lệ và nhấn Lưu. Hệ thống cập nhật thông tin, ghi log, toast "Cập nhật thành công". Nếu email mới trùng với người dùng khác → lỗi "Email đã tồn tại".
+
+**AC-001-03 — Khóa tài khoản thành công:** Admin hoặc Cán bộ chọn tài khoản active, nhập lý do (tối thiểu 10 ký tự), nhấn Khóa. Hệ thống chuyển trạng thái sang `blocked`, vô hiệu hóa mọi session đang hoạt động của user đó, ghi UserStatusLog, toast "Khóa tài khoản thành công". Nếu tài khoản đã bị khóa → lỗi "Tài khoản đã bị khóa".
+
+**AC-001-04 — Mở khóa tài khoản thành công:** Admin hoặc Cán bộ chọn tài khoản blocked, nhập lý do, nhấn Mở khóa. Hệ thống chuyển trạng thái sang `active`, ghi UserStatusLog, toast "Mở khóa tài khoản thành công".
+
+**AC-001-05 — Tự động khóa sau 5 lần đăng nhập sai:** Người dùng nhập sai mật khẩu 5 lần liên tiếp. Hệ thống tự động khóa tài khoản (status = blocked), ghi UserStatusLog với lý do "5 lần đăng nhập sai", hiển thị thông báo "Tài khoản bị khóa do nhiều lần đăng nhập sai". Tự động mở khóa sau 30 phút hoặc Admin mở thủ công.
+
+**AC-001-06 — Reset mật khẩu thành công:** Admin chọn tài khoản, nhập mật khẩu mới đáp ứng policy (≥8 ký tự, chữ hoa + chữ thường + số, khác 3 mật khẩu gần nhất), nhấn Reset. Hệ thống hash mật khẩu mới, invalidate token cũ của user, toast "Đặt lại mật khẩu thành công". Nếu mật khẩu trùng 1 trong 3 mật khẩu gần nhất → lỗi.
+
+**AC-001-07 — Tìm kiếm và lọc danh sách người dùng:** Người dùng nhập từ khóa (tên/email) và chọn bộ lọc (vai trò, trạng thái). Hệ thống trả về kết quả đúng với phân trang (mặc định 20 dòng/trang, tối đa 100), tổng số record hiển thị chính xác. Kết quả rỗng → hiển thị empty state.
+
+**AC-001-08 — Phân quyền RBAC chính xác:** Cán bộ cố gắng thay đổi vai trò của người dùng khác → 403 Forbidden. Cá nhân cố sửa thông tin người dùng khác → 403 Forbidden. Chỉ Admin được phân quyền cho vai trò khác. User không thể tự thay đổi vai trò của chính mình.
+
+**AC-001-09 — Lãnh đạo chỉ xem (read-only):** Lãnh đạo truy cập danh sách người dùng → hiển thị danh sách (read-only). Lãnh đạo cố gắng chỉnh sửa hoặc khóa/mở khóa → 403 Forbidden. **Admin tạo tài khoản không cần Lãnh đạo duyệt — tài khoản được active ngay.** Lãnh đạo chỉ phê duyệt tài khoản tự đăng ký (F-271).
+
+**AC-001-10 — Phê duyệt tài khoản đăng ký:** Admin xem danh sách đăng ký chờ (PendingApproval), chọn phê duyệt → hệ thống tạo User với vai trò đã chọn, kích hoạt tài khoản, gửi thông báo (toàn bộ là atomic transaction). Không thể tự phê duyệt tài khoản của chính mình. Từ chối phải kèm lý do (tối thiểu 10 ký tự).
+
+**AC-001-11 — Token reset mật khẩu hết hạn:** Người dùng yêu cầu reset mật khẩu, đợi hơn 1 giờ rồi click link reset trong email → hệ thống hiển thị lỗi "Link đặt lại mật khẩu đã hết hạn", yêu cầu gửi link mới.
+
+**AC-001-12 — Tạo tài khoản có trạng thái mặc định ACTIVE:** Admin tạo tài khoản mới → trạng thái mặc định là `ACTIVE`, không qua bất kỳ bước phê duyệt nào. User có thể đăng nhập ngay sau khi tạo. Nếu có lỗi hệ thống khi tạo → rollback toàn bộ transaction, toast "Tạo tài khoản thất bại".
+
+**AC-001-13 — Không có chức năng xóa tài khoản:** Hệ thống không cung cấp chức năng xóa tài khoản. Để vô hiệu hóa tài khoản không còn sử dụng, Admin thực hiện khóa tài khoản (AC-001-03).
+
+**AC-001-14 — Xem chi tiết tài khoản:** Người dùng click vào tên hoặc chọn "Xem chi tiết" từ dropdown hành động. Hệ thống hiển thị popup read-only với: (1) thông tin tài khoản (username, fullName, email, phone, status, đơn vị, ngày tạo, lastLogin), (2) phân quyền hiện tại (danh sách Role kèm Permissions + danh sách Group kèm Permissions). Các trường audit (người tạo, thời gian tạo, người sửa, thời gian sửa) chỉ hiển thị với Admin Cục. Nếu tài khoản không có role/group nào → hiển thị "Chưa được phân quyền".
+
+---
+
+## 5. Quy tắc nghiệp vụ (Business Rules)
+
+Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thống phải tuân thủ:
+
+### 5.1. Quy tắc về tài khoản
+
+**BR-001-01 — Email duy nhất:** Email phải là duy nhất trong toàn hệ thống. Không cho phép trùng email khi tạo mới hoặc chỉnh sửa. Nếu email đã tồn tại → từ chối với thông báo "Email đã tồn tại".
+
+**BR-001-02 — Mật khẩu mạnh:** Mật khẩu tối thiểu 8 ký tự, phải có ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số. Khi admin reset mật khẩu: chỉ yêu cầu ≥8 ký tự, có chữ và số (không bắt buộc ký tự đặc biệt).
+
+**BR-001-03 — Lịch sử mật khẩu:** Khi tạo mới hoặc reset mật khẩu, mật khẩu mới phải khác 3 mật khẩu gần nhất của user.
+
+**BR-001-04 — Mật khẩu hash:** Mọi mật khẩu phải được hash bằng bcrypt/argon2 trước khi lưu. Tuyệt đối không lưu plaintext.
+
+### 5.2. Quy tắc về trạng thái
+
+**BR-001-05 — Admin tạo tài khoản = ACTIVE ngay:** Khi Admin (hoặc vai trò có quyền tạo user) tạo tài khoản mới, trạng thái mặc định là `ACTIVE`. **Không có bước phê duyệt trung gian, không cần Lãnh đạo duyệt.**
+
+**BR-001-06 — Tài khoản bị khóa không được đăng nhập:** Khi status = `blocked`, user không thể đăng nhập. Hệ thống trả về thông báo "Tài khoản đã bị khóa".
+
+**BR-001-07 — Tự động khóa sau 5 lần sai:** Tài khoản tự động bị khóa sau 5 lần đăng nhập thất bại liên tiếp. Tự động mở khóa sau 30 phút, hoặc Admin mở khóa thủ công.
+
+**BR-001-08 — Vô hiệu hóa session khi khóa:** Khi khóa tài khoản, mọi session đang hoạt động của user đó bị vô hiệu hóa ngay lập tức.
+
+**BR-001-09 — Ghi log thay đổi trạng thái:** Mọi thay đổi trạng thái tài khoản (active ↔ blocked) phải được ghi vào `UserStatusLog` kèm lý do và người thực hiện.
+
+**BR-001-10 — Không có chức năng xóa:** Hệ thống không cho phép xóa tài khoản người dùng dưới bất kỳ hình thức nào. Để ngừng sử dụng tài khoản, Admin thực hiện khóa tài khoản.
+
+### 5.3. Quy tắc về phân quyền
+
+**BR-001-11 — Chỉ Admin phân quyền:** Chỉ vai trò Admin/system-admin mới có quyền thay đổi vai trò (role) của người dùng. Cán bộ chỉ sửa thông tin và khóa/mở khóa.
+
+**BR-001-12 — Không tự đổi vai trò:** User không thể tự thay đổi vai trò (role) của chính mình.
+
+**BR-001-13 — System-admin đặc biệt:** Chỉ role `system-admin` mới được tạo hoặc khóa tài khoản `system-admin`.
+
+**BR-001-14 — Cá nhân chỉ xem/sửa thông tin của mình:** Người dùng với vai trò Cá nhân chỉ có quyền xem và sửa thông tin tài khoản của chính mình.
+
+### 5.4. Quy tắc về phê duyệt đăng ký
+
+**BR-001-15 — Phê duyệt đăng ký là atomic:** Khi admin phê duyệt tài khoản đăng ký, toàn bộ thao tác (tạo User + gán vai trò + kích hoạt + gửi thông báo) là atomic transaction. Nếu bất kỳ bước nào thất bại → rollback toàn bộ.
+
+**BR-001-16 — Chống tự phê duyệt:** Admin không thể phê duyệt tài khoản đăng ký của chính mình (kiểm tra email trùng).
+
+**BR-001-17 — Từ chối phải có lý do:** Khi từ chối tài khoản đăng ký, lý do từ chối là bắt buộc (tối thiểu 10 ký tự).
+
+### 5.5. Quy tắc về reset mật khẩu
+
+**BR-001-18 — Token reset hết hạn 1 giờ:** Token đặt lại mật khẩu có hiệu lực trong 1 giờ kể từ khi được tạo. Sau khi hết hạn, link không thể sử dụng và phải yêu cầu token mới.
+
+---
+
+## 6. Mô hình dữ liệu
+
+Tính năng này tạo ra/sửa đổi các bảng dữ liệu sau trong cơ sở dữ liệu:
+
+> **Quy ước đánh dấu:**
+> - <span style="color:red;font-weight:bold">🔴 Chữ màu đỏ</span> = **trường mới cần thêm** vào bảng hiện có.
+> - ~~Chữ gạch ngang~~ = **trường không cần thiết**, cần loại bỏ khỏi bảng.
+> - Các trường không được đánh dấu là các trường hiện có, được giữ nguyên.
+
+### 6.1. Bảng UserAccount — Tài khoản người dùng
+
+Đây là bảng chính, lưu thông tin tài khoản người dùng.
+
+- **id:** BIGINT PK, mã số tự tăng, duy nhất cho mỗi người dùng
+- **username:** VARCHAR(50) UNIQUE NOT NULL, tên đăng nhập
+- **email:** VARCHAR(100) UNIQUE NOT NULL, email
+- **passwordHash:** VARCHAR(255) NOT NULL, mật khẩu đã hash (bcrypt/argon2)
+- **displayName:** VARCHAR(100), họ và tên hiển thị
+- **phone:** VARCHAR(20), số điện thoại
+- **status:** VARCHAR(20), trạng thái: `active`, `blocked`
+- **roleId:** BIGINT FK → Role, vai trò của người dùng
+- **organizationId:** BIGINT FK → Organization, đơn vị trực thuộc
+- <span style="color:red;font-weight:bold">**createdBy:** BIGINT FK → UserAccount, người tạo bản ghi</span>
+- <span style="color:red;font-weight:bold">**updatedBy:** BIGINT FK → UserAccount, người chỉnh sửa cuối cùng</span>
+- **createdAt:** TIMESTAMP, thời điểm tạo bản ghi
+- **updatedAt:** TIMESTAMP, thời điểm cập nhật cuối
+- **lastLoginAt:** TIMESTAMP NULL, thời điểm đăng nhập cuối
+
+> **Ghi chú:** Bảng UserAccount **không có trường `deletedAt`** vì hệ thống không hỗ trợ xóa tài khoản. Tài khoản không còn sử dụng được khóa (status = `blocked`) thay vì xóa.
+
+### 6.2. Bảng UserStatusLog — Nhật ký thay đổi trạng thái
+
+- **id:** BIGINT PK
+- **userId:** BIGINT FK → UserAccount
+- **previousStatus:** VARCHAR(20), trạng thái trước khi thay đổi
+- **newStatus:** VARCHAR(20), trạng thái sau khi thay đổi
+- **changedBy:** BIGINT FK → UserAccount, người thực hiện thay đổi
+- **changedAt:** TIMESTAMP, thời điểm thay đổi
+- **reason:** TEXT, lý do thay đổi
+
+### 6.3. Bảng PendingApproval — Đăng ký chờ phê duyệt
+
+- **id:** BIGINT PK
+- **username:** VARCHAR(50), tên đăng nhập đề xuất
+- **email:** VARCHAR(100), email đăng ký
+- **passwordHash:** VARCHAR(255), mật khẩu đã hash
+- **requestedRoleCode:** VARCHAR(30), mã vai trò yêu cầu
+- **status:** VARCHAR(20) — `pending`, `approved`, `rejected`
+- **approvedBy:** BIGINT FK → UserAccount, người phê duyệt
+- **rejectionReason:** TEXT, lý do từ chối
+- **createdAt:** TIMESTAMP
+- **updatedAt:** TIMESTAMP
+
+### 6.4. Các bảng liên quan khác
+
+- **Role:** id, name, code, description, permissions (JSON), isSystem
+- **Organization:** id, name, code, parentId (self-ref), type, status, coefficient
+- **UserRole:** id, userId FK, roleId FK, assignedBy FK, assignedAt, expiresAt
+- **PasswordResetToken:** id, userId FK, token, expiresAt, usedAt, createdAt
+- **UserGroup:** id, name, code, groupType, status
+- **GroupMember:** id, groupId FK, userId FK, joinedBy FK, joinedAt
+- **AdminAccount:** id, username, passwordHash, adminType, moduleAccess (JSON), status, mfaEnabled
+- **AccessLog:** id, userId FK, username, action, targetResource, ipAddress, userAgent, responseCode, duration_ms, status, createdAt (quản lý bởi F-005)
+
+---
+
+## 7. API Endpoints
+
+Hệ thống cung cấp các API để phục vụ các thao tác liên quan đến tính năng:
+
+| Method | Endpoint | Mô tả | Phân quyền |
+|---|---|---|---|
+| GET | `/api/v1/users` | Danh sách người dùng (phân trang, lọc, tìm kiếm) | JWT |
+| GET | `/api/v1/users/{id}` | Chi tiết người dùng | JWT |
+| POST | `/api/v1/users` | Tạo người dùng mới (trạng thái ACTIVE) | Admin, Admin-Operation |
+| PUT | `/api/v1/users/{id}` | Chỉnh sửa thông tin người dùng | Admin, Cán bộ |
+| PUT | `/api/v1/users/{id}/lock` | Khóa/mở khóa tài khoản | Admin, Cán bộ |
+| POST | `/api/v1/users/{id}/reset-password` | Reset mật khẩu (admin) | Admin |
+| GET | `/api/v1/roles` | Danh sách vai trò | JWT |
+| POST | `/api/v1/roles` | Tạo vai trò mới | Admin |
+| PUT | `/api/v1/roles/{id}` | Chỉnh sửa vai trò | Admin |
+| GET | `/api/v1/organizations` | Danh sách đơn vị | JWT |
+| POST | `/api/v1/organizations` | Tạo đơn vị mới | Admin |
+| GET | `/api/v1/groups` | Danh sách nhóm | JWT |
+| POST | `/api/v1/groups` | Tạo nhóm mới | Admin |
+| POST | `/api/v1/groups/{id}/members` | Thêm thành viên vào nhóm | Admin |
+| DELETE | `/api/v1/groups/{id}/members/{userId}` | Xóa thành viên khỏi nhóm | Admin |
+| GET | `/api/v1/approvals/pending` | Danh sách đăng ký chờ phê duyệt | Admin, Admin-Operation |
+| POST | `/api/v1/approvals/{id}/approve` | Phê duyệt tài khoản đăng ký | Admin, Admin-Operation |
+| POST | `/api/v1/approvals/{id}/reject` | Từ chối tài khoản đăng ký | Admin, Admin-Operation |
+| POST | `/api/v1/users/pending` | Nộp đơn đăng ký tài khoản | Public (rate-limited) |
+| POST | `/api/v1/auth/forgot-password` | Yêu cầu link đặt lại mật khẩu | Public (rate-limited) |
+| POST | `/api/v1/auth/reset-password/{token}` | Đặt lại mật khẩu bằng token | Public (rate-limited) |
+
+---
+
+## 8. Chi tiết nghiệp vụ từng phần
+
+> **Quy ước trình bày:** Mỗi luồng nghiệp vụ được mô tả dưới dạng bảng 2 cột: cột trái là hành động của **Người dùng**, cột phải là phản hồi/xử lý của **Hệ thống**.
+
+### 8.1. Tạo tài khoản (Admin)
+
+| # | Người dùng | Hệ thống |
 |---|---|---|
-| Admin | Full access | Tạo, sửa, xóa, khóa/mở khóa, reset mật khẩu, phân quyền, duyệt tài khoản đăng ký |
-| Lanh dao | View + Approve | Xem danh sách, duyệt yêu cầu tạo/xóa tài khoản từ Admin/Cán bộ; tự tạo tài khoản thì được tự duyệt |
-| Can bo | View + Edit + Lock/Unlock (nếu được phân quyền) | Xem danh sách, chỉnh sửa thông tin, khóa/mở khóa (khi được gán quyền tương ứng) |
-| Ca nhan | Self only | Chỉ xem và sửa thông tin cá nhân |
-| Admin-Operation | Full (CRUD + Approve + Lock/Unlock) | Quản lý tài khoản admin và phê duyệt đăng ký trong phạm vi vận hành |
+| 1 | Admin mở modal "Tạo tài khoản" từ nút "Thêm mới" trên màn hình danh sách | Hiển thị form tạo mới với các trường trống |
+| 2 | Nhập thông tin: username, fullName, email, phone, password, roleId, orgUnitId | — |
+| 3 | Nhấn nút "Lưu" | Validate dữ liệu đầu vào: email unique (BR-001-01), password ≥8 ký tự + chữ hoa + chữ thường + số (BR-001-02), các trường bắt buộc phải có giá trị |
+| 4 | — | Nếu email đã tồn tại: hiển thị lỗi "Email đã tồn tại" dưới trường email, dừng xử lý |
+| 5 | — | Nếu mật khẩu yếu: hiển thị lỗi validation dưới trường password, dừng xử lý |
+| 6 | — | Nếu thiếu trường bắt buộc: hiển thị lỗi "Vui lòng nhập {tên trường}" dưới trường tương ứng |
+| 7 | — | Nếu hợp lệ: tạo UserAccount với `status = ACTIVE`, hash password bằng bcrypt/argon2, gán UserRole, ghi AccessLog |
+| 8 | — | **Không có bước phê duyệt, không cần Lãnh đạo duyệt** — tài khoản được active ngay |
+| 9 | Xem toast thông báo | Hiển thị toast "Tạo tài khoản thành công", đóng modal, refresh danh sách |
 
-## Entities
+**Các trường trong form tạo mới:**
 
-- **UserAccount**: id(BIGINT PK), username(VARCHAR 50 UNIQUE NOT NULL), email(VARCHAR 100 UNIQUE NOT NULL), passwordHash(VARCHAR 255 NOT NULL), roleId(BIGINT FK→Role), organizationId(BIGINT FK→Organization), status(VARCHAR 20), createdAt(TIMESTAMP), updatedAt(TIMESTAMP), deletedAt(TIMESTAMP NULL), lastLoginAt(TIMESTAMP NULL)
-- **Role**: id(BIGINT PK), name(VARCHAR 50 NOT NULL), code(VARCHAR 30 UNIQUE NOT NULL), description(TEXT), permissions(JSON), isSystem(BOOLEAN DEFAULT false)
-- **Organization**: id(BIGINT PK), name(VARCHAR 100 NOT NULL), code(VARCHAR 30 UNIQUE NOT NULL), parentId(BIGINT FK→Organization), type(VARCHAR 30), status(VARCHAR 20), coefficient(DECIMAL 5,2), createdAt(TIMESTAMP), updatedAt(TIMESTAMP)
-- **UserRole**: id(BIGINT PK), userId(BIGINT FK→UserAccount), roleId(BIGINT FK→Role), assignedBy(BIGINT FK→UserAccount), assignedAt(TIMESTAMP), expiresAt(TIMESTAMP NULL)
-- **PasswordResetToken**: id(BIGINT PK), userId(BIGINT FK→UserAccount), token(VARCHAR 255 NOT NULL), expiresAt(TIMESTAMP NOT NULL), usedAt(TIMESTAMP NULL), createdAt(TIMESTAMP)
-- **UserStatusLog**: id(BIGINT PK), userId(BIGINT FK→UserAccount), previousStatus(VARCHAR 20), newStatus(VARCHAR 20), changedBy(BIGINT FK→UserAccount), changedAt(TIMESTAMP), reason(TEXT)
-- **PendingApproval**: id(BIGINT PK), username(VARCHAR 50), email(VARCHAR 100), passwordHash(VARCHAR 255), requestedRoleCode(VARCHAR 30), status(VARCHAR 20 — pending/approved/rejected), approvedBy(BIGINT FK→UserAccount), rejectionReason(TEXT), createdAt(TIMESTAMP), updatedAt(TIMESTAMP)
-- **ApprovalNotification**: id(BIGINT PK), pendingApprovalId(BIGINT FK→PendingApproval), recipientType(VARCHAR 20), notificationType(VARCHAR 20), sent(BOOLEAN DEFAULT false), createdAt(TIMESTAMP)
-- **UserGroup**: id(BIGINT PK), name(VARCHAR 100 NOT NULL), code(VARCHAR 30 UNIQUE NOT NULL), groupType(VARCHAR 30), status(VARCHAR 20), createdAt(TIMESTAMP), updatedAt(TIMESTAMP)
-- **GroupMember**: id(BIGINT PK), groupId(BIGINT FK→UserGroup), userId(BIGINT FK→UserAccount), joinedBy(BIGINT FK→UserAccount), joinedAt(TIMESTAMP)
-- **AdminAccount**: id(BIGINT PK), username(VARCHAR 50 UNIQUE NOT NULL), passwordHash(VARCHAR 255 NOT NULL), adminType(VARCHAR 30), moduleAccess(JSON), status(VARCHAR 20), mfaEnabled(BOOLEAN DEFAULT false), lastLoginAt(TIMESTAMP)
-- **AccessLog**: id(BIGINT PK), userId(BIGINT FK→UserAccount), username(VARCHAR 50), action(VARCHAR 30), targetResource(VARCHAR 100), ipAddress(VARCHAR 45), userAgent(TEXT), responseCode(INT), duration_ms(INT), status(VARCHAR 20), createdAt(TIMESTAMP)
+| STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Ghi chú |
+|---|---|---|---|---|---|
+| 1 | Tên đăng nhập | username | Input text | ✅ | 3-50 ký tự, chỉ chữ thường + số + gạch dưới. Không sửa được sau khi tạo |
+| 2 | Họ và tên | fullName | Input text | ✅ | 2-100 ký tự |
+| 3 | Email | email | Input email | ✅ | Định dạng email hợp lệ; unique trong hệ thống (BR-001-01) |
+| 4 | Số điện thoại | phone | Input text | ❌ | 10-11 chữ số nếu nhập |
+| 5 | Mật khẩu | password | Input.Password | ✅ | ≥8 ký tự, chữ hoa + chữ thường + số (BR-001-02); có strength meter realtime. Admin đặt mật khẩu ban đầu cho người dùng |
+| 6 | Vai trò | roleId | Select dropdown | ✅ | Danh sách vai trò từ API `/api/v1/roles` |
+| 7 | Đơn vị | orgUnitId | Select (searchable) | ✅ | Danh sách đơn vị từ API `/api/v1/organizations` |
 
-## API Endpoints
+> **Về mật khẩu mặc định:** Hệ thống **không tự sinh mật khẩu mặc định**. Admin bắt buộc phải nhập mật khẩu ban đầu cho người dùng khi tạo tài khoản. Admin có trách nhiệm thông báo mật khẩu này cho người dùng qua kênh an toàn (email, tin nhắn nội bộ). Người dùng có thể đổi mật khẩu sau khi đăng nhập.
 
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| GET | /api/v1/users | Danh sách người dùng (phân trang) | JWT |
-| GET | /api/v1/users/{id} | Chi tiết người dùng | JWT |
-| POST | /api/v1/users | Tạo người dùng mới | Admin |
-| PUT | /api/v1/users/{id} | Chỉnh sửa người dùng | Admin, Can bo |
-| DELETE | /api/v1/users/{id} | Xóa người dùng | Admin |
-| PUT | /api/v1/users/{id}/lock | Khóa/mở khóa tài khoản | Admin, Can bo |
-| POST | /api/v1/users/{id}/reset-password | Reset mật khẩu | Admin |
-| GET | /api/v1/roles | Danh sách vai trò | JWT |
-| POST | /api/v1/roles | Tạo vai trò mới | Admin |
-| PUT | /api/v1/roles/{id} | Chỉnh sửa vai trò | Admin |
-| DELETE | /api/v1/roles/{id} | Xóa vai trò | Admin |
-| GET | /api/v1/organizations | Danh sách đơn vị | JWT |
-| POST | /api/v1/organizations | Tạo đơn vị mới | Admin |
-| GET | /api/v1/groups | Danh sách nhóm | JWT |
-| POST | /api/v1/groups | Tạo nhóm mới | Admin |
-| POST | /api/v1/groups/{id}/members | Thêm thành viên vào nhóm | Admin |
-| DELETE | /api/v1/groups/{id}/members/{userId} | Xóa thành viên khỏi nhóm | Admin |
-| GET | /api/v1/admins | Danh sách tài khoản admin | Super Admin |
-| POST | /api/v1/admins | Tạo tài khoản admin | Super Admin |
-| GET | /api/v1/logs | Danh sách log truy cập | Admin, Security |
-| GET | /api/v1/logs/export | Xuất log CSV | Admin |
-| GET | /api/v1/approvals/pending | Danh sách đăng ký chờ phê duyệt (phân trang) | Admin, Admin-Operation |
-| POST | /api/v1/approvals/{id}/approve | Phê duyệt tài khoản đăng ký | Admin, Admin-Operation |
-| POST | /api/v1/approvals/{id}/reject | Từ chối tài khoản đăng ký | Admin, Admin-Operation |
-| POST | /api/v1/users/pending | Nộp đơn đăng ký tài khoản (tạo bản ghi chờ phê duyệt) | Public (rate-limited) |
-| POST | /api/v1/auth/forgot-password | Yêu cầu link đặt lại mật khẩu | Public (rate-limited) |
-| POST | /api/v1/auth/reset-password/{token} | Đặt lại mật khẩu bằng token | Public (rate-limited) |
+### 8.2. Xem chi tiết tài khoản
 
-## Architecture Notes
+Admin/Cán bộ/Lãnh đạo có thể xem chi tiết thông tin tài khoản và phân quyền hiện tại của người dùng ở chế độ read-only.
 
-- **Pattern**: Repository Pattern (Spring Data JPA) cho data access
-- **Auth**: Spring Security + JWT (Access token 30 phút, Refresh token 7 ngày)
-- **RBAC**: Role-based với permission matrix (JSON column trong Role table)
-- **Soft Delete**: deleted_at TIMESTAMP NULL trên tất cả bảng (không xóa cứng)
-- **Pagination**: Spring Pageable → Page<T> với default 20 items/page, max 100
-- **Validation**: Jakarta Validation (@NotNull, @Email, @Size) trên DTO
-- **Audit**: @CreatedDate, @LastModifiedBy từ Spring Data JPA
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Click vào tên người dùng (hoặc chọn "Xem chi tiết" từ dropdown hành động) trên danh sách | Mở popup/modal "Chi tiết tài khoản" |
+| 2 | — | Hiển thị thông tin tài khoản (read-only): username, fullName, email, phone, trạng thái (badge), đơn vị, ngày tạo, đăng nhập cuối |
+| 3 | — | Hiển thị **phân quyền hiện tại** của tài khoản: danh sách vai trò (Role) đang được gán + danh sách nhóm (Group) đang tham gia. Mỗi role/group hiển thị kèm danh sách quyền (Permissions) |
+| 4 | — | Các trường `người tạo`, `thời gian tạo`, `người sửa cuối`, `thời gian sửa cuối` chỉ hiển thị với tài khoản Admin Cục (xem 2.2) |
+| 5 | Xem thông tin, nhấn "Đóng" | Đóng popup, quay lại danh sách |
 
-## Business Rules
+**Các trường hiển thị trong popup Xem chi tiết:**
 
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
-| BR-001 | Email phải unique trong hệ thống | Create/Update User | UC-001 |
-| BR-002 | Mật khẩu tối thiểu 8 ký tự, có chữ hoa, chữ thường, số | Create/Update User | UC-001 |
-| BR-003 | Không được xóa tài khoản có dữ liệu liên quan (phanhien, bao cao) | Delete User | UC-003 |
-| BR-004 | Tài khoản bị khóa không được đăng nhập | Login | UC-005 |
-| BR-005 | Chỉ Admin mới có quyền phân quyền cho vai trò khác | Role Assignment | UC-006 |
-| BR-006 | Token reset mật khẩu hết hạn sau 1 giờ | Password Reset | UC-007 |
-| BR-007 | Tài khoản tự động khóa sau 5 lần đăng nhập sai | Login Security | UC-005 |
-| BR-008 | Admin được phân quyền truy cập module cụ thể (Admin: tất cả, Lanh dao: phân hệ của mình, Ca nhan: không) | Phân quyền | URD III.3.2 |
-| BR-010 | Khi admin phê duyệt tài khoản đăng ký, user account được kích hoạt và phân quyền theo vai trò đã chỉ định — toàn bộ thao tác là atomic transaction | Phê duyệt | URD III.3.2 |
-| BR-011 | Admin có thể xem danh sách tài khoản đăng ký chờ xử lý, từ chối với lý do cụ thể; không thể tự phê duyệt tài khoản của chính mình | Phê duyệt | URD III.3.2 |
-| BR-012 | Tài khoản tự động khóa sau 5 lần đăng nhập sai; tự động mở khóa sau 30 phút hoặc Admin mở khóa thủ công | Login Security | BR-001-02 |
-| BR-013 | Khi khóa tài khoản, mọi session đang hoạt động của user đó bị vô hiệu hóa ngay lập tức | Khóa tài khoản | BR-001-05 |
-| BR-014 | Khi tạo hoặc reset mật khẩu, mật khẩu mới phải khác 3 mật khẩu gần nhất của user | Password Reset | BR-001-06 |
-| BR-015 | Mọi thay đổi trạng thái tài khoản (active/blocked) phải được ghi vào UserStatusLog kèm lý do | Lock/Unlock | BR-001-07 |
-| BR-016 | User không thể tự thay đổi vai trò (role) của chính mình; chỉ Admin được phép gán/hủy vai trò | Role Assignment | BR-001-08 |
+| Nhóm thông tin | Các trường |
+|---|---|
+| Thông tin tài khoản | Tên đăng nhập, Họ và tên, Email, Số điện thoại, Trạng thái (badge), Đơn vị, Ngày tạo, Đăng nhập cuối |
+| Phân quyền | Danh sách Vai trò (Role) — mỗi role kèm danh sách Permissions; Danh sách Nhóm (Group) — mỗi nhóm kèm danh sách Permissions |
+| Audit (chỉ Admin Cục) | Người tạo, Thời gian tạo, Người sửa cuối, Thời gian sửa cuối |
 
-## Testing Strategy
+### 8.3. Chỉnh sửa tài khoản
 
-- Unit tests: Password validation, RBAC permission matrix, token expiry, approval atomicity, password history (BR-014), lockout timer (BR-012)
-- Integration tests: CRUD UserAccount with role and organization associations, approval workflow (submit → approve → verify user created), session invalidation on lock (BR-013), UserStatusLog audit (BR-015)
-- E2E tests: Create user → assign role → login → verify permissions; Self-registration → admin approve → login → role verification; auto-lockout after 5 failed attempts → auto-unlock after 30 min (BR-012)
-- UI tests: Sidebar responsive, toast notifications, modal confirmations, pagination, search, filter, approval queue
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Admin/Cán bộ chọn tài khoản từ danh sách, nhấn "Sửa" | Mở modal chỉnh sửa, pre-populate dữ liệu hiện tại của user. Username: readonly (không cho sửa) |
+| 2 | Sửa các trường: fullName, email, phone, roleId (chỉ Admin được sửa), orgUnitId | — |
+| 3 | Nhấn "Lưu" | Validate email unique nếu có thay đổi (BR-001-01) |
+| 4 | — | Nếu email trùng với user khác: hiển thị lỗi "Email đã tồn tại", dừng xử lý |
+| 5 | — | Nếu hợp lệ: cập nhật thông tin, ghi AccessLog |
+| 6 | Xem toast | Hiển thị toast "Cập nhật tài khoản thành công", đóng modal, refresh danh sách |
 
-## UI Fields Specification
+### 8.4. Khóa/Mở khóa tài khoản
 
-### 1. Màn hình danh sách người dùng (User List)
+**Hệ thống không có chức năng xóa tài khoản.** Để vô hiệu hóa tài khoản không còn sử dụng, Admin/Cán bộ thực hiện khóa tài khoản. Admin thực hiện trực tiếp, không cần Lãnh đạo duyệt.
 
-| # | Cột | Data Index | Width | Sortable | Align | Ghi chú |
+#### 8.4.1. Khóa tài khoản
+
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Admin/Cán bộ chọn tài khoản đang active, nhấn "Khóa" | Kiểm tra quyền: nếu không phải Admin/Cán bộ → 403 Forbidden |
+| 2 | — | Hiển thị modal khóa, yêu cầu nhập lý do (tối thiểu 10 ký tự) |
+| 3 | Nhập lý do khóa, nhấn "Khóa" | Validate lý do ≥ 10 ký tự |
+| 4 | — | Nếu lý do < 10 ký tự: hiển thị lỗi "Lý do phải có ít nhất 10 ký tự" |
+| 5 | — | Nếu hợp lệ: chuyển status → `blocked`, vô hiệu hóa tất cả session đang hoạt động của user (BR-001-08) |
+| 6 | — | Ghi UserStatusLog với previousStatus, newStatus, changedBy, reason (BR-001-09) |
+| 7 | Xem toast | Hiển thị toast "Khóa tài khoản thành công", refresh danh sách |
+
+#### 8.4.2. Mở khóa tài khoản
+
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Admin/Cán bộ chọn tài khoản đang blocked, nhấn "Mở khóa" | Hiển thị modal mở khóa, yêu cầu nhập lý do (tối thiểu 10 ký tự) |
+| 2 | Nhập lý do mở khóa, nhấn "Mở khóa" | Validate lý do ≥ 10 ký tự |
+| 3 | — | Nếu hợp lệ: chuyển status → `active`, ghi UserStatusLog (BR-001-09) |
+| 4 | Xem toast | Hiển thị toast "Mở khóa tài khoản thành công", refresh danh sách |
+
+### 8.5. Reset mật khẩu (Admin)
+
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Admin chọn tài khoản, nhấn "Reset mật khẩu" | Hiển thị modal nhập mật khẩu mới |
+| 2 | Nhập mật khẩu mới, nhấn "Xác nhận" | Validate mật khẩu: ≥8 ký tự, chữ hoa + chữ thường + số (BR-001-02) |
+| 3 | — | Kiểm tra mật khẩu mới khác 3 mật khẩu gần nhất của user (BR-001-03). Nếu trùng → lỗi "Mật khẩu mới trùng với mật khẩu cũ" |
+| 4 | — | Nếu hợp lệ: hash mật khẩu mới bằng bcrypt/argon2, invalidate tất cả token hiện tại của user |
+| 5 | — | Ghi AccessLog |
+| 6 | Xem toast | Hiển thị toast "Đặt lại mật khẩu thành công", đóng modal |
+
+### 8.6. Đăng ký tài khoản (Người dùng bên ngoài)
+
+Người dùng chưa có tài khoản truy cập vào trang đăng ký công khai để tạo tài khoản. Tài khoản sau khi đăng ký cần được Admin phê duyệt mới có thể sử dụng.
+
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Truy cập trang đăng ký (`/register`) | Hiển thị form đăng ký công khai |
+| 2 | Nhập thông tin: username, fullName, email, phone, password, confirmPassword, requestedRole, orgUnitId | — |
+| 3 | Nhấn "Đăng ký" | Validate dữ liệu đầu vào |
+| 4 | — | Kiểm tra email chưa tồn tại trong UserAccount và PendingApproval. Nếu đã tồn tại: hiển thị "Email đã được đăng ký" (nhưng không tiết lộ email đã có tài khoản hay chưa — chống enumeration) |
+| 5 | — | Kiểm tra username chưa tồn tại. Nếu trùng: hiển thị "Tên đăng nhập đã được sử dụng" |
+| 6 | — | Validate password ≥8 ký tự + chữ hoa + chữ thường + số (BR-001-02). Nếu yếu: hiển thị yêu cầu cụ thể |
+| 7 | — | Validate confirmPassword khớp với password. Nếu không khớp: hiển thị "Mật khẩu xác nhận không khớp" |
+| 8 | — | Nếu hợp lệ: hash password, tạo bản ghi PendingApproval với `status = pending`, gửi thông báo cho Admin |
+| 9 | Xem thông báo | Hiển thị màn hình "Đăng ký thành công. Vui lòng chờ Admin phê duyệt." |
+| 10 | — | Gửi email xác nhận đã nhận đơn đăng ký cho người dùng |
+
+**Các trường trong form đăng ký:**
+
+| STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Ghi chú |
+|---|---|---|---|---|---|
+| 1 | Tên đăng nhập | username | Input text | ✅ | 3-50 ký tự, chỉ chữ thường + số + gạch dưới |
+| 2 | Họ và tên | fullName | Input text | ✅ | 2-100 ký tự |
+| 3 | Email | email | Input email | ✅ | Định dạng email hợp lệ |
+| 4 | Số điện thoại | phone | Input text | ❌ | 10-11 chữ số nếu nhập |
+| 5 | Mật khẩu | password | Input.Password | ✅ | ≥8 ký tự, chữ hoa + chữ thường + số (BR-001-02); có strength meter |
+| 6 | Xác nhận mật khẩu | confirmPassword | Input.Password | ✅ | Phải khớp với trường password |
+| 7 | Vai trò yêu cầu | requestedRole | Select dropdown | ✅ | Danh sách vai trò được phép đăng ký công khai (không bao gồm Admin, system-admin) |
+| 8 | Đơn vị | orgUnitId | Select (searchable) | ✅ | Danh sách đơn vị từ API `/api/v1/organizations` |
+
+**Rate limiting:** Tối đa 5 lần đăng ký/giờ từ cùng một IP. Nếu vượt quá → hiển thị "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau."
+
+### 8.7. Phê duyệt tài khoản đăng ký (Admin)
+
+#### 8.7.1. Phê duyệt
+
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Admin/Admin-Operation vào tab "Chờ phê duyệt" trên màn hình danh sách | Hiển thị danh sách PendingApproval có status = `pending` |
+| 2 | Chọn bản ghi, nhấn "Phê duyệt" | Kiểm tra email approver không trùng với email đăng ký. Nếu trùng → từ chối "Không thể tự phê duyệt tài khoản của chính mình" (BR-001-16) |
+| 3 | — | Hiển thị modal xác nhận phê duyệt, hiển thị thông tin đăng ký, có ô ghi chú (tùy chọn) |
+| 4 | Nhập ghi chú (nếu cần), nhấn "Phê duyệt" | Atomic transaction (BR-001-15): tạo UserAccount (status = ACTIVE, passwordHash từ PendingApproval), gán UserRole theo requestedRoleCode, cập nhật PendingApproval (status = `approved`, approvedBy = currentUser) |
+| 5 | — | Gửi email thông báo "Tài khoản đã được phê duyệt" cho người dùng |
+| 6 | — | Ghi AccessLog |
+| 7 | Xem toast | Hiển thị toast "Phê duyệt tài khoản thành công", refresh danh sách |
+
+#### 8.7.2. Từ chối
+
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Admin/Admin-Operation chọn bản ghi, nhấn "Từ chối" | Hiển thị modal từ chối, yêu cầu nhập lý do (tối thiểu 10 ký tự) |
+| 2 | Nhập lý do từ chối, nhấn "Từ chối" | Validate lý do ≥ 10 ký tự (BR-001-17) |
+| 3 | — | Cập nhật PendingApproval: status = `rejected`, rejectionReason = lý do |
+| 4 | — | Gửi email thông báo "Tài khoản bị từ chối" kèm lý do cho người dùng |
+| 5 | Xem toast | Hiển thị toast "Đã từ chối tài khoản", refresh danh sách |
+
+### 8.8. Tự động khóa sau 5 lần đăng nhập sai
+
+| # | Người dùng | Hệ thống |
+|---|---|---|
+| 1 | Người dùng nhập sai mật khẩu khi đăng nhập | Tăng bộ đếm `failedAttempts` cho tài khoản |
+| 2 | — | Nếu `failedAttempts < 5`: hiển thị "Sai mật khẩu. Còn {5 - failedAttempts} lần thử." |
+| 3 | — | Nếu `failedAttempts = 5`: tự động chuyển status → `blocked`, ghi UserStatusLog với lý do "5 lần đăng nhập sai" (BR-001-07) |
+| 4 | — | Hiển thị thông báo "Tài khoản bị khóa do nhiều lần đăng nhập sai. Vui lòng thử lại sau 30 phút hoặc liên hệ Admin." |
+| 5 | — | Sau 30 phút: tự động chuyển status → `active`, ghi UserStatusLog với lý do "Tự động mở khóa sau 30 phút" |
+| 6 | — | Hoặc Admin có thể mở khóa thủ công trước 30 phút (xem 8.3.2) |
+
+---
+
+## 9. Yêu cầu phi chức năng
+
+### 9.1. Hiệu năng
+
+- Danh sách người dùng trả về trong < 500ms với 1000 records
+- Phân trang mặc định 20 items/page, tối đa 100 items/page
+- Tạo tài khoản (bao gồm validation + hash password + ghi log) hoàn thành trong < 2 giây (p95)
+
+### 9.2. Khả năng mở rộng
+
+- Hỗ trợ tối thiểu 500 concurrent users
+- Database indexing trên email, username, status, roleId
+- Connection pooling (HikariCP) cho hiệu năng cao
+- Hỗ trợ 1000+ users trong tương lai
+
+### 9.3. Bảo mật
+
+- Phân quyền RBAC được áp dụng trên tất cả các API liên quan đến tính năng
+- Mật khẩu hash bằng bcrypt/argon2 — không lưu plaintext (BR-001-04)
+- JWT access token 30 phút, refresh token 7 ngày
+- Rate limiting: login 50 lần/15 phút, reset password 3 lần/15 phút, đăng ký 5 lần/giờ
+- Tài khoản tự khóa sau 5 lần đăng nhập sai (BR-001-07)
+- Session bị vô hiệu hóa ngay khi tài khoản bị khóa (BR-001-08)
+
+### 9.4. Độ tin cậy
+
+- Transactional integrity cho CRUD
+- Phê duyệt đăng ký là atomic transaction — rollback toàn bộ nếu lỗi (BR-001-15)
+- UserStatusLog ghi nhận mọi thay đổi trạng thái với lý do (BR-001-09)
+- Không có chức năng xóa tài khoản — tránh rủi ro mất dữ liệu (BR-001-10)
+
+### 9.5. Trải nghiệm người dùng
+
+- Giao diện responsive: trên điện thoại (dưới 768px), thanh menu thu gọn
+- Có loading skeleton khi đang tải dữ liệu
+- Có trạng thái rỗng (empty state) với hướng dẫn thân thiện
+- Toast notification cho mọi hành động thành công/thất bại
+- Modal xác nhận cho hành động khóa/mở khóa
+- Form validation realtime (khi blur), error message hiển thị dưới mỗi trường
+- Submit button disabled khi form có lỗi
+- Tuân thủ tiêu chuẩn trợ năng WCAG 2.1 AA
+
+### 9.6. Tuân thủ pháp lý
+
+- Dữ liệu cá nhân được bảo vệ theo chính sách bảo mật
+- Mật khẩu không lưu plaintext
+- Audit trail cho mọi thao tác quản lý tài khoản (F-005 đảm nhận)
+- Tuân thủ yêu cầu bảo vệ dữ liệu cá nhân
+
+---
+
+## 10. Yêu cầu giao diện người dùng
+
+> **Nguyên tắc cốt lõi:** Mọi giá trị màu sắc, khoảng cách, kích thước chữ trong giao diện đều được định nghĩa tập trung tại 2 file `frontend/src/theme.ts` (layout, màu nền sidebar/header) và `frontend/src/tokens.ts` (màu chữ, màu trạng thái, thang số). Tuyệt đối không hardcode giá trị hex hay pixel trong component.
+
+### 10.1. Bố cục chung
+
+Màn hình Quản lý tài khoản người dùng dùng chung bố cục toàn hệ thống, bao gồm:
+
+- **Thanh menu trái (sidebar):** rộng 272px, nền màu xanh dương đậm `#12468C`. Mục đang chọn được tô màu xanh sáng `#1B84FF`. Khi thu gọn (trên điện thoại), rộng còn 80px và chuyển thành nút hamburger.
+- **Thanh tiêu đề trên cùng (header):** cao 64px, nền trắng, chứa tên người dùng và avatar.
+- **Vùng nội dung chính:** nền xám nhạt pha xanh `#eaf0f6`, giúp các card trắng bên trong nổi bật hơn.
+
+### 10.2. Hệ thống màu sắc
+
+Mỗi màu sắc trong giao diện được gán một "vai trò" rõ ràng. Developer không được dùng màu theo cảm tính mà phải import đúng token:
+
+| Khi cần... | Dùng token | Màu thực tế |
+|---|---|---|
+| Tiêu đề trang, số liệu quan trọng | `textPrimary` | `#0c2438` |
+| Nhãn field, mô tả | `textSecondary` | `#566a7c` |
+| Thời gian, trạng thái phụ, caption | `textTertiary` | `#93a3b3` |
+| Nền card, modal, bảng | `surfaceCard` | `#FFFFFF` |
+| Nền vùng nội dung chính | `surfacePage` | `#eaf0f6` |
+| Viền card, đường kẻ | `borderDefault` | `rgba(11,46,79,0.09)` |
+| Nút chính, link | `actionPrimary` | `#0E6FD6` |
+
+### 10.3. Thang số — chỉ dùng giá trị cho phép
+
+**Khoảng cách (spacing):** 4px, 8px, 12px, 16px, 24px, 32px. Trong đó 12px là khoảng cách mặc định giữa các trường trong form (`spaceFormField`), 16px là padding mặc định của card (`spaceMd`).
+
+**Bo góc (radius):** 4px (cho ô textarea), 8px, 12px (cho card), 999px (dạng pill — dùng cho input, select, button).
+
+**Cỡ chữ (font size):** 10px (metadata, caption), 13px (nhãn, nội dung), 15px (tiêu đề card, tiêu đề section), 18px (tiêu đề trang).
+
+**Độ đậm chữ (font weight):** 400 (nội dung), 500 (nhãn, nút), 600 (số liệu quan trọng, tiêu đề).
+
+**Font chữ:** `'Inter', -apple-system, BlinkMacSystemFont, sans-serif` cho toàn bộ văn bản.
+
+> **Cấm tuyệt đối:** spacing 6, 10, 14, 18; radius 6, 7, 10; font-size 12, 14, 16, 24.
+
+### 10.4. Style có sẵn — dùng lại, đừng tự chế
+
+Hệ thống đã định nghĩa sẵn các kiểu dáng phổ biến. Khi cần hiển thị:
+
+- **Thời gian, caption:** dùng `metaStyle` (chữ nhỏ 10px, màu xám nhạt, weight 400)
+- **Card nội dung:** dùng `cardStyle` (nền trắng, viền 0.5px, bo góc 12px, padding 16px)
+- **Tag trạng thái:** dùng `badgeBaseStyle` (chữ nhỏ, weight 500, padding 2px-8px, pill)
+- **Link, nút text:** dùng `actionStyle` (pill, màu actionPrimary, weight 500)
+- **Đường kẻ ngăn cách:** dùng `dividerStyle`
+
+### 10.5. Giới hạn màu nhấn — tối đa 3 lần mỗi màn
+
+Màu `actionPrimary` (`#0E6FD6`) là màu nhấn mạnh nhất, dùng cho các hành động chính. Để tránh giao diện bị "rối", màu này chỉ xuất hiện tối đa 3 lần trên toàn bộ màn hình Quản lý tài khoản:
+
+1. Nút "Thêm mới" trên ScreenHeader
+2. Nút "Lưu" trên modal tạo/sửa
+3. Nút "Phê duyệt" trên dòng tài khoản chờ duyệt (nếu có)
+
+Các màu trạng thái (xanh lá cho active, đỏ cho blocked) và màu chữ không tính vào giới hạn này.
+
+### 10.6. Màn hình danh sách người dùng
+
+Màn hình chính sử dụng các component dùng chung toàn hệ thống từ `frontend/src/components/list-view/` — không được tự tạo lại:
+
+1. **ScreenHeader:** hiển thị đường dẫn breadcrumb "Quản trị hệ thống > Quản lý tài khoản người dùng". Nút hành động: "Thêm mới" (chỉ hiện với Admin).
+
+2. **FilterBar:** thanh lọc nằm ngang phía trên bảng, gồm: ô tìm kiếm text (tìm theo tên hoặc email), Select vai trò, Select trạng thái (active / blocked), nút Tìm kiếm, nút Reload.
+
+3. **StatusTabs:** 4 tab nằm ngang: Tất cả, Hoạt động, Đã khóa, Chờ phê duyệt. Mỗi tab hiển thị số lượng bản ghi trong nhóm đó. Tab đang chọn có đường gạch chân màu `actionPrimary`.
+
+4. **DataTable:** bảng dữ liệu với tiêu đề cột cố định khi cuộn (sticky header), dòng được tô sáng khi di chuột qua (hover row). Các cột hiển thị:
+
+| Cột | Nội dung | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Ghi chú |
 |---|---|---|---|---|---|---|
-| 1 | STT | — | 60px | No | Center | Số thứ tự tính theo trang: `(page-1)*pageSize + index + 1` |
-| 2 | Họ và tên | fullName | 200px | Yes | Left | In đậm; click để mở chi tiết |
-| 3 | Tên đăng nhập | username | 150px | Yes | Left | — |
-| 4 | Email | email | 200px | Yes | Left | — |
-| 5 | Vai trò | roleName | 180px | Yes | Center | Hiển thị badge màu theo role |
-| 6 | Đơn vị | orgUnitName | 200px | Yes | Left | Trống → hiển thị "—" |
-| 7 | Đăng nhập cuối | lastLoginAt | 170px | Yes | Center | Format `DD/MM/YYYY HH:mm`; chưa đăng nhập → "Chưa đăng nhập" |
-| 8 | Trạng thái | status | 140px | Yes | Center | Badge: `active`=xanh lá, `locked`=đỏ, `inactive`=xám |
-| 9 | Hành động | — | 100px | No | Center | Dropdown: Sửa, Khóa/Mở khóa, Xóa (theo permission). Với tài khoản pending: hiển thị Phê duyệt, Từ chối. |
+| STT | Số thứ tự dòng | Text (tự động) | Không | Có | Tự động đánh số | Tính theo trang: `(page-1)*pageSize + index + 1` |
+| Họ và tên | fullName | Text (clickable) | Không | Có | — | In đậm; click để mở chi tiết |
+| Tên đăng nhập | username | Text | Không | Có | — | — |
+| Email | email | Text | Không | Có | — | — |
+| Vai trò | roleName | Badge | Không | Có | — | Badge màu theo role |
+| Đơn vị | orgUnitName | Text | Không | Không | "—" nếu trống | — |
+| Đăng nhập cuối | lastLoginAt | DateTime | Không | Không | "Chưa đăng nhập" nếu null | Format `DD/MM/YYYY HH:mm` |
+| Trạng thái | status | Badge | Không | Có | — | `active`=xanh lá, `blocked`=đỏ |
+| Hành động | — | Dropdown actions | Không | Có | — | Sửa, Xem chi tiết, Khóa/Mở khóa, Reset MK. Với dòng `pending`: Phê duyệt, Từ chối. **Không có nút Xóa.** |
 
-**FilterBar:**
+5. **Pagination:** thanh điều hướng trang ở cuối bảng, hiển thị tổng số dòng và số trang. Mặc định 20 dòng/trang.
 
-| Field | Type | Ghi chú |
-|---|---|---|
-| Tìm kiếm | Input text | Tìm theo tên hoặc email |
-| Vai trò | Select dropdown | Lọc theo role |
-| Trạng thái | Select dropdown | active / locked / inactive |
+### 10.7. Modal tạo/sửa tài khoản
 
-**StatusTabs:** Tất cả (tổng), Hoạt động (count), Đã khóa (count), Không hoạt động (count), Chờ phê duyệt (count)
-
-### 2. Modal tạo/sửa tài khoản (Create/Edit User)
-
-| # | Field | Field Name | Type | Required | Validation | Placeholder | Ghi chú |
+| STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Edit | Default | Mô tả |
 |---|---|---|---|---|---|---|---|
-| 1 | Tên đăng nhập | username | Input text | ✅ (tạo) / ❌ (sửa) | 3-50 ký tự, chỉ chữ thường + số + gạch dưới | `nguyen_van_a` | Chỉ hiện khi tạo mới |
-| 2 | Họ và tên | fullName | Input text | ✅ | 2-100 ký tự | `Nguyễn Văn A` | — |
-| 3 | Email | email | Input email | ✅ | Định dạng email; unique trong hệ thống (BR-001) | `example@domain.com` | — |
-| 4 | Số điện thoại | phone | Input text | ❌ | 10-11 chữ số nếu nhập | `0912345678` | — |
-| 5 | Mật khẩu | password | Input.Password | ✅ (tạo) / ❌ (sửa) | ≥8 ký tự, chữ hoa + chữ thường + số (BR-002); strength meter | `••••••••` | Chỉ hiện khi tạo mới |
-| 6 | Vai trò | roleId | Select dropdown | ✅ | Phải chọn 1 role | — | Danh sách từ API `/roles` |
-| 7 | Đơn vị | orgUnitId | Select dropdown (searchable) | ❌ | — | — | Danh sách từ API `/organizations` |
-| 8 | Trạng thái | status | Select | ❌ (tạo) / ✅ (sửa) | active / inactive (tạo mới mặc định active) | — | Chỉ hiện khi sửa |
+| 1 | Tên đăng nhập | username | Input text | ✅ (tạo) / ❌ (sửa) | ❌ (readonly khi sửa) | — | 3-50 ký tự, chỉ chữ thường + số + gạch dưới |
+| 2 | Họ và tên | fullName | Input text | ✅ | ✅ | — | 2-100 ký tự |
+| 3 | Email | email | Input email | ✅ | ✅ | — | Định dạng email; unique (BR-001-01) |
+| 4 | Số điện thoại | phone | Input text | ❌ | ✅ | — | 10-11 chữ số nếu nhập |
+| 5 | Mật khẩu | password | Input.Password | ✅ (tạo) / ❌ (sửa) | ❌ (chỉ khi tạo) | — | ≥8 ký tự, chữ hoa + thường + số (BR-001-02) |
+| 6 | Vai trò | roleId | Select dropdown | ✅ | ✅ | — | Danh sách từ API `/roles` |
+| 7 | Đơn vị | orgUnitId | Select (searchable) | ✅ | ✅ | — | Danh sách từ API `/organizations` |
 
-**Modal footer:** [Hủy] [Lưu] — nút Lưu disabled khi form có lỗi; hiển thị loading khi đang submit.
+**Modal footer:** [Hủy] outlined + [Lưu] primary, cả hai pill radius. Nút Lưu disabled khi form có lỗi; loading khi đang submit.
 
-### 3. Modal khóa/mở khóa tài khoản (Lock/Unlock)
+### 10.8. Modal khóa/mở khóa tài khoản
 
-| # | Field | Field Name | Type | Required | Validation | Placeholder | Ghi chú |
-|---|---|---|---|---|---|---|---|
-| 1 | Lý do | reason | TextArea | ✅ | Tối thiểu 10 ký tự | `Nhập lý do khóa/mở khóa...` | Ghi vào UserStatusLog (BR-015) |
+| STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Default | Mô tả |
+|---|---|---|---|---|---|---|
+| 1 | Lý do | reason | TextArea | ✅ | — | Tối thiểu 10 ký tự; ghi vào UserStatusLog (BR-001-09) |
 
-**Modal footer:** [Hủy] [Khóa] (danger) hoặc [Mở khóa] (primary). Hiển thị tên người dùng trong nội dung modal.
+**Modal footer:** [Hủy] + [Khóa] (danger) hoặc [Mở khóa] (primary). Hiển thị tên người dùng trong nội dung modal. Admin thực hiện trực tiếp, không cần Lãnh đạo duyệt.
 
-### 4. Modal xác nhận xóa (Delete Confirmation)
-
-Nội dung: `Bạn có chắc chắn muốn xóa người dùng "{fullName}"? Hành động này không thể hoàn tác.`
-
-**Modal footer:** [Hủy] [Xóa] (danger).
-
-### 5. Màn hình quên mật khẩu (Forgot Password)
-
-| # | Field | Field Name | Type | Required | Validation | Placeholder | Ghi chú |
-|---|---|---|---|---|---|---|---|
-| 1 | Email đăng ký | email | Input email | ✅ | Định dạng email | `example@domain.com` | Rate-limited: 3 lần/15 phút |
-
-Sau khi gửi: hiển thị màn hình success + message "Đã gửi link reset về email". Nếu email không tồn tại: vẫn hiện success (chống enumeration).
-
-### 6. Màn hình đặt lại mật khẩu (Reset Password)
-
-| # | Field | Field Name | Type | Required | Validation | Placeholder | Ghi chú |
-|---|---|---|---|---|---|---|---|
-| 1 | Mật khẩu mới | newPassword | Input.Password | ✅ | ≥8 ký tự, chữ hoa + chữ thường + số (BR-002); khác 3 mật khẩu gần nhất (BR-014) | `Mật khẩu mới` | Có strength meter realtime: Yếu (<40%) / Trung bình (40-80%) / Mạnh (>80%) |
-| 2 | Xác nhận mật khẩu | confirmPassword | Input.Password | ✅ | Phải khớp với `newPassword` | `Xác nhận mật khẩu mới` | — |
-
-Token từ URL (`/reset-password/:token`); token hết hạn sau 1 giờ (BR-006); token đã dùng không dùng lại được.
-
-### 7. Modal phê duyệt/từ chối (Approve/Reject)
+### 10.9. Modal phê duyệt/từ chối tài khoản đăng ký
 
 **Phê duyệt:**
 
-| # | Field | Field Name | Type | Required | Validation | Ghi chú |
+| STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Default | Mô tả |
 |---|---|---|---|---|---|---|
 | 1 | Ghi chú | note | TextArea | ❌ | — | Ghi chú nội bộ |
-| 2 | Nút Phê duyệt | — | Button | — | — | Tạo User với vai trò và đơn vị theo thông tin đăng ký; atomic transaction |
 
-Chống tự phê duyệt: nếu approver có email trùng với email đăng ký → từ chối + message "Không thể tự phê duyệt".
+**Modal footer:** [Hủy] + [Phê duyệt] (primary). Atomic transaction (BR-001-15). Chống tự phê duyệt (BR-001-16).
 
 **Từ chối:**
 
-| # | Field | Field Name | Type | Required | Validation | Placeholder |
+| STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Default | Mô tả |
 |---|---|---|---|---|---|---|
-| 1 | Lý do từ chối | reason | TextArea | ✅ | Tối thiểu 10 ký tự | `Nhập lý do từ chối...` |
+| 1 | Lý do từ chối | reason | TextArea | ✅ | — | Tối thiểu 10 ký tự (BR-001-17) |
 
-### 9. Màn hình xem chi tiết tài khoản (User Detail)
+**Modal footer:** [Hủy] + [Từ chối] (danger).
 
-Hiển thị khi click vào tên người dùng từ danh sách. Layout dạng card với các nhóm thông tin:
+### 10.10. Popup xem chi tiết tài khoản
 
-**Thông tin tài khoản:** Tên đăng nhập, Họ và tên, Email, Số điện thoại, Vai trò (badge), Đơn vị, Trạng thái (badge), Ngày tạo, Đăng nhập cuối.
+Mở khi click vào tên người dùng trên danh sách, hoặc chọn "Xem chi tiết" từ dropdown hành động. Toàn bộ nội dung ở chế độ **read-only**.
 
-**Thanh thao tác (theo phân quyền và trạng thái):**
+**Nhóm 1 — Thông tin tài khoản:**
 
-| Nút | Điều kiện hiển thị |
+| STT | Tên trường | Giá trị |
+|---|---|---|
+| 1 | Tên đăng nhập | username |
+| 2 | Họ và tên | fullName |
+| 3 | Email | email |
+| 4 | Số điện thoại | phone (nếu không có → "—") |
+| 5 | Trạng thái | Badge: `active`=xanh lá, `blocked`=đỏ |
+| 6 | Đơn vị | orgUnitName |
+| 7 | Ngày tạo | createdAt (DD/MM/YYYY HH:mm) |
+| 8 | Đăng nhập cuối | lastLoginAt (DD/MM/YYYY HH:mm); nếu null → "Chưa đăng nhập" |
+
+**Nhóm 2 — Phân quyền hiện tại:**
+
+| Mục | Nội dung |
 |---|---|
-| Sửa | Có quyền `user.edit` |
-| Khóa/Mở khóa | Có quyền `user.lock` |
-| Xóa | Có quyền `user.delete` |
-| Phê duyệt | Trạng thái = pending VÀ có quyền phê duyệt |
-| Từ chối | Trạng thái = pending VÀ có quyền phê duyệt |
-| Quay lại | Luôn hiển thị |
+| Vai trò (Role) | Danh sách các Role đang được gán, mỗi role hiển thị kèm danh sách Permissions (dạng tag/badge) |
+| Nhóm (Group) | Danh sách các Group đang tham gia, mỗi group hiển thị kèm danh sách Permissions |
+| Trạng thái rỗng | Nếu chưa có role/group → hiển thị "Chưa được phân quyền" (textSecondary) |
 
-### Quy ước chung
+**Nhóm 3 — Audit (chỉ hiển thị với Admin Cục):**
 
-- **Form layout**: vertical, label đậm (`fontWeightBold`), `marginBottom: spaceFormField` (12px) cho Form.Item
-- **Input/Select**: `borderRadius: radiusPill` (999px), `height: 40px`
-- **Validation**: realtime (khi blur), error message hiển thị dưới field
-- **Submit button**: disabled khi form có lỗi, loading khi đang submit, toast notification khi thành công/thất bại
-- **Modal footer**: [Hủy] outlined + [Submit] primary, cả hai pill radius
-- **Quyền (permission-based)**: Sửa=`user.edit`, Khóa/Mở khóa=`user.lock`, Reset mật khẩu=`user.reset_password`, Xóa=`user.delete`, Duyệt=`approval.approve`
+| Mục | Giá trị |
+|---|---|
+| Người tạo | createdBy (fullName) |
+| Thời gian tạo | createdAt |
+| Người sửa cuối | updatedBy (fullName) |
+| Thời gian sửa cuối | updatedAt |
+
+**Popup footer:** Nút [Đóng]. Popup có kích thước 600px,cuộn nếu nội dung dài.
+
+### 10.11. Các trạng thái giao diện
+
+Giao diện phải xử lý đầy đủ các trạng thái sau:
+
+- **Đang tải:** hiển thị skeleton — không hiển thị bảng trống gây hiểu nhầm là không có dữ liệu.
+- **Không có dữ liệu:** hiển thị biểu tượng và dòng chữ "Không có người dùng nào" với màu chữ `textSecondary` và cỡ chữ `fontSizeMd`.
+- **Lỗi tải dữ liệu:** hiển thị cảnh báo đỏ và nút "Thử lại" màu `actionPrimary`.
+
+### 10.12. Phân quyền hiển thị
+
+Giao diện tự động ẩn/hiện các thành phần dựa trên quyền (permissions) của tài khoản đang đăng nhập, không dựa trên rule cố định theo vai trò:
+
+- **Nút "Thêm mới":** hiển thị nếu tài khoản có quyền `user.create`
+- **Nút "Sửa":** hiển thị nếu có quyền `user.edit`
+- **Nút "Khóa/Mở khóa":** hiển thị nếu có quyền `user.lock`
+- **Nút "Reset mật khẩu":** hiển thị nếu có quyền `user.reset_password`
+- **Nút "Phê duyệt"/"Từ chối":** hiển thị nếu có quyền `approval.approve` và bản ghi có status = `pending`
+- **Tab "Chờ phê duyệt":** hiển thị nếu có quyền `approval.approve`
+- **Popup "Xem chi tiết":** hiển thị cho mọi tài khoản đã đăng nhập
+- **Trường audit (người tạo/sửa, thời gian):** chỉ hiển thị với tài khoản Admin Cục (xem mục 2.2)
+- **Phạm vi dữ liệu:** mỗi tài khoản chỉ thấy người dùng trong đơn vị trực thuộc, trừ khi có quyền xem toàn hệ thống
+
+### 10.13. Giao diện trên điện thoại
+
+Khi màn hình nhỏ hơn 768px:
+
+- Thanh menu trái thu gọn thành nút hamburger 80px
+- Bảng dữ liệu chuyển thành dạng thẻ (card)
+- Thanh lọc chuyển thành panel có thể gập/mở
+- Modal thu nhỏ còn 90% chiều rộng màn hình
+
+### 10.14. Quy ước chung cho form và modal
+
+- **Form layout:** vertical, label đậm (`fontWeightBold`), `marginBottom: spaceFormField` (12px) cho Form.Item
+- **Input/Select:** `borderRadius: radiusPill` (999px), `height: 40px`
+- **Validation:** realtime (khi blur), error message hiển thị dưới field
+- **Submit button:** disabled khi form có lỗi, loading khi đang submit, toast notification khi thành công/thất bại
+- **Modal footer:** [Hủy] outlined + [Submit] primary, cả hai pill radius
+- **Dropdown actions:** mỗi dòng trong DataTable có dropdown hành động theo permission. **Không có mục Xóa trong dropdown.**
