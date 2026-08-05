@@ -6,6 +6,7 @@ import com.hanghai.kchtg.group.entity.GroupHistory;
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.service.UserGroupService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -28,13 +29,15 @@ import java.util.UUID;
  * </p>
  */
 @RestController
-@RequestMapping("/api/groups")
+@RequestMapping("/api/v1/groups")
 public class GroupController {
 
     private final UserGroupService service;
+    private final OrgUnitCacheService orgUnitCacheService;
 
-    public GroupController(UserGroupService service) {
+    public GroupController(UserGroupService service, OrgUnitCacheService orgUnitCacheService) {
         this.service = service;
+        this.orgUnitCacheService = orgUnitCacheService;
     }
 
     // ── Group CRUD ──────────────────────────────────────────────────
@@ -80,7 +83,11 @@ public class GroupController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserGroupResponse>> get(@PathVariable UUID id) {
         UserGroupResponse group = service.findById(id);
-        return ResponseEntity.ok(ApiResponse.success(group));
+        // Re-resolve org name via cache to ensure non-null in direct GET response
+        String orgName = orgUnitCacheService.getName(group.getOrganizationId());
+        UserGroupResponse enriched = UserGroupResponse.from(
+                service.findEntityById(id), group.getMemberCount(), orgName);
+        return ResponseEntity.ok(ApiResponse.success(enriched));
     }
 
     /**
@@ -103,7 +110,8 @@ public class GroupController {
         UserGroup created = service.create(request, operatorId, operatorName);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tạo nhóm thành công", UserGroupResponse.from(created, 0L)));
+                .body(ApiResponse.success("Tạo nhóm thành công",
+                        UserGroupResponse.from(created, 0L, orgUnitCacheService.getName(created.getOrganizationId()))));
     }
 
     /**
@@ -125,7 +133,8 @@ public class GroupController {
         }
 
         UserGroup updated = service.update(id, request, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật nhóm thành công", UserGroupResponse.from(updated, 0L)));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật nhóm thành công",
+                        UserGroupResponse.from(updated, 0L, orgUnitCacheService.getName(updated.getOrganizationId()))));
     }
 
     /**
@@ -220,14 +229,14 @@ public class GroupController {
     // ── Group Permission (F-002 UC-012) ─────────────────────────────
 
     /** Lấy các role đã gán cho nhóm để hiển thị trong modal phân quyền. */
-    @GetMapping("/{id}/roles")
+    @GetMapping("/{id}/permissions")
     @PreAuthorize("@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<GroupRoleResponse>>> listGroupRoles(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.findGroupRoles(id)));
     }
 
     /** Thay thế danh sách role của nhóm và làm mới quyền kế thừa của thành viên. */
-    @PutMapping("/{id}/roles")
+    @PutMapping("/{id}/permissions")
     @PreAuthorize("@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<GroupRoleResponse>>> updateGroupRoles(
             @PathVariable UUID id,
@@ -241,6 +250,34 @@ public class GroupController {
         }
         List<GroupRoleResponse> roles = service.updateGroupRoles(id, request, operatorId, operatorName);
         return ResponseEntity.ok(ApiResponse.success("Đã cập nhật phân quyền cho nhóm", roles));
+    }
+
+    // ── Lock / Unlock (F-002 AC-002-15, AC-002-16) ─────────────────
+
+    /**
+     * PATCH /api/v1/groups/{id}/lock — Khóa/Mở khóa nhóm.
+     * Chuyển đổi trạng thái ACTIVE ↔ INACTIVE và ghi nhận LOCK/UNLOCK vào lịch sử.
+     * Role: group:lock
+     */
+    @PatchMapping("/{id}/lock")
+    @PreAuthorize("@auth.check(authentication, 'group:lock')")
+    public ResponseEntity<ApiResponse<UserGroupResponse>> lock(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        UUID operatorId = extractUserId(authentication);
+        String operatorName = extractUserName(authentication);
+
+        if (operatorId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Yêu cầu xác thực"));
+        }
+
+        UserGroup updated = service.lockGroup(id, operatorId, operatorName);
+        String message = updated.getStatus() == com.hanghai.kchtg.group.entity.GroupStatus.ACTIVE
+                ? "Đã mở khóa nhóm"
+                : "Đã khóa nhóm";
+        return ResponseEntity.ok(ApiResponse.success(message,
+                UserGroupResponse.from(updated, 0L, orgUnitCacheService.getName(updated.getOrganizationId()))));
     }
 
     // ── Copy Group (BR-014) ────────────────────────────────────────

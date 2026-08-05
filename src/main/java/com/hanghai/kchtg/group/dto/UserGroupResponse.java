@@ -23,6 +23,8 @@ public class UserGroupResponse {
     String description;
     GroupType groupType;
     GroupStatus status;
+    UUID organizationId;
+    String organizationName;
     long memberCount;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
@@ -38,6 +40,27 @@ public class UserGroupResponse {
                 entity.getDescription(),
                 entity.getGroupType(),
                 entity.getStatus(),
+                null,
+                null,
+                memberCount,
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
+    }
+
+    /**
+     * Map from entity to response DTO with organization name resolved.
+     */
+    public static UserGroupResponse from(UserGroup entity, long memberCount, String organizationName) {
+        return new UserGroupResponse(
+                entity.getId(),
+                entity.getName(),
+                entity.getCode(),
+                entity.getDescription(),
+                entity.getGroupType(),
+                entity.getStatus(),
+                entity.getOrganizationId(),
+                organizationName,
                 memberCount,
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()

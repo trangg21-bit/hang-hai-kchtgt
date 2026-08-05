@@ -9,6 +9,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * Request body cho việc tạo mới UserGroup (BR-012: groupType).
  */
@@ -31,6 +33,10 @@ public class CreateUserGroupRequest {
     /** Loai nhom: department, project, custom (BR-012). */
     @NotNull(message = "Loại nhóm không được để trống")
     private GroupType groupType;
+
+    /** Đơn vị quản lý của nhóm (bắt buộc). */
+    @NotNull(message = "Đơn vị không được để trống")
+    private UUID organizationId;
 
     /** Trang thai: ACTIVE hoac INACTIVE. */
     private GroupStatus status;

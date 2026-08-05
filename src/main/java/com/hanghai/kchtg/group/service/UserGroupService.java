@@ -7,6 +7,8 @@ import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -19,9 +21,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -54,19 +59,22 @@ public class UserGroupService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PermissionCacheService permissionCacheService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     public UserGroupService(GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
             GroupHistoryRepository groupHistoryRepository,
             UserRepository userRepository,
             RoleRepository roleRepository,
-            PermissionCacheService permissionCacheService) {
+            PermissionCacheService permissionCacheService,
+            OrgUnitCacheService orgUnitCacheService) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.groupHistoryRepository = groupHistoryRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.permissionCacheService = permissionCacheService;
+        this.orgUnitCacheService = orgUnitCacheService;
     }
 
     // ── CRUD ────────────────────────────────────────────────────────
@@ -93,6 +101,7 @@ public class UserGroupService {
         group.setCode(request.getCode());
         group.setDescription(request.getDescription());
         group.setGroupType(groupType);
+        group.setOrganizationId(request.getOrganizationId());
         group.setStatus(request.getStatus() != null ? request.getStatus() : GroupStatus.ACTIVE);
         group.setPermissions(new java.util.ArrayList<>());
 
@@ -193,11 +202,15 @@ public class UserGroupService {
                 ? GroupStatus.fromValue(statusStr).ordinal()
                 : null;
 
-        Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, groupTypeInt, statusInt, pageable);
+        // Data scope: Admin Cục sees all; regular users see only their org unit
+        UUID orgFilter = resolveOrganizationFilter();
+
+        Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, groupTypeInt, statusInt, orgFilter, pageable);
 
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
-                        groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE)))
+                        groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE),
+                        orgUnitCacheService.getName(g.getOrganizationId())))
                 .map(this::toGroupResponse)
                 .toList();
 
@@ -231,12 +244,16 @@ public class UserGroupService {
                 ? GroupType.fromValue(groupTypeStr).ordinal()
                 : null;
 
+        // Data scope for my groups too — pushed to DB query
+        UUID orgFilter = resolveOrganizationFilter();
+
         Page<UserGroup> pageResult = groupRepository.searchAndFilterMyGroups(
-                searchParam, groupTypeInt, userId, pageable);
+                searchParam, groupTypeInt, userId, orgFilter, pageable);
 
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
-                        groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE)))
+                        groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE),
+                        orgUnitCacheService.getName(g.getOrganizationId())))
                 .map(this::toGroupResponse)
                 .toList();
 
@@ -249,7 +266,7 @@ public class UserGroupService {
     }
 
     /**
-     * Lay chi tiet mot nhom (with memberCount) — AC-001.
+     * Lay chi tiet mot nhom (with memberCount + organizationName) — AC-001.
      */
     @Transactional(readOnly = true)
     public UserGroupResponse findById(UUID id) {
@@ -259,7 +276,34 @@ public class UserGroupService {
         long memberCount = groupMemberRepository
                 .countByUserGroupIdAndStatus(id, GroupMemberStatus.ACTIVE);
 
-        return UserGroupResponse.from(entity, memberCount);
+        return UserGroupResponse.from(entity, memberCount, orgUnitCacheService.getName(entity.getOrganizationId()));
+    }
+
+    // ── Lock / Unlock (F-002 AC-002-15, AC-002-16) ──────────────────
+
+    /**
+     * Khóa/Mở khóa nhóm — chuyển đổi ACTIVE ↔ INACTIVE và ghi lịch sử.
+     */
+    public UserGroup lockGroup(UUID id, UUID operatorId, String operatorName) {
+        UserGroup group = findEntityById(id);
+
+        String action;
+        String note;
+        if (group.getStatus() == GroupStatus.ACTIVE) {
+            group.setStatus(GroupStatus.INACTIVE);
+            action = "LOCK";
+            note = "Đã khóa nhóm";
+        } else {
+            group.setStatus(GroupStatus.ACTIVE);
+            action = "UNLOCK";
+            note = "Đã mở khóa nhóm";
+        }
+
+        UserGroup saved = groupRepository.save(group);
+        saveHistory(saved.getId(), saved.getName(), saved.getCode(), action, note, operatorId, operatorName);
+
+        log.info("{} group: {} ({}) by {}", action, saved.getCode(), saved.getId(), operatorName);
+        return saved;
     }
 
     /**
@@ -492,9 +536,43 @@ public class UserGroupService {
                 null, // permissions not available from UserGroupResponse
                 response.getGroupType(),
                 response.getStatus(),
+                response.getOrganizationId(),
+                response.getOrganizationName(),
                 response.getCreatedAt(),
                 response.getUpdatedAt(),
                 response.getMemberCount());
+    }
+
+    /**
+     * Resolve the organizationId filter for data scope.
+     * Returns null for Admin Cục (sees all); returns the current user's orgUnit.id for others.
+     */
+    private UUID resolveOrganizationFilter() {
+        User currentUser = getCurrentUser();
+        if (currentUser == null) return null;
+
+        // Admin Cục (ROLE_SYSTEM_ADMIN) sees all
+        String primaryRole = currentUser.getPrimaryRoleCode();
+        if ("ROLE_SYSTEM_ADMIN".equals(primaryRole)) {
+            return null;
+        }
+
+        // Regular users — filter by their org unit
+        if (currentUser.getOrgUnit() != null) {
+            return currentUser.getOrgUnit().getId();
+        }
+        return null;
+    }
+
+    /**
+     * Get the current authenticated user from SecurityContext.
+     */
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof User) {
+            return (User) auth.getPrincipal();
+        }
+        return null;
     }
 
     private void saveHistory(UUID userGroupId, String name, String code,
