@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +21,7 @@ public class VtsSystemCreateRequest {
     @NotBlank(message = "Vị trí không được để trống")
     private String location;
 
-    private String conditionStatus;
+    private ConditionStatus conditionStatus;
     private String responsibilityLevel;
     private String source;
     private String partner;

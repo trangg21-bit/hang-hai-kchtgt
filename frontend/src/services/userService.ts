@@ -181,4 +181,34 @@ export const userService = {
     await api.post('/auth/forgot-password', { email: email.trim() });
     return { success: true, data: null };
   },
+
+  async getUserRoles(userId: string): Promise<any[]> {
+    const resp = await api.get(`/v1/users/${userId}/roles`);
+    return extractData<any[]>(resp) || [];
+  },
+
+  async assignUserRole(userId: string, roleCode: string): Promise<ApiResponse<User>> {
+    const resp = await api.post(`/v1/users/${userId}/roles`, { roleCode });
+    return { success: true, data: mapUser(extractData(resp)) };
+  },
+
+  async revokeUserRole(userId: string, roleId: string): Promise<ApiResponse<User>> {
+    const resp = await api.delete(`/v1/users/${userId}/roles/${roleId}`);
+    return { success: true, data: mapUser(extractData(resp)) };
+  },
+
+  async getUserPermissions(userId: string): Promise<any[]> {
+    const resp = await api.get(`/v1/users/${userId}/permissions`);
+    return extractData<any[]>(resp) || [];
+  },
+
+  async grantUserPermission(userId: string, permissionCode: string, reason?: string): Promise<ApiResponse<any>> {
+    const resp = await api.post(`/v1/users/${userId}/permissions`, { permissionCode, reason });
+    return { success: true, data: extractData(resp) };
+  },
+
+  async revokeUserPermission(userId: string, permissionCode: string): Promise<ApiResponse<null>> {
+    await api.delete(`/v1/users/${userId}/permissions/${permissionCode}`);
+    return { success: true, data: null };
+  },
 };

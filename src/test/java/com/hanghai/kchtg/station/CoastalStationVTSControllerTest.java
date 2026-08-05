@@ -238,7 +238,7 @@ class CoastalStationVTSControllerTest {
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
         entity.setStatus(StationStatus.APPROVED_L1);
-        when(service.approveStation(eq(id), eq(true), anyLong())).thenReturn(entity);
+        when(service.approveStation(eq(id), eq(true), any(Long.class))).thenReturn(entity);
 
         String json = """
                 {
@@ -261,7 +261,7 @@ class CoastalStationVTSControllerTest {
         CoastalStationVTS entity = makeEntity(id);
         entity.setRejectionReason("Invalid data");
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
-        when(service.rejectStation(eq(id), anyString(), anyLong())).thenReturn(entity);
+        when(service.rejectStation(eq(id), anyString(), any(Long.class))).thenReturn(entity);
 
         String json = """
                 {

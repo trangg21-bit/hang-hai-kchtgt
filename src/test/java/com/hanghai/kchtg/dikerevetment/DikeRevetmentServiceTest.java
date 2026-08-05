@@ -1,14 +1,17 @@
 package com.hanghai.kchtg.dikerevetment;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalHistory;
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
-import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,15 +41,17 @@ class DikeRevetmentServiceTest {
 
     @Mock DikeRevetmentRepository repo;
     @Mock DikeRevetmentAttachmentRepository attachmentRepo;
-    @Mock DikeRevetmentApprovalHistoryRepository approvalHistoryRepo;
+    @Mock ApprovalHistoryRepository approvalHistoryRepo;
     @Mock com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    @Mock OrgUnitCacheService orgUnitCacheService;
     DikeRevetmentService service;
 
     private DikeRevetment testEntity;
     private DikeRevetmentCreateRequest createReq;
 
     @BeforeEach void setUp() {
-        service = new DikeRevetmentService(repo, attachmentRepo, approvalHistoryRepo, gisSpatialObjectService);
+        service = new DikeRevetmentService(
+                repo, attachmentRepo, approvalHistoryRepo, gisSpatialObjectService, orgUnitCacheService);
         testEntity = DikeRevetment.builder()
                 .id(TEST_ID)
                 .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
@@ -123,7 +128,7 @@ class DikeRevetmentServiceTest {
 
     @Test void approveC1_shouldTransitionProposedToUnderReview() {
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
-        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+        ApprovalHistory hist = ApprovalHistory.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         when(approvalHistoryRepo.save(any())).thenReturn(hist);
         ApprovalResponse r = service.approveC1(TEST_ID, ApprovalRequest.builder()
                 .decision("APPROVED")
@@ -136,7 +141,7 @@ class DikeRevetmentServiceTest {
     @Test void approveC2_shouldTransitionUnderReviewToApproved() {
         testEntity.setApprovalStatus(DikeRevetmentApprovalStatus.UNDER_REVIEW);
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
-        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+        ApprovalHistory hist = ApprovalHistory.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         when(approvalHistoryRepo.save(any())).thenReturn(hist);
         ApprovalResponse r = service.approveC2(TEST_ID, ApprovalRequest.builder()
                 .decision("APPROVED")
@@ -148,12 +153,17 @@ class DikeRevetmentServiceTest {
 
     @Test void getApprovalHistory_shouldReturnEntries() {
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
-        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder()
-                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).dikeRevetment(testEntity).approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
-                .status("UNDER_REVIEW").approver("Truong")
-                .approvalDate(LocalDate.of(2026, 6, 1)).reason("Phe cap 1")
+        ApprovalHistory hist = ApprovalHistory.builder()
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
+                .refId(testEntity.getId())
+                .refType(InfrastructureType.DIKE_REVETMENT)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
+                .status(ApprovalHistoryStatus.UNDER_REVIEW)
+                .approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
+                .approvedDate(LocalDateTime.of(2026, 6, 1, 10, 0))
+                .reason("Phe cap 1")
                 .build();
-        when(approvalHistoryRepo.findByDikeRevetmentIdOrderByApprovalDateDesc(TEST_ID)).thenReturn(List.of(hist));
+        when(approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, TEST_ID)).thenReturn(List.of(hist));
         List<HistoryEntry> h = service.getApprovalHistory(TEST_ID);
         assertThat(h).hasSize(1);
         assertThat(h.get(0).getStatus()).isEqualTo("UNDER_REVIEW");

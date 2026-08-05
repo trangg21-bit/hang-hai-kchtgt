@@ -23,6 +23,7 @@ export interface DikeRevetmentResponse {
   status?: string;
   note?: string;
   orgUnitId?: string;
+  orgUnitName?: string;
   approvalStatus: ApprovalStatus;
   isApprovedLevel1?: boolean;
   approverLevel1?: string;

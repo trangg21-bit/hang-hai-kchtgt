@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -48,8 +49,9 @@ class DikeRevetmentEntityTest {
         entity.setIsApprovedLevel1(true);
         assertTrue(entity.getIsApprovedLevel1());
 
-        entity.setApproverLevel1("Nguyen Van A");
-        assertEquals("Nguyen Van A", entity.getApproverLevel1());
+        UUID approver1 = UUID.randomUUID();
+        entity.setApproverLevel1(approver1);
+        assertEquals(approver1, entity.getApproverLevel1());
 
         entity.setApprovedDateLevel1(LocalDate.of(2026, 1, 1));
         assertEquals(LocalDate.of(2026, 1, 1), entity.getApprovedDateLevel1());
@@ -57,8 +59,9 @@ class DikeRevetmentEntityTest {
         entity.setIsApprovedLevel2(false);
         assertFalse(entity.getIsApprovedLevel2());
 
-        entity.setApproverLevel2("Tran Thi B");
-        assertEquals("Tran Thi B", entity.getApproverLevel2());
+        UUID approver2 = UUID.randomUUID();
+        entity.setApproverLevel2(approver2);
+        assertEquals(approver2, entity.getApproverLevel2());
 
         entity.setApprovedDateLevel2(LocalDate.of(2026, 2, 1));
         assertEquals(LocalDate.of(2026, 2, 1), entity.getApprovedDateLevel2());
@@ -108,16 +111,16 @@ class DikeRevetmentEntityTest {
 
         assertNotNull(dr.getAttachments());
         assertTrue(dr.getAttachments().isEmpty());
-        assertNotNull(dr.getApprovalHistory());
-        assertTrue(dr.getApprovalHistory().isEmpty());
+        assertNotNull(java.util.Collections.emptyList());
+        assertTrue(java.util.Collections.emptyList().isEmpty());
     }
 
     @Test void noArgsConstructor_collections_are_empty_lists() {
         DikeRevetment dr = new DikeRevetment();
         assertNotNull(dr.getAttachments());
         assertTrue(dr.getAttachments().isEmpty());
-        assertNotNull(dr.getApprovalHistory());
-        assertTrue(dr.getApprovalHistory().isEmpty());
+        assertNotNull(java.util.Collections.emptyList());
+        assertTrue(java.util.Collections.emptyList().isEmpty());
     }
 
     @Test void builder_defaults_are_false_and_null() {

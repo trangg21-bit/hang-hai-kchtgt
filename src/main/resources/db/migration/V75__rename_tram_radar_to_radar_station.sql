@@ -181,6 +181,19 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'phe_duyet_lich_su' AND column_name = 'radar_station_id')
      AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_phe_duyet_lich_su_radar_station') THEN
-    ALTER TABLE phe_duyet_lich_su ADD CONSTRAINT fk_phe_duyet_lich_su_radar_station FOREIGN KEY (radar_station_id) REFERENCES radar_station(id);
+    IF EXISTS (
+      SELECT 1
+      FROM phe_duyet_lich_su history
+      LEFT JOIN radar_station station ON station.id = history.radar_station_id
+      WHERE station.id IS NULL
+    ) THEN
+      ALTER TABLE phe_duyet_lich_su
+        ADD CONSTRAINT fk_phe_duyet_lich_su_radar_station
+        FOREIGN KEY (radar_station_id) REFERENCES radar_station(id) NOT VALID;
+    ELSE
+      ALTER TABLE phe_duyet_lich_su
+        ADD CONSTRAINT fk_phe_duyet_lich_su_radar_station
+        FOREIGN KEY (radar_station_id) REFERENCES radar_station(id);
+    END IF;
   END IF;
 END $$;

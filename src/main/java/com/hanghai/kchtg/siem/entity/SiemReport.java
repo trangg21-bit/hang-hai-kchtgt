@@ -50,7 +50,7 @@ public class SiemReport {
     private long fileSizeBytes;
 
     /** Name of the user who triggered this report. */
-    @Column(length = 100)
+    
     private UUID createdBy;
 
     /** The timestamp when the report was generated. */

@@ -7,15 +7,16 @@ aggregate-id: M-006
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-07-21T08:27:52Z
-current-stage: closed
+last-updated: 2026-08-04T01:17:06Z
+current-stage: engineering-qa-engineer-wave-2
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu
 intel-path: docs/intel
-stages-queue: []
+stages-queue:
+  - engineering-qa-engineer-wave-2
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -35,16 +36,13 @@ completed-stages:
   engineering-code-reviewer:
     verdict: Pass
     completed-at: 2026-06-29T00:00:00Z
-  engineering-qa-engineer-wave-2:
-    verdict: Pass
-    artifact: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/qa/07-qa-report-w2.md
-    completed-at: 2026-07-21
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
   tokens-by-stage: {}
   tokens-by-feature: {}
-rework-count: {}
+rework-count:
+  engineering-qa-engineer-wave-2: 1
 locked-fields: []
 version: 1
 finalizers: []
@@ -53,6 +51,8 @@ child-events: []
 partial-redo: []
 agent-flags: {}
 feature-req: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/module-brief.md
+reopened-at: 2026-08-04T01:17:06Z
+reopened-reason: "C0 single-line edit: F-128 status proposed→done in module-brief.md"
 ---
 # Pipeline State: Quản lý văn bản & Thông tin nghiệp vụ
 
@@ -70,15 +70,15 @@ Quản lý văn bản pháp lý, vận hành, bảo trì, sự cố, quy hoạch
 | 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | — | 2026-06-29T00:00:00Z |
 | 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | — | 2026-06-29T00:00:00Z |
 | 6 | engineering-code-reviewer | engineering-code-reviewer | Pass | — | 2026-06-29T00:00:00Z |
-| 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/qa/07-qa-report-w2.md | 2026-07-21 |
+| 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
 
 ## Current Stage
 
-**closed** — Pipeline complete.
+**engineering-qa-engineer-wave-2** — Ready to start. Input: `docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/module-brief.md`.
 
 ## Next Action
 
-Awaiting human release approval — run `ai-kit sdlc state update --op released --kind module --id M-006 --workspace .` once production sign-off is granted.
+Next stage `engineering-qa-engineer-wave-2` — dispatched by the project manager (via the build receptionist); no slash command to run.
 
 ## Active Blockers
 

@@ -1,0 +1,54 @@
+{
+  "triage_id": "TRI-1785811005261-b202",
+  "created_at": 1785811005261,
+  "request_summary": "Fix remaining compilation errors from permission update: UserController getCurrentUsername→null, userService.save→userRepository.save, AdminAuditLog import",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/assetmovement/entity/AssetProcessingRecord.java",
+      "src/main/java/com/hanghai/kchtg/assetmovement/entity/InfraAsset.java",
+      "src/main/java/com/hanghai/kchtg/user/controller/UserController.java",
+      "src/main/java/com/hanghai/kchtg/user/service/RoleService.java",
+      "src/main/java/com/hanghai/kchtg/user/service/UserService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/assetmovement/entity/AssetProcessingRecord.java",
+      "src/main/java/com/hanghai/kchtg/assetmovement/entity/InfraAsset.java",
+      "src/main/java/com/hanghai/kchtg/user/controller/UserController.java",
+      "src/main/java/com/hanghai/kchtg/user/service/RoleService.java",
+      "src/main/java/com/hanghai/kchtg/user/service/UserService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "mvn compile",
+  "blast_radius": 5,
+  "done_oracle": "mvn compile succeeds with zero errors",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/assetmovement/entity/AssetProcessingRecord.java",
+    "src/main/java/com/hanghai/kchtg/assetmovement/entity/InfraAsset.java",
+    "src/main/java/com/hanghai/kchtg/user/controller/UserController.java",
+    "src/main/java/com/hanghai/kchtg/user/service/RoleService.java",
+    "src/main/java/com/hanghai/kchtg/user/service/UserService.java"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785810716399-e547",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "a129e41b07d2e0360260d526c84d6c6d05d8b94f",
+    "dirty": true,
+    "captured_at": 1785811005383
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

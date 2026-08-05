@@ -5,10 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface UserPermissionOverrideRepository extends JpaRepository<UserPermissionOverride, UUID> {
     List<UserPermissionOverride> findByUserId(UUID userId);
+    Optional<UserPermissionOverride> findByUserIdAndPermissionCode(UUID userId, String permissionCode);
     List<UserPermissionOverride> findByUser_Username(String username);
 }

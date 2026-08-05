@@ -2,15 +2,18 @@ package com.hanghai.kchtg.config;
 
 import com.hanghai.kchtg.security.JwtAuthFilter;
 import com.hanghai.kchtg.security.JwtProperties;
+import com.hanghai.kchtg.security.PermissionMiddleware;
 import com.hanghai.kchtg.security.filter.CookieRefreshTokenFilter;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.lang.Nullable;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
@@ -47,10 +50,14 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final CookieRefreshTokenFilter cookieRefreshTokenFilter;
+    private final PermissionMiddleware permissionMiddleware;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, CookieRefreshTokenFilter cookieRefreshTokenFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          CookieRefreshTokenFilter cookieRefreshTokenFilter,
+                          @Nullable PermissionMiddleware permissionMiddleware) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.cookieRefreshTokenFilter = cookieRefreshTokenFilter;
+        this.permissionMiddleware = permissionMiddleware;
     }
 
     @Bean
@@ -106,7 +113,22 @@ public class SecurityConfig {
                 .addFilterBefore(cookieRefreshTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
+        if (permissionMiddleware != null) {
+            http.addFilterAfter(permissionMiddleware, JwtAuthFilter.class);
+        }
+
         return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<PermissionMiddleware> disablePermissionMiddlewareAutoRegistration(
+            @Nullable PermissionMiddleware filter) {
+        FilterRegistrationBean<PermissionMiddleware> registration = new FilterRegistrationBean<>();
+        if (filter != null) {
+            registration.setFilter(filter);
+        }
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

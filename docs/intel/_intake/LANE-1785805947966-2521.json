@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1785805947966-2521",
+  "created_at": 1785805947966,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Update M-006 module-brief.md: change F-128 status from proposed to done (feature is fully implemented both BE+FE)",
+  "reason": "F-128 Quản lý văn bản pháp lý has been verified as fully implemented (entities, service, controller, frontend page). Status should reflect done, not proposed.",
+  "signals": [
+    "verified implementation: LegalDocument entity, LegalDocumentController, LegalDocumentService, LegalDocumentList.tsx all complete",
+    "module _state.md shows closed",
+    "F-128 feature-brief.md frontmatter still says proposed"
+  ]
+}

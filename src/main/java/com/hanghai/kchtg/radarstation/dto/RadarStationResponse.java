@@ -28,6 +28,7 @@ public class RadarStationResponse {
     private String source;
     private String conditionStatus;
     private UUID orgUnitId;
+    private String orgUnitName;
     private RadarStationApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;

@@ -18,7 +18,7 @@ public class HistoryEntry {
     private UUID id;
     private ApprovalLevel approvalLevel;
     private String status;
-    private UUID approvedBy;
+    private String approvedBy;
     private LocalDateTime approvedDate;
     private String reason;
 }

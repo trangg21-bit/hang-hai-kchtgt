@@ -3,7 +3,6 @@ package com.hanghai.kchtg.accesslog.dto;
 import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
 import com.hanghai.kchtg.accesslog.enums.LogSeverity;
 import com.hanghai.kchtg.accesslog.enums.LogType;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,10 +10,6 @@ import java.util.UUID;
 
 /**
  * Projection DTO returned by the read-only access-log API.
- * <p>
- * F-005 extends this with type, severity, targetResource, requestPath,
- * responseCode, durationMs, and metadata fields.
- * </p>
  */
 @Data
 public class AccessLogResponse {
@@ -70,4 +65,25 @@ public class AccessLogResponse {
         this.metadata = entity.getMetadata();
     }
 
+    public UUID getId() { return id; }
+    public UUID getUserId() { return userId; }
+    public String getUsername() { return username; }
+    public String getAction() { return action; }
+    public String getModule() { return module; }
+    public String getIpAddress() { return ipAddress; }
+    public String getUserAgent() { return userAgent; }
+    public String getEmail() { return email; }
+    public String getOrgUnit() { return orgUnit; }
+    public String getSessionId() { return sessionId; }
+    public AccessLogStatus getStatus() { return status; }
+    public String getDetail() { return detail; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LogType getType() { return type; }
+    public LogSeverity getSeverity() { return severity; }
+    public String getTargetResource() { return targetResource; }
+    public String getRequestPath() { return requestPath; }
+    public Integer getResponseCode() { return responseCode; }
+    public Integer getDurationMs() { return durationMs; }
+    public String getMetadata() { return metadata; }
 }

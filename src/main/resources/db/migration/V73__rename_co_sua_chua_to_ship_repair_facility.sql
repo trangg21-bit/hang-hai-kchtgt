@@ -216,6 +216,22 @@ ALTER TABLE phe_duyet_lich_su DROP CONSTRAINT IF EXISTS fk_phe_duyet_lich_su_cos
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_phe_duyet_lich_su_ship_repair') THEN
-    ALTER TABLE phe_duyet_lich_su ADD CONSTRAINT fk_phe_duyet_lich_su_ship_repair FOREIGN KEY (ship_repair_facility_id) REFERENCES ship_repair_facility(id);
+    IF EXISTS (
+      SELECT 1
+      FROM phe_duyet_lich_su history
+      LEFT JOIN ship_repair_facility facility
+        ON facility.id = history.ship_repair_facility_id
+      WHERE facility.id IS NULL
+    ) THEN
+      ALTER TABLE phe_duyet_lich_su
+        ADD CONSTRAINT fk_phe_duyet_lich_su_ship_repair
+        FOREIGN KEY (ship_repair_facility_id)
+        REFERENCES ship_repair_facility(id) NOT VALID;
+    ELSE
+      ALTER TABLE phe_duyet_lich_su
+        ADD CONSTRAINT fk_phe_duyet_lich_su_ship_repair
+        FOREIGN KEY (ship_repair_facility_id)
+        REFERENCES ship_repair_facility(id);
+    END IF;
   END IF;
 END $$;

@@ -26,7 +26,7 @@ import java.util.UUID;
 public class LoginAuditLog extends BaseEntity {
 
     /** UUID của người dùng (null nếu attempt chưa xác thực được user) */
-    @Column(name = "user_id", length = 36)
+    @Column(name = "user_id")
     private UUID userId;
 
     /** Tên đăng nhập (ghi lại để dễ tra cứu, nếu tồn tại) */

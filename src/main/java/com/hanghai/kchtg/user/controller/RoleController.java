@@ -38,6 +38,7 @@ public class RoleController {
     }
 
     @GetMapping
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<?>> list(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
@@ -54,18 +55,21 @@ public class RoleController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<RoleResponse>> getById(@PathVariable UUID id) {
         RoleResponse role = RoleResponse.from(roleService.findById(id));
         return ResponseEntity.ok(ApiResponse.success(role));
     }
 
     @GetMapping("/code/{code}")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<RoleResponse>> getByCode(@PathVariable String code) {
         RoleResponse role = RoleResponse.from(roleService.findByCode(code));
         return ResponseEntity.ok(ApiResponse.success(role));
     }
 
     @GetMapping("/active")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<RoleResponse>>> findActive() {
         List<RoleResponse> roles = roleService.findActiveRoles().stream()
                 .map(RoleResponse::from)
@@ -95,5 +99,42 @@ public class RoleController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         roleService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa vai trò thành công", null));
+    }
+
+    // ── Role Permissions Sub-resource Endpoints ─────────────────────────────────
+
+    @GetMapping({"/{id}/permissions", "/v1/{id}/permissions"})
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    public ResponseEntity<ApiResponse<List<com.hanghai.kchtg.user.entity.Permission>>> getRolePermissions(@PathVariable UUID id) {
+        com.hanghai.kchtg.user.entity.Role role = roleService.findById(id);
+        List<com.hanghai.kchtg.user.entity.Permission> permissions = List.copyOf(role.getPermissions());
+        return ResponseEntity.ok(ApiResponse.success(permissions));
+    }
+
+    @PostMapping({"/{id}/permissions", "/v1/{id}/permissions"})
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    public ResponseEntity<ApiResponse<RoleResponse>> assignRolePermissions(
+            @PathVariable UUID id,
+            @RequestBody List<String> permissionCodes) {
+        UpdateRoleRequest request = new UpdateRoleRequest();
+        request.setPermissions(permissionCodes);
+        RoleResponse role = RoleResponse.from(roleService.update(id, request));
+        return ResponseEntity.ok(ApiResponse.success("Gán quyền cho vai trò thành công", role));
+    }
+
+    @DeleteMapping({"/{id}/permissions/{permissionId}", "/v1/{id}/permissions/{permissionId}"})
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    public ResponseEntity<ApiResponse<RoleResponse>> revokeRolePermission(
+            @PathVariable UUID id,
+            @PathVariable String permissionId) {
+        com.hanghai.kchtg.user.entity.Role role = roleService.findById(id);
+        List<String> remainingCodes = role.getPermissions().stream()
+                .filter(p -> !p.getId().toString().equalsIgnoreCase(permissionId) && !p.getCode().equalsIgnoreCase(permissionId))
+                .map(com.hanghai.kchtg.user.entity.Permission::getCode)
+                .collect(Collectors.toList());
+        UpdateRoleRequest request = new UpdateRoleRequest();
+        request.setPermissions(remainingCodes);
+        RoleResponse updated = RoleResponse.from(roleService.update(id, request));
+        return ResponseEntity.ok(ApiResponse.success("Gỡ quyền khỏi vai trò thành công", updated));
     }
 }

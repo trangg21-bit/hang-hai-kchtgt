@@ -12,14 +12,27 @@ DECLARE
     geom_type INT;
     obj_type INT;
 BEGIN
-    FOR rec IN
-        SELECT p.id AS port_id, p.port_name, p.port_code, p.spatial_id, p.org_unit_id,
-               COUNT(pc.id) AS coord_count
-        FROM ports p
-        JOIN port_coordinates pc ON pc.port_id = p.id
-        WHERE p.deleted_at IS NULL
-        GROUP BY p.id, p.port_name, p.port_code, p.spatial_id, p.org_unit_id
-    LOOP
+    -- UAT databases created before the English-table migration can contain
+    -- neither port_coordinates nor ports.spatial_id.  In that shape there is
+    -- nothing to migrate; the remaining cleanup below is still safe to run.
+    IF to_regclass('public.ports') IS NOT NULL
+       AND to_regclass('public.port_coordinates') IS NOT NULL
+       AND to_regclass('public.gis_spatial_objects') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = 'ports'
+             AND column_name = 'spatial_id'
+       ) THEN
+        FOR rec IN
+            SELECT p.id AS port_id, p.port_name, p.port_code, p.spatial_id, p.org_unit_id,
+                   COUNT(pc.id) AS coord_count
+            FROM ports p
+            JOIN port_coordinates pc ON pc.port_id = p.id
+            WHERE p.deleted_at IS NULL
+            GROUP BY p.id, p.port_name, p.port_code, p.spatial_id, p.org_unit_id
+        LOOP
         -- Build WKT from all coordinates ordered by sort_order
         SELECT string_agg(lng || ' ' || lat, ', ' ORDER BY sort_order)
         INTO coords
@@ -64,7 +77,8 @@ BEGIN
                 2, 1, rec.org_unit_id, rec.port_id, 0, NOW(), NOW());
             UPDATE ports SET spatial_id = new_spatial_id WHERE id = rec.port_id;
         END IF;
-    END LOOP;
+        END LOOP;
+    END IF;
 END $$;
 
 -- Step 2: Drop the port_coordinates table

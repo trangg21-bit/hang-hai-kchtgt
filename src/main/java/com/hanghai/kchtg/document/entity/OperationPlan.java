@@ -26,7 +26,7 @@ import java.util.UUID;
 public class OperationPlan {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "operation_date")
@@ -48,13 +48,13 @@ public class OperationPlan {
     @Column(name = "status", length = 30)
     private OperationStatus status;
 
-    @Column(name = "created_by", length = 100)
+    @Column(name = "created_by")
     private UUID createdBy;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdDate;
 
-    @Column(name = "updated_by", length = 100)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "updated_at")

@@ -3,8 +3,10 @@ package com.hanghai.kchtg.vtssystem.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.vtssystem.dto.ApprovalRequest;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemCreateRequest;
+import com.hanghai.kchtg.vtssystem.dto.VtsSystemListResponse;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemResponse;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemUpdateRequest;
+import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +55,7 @@ class VtsSystemControllerTest {
                 .id(TEST_ID)
                 .systemName("VTS ABC")
                 .location("Hà Nội")
-                .approvalStatus("APPROVED")
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .build();
     }
 
@@ -77,8 +79,8 @@ class VtsSystemControllerTest {
 
     @Test
     void testFindAll() {
-        when(service.findAllWithSearch(null, null, null, null, 0, 20)).thenReturn(org.springframework.data.domain.Page.empty());
-        ResponseEntity<?> result = controller.findAll(null, null, null, null, 0, 20);
+        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20)).thenReturn(VtsSystemListResponse.builder().build());
+        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
@@ -123,14 +125,14 @@ class VtsSystemControllerTest {
 
     @Test
     void testSearch() {
-        when(service.search(null, null, null, null)).thenReturn(Collections.emptyList());
-        ResponseEntity<?> result = controller.search(null, null, null, null);
+        when(service.search(null, null, null, null, null)).thenReturn(Collections.emptyList());
+        ResponseEntity<?> result = controller.search(null, null, null, null, null);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testCreate_WithException() {
-        when(service.create(any(), any(java.util.UUID.class))).thenThrow(new RuntimeException("Test error"));
+        when(service.create(any(), any())).thenThrow(new RuntimeException("Test error"));
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
     }

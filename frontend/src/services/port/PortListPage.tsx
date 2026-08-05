@@ -948,15 +948,6 @@ export default function PortListPage() {
     }
   }, []);
 
-  const getOrgUnitName = useCallback(
-    (orgUnitId: string | null): string => {
-      if (!orgUnitId) return '—';
-      const unit = orgUnits.find((o) => o.id === orgUnitId);
-      return unit ? unit.name : orgUnitId.substring(0, 8) + '…';
-    },
-    [orgUnits],
-  );
-
   const getPortGroupLabel = (val: number | null): string => {
     if (!val) return '—';
     return `Nhóm ${val}`;
@@ -1115,7 +1106,7 @@ export default function PortListPage() {
         label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
         width: 250,
-        render: (v: string | null) => getOrgUnitName(v),
+        render: (_v: string | null, record: CangBienResponse) => record.orgUnitName || _v || '—',
       },
       {
         key: 'portName',
@@ -1190,7 +1181,7 @@ export default function PortListPage() {
         },
       },
     ],
-    [page, pageSize, getOrgUnitName, getPortGroupLabel],
+    [page, pageSize, getPortGroupLabel],
   );
 
   // ── Filter fields ────────────────────────────────────────────────

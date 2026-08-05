@@ -36,16 +36,14 @@ public class ApprovalRecordService {
             throw new IllegalArgumentException("result không hợp lệ: " + request.getResult());
         }
 
-        ApprovalRecord entity = ApprovalRecord.builder()
-                .requestId(request.getRequestId())
-                .approvalLevel(ApprovalLevel.LEVEL_1)
-                .approverName(null)
-                .result(result)
-                .reason(request.getNotes())
-                .approvalDate(Instant.now())
-                .description(request.getNotes())
-
-                .build();
+        ApprovalRecord entity = new ApprovalRecord();
+        entity.setRequestId(request.getRequestId());
+        entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+        entity.setApproverName(null);
+        entity.setResult(result);
+        entity.setReason(request.getNotes());
+        entity.setApprovalDate(Instant.now());
+        entity.setDescription(request.getNotes());
 
         ApprovalRecord saved = repository.save(entity);
         return toResponse(saved);

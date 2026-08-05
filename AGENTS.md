@@ -251,6 +251,37 @@ PMO Lead
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).
 Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/\*\*.
 
+## Permission Registration for New Modules (MANDATORY — mọi Dev thêm module mới PHẢI đọc)
+
+Khi phát triển module/chức năng mới có yêu cầu phân quyền, Dev **BẮT BUỘC** đăng ký permission trong file:
+
+```
+src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java
+```
+
+### Quy trình bắt buộc
+
+1. **Thêm `seedPermission()`** cho từng permission của module mới trong cả 2 method: `run()` và `upsertMissingPermissions()`. Format: `<resource>:<action>` (vd: `navigationchannel:create`).
+
+2. **Gán permission vào role** — thêm permission code vào danh sách `rolePermissionMap` của từng role phù hợp trong method `run()` và `rolePermMap` trong `upsertMissingPermissions()`.
+
+3. **Kiểm tra `upsertMissingPermissions()`** — method này chạy mỗi lần khởi động, tự động thêm permission mới (đã seed) vào role đã tồn tại. Chỉ hoạt động nếu Dev đã thêm `seedPermission()`.
+
+### Hậu quả nếu bỏ qua
+
+- Permission không tồn tại trong DB → `@PreAuthorize` trên controller không khớp → **403 Forbidden** với mọi user kể cả Admin
+- Cây phân quyền trong popup Phân quyền nhóm (F-002) sẽ không hiển thị chức năng mới
+
+### Agent workflow
+
+```
+PMO Lead
+  └── Dispatch Dev làm module mới → PHẢI chép constraint sau vào prompt:
+        "Sau khi tạo controller với @PreAuthorize, vào RolePermissionSeeder.java
+         thêm seedPermission() cho từng permission mới trong cả run() và
+         upsertMissingPermissions(), rồi gán vào đúng role."
+```
+
 ## AI Checklist for Reports & Gaps (BẮT BUỘC TUÂN THỦ)
 
 Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệp vụ, AI **phải luôn luôn kiểm tra trực tiếp** các điểm sau trước khi tiến hành viết code:
@@ -315,6 +346,16 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 
 8. **Ghi nhận Dữ liệu Kiểm toán (Audit Logs)**:
    - Khi thực hiện các thao tác thay đổi dữ liệu (đặc biệt là Xóa mềm - Soft Delete, Thêm mới, Cập nhật), AI bắt buộc phải đảm bảo truyền đầy đủ các thông tin kiểm toán (như `operatorId`, `deletedBy`, `updatedBy`...) vào các hàm xử lý tương ứng của Entity (ví dụ: `softDelete(operatorId)`) để lưu lại lịch sử thay đổi chính xác trong cơ sở dữ liệu.
+
+## Cache hiển thị tên đơn vị quản lý (MANDATORY)
+
+- Entity và request chỉ lưu/truyền `orgUnitId` (UUID/FK); response dùng cho hiển thị phải trả cả `orgUnitId` và `orgUnitName`.
+- Backend phải ánh xạ tên bằng `OrgUnitCacheService`; không truy vấn đơn vị theo từng bản ghi và không để frontend gọi API danh sách chỉ để ánh xạ ID sang tên.
+- Frontend chỉ gọi danh sách/cây đơn vị cho Select, Cascader và bộ lọc; cột và màn chi tiết hiển thị trực tiếp `orgUnitName` từ response.
+- Cache `orgUnitDirectory` không có TTL và tồn tại đến khi dữ liệu đơn vị thay đổi.
+- Mọi luồng thêm, sửa, xóa mềm, duyệt, từ chối hoặc thay đổi trạng thái/cây đơn vị phải gọi `orgUnitCacheService.evictAfterCommit()`; chỉ xóa cache sau khi transaction commit thành công.
+- Khi cache miss, nạp một lần toàn bộ đơn vị đang hoạt động thành `Map<UUID, String>`; không gán tên giả nếu ID không còn tồn tại.
+- Nếu triển khai nhiều backend instance, phải bổ sung cơ chế invalidation phân tán (Redis hoặc sự kiện); không dựa riêng vào Caffeine cục bộ.
 
 # Local Agent Customization Rules (Workspace-Scoped)
 

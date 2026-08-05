@@ -18,7 +18,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +45,7 @@ public class BeaconLightService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
-    private final OrgUnitRepository orgUnitRepo;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     // -- READ --
 
@@ -417,12 +417,7 @@ public class BeaconLightService {
     }
 
     private BeaconLightResponse toResponse(BeaconLight entity) {
-        String unitName = null;
-        if (entity.getUnitId() != null) {
-            unitName = orgUnitRepo.findById(entity.getUnitId())
-                    .map(unit -> unit.getName())
-                    .orElse(null);
-        }
+        String unitName = orgUnitCacheService.getName(entity.getUnitId());
 
         Double latitude = null;
         Double longitude = null;

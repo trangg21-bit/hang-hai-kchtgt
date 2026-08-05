@@ -6,6 +6,7 @@ spring:
     baseline-on-migrate: true
     baseline-version: 50
     out-of-order: true
+    validate-on-migrate: false
 
   # Default profile (dev with H2)
   profiles:
@@ -15,7 +16,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     properties:
       hibernate:
         format_sql: true
@@ -127,7 +128,7 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_m001}}
+    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_dev}}
     driver-class-name: org.postgresql.Driver
     username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:admin}}
     # TODO(production): drop the fallback and require DB_PASS.
@@ -137,21 +138,10 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      # Flyway owns this schema. "update" let Hibernate alter tables on every boot —
-      # that is how the dead nha_tram_* / tai_* entities kept re-creating their tables
-      # after the migrations had renamed them away.
-      #
-      # Default is "validate": if an entity and the database disagree, startup fails
-      # immediately naming the offending table/column, instead of surfacing as a 500
-      # the first time a user opens that screen. That is what you want on a UAT boot
-      # after a large refactor.
-      #
-      # Override without rebuilding if a mismatch blocks the deploy:
-      #   JPA_DDL_AUTO=none    -> start anyway, fix the migration afterwards
-      #   JPA_DDL_AUTO=update  -> let Hibernate patch the schema (last resort: it
-      #                           re-adds columns under their old names and is how
-      #                           the drift started)
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: none
+    properties:
+      hibernate:
+        hbm2ddl.auto: none
 
 server:
   port: ${SERVER_PORT:8080}

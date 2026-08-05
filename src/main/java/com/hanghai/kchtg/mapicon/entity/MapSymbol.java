@@ -38,6 +38,6 @@ public class MapSymbol extends BaseEntity {
     @Column(nullable = false)
     private MapSymbolStatus status;
 
-    @Column(name = "created_by", length = 50)
+    @Column(name = "created_by")
     private UUID createdBy;
 }

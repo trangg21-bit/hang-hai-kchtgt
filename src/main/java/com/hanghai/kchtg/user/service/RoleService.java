@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
+import com.hanghai.kchtg.admin.entity.AdminAuditLog;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.dto.CreateRoleRequest;
@@ -7,14 +9,17 @@ import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
+import com.hanghai.kchtg.user.entity.SystemMenu;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
+import com.hanghai.kchtg.user.repository.SystemMenuRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,15 +40,37 @@ public class RoleService {
 
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final SystemMenuRepository systemMenuRepository;
     private final UserRepository userRepository;
     private final PermissionCacheService permissionCacheService;
+    private final AdminAuditLogRepository adminAuditLogRepository;
 
     public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository,
-                       UserRepository userRepository, PermissionCacheService permissionCacheService) {
+                       SystemMenuRepository systemMenuRepository, UserRepository userRepository,
+                       PermissionCacheService permissionCacheService,
+                       @Nullable AdminAuditLogRepository adminAuditLogRepository) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
+        this.systemMenuRepository = systemMenuRepository;
         this.userRepository = userRepository;
         this.permissionCacheService = permissionCacheService;
+        this.adminAuditLogRepository = adminAuditLogRepository;
+    }
+
+    private void auditLog(String action, String target, String details) {
+        if (adminAuditLogRepository == null) return;
+        try {
+            UUID adminId = SecurityUtils.getCurrentUserId();
+            String adminName = null;
+            if (adminId == null) {
+                adminId = UUID.fromString("00000000-0000-0000-0000-000000000000");
+                adminName = "SYSTEM";
+            }
+            AdminAuditLog audit = AdminAuditLog.create(adminId, adminName, action, target, details, "127.0.0.1", "System");
+            adminAuditLogRepository.save(audit);
+        } catch (Exception e) {
+            log.warn("Failed to save audit log for {}: {}", action, e.getMessage());
+        }
     }
 
     @Transactional
@@ -105,6 +132,27 @@ public class RoleService {
                 .collect(Collectors.toSet());
     }
 
+    private Set<SystemMenu> resolveMenuCodes(List<String> menuCodes) {
+        if (menuCodes == null) {
+            return new HashSet<>();
+        }
+        Set<String> normalized = menuCodes.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(String::trim)
+                .filter(code -> !code.isEmpty())
+                .collect(Collectors.toSet());
+        if (normalized.isEmpty()) {
+            return new HashSet<>();
+        }
+        List<SystemMenu> menus = systemMenuRepository.findAllById(normalized);
+        Set<String> found = menus.stream().map(SystemMenu::getMenuCode).collect(Collectors.toSet());
+        normalized.removeAll(found);
+        if (!normalized.isEmpty()) {
+            throw new IllegalArgumentException("Mã chức năng không tồn tại: " + String.join(", ", normalized));
+        }
+        return new HashSet<>(menus);
+    }
+
     /**
      * Tạo mới vai trò.
      *
@@ -119,12 +167,14 @@ public class RoleService {
                 existingRole.setName(request.getName());
                 existingRole.setDescription(request.getDescription());
                 existingRole.setPermissions(resolvePermissions(request.getPermissions()));
+                existingRole.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
                 existingRole.setStatus(RoleStatus.ACTIVE);
                 existingRole.setDeletedAt(null);
                 existingRole.setDeletedBy(null);
                 existingRole.setUserCount(0);
 
                 Role saved = roleRepository.save(existingRole);
+                auditLog("ROLE_CREATE", "Role-" + saved.getCode(), "Khôi phục và cập nhật vai trò " + saved.getCode());
                 log.info("Restored and updated role: {} ({})", saved.getCode(), saved.getId());
                 return saved;
             } else {
@@ -137,10 +187,12 @@ public class RoleService {
         role.setCode(request.getCode());
         role.setDescription(request.getDescription());
         role.setPermissions(resolvePermissions(request.getPermissions()));
+        role.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
         role.setStatus(RoleStatus.ACTIVE);
         role.setUserCount(0);
 
         Role saved = roleRepository.save(role);
+        auditLog("ROLE_CREATE", "Role-" + saved.getCode(), "Tạo mới vai trò " + saved.getCode());
         log.info("Created role: {} ({})", saved.getCode(), saved.getId());
         return saved;
     }
@@ -172,38 +224,50 @@ public class RoleService {
             permissionsChanged = true;
         }
 
+        if (request.getMenuCodes() != null) {
+            role.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
+            permissionsChanged = true;
+        }
+
         Role saved = roleRepository.save(role);
 
         // JWT contains a permission snapshot used by the frontend route/menu guards.
-        // Bump the version as well as clearing Redis so holders of this role must
-        // authenticate again and receive the updated permission set.
+        // Bump the version as well as clearing Redis whenever either API permissions
+        // or menu permissions changes.
         if (permissionsChanged) {
             for (UUID userId : userRepository.findIdsByRoleId(saved.getId())) {
                 permissionCacheService.invalidateAndIncrementVersion(userId);
             }
         }
 
+        auditLog("ROLE_UPDATE", "Role-" + saved.getCode(), "Cập nhật thông tin/quyền cho vai trò " + saved.getCode());
         log.info("Updated role: {} ({})", saved.getCode(), saved.getId());
         return saved;
     }
 
     /**
-     * Xóa vai trò (soft delete - dùng BaseEntity.softDelete(SecurityUtils.getCurrentUserId())).
+     * Xóa vai trò.
+     * BR-275-03: System roles cannot be deleted, set status to INACTIVE instead.
      *
      * @throws EntityNotFoundException nếu không tìm thấy role
      */
     public Role delete(UUID id) {
         Role role = findById(id);
+        if (Boolean.TRUE.equals(role.getIsSystem())) {
+            role.setStatus(RoleStatus.INACTIVE);
+            Role saved = roleRepository.save(role);
+            auditLog("ROLE_DISABLE", "Role-" + saved.getCode(), "Chuyển trạng thái vai trò hệ thống sang INACTIVE");
+            log.info("System role cannot be deleted, set status to INACTIVE: {} ({})", saved.getCode(), saved.getId());
+            return saved;
+        }
         role.setStatus(RoleStatus.DELETED);
         role.softDelete(SecurityUtils.getCurrentUserId());
         Role saved = roleRepository.save(role);
+        auditLog("ROLE_DELETE", "Role-" + saved.getCode(), "Xóa mềm vai trò " + saved.getCode());
         log.info("Soft-deleted role: {} ({})", saved.getCode(), saved.getId());
         return saved;
     }
 
-    /**
-     * Cập nhật số lượng người dùng của role.
-     */
     @Transactional
     public void updateUserCount(UUID id) {
         Role role = findById(id);

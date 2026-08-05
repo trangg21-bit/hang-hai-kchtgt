@@ -26,8 +26,9 @@ public class PierResponse {
     private String operationalFunction;
     private OperationalStatus operationalStatus;
     private ApprovalStatus approvalStatus;
-    private UUID orgUnitId;
-    private UUID createdBy;
+   private UUID orgUnitId;
+    private String orgUnitName;
+   private UUID createdBy;
     private UUID updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

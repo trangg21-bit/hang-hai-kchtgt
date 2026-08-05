@@ -227,7 +227,7 @@ class ShipRepairFacilityControllerTest {
     @Test
     void testGetHistory() {
         HistoryEntry entry = HistoryEntry.builder()
-                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1).status("APPROVED").approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1).status("APPROVED").approvedBy("00000000-0000-0000-0000-000000000001").build();
         when(service.getHistory(TEST_ID)).thenReturn(Arrays.asList(entry));
 
         ResponseEntity<?> result = controller.getHistory(TEST_ID);

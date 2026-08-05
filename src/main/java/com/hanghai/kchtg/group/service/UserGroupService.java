@@ -8,7 +8,9 @@ import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -21,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -48,17 +52,20 @@ public class UserGroupService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupHistoryRepository groupHistoryRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PermissionCacheService permissionCacheService;
 
     public UserGroupService(GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
             GroupHistoryRepository groupHistoryRepository,
             UserRepository userRepository,
+            RoleRepository roleRepository,
             PermissionCacheService permissionCacheService) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.groupHistoryRepository = groupHistoryRepository;
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.permissionCacheService = permissionCacheService;
     }
 
@@ -264,6 +271,57 @@ public class UserGroupService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
     }
 
+    // ── Group Permission (F-002 BR-015 đến BR-017) ──────────────────
+
+    /** Lấy danh sách role hiện đang được gán cho nhóm. */
+    @Transactional(readOnly = true)
+    public List<GroupRoleResponse> findGroupRoles(UUID groupId) {
+        UserGroup group = findEntityById(groupId);
+        return group.getRoles().stream()
+                .filter(role -> role.getStatus() == com.hanghai.kchtg.user.entity.RoleStatus.ACTIVE)
+                .map(GroupRoleResponse::from)
+                .toList();
+    }
+
+    /**
+     * Thay thế toàn bộ danh sách role của nhóm. Thành viên active được tăng
+     * permission version và xóa cache để JWT/quyền mới có hiệu lực ngay.
+     */
+    public List<GroupRoleResponse> updateGroupRoles(UUID groupId,
+            UpdateGroupRolesRequest request, UUID operatorId, String operatorName) {
+        UserGroup group = findEntityById(groupId);
+        Set<UUID> requestedIds = request.getRoleIds() == null
+                ? Set.of()
+                : request.getRoleIds().stream().filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+
+        List<Role> roles = requestedIds.isEmpty() ? List.of() : roleRepository.findAllById(requestedIds);
+        Set<UUID> foundIds = roles.stream().map(Role::getId).collect(java.util.stream.Collectors.toSet());
+        if (foundIds.size() != requestedIds.size()) {
+            Set<UUID> missing = new HashSet<>(requestedIds);
+            missing.removeAll(foundIds);
+            throw new IllegalArgumentException("Vai trò không tồn tại hoặc đã bị vô hiệu: " + missing);
+        }
+        if (roles.stream().anyMatch(role -> role.getStatus() != com.hanghai.kchtg.user.entity.RoleStatus.ACTIVE)) {
+            throw new IllegalArgumentException("Chỉ được gán vai trò đang hoạt động");
+        }
+
+        group.setRoles(new HashSet<>(roles));
+        groupRepository.save(group);
+
+        for (UUID userId : groupMemberRepository.findUserIdsByUserGroupIdAndStatus(
+                groupId, GroupMemberStatus.ACTIVE)) {
+            permissionCacheService.invalidateAndIncrementVersion(userId);
+        }
+
+        String roleSummary = roles.isEmpty()
+                ? "Đã bỏ toàn bộ vai trò khỏi nhóm"
+                : "Đã gán " + roles.size() + " vai trò: "
+                        + roles.stream().map(Role::getCode).sorted().collect(java.util.stream.Collectors.joining(", "));
+        saveHistory(groupId, group.getName(), group.getCode(), "PERMISSIONS_UPDATED",
+                roleSummary, operatorId, operatorName);
+        return roles.stream().map(GroupRoleResponse::from).toList();
+    }
+
     // ── Member management ───────────────────────────────────────────
 
     /**
@@ -301,6 +359,7 @@ public class UserGroupService {
         // resolves inherited permissions through User.groups, while group_members is
         // the audit/listing projection used by this module.
         attachGroupToUser(user, group);
+        permissionCacheService.invalidateAndIncrementVersion(user.getId());
 
         // BR-015: Log history
         saveHistory(groupId, group.getName(), group.getCode(), "MEMBER_ADDED",
@@ -388,6 +447,7 @@ public class UserGroupService {
             newMember.setStatus(GroupMemberStatus.ACTIVE);
             groupMemberRepository.save(newMember);
             attachGroupToUser(srcMember.getUser(), savedCopy);
+            permissionCacheService.invalidateAndIncrementVersion(srcMember.getUser().getId());
         }
 
         // BR-015: Log history
@@ -461,7 +521,6 @@ public class UserGroupService {
         if (!groupAttached) {
             user.getGroups().add(group);
             userRepository.save(user);
-            permissionCacheService.invalidateAndIncrementVersion(user.getId());
         }
     }
 }

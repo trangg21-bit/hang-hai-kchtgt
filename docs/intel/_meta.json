@@ -220,6 +220,12 @@
       ],
       "version": 1
     },
+    "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_state.md": {
+      "content_hash": "sha256:a2f0725531d2d3a4eb04da4ba230da708d02c5d06e4ea0136adf94120f20d772",
+      "last_modified": "2026-08-04T01:17:06Z",
+      "last_producer": "ai-kit/update_state(stage_rollback)",
+      "version": 1
+    },
     "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/module-brief.md": {
       "content_hash": "sha256:ac7273c618e0d10eedb94dfba3ec6d76c6f63046beb94c0239b77b50145708f0",
       "last_modified": "2026-06-16T05:21:20Z",

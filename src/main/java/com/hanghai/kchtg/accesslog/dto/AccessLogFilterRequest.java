@@ -50,4 +50,7 @@ public class AccessLogFilterRequest {
     /** Filter by username. */
     private String username;
 
+    /** Filter by granted permission status (true = access allowed, false = permission denied). */
+    private Boolean granted;
+
 }

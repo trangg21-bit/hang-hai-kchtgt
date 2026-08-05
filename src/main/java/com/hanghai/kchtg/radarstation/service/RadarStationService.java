@@ -6,11 +6,13 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.radarstation.dto.*;
-import com.hanghai.kchtg.radarstation.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
-import com.hanghai.kchtg.radarstation.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
@@ -24,6 +26,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -33,6 +39,9 @@ public class RadarStationService {
     private final ApprovalHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final VtsSystemRepository vtsSystemRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
+    private final InfrastructureAttachmentRepository attachmentRepository;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     public RadarStationResponse create(RadarStationCreateRequest request, UUID createdBy) {
         RadarStation entity = RadarStation.builder()
@@ -49,9 +58,7 @@ public class RadarStationService {
                 .radarRange(request.getRadarRange())
                 .approvalStatus(RadarStationApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
-                .approvedLevel2(false)
-                .isDeleted(false)
-                .createdBy(createdBy)
+               .approvedLevel2(false)
                 .build();
 
         RadarStation saved = repository.save(entity);
@@ -80,9 +87,9 @@ public class RadarStationService {
         }
 
         historyRepository.save(ApprovalHistory.builder()
-                .radarStationId(saved.getId())
+                .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("CREATE")
+                .status(ApprovalHistoryStatus.CREATED)
                 .approvedBy(createdBy)
                 .reason("Tạo mới trạm radar")
                 .build());
@@ -93,7 +100,7 @@ public class RadarStationService {
     public RadarStationResponse getById(UUID id) {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
-        if (entity.getIsDeleted()) {
+        if (entity.getDeletedAt() != null) {
             throw new RuntimeException("Trạm Radar đã bị xóa với ID: " + id);
         }
         return toResponse(entity);
@@ -104,13 +111,13 @@ public class RadarStationService {
      * other infrastructure modules expose.
      */
     public List<RadarStationResponse> findByApprovalStatus(RadarStationApprovalStatus approvalStatus) {
-        return repository.findByApprovalStatusAndIsDeletedFalse(approvalStatus).stream()
+        return repository.findByApprovalStatusAndDeletedAtIsNull(approvalStatus).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<RadarStationResponse> findAll(int page, int size) {
-        return repository.findByApprovalStatusAndIsDeletedFalse(RadarStationApprovalStatus.APPROVED).stream()
+        return repository.findByApprovalStatusAndDeletedAtIsNull(RadarStationApprovalStatus.APPROVED).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -119,7 +126,7 @@ public class RadarStationService {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (entity.getIsDeleted()) {
+        if (entity.getDeletedAt() != null) {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
@@ -165,9 +172,9 @@ public class RadarStationService {
         }
 
         historyRepository.save(ApprovalHistory.builder()
-                .radarStationId(saved.getId())
+                .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("UPDATE")
+                .status(ApprovalHistoryStatus.UPDATED)
                 .approvedBy(updatedBy)
                 .reason("Cập nhật thông tin trạm radar")
                 .build());
@@ -183,10 +190,6 @@ public class RadarStationService {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
-        // softDelete() only stamps deletedAt/deletedBy on BaseEntity; the isDeleted
-        // flag is this entity's own and is what the queries filter on, so it has to
-        // be set too or the record keeps showing up in listings.
-        entity.setIsDeleted(true);
         entity.softDelete(deletedBy);
         repository.save(entity);
         if (entity.getSpatialId() != null) {
@@ -194,9 +197,9 @@ public class RadarStationService {
         }
 
         historyRepository.save(ApprovalHistory.builder()
-                .radarStationId(entity.getId())
+                .refId(entity.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("DELETE")
+                .status(ApprovalHistoryStatus.DELETED)
                 .approvedBy(deletedBy)
                 .reason("Xóa trạm radar")
                 .build());
@@ -234,18 +237,18 @@ public class RadarStationService {
         RadarStation saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
-                .radarStationId(saved.getId())
+                .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_1)
-                .status(request.getQuyetDinh())
+                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
                 .approvedBy(approvedBy)
                 .reason(request.getReason())
                 .build());
 
         if (autoApproved) {
             historyRepository.save(ApprovalHistory.builder()
-                    .radarStationId(saved.getId())
+                    .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(request.getQuyetDinh())
+                    .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
                     .approvedBy(approvedBy)
                     .reason(request.getReason())
                     .build());
@@ -280,9 +283,9 @@ public class RadarStationService {
         RadarStation saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
-                .radarStationId(saved.getId())
+                .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_2)
-                .status(request.getQuyetDinh())
+                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
                 .approvedBy(approvedBy)
                 .reason(request.getReason())
                 .build());
@@ -291,15 +294,24 @@ public class RadarStationService {
     }
 
     public List<HistoryEntry> getHistory(UUID radarStationId) {
-        return historyRepository.findByRadarStationIdOrderByApprovedDateDesc(radarStationId)
+        return historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, radarStationId)
                 .stream().map(h -> HistoryEntry.builder()
                         .id(h.getId())
                         .approvalLevel(h.getApprovalLevel())
-                        .status(h.getStatus())
-                        .approvedBy(h.getApprovedBy())
+                        .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                        .approvedBy(resolveUserName(h.getApprovedBy()))
                         .approvedDate(h.getApprovedDate())
                         .reason(h.getReason())
                         .build()).toList();
+    }
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId)
+                .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
+                        ? u.getFullName()
+                        : u.getUsername())
+                .orElse(userId.toString());
     }
 
     public List<RadarStationResponse> search(UUID orgUnitId, String keyword, String conditionStatus, String approvalStatusStr) {
@@ -313,14 +325,15 @@ public class RadarStationService {
     }
 
     private RadarStationResponse toResponse(RadarStation entity) {
-        List<RadarStationAttachmentResponse> attachments = entity.getAttachments().stream()
-                .map(a -> RadarStationAttachmentResponse.builder()
+        List<RadarStationAttachmentResponse> attachments = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.RADAR_STATION)
+                .stream().map(a -> RadarStationAttachmentResponse.builder()
                         .id(a.getId())
                         .fileName(a.getFileName())
                         .filePath(a.getFilePath())
                         .fileSize(a.getFileSize())
-                        .documentType(a.getDocumentType())
-                        .uploadedBy(a.getUploadedBy())
+                        .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
+                        .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
                         .uploadedDate(a.getUploadedDate())
                         .build()).toList();
 
@@ -334,6 +347,7 @@ public class RadarStationService {
                 .source(entity.getSource())
                 .conditionStatus(entity.getConditionStatus())
                 .orgUnitId(entity.getOrgUnitId())
+                .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .approvalStatus(entity.getApprovalStatus())
                 .approvedLevel1(entity.getApprovedLevel1())
                 .approverLevel1(entity.getApproverLevel1())

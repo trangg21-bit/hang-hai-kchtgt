@@ -18,6 +18,6 @@ public class VtsSystemAttachmentResponse {
     private String filePath;
     private Long fileSize;
     private String documentType;
-    private String uploadedBy;
+    private UUID uploadedBy;
     private LocalDateTime uploadedDate;
 }

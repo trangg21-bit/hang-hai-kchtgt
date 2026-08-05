@@ -17,7 +17,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.entity.*;
 import com.hanghai.kchtg.port.repository.*;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
@@ -55,7 +55,7 @@ public class KchtGis155Service {
     private final BuoyStationRepository buoyStationRepository;
     private final VtsSystemRepository vtsSystemRepository;
     private final RadarStationRepository radarStationRepository;
-    private final OrgUnitRepository orgUnitRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
     private final BeaconLightRepository beaconLightRepository;
     private final BuoyRepository buoyRepository;
@@ -354,17 +354,7 @@ public class KchtGis155Service {
         String tinhThanhStr = (tinhThanhPho != null) ? tinhThanhPho.getDisplayName() : null;
         String provinceLocal = null; // Temporary fix for provinceId
 
-        // Batch pre-load tất cả OrgUnit vào Map 1 lần (tránh N+1 query khi gọi getOrgName)
-        Map<UUID, String> orgNameMap = new HashMap<>();
-        try {
-            orgUnitRepository.findAll().forEach(org -> {
-                if (org.getId() != null && org.getName() != null) {
-                    orgNameMap.put(org.getId(), org.getName());
-                }
-            });
-        } catch (Exception e) {
-            log.warn("Không thể nạp danh sách OrgUnit: {}", e.getMessage());
-        }
+        Map<UUID, String> orgNameMap = new HashMap<>(orgUnitCacheService.getDirectory());
 
         boolean isRootOrg = false;
         if (rawOrgUnitId == null) {

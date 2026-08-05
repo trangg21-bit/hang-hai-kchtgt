@@ -9,14 +9,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-/**
- * Singleton configurable retention policy for access-log cleanup.
- * <p>
- * System-admin can view/update this via {@code PUT /api/logs/retention}.
- * The {@code LogCleanupScheduler} reads the active row at runtime
- * instead of using a hardcoded constant.
- * </p>
- */
 @Entity
 @Table(name = "log_retention_policies")
 @Getter

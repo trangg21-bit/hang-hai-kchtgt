@@ -59,6 +59,13 @@ public class Role extends BaseEntity {
         inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions = new HashSet<>();
 
+    /** Danh sách mã chức năng/menu được gán theo cây AUTH_MENU của dự án gốc. */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "role_menu_permissions",
+        joinColumns = @JoinColumn(name = "role_id"),
+        inverseJoinColumns = @JoinColumn(name = "menu_code"))
+    private Set<SystemMenu> menuPermissions = new HashSet<>();
+
     /** Trạng thái vai trò. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -67,4 +74,7 @@ public class Role extends BaseEntity {
     /** Số lượng người dùng đang có vai trò này. */
     @Column(nullable = false)
     private int userCount = 0;
+
+    public String getCode() { return code; }
+    public Set<Permission> getPermissions() { return permissions; }
 }

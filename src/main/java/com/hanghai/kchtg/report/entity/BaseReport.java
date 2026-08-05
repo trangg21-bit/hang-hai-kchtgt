@@ -44,7 +44,7 @@ public abstract class BaseReport extends BaseEntity {
     @Column(name = "generated_at")
     private Instant generatedAt;
 
-    @Column(name = "generated_by", length = 36)
+    @Column(name = "generated_by")
     private UUID generatedBy;
 
     @Enumerated(EnumType.ORDINAL)

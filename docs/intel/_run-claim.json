@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-03T11:39:45.298Z",
+  "last_modified_at": "2026-08-04T01:17:54.935Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -93,20 +93,22 @@
     "M-006": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "done",
-      "claimed_by": "tab-df2673e626bc4da4",
-      "claimed_at": "2026-07-21T08:22:16.321Z",
-      "heartbeat_at": "2026-07-21T08:29:40.952Z",
+      "status": "skipped",
+      "claimed_by": "tab-90ce1026217467d5",
+      "claimed_at": "2026-08-04T01:17:09.104Z",
+      "heartbeat_at": "2026-08-04T01:17:54.935Z",
       "current_stage": null,
       "started_at": "2026-07-21T08:22:16.321Z",
-      "completed_at": "2026-07-21T08:29:40.952Z",
+      "completed_at": "2026-08-04T01:17:54.935Z",
       "auto_pass_count": 0,
       "attempt": 1,
       "name": "Quản lý văn bản & Thông tin nghiệp vụ",
       "slug": "quan-ly-van-ban-thong-tin-ghiep-vu",
       "risk_path": "M",
       "claimed_pid": null,
-      "claimed_host": null
+      "claimed_host": null,
+      "reopened_at": "2026-08-04T01:17:06.616Z",
+      "reopened_reason": "C0 single-line edit: F-128 status proposed→done in module-brief.md"
     },
     "M-007": {
       "depends_on": [],
@@ -486,6 +488,16 @@
       "completed_modules": [],
       "failed_modules": [],
       "skipped_modules": []
+    },
+    "tab-90ce1026217467d5": {
+      "started_at": "2026-08-04T01:17:09.104Z",
+      "last_seen": "2026-08-04T01:17:54.935Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-006"
+      ]
     }
   }
 }

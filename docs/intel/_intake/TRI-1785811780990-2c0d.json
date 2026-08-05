@@ -1,0 +1,39 @@
+{
+  "triage_id": "TRI-1785811780990-2c0d",
+  "created_at": 1785811780990,
+  "request_summary": "Fix test: revokeUserRole endpoint now uses userService.findById + userRepository.save instead of userService.update",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/test/java/com/hanghai/kchtg/user/UserRolePermissionControllerTest.java"
+    ],
+    "impact_files": [
+      "src/test/java/com/hanghai/kchtg/user/UserRolePermissionControllerTest.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "mvn test -Dtest=UserRolePermissionControllerTest",
+  "blast_radius": 1,
+  "done_oracle": "Test revokeUserRole_shouldReturnUpdatedUser passes",
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "TRI-1785811005261-b202",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "a129e41b07d2e0360260d526c84d6c6d05d8b94f",
+    "dirty": true,
+    "captured_at": 1785811781144
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -3,6 +3,8 @@ export interface Permission {
   name: string;
   group: string;
   description: string;
+  resource?: string;
+  action?: string;
 }
 
 export interface PermissionGroup {
@@ -15,4 +17,11 @@ export interface PermissionTreeNode {
   key: string;
   title: string;
   children?: PermissionTreeNode[];
+}
+
+export interface MenuTreeNode extends PermissionTreeNode {
+  code: string;
+  url?: string;
+  parentCode?: string;
+  children?: MenuTreeNode[];
 }

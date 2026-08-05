@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Search result response DTO for document search (F-135).
@@ -21,4 +22,5 @@ public class SearchResultResponse {
     private int totalPages;
     private int currentPage;
     private int pageSize;
+    private Map<String, Long> statusCounts;
 }

@@ -194,12 +194,10 @@ export default function RadarStationList() {
     },
     {
       title: 'Đơn vị quản lý',
-      dataIndex: 'orgUnitId',
-      key: 'orgUnitId',
+      dataIndex: 'orgUnitName',
+      key: 'orgUnitName',
       width: 180,
-      render: (val: string) => {
-        return organizations.find((o) => o.id === val)?.name || val || '—';
-      },
+      render: (val: string | undefined, record: RadarStationResponse) => val || record.orgUnitId || '—',
     },
     {
       title: 'Hệ thống VTS',
