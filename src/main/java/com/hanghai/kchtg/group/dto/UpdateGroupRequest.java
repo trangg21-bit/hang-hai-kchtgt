@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Request body cho việc cập nhật UserGroup.
@@ -16,6 +17,8 @@ public class UpdateGroupRequest {
 
     @Size(max = 500, message = "Mô tả tối đa 500 ký tự")
     private String description;
+
+    private UUID organizationId;
 
     private List<String> permissions;
     private String status;

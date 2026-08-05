@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Nhom nguoi dung (User Group) - dung de gom quyen va phan quyen theo nhom.
@@ -65,6 +66,10 @@ public class UserGroup extends BaseEntity {
             joinColumns = @JoinColumn(name = "user_group_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    /** Đơn vị quản lý của nhóm (FK to OrgUnit). */
+    @Column(name = "organization_id")
+    private UUID organizationId;
 
     /** Trang tai: ACTIVE (hoat dong) hoăc INACTIVE (vo hieu). */
     @Enumerated(EnumType.ORDINAL)

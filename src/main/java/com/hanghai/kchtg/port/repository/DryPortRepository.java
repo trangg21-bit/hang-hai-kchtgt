@@ -26,6 +26,9 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
 
     long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
+    @Query("SELECT MAX(d.dryPortCode) FROM DryPort d WHERE d.dryPortCode LIKE 'CC-%'")
+    Optional<String> findMaxCode();
+
     @Query("SELECT d FROM DryPort d WHERE d.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(d.dryPortCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(d.dryPortName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +

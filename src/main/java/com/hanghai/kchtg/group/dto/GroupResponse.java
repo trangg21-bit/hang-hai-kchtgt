@@ -25,6 +25,8 @@ public class GroupResponse {
     List<String> permissions;
     GroupType groupType;
     GroupStatus status;
+    UUID organizationId;
+    String organizationName;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     Long memberCount;
@@ -41,6 +43,8 @@ public class GroupResponse {
                 entity.getPermissions(),
                 entity.getGroupType(),
                 entity.getStatus(),
+                entity.getOrganizationId(),
+                null, // organizationName — resolved by caller (service layer)
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 0L

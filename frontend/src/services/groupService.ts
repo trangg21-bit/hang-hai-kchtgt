@@ -41,6 +41,8 @@ export interface Group {
   permissions?: string[];
   memberCount?: number;
   status: "active" | "inactive";
+  organizationId?: string;
+  organizationName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -75,6 +77,7 @@ export interface CreateGroupPayload {
   permissions?: string[];
   status?: "active" | "inactive";
   memberIds?: string[];
+  organizationId?: string;
 }
 
 export interface UpdateGroupPayload {
@@ -84,6 +87,7 @@ export interface UpdateGroupPayload {
   groupType?: string;
   permissions?: string[];
   status?: "active" | "inactive";
+  organizationId?: string;
 }
 
 export interface AddMemberPayload {
@@ -125,7 +129,7 @@ export const groupService = {
       if (params?.groupType) qParams.append("groupType", params.groupType);
       if (params?.myGroups) qParams.append("myGroups", "true");
 
-      const resp = await api.get(`/groups?${qParams.toString()}`);
+      const resp = await api.get(`/v1/groups?${qParams.toString()}`);
       const rawData: any = extractData(resp);
       const items: any[] = Array.isArray(rawData) ? rawData : (rawData?.items || rawData?.content || []);
       const totalElements = rawData?.total ?? items.length;
@@ -141,6 +145,8 @@ export const groupService = {
           permissions: item.permissions,
           memberCount: item.memberCount ?? 0,
           status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
+          organizationId: item.organizationId,
+          organizationName: item.organizationName,
           createdAt: item.createdAt
             ? new Date(item.createdAt).toISOString()
             : "",
@@ -167,7 +173,7 @@ export const groupService = {
    */
   async getById(id: string): Promise<Group> {
     try {
-      const resp = await api.get(`/groups/${id}`);
+      const resp = await api.get(`/v1/groups/${id}`);
       const item: any = extractData(resp);
       if (!item) throw new Error("Nhóm không tồn tại");
 
@@ -180,6 +186,8 @@ export const groupService = {
         permissions: item.permissions,
         memberCount: undefined,
         status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
+        organizationId: item.organizationId,
+        organizationName: item.organizationName,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
           : "",
@@ -197,13 +205,14 @@ export const groupService = {
    */
   async create(payload: CreateGroupPayload): Promise<Group> {
     try {
-      const resp = await api.post("/groups", {
+      const resp = await api.post("/v1/groups", {
         name: payload.name,
         code: payload.code ?? payload.name.substring(0, 10).replace(/\\s+/g, "_").toLowerCase(),
         description: payload.description,
         groupType: payload.groupType,
         permissions: payload.permissions,
         status: (payload.status ?? "active").toUpperCase(),
+        organizationId: payload.organizationId,
       });
       const item: any = extractData(resp);
 
@@ -216,6 +225,8 @@ export const groupService = {
         permissions: item.permissions,
         memberCount: 0,
         status: "active",
+        organizationId: item.organizationId ?? payload.organizationId,
+        organizationName: item.organizationName,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -229,7 +240,7 @@ export const groupService = {
    */
   async update(id: string, payload: UpdateGroupPayload): Promise<Group> {
     try {
-      const resp = await api.put(`/groups/${id}`, {
+      const resp = await api.put(`/v1/groups/${id}`, {
         name: payload.name,
         code: payload.code,
         description: payload.description,
@@ -267,7 +278,7 @@ export const groupService = {
    */
   async delete(id: string): Promise<void> {
     try {
-      await api.delete(`/groups/${id}`);
+      await api.delete(`/v1/groups/${id}`);
     } catch (error) {
       throw error;
     }
@@ -284,7 +295,7 @@ export const groupService = {
       if (params?.pageSize) qParams.append("size", String(params.pageSize));
       if (params?.search) qParams.append("search", params.search);
 
-      const resp = await api.get(`/groups/${groupId}/members?${qParams.toString()}`);
+      const resp = await api.get(`/v1/groups/${groupId}/members?${qParams.toString()}`);
       const rawData: any = extractData(resp);
       const items: any[] = Array.isArray(rawData)
         ? rawData
@@ -328,7 +339,7 @@ export const groupService = {
     payload: AddMemberPayload
   ): Promise<void> {
     try {
-      await api.post(`/groups/${groupId}/members`, {
+      await api.post(`/v1/groups/${groupId}/members`, {
         userId: payload.userId,
       });
     } catch (error) {
@@ -341,15 +352,35 @@ export const groupService = {
    */
   async removeMember(groupId: string, userId: string): Promise<void> {
     try {
-      await api.delete(`/groups/${groupId}/members/${userId}`);
+      await api.delete(`/v1/groups/${groupId}/members/${userId}`);
     } catch (error) {
       throw error;
     }
   },
 
-  /** GET /api/groups/:id/roles — các vai trò đang gán cho nhóm. */
-  async getRoles(groupId: string): Promise<GroupRole[]> {
-    const resp = await api.get(`/groups/${groupId}/roles`);
+  /** PATCH /api/v1/groups/:id/lock — khóa/mở khóa nhóm. */
+  async lock(groupId: string): Promise<Group> {
+    const resp = await api.patch(`/v1/groups/${groupId}/lock`);
+    const item: any = extractData(resp);
+    return {
+      id: item.id ?? groupId,
+      name: item.name ?? '',
+      code: item.code,
+      description: item.description,
+      groupType: item.groupType?.toLowerCase(),
+      permissions: item.permissions,
+      memberCount: item.memberCount,
+      status: (item.status?.toLowerCase() as Group['status']) ?? 'active',
+      organizationId: item.organizationId,
+      organizationName: item.organizationName,
+      createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : '',
+    };
+  },
+
+  /** GET /api/v1/groups/:id/permissions — các vai trò đang gán cho nhóm. */
+  async getPermissions(groupId: string): Promise<GroupRole[]> {
+    const resp = await api.get(`/v1/groups/${groupId}/permissions`);
     const rawData: any = extractData(resp);
     const items: any[] = Array.isArray(rawData) ? rawData : [];
     return items.map((item) => ({
@@ -362,9 +393,9 @@ export const groupService = {
     }));
   },
 
-  /** PUT /api/groups/:id/roles — thay thế toàn bộ role của nhóm. */
-  async updateRoles(groupId: string, roleIds: string[]): Promise<GroupRole[]> {
-    const resp = await api.put(`/groups/${groupId}/roles`, { roleIds });
+  /** PUT /api/v1/groups/:id/permissions — thay thế toàn bộ role của nhóm. */
+  async updatePermissions(groupId: string, roleIds: string[]): Promise<GroupRole[]> {
+    const resp = await api.put(`/v1/groups/${groupId}/permissions`, { roleIds });
     const rawData: any = extractData(resp);
     const items: any[] = Array.isArray(rawData) ? rawData : [];
     return items.map((item) => ({

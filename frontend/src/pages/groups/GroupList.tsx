@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Modal, Form, Input, Spin, Button, Select, Descriptions, Tree, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { Typography, Modal, Form, Input, Spin, Button, Select, TreeSelect, Descriptions, Tree, Empty } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -12,8 +12,9 @@ import Pagination from '../../components/list-view/Pagination';
 import { groupService } from '../../services/groupService';
 import type { Group, CreateGroupPayload, UpdateGroupPayload, GroupRole } from '../../services/groupService';
 import { roleService } from '../../services/roleService';
+import { organizationService } from '../../services/organizationService';
 import type { Role } from '../../types/role';
-import { actionPrimary, textSecondary, statusDraft, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, statusOperational } from '../../tokens';
+import { actionPrimary, textSecondary, statusDraft, statusCritical, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, statusOperational } from '../../tokens';
 import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
 const { confirm } = Modal;
@@ -52,6 +53,7 @@ export default function GroupList() {
   const [permissionSearch, setPermissionSearch] = useState('');
   const [permissionLoading, setPermissionLoading] = useState(false);
   const [permissionSaving, setPermissionSaving] = useState(false);
+  const [orgTree, setOrgTree] = useState<any[]>([]);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true); setIsError(false);
@@ -68,6 +70,31 @@ export default function GroupList() {
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const orgs = await organizationService.getTree();
+        const buildOrgTree = (nodes: any[]): any[] => {
+          const map = new Map<string, any>();
+          const roots: any[] = [];
+          nodes.forEach((org) => {
+            map.set(org.id, { title: org.name, value: org.id, parentId: org.parentId, children: [] });
+          });
+          nodes.forEach((org) => {
+            const node = map.get(org.id);
+            if (org.parentId && map.has(org.parentId)) {
+              map.get(org.parentId).children.push(node);
+            } else {
+              roots.push(node);
+            }
+          });
+          return roots;
+        };
+        setOrgTree(buildOrgTree(orgs));
+      } catch (_) { /* silently ignore */ }
+    })();
+  }, []);
+
 
   const totalAll = countActive + countInactive;
 
@@ -79,7 +106,7 @@ export default function GroupList() {
 
   const openEditModal = useCallback((group: Group) => {
     setEditingGroup(group);
-    form.setFieldsValue({ name: group.name, code: group.code, groupType: group.groupType, description: group.description, status: group.status });
+    form.setFieldsValue({ name: group.name, code: group.code, groupType: group.groupType, description: group.description, status: group.status, organizationId: group.organizationId });
     setModalOpen(true);
   }, [form]);
 
@@ -87,11 +114,11 @@ export default function GroupList() {
     try {
       const values = await form.validateFields(); setSubmitting(true);
       if (editingGroup) {
-        const payload: UpdateGroupPayload = { name: values.name, code: values.code, groupType: values.groupType, description: values.description, status: values.status };
+        const payload: UpdateGroupPayload = { name: values.name, code: values.code, groupType: values.groupType, description: values.description, status: values.status, organizationId: values.organizationId };
         await groupService.update(editingGroup.id, payload);
         toast.success('Đã cập nhật nhóm');
       } else {
-        const payload: CreateGroupPayload = { name: values.name, code: values.code, groupType: values.groupType, description: values.description, status: values.status };
+        const payload: CreateGroupPayload = { name: values.name, code: values.code, groupType: values.groupType, description: values.description, status: values.status, organizationId: values.organizationId };
         await groupService.create(payload);
         toast.success('Đã tạo nhóm mới');
       }
@@ -115,6 +142,22 @@ export default function GroupList() {
     });
   }, [fetchGroups]);
 
+  const handleLock = useCallback((group: Group) => {
+    const actionLabel = group.status === 'active' ? 'khóa' : 'mở khóa';
+    confirm({
+      title: `Xác nhận ${actionLabel} nhóm`,
+      icon: <ExclamationCircleOutlined />,
+      content: `Bạn có chắc chắn muốn ${actionLabel} nhóm "${group.name}"?`,
+      okText: group.status === 'active' ? 'Khóa nhóm' : 'Mở khóa nhóm',
+      okType: 'primary',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try { await groupService.lock(group.id); toast.success(`Đã ${actionLabel} nhóm`); fetchGroups(); }
+        catch (err: unknown) { toast.error(err instanceof Error ? err.message : `${actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1)} nhóm thất bại`); }
+      },
+    });
+  }, [fetchGroups]);
+
   const openPermissionModal = useCallback(async (group: Group) => {
     setPermissionGroup(group);
     setPermissionSearch('');
@@ -122,7 +165,7 @@ export default function GroupList() {
     try {
       const [roles, assigned] = await Promise.all([
         roleService.listActive(),
-        groupService.getRoles(group.id),
+        groupService.getPermissions(group.id),
       ]);
       setPermissionRoles(roles.filter((role) => role.id && role.name));
       setSelectedRoleIds(assigned.map((role: GroupRole) => role.id));
@@ -139,7 +182,7 @@ export default function GroupList() {
     if (!permissionGroup) return;
     setPermissionSaving(true);
     try {
-      await groupService.updateRoles(permissionGroup.id, selectedRoleIds);
+      await groupService.updatePermissions(permissionGroup.id, selectedRoleIds);
       toast.success('Đã cập nhật phân quyền cho nhóm');
       setPermissionGroup(null);
     } catch (err: unknown) {
@@ -173,9 +216,13 @@ export default function GroupList() {
     if (hasPerm('group:edit')) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
     }
+    if (hasPerm('group:lock')) {
+      const isActive = record.status === 'active';
+      actions.push({ key: 'lock', label: isActive ? 'Khóa nhóm' : 'Mở khóa nhóm', icon: isActive ? <LockOutlined /> : <UnlockOutlined />, onClick: () => handleLock(record) });
+    }
     if (hasPerm('group:delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return actions;
-  }, [hasPerm, navigate, handleViewDetail, openPermissionModal, openEditModal, handleDelete]);
+  }, [hasPerm, navigate, handleViewDetail, openPermissionModal, openEditModal, handleDelete, handleLock]);
 
   const permissionTreeData = useMemo(() => {
     const query = permissionSearch.trim().toLowerCase();
@@ -207,6 +254,8 @@ export default function GroupList() {
         </Typography.Text>
       ) },
     { key: 'code', label: 'Mã nhóm', dataIndex: 'code', width: 120 },
+    { key: 'organizationName', label: 'Đơn vị', dataIndex: 'organizationName', width: 180,
+      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'groupType', label: 'Loại nhóm', dataIndex: 'groupType', width: 140, align: 'center' as const,
       render: (text: string) => {
         const typeConfig: Record<string, { label: string; color: string }> = {
@@ -330,6 +379,9 @@ export default function GroupList() {
             <Descriptions.Item label="Mã nhóm">
               <code>{detailGroup.code}</code>
             </Descriptions.Item>
+            <Descriptions.Item label="Đơn vị">
+              {detailGroup.organizationName || <Typography.Text type="secondary">—</Typography.Text>}
+            </Descriptions.Item>
             <Descriptions.Item label="Loại nhóm">
               {(() => {
                 const typeConfig: Record<string, { label: string; color: string }> = {
@@ -435,10 +487,22 @@ export default function GroupList() {
               <Input placeholder="vd: Nhóm Quản lý" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
             <Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }]}>
-              <Input placeholder="vd: QL01" style={{ borderRadius: radiusPill, height: 40 }} />
+              <Input placeholder="vd: QL01" disabled={!!editingGroup} style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
             <Form.Item name="groupType" {...labelProps('Loại nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn loại nhóm' }]}>
               <Select placeholder="Chọn loại nhóm" options={[{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }]} style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="organizationId" {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: !editingGroup, message: 'Vui lòng chọn đơn vị' }]}>
+              <TreeSelect
+                placeholder="Chọn đơn vị"
+                treeData={orgTree}
+                showSearch
+                treeDefaultExpandAll={false}
+                disabled={!!editingGroup}
+                filterTreeNode={(input, node: any) => (node?.title ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                allowClear
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
             </Form.Item>
             <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
               <Select placeholder="Chọn trạng thái" options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} style={{ borderRadius: radiusPill, height: 40 }} />

@@ -111,6 +111,12 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(permissionsByCode, "groupmember", "manage", "Quản lý thành viên nhóm",
                 "Thêm, xóa thành viên khỏi nhóm");
 
+        // ---- group lock/read (F-002 scope expansion) ----
+        seedPermission(permissionsByCode, "group", "lock", "Khóa/Mở khóa nhóm",
+                "Khóa hoặc mở khóa nhóm người dùng");
+        seedPermission(permissionsByCode, "group", "read", "Xem chi tiết nhóm",
+                "Xem chi tiết nhóm người dùng");
+
         // ---- document management (F-128) ----
         seedPermission(permissionsByCode, "document", "read", "Xem văn bản pháp lý",
                 "Xem danh sách và chi tiết văn bản pháp lý");
@@ -290,6 +296,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "admin:view",
                 "document:read", "document:create", "document:update", "document:delete",
                 "group:create", "group:edit", "group:delete", "group:copy", "group:history", "group:permission", "groupmember:manage",
+                "group:lock", "group:read",
                 "report:read", "connection:read", "data:read", "data:approve",
                 // M-003 read + approve actions
                 "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
@@ -302,6 +309,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "orgunit:read", "data:approve", "report:read", "approve:action",
                 "admin:view", "document:read",
                 "group:manage", "group:create", "group:edit", "group:delete", "groupmember:manage",
+                "group:lock", "group:read",
                 // M-003 read + approve actions
                 "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
@@ -313,6 +321,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "orgunit:read", "data:create", "data:update", "data:read",
                 "report:read", "check:read",
                 "document:read", "document:create", "document:update",
+                "group:read",
                 // M-003 create/read/update
                 "navigationchannel:create", "navigationchannel:read", "navigationchannel:update",
                 "dikerevetment:create", "dikerevetment:read", "dikerevetment:update",
@@ -323,12 +332,14 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
                 "orgunit:read", "data:read", "data:update",
                 "document:read",
+                "group:read",
                 // M-003 read only
                 "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
                 "radarstation:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_PUBLIC_USER", List.of(
                 "orgunit:read", "data:read", "document:read",
+                "group:read",
                 // M-003 read only
                 "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
                 "radarstation:read", "vts:read"
@@ -445,6 +456,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "group", "history", "Xem lịch sử nhóm", "Xem lịch sử thay đổi nhóm");
         seedPermission(newPerms, "group", "permission", "Phân quyền nhóm", "Gán vai trò cho nhóm và cấp quyền kế thừa cho thành viên");
         seedPermission(newPerms, "groupmember", "manage", "Quản lý thành viên nhóm", "Thêm, xóa thành viên khỏi nhóm");
+        seedPermission(newPerms, "group", "lock", "Khóa/Mở khóa nhóm", "Khóa hoặc mở khóa nhóm người dùng");
+        seedPermission(newPerms, "group", "read", "Xem chi tiết nhóm", "Xem chi tiết nhóm người dùng");
         seedPermission(newPerms, "document", "read", "Xem văn bản pháp lý", "Xem danh sách và chi tiết văn bản pháp lý");
         seedPermission(newPerms, "document", "create", "Tạo văn bản pháp lý", "Tạo mới văn bản pháp lý");
         seedPermission(newPerms, "document", "update", "Sửa văn bản pháp lý", "Chỉnh sửa văn bản pháp lý");
@@ -550,6 +563,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
             "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
             "admin:view", "document:read", "document:create", "document:update", "document:delete",
             "group:create", "group:edit", "group:delete", "group:copy", "group:history", "group:permission", "groupmember:manage",
+            "group:lock", "group:read",
             "report:read", "connection:read", "data:read", "data:approve",
             "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
             "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
@@ -560,6 +574,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermMap.put("ROLE_LEADER", List.of(
             "orgunit:read", "data:approve", "report:read", "approve:action",
             "admin:view", "document:read", "group:manage", "group:create", "group:edit", "group:delete", "groupmember:manage",
+            "group:lock", "group:read",
             "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
             "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
             "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
@@ -567,10 +582,11 @@ public class RolePermissionSeeder implements CommandLineRunner {
             "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermMap.put("ROLE_SPECIALIST", List.of(
-            "document:read", "document:create", "document:update"
+            "document:read", "document:create", "document:update",
+            "group:read"
         ));
-        rolePermMap.put("ROLE_PORT_OPERATOR", List.of("document:read"));
-        rolePermMap.put("ROLE_PUBLIC_USER", List.of("document:read"));
+        rolePermMap.put("ROLE_PORT_OPERATOR", List.of("document:read", "group:read"));
+        rolePermMap.put("ROLE_PUBLIC_USER", List.of("document:read", "group:read"));
 
         int assigned = 0;
         for (var entry : rolePermMap.entrySet()) {

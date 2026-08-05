@@ -217,4 +217,35 @@ class UserGroupServiceTest {
         assertEquals("Phòng Kế Hoạch - Copy", copyResult.getName());
         verify(groupHistoryRepository).save(any(GroupHistory.class));
     }
+
+    @Test
+    @DisplayName("lockGroup_shouldToggleStatusFromActiveToInactiveAndLogHistory")
+    void lockGroup_shouldToggleStatusFromActiveToInactiveAndLogHistory() {
+        group.setStatus(GroupStatus.ACTIVE);
+        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
+        when(groupRepository.save(any(UserGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UserGroup result = userGroupService.lockGroup(groupId, operatorId, "Admin");
+
+        assertNotNull(result);
+        assertEquals(GroupStatus.INACTIVE, result.getStatus());
+        verify(groupRepository).save(group);
+        verify(groupHistoryRepository).save(any(GroupHistory.class));
+    }
+
+    @Test
+    @DisplayName("lockGroup_shouldToggleStatusFromInactiveToActiveAndLogHistory")
+    void lockGroup_shouldToggleStatusFromInactiveToActiveAndLogHistory() {
+        group.setStatus(GroupStatus.INACTIVE);
+        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
+        when(groupRepository.save(any(UserGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UserGroup result = userGroupService.lockGroup(groupId, operatorId, "Admin");
+
+        assertNotNull(result);
+        assertEquals(GroupStatus.ACTIVE, result.getStatus());
+        verify(groupRepository).save(group);
+        verify(groupHistoryRepository).save(any(GroupHistory.class));
+    }
 }
+

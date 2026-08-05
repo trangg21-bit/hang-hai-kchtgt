@@ -1,0 +1,98 @@
+{
+  "triage_id": "TRI-1785914592524-c8df",
+  "created_at": 1785914592525,
+  "request_summary": "F-002: Align code with BA doc — /v1 prefix, PATCH /lock, /roles→/permissions, +organizationId, +group:lock+group:read permissions, Admin Cục data scope",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/groups/GroupList.tsx",
+      "frontend/src/services/groupService.ts",
+      "src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/CreateGroupRequest.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/GroupResponse.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/UpdateGroupRequest.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/UserGroupResponse.java",
+      "src/main/java/com/hanghai/kchtg/group/entity/UserGroup.java",
+      "src/main/java/com/hanghai/kchtg/group/service/GroupService.java",
+      "src/main/java/com/hanghai/kchtg/group/service/UserGroupService.java",
+      "src/main/resources/db/migration/V20260805120000__add_organization_id_to_user_groups.sql"
+    ],
+    "impact_files": [
+      "frontend/src/pages/groups/GroupList.tsx",
+      "frontend/src/services/groupService.ts",
+      "src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/CreateGroupRequest.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/GroupResponse.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/UpdateGroupRequest.java",
+      "src/main/java/com/hanghai/kchtg/group/dto/UserGroupResponse.java",
+      "src/main/java/com/hanghai/kchtg/group/entity/UserGroup.java",
+      "src/main/java/com/hanghai/kchtg/group/service/GroupService.java",
+      "src/main/java/com/hanghai/kchtg/group/service/UserGroupService.java",
+      "src/main/resources/db/migration/V20260805120000__add_organization_id_to_user_groups.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260805120000__add_organization_id_to_user_groups.sql"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260805120000__add_organization_id_to_user_groups.sql — floors at C3 regardless of size (12 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "API /api/groups → /api/v1/groups; GroupList.tsx TreeSelect organizationId",
+  "blast_radius": 12,
+  "done_oracle": "mvn compile -q && npx tsc --noEmit both pass",
+  "change_type": "scope_expansion",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+      "line": 31,
+      "quote": "@RequestMapping(\"/api/groups\")",
+      "source_hash": "b9a09f51bb36d78997ab091ecc5fc6984a13cc8e5b3ec6837f13bf26810fa8bd",
+      "quote_hash": "c2d930f28f57056d183caf8c799dcb82761d274bffb3ed97dd86eaa8d796aab1",
+      "note": "Base path needs /v1 prefix"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+      "line": 230,
+      "quote": "    @PutMapping(\"/{id}/roles\")",
+      "source_hash": "b9a09f51bb36d78997ab091ecc5fc6984a13cc8e5b3ec6837f13bf26810fa8bd",
+      "quote_hash": "86e3a92edd33ccd6e9f1052fb214b6cba7a125d906fecfe57575ec7548f4352f",
+      "note": "Path needs rename to /permissions per BA doc"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/group/entity/UserGroup.java",
+      "line": 72,
+      "quote": "    private GroupStatus status = GroupStatus.ACTIVE;",
+      "source_hash": "72ccb52441c1241f24bc469d6c23687d4d65dc3216b168c8e4945f0268559b07",
+      "quote_hash": "9638dd2cbaf48d8803743b87ae30e560e43860374a7e99cef10456d7fc95617f",
+      "note": "Missing organizationId field"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java",
+      "line": 292,
+      "quote": "                \"group:create\", \"group:edit\", \"group:delete\", \"group:copy\", \"group:history\", \"group:permission\", \"groupmember:manage\",",
+      "source_hash": "e9dcc5722a20869509043d1ca29c2f14f2e6421937d2685d767d5ed768ab51b5",
+      "quote_hash": "5a3516df6b948534f98f8e202992abfe76c72c8f288750e28d6f5061f126db6b",
+      "note": "Missing group:lock and group:read permissions"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f78545371507c3711edb6eccd331674e2b3af3e0",
+    "dirty": false,
+    "captured_at": 1785914592680
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

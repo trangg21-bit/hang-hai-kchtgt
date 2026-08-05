@@ -2,12 +2,12 @@
 feature-id: M-001
 feature-name: Quản trị hệ thống
 pipeline-type: sdlc
-status: closed
+status: in-progress
 current-stage: closed
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-28T12:19:38Z
+last-updated: 2026-08-05T08:21:42Z
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -19,39 +19,46 @@ completed-stages:
     verdict: Ready for feature pipeline
     completed-at: 2026-06-28
   engineering-business-analyst:
-    verdict: Ready for feature pipeline (all closed)
-    completed-at: 2026-06-28
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md
+    completed-at: 2026-08-05
   engineering-security-architect:
-    verdict: Ready for Tech Lead
-    completed-at: 2026-06-28
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md
+    completed-at: 2026-08-05
   engineering-tech-lead:
-    verdict: Ready for Implementation
-    completed-at: 2026-06-28
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/design/00-design-plan.md
+    completed-at: 2026-08-05
   engineering-implementor:
-    verdict: Ready for QA
-    completed-at: 2026-06-28
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-dev-w1-f002-scope-expansion-backend.md
+    completed-at: 2026-08-05
   engineering-implementation:
-    verdict: Ready for Code Review
-    completed-at: 2026-06-28
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-f002-scope-expansion-frontend.md
+    completed-at: 2026-08-05
   engineering-code-review:
-    verdict: Module Complete
-    completed-at: 2026-06-28
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md
+    completed-at: 2026-08-05
   qa:
-    verdict: Module Complete
-    completed-at: 2026-06-28
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md
+    completed-at: 2026-08-05
   reviewer:
-    verdict: Module Complete
-    completed-at: 2026-06-28
-  closed:
-    verdict: Module Complete
-    completed-at: 2026-06-28
-stages-queue: []
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md
+    completed-at: 2026-08-05
+stages-queue:
+  - closed
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
   tokens-by-stage: {}
   tokens-by-feature: {}
-rework-count: {}
+rework-count:
+  engineering-business-analyst: 1
 locked-fields: []
 version: 4
 finalizers: []
@@ -59,6 +66,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
+reopened-at: 2026-08-05T07:24:39Z
+reopened-reason: "F-002 scope expansion: align code with updated BA feature-brief (4 gaps: /v1 prefix, PATCH /lock, organizationId, Admin Cục data scope, group:lock+group:read permissions)"
+released: true
 ---
 # Pipeline State: Quản trị hệ thống (M-001)
 
@@ -77,15 +87,23 @@ none
 
 ## Stage Progress
 
-| Stage | Status | Verdict | Date |
-|-------|--------|---------|------|
-| intake | completed | Ready for BA | 2026-06-28 |
-| engineering-business-analyst | completed | Ready for SA | 2026-06-28 |
-| engineering-security-architect | completed | Ready for Tech Lead | 2026-06-28 |
-| engineering-tech-lead | completed | Ready for Implementation | 2026-06-28 |
-| engineering-implementor | completed | Ready for QA | 2026-06-28 |
-| engineering-implementation | completed | Ready for Code Review | 2026-06-28 |
-| engineering-code-review | completed | Module Complete | 2026-06-28 |
-| qa | completed | Module Complete | 2026-06-28 |
-| reviewer | completed | Module Complete | 2026-06-28 |
-| closed | completed | Module Complete | 2026-06-28 |
+| # | Stage | Agent | Verdict | Artifact | Date |
+|---|---|---|---|---|---|
+| 1 | intake | intake | Ready for feature pipeline | — | 2026-06-28 |
+| 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md | 2026-08-05 |
+| 3 | engineering-security-architect | engineering-security-architect | Pass | docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md | 2026-08-05 |
+| 4 | engineering-tech-lead | engineering-tech-lead | Pass | docs/modules/M-001-quan-tri-he-thong/design/00-design-plan.md | 2026-08-05 |
+| 5 | engineering-implementor | engineering-implementor | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-dev-w1-f002-scope-expansion-backend.md | 2026-08-05 |
+| 6 | engineering-implementation | engineering-implementation | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-f002-scope-expansion-frontend.md | 2026-08-05 |
+| 7 | engineering-code-review | engineering-code-review | Pass | docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md | 2026-08-05 |
+| 8 | qa | qa | Pass | docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md | 2026-08-05 |
+| 9 | reviewer | reviewer | Pass | docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md | 2026-08-05 |
+| 10 | closed | closed | — | — | — |
+
+## Current Stage
+
+**closed** — Pipeline complete.
+
+## Next Action
+
+Released — production sign-off granted (`released: true`).

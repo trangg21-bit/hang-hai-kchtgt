@@ -238,7 +238,7 @@ export default function AppLayout() {
         canAccessMenu('/port') ? { key: '/port', label: 'Quản lý cảng biển', icon: <EnvironmentOutlined /> } : null,
         canAccessMenu('/berth') ? { key: '/berth', label: 'Quản lý bến cảng', icon: <ContainerOutlined /> } : null,
         canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <ApartmentOutlined /> } : null,
-        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn' } : null,
+        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <HomeOutlined /> } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
     },

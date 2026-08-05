@@ -365,43 +365,107 @@ export interface DryPort {
   id: string;
   dryPortCode: string;
   dryPortName: string;
-  province: string;
-
-  area: number;
-  congSuatTEU: number;
-  operationalStatus: string;
-  approvalStatus: string;
-  orgUnitId: string;
-  bieuTuongId?: string;
-  createdBy: string;
-  updatedBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateCangCanRequest {
-  dryPortCode: string;
-  dryPortName: string;
-  province: string;
-
-  area: number;
-  congSuatTEU: number;
-  operationalStatus: string;
-  approvalStatus: string;
-  orgUnitId: string;
-  bieuTuongId?: string;
-}
-
-export interface UpdateCangCanRequest {
-  dryPortCode?: string;
-  dryPortName?: string;
-  province?: string;
-
+  provinceId?: number;
+  orgUnitId?: string;
+  // General info
+  operatingUnit?: string;
+  region?: string;
+  detailedLocation?: string;
+  transportCorridor?: string;
   area?: number;
-  congSuatTEU?: number;
+  warehouseArea?: number;
+  yardArea?: number;
+  teuCapacity?: number;
+  connectionMode?: string;
+  portStatus?: number;
   operationalStatus?: string;
-  approvalStatus?: string;
-  bieuTuongId?: string | null;
+  remarks?: string;
+  // Announcement
+  announcementTime?: string;
+  announcementDecisionNumber?: string;
+  announcementDecisionDate?: string;
+  announcementOrg?: string;
+  // GIS (geometry_type managed by gis_spatial_objects)
+  coordinateSystem?: number;
+  displayRule?: number;
+  mapSymbolId?: string;
+  spatialId?: string;
+  coordinates?: string;
+  latitude?: number;
+  longitude?: number;
+  // Status
+  approvalStatus: string;
+  // Audit
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateDryPortRequest {
+  action?: string;  // 'draft' | 'submit' | 'approve'
+  dryPortCode?: string;
+  dryPortName: string;
+  provinceId?: number;
+  orgUnitId?: string;
+  // General info
+  operatingUnit?: string;
+  region?: string;
+  detailedLocation?: string;
+  transportCorridor?: string;
+  area?: number;
+  warehouseArea?: number;
+  yardArea?: number;
+  teuCapacity?: number;
+  connectionMode?: string;
+  portStatus?: number;
+  operationalStatus?: string;
+  remarks?: string;
+  // Announcement
+  announcementTime?: string;
+  announcementDecisionNumber?: string;
+  announcementDecisionDate?: string;
+  announcementOrg?: string;
+  // GIS (geometry_type managed by gis_spatial_objects)
+  coordinateSystem?: number;
+  displayRule?: number;
+  mapSymbolId?: string;
+  latitude?: number;
+  longitude?: number;
+  coordinates?: string;
+}
+
+export interface UpdateDryPortRequest {
+  id: string;
+  action?: string;  // 'submit' | 'approve'
+  dryPortName?: string;
+  provinceId?: number;
+  orgUnitId?: string;
+  // General info
+  operatingUnit?: string;
+  region?: string;
+  detailedLocation?: string;
+  transportCorridor?: string;
+  area?: number;
+  warehouseArea?: number;
+  yardArea?: number;
+  teuCapacity?: number;
+  connectionMode?: string;
+  portStatus?: number;
+  operationalStatus?: string;
+  remarks?: string;
+  // Announcement
+  announcementTime?: string;
+  announcementDecisionNumber?: string;
+  announcementDecisionDate?: string;
+  announcementOrg?: string;
+  // GIS (geometry_type managed by gis_spatial_objects)
+  coordinateSystem?: number;
+  displayRule?: number;
+  mapSymbolId?: string | null;
+  latitude?: number;
+  longitude?: number;
+  coordinates?: string;
 }
 
 // ── 5. Vùng nước ─────────────────────────────────────────────────────

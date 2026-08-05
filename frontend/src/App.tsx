@@ -56,7 +56,8 @@ import BerthForm from './pages/port/BerthForm';
 import PierList from './pages/port/PierList';
 import PierForm from './pages/port/PierForm';
 
-import DryPortListPage from './app/dryport/DryPortListPage';
+import DryPortList from './pages/port/DryPortList';
+import DryPortForm from './pages/port/DryPortForm';
 
 import WaterZoneListPage from './app/waterzone/WaterZoneListPage';
 
@@ -199,7 +200,9 @@ export default function App() {
                 <Route path="/Pier/create" element={<PermissionGuard permission="pier:create"><><PierList /><PierForm /></></PermissionGuard>} />
                 <Route path="/Pier/:id/edit" element={<PermissionGuard permission="pier:update"><><PierList /><PierForm /></></PermissionGuard>} />
 
-                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
+                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortList /></PermissionGuard>} />
+                <Route path="/dry-port/create" element={<PermissionGuard permission="dryport:create"><><DryPortList /><DryPortForm /></></PermissionGuard>} />
+                <Route path="/dry-port/:id/edit" element={<PermissionGuard permission="dryport:update"><><DryPortList /><DryPortForm /></></PermissionGuard>} />
 
                 <Route path="/water-zone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
 
