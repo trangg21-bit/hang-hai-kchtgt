@@ -251,6 +251,37 @@ PMO Lead
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).
 Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/\*\*.
 
+## Permission Registration for New Modules (MANDATORY — mọi Dev thêm module mới PHẢI đọc)
+
+Khi phát triển module/chức năng mới có yêu cầu phân quyền, Dev **BẮT BUỘC** đăng ký permission trong file:
+
+```
+src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java
+```
+
+### Quy trình bắt buộc
+
+1. **Thêm `seedPermission()`** cho từng permission của module mới trong cả 2 method: `run()` và `upsertMissingPermissions()`. Format: `<resource>:<action>` (vd: `navigationchannel:create`).
+
+2. **Gán permission vào role** — thêm permission code vào danh sách `rolePermissionMap` của từng role phù hợp trong method `run()` và `rolePermMap` trong `upsertMissingPermissions()`.
+
+3. **Kiểm tra `upsertMissingPermissions()`** — method này chạy mỗi lần khởi động, tự động thêm permission mới (đã seed) vào role đã tồn tại. Chỉ hoạt động nếu Dev đã thêm `seedPermission()`.
+
+### Hậu quả nếu bỏ qua
+
+- Permission không tồn tại trong DB → `@PreAuthorize` trên controller không khớp → **403 Forbidden** với mọi user kể cả Admin
+- Cây phân quyền trong popup Phân quyền nhóm (F-002) sẽ không hiển thị chức năng mới
+
+### Agent workflow
+
+```
+PMO Lead
+  └── Dispatch Dev làm module mới → PHẢI chép constraint sau vào prompt:
+        "Sau khi tạo controller với @PreAuthorize, vào RolePermissionSeeder.java
+         thêm seedPermission() cho từng permission mới trong cả run() và
+         upsertMissingPermissions(), rồi gán vào đúng role."
+```
+
 ## AI Checklist for Reports & Gaps (BẮT BUỘC TUÂN THỦ)
 
 Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệp vụ, AI **phải luôn luôn kiểm tra trực tiếp** các điểm sau trước khi tiến hành viết code:
