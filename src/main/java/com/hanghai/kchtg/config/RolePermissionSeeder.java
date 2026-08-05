@@ -257,9 +257,9 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "Chỉnh sửa hệ thống VTS");
         seedPermission(permissionsByCode, "vts", "delete", "Xóa VTS",
                 "Xóa hệ thống VTS");
-        seedPermission(permissionsByCode, "vts", "approve:c1", "Phê duyệt C1 VTS",
+        seedPermission(permissionsByCode, "vts", "approvec1", "Phê duyệt C1 VTS",
                 "Phê duyệt cấp 1 VTS");
-        seedPermission(permissionsByCode, "vts", "approve:c2", "Phê duyệt C2 VTS",
+        seedPermission(permissionsByCode, "vts", "approvec2", "Phê duyệt C2 VTS",
                 "Phê duyệt cấp 2 VTS");
         seedPermission(permissionsByCode, "vts", "history", "Xem lịch sử VTS",
                 "Xem lịch sử thay đổi VTS");
@@ -283,7 +283,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "radarstation:create", "radarstation:read", "radarstation:update", "radarstation:delete",
                 "radarstation:approvec1", "radarstation:approvec2", "radarstation:history",
                 "vts:create", "vts:read", "vts:update", "vts:delete",
-                "vts:approve:c1", "vts:approve:c2", "vts:history"
+                "vts:approvec1", "vts:approvec2", "vts:history"
         ));
         rolePermissionMap.put("ROLE_ADMIN", List.of(
                 "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
@@ -296,7 +296,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
                 "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-                "vts:read", "vts:approve:c1", "vts:approve:c2"
+                "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
                 "orgunit:read", "data:approve", "report:read", "approve:action",
@@ -307,7 +307,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
                 "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-                "vts:read", "vts:approve:c1", "vts:approve:c2"
+                "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermissionMap.put("ROLE_SPECIALIST", List.of(
                 "orgunit:read", "data:create", "data:update", "data:read",
@@ -500,8 +500,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "vts", "read", "Xem VTS", "Xem danh sách và chi tiết hệ thống VTS");
         seedPermission(newPerms, "vts", "update", "Cập nhật VTS", "Chỉnh sửa hệ thống VTS");
         seedPermission(newPerms, "vts", "delete", "Xóa VTS", "Xóa hệ thống VTS");
-        seedPermission(newPerms, "vts", "approve:c1", "Phê duyệt C1 VTS", "Phê duyệt cấp 1 VTS");
-        seedPermission(newPerms, "vts", "approve:c2", "Phê duyệt C2 VTS", "Phê duyệt cấp 2 VTS");
+        seedPermission(newPerms, "vts", "approvec1", "Phê duyệt C1 VTS", "Phê duyệt cấp 1 VTS");
+        seedPermission(newPerms, "vts", "approvec2", "Phê duyệt C2 VTS", "Phê duyệt cấp 2 VTS");
         seedPermission(newPerms, "vts", "history", "Xem lịch sử VTS", "Xem lịch sử thay đổi VTS");
 
         int inserted = 0;
@@ -555,7 +555,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
             "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
             "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
             "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-            "vts:read", "vts:approve:c1", "vts:approve:c2"
+            "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermMap.put("ROLE_LEADER", List.of(
             "orgunit:read", "data:approve", "report:read", "approve:action",
@@ -564,7 +564,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
             "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
             "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
             "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
-            "vts:read", "vts:approve:c1", "vts:approve:c2"
+            "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermMap.put("ROLE_SPECIALIST", List.of(
             "document:read", "document:create", "document:update"
