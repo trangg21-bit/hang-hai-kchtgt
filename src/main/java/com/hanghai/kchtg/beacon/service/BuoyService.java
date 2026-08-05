@@ -136,7 +136,7 @@ public class BuoyService {
         }
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "CREATE", null, "created", entity.getCreatedBy());
+        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "CREATE", null, "created", entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system");
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);

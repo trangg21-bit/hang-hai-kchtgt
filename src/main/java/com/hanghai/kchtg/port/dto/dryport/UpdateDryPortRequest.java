@@ -9,6 +9,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
@@ -17,6 +19,12 @@ public class UpdateDryPortRequest {
 
     @NotNull(message = "ID không được để trống")
     private UUID id;
+
+    /**
+     * Action: submit (Gửi phê duyệt), approve (Lưu và phê duyệt).
+     * Null = regular update, keeps current status.
+     */
+    private String saveAction;
 
     private String dryPortName;
     private Integer provinceId;
@@ -34,8 +42,23 @@ public class UpdateDryPortRequest {
     private BigDecimal teuCapacity;
     private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
     private UUID mapSymbolId;
-    private GisGeometryType geometryType;
     private String coordinates;
 
-
+    // ── Extended fields (V113 — from F-026 feature brief) ──────────────
+    private UUID orgUnitId;
+    private String operatingUnit;
+    private String region;
+    private String detailedLocation;
+    private String transportCorridor;
+    private BigDecimal warehouseArea;
+    private BigDecimal yardArea;
+    private String connectionMode;
+    private Integer portStatus;
+    private String remarks;
+    private LocalDateTime announcementTime;
+    private String announcementDecisionNumber;
+    private LocalDate announcementDecisionDate;
+    private String announcementOrg;
+    private Integer coordinateSystem;
+    private Integer displayRule;
 }

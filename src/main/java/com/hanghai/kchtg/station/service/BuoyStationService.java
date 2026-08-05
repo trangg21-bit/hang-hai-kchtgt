@@ -159,7 +159,7 @@ public class BuoyStationService {
         }
 
         logHistory(entity, "CREATE", null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "CREATE", null, "created", entity.getCreatedBy());
+        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "CREATE", null, "created", entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system");
         notificationService.sendApprovalNotificationPhao(entity);
 
         return toResponse(entity);

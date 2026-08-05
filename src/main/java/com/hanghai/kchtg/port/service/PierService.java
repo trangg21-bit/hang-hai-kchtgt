@@ -160,7 +160,7 @@ public class PierService {
         Pier saved = pierRepository.save(entity);
 
         // BR-020-05: Auto audit log for creation
-        changeHistoryService.insertChangeRecord("Pier", saved.getId(), "CREATE", null, "created", saved.getCreatedBy());
+        changeHistoryService.insertChangeRecord("Pier", saved.getId(), "CREATE", null, "created", saved.getCreatedBy() != null ? saved.getCreatedBy().toString() : "system");
 
         log.info("Created Pier [{}] code={}", saved.getId(), saved.getPierCode());
         return toResponse(saved);

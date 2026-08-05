@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -32,4 +33,21 @@ public class DryPortResponse {
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
+
+    // ── Extended fields (V113 — from F-026 feature brief) ──────────────
+    private String operatingUnit;
+    private String region;
+    private String detailedLocation;
+    private String transportCorridor;
+    private BigDecimal warehouseArea;
+    private BigDecimal yardArea;
+    private String connectionMode;
+    private Integer portStatus;
+    private String remarks;
+    private LocalDateTime announcementTime;
+    private String announcementDecisionNumber;
+    private LocalDate announcementDecisionDate;
+    private String announcementOrg;
+    private Integer coordinateSystem;
+    private Integer displayRule;
 }
