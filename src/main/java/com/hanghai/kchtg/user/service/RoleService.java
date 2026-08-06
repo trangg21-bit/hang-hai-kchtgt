@@ -61,10 +61,12 @@ public class RoleService {
         if (adminAuditLogRepository == null) return;
         try {
             UUID adminId = SecurityUtils.getCurrentUserId();
-            String adminName = null;
+            String adminName = SecurityUtils.getCurrentUsername();
             if (adminId == null) {
                 adminId = UUID.fromString("00000000-0000-0000-0000-000000000000");
                 adminName = "SYSTEM";
+            } else if (adminName == null) {
+                adminName = "Unknown";
             }
             AdminAuditLog audit = AdminAuditLog.create(adminId, adminName, action, target, details, "127.0.0.1", "System");
             adminAuditLogRepository.save(audit);
@@ -122,18 +124,9 @@ public class RoleService {
         return roleRepository.findByStatus(RoleStatus.ACTIVE);
     }
 
-    private Set<Permission> resolvePermissions(List<String> permissionCodes) {
-        if (permissionCodes == null) {
-            return new HashSet<>();
-        }
-        return permissionCodes.stream()
-                .map(code -> permissionRepository.findByCode(code.trim())
-                        .orElseThrow(() -> new IllegalArgumentException("Permission không tồn tại: " + code)))
-                .collect(Collectors.toSet());
-    }
 
     private Set<SystemMenu> resolveMenuCodes(List<String> menuCodes) {
-        if (menuCodes == null) {
+        if (menuCodes == null || menuCodes.isEmpty()) {
             return new HashSet<>();
         }
         Set<String> normalized = menuCodes.stream()
@@ -145,11 +138,6 @@ public class RoleService {
             return new HashSet<>();
         }
         List<SystemMenu> menus = systemMenuRepository.findAllById(normalized);
-        Set<String> found = menus.stream().map(SystemMenu::getMenuCode).collect(Collectors.toSet());
-        normalized.removeAll(found);
-        if (!normalized.isEmpty()) {
-            throw new IllegalArgumentException("Mã chức năng không tồn tại: " + String.join(", ", normalized));
-        }
         return new HashSet<>(menus);
     }
 
@@ -158,6 +146,7 @@ public class RoleService {
      *
      * @throws IllegalArgumentException nếu code đã tồn tại
      */
+    @Transactional
     public Role create(CreateRoleRequest request) {
         java.util.Optional<Role> existingOpt = roleRepository.findByCodeIncludeDeleted(request.getCode());
         if (existingOpt.isPresent()) {
@@ -166,7 +155,6 @@ public class RoleService {
                 // Restore the soft-deleted role
                 existingRole.setName(request.getName());
                 existingRole.setDescription(request.getDescription());
-                existingRole.setPermissions(resolvePermissions(request.getPermissions()));
                 existingRole.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
                 existingRole.setStatus(RoleStatus.ACTIVE);
                 existingRole.setDeletedAt(null);
@@ -186,8 +174,13 @@ public class RoleService {
         role.setName(request.getName());
         role.setCode(request.getCode());
         role.setDescription(request.getDescription());
-        role.setPermissions(resolvePermissions(request.getPermissions()));
         role.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
+        if (request.getPermissions() != null) {
+            List<Permission> perms = permissionRepository.findByCodeIn(request.getPermissions());
+            role.setPermissions(new java.util.HashSet<>(perms));
+        } else {
+            role.setPermissions(new java.util.HashSet<>());
+        }
         role.setStatus(RoleStatus.ACTIVE);
         role.setUserCount(0);
 
@@ -203,10 +196,11 @@ public class RoleService {
      * @throws EntityNotFoundException nếu không tìm thấy role
      * @throws IllegalArgumentException nếu code mới đã được dùng
      */
+    @Transactional
     public Role update(UUID id, UpdateRoleRequest request) {
         Role role = findById(id);
 
-        if (request.getName() != null) {
+        if (request.getName() != null && !java.util.Objects.equals(request.getName(), role.getName())) {
             role.setName(request.getName());
         }
         if (request.getCode() != null && !request.getCode().equals(role.getCode())) {
@@ -215,17 +209,27 @@ public class RoleService {
             }
             role.setCode(request.getCode());
         }
-        if (request.getDescription() != null) {
+        if (request.getDescription() != null && !java.util.Objects.equals(request.getDescription(), role.getDescription())) {
             role.setDescription(request.getDescription());
         }
         boolean permissionsChanged = false;
+
         if (request.getPermissions() != null) {
-            role.setPermissions(resolvePermissions(request.getPermissions()));
+            List<Permission> perms = permissionRepository.findByCodeIn(request.getPermissions());
+            Set<Permission> newPerms = new java.util.HashSet<>(perms);
+            if (role.getPermissions() == null) {
+                role.setPermissions(newPerms);
+            } else {
+                role.getPermissions().retainAll(newPerms);
+                role.getPermissions().addAll(newPerms);
+            }
             permissionsChanged = true;
         }
 
         if (request.getMenuCodes() != null) {
-            role.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
+            Set<SystemMenu> menus = resolveMenuCodes(request.getMenuCodes());
+            role.getMenuPermissions().retainAll(menus);
+            role.getMenuPermissions().addAll(menus);
             permissionsChanged = true;
         }
 

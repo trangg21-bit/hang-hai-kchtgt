@@ -23,9 +23,10 @@ public class CreateRoleRequest {
     @Size(max = 500, message = "Mô tả tối đa 500 ký tự")
     private String description;
 
-    private List<String> permissions;
 
     /** Mã chức năng/menu được chọn trong cây phân quyền theo project gốc. */
     private List<String> menuCodes;
 
+    /** Danh sách các mã quyền thao tác API. */
+    private List<String> permissions;
 }

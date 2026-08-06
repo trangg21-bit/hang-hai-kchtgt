@@ -94,8 +94,13 @@ class DryPortServiceTest {
         @Test
         @DisplayName("F-026: create — saves and returns response")
         void create_success() {
-            CreateDryPortRequest request = buildCreateRequest("CC-NEW", "Cảng cạn mới");
-            when(dryPortRepository.existsByDryPortCode("CC-NEW")).thenReturn(false);
+            CreateDryPortRequest request = buildCreateRequest("CC-000002", "Cảng cạn mới");
+            request.setOrgUnitId(UUID.randomUUID());
+            request.setDetailedLocation("Địa chỉ chi tiết test");
+            request.setTeuCapacity(new BigDecimal("50000.00"));
+            request.setPortStatus(1);
+            request.setSaveAction("submit");
+            when(dryPortRepository.existsByDryPortCode("CC-000002")).thenReturn(false);
             when(dryPortRepository.save(any(DryPort.class))).thenAnswer(inv -> {
                 DryPort saved = inv.getArgument(0);
                 ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
@@ -105,7 +110,7 @@ class DryPortServiceTest {
             DryPortResponse result = service.create(request);
 
             assertNotNull(result);
-            assertEquals("CC-NEW", result.getDryPortCode());
+            assertEquals("CC-000002", result.getDryPortCode());
             assertEquals("Cảng cạn mới", result.getDryPortName());
             assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
             verify(dryPortRepository).save(any(DryPort.class));
@@ -114,12 +119,12 @@ class DryPortServiceTest {
         @Test
         @DisplayName("F-026: create — duplicate dryPortCode → IllegalArgumentException")
         void create_duplicateCode_throwsIllegalArg() {
-            CreateDryPortRequest request = buildCreateRequest("CC-001", "Trùng mã");
-            when(dryPortRepository.existsByDryPortCode("CC-001")).thenReturn(true);
+            CreateDryPortRequest request = buildCreateRequest("CC-000001", "Trùng mã");
+            when(dryPortRepository.existsByDryPortCode("CC-000001")).thenReturn(true);
 
             IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> service.create(request));
-            assertTrue(ex.getMessage().contains("CC-001"));
+            assertTrue(ex.getMessage().contains("CC-000001"));
             verify(dryPortRepository, never()).save(any());
         }
 
@@ -179,6 +184,7 @@ class DryPortServiceTest {
             req.setDryPortName(dryPortName);
             req.setProvinceId(1);
             req.setOperationalStatus(OperationalStatus.OPERATIONAL);
+            req.setSaveAction("draft");
             return req;
         }
     }
@@ -203,6 +209,9 @@ class DryPortServiceTest {
 
         @Mock
         private ChangeLogRepository changeLogRepository;
+
+        @Mock
+        private ChangeHistoryService changeHistoryService;
 
         @Mock
         private ApprovalLogRepository approvalLogRepository;

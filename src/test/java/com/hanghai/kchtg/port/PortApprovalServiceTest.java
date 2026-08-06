@@ -31,6 +31,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PortApprovalService unit tests — F-011/F-013")
 class PortApprovalServiceTest {
@@ -49,6 +51,9 @@ class PortApprovalServiceTest {
 
     @Mock
     private ChangeLogRepository changeLogRepository;
+
+    @Mock
+    private ChangeHistoryService changeHistoryService;
 
     @Mock
     private ApprovalLogRepository approvalLogRepository;

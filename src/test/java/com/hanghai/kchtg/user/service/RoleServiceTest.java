@@ -12,6 +12,7 @@ import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.SystemMenuRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import com.hanghai.kchtg.user.entity.SystemMenu;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -80,13 +81,13 @@ class RoleServiceTest {
         request.setCode("ROLE_AUDITOR");
         request.setName("Auditor");
         request.setDescription("Audit role");
-        request.setPermissions(List.of("user:read"));
+        request.setMenuCodes(List.of("USERS_MANAGE"));
 
-        Permission perm = new Permission();
-        perm.setCode("user:read");
+        SystemMenu menu = new SystemMenu();
+        menu.setMenuCode("USERS_MANAGE");
 
         when(roleRepository.findByCodeIncludeDeleted("ROLE_AUDITOR")).thenReturn(Optional.empty());
-        when(permissionRepository.findByCode("user:read")).thenReturn(Optional.of(perm));
+        when(systemMenuRepository.findAllById(any())).thenReturn(List.of(menu));
         when(roleRepository.save(any(Role.class))).thenAnswer(inv -> {
             Role r = inv.getArgument(0);
             r.setId(UUID.randomUUID());
@@ -122,15 +123,15 @@ class RoleServiceTest {
     void update_shouldUpdateRoleInformationAndInvalidateCache() {
         UpdateRoleRequest request = new UpdateRoleRequest();
         request.setName("Updated Manager");
-        request.setPermissions(List.of("user:read"));
+        request.setMenuCodes(List.of("USERS_MANAGE"));
 
-        Permission perm = new Permission();
-        perm.setCode("user:read");
+        SystemMenu menu = new SystemMenu();
+        menu.setMenuCode("USERS_MANAGE");
 
         UUID userId = UUID.randomUUID();
 
         when(roleRepository.findById(roleId)).thenReturn(Optional.of(normalRole));
-        when(permissionRepository.findByCode("user:read")).thenReturn(Optional.of(perm));
+        when(systemMenuRepository.findAllById(any())).thenReturn(List.of(menu));
         when(roleRepository.save(any(Role.class))).thenAnswer(inv -> inv.getArgument(0));
         when(userRepository.findIdsByRoleId(roleId)).thenReturn(List.of(userId));
 

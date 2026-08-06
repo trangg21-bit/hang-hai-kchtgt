@@ -417,6 +417,7 @@ CREATE TABLE group_members (
 CREATE TABLE app_users (
     id UUID PRIMARY KEY,
     username VARCHAR(100),
+    password VARCHAR(255),
     email VARCHAR(150),
     status VARCHAR(50),
     deleted_at TIMESTAMP

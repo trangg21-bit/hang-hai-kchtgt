@@ -67,8 +67,8 @@ public class Role extends BaseEntity {
     private Set<SystemMenu> menuPermissions = new HashSet<>();
 
     /** Trạng thái vai trò. */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(nullable = false)
     private RoleStatus status = RoleStatus.ACTIVE;
 
     /** Số lượng người dùng đang có vai trò này. */

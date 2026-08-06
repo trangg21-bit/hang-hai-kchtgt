@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.lockout.dto.enums.LockoutStatus;
+import com.hanghai.kchtg.password.service.PasswordHashService;
 import com.hanghai.kchtg.lockout.service.LockoutService;
 import com.hanghai.kchtg.security.TotpValidator;
 import com.hanghai.kchtg.security.service.TokenService;
@@ -45,6 +46,7 @@ public class TotpAuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordHashService passwordHashService;
     private final TotpValidator totpValidator;
     private final TokenService tokenService;
     private final LoginAuditLogService auditLogService;
@@ -52,18 +54,19 @@ public class TotpAuthService {
 
     public TotpAuthService(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
+                           PasswordHashService passwordHashService,
                            TotpValidator totpValidator,
                            TokenService tokenService,
                            LoginAuditLogService auditLogService,
                            LockoutService lockoutService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordHashService = passwordHashService;
         this.totpValidator = totpValidator;
         this.tokenService = tokenService;
         this.auditLogService = auditLogService;
         this.lockoutService = lockoutService;
     }
-
     // =========================================================================
 
     /**
@@ -85,15 +88,13 @@ public class TotpAuthService {
     public MfaChallengeResponse authenticateCredentials(String username, String password,
                                                         HttpServletRequest request) {
 
-        // =========================================================================
-        // =========================================================================
         User user = userRepository.findByUsernameOrEmail(username)
                 .orElse(null);
 
-        // Luôn chạy password check để tránh timing leak
-        // Nếu user = null, dùng dummy hash
-        String passwordToCheck = user != null ? user.getPassword() : "$2a$dummy$never";
-        passwordEncoder.matches(password, passwordToCheck);
+        // Always compute password match to avoid timing leaks
+        boolean passwordValid = user != null
+                ? passwordHashService.verify(user.getUsername(), password, user.getPassword())
+                : passwordEncoder.matches(password, "$2a$dummy$never");
 
         // =========================================================================
         if (user == null) {
@@ -110,7 +111,7 @@ public class TotpAuthService {
             throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+        if (!passwordValid) {
             LockoutStatus failureStatus = lockoutService.recordFailure(
                     user, "Mật khẩu không hợp lệ", request);
             if (failureStatus == LockoutStatus.LOCKED) {
@@ -118,6 +119,14 @@ public class TotpAuthService {
                         "Tài khoản đã bị khóa trong 30 phút do đăng nhập sai 5 lần");
             }
             throw new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không hợp lệ");
+        }
+
+        // Lazy Upgrade: If password matches and stored password was a legacy hash, upgrade it to BCrypt
+        if (!passwordHashService.isBcrypt(user.getPassword())) {
+            String newBcryptHash = passwordHashService.hash(password);
+            user.setPassword(newBcryptHash);
+            userRepository.save(user);
+            log.info("Automatically upgraded legacy password hash to BCrypt for user: {}", user.getUsername());
         }
 
         lockoutService.recordSuccess(user, request);

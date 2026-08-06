@@ -30,6 +30,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@lombok.EqualsAndHashCode(of = "code", callSuper = false)
 public class Permission extends BaseEntity {
 
     // =========================================================================

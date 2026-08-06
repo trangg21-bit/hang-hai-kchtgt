@@ -110,6 +110,10 @@ public class User extends BaseEntity implements java.security.Principal {
                 perms.addAll(role.getPermissions().stream()
                         .map(p -> p.getCode()).collect(Collectors.toSet()));
             }
+            if (role.getMenuPermissions() != null) {
+                perms.addAll(role.getMenuPermissions().stream()
+                        .map(m -> m.getMenuCode()).collect(Collectors.toSet()));
+            }
         }
         if (permissionOverrides != null) {
             perms.addAll(permissionOverrides.stream()
