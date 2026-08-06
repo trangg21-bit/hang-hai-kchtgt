@@ -911,14 +911,6 @@ export default function BerthList() {
       });
     }
 
-    // Lịch sử
-    actions.push({
-       key: 'history',
-       label: 'Lịch sử',
-       icon: <HistoryOutlined />,
-       onClick: () => openHistory(record),
-    });
-
     // Gửi phê duyệt — khi ở trạng thái Nháp
     const draftStatuses = ['DRAFT', 'NHAP'];
     if (hasPerm('berth:update') && draftStatuses.includes(record.approvalStatus || '')) {
@@ -961,6 +953,14 @@ export default function BerthList() {
       });
     }
 
+    // Lịch sử
+    actions.push({
+       key: 'history',
+       label: 'Lịch sử',
+       icon: <HistoryOutlined />,
+       onClick: () => openHistory(record),
+    });
+
     return actions;
   }, [hasPerm, navigate, handleApprove, openDeleteModal, openRejectModal, openDetailModal]);
 
@@ -989,10 +989,6 @@ export default function BerthList() {
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 2500, y: 'calc(100vh - 450px)' }}
-          onRow={(record) => ({
-            onClick: () => openDetailModal(record),
-            style: { cursor: 'pointer' },
-          })}
         />
         <Pagination
           total={total}
@@ -1266,6 +1262,26 @@ export default function BerthList() {
             >
               Chỉnh sửa
             </Button>
+          ) : null,
+          hasPerm('berth:history') && detailRecord ? (
+            <Button key="history" icon={<HistoryOutlined />}
+              onClick={() => { const r = detailRecord; setDetailModalOpen(false); openHistory(r); }}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Lịch sử</Button>
+          ) : null,
+          hasPerm('berth:delete') && detailRecord && ['DRAFT','TU_CHOI','REJECTED','TAM_NGUNG','SUSPENDED'].includes(detailRecord.approvalStatus || '') ? (
+            <Button key="delete" danger icon={<DeleteOutlined />}
+              onClick={() => { setDetailModalOpen(false); openDeleteModal(detailRecord); }}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xóa</Button>
+          ) : null,
+          hasPerm('berth:approve') && detailRecord && ['PENDING','PORT_AUTHORITY','PENDING_APPROVAL','CHO_PHE_DUYET','CHO_PD_CAP_CUC'].includes(detailRecord.approvalStatus || '') ? (
+            <>
+              <Button key="reject" danger icon={<CloseCircleOutlined />}
+                onClick={() => { setDetailModalOpen(false); openRejectModal(detailRecord); }}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Từ chối</Button>
+              <Button key="approve" icon={<CheckCircleOutlined />}
+                onClick={() => { setDetailModalOpen(false); handleApprove(detailRecord); }}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, color: statusOperational, borderColor: statusOperational }}>Phê duyệt</Button>
+            </>
           ) : null,
         ].filter(Boolean)}
         width={800}

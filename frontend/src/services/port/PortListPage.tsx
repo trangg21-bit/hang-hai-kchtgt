@@ -20,6 +20,7 @@ import {
   Tabs,
   Upload,
   DatePicker,
+  Radio,
   message,
 } from 'antd';
 import {
@@ -228,6 +229,55 @@ export const translateFieldName = (fieldName: string): string => {
   return map[fieldName] || fieldName;
 };
 
+const historyFieldLabels: Record<string, string> = {
+  portCode: 'Mã cảng biển', portName: 'Tên cảng biển', province: 'Tỉnh/Thành phố',
+  area: 'Diện tích (km²)', maxVesselCapacity: 'Khả năng tiếp nhận tàu',
+  portGroup: 'Nhóm cảng biển', portClass: 'Phân cấp cảng biển',
+  detailedLocation: 'Địa điểm chi tiết', coordinateSystem: 'Hệ quy chiếu tọa độ',
+  displayRule: 'Quy tắc hiển thị', waterAreaScope: 'Phạm vi vùng nước',
+  totalBerths: 'Tổng số bến cảng', totalAnchoragesTransshipment: 'Tổng số khu neo đậu/chuyển tải',
+  totalPublicChannels: 'Tổng số tuyến luồng công cộng', totalDedicatedChannels: 'Tổng số tuyến luồng chuyên dùng',
+  totalPublicChannelLength: 'Tổng chiều dài luồng công cộng (km)', totalDedicatedChannelLength: 'Tổng chiều dài luồng chuyên dùng (km)',
+  totalBuoysBeacons: 'Tổng số phao tiêu/báo hiệu', totalDikes: 'Tổng số đê kè',
+  totalDikeLength: 'Tổng chiều dài đê kè (km)', totalLighthouses: 'Tổng số đèn biển/đăng tiêu',
+  buoyBerthCount: 'Số lượng bến phao', anchorageCount: 'Số lượng khu neo đậu',
+  transshipmentCount: 'Số lượng khu chuyển tải', otherWaterAreas: 'Các khu nước khác',
+  remarks: 'Ghi chú', mapSymbolId: 'Biểu tượng bản đồ', spatialId: 'Vị trí không gian',
+  orgUnitId: 'Đơn vị quản lý', operationalStatus: 'Trạng thái hoạt động', approvalStatus: 'Trạng thái phê duyệt',
+  'Lý do từ chối': 'Lý do từ chối', 'Trạng thái': 'Hành động',
+};
+function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
+function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>): string {
+  if (!val || val === '(null)' || val === 'null') return '(trống)';
+  if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
+  if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PENDING:'Chờ duyệt', APPROVED:'Đã duyệt', REJECTED:'Từ chối' }; return m[val] || val; }
+  if (fn === 'operationalStatus') {
+    const m: Record<string,string> = { OPERATIONAL:'Đang hoạt động', SUSPENDED:'Tạm ngừng',
+      HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác', CHUA_KHAI_THAC:'Chưa khai thác', DUNG_KHAI_THAC:'Dừng khai thác' };
+    return m[val] || val;
+  }
+  if (fn === 'portGroup') { try { return `Nhóm ${val}`; } catch { return val; } }
+  if (fn === 'portClass') { const m: Record<string,string> = { '5':'Cấp đặc biệt', '1':'Cấp 1', '2':'Cấp 2', '3':'Cấp 3', '4':'Cấp 4' }; return m[val] || `Cấp ${val}`; }
+  if (fn === 'changedAt' || fn === 'createdAt') { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
+  return val;
+}
+function getActionLabel(items: any[]): { label: string; color: string } {
+  const fields = items.map((i: any) => i.fieldName || '');
+  const oldVals = items.map((i: any) => i.oldValue || '');
+  const newVals = items.map((i: any) => i.newValue || '');
+  if (fields.includes('deletedAt') || newVals.includes('Đã xóa')) return { label: 'Xóa', color: 'red' };
+  if (fields.includes('approvalStatus')) {
+    const newStatus = newVals[fields.indexOf('approvalStatus')];
+    if (newStatus === 'APPROVED') return { label: 'Phê duyệt', color: 'green' };
+    if (newStatus === 'REJECTED') return { label: 'Từ chối', color: 'red' };
+    if (newStatus === 'PENDING') return { label: 'Gửi phê duyệt', color: 'orange' };
+  }
+  const nullCount = oldVals.filter(v => v === '(null)' || v === 'null').length;
+  if (nullCount > items.length / 2) return { label: 'Tạo mới', color: 'blue' };
+  return { label: 'Chỉnh sửa', color: 'blue' };
+}
+
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
 });
@@ -278,18 +328,29 @@ export default function PortListPage() {
   const [deleteTarget, setDeleteTarget] = useState<CangBienResponse | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyPageSize, setHistoryPageSize] = useState(10);
-  const [historyVisibleCount, setHistoryVisibleCount] = useState(10);
   const [historySearch, setHistorySearch] = useState('');
   const historySearchRef = useRef('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
+  const [historyMode, setHistoryMode] = useState<'current' | 'all'>('current');
+  const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
+  const [historyEntityId, setHistoryEntityId] = useState('');
+  const [historyEntityName, setHistoryEntityName] = useState('');
+  const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
   // Reject modal
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<CangBienResponse | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
+
+  // Submit modal
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [submittingRecord, setSubmittingRecord] = useState<CangBienResponse | null>(null);
+
+  // Approve modal
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approvingRecord, setApprovingRecord] = useState<CangBienResponse | null>(null);
 
   // Auto-generate port code for create modal
   const [portCodeLoading, setPortCodeLoading] = useState(false);
@@ -309,9 +370,21 @@ export default function PortListPage() {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
+  const [actionType, setActionType] = useState<'draft' | 'submit'>('submit');
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const symbolMap = useMemo(() => {
+    const map = new Map<string, string>();
+    symbols.forEach((s) => map.set(s.id, s.name));
+    return map;
+  }, [symbols]);
+
+  const orgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    orgUnits.forEach((o: any) => map.set(o.id, o.code ? `${o.code} - ${o.name}` : o.name));
+    return map;
+  }, [orgUnits]);
 
   const closeUpdateModal = useCallback(() => {
     setUpdateModalVisible(false);
@@ -592,7 +665,7 @@ export default function PortListPage() {
         area: values.area as number | undefined,
         maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: actionType === 'draft' ? 'DRAFT' : actionType === 'approve' ? 'DA_PHE_DUYET' : 'CHO_PHE_DUYET',
+        approvalStatus: actionType === 'draft' ? 'DRAFT' : 'CHO_PHE_DUYET',
         orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
         portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         mapSymbolId: (values.gisLocation as any)?.mapSymbolId || (values.mapSymbolId as string) || undefined,
@@ -866,59 +939,70 @@ export default function PortListPage() {
 
   const handleApprove = useCallback(
     (record: CangBienResponse) => {
-      confirm({
-        title: 'Xác nhận phê duyệt',
-        icon: <ExclamationCircleOutlined />,
-        content: `Phê duyệt cảng biển "${record.portName}"?`,
-        okText: 'Phê duyệt',
-        cancelText: 'Hủy',
-        onOk: async () => {
-          try {
-            await approveCangBien(record.id);
-            toast.success('Phê duyệt thành công');
-            fetchData();
-            fetchTabCounts();
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Phê duyệt thất bại';
-            toast.error(msg);
-          }
-        },
-      });
+      setApprovingRecord(record);
+      setApproveModalOpen(true);
     },
-    [fetchData, fetchTabCounts],
+    [],
   );
 
+  const handleConfirmApprove = useCallback(async () => {
+    if (!approvingRecord) return;
+    try {
+      await approveCangBien(approvingRecord.id);
+      toast.success('Phê duyệt thành công');
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      fetchData();
+      fetchTabCounts();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Phê duyệt thất bại';
+      toast.error(msg);
+    }
+  }, [approvingRecord, fetchData, fetchTabCounts]);
+
   const handleSubmitDraft = useCallback(
-    async (record: CangBienResponse) => {
-      try {
-        await updateCangBien({ id: record.id, approvalStatus: 'PENDING' });
-        toast.success('Đã gửi phê duyệt');
-        fetchData();
-        fetchTabCounts();
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Gửi phê duyệt thất bại';
-        toast.error(msg);
-      }
+    (record: CangBienResponse) => {
+      setSubmittingRecord(record);
+      setSubmitModalOpen(true);
     },
-    [fetchData, fetchTabCounts],
+    [],
   );
+
+  const handleConfirmSubmit = useCallback(async () => {
+    if (!submittingRecord) return;
+    setSubmitModalOpen(false);
+    try {
+      await updateCangBien({ id: submittingRecord.id, approvalStatus: 'PENDING' });
+      toast.success('Đã gửi phê duyệt');
+      setSubmittingRecord(null);
+      fetchData();
+      fetchTabCounts();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gửi phê duyệt thất bại';
+      toast.error(msg);
+    }
+  }, [submittingRecord, fetchData, fetchTabCounts]);
 
   const handleReject = useCallback((record: CangBienResponse) => {
     setRejectTarget(record);
     setRejectReason('');
+    setRejectError('');
     setRejectModalVisible(true);
   }, []);
 
-  const handleRejectConfirm = async () => {
+  const handleConfirmReject = async () => {
     if (!rejectTarget) return;
     if (!rejectReason || rejectReason.trim().length < 10) {
-      toast.error('Lý do từ chối tối thiểu 10 ký tự');
+      setRejectError('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
     try {
       await rejectCangBien(rejectTarget.id, rejectReason.trim());
       toast.success('Từ chối thành công');
       setRejectModalVisible(false);
+      setRejectTarget(null);
+      setRejectReason('');
+      setRejectError('');
       fetchData();
       fetchTabCounts();
     } catch (err: unknown) {
@@ -931,16 +1015,15 @@ export default function PortListPage() {
       setLoadingHistory(true);
       setSelectedRecord(record);
       setHistoryModalVisible(true);
-      setHistoryPage(1);
-      setHistoryVisibleCount(10);
       setHistorySearch('');
       historySearchRef.current = '';
-      setHistoryDateFrom('');
-      setHistoryDateTo('');
+      setHistoryDateFrom(dayjs().subtract(7, 'day').format('YYYY-MM-DD HH:mm'));
+      setHistoryDateTo(dayjs().format('YYYY-MM-DD HH:mm'));
+      setHistoryEntityId(record.id);
       const { fetchportHistory } = await import('./api');
       const histData = await fetchportHistory(record.id, { page: 0, size: 200 });
       setHistoryRecords(histData.changeHistory || []);
-      setHistoryExpanded({}); // will be re-initialized on next render
+      setHistoryExpanded({});
     } catch (err) {
       toast.error('Không thể tải lịch sử thay đổi');
     } finally {
@@ -978,32 +1061,7 @@ export default function PortListPage() {
         },
       ];
       const status = record.approvalStatus;
-      // DRAFT: Gửi phê duyệt
-      if (status === 'DRAFT' && hasPerm?.('Port:update')) {
-        actions.push({
-          key: 'submit',
-          label: 'Gửi phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => handleSubmitDraft(record),
-        });
-      }
-      // PENDING: Phê duyệt + Từ chối
-      if (status === 'PENDING' && hasPerm?.('Port:approve')) {
-        actions.push({
-          key: 'approve',
-          label: 'Phê duyệt',
-          icon: <CheckCircleOutlined />,
-          onClick: () => handleApprove(record),
-        });
-        actions.push({
-          key: 'reject',
-          label: 'Từ chối',
-          icon: <CloseCircleOutlined />,
-          danger: true,
-          onClick: () => handleReject(record),
-        });
-      }
-      // Chỉnh sửa: tất cả trạng thái (kể cả PENDING)
+      // Chỉnh sửa: tất cả trạng thái
       if (hasPerm?.('Port:update')) {
         actions.push({
           key: 'edit',
@@ -1057,6 +1115,31 @@ export default function PortListPage() {
               setIsLoading(false);
             }
           },
+        });
+      }
+      // DRAFT: Gửi phê duyệt
+      if (status === 'DRAFT' && hasPerm?.('Port:update')) {
+        actions.push({
+          key: 'submit',
+          label: 'Gửi phê duyệt',
+          icon: <SendOutlined />,
+          onClick: () => handleSubmitDraft(record),
+        });
+      }
+      // PENDING: Phê duyệt + Từ chối
+      if (status === 'PENDING' && hasPerm?.('Port:approve')) {
+        actions.push({
+          key: 'approve',
+          label: 'Phê duyệt',
+          icon: <CheckCircleOutlined />,
+          onClick: () => handleApprove(record),
+        });
+        actions.push({
+          key: 'reject',
+          label: 'Từ chối',
+          icon: <CloseCircleOutlined />,
+          danger: true,
+          onClick: () => handleReject(record),
         });
       }
       // Xóa: tất cả trạng thái (kể cả PENDING)
@@ -1936,23 +2019,7 @@ export default function PortListPage() {
                     fontSize: fontSizeMd,
                   }}
                 >
-                  Gửi phê duyệt
-                </Button>
-                )}
-                {canSubmitForApproval && (
-                <Button
-                  onClick={() => { setActionType('approve'); createForm.submit(); }}
-                  loading={submitting}
-                  style={{
-                    borderRadius: radiusPill,
-                    height: 40,
-                    fontSize: fontSizeMd,
-                    background: statusOperational,
-                    borderColor: statusOperational,
-                    color: surfaceCard,
-                  }}
-                >
-                  Phê duyệt
+                  Lưu và phê duyệt
                 </Button>
                 )}
               </Space>
@@ -2424,7 +2491,7 @@ export default function PortListPage() {
                     borderColor: actionPrimary,
                   }}
                 >
-                  Cập nhật
+                  Lưu và phê duyệt
                 </Button>
               </Space>
             </Form.Item>
@@ -2444,7 +2511,35 @@ export default function PortListPage() {
           }
           open={detailModalVisible}
           onCancel={closeDetailModal}
-          footer={null}
+          footer={[
+            <Button key="close" onClick={closeDetailModal}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Đóng</Button>,
+            selectedRecord && hasPerm?.('Port:update') ? (
+              <Button key="edit" type="primary" icon={<EditOutlined />}
+                onClick={() => { closeDetailModal(); updateForm.setFieldsValue({ portCode: selectedRecord.portCode, portName: selectedRecord.portName, province: selectedRecord.province || undefined, orgUnitId: selectedRecord.orgUnitId || undefined, diaDiemChiTiet: selectedRecord.detailedLocation || undefined, phanCap: selectedRecord.portClass, phamViVungNuoc: selectedRecord.waterAreaScope || undefined, tongSoBenCang: selectedRecord.tongSoBenCang, tongSoKhuNeoDauChuyenTai: selectedRecord.tongSoKhuNeoDauChuyenTai, tongSoTuyenLuongCongCong: selectedRecord.tongSoTuyenLuongCongCong, tongSoTuyenLuongChuyenDung: selectedRecord.tongSoTuyenLuongChuyenDung, tongChieuDaiLuongCongCong: selectedRecord.tongChieuDaiLuongCongCong, tongChieuDaiLuongChuyenDung: selectedRecord.tongChieuDaiLuongChuyenDung, tongSoPhaoTieuBaoHieu: selectedRecord.tongSoPhaoTieuBaoHieu, tongSoDeKe: selectedRecord.tongSoDeKe, tongChieuDaiDeKe: selectedRecord.tongChieuDaiDeKe, tongSoDenBienDangTieu: selectedRecord.tongSoDenBienDangTieu, quantityBenPhao: selectedRecord.quantityBenPhao, quantityKhuNeoDau: selectedRecord.quantityKhuNeoDau, quantityKhuChuyenTai: selectedRecord.quantityKhuChuyenTai, cacKhuNuocKhac: selectedRecord.cacKhuNuocKhac || undefined, remarks: selectedRecord.remarks || undefined, gisLocation: { geometryType: selectedRecord.geometryType || 'POINT', coordinates: selectedRecord.coordinates || '', mapSymbolId: selectedRecord.mapSymbolId } }); setUpdateModalVisible(true); }}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Chỉnh sửa</Button>
+            ) : null,
+            selectedRecord && hasPerm?.('Port:history') ? (
+              <Button key="history" icon={<HistoryOutlined />}
+                onClick={() => { const r = selectedRecord; closeDetailModal(); setHistoryEntityId(r.id); setHistoryEntityName(r.portName || ''); setHistoryModalVisible(true); setHistoryRecords([]); setLoadingHistory(true); setHistoryExpanded({}); setHistorySearch(''); historySearchRef.current = ''; setHistoryDateFrom(dayjs().subtract(7, 'day').format('YYYY-MM-DD HH:mm')); setHistoryDateTo(dayjs().format('YYYY-MM-DD HH:mm')); setHistoryMode('current'); setHistoryEntityNames({}); import('./api').then(m => m.fetchportHistory(r.id, { page: 0, size: 200 })).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); }}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Lịch sử</Button>
+            ) : null,
+            selectedRecord && (selectedRecord.approvalStatus === 'DRAFT' || selectedRecord.approvalStatus === 'NHAP' || selectedRecord.approvalStatus === 'REJECTED') && hasPerm?.('Port:delete') ? (
+              <Button key="delete" danger icon={<DeleteOutlined />}
+                onClick={() => { closeDetailModal(); handleDelete(selectedRecord); }}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xóa</Button>
+            ) : null,
+            selectedRecord && (selectedRecord.approvalStatus === 'PENDING' || selectedRecord.approvalStatus === 'PENDING_APPROVAL') && hasPerm?.('Port:approve') ? (
+              <>
+                <Button key="reject" danger icon={<CloseCircleOutlined />}
+                  onClick={() => { closeDetailModal(); handleReject(selectedRecord); }}
+                  style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Từ chối</Button>
+                <Button key="approve" icon={<CheckCircleOutlined />}
+                  onClick={() => { closeDetailModal(); handleApprove(selectedRecord); }}
+                  style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, color: statusOperational, borderColor: statusOperational }}>Phê duyệt</Button>
+              </>
+            ) : null,
+          ].filter(Boolean)}
           width={isIframeModal ? '100%' : 800}
           mask={!isIframeModal}
           closable={!isIframeModal}
@@ -2570,317 +2665,60 @@ export default function PortListPage() {
               </>);
             })()}
 
-          <div style={{ marginTop: 24, textAlign: 'right' }}>
-                <Space>
-                  <Button
-                    onClick={closeDetailModal}
-                    style={{
-                      borderRadius: radiusPill,
-                      height: 40,
-                      fontSize: fontSizeMd,
-                      borderColor: borderDefault,
-                      color: textSecondary,
-                    }}
-                  >
-                    Đóng
-                  </Button>
-                  {hasPerm('port:update') && (
-                    <Button
-                      type="primary"
-                      icon={<EditOutlined />}
-                      onClick={() => {
-                        closeDetailModal();
-                        updateForm.setFieldsValue({
-                          portCode: selectedRecord.portCode,
-                          portName: selectedRecord.portName,
-                          province: selectedRecord.province || undefined,
-                          orgUnitId: selectedRecord.orgUnitId || undefined,
-                          diaDiemChiTiet: selectedRecord.detailedLocation || undefined,
-                          phanCap: selectedRecord.portClass,
-                          phamViVungNuoc: selectedRecord.waterAreaScope || undefined,
-                          tongSoBenCang: selectedRecord.tongSoBenCang,
-                          tongSoKhuNeoDauChuyenTai: selectedRecord.tongSoKhuNeoDauChuyenTai,
-                          tongSoTuyenLuongCongCong: selectedRecord.tongSoTuyenLuongCongCong,
-                          tongSoTuyenLuongChuyenDung: selectedRecord.tongSoTuyenLuongChuyenDung,
-                          tongChieuDaiLuongCongCong: selectedRecord.tongChieuDaiLuongCongCong,
-                          tongChieuDaiLuongChuyenDung: selectedRecord.tongChieuDaiLuongChuyenDung,
-                          tongSoPhaoTieuBaoHieu: selectedRecord.tongSoPhaoTieuBaoHieu,
-                          tongSoDeKe: selectedRecord.tongSoDeKe,
-                          tongChieuDaiDeKe: selectedRecord.tongChieuDaiDeKe,
-                          tongSoDenBienDangTieu: selectedRecord.tongSoDenBienDangTieu,
-                          quantityBenPhao: selectedRecord.quantityBenPhao,
-                          quantityKhuNeoDau: selectedRecord.quantityKhuNeoDau,
-                          quantityKhuChuyenTai: selectedRecord.quantityKhuChuyenTai,
-                          cacKhuNuocKhac: selectedRecord.cacKhuNuocKhac || undefined,
-                          remarks: selectedRecord.remarks || undefined,
-                          gisLocation: {
-                            geometryType: selectedRecord.geometryType || 'POINT',
-                            coordinates: selectedRecord.coordinates || '',
-                            mapSymbolId: selectedRecord.mapSymbolId,
-                          },
-                        });
-                        setUpdateModalVisible(true);
-                      }}
-                      style={{
-                        background: actionPrimary,
-                        borderColor: actionPrimary,
-                        borderRadius: radiusPill,
-                        height: 40,
-                        fontSize: fontSizeMd,
-                      }}
-                    >
-                      Chỉnh sửa
-                    </Button>
-                  )}
-                </Space>
-              </div>
           </>)}
+
         </Modal>
-      )}
+        )}
+
 
       {/* ── History Modal ──────────────────────────────────────────── */}
       <Modal
+        maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Space size={spaceSm}>
               <HistoryOutlined style={{ color: actionPrimary, fontSize: 20 }} />
               <span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeXl }}>
-                {selectedRecord
-                  ? `Lịch sử thay đổi — ${selectedRecord.portName}`
-                  : 'Lịch sử thay đổi'}
+                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Cảng biển' : (selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.portName}` : 'Lịch sử thay đổi')}
               </span>
             </Space>
           </div>
         }
-        open={historyModalVisible}
-        onCancel={() => setHistoryModalVisible(false)}
-        footer={null}
-        width={880}
-        styles={{ body: { padding: `${spaceMd}px`, maxHeight: '68vh', overflowY: 'auto' } }}
-      >
+        open={historyModalVisible} onCancel={() => setHistoryModalVisible(false)} footer={null} width={880}
+        styles={{ body: { padding: spaceMd, maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}>
+        <div style={{ flexShrink: 0 }}>
+        {!loadingHistory && (
+          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceSm, alignItems: 'center' }}>
+            <Radio.Group value={historyMode} size="small"
+              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setLoadingHistory(true); setHistoryRecords([]); if (mode === 'all') { const { fetchPortAllHistory } = await import('./api'); fetchPortAllHistory({ page: 0, size: 500 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); setHistoryEntityNames(d.entityNames || {}); }).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); } else { const { fetchportHistory } = await import('./api'); fetchportHistory(historyEntityId, { page: 0, size: 200 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); }).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); } }}>
+              <Radio.Button value="current" style={{ borderRadius: `${radiusPill}px 0 0 ${radiusPill}px`, fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : undefined }}>Bản ghi hiện tại {historyMode === 'current' ? <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyRecords.filter((r: any, i: number, arr: any[]) => { const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime()/1000); const a = r.changedBy || ''; return arr.findIndex((x: any) => Math.floor(new Date(x.changedAt || x.createdAt || 0).getTime()/1000) === s && (x.changedBy || '') === a) === i; }).length}</Tag> : <span style={{ marginLeft: 4 }}>...</span>}</Radio.Button>
+              <Radio.Button value="all" style={{ borderRadius: `0 ${radiusPill}px ${radiusPill}px 0`, fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : undefined }}>Tất cả bản ghi {historyMode === 'all' ? <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyRecords.filter((r: any, i: number, arr: any[]) => { const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime()/1000); const a = r.changedBy || ''; return arr.findIndex((x: any) => Math.floor(new Date(x.changedAt || x.createdAt || 0).getTime()/1000) === s && (x.changedBy || '') === a) === i; }).length}</Tag> : <span style={{ marginLeft: 4 }}>...</span>}</Radio.Button>
+            </Radio.Group>
+          </div>
+        )}
         {!loadingHistory && (
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input.Search
-              placeholder="Tìm kiếm nội dung thay đổi..."
-              allowClear
-              value={historySearch}
-              onChange={(e) => setHistorySearch(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <DatePicker
-              placeholder="Từ ngày"
-              value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={(d) => setHistoryDateFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 180 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
-            />
-            <DatePicker
-              placeholder="Đến ngày"
-              value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={(d) => setHistoryDateTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 180 }}
-              format="DD/MM/YYYY HH:mm"
-              showTime={{ format: 'HH:mm' }}
-            />
+            <Input.Search placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
+            {historyMode === 'all' && <Select placeholder="Chọn cảng biển" allowClear showSearch value={historyEntityFilter || undefined}
+              onChange={v => setHistoryEntityFilter(v || '')}
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              style={{ width: 200, borderRadius: radiusPill, height: 40 }}
+              options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
+            <DatePicker placeholder="Từ ngày" value={historyDateFrom ? dayjs(historyDateFrom) : null}
+              onChange={d => setHistoryDateFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+            <DatePicker placeholder="Đến ngày" value={historyDateTo ? dayjs(historyDateTo) : null}
+              onChange={d => setHistoryDateTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
           </div>
         )}
-        {loadingHistory ? (
-          <LoadingSkeleton rows={5} />
-        ) : historyRecords.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-            <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-            <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
-          </div>
-            ) : (
-          (() => {
-            // Filter + group logic
-            const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-            const sorted = [...historyRecords].sort((a: any, b: any) =>
-              new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
-            const q = historySearch.toLowerCase().trim();
-
-            const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-            for (const r of sorted) {
-              // Filter by search
-              if (q) {
-                const fn = (r.fieldName || r.fieldChanged || '').toLowerCase();
-                const ov = (r.oldValue || '').toLowerCase();
-                const nv = (r.newValue || '').toLowerCase();
-                const label = translateFieldName(r.fieldName || r.fieldChanged).toLowerCase();
-                const oldDisp = translateValue(r.fieldName || r.fieldChanged, r.oldValue).toLowerCase();
-                const newDisp = translateValue(r.fieldName || r.fieldChanged, r.newValue).toLowerCase();
-                if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q)
-                    && !label.includes(q) && !oldDisp.includes(q) && !newDisp.includes(q)) continue;
-              }
-              // Filter by date range
-              if (historyDateFrom || historyDateTo) {
-                const changedDate = (r.changedAt || r.createdAt || '').substring(0, 16); // YYYY-MM-DDTHH:mm
-                if (historyDateFrom && changedDate < historyDateFrom.replace(' ', 'T')) continue;
-                if (historyDateTo && changedDate > historyDateTo.replace(' ', 'T') + ':59') continue;
-              }
-              const ts = r.changedAt || r.createdAt || '';
-              const sec = ts ? toSec(ts) : 0;
-              const prev = groups[groups.length - 1];
-              if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-              else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
-            }
-
-            if (groups.length === 0) {
-              return (
-                <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-                  <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-                  <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-                    {q ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
-                  </div>
-                </div>
-              );
-            }
-
-            const fmtTime = (ts: string) => {
-              const d = new Date(ts);
-              return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
-            };
-
-            // When searching: auto-expand all; when cleared: collapse all
-            if (q.length > 0 && historySearchRef.current !== q) {
-              historySearchRef.current = q;
-              const init: Record<number, boolean> = {};
-              groups.forEach((_, i) => { init[i] = true; });
-              setTimeout(() => setHistoryExpanded(init), 0);
-            } else if (q.length === 0 && historySearchRef.current !== '') {
-              historySearchRef.current = '';
-              const init: Record<number, boolean> = {};
-              groups.forEach((_, i) => { init[i] = false; });
-              setTimeout(() => setHistoryExpanded(init), 0);
-            }
-
-            // Lazy-load: show first N groups, load more on scroll
-            const visibleGroups = groups.slice(0, historyVisibleCount);
-
-            const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-              const el = e.currentTarget;
-              if (el.scrollHeight - el.scrollTop - el.clientHeight < 80 && historyVisibleCount < groups.length) {
-                setHistoryVisibleCount(prev => Math.min(prev + 10, groups.length));
-              }
-            };
-
-            return (
-          <div style={{ maxHeight: '62vh', overflowY: 'auto' }} onScroll={handleScroll}>
-            {visibleGroups.map((g, gi) => (
-              <div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < visibleGroups.length - 1 ? spaceSm : 0 }}>
-                {/* Timeline column */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: surfaceCard,
-                    border: `1px solid ${actionPrimary}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} />
-                  </div>
-                  {gi < groups.length - 1 && (
-                    <div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: spaceXs }} />
-                  )}
-                </div>
-
-                {/* Content card */}
-                <div style={{
-                  ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, marginBottom: 0,
-                  borderRadius: radiusLg,
-                  boxShadow: shadowSm,
-                }}>
-                  {/* Header row — clickable to toggle */}
-                  <div
-                    onClick={() => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] }))}
-                    style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}
-                  >
-                    <Typography.Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold }}>
-                      {g.ts ? fmtTime(g.ts) : '—'}
-                    </Typography.Text>
-                    {g.actor && (
-                      <Typography.Text style={{ fontSize: fontSizeMd, color: textSecondary }}>
-                        — {g.actor}
-                      </Typography.Text>
-                    )}
-                    <span style={{
-                      fontSize: fontSizeMd, fontWeight: fontWeightBold, color: actionPrimary,
-                      background: `${actionPrimary}12`, borderRadius: radiusPill,
-                      padding: '2px 10px', marginLeft: 'auto',
-                    }}>
-                      {g.items.length}
-                    </span>
-                    {historyExpanded[gi] ? (
-                      <UpOutlined style={{ fontSize: 12, color: textTertiary }} />
-                    ) : (
-                      <DownOutlined style={{ fontSize: 12, color: textTertiary }} />
-                    )}
-                  </div>
-
-                  {/* Expandable body */}
-                  {historyExpanded[gi] && (
-                    <>
-                      <Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} />
-
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <tbody>
-                          {g.items.map((r: any, ri: number) => {
-                            const fn = r.fieldName || r.fieldChanged;
-                            const ov = r.oldValue !== undefined && r.oldValue != null
-                              ? translateValue(fn, r.oldValue) : null;
-                            const nv = r.newValue !== undefined && r.newValue != null
-                              ? translateValue(fn, r.newValue) : null;
-                            return (
-                              <tr key={r.id || ri}>
-                                <td style={{
-                                  padding: `${spaceXs}px ${spaceSm}px ${spaceXs}px 0`,
-                                  fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary,
-                                  whiteSpace: 'nowrap', verticalAlign: 'middle', width: 1,
-                                }}>
-                                  {fn ? translateFieldName(fn) : '—'}
-                                </td>
-                                <td style={{ padding: `${spaceXs}px 0`, verticalAlign: 'middle' }}>
-                                  <Space size={spaceXs}>
-                                    {ov ? (
-                                      <Typography.Text delete style={{ fontSize: fontSizeMd, color: statusCritical }}>
-                                        {ov}
-                                      </Typography.Text>
-                                    ) : (
-                                      <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>
-                                    )}
-                                    <ArrowRightOutlined style={{ fontSize: 10, color: textTertiary }} />
-                                    {nv ? (
-                                      <Typography.Text strong style={{ fontSize: fontSizeMd, color: statusOperational }}>
-                                        {nv}
-                                      </Typography.Text>
-                                    ) : (
-                                      <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>
-                                    )}
-                                  </Space>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-
-                      {g.items[0]?.reason && (
-                        <>
-                          <Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} />
-                          <Typography.Text style={{ fontSize: fontSizeSm, color: textTertiary, fontStyle: 'italic' }}>
-                            "{g.items[0].reason}"
-                          </Typography.Text>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-            );
-          })()
-        )}
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {loadingHistory ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
+        ) : (() => { const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000); const sorted = [...historyRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime()); const q = historySearch.toLowerCase().trim(); const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = []; for (const r of sorted) { if (q) { const fn = (r.fieldName || '').toLowerCase(); const ov = (r.oldValue || '').toLowerCase(); const nv = (r.newValue || '').toLowerCase(); const lb = historyFieldName(r.fieldName || '').toLowerCase(); const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase(); const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase(); if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue; } if (historyEntityFilter && r.entityId !== historyEntityFilter) continue; if (historyDateFrom || historyDateTo) { const cd = (r.changedAt || r.createdAt || '').substring(0, 16); if (historyDateFrom && cd < historyDateFrom.replace(' ', 'T')) continue; if (historyDateTo && cd > historyDateTo.replace(' ', 'T') + ':59') continue; } const ts = r.changedAt || r.createdAt || ''; const sec = ts ? toSec(ts) : 0; const prev = groups[groups.length - 1]; if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r); else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] }); } if (groups.length === 0) return (<div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>); const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; }; if (historySearchRef.current === 'initial') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length > 0 && historySearchRef.current !== q) { historySearchRef.current = q; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length === 0 && historySearchRef.current !== '') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = false; }); setTimeout(() => setHistoryExpanded(init), 0); } return (<div>{groups.map((g, gi) => (<div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', background: surfaceCard, border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} /></div>{gi < groups.length - 1 && (<div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: spaceXs }} />)}</div><div style={{ ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, marginBottom: 0, borderRadius: radiusLg, boxShadow: shadowSm }}><div onClick={() => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] }))} style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}><Typography.Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold }}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>{g.actor && (<Typography.Text style={{ fontSize: fontSizeMd, color: textSecondary }}>— {g.actor}</Typography.Text>)}{(() => { const a = getActionLabel(g.items); return <Tag color={a.color} style={{ fontSize: 11, marginLeft: spaceSm, borderRadius: radiusPill }}>{a.label}</Tag>; })()}<span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: actionPrimary, background: `${actionPrimary}12`, borderRadius: radiusPill, padding: '2px 10px', marginLeft: 'auto' }}>{g.items.length}</span>{historyExpanded[gi] === false ? (<DownOutlined style={{ fontSize: 12, color: textTertiary }} />) : (<UpOutlined style={{ fontSize: 12, color: textTertiary }} />)}</div>{historyExpanded[gi] !== false && (<><Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} /><table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>{g.items.map((r: any, ri: number) => { const fn = r.fieldName || ''; const ov = r.oldValue !== undefined && r.oldValue != null ? historyFieldValue(fn, r.oldValue, orgMap, symbolMap) : null; const nv = r.newValue !== undefined && r.newValue != null ? historyFieldValue(fn, r.newValue, orgMap, symbolMap) : null; return (<tr key={r.id || ri}><td style={{ padding: `${spaceXs}px ${spaceSm}px ${spaceXs}px 0`, fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary, whiteSpace: 'nowrap', verticalAlign: 'middle', width: 1 }}>{historyMode === 'all' ? (<><Tag color="blue" style={{ marginRight: spaceXs, fontSize: fontSizeSm, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryMode('current'); setLoadingHistory(true); setHistoryRecords([]); import('./api').then(m => m.fetchportHistory(r.entityId, { page: 0, size: 200 })).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); }} onClick={async (e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryEntityName(historyEntityNames[r.entityId] || ''); setHistoryMode('current'); setLoadingHistory(true); setHistoryRecords([]); historySearchRef.current = 'initial'; const { fetchportHistory } = await import('./api'); fetchportHistory(r.entityId, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); }}>{historyEntityNames[r.entityId] || r.entityId?.substring(0,8)}</Tag> </>) : null}{fn ? historyFieldName(fn) : '—'}</td><td style={{ padding: `${spaceXs}px 0`, verticalAlign: 'middle' }}><Space size={spaceXs}>{ov ? (<Typography.Text delete style={{ fontSize: fontSizeMd, color: statusCritical }}>{ov}</Typography.Text>) : (<span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>)}<ArrowRightOutlined style={{ fontSize: 10, cursor: 'pointer', color: textTertiary }} />{nv ? (<Typography.Text strong style={{ fontSize: fontSizeMd, color: statusOperational }}>{nv}</Typography.Text>) : (<span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>)}</Space></td></tr>); })}</tbody></table></>)}</div></div>))}</div>); })()}
+        </div>
       </Modal>
 
       {selectedRecord && (
@@ -2892,25 +2730,65 @@ export default function PortListPage() {
         />
       )}
 
-      {/* Reject modal */}
-      <Modal
-        title="Từ chối cảng biển"
-        open={rejectModalVisible}
-        onCancel={() => setRejectModalVisible(false)}
-        onOk={handleRejectConfirm}
-        okText="Xác nhận từ chối"
-        cancelText="Hủy"
-        okButtonProps={{ danger: true }}
-      >
-        <p style={{ marginBottom: 12 }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
-        <Input.TextArea
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="Nhập lý do từ chối..."
-          rows={4}
-          maxLength={500}
-          showCount
-        />
+      {/* Approve Modal */}
+      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận phê duyệt</span>}
+        open={approveModalOpen} onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
+        footer={[
+          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="approve" type="primary" onClick={handleConfirmApprove}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: statusOperational, borderColor: statusOperational }}>Xác nhận</Button>,
+        ]}
+        width={480}>
+        <div style={{ padding: '8px 0' }}>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            Phê duyệt <strong>{approvingRecord?.portCode} — {approvingRecord?.portName}</strong>?
+          </p>
+        </div>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+        open={rejectModalVisible} onCancel={() => { setRejectModalVisible(false); setRejectTarget(null); setRejectReason(''); }}
+        footer={[
+          <Button key="cancel" onClick={() => { setRejectModalVisible(false); setRejectTarget(null); setRejectReason(''); }}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="reject" type="primary" danger onClick={handleConfirmReject}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận từ chối</Button>,
+        ]}
+        width={480}>
+        <div style={{ padding: '8px 0' }}>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho cảng biển:</p>
+          {rejectTarget && <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}><strong style={{ color: textPrimary }}>{rejectTarget.portCode} — {rejectTarget.portName}</strong></p>}
+          <Input.TextArea placeholder="Nhập lý do từ chối..." value={rejectReason}
+            onChange={(e) => { setRejectReason(e.target.value); setRejectError(''); }}
+            rows={3} style={{ borderRadius: 8, fontSize: fontSizeMd, borderColor: rejectError ? statusCritical : undefined }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+            {rejectError ? <span style={{ color: statusCritical, fontSize: fontSizeMd }}>{rejectError}</span> : <span />}
+            <span style={{ color: rejectReason.trim().length < 10 ? statusCritical : textTertiary, fontSize: fontSizeMd }}>
+              {rejectReason.length}/10
+            </span>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Submit Modal */}
+      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi phê duyệt</span>}
+        open={submitModalOpen} onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
+        footer={[
+          <Button key="cancel" onClick={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="submit" type="primary" onClick={handleConfirmSubmit}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Xác nhận</Button>,
+        ]}
+        width={480}>
+        <div style={{ padding: '8px 0' }}>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            Gửi <strong>{submittingRecord?.portCode} — {submittingRecord?.portName}</strong> để phê duyệt?
+          </p>
+        </div>
       </Modal>
 
       {/* Delete confirmation modal */}

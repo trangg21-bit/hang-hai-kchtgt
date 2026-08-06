@@ -561,11 +561,11 @@ export default function BuoyForm() {
             </Button>
             <Button onClick={() => handleSave('DRAFT')} loading={submitting} disabled={submitting}
               style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>
-              Lưu nháp
+              Lưu tạm
             </Button>
             <Button type="primary" onClick={() => handleSave('SUBMIT')} loading={submitting} disabled={submitting}
               style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
-              Gửi phê duyệt
+              Lưu và phê duyệt
             </Button>
           </Space>
         </Form.Item>

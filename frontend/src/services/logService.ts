@@ -37,6 +37,17 @@ export const logService = {
     return resp.data?.data ?? resp.data;
   },
 
+  async exportCsv(params: Record<string, any>) {
+    const resp = await api.get('/logs/export/csv', { params, responseType: 'blob' });
+    return resp.data;
+  },
+
+  async getDailyStats(): Promise<{ status: string; count: number }[]> {
+    const resp = await api.get('/logs/stats/daily');
+    const data = resp.data?.data ?? resp.data ?? [];
+    return Array.isArray(data) ? data.map((item: any) => ({ status: item[0], count: Number(item[1]) })) : [];
+  },
+
   async getLogAggregate(params?: { from?: string; to?: string }): Promise<any[]> {
     const resp = await api.get('/logs/aggregate', { params });
     return resp.data?.data ?? resp.data ?? [];
