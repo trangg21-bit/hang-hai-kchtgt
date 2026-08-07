@@ -9,6 +9,7 @@ import com.hanghai.kchtg.beacon.entity.BeaconHistory;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.beacon.entity.Buoy;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
@@ -104,7 +105,7 @@ public class BuoyService {
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
                 .status("DRAFT")
-                .approvalStatus("PENDING")
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -225,7 +226,7 @@ public class BuoyService {
         // Status revert logic for approved states (same as BeaconLight)
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus("DRAFT");
-            entity.setApprovalStatus("PENDING");
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setApprovalLevel(1);
         }
 
@@ -302,7 +303,7 @@ public class BuoyService {
         }
 
         entity.setStatus("PENDING_APPROVAL");
-        entity.setApprovalStatus("PENDING");
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(1);
         buoyRepo.save(entity);
 
@@ -322,7 +323,7 @@ public class BuoyService {
 
         // Self-approval: allowed per user request (BR-077-09 relaxed)
         entity.setStatus("APPROVED_L1");
-        entity.setApprovalStatus("APPROVED");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel1ApprovedBy(approverId);
@@ -347,7 +348,7 @@ public class BuoyService {
         }
 
         entity.setStatus("PUBLISHED");
-        entity.setApprovalStatus("APPROVED");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel2ApprovedBy(approverId);
@@ -371,7 +372,7 @@ public class BuoyService {
         }
 
         entity.setStatus("REJECTED");
-        entity.setApprovalStatus("REJECTED");
+        entity.setApprovalStatus(ApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         buoyRepo.save(entity);
 
@@ -469,7 +470,7 @@ public class BuoyService {
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getApprovalStatus().name())
                 .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())

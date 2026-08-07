@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.port;
 
 import com.hanghai.kchtg.port.entity.ApprovalLog;
-import com.hanghai.kchtg.port.entity.base.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +43,7 @@ class ApprovalWorkflowServiceTest {
     @Test
     @DisplayName("approve — PENDING → APPROVED + inserts ApprovalLog")
     void approve_fromChoPheduyet_transitionsAndPersistsLog() {
-        ApprovalStatus result = workflowService.approve("PENDING", entityType, entityId, userId);
+        ApprovalStatus result = workflowService.approve("PENDING_APPROVAL", entityType, entityId, userId);
 
         assertEquals(ApprovalStatus.APPROVED, result);
 
@@ -80,7 +80,7 @@ class ApprovalWorkflowServiceTest {
     void reject_fromChoPheduyet_transitionsAndPersistsLog() {
         String reason = "Tài liệu không đầy đủ";
 
-        ApprovalStatus result = workflowService.reject("PENDING", entityType, entityId, userId, reason);
+        ApprovalStatus result = workflowService.reject("PENDING_APPROVAL", entityType, entityId, userId, reason);
 
         assertEquals(ApprovalStatus.REJECTED, result);
 
@@ -97,7 +97,7 @@ class ApprovalWorkflowServiceTest {
     @DisplayName("reject — blank reason throws IllegalArgumentException, no transition")
     void reject_blankReason_throwsWithoutLog() {
         assertThrows(IllegalArgumentException.class,
-                () -> workflowService.reject("PENDING", entityType, entityId, userId, "  "));
+                () -> workflowService.reject("PENDING_APPROVAL", entityType, entityId, userId, "  "));
         verify(approvalLogRepository, never()).save(any());
     }
 
@@ -105,7 +105,7 @@ class ApprovalWorkflowServiceTest {
     @DisplayName("reject — null reason throws IllegalArgumentException")
     void reject_nullReason_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> workflowService.reject("PENDING", entityType, entityId, userId, null));
+                () -> workflowService.reject("PENDING_APPROVAL", entityType, entityId, userId, null));
     }
 
     @Test
@@ -120,12 +120,12 @@ class ApprovalWorkflowServiceTest {
     @Test
     @DisplayName("resetToPending — always returns PENDING")
     void resetToPending_returnsChoPheduyet() {
-        assertEquals(ApprovalStatus.PENDING,
+        assertEquals(ApprovalStatus.PENDING_APPROVAL,
                 workflowService.resetToPending("APPROVED"));
-        assertEquals(ApprovalStatus.PENDING,
+        assertEquals(ApprovalStatus.PENDING_APPROVAL,
                 workflowService.resetToPending("REJECTED"));
-        assertEquals(ApprovalStatus.PENDING,
-                workflowService.resetToPending("PENDING"));
+        assertEquals(ApprovalStatus.PENDING_APPROVAL,
+                workflowService.resetToPending("PENDING_APPROVAL"));
     }
 
     @Test
@@ -135,3 +135,4 @@ class ApprovalWorkflowServiceTest {
                 () -> workflowService.resetToPending("INVALID_STATUS"));
     }
 }
+

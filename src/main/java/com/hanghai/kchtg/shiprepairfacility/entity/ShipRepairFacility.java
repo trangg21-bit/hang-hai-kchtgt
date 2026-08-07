@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.shiprepairfacility.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -58,8 +59,8 @@ public class ShipRepairFacility extends BaseEntity {
     private UUID spatialId;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = ShipRepairApprovalStatusConverter.class)
-    private ShipRepairApprovalStatus approvalStatus;
+    @Enumerated(EnumType.ORDINAL)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "approved_level1", nullable = false)
     @Builder.Default
@@ -108,7 +109,7 @@ public class ShipRepairFacility extends BaseEntity {
     @PrePersist
     public void prePersist() {
         if (this.approvalStatus == null) {
-            this.approvalStatus = ShipRepairApprovalStatus.PROPOSED;
+            this.approvalStatus = ApprovalStatus.PROPOSED;
         }
         if (this.approvedLevel1 == null) {
             this.approvedLevel1 = false;

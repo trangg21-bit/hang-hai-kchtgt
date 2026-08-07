@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+
 @Entity
 @Table(name = "dike_revetment")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
@@ -59,8 +61,8 @@ public class DikeRevetment {
     private UUID orgUnitId;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = DikeRevetmentApprovalStatusConverter.class)
-    private DikeRevetmentApprovalStatus approvalStatus;
+    @Enumerated(EnumType.ORDINAL)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "is_approved_level1", nullable = false)
     @Builder.Default
@@ -117,6 +119,7 @@ public class DikeRevetment {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.approvalStatus == null) this.approvalStatus = ApprovalStatus.PROPOSED;
     }
 
     @PreUpdate

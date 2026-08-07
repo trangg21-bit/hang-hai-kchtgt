@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.entity;
 
 import org.junit.jupiter.api.BeforeEach;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -43,8 +44,8 @@ class DikeRevetmentEntityTest {
         entity.setStatus("Tot");
         assertEquals("Tot", entity.getStatus());
 
-        entity.setApprovalStatus(DikeRevetmentApprovalStatus.PROPOSED);
-        assertEquals(DikeRevetmentApprovalStatus.PROPOSED, entity.getApprovalStatus());
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
 
         entity.setIsApprovedLevel1(true);
         assertTrue(entity.getIsApprovedLevel1());
@@ -88,7 +89,7 @@ class DikeRevetmentEntityTest {
                 .height(8.0)
                 .surfaceMaterial("Thep")
                 .status("Tot")
-                .approvalStatus(DikeRevetmentApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .isApprovedLevel1(true)
                 .isApprovedLevel2(true)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
@@ -97,7 +98,7 @@ class DikeRevetmentEntityTest {
         assertEquals(DikeRevetmentType.SAND_DIKE, dr.getDikeRevetmentType());
         assertEquals("Ha Noi", dr.getLocation());
         assertEquals(200.0, dr.getLength());
-        assertEquals(DikeRevetmentApprovalStatus.APPROVED, dr.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, dr.getApprovalStatus());
         assertTrue(dr.getIsApprovedLevel1());
         assertTrue(dr.getIsApprovedLevel2());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), dr.getCreatedBy());

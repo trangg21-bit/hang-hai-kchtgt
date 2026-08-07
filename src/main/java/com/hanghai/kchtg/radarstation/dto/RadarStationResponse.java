@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.radarstation.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,7 +29,7 @@ public class RadarStationResponse {
     private String conditionStatus;
     private UUID orgUnitId;
     private String orgUnitName;
-    private RadarStationApprovalStatus approvalStatus;
+    private ApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;
     private LocalDateTime approvedDateLevel1;

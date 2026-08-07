@@ -6,7 +6,7 @@ import com.hanghai.kchtg.shiprepairfacility.dto.*;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
@@ -69,7 +69,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -95,7 +95,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -108,7 +108,7 @@ class ShipRepairFacilityServiceTest {
         ShipRepairFacilityResponse response = service.create(createRequest, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
         assertNotNull(response);
-        assertEquals(ShipRepairApprovalStatus.PROPOSED, response.getApprovalStatus());
+        assertEquals(ApprovalStatus.PROPOSED, response.getApprovalStatus());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), response.getCreatedBy());
         verify(repository, times(1)).save(any());
         verify(historyRepository, times(1)).save(any());
@@ -140,7 +140,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -148,19 +148,19 @@ class ShipRepairFacilityServiceTest {
                 .build();
 
         List<ShipRepairFacility> entities = Arrays.asList(approvedEntity);
-        when(repository.findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus.APPROVED)).thenReturn(entities);
+        when(repository.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED)).thenReturn(entities);
 
         List<ShipRepairFacilityResponse> responses = service.findAll(0, 20);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
-        assertEquals(ShipRepairApprovalStatus.APPROVED, responses.get(0).getApprovalStatus());
-        verify(repository, times(1)).findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus.APPROVED);
+        assertEquals(ApprovalStatus.APPROVED, responses.get(0).getApprovalStatus());
+        verify(repository, times(1)).findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED);
     }
 
     @Test
     void testFindAll_Empty() {
-        when(repository.findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus.APPROVED)).thenReturn(Collections.emptyList());
+        when(repository.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED)).thenReturn(Collections.emptyList());
 
         List<ShipRepairFacilityResponse> responses = service.findAll(0, 20);
 
@@ -182,7 +182,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Đà Nẵng")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -208,7 +208,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(true)
                 .approvedLevel2(true)
                 .isDeleted(false)
@@ -224,7 +224,7 @@ class ShipRepairFacilityServiceTest {
 
         ShipRepairFacilityResponse response = service.update(TEST_ID, updateReqDto, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-        assertEquals(ShipRepairApprovalStatus.UNDER_REVIEW, response.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, response.getApprovalStatus());
         assertEquals("ABC mới", response.getFacilityName());
         verify(repository, times(1)).save(any());
     }
@@ -237,7 +237,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(true)
@@ -267,7 +267,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -302,7 +302,7 @@ class ShipRepairFacilityServiceTest {
 
     @Test
     void testApproveC1_Approve() {
-        entity.setApprovalStatus(ShipRepairApprovalStatus.PROPOSED);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -311,7 +311,7 @@ class ShipRepairFacilityServiceTest {
 
         ShipRepairFacilityResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-        assertEquals(ShipRepairApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getApproverLevel1());
         verify(repository, times(1)).save(any());
@@ -319,7 +319,7 @@ class ShipRepairFacilityServiceTest {
 
     @Test
     void testApproveC1_Reject() {
-        entity.setApprovalStatus(ShipRepairApprovalStatus.PROPOSED);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         ApprovalRequest req = ApprovalRequest.builder()
                 .quyetDinh("REJECTED")
                 .reason("Không đủ điều kiện")
@@ -331,13 +331,13 @@ class ShipRepairFacilityServiceTest {
 
         ShipRepairFacilityResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-        assertEquals(ShipRepairApprovalStatus.REJECTED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
         assertEquals("Không đủ điều kiện", entity.getRejectionReason());
     }
 
     @Test
     void testApproveC1_WrongStatus_Throws() {
-        entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -347,7 +347,7 @@ class ShipRepairFacilityServiceTest {
 
     @Test
     void testApproveC2_Approve() {
-        entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -356,7 +356,7 @@ class ShipRepairFacilityServiceTest {
 
         ShipRepairFacilityResponse response = service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
-        assertEquals(ShipRepairApprovalStatus.APPROVED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel2());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), entity.getApproverLevel2());
         verify(repository, times(1)).save(any());
@@ -364,7 +364,7 @@ class ShipRepairFacilityServiceTest {
 
     @Test
     void testApproveC2_Reject() {
-        entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         ApprovalRequest req = ApprovalRequest.builder()
                 .quyetDinh("REJECTED")
                 .reason("Không phù hợp")
@@ -376,13 +376,13 @@ class ShipRepairFacilityServiceTest {
 
         ShipRepairFacilityResponse response = service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
-        assertEquals(ShipRepairApprovalStatus.REJECTED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
         assertEquals("Không phù hợp", entity.getRejectionReason());
     }
 
     @Test
     void testApproveC2_WrongStatus_Throws() {
-        entity.setApprovalStatus(ShipRepairApprovalStatus.PROPOSED);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -392,7 +392,7 @@ class ShipRepairFacilityServiceTest {
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
@@ -456,7 +456,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -481,7 +481,7 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -505,19 +505,20 @@ class ShipRepairFacilityServiceTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.REJECTED)
+                .approvalStatus(ApprovalStatus.REJECTED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
-        when(repository.search(null, null, null, ShipRepairApprovalStatus.REJECTED, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, null, null, ApprovalStatus.REJECTED, null)).thenReturn(Arrays.asList(resultEntity));
 
         List<ShipRepairFacilityResponse> responses = service.search(null, null, null, "REJECTED", null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
-        assertEquals(ShipRepairApprovalStatus.REJECTED, responses.get(0).getApprovalStatus());
+        assertEquals(ApprovalStatus.REJECTED, responses.get(0).getApprovalStatus());
     }
 }
+

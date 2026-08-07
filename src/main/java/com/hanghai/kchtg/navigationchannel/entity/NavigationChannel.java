@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+
 @Entity
 @Table(name = "navigation_channel")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
@@ -42,8 +44,8 @@ public class NavigationChannel {
     @Column(name = "status") @Builder.Default private Integer status = 1;
     @Column(name = "org_unit_id") private UUID orgUnitId;
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = NavigationChannelApprovalStatusConverter.class)
-    private NavigationChannelApprovalStatus approvalStatus;
+    @Enumerated(EnumType.ORDINAL)
+    private ApprovalStatus approvalStatus;
     @Column(name = "is_approved_level1", nullable = false) private Boolean isApprovedLevel1;
     @Column(name = "approver_level1") private UUID approverLevel1;
     @Column(name = "approved_date_level1") private LocalDate approvedDateLevel1;
@@ -65,6 +67,6 @@ public class NavigationChannel {
     @Column(name = "deleted_at") private LocalDateTime deletedAt;
     @Column(name = "deleted_by") private UUID deletedBy;
     @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<ChannelRouteDetail> channelRouteDetailList = new ArrayList<>();
-    @PrePersist protected void onCreate() { this.createdAt = LocalDateTime.now(); }
+    @PrePersist protected void onCreate() { this.createdAt = LocalDateTime.now(); if (this.approvalStatus == null) this.approvalStatus = ApprovalStatus.PROPOSED; }
     @PreUpdate protected void onUpdate() { this.updatedAt = LocalDateTime.now(); }
 }

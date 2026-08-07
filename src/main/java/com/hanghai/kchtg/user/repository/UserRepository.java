@@ -115,12 +115,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u.id FROM User u JOIN u.roles r WHERE r.id = :roleId")
     List<UUID> findIdsByRoleId(@org.springframework.data.repository.query.Param("roleId") UUID roleId);
 
+
     /**
      * Thống kê số lượng người dùng hoạt động theo từng vai trò (tránh N+1 query).
      */
     @Query("SELECT r.id, COUNT(u) FROM User u JOIN u.roles r WHERE u.status <> UserStatus.DELETED GROUP BY r.id")
     List<Object[]> countUsersGroupByRoleId();
 
+    @Query("SELECT u.status, COUNT(u) FROM User u WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED GROUP BY u.status")
+    List<Object[]> countUsersByStatus();
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"roles"})
     @Query("SELECT DISTINCT u FROM User u " +
            "LEFT JOIN u.roles r " +
            "WHERE (:search IS NULL OR :search = '' OR " +
@@ -135,3 +140,4 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             @org.springframework.data.repository.query.Param("status") UserStatus status,
             org.springframework.data.domain.Pageable pageable);
 }
+

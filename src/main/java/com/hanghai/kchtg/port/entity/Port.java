@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -61,7 +60,7 @@ public class Port extends BaseEntity {
     private OperationalStatus operationalStatus;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = ApprovalStatusConverter.class)
+    @Enumerated(EnumType.ORDINAL)
     private ApprovalStatus approvalStatus;
 
     @Column(name = "org_unit_id")

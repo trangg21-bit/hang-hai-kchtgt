@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.station.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -37,7 +38,7 @@ public abstract class BaseStation {
     protected StationStatus status;
 
     @Enumerated(EnumType.STRING)
-    protected StationApprovalStatus approvalStatus;
+    protected ApprovalStatus approvalStatus;
 
     protected Integer approvalLevel;
     protected String approvedBy;
@@ -65,4 +66,3 @@ public abstract class BaseStation {
         this.deletedAt = LocalDateTime.now();
     }
 }
-

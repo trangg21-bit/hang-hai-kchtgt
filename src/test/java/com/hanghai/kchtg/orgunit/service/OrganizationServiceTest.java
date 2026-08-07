@@ -5,7 +5,6 @@ import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitHistoryRepository;
@@ -83,7 +82,6 @@ class OrganizationServiceTest {
             CreateOrgUnitRequest request = new CreateOrgUnitRequest();
             request.setName("Chi cục 1");
             request.setCode("CUC001");
-            request.setType(OrgUnitType.SUB_DEPARTMENT);
 
             when(orgUnitRepo.existsByCode("CUC001")).thenReturn(true);
 
@@ -98,7 +96,6 @@ class OrganizationServiceTest {
         CreateOrgUnitRequest request = new CreateOrgUnitRequest();
         request.setName("Chi cục 1");
         request.setCode("CUC001");
-        request.setType(OrgUnitType.SUB_DEPARTMENT);
 
             when(orgUnitRepo.existsByCode("CUC001")).thenReturn(false);
             when(orgUnitRepo.save(any())).thenAnswer(invocation -> {
@@ -123,7 +120,7 @@ class OrganizationServiceTest {
             request.setCode("CUC001");
 
             when(orgUnitRepo.findById(updateId)).thenReturn(Optional.of(
-                    makeUnit(updateId, "Old Name", "OLD_CODE", OrgUnitType.DEPARTMENT)));
+                    makeUnit(updateId, "Old Name", "OLD_CODE")));
             when(orgUnitRepo.existsByCodeAndIdNotAndDeletedAtIsNull("CUC001", updateId)).thenReturn(true);
 
             assertThrows(IllegalArgumentException.class,
@@ -141,7 +138,7 @@ class OrganizationServiceTest {
         @DisplayName("shouldRejectDeleteWhenUnitHasChildren")
         void shouldRejectDeleteWhenHasChildren() {
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(
-                    makeUnit(childId, "Cảng vụ", "CV001", OrgUnitType.PORT_AUTHORITY)));
+                    makeUnit(childId, "Cảng vụ", "CV001")));
             when(orgUnitRepo.countByParentIdAndDeletedAtIsNull(childId)).thenReturn(2L);
 
             assertThrows(IllegalArgumentException.class,
@@ -152,7 +149,7 @@ class OrganizationServiceTest {
         @DisplayName("shouldAllowDeleteWhenUnitHasNoChildren")
         void shouldAllowDeleteWhenNoChildren() {
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(
-                    makeUnit(childId, "Cảng vụ", "CV001", OrgUnitType.PORT_AUTHORITY)));
+                    makeUnit(childId, "Cảng vụ", "CV001")));
             when(orgUnitRepo.countByParentIdAndDeletedAtIsNull(childId)).thenReturn(0L);
 
             assertDoesNotThrow(() -> service.delete(childId, UUID.randomUUID(), "admin"));
@@ -177,7 +174,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldTransitionDRAFT_to_PENDING_onSubmit")
         void shouldTransitionDraftToPendingOnSubmit() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001", OrgUnitType.DEPARTMENT);
+            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
             unit.setStatus(OrgUnitStatus.DRAFT);
 
             when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
@@ -194,7 +191,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldRejectSubmitWhenNotDraftOrRejected")
         void shouldRejectSubmitWhenNotDraftOrRejected() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001", OrgUnitType.DEPARTMENT);
+            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
             unit.setStatus(OrgUnitStatus.APPROVED);
 
             when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
@@ -206,7 +203,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldTransitionPending_to_APPROVED_onApprove")
         void shouldTransitionPendingToApprovedOnApprove() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001", OrgUnitType.DEPARTMENT);
+            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
             unit.setStatus(OrgUnitStatus.PENDING);
 
             when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
@@ -225,7 +222,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldRejectApproveWhenNotPending")
         void shouldRejectApproveWhenNotPending() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001", OrgUnitType.DEPARTMENT);
+            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
             unit.setStatus(OrgUnitStatus.DRAFT);
 
             when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
@@ -237,7 +234,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldTransitionPending_to_REJECTED_onReject")
         void shouldTransitionPendingToRejectedOnReject() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001", OrgUnitType.DEPARTMENT);
+            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
             unit.setStatus(OrgUnitStatus.PENDING);
 
             when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
@@ -263,7 +260,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldRejectSelfAsParent")
         void shouldRejectSelfAsParent() {
-            OrgUnit unit = makeUnit(childId, "Cảng vụ", "CV001", OrgUnitType.PORT_AUTHORITY);
+            OrgUnit unit = makeUnit(childId, "Cảng vụ", "CV001");
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(unit));
 
             UpdateOrgUnitRequest request = new UpdateOrgUnitRequest();
@@ -276,12 +273,12 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldRejectCircularReferenceWhenChildBecomesParentOfAncestor")
         void shouldRejectCircularReference() {
-            OrgUnit unit = makeUnit(childId, "Cảng vụ", "CV001", OrgUnitType.PORT_AUTHORITY);
+            OrgUnit unit = makeUnit(childId, "Cảng vụ", "CV001");
             unit.setPath("/" + rootId + "/" + parentId + "/" + childId + "/");
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(unit));
             // Parent fetch must succeed before isAncestor is called
             when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(
-                    makeUnit(rootId, "Cục", "CUC001", OrgUnitType.DEPARTMENT)));
+                    makeUnit(rootId, "Cục", "CUC001")));
 
             // rootId is an ancestor of childId — trying to set it as new parent should be rejected
             when(materializedPathService.isAncestor(childId, rootId)).thenReturn(true);
@@ -296,12 +293,11 @@ class OrganizationServiceTest {
 
     // ── Utility helpers ──────────────────────────────────────────────
 
-    private OrgUnit makeUnit(UUID id, String name, String code, OrgUnitType type) {
+    private OrgUnit makeUnit(UUID id, String name, String code) {
         OrgUnit unit = new OrgUnit();
         unit.setId(id);
         unit.setName(name);
         unit.setCode(code);
-        unit.setType(type);
         unit.setStatus(OrgUnitStatus.APPROVED);
         unit.setPath("/" + id + "/");
         unit.setLevel(1);

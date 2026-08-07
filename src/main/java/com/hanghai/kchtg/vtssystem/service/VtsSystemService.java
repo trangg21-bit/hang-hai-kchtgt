@@ -12,7 +12,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.vtssystem.dto.*;
-import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
@@ -325,7 +325,7 @@ public class VtsSystemService {
             entity.setApproverLevel1(null);
             entity.setApprovedDateLevel1(null);
         } else {
-            entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             entity.setRejectionReason(null);
             entity.setApprovedLevel1(true);
             entity.setApproverLevel1(userId);
@@ -354,7 +354,7 @@ public class VtsSystemService {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        if (entity.getApprovalStatus() != ApprovalStatus.UNDER_REVIEW) {
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new RuntimeException("Chỉ có thể phê duyệt từ trạng thái Đang xem xét (UNDER_REVIEW)");
         }
 

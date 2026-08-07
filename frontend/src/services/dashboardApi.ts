@@ -31,8 +31,7 @@ import { MOCK_DATA } from './dashboardMockData';
 // ============================================================
 // Base URLs
 // ============================================================
-const INTEGRATION_BASE = '/v1/integration/share';
-const ASSET_BASE = '/v1/asset';
+const DASHBOARD_BASE = '/v1/dashboard';
 
 /** Fallback H-Bar category when the backend leaves assetName null. */
 const PROCESSING_TYPE_LABEL: Record<string, string> = {
@@ -52,7 +51,7 @@ const PROCESSING_TYPE_LABEL: Record<string, string> = {
  */
 async function fetchCargoTotal(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/ports/cargo-total`,
+    `${DASHBOARD_BASE}/ports/cargo-total`,
     { params: { page: 0, size: 50, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
@@ -66,7 +65,7 @@ async function fetchCargoTotal(year: number, province?: string | null): Promise<
  */
 async function fetchCargoMonthly(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary`,
+    `${DASHBOARD_BASE}/cargo/summary`,
     { params: { periodType: 'MONTHLY', page: 0, size: 50, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
@@ -80,7 +79,7 @@ async function fetchCargoMonthly(year: number, province?: string | null): Promis
  */
 async function fetchCargoAnnual(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary`,
+    `${DASHBOARD_BASE}/cargo/summary`,
     { params: { periodType: 'ANNUAL', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
@@ -94,7 +93,7 @@ async function fetchCargoAnnual(year: number, province?: string | null): Promise
  */
 async function fetchCargoPassenger(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary`,
+    `${DASHBOARD_BASE}/cargo/summary`,
     { params: { periodType: 'CARGO_PASSENGER', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
@@ -108,7 +107,7 @@ async function fetchCargoPassenger(year: number, province?: string | null): Prom
  */
 async function fetchCargoDomestic(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary`,
+    `${DASHBOARD_BASE}/cargo/summary`,
     { params: { periodType: 'DOMESTIC', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
@@ -122,7 +121,7 @@ async function fetchCargoDomestic(year: number, province?: string | null): Promi
  */
 async function fetchCargoManagedArea(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary`,
+    `${DASHBOARD_BASE}/cargo/summary`,
     { params: { periodType: 'MANAGED_AREA', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
@@ -145,7 +144,7 @@ async function fetchAssetStatus(
   if (province) params.province = province.trim();
   if (infraType) params.infraType = infraType.trim();
   const res = await api.get<ApiResponse<AssetStatusDto>>(
-    `${INTEGRATION_BASE}/assets/status`,
+    `${DASHBOARD_BASE}/assets/status`,
     { params: Object.keys(params).length > 0 ? params : undefined }
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
@@ -161,7 +160,7 @@ async function fetchApprovals(
   size: number = 200
 ): Promise<AssetProcessingRecordResponse[]> {
   const res = await api.get<ApiResponse<Page<AssetProcessingRecordResponse>>>(
-    `${ASSET_BASE}/asset-processing-records?page=${page}&size=${size}`
+    `${DASHBOARD_BASE}/asset-processing-records?page=${page}&size=${size}`
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -224,7 +223,7 @@ async function fetchYearOverYear(
   province?: string | null,
 ): Promise<YearOverYearDelta> {
   const currentRes = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary`,
+    `${DASHBOARD_BASE}/cargo/summary`,
     { params: { periodType, page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!currentRes.data.success) throw new Error(currentRes.data.message || 'API returned unsuccessful response');
@@ -232,7 +231,7 @@ async function fetchYearOverYear(
     c.periodStart.startsWith(String(year))
   );
   const previousRes = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary`,
+    `${DASHBOARD_BASE}/cargo/summary`,
     { params: { periodType, page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!previousRes.data.success) throw new Error(previousRes.data.message || 'API returned unsuccessful response');

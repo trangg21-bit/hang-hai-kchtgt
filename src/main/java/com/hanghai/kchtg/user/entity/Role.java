@@ -59,12 +59,6 @@ public class Role extends BaseEntity {
         inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions = new HashSet<>();
 
-    /** Danh sách mã chức năng/menu được gán theo cây AUTH_MENU của dự án gốc. */
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "role_menu_permissions",
-        joinColumns = @JoinColumn(name = "role_id"),
-        inverseJoinColumns = @JoinColumn(name = "menu_code"))
-    private Set<SystemMenu> menuPermissions = new HashSet<>();
 
     /** Trạng thái vai trò. */
     @Enumerated(EnumType.ORDINAL)

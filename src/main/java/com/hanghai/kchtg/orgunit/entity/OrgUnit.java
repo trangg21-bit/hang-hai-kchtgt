@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.orgunit.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +12,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -18,25 +20,25 @@ import java.util.UUID;
  * <p>
  * Self-referencing via {@code parentId} (nullable for root nodes).
  * Uses Materialized Path pattern for O(log N) subtree traversal.
- * Extends {@link BaseEntity} for audit fields (id, createdAt, updatedAt, deletedAt).
+ * Extends {@link BaseEntity} for audit fields (id, createdAt, updatedAt,
+ * deletedAt).
  * </p>
  *
  * <p>
  * Business rules enforced:
  * <ul>
- *   <li>BR-013: unique code per scope</li>
- *   <li>BR-016: parent-child hierarchy with circular ref detection</li>
+ * <li>BR-013: unique code per scope</li>
+ * <li>BR-016: parent-child hierarchy with circular ref detection</li>
  * </ul>
  * </p>
  */
 @Entity
-@Table(name = "org_units",
-       indexes = {
-           @Index(name = "idx_org_units_path", columnList = "path"),
-           @Index(name = "idx_org_units_parent", columnList = "parent_id"),
-           @Index(name = "idx_org_units_type_status", columnList = "type, status"),
-           @Index(name = "idx_org_units_level", columnList = "level")
-       })
+@Table(name = "org_units", indexes = {
+        @Index(name = "idx_org_units_path", columnList = "path"),
+        @Index(name = "idx_org_units_parent", columnList = "parent_id"),
+        @Index(name = "idx_org_units_status", columnList = "status"),
+        @Index(name = "idx_org_units_level", columnList = "level")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -56,13 +58,12 @@ public class OrgUnit extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    /** Parent unit ID for hierarchical organisation. null indicates a root-level unit. BR-016 */
+    /**
+     * Parent unit ID for hierarchical organisation. null indicates a root-level
+     * unit. BR-016
+     */
     @Column
     private UUID parentId;
-
-    /** Organisational unit type (CUC, CHI_CUC, CANG_VU, TCT). BR-003-04 */
-    @Column(nullable = false, columnDefinition = "SMALLINT")
-    private OrgUnitType type;
 
     /** Optional description of the unit */
     @Column(length = 1000)
@@ -97,7 +98,7 @@ public class OrgUnit extends BaseEntity {
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "operational_status", nullable = false, columnDefinition = "SMALLINT")
     @Builder.Default
-    private OrgUnitOperationalStatus operationalStatus = OrgUnitOperationalStatus.ACTIVE;
+    private OperationalStatus operationalStatus = OperationalStatus.OPERATIONAL;
 
     // ── Materialized Path fields ─────────────────────────────────────
 
@@ -105,12 +106,17 @@ public class OrgUnit extends BaseEntity {
      * Materialized path for subtree traversal. Format: /1/5/12/ (trailing slash).
      * Root has path like /{id}/. Computed by MaterializedPathService.
      */
-    /** Materialized path for subtree traversal. Auto-computed by service after persist. */
+    /**
+     * Materialized path for subtree traversal. Auto-computed by service after
+     * persist.
+     */
     @Size(max = 500, message = "Đường dẫn tối đa 500 ký tự")
     @Column(nullable = false, length = 500)
     private String path;
 
-    /** Depth from root (root = 1, child of root = 2, grandchild = 3). Auto-computed. */
+    /**
+     * Depth from root (root = 1, child of root = 2, grandchild = 3). Auto-computed.
+     */
     @Column(nullable = false)
     private Integer level;
 
@@ -120,25 +126,24 @@ public class OrgUnit extends BaseEntity {
 
     /** Timestamp when unit was approved (set on APPROVED transition). */
     @Column(name = "approved_at")
-    private java.time.LocalDateTime approvedAt;
+    private LocalDateTime approvedAt;
 
     // ── Factory methods ──────────────────────────────────────────────
 
     /**
      * Create a new root unit (no parent).
      */
-    public static OrgUnit createRoot(String name, String code, OrgUnitType type,
-                                      String description, String address, String phone) {
+    public static OrgUnit createRoot(String name, String code,
+            String description, String address, String phone) {
         OrgUnit unit = new OrgUnit();
         unit.name = name;
         unit.code = code;
-        unit.type = type;
         unit.description = description;
         unit.address = address;
         unit.phone = phone;
         unit.status = OrgUnitStatus.DRAFT;
-        unit.operationalStatus = OrgUnitOperationalStatus.ACTIVE;
-        unit.path = "";   // set later by MaterializedPathService
+        unit.operationalStatus = OperationalStatus.OPERATIONAL;
+        unit.path = ""; // set later by MaterializedPathService
         unit.level = 0;
         unit.sortOrder = 0;
         return unit;

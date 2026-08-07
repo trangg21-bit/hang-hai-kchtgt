@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.station.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.Column;
@@ -55,7 +56,7 @@ public class LighthouseStation extends BaseEntity {
 
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
     @Column(name = "approval_status", columnDefinition = "smallint default 0")
-    protected StationApprovalStatus approvalStatus;
+    protected ApprovalStatus approvalStatus;
 
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
     protected ApprovalLevel approvalLevel;

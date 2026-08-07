@@ -90,7 +90,7 @@ class WaterZoneServiceTest {
         testEntity.setAvgDepth(new BigDecimal("12.00"));
         testEntity.setWaterZoneType(com.hanghai.kchtg.port.entity.WaterZoneType.ANCHORAGE);
         testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
-        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
     }
 
     // ── findAll — INT-004 two-filter overload ─────────────────────────────
@@ -142,7 +142,7 @@ class WaterZoneServiceTest {
         assertNotNull(result);
         assertEquals("VN-NEW", result.getWaterZoneCode());
         assertEquals("Vùng nước mới", result.getWaterZoneName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
         verify(waterZoneRepository).save(any(WaterZone.class));
     }
 

@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,7 +34,7 @@ public class NavigationChannelResponse {
     private Integer status;
     private UUID orgUnitId;
     private String orgUnitName;
-    private NavigationChannelApprovalStatus approvalStatus;
+    private ApprovalStatus approvalStatus;
     private Boolean isApprovedLevel1;
     private UUID approverLevel1;
     private LocalDate approvedDateLevel1;

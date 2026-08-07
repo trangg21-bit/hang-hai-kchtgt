@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.radarstation.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import jakarta.persistence.*;
@@ -52,8 +53,8 @@ public class RadarStation extends BaseEntity {
     private UUID orgUnitId;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = RadarStationApprovalStatusConverter.class)
-    private RadarStationApprovalStatus approvalStatus;
+    @Enumerated(EnumType.ORDINAL)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "approved_level1")
     @Builder.Default
@@ -96,7 +97,7 @@ public class RadarStation extends BaseEntity {
 
     @PrePersist
     protected void onCreate() {
-        if (approvalStatus == null) approvalStatus = RadarStationApprovalStatus.PROPOSED;
+        if (approvalStatus == null) approvalStatus = ApprovalStatus.PROPOSED;
         if (approvedLevel1 == null) approvedLevel1 = false;
         if (approvedLevel2 == null) approvedLevel2 = false;
     }

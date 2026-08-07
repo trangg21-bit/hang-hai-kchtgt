@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-05T08:21:46.393Z",
+  "last_modified_at": "2026-08-07T06:30:13.397Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -131,7 +131,10 @@
       "risk_path": "M"
     },
     "M-008": {
-      "depends_on": [],
+      "depends_on": [
+        "[object Object]",
+        "[object Object]"
+      ],
       "topo_level": 0,
       "status": "done",
       "claimed_by": null,
@@ -390,6 +393,56 @@
       "name": "Trang chủ Dashboard",
       "slug": "trang-chu-dashboard",
       "risk_path": "M"
+    },
+    "M-023": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "queued",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
+      "current_stage": null,
+      "started_at": null,
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 0,
+      "name": "Quản lý Đèn biển và nhà trạm gắn với Đèn biển",
+      "slug": "quan-ly-den-bien-va-nha-tram",
+      "risk_path": "M"
+    },
+    "M-1000": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "queued",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
+      "current_stage": null,
+      "started_at": null,
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 0,
+      "name": "Fix accesslog user_id UUID type mismatch",
+      "slug": "fix-accesslog-user-id-uuid",
+      "risk_path": "M"
+    },
+    "M-1001": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "in_progress",
+      "claimed_by": "tab-a890f7f3907fd107",
+      "claimed_at": "2026-08-07T06:30:13.397Z",
+      "heartbeat_at": "2026-08-07T06:30:13.397Z",
+      "current_stage": null,
+      "started_at": "2026-08-07T06:30:13.397Z",
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 1,
+      "name": "Consolidate Approval Status Enums",
+      "slug": "consolidate-approval-status-enums",
+      "risk_path": "M",
+      "claimed_pid": 8100,
+      "claimed_host": "PTPM-SONPN-PC"
     }
   },
   "tabs": {
@@ -509,6 +562,16 @@
       "completed_modules": [
         "M-001"
       ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-a890f7f3907fd107": {
+      "started_at": "2026-08-07T06:30:13.397Z",
+      "last_seen": "2026-08-07T06:30:13.397Z",
+      "claimed_modules": [
+        "M-1001"
+      ],
+      "completed_modules": [],
       "failed_modules": [],
       "skipped_modules": []
     }

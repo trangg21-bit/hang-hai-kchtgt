@@ -5,7 +5,7 @@ import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
@@ -61,7 +61,7 @@ class DikeRevetmentServiceTest {
                 .height(5.0)
                 .surfaceMaterial("Betong")
                 .status("Tot")
-                .approvalStatus(DikeRevetmentApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
                 .isDeleted(false)
@@ -84,14 +84,14 @@ class DikeRevetmentServiceTest {
         DikeRevetmentResponse r = service.create(createReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r).isNotNull();
         assertThat(r.getDikeRevetmentType()).isEqualTo(DikeRevetmentType.RIVER_DIKE);
-        assertThat(r.getApprovalStatus()).isEqualTo(DikeRevetmentApprovalStatus.PROPOSED);
+        assertThat(r.getApprovalStatus()).isEqualTo(ApprovalStatus.PROPOSED);
         verify(repo, times(1)).save(any());
     }
 
     @Test void create_shouldSetDefaultStatusToProposed() {
         when(repo.save(any())).thenReturn(testEntity);
         assertThat(service.create(createReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).getApprovalStatus())
-                .isEqualTo(DikeRevetmentApprovalStatus.PROPOSED);
+                .isEqualTo(ApprovalStatus.PROPOSED);
     }
 
     @Test void getById_shouldReturnResponse() {
@@ -112,7 +112,7 @@ class DikeRevetmentServiceTest {
     }
 
     @Test void softDelete_shouldMarkDeleted() {
-        testEntity.setApprovalStatus(DikeRevetmentApprovalStatus.APPROVED);
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
         when(repo.save(any())).thenReturn(testEntity);
         service.softDelete(TEST_ID);
@@ -134,12 +134,12 @@ class DikeRevetmentServiceTest {
                 .decision("APPROVED")
                 .reason("Phe cap 1")
                 .build(), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertThat(r.getStatus()).isEqualTo("UNDER_REVIEW");
+        assertThat(r.getStatus()).isEqualTo("PENDING_APPROVAL");
         assertThat(r.getApprovalLevel()).isEqualTo(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
     }
 
     @Test void approveC2_shouldTransitionUnderReviewToApproved() {
-        testEntity.setApprovalStatus(DikeRevetmentApprovalStatus.UNDER_REVIEW);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
         ApprovalHistory hist = ApprovalHistory.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         when(approvalHistoryRepo.save(any())).thenReturn(hist);
@@ -170,8 +170,9 @@ class DikeRevetmentServiceTest {
     }
 
     @Test void findByApprovalStatus_shouldReturnFiltered() {
-        when(repo.findByApprovalStatusAndIsDeletedFalse(DikeRevetmentApprovalStatus.APPROVED))
+        when(repo.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED))
                 .thenReturn(List.of(testEntity));
-        assertThat(service.findByApprovalStatus(DikeRevetmentApprovalStatus.APPROVED)).hasSize(1);
+        assertThat(service.findByApprovalStatus(ApprovalStatus.APPROVED)).hasSize(1);
     }
 }
+

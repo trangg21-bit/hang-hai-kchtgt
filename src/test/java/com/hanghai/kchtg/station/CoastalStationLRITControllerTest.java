@@ -11,7 +11,7 @@ import com.hanghai.kchtg.station.controller.CoastalStationLRITController;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITHistoryResponse;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.service.CoastalStationLRITService;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -90,7 +90,7 @@ class CoastalStationLRITControllerTest {
         entity.setCoverageArea("Territorial");
         entity.setIsActive(true);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
     }
@@ -113,7 +113,7 @@ class CoastalStationLRITControllerTest {
                 .communicationChannel("VHF Ch 16")
                 .coverageArea("Territorial")
                 .status(StationStatus.PENDING_APPROVAL)
-                .approvalStatus(StationApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }
@@ -256,7 +256,7 @@ class CoastalStationLRITControllerTest {
         UUID id = UUID.randomUUID();
         CoastalStationLRIT entity = makeEntity(id);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
-        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setStatus(StationStatus.APPROVED_L1);
         when(service.approveStation(eq(id), eq(true), any(Long.class))).thenReturn(entity);
 
@@ -280,7 +280,7 @@ class CoastalStationLRITControllerTest {
         UUID id = UUID.randomUUID();
         CoastalStationLRIT entity = makeEntity(id);
         entity.setRejectionReason("Terminal not verified");
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         when(service.rejectStation(eq(id), anyString(), any(Long.class))).thenReturn(entity);
 
         String json = """
@@ -366,3 +366,4 @@ class CoastalStationLRITControllerTest {
                 .andExpect(status().isBadRequest());
     }
 }
+

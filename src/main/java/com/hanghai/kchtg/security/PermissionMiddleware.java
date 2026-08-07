@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.security;
 
+import static com.hanghai.kchtg.security.constants.PermissionConstants.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
@@ -97,7 +98,9 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         return path.startsWith("/api/auth/")
                 || path.startsWith("/api/public/")
                 || path.startsWith("/api/health/")
-                || path.startsWith("/api/v1/auth/");
+                || path.startsWith("/api/v1/auth/")
+                || path.startsWith("/api/v1/dashboard/")
+                || path.startsWith("/api/v1/integration/share/");
     }
 
     /**
@@ -229,26 +232,26 @@ public class PermissionMiddleware extends OncePerRequestFilter {
     private String mapMethodToAction(String method, String path) {
         String normalizedPath = path.toLowerCase(java.util.Locale.ROOT);
         if (normalizedPath.contains("approve-c1") || normalizedPath.contains("approvec1")) {
-            return "approvec1";
+            return ACTION_APPROVE_C1;
         }
         if (normalizedPath.contains("approve-c2") || normalizedPath.contains("approvec2")) {
-            return "approvec2";
+            return ACTION_APPROVE_C2;
         }
         if (normalizedPath.contains("approve") || normalizedPath.contains("reject")) {
-            return "approve";
+            return ACTION_APPROVE;
         }
         if (normalizedPath.contains("history")) {
-            return "history";
+            return ACTION_HISTORY;
         }
         if (normalizedPath.contains("submit")) {
-            return "submit";
+            return ACTION_CREATE;
         }
         return switch (method.toUpperCase()) {
-            case "GET" -> "read";
-            case "POST" -> "create";
-            case "PUT", "PATCH" -> "update";
-            case "DELETE" -> "delete";
-            default -> "read";
+            case "GET" -> ACTION_READ;
+            case "POST" -> ACTION_CREATE;
+            case "PUT", "PATCH" -> ACTION_UPDATE;
+            case "DELETE" -> ACTION_DELETE;
+            default -> ACTION_READ;
         };
     }
 

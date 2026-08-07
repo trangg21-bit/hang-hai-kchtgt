@@ -42,6 +42,10 @@ public class UserResponse {
      * </p>
      */
     public static UserResponse from(User user) {
+        return from(user, null);
+    }
+
+    public static UserResponse from(User user, com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
         UUID oId = null;
         String oName = null;
         if (user.getOrgUnit() != null) {
@@ -49,9 +53,16 @@ public class UserResponse {
             oName = user.getOrgUnit().getName();
         }
 
-        List<UUID> gIds = List.of();
-        List<String> gNames = List.of();
-        if (user.getGroups() != null && !user.getGroups().isEmpty()) {
+        if (oId != null && orgUnitCacheService != null) {
+            String cachedName = orgUnitCacheService.getName(oId);
+            if (cachedName != null) {
+                oName = cachedName;
+            }
+        }
+
+        List<UUID> gIds = null;
+        List<String> gNames = null;
+        if (org.hibernate.Hibernate.isInitialized(user.getGroups()) && user.getGroups() != null && !user.getGroups().isEmpty()) {
             gIds = user.getGroups().stream().map(g -> g.getId()).toList();
             gNames = user.getGroups().stream().map(g -> g.getName()).toList();
         }
@@ -74,3 +85,4 @@ public class UserResponse {
         );
     }
 }
+

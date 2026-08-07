@@ -27,6 +27,14 @@ export function useUsers(params: ListParams) {
   });
 }
 
+export function useUserStatusCounts() {
+  return useQuery<Record<string, number>>({
+    queryKey: ['users', 'status-counts'],
+    queryFn: () => userService.getStatusCounts(),
+    staleTime: 30_000,
+  });
+}
+
 export function useUser(id: string | undefined) {
   return useQuery({
     queryKey: ['users', id],

@@ -3,7 +3,7 @@ package com.hanghai.kchtg.shiprepairfacility.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.service.ShipRepairFacilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +57,7 @@ class ShipRepairFacilityControllerTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(true)
                 .approvedLevel2(true)
                 .isDeleted(false)
@@ -205,7 +205,7 @@ class ShipRepairFacilityControllerTest {
                 .reason("Không đủ điều kiện")
                 .build();
         ShipRepairFacilityResponse rejectedResponse = ShipRepairFacilityResponse.builder()
-                .id(TEST_ID).approvalStatus(ShipRepairApprovalStatus.REJECTED).rejectionReason("Không đủ điều kiện").build();
+                .id(TEST_ID).approvalStatus(ApprovalStatus.REJECTED).rejectionReason("Không đủ điều kiện").build();
         when(service.approveC1(eq(TEST_ID), eq(req), any(java.util.UUID.class))).thenReturn(rejectedResponse);
 
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
@@ -289,3 +289,4 @@ class ShipRepairFacilityControllerTest {
         return auth;
     }
 }
+

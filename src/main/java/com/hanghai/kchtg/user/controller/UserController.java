@@ -1,53 +1,39 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
-
 import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ChangeStatusRequest;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
+import com.hanghai.kchtg.user.dto.UserPageResponse;
 import com.hanghai.kchtg.user.dto.GrantUserPermissionRequest;
 import com.hanghai.kchtg.user.dto.UserPermissionOverrideResponse;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.service.UserService;
 import com.hanghai.kchtg.user.service.UserPermissionService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-import java.util.UUID;
-
-import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-import java.util.UUID;
-
 import com.hanghai.kchtg.admin.entity.AdminAuditLog;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * REST Controller quan ly tai khoan nguoi dung.
@@ -80,12 +66,12 @@ public class UserController {
     }
 
     /**
-     * T-001: Lay danh sach nguoi dung voi phan trang.
+     * T-001: Lay danh sach nguoi dung voi phan trang (kem statusCounts).
      * Default 20 items/page, max 100. Sort by created_at DESC.
      */
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> list(
+    public ResponseEntity<ApiResponse<UserPageResponse>> list(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String roleCode,
             @RequestParam(required = false) UserStatus status,
@@ -94,7 +80,7 @@ public class UserController {
         // Enforce max page size
         int actualSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(page, actualSize, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
-        Page<UserResponse> result = userService.findAll(search, roleCode, status, pageable);
+        UserPageResponse result = userService.findAllWithCounts(search, roleCode, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

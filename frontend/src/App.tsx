@@ -177,19 +177,19 @@ export default function App() {
                 <Route path="/reports/F-142/create" element={<PermissionGuard permission="report:create"><Bcc157Form /></PermissionGuard>} />
 
                 {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
-                <Route path="/beacon-lights" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
-                <Route path="/beacon-lights/create" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
-                <Route path="/beacon-lights/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
-                <Route path="/buoys" element={<PermissionGuard permission="data:read"><BuoyList /></PermissionGuard>} />
-                <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
-                <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
+                <Route path="/beacon-lights" element={<PermissionGuard permission="beaconlight:read"><BeaconList /></PermissionGuard>} />
+                <Route path="/beacon-lights/create" element={<PermissionGuard permission="beaconlight:create"><BeaconForm /></PermissionGuard>} />
+                <Route path="/beacon-lights/:id" element={<PermissionGuard permission="beaconlight:read"><BeaconForm /></PermissionGuard>} />
+                <Route path="/buoys" element={<PermissionGuard permission="buoy:read"><BuoyList /></PermissionGuard>} />
+                <Route path="/buoys/create" element={<PermissionGuard permission="buoy:create"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
+                <Route path="/buoys/:id" element={<PermissionGuard permission="buoy:read"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
                 <Route path="/port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
                 <Route path="/port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
                 <Route path="/port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
-                <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
+                <Route path="/port/:id/approve" element={<PermissionGuard permission={['port:approvec1', 'port:approvec2']}><PortApprovePage /></PermissionGuard>} />
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
@@ -206,7 +206,7 @@ export default function App() {
 
                 <Route path="/water-zone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
 
-                <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="port:read"><DocumentUploadPage /></PermissionGuard>} />
+                <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="document:create"><DocumentUploadPage /></PermissionGuard>} />
 
                 {/* M-003: Khu nước & VTS — Quản lý tàu bè */}
 
@@ -247,14 +247,14 @@ export default function App() {
                 <Route path="/documents/port-planning" element={<PermissionGuard permission="document:read"><PortPlanningList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
-                <Route path="/lighthouse-station" element={<PermissionGuard permission="data:read"><LighthouseStationList /></PermissionGuard>} />
-                <Route path="/buoy-station" element={<PermissionGuard permission="data:read"><BuoyStationList /></PermissionGuard>} />
-                <Route path="/buoy-station/create" element={<PermissionGuard permission="data:read"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
-                <Route path="/buoy-station/:id" element={<PermissionGuard permission="data:read"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
+                <Route path="/lighthouse-station" element={<PermissionGuard permission="lighthousestation:read"><LighthouseStationList /></PermissionGuard>} />
+                <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationList /></PermissionGuard>} />
+                <Route path="/buoy-station/create" element={<PermissionGuard permission="buoystation:create"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
+                <Route path="/buoy-station/:id" element={<PermissionGuard permission="buoystation:read"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
-                <Route path="/station/coastal" element={<PermissionGuard permission="data:read"><CoastalStationList /></PermissionGuard>} />
-                <Route path="/station/special" element={<PermissionGuard permission="data:read"><SpecialStationList /></PermissionGuard>} />
+                <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />
+                <Route path="/station/special" element={<PermissionGuard permission="specialstation:read"><SpecialStationList /></PermissionGuard>} />
 
                 {/* Symbols — Biểu tượng bản đồ */}
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />

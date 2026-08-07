@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.station.dto.coastal;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -28,7 +28,7 @@ public class CoastalStationVTSResponse {
     private String contactPerson;
     private String contactPhone;
     private StationStatus status;
-    private StationApprovalStatus approvalStatus;
+    private ApprovalStatus approvalStatus;
     private ApprovalLevel approvalLevel;
     private UUID approvedBy;
     private LocalDateTime approvedDate;

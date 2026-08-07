@@ -140,7 +140,7 @@ public class DryPortService {
                 .operationalStatus(request.getOperationalStatus())
                 .remarks(request.getRemarks())
                 // Approval
-                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING)
+                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING_APPROVAL)
                 // GIS
                 .mapSymbolId(request.getMapSymbolId())
                 .coordinateSystem(request.getCoordinateSystem())
@@ -301,7 +301,7 @@ public class DryPortService {
 
         // Set approval status
         if (isSubmit) {
-            entity.setApprovalStatus(ApprovalStatus.PENDING);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         } else if (isApprove) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
             UUID currentUserId = SecurityUtils.getCurrentUserId();
@@ -311,7 +311,7 @@ public class DryPortService {
                     "Cập nhật và phê duyệt cảng cạn: " + entity.getDryPortCode(),
                     null);
         } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.REJECTED) {
-            entity.setApprovalStatus(ApprovalStatus.PENDING);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         DryPort saved = dryPortRepository.save(entity);
@@ -362,7 +362,7 @@ public class DryPortService {
                 entity.getTeuCapacity(), entity.getPortStatus());
 
         DryPort snapshot = captureSnapshot(entity);
-        entity.setApprovalStatus(ApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         DryPort saved = dryPortRepository.save(entity);
         changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
         log.info("Submitted DryPort [{}] for approval", saved.getId());

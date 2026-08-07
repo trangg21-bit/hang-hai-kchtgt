@@ -11,7 +11,7 @@ import com.hanghai.kchtg.navigationchannel.dto.*;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -82,7 +82,7 @@ public class NavigationChannelService {
                 .beaconAmount(req.getBeaconAmount())
                 .status(req.getStatus())
                 .orgUnitId(req.getOrgUnitId())
-                .approvalStatus(NavigationChannelApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
                 .isDeleted(false)
@@ -134,9 +134,9 @@ public class NavigationChannelService {
     public Page<NavigationChannelResponse> search(UUID orgUnitId, String keyword,
                                                    String approvalStatusStr, int page, int size) {
         Page<NavigationChannel> results;
-        NavigationChannelApprovalStatus approvalStatus = null;
+        ApprovalStatus approvalStatus = null;
         if (approvalStatusStr != null && !approvalStatusStr.isEmpty()) {
-            try { approvalStatus = NavigationChannelApprovalStatus.valueOf(approvalStatusStr); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
+            try { approvalStatus = ApprovalStatus.valueOf(approvalStatusStr); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, approvalStatus,
@@ -219,7 +219,7 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        if (nc.getApprovalStatus() != NavigationChannelApprovalStatus.APPROVED) {
+        if (nc.getApprovalStatus() != ApprovalStatus.APPROVED) {
             throw new IllegalStateException("Chi co luong hang hai da duyet moi co the xoa mem");
         }
 
@@ -236,8 +236,8 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        if (nc.getApprovalStatus() != NavigationChannelApprovalStatus.PROPOSED
-                && nc.getApprovalStatus() != NavigationChannelApprovalStatus.REJECTED) {
+        if (nc.getApprovalStatus() != ApprovalStatus.PROPOSED
+                && nc.getApprovalStatus() != ApprovalStatus.REJECTED) {
             throw new IllegalStateException("Chi co the phe duyet C1 khi trang thai la PROPOSED hoac REJECTED");
         }
 
@@ -253,13 +253,13 @@ public class NavigationChannelService {
                 nc.setIsApprovedLevel2(true);
                 nc.setApproverLevel2(approvedBy);
                 nc.setApprovedDateLevel2(LocalDate.now());
-                nc.setApprovalStatus(NavigationChannelApprovalStatus.APPROVED);
+                nc.setApprovalStatus(ApprovalStatus.APPROVED);
                 autoApproved = true;
             } else {
-                nc.setApprovalStatus(NavigationChannelApprovalStatus.UNDER_REVIEW);
+                nc.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             }
         } else {
-            nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
+            nc.setApprovalStatus(ApprovalStatus.REJECTED);
             nc.setRejectionReason(req.getReason());
         }
 
@@ -275,7 +275,7 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        if (nc.getApprovalStatus() != NavigationChannelApprovalStatus.UNDER_REVIEW) {
+        if (nc.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
         }
 
@@ -289,9 +289,9 @@ public class NavigationChannelService {
         nc.setApprovedDateLevel2(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
-            nc.setApprovalStatus(NavigationChannelApprovalStatus.APPROVED);
+            nc.setApprovalStatus(ApprovalStatus.APPROVED);
         } else {
-            nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
+            nc.setApprovalStatus(ApprovalStatus.REJECTED);
             nc.setRejectionReason(req.getReason());
         }
 
@@ -304,7 +304,7 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
+        nc.setApprovalStatus(ApprovalStatus.REJECTED);
         nc.setRejectionReason(req.getReason());
 
         Integer cap = req.getApprovalLevel() != null ? req.getApprovalLevel().getValue() : 1;
@@ -370,7 +370,7 @@ public class NavigationChannelService {
     }
 
     @Transactional(readOnly = true)
-    public List<NavigationChannelResponse> findByApprovalStatus(NavigationChannelApprovalStatus s) {
+    public List<NavigationChannelResponse> findByApprovalStatus(ApprovalStatus s) {
         return repo.findByApprovalStatusAndIsDeletedFalse(s)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
@@ -383,10 +383,10 @@ public class NavigationChannelService {
 
     @Transactional(readOnly = true)
     public SearchResultResponse searchDocuments(UUID orgUnitId, String kw, String statusStr, int page, int size) {
-        NavigationChannelApprovalStatus status = null;
+        ApprovalStatus status = null;
         if (statusStr != null && !statusStr.trim().isEmpty()) {
             try {
-                status = NavigationChannelApprovalStatus.valueOf(statusStr.trim());
+                status = ApprovalStatus.valueOf(statusStr.trim());
             } catch (IllegalArgumentException e) {
                 log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", statusStr);
             }

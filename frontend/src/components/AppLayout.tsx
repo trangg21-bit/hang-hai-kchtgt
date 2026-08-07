@@ -36,42 +36,57 @@ import type { MenuProps } from 'antd';
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
-const MENU_PERMISSION_MAP: Record<string, string> = {
-  '/users': 'admin:manage',
-  '/organizations': 'orgunit:read',
-  '/groups': 'group:manage',
-  '/roles': 'role:manage',
-  '/gis/points': 'data:read',
-  '/gis/lines': 'data:read',
-  '/gis/polygons': 'data:read',
+export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
+  '/users': ['user:read', 'user:manage', 'admin:manage'],
+  '/organizations': ['orgunit:read', 'orgunit:manage', 'admin:manage'],
+  '/groups': ['group:read', 'group:manage', 'admin:manage'],
+  '/roles': ['role:manage', 'admin:manage'],
+  '/gis/points': ['data:read', 'map:manage'],
+  '/gis/lines': ['data:read', 'map:manage'],
+  '/gis/polygons': ['data:read', 'map:manage'],
   '/gis/layers': 'map:manage',
-  '/gis/search': 'data:read',
-  '/gis/map': 'data:read',
-  '/gis/permits': 'data:read',
-  '/beacon-lights': 'data:read',
-  '/buoys': 'data:read',
-  '/history': 'data:read',
+  '/gis/map': ['data:read', 'map:manage'],
+  '/gis/permits': 'map:manage',
+  '/beacon-lights': 'buoy:read',
+  '/buoys': 'buoy:read',
+  '/lighthouse-station': 'lighthousestation:read',
+  '/buoy-station': 'buoystation:read',
+  '/history': 'admin:view',
   '/port': 'port:read',
   '/berth': 'berth:read',
   '/pier': 'pier:read',
   '/dry-port': 'dryport:read',
-  '/water-zone': 'waterzone:read',
+  '/water-zone': 'waterarea:read',
+  '/asset/increase': 'data:read',
+  '/asset/decrease': 'data:read',
+  '/asset/inventory': 'data:read',
+  '/asset/exploitation': 'data:read',
   '/navigation-channel': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
-  '/ship-repair-facility': 'shiprepair:read',
+  '/ship-repair-facility': 'shiprepairfacility:read',
   '/radar-station': 'radarstation:read',
-  '/vts-system': 'vts:read',
+  '/vts-system': 'radarstation:read',
+  '/station/coastal': 'radarstation:read',
+  '/station/special': 'radarstation:read',
   '/connections': 'connection:read',
   '/interconnect': 'connection:read',
   '/reports': 'report:read',
   '/settings': 'admin:manage',
   '/logs': 'admin:view',
-  '/symbols': 'data:read',
+  '/symbols': 'map:manage',
+  '/documents/legal': 'document:read',
+  '/documents/incidents': 'document:read',
+  '/documents/port-planning': 'document:read',
 };
 
 const canAccessMenu = (path: string): boolean => {
   const required = MENU_PERMISSION_MAP[path];
   if (!required) return true;
+  
+  if (Array.isArray(required)) {
+    return usePermissionStore.getState().hasAnyPermission(required);
+  }
+  
   return usePermissionStore.getState().hasPermission(required);
 };
 
@@ -187,7 +202,7 @@ export default function AppLayout() {
     }
   }, [selectedKey]);
 
-  const menuItems: MenuProps['items'] = [
+  const rawMenuItems: MenuProps['items'] = [
     { key: '/', icon: <DashboardOutlined />, label: 'Trang chủ' },
     { type: 'divider' as const },
     {
@@ -400,7 +415,33 @@ export default function AppLayout() {
     { type: 'divider' as const },
     canAccessMenu('/symbols') ? { key: '/symbols', icon: <CompassOutlined />, label: 'Quản lý biểu tượng trên bản đồ' } : null,
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
-    ].filter(Boolean) as MenuProps['items'];
+  ].filter(Boolean) as MenuProps['items'];
+
+  const filterEmptyChildren = (items: MenuProps['items']): MenuProps['items'] => {
+    if (!items) return [];
+    return items
+      .map((item: any) => {
+        if (!item) return null;
+        if (item.children) {
+          const validChildren = filterEmptyChildren(item.children);
+          if (validChildren.length === 0) return null;
+          return { ...item, children: validChildren };
+        }
+        return item;
+      })
+      .filter(Boolean)
+      .reduce((acc: any[], item: any, idx: number, arr: any[]) => {
+        if (item.type === 'divider') {
+          if (acc.length === 0) return acc;
+          if (acc[acc.length - 1]?.type === 'divider') return acc;
+          if (idx === arr.length - 1) return acc;
+        }
+        acc.push(item);
+        return acc;
+      }, []);
+  };
+
+  const menuItems = filterEmptyChildren(rawMenuItems);
 
   const isMobile = !screens.md;
 
@@ -457,27 +498,6 @@ export default function AppLayout() {
           <Typography.Title level={5} style={{ margin: 0, color: '#12468C', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>
             HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
           </Typography.Title>
-        )}
-        {!collapsed && (
-          <Button
-            type="text"
-            icon={
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-                role="img"
-                width="1.2em"
-                height="1.2em"
-                viewBox="0 0 24 24"
-                style={{ verticalAlign: 'middle', color: isMenuFullScreen ? '#000' : '#fff' }}
-              >
-                <path fill="currentColor" d={isMenuFullScreen ? "M13 20V4h2.03v16zm-3 0V4h2.03v16zM5 8l4.03 4L5 16v-3H2v-2h3zm15 8l-4-4l4-4v3h3v2h-3z" : "M9 11h6V8l4 4l-4 4v-3H9v3l-4-4l4-4zm-7 9V4h2v16zm18 0V4h2v16z"} />
-              </svg>
-            }
-            onClick={(e) => { e.stopPropagation(); setIsMenuFullScreen(!isMenuFullScreen); }}
-            style={{ position: 'absolute', right: 16, top: isMenuFullScreen ? 24 : 'auto', padding: 0 }}
-            title={isMenuFullScreen ? "Thu gọn menu" : "Mở rộng menu"}
-          />
         )}
       </div>
 

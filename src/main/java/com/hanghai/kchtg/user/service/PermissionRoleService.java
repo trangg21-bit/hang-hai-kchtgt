@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.security.PermissionMiddleware;
+import com.hanghai.kchtg.security.constants.PermissionConstants;
+import static com.hanghai.kchtg.security.constants.PermissionConstants.*;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.slf4j.Logger;
@@ -60,17 +62,26 @@ public class PermissionRoleService {
             return true;
         }
         Set<String> permissions = user.getAllPermissions();
-        String requiredPermission = resource + ":" + action;
-        String wildcardPermission = resource + ":*";
-        String aggregatePermission = resource + ":manage";
-        // Keep compatibility with the legacy catalog where write was the
-        // aggregate for create/update/delete operations.
-        boolean legacyWritePermission = Set.of("create", "update", "delete").contains(action)
-                && permissions.contains(resource + ":write");
+        String requiredPermission = PermissionConstants.build(resource, action);
+        String wildcardPermission = PermissionConstants.build(resource, ACTION_WILDCARD);
+        String aggregatePermission = PermissionConstants.build(resource, ACTION_MANAGE);
+        
+        boolean legacyWritePermission = Set.of(
+                ACTION_CREATE,
+                ACTION_UPDATE,
+                ACTION_DELETE
+        ).contains(action) && permissions.contains(PermissionConstants.build(resource, ACTION_WRITE));
+
+        boolean isApproveMatch = ACTION_APPROVE.equals(action) && (
+                permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE_C1))
+                || permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE_C2))
+        );
+
         return permissions.contains(requiredPermission)
                 || permissions.contains(wildcardPermission)
                 || permissions.contains(aggregatePermission)
-                || legacyWritePermission;
+                || legacyWritePermission
+                || isApproveMatch;
     }
 
     /**

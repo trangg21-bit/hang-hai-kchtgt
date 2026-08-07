@@ -94,7 +94,7 @@ class BerthServiceTest {
         parentNotActive.setPortCode("CB-002");
         parentNotActive.setPortName("Cảng Cha Không Hoạt Động");
         parentNotActive.setOperationalStatus(OperationalStatus.SUSPENDED);
-        parentNotActive.setApprovalStatus(ApprovalStatus.PENDING);
+        parentNotActive.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
 
         testBerth = new Berth();
         ReflectionTestUtils.setField(testBerth, "id", testId);
@@ -102,7 +102,7 @@ class BerthServiceTest {
         testBerth.setBerthName("Bến Cảng Test");
         testBerth.setPortId(parentId);
         testBerth.setOperationalStatus(OperationalStatus.OPERATIONAL);
-        testBerth.setApprovalStatus(ApprovalStatus.PENDING);
+        testBerth.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
     }
 
     // ── CREATE (F-014) ─────────────────────────────────────────────────────

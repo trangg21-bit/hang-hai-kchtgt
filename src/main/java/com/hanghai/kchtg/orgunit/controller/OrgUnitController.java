@@ -5,7 +5,6 @@ import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.service.OrganizationService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -153,14 +152,13 @@ public class OrgUnitController {
     @GetMapping("/filter")
     @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
     public ResponseEntity<ApiResponse<Page<OrgUnitResponse>>> filter(
-            @RequestParam(required = false) OrgUnitType type,
             @RequestParam(required = false) OrgUnitStatus status,
             @RequestParam(required = false) Integer level,
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        Page<OrgUnitResponse> result = organizationService.filterUnits(type, status, level, pageable);
+        Page<OrgUnitResponse> result = organizationService.filterUnits(status, level, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

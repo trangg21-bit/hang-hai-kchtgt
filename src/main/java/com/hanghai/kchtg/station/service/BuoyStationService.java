@@ -16,7 +16,7 @@ import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
 import com.hanghai.kchtg.station.entity.BuoyStation;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationHistory;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
@@ -111,7 +111,7 @@ public class BuoyStationService {
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
                 .status(StationStatus.DRAFT)
-                .approvalStatus(StationApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -244,7 +244,7 @@ public class BuoyStationService {
 
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus(StationStatus.DRAFT);
-            entity.setApprovalStatus(StationApprovalStatus.PENDING);
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         }
 
@@ -325,7 +325,7 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         phaoRepo.save(entity);
 
@@ -350,7 +350,7 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.APPROVED_L1);
-        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
@@ -373,7 +373,7 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.PUBLISHED);
-        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
@@ -397,7 +397,7 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.REJECTED);
-        entity.setApprovalStatus(StationApprovalStatus.REJECTED);
+        entity.setApprovalStatus(ApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);
 

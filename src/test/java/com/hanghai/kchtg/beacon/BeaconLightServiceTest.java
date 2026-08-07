@@ -11,6 +11,7 @@ import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.beacon.service.BeaconLightService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -100,7 +101,7 @@ class BeaconLightServiceTest {
                 .area(12.0)
                 .isActive(true)
                 .status(status)
-                .approvalStatus("PENDING")
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
         setId(entity, id);
         entity.setCreatedAt(LocalDateTime.now().minusDays(1));
@@ -225,7 +226,7 @@ class BeaconLightServiceTest {
             assertThat(result.getName()).isEqualTo("Đèn biển mới");
             assertThat(result.getType()).isEqualTo("BEACON_LIGHT");
             assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
+            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
 
             verify(beaconLightRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
@@ -355,7 +356,7 @@ class BeaconLightServiceTest {
         void updateApprovedEntityRevertsStatus() {
             UUID id = UUID.randomUUID();
             BeaconLight entity = makeEntity(id, "APPROVED_L1");
-            entity.setApprovalStatus("APPROVED");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setApprovalLevel(1);
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -367,7 +368,7 @@ class BeaconLightServiceTest {
             BeaconLightResponse result = service.update(id, request);
 
             assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
+            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
             assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
         }
 
@@ -473,7 +474,7 @@ class BeaconLightServiceTest {
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("PENDING_APPROVAL");
-            assertThat(saved.getApprovalStatus()).isEqualTo("PENDING");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.PROPOSED);
             assertThat(saved.getApprovalLevel()).isEqualTo(1);
             verify(notificationService).sendApprovalNotification(entity);
         }
@@ -505,7 +506,7 @@ class BeaconLightServiceTest {
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
-            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
             assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDate()).isNotNull();
             assertThat(result.getStatus()).isEqualTo("APPROVED_L1");
@@ -540,7 +541,7 @@ class BeaconLightServiceTest {
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("PUBLISHED");
-            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
             assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
             assertThat(result.getStatus()).isEqualTo("PUBLISHED");
             verify(historyRepo).save(any());
@@ -572,7 +573,7 @@ class BeaconLightServiceTest {
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("DRAFT");
-            assertThat(saved.getApprovalStatus()).isEqualTo("REJECTED");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED);
             assertThat(saved.getRejectionReason()).isEqualTo("Lý do từ chối hợp lệ (đủ 10 ký tự)");
             assertThat(result.getStatus()).isEqualTo("DRAFT");
             assertThat(result.getApprovalStatus()).isEqualTo("REJECTED");

@@ -4,9 +4,8 @@ import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitHistoryRepository;
@@ -41,10 +40,10 @@ import java.util.stream.Collectors;
  * <p>
  * Business rules enforced:
  * <ul>
- *   <li>BR-013: unique unit code</li>
- *   <li>BR-014: delete guard (no children, no related personnel)</li>
- *   <li>BR-015: Admin-only approval</li>
- *   <li>BR-016: parent-child hierarchy with circular ref detection</li>
+ * <li>BR-013: unique unit code</li>
+ * <li>BR-014: delete guard (no children, no related personnel)</li>
+ * <li>BR-015: Admin-only approval</li>
+ * <li>BR-016: parent-child hierarchy with circular ref detection</li>
  * </ul>
  * </p>
  */
@@ -85,7 +84,8 @@ public class OrganizationService {
     }
 
     /**
-     * Full hierarchical tree starting from root nodes, built using path-based ordering.
+     * Full hierarchical tree starting from root nodes, built using path-based
+     * ordering.
      */
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> buildTree() {
@@ -162,12 +162,12 @@ public class OrganizationService {
     }
 
     /**
-     * Filter units by type, status, and/or level.
+     * Filter units by status, and/or level.
      */
     @Transactional(readOnly = true)
-    public Page<OrgUnitResponse> filterUnits(OrgUnitType type, OrgUnitStatus status,
-                                              Integer level, Pageable pageable) {
-        return orgUnitRepo.findByFilters(type, status, level, pageable)
+    public Page<OrgUnitResponse> filterUnits(OrgUnitStatus status,
+            Integer level, Pageable pageable) {
+        return orgUnitRepo.findByFilters(status, level, pageable)
                 .map(OrgUnitResponse::from);
     }
 
@@ -179,7 +179,8 @@ public class OrganizationService {
      * Create a new unit with full materialized path computation,
      * circular reference detection, and audit trail.
      *
-     * @throws IllegalArgumentException if code already exists or circular ref detected
+     * @throws IllegalArgumentException if code already exists or circular ref
+     *                                  detected
      * @throws EntityNotFoundException  if parent does not exist
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -202,19 +203,12 @@ public class OrganizationService {
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Đơn vị cha không tồn tại: " + request.getParentId()));
         }
-        // The form intentionally does not expose a separate unit-level/type
-        // selector. Keep the legacy type column consistent by deriving it
-        // from the hierarchy when the API caller omits it.
-        OrgUnitType type = request.getType() != null
-                ? request.getType()
-                : (parent == null ? OrgUnitType.DEPARTMENT : OrgUnitType.SUB_DEPARTMENT);
-        validateParentEligibility(parent, type);
+        validateParentEligibility(parent);
 
         OrgUnit unit = OrgUnit.builder()
                 .name(request.getName())
                 .code(code)
                 .parentId(request.getParentId())
-                .type(type)
                 .description(request.getDescription())
                 .address(request.getAddress())
                 .detailAddress(request.getDetailAddress())
@@ -222,7 +216,8 @@ public class OrganizationService {
                 .contactPerson(request.getContactPerson())
                 .status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)
                 .operationalStatus(request.getOperationalStatus() != null
-                        ? request.getOperationalStatus() : OrgUnitOperationalStatus.ACTIVE)
+                        ? request.getOperationalStatus()
+                        : OperationalStatus.OPERATIONAL)
                 .sortOrder(0)
                 .build();
 
@@ -244,7 +239,7 @@ public class OrganizationService {
         orgUnitCacheService.evictAfterCommit();
 
         log.info("Created org unit: {} ({}, path: {}, level: {})", saved.getCode(), saved.getId(),
-                 saved.getPath(), saved.getLevel());
+                saved.getPath(), saved.getLevel());
         return OrgUnitResponse.from(saved);
     }
 
@@ -286,7 +281,7 @@ public class OrganizationService {
                         .orElseThrow(() -> new EntityNotFoundException(
                                 "Đơn vị cha không tồn tại: " + newParentId));
 
-                validateParentEligibility(newParent, request.getType() != null ? request.getType() : unit.getType());
+                validateParentEligibility(newParent);
 
                 // BR-016: circular reference detection
                 if (materializedPathService.isAncestor(id, newParentId)) {
@@ -305,20 +300,26 @@ public class OrganizationService {
         }
 
         // Update scalar fields
-        if (request.getName() != null) unit.setName(request.getName());
-        if (request.getType() != null) unit.setType(request.getType());
-        if (request.getDescription() != null) unit.setDescription(request.getDescription());
-        if (request.getAddress() != null) unit.setAddress(request.getAddress());
-        if (request.getDetailAddress() != null) unit.setDetailAddress(request.getDetailAddress());
-        if (request.getPhone() != null) unit.setPhone(request.getPhone());
-        if (request.getContactPerson() != null) unit.setContactPerson(request.getContactPerson());
-        if (request.getOperationalStatus() != null) unit.setOperationalStatus(request.getOperationalStatus());
+        if (request.getName() != null)
+            unit.setName(request.getName());
+        if (request.getDescription() != null)
+            unit.setDescription(request.getDescription());
+        if (request.getAddress() != null)
+            unit.setAddress(request.getAddress());
+        if (request.getDetailAddress() != null)
+            unit.setDetailAddress(request.getDetailAddress());
+        if (request.getPhone() != null)
+            unit.setPhone(request.getPhone());
+        if (request.getContactPerson() != null)
+            unit.setContactPerson(request.getContactPerson());
+        if (request.getOperationalStatus() != null)
+            unit.setOperationalStatus(request.getOperationalStatus());
 
         if (unit.getParentId() != null) {
             OrgUnit currentParent = orgUnitRepo.findById(unit.getParentId())
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Đơn vị cha không tồn tại: " + unit.getParentId()));
-            validateParentEligibility(currentParent, unit.getType());
+            validateParentEligibility(currentParent);
         }
 
         OrgUnit saved = orgUnitRepo.save(unit);
@@ -330,21 +331,17 @@ public class OrganizationService {
 
     /**
      * Enforce the hierarchy rules at the API boundary as well as in the UI.
-     * A parent must be an active node below the maximum depth (three levels),
-     * and root-level unit types cannot be attached below another unit.
+     * A parent must be an active node below the maximum depth (three levels).
      */
-    private void validateParentEligibility(OrgUnit parent, OrgUnitType childType) {
+    private void validateParentEligibility(OrgUnit parent) {
         if (parent == null) {
             return;
         }
-        if (parent.getOperationalStatus() == OrgUnitOperationalStatus.INACTIVE) {
+        if (parent.getOperationalStatus() == OperationalStatus.SUSPENDED) {
             throw new IllegalArgumentException("Không thể chọn đơn vị không sử dụng làm đơn vị cha");
         }
         if (parent.getLevel() != null && parent.getLevel() >= 3) {
             throw new IllegalArgumentException("Cây đơn vị chỉ được phép tối đa 3 cấp");
-        }
-        if (childType == OrgUnitType.DEPARTMENT || childType == OrgUnitType.GENERAL_DEPARTMENT) {
-            throw new IllegalArgumentException("Cấp đơn vị cao nhất không được chọn đơn vị cha");
         }
     }
 
@@ -471,52 +468,11 @@ public class OrganizationService {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // ── Root unit seeding ────────────────────────────────────────────
-    // ═══════════════════════════════════════════════════════════════════
-
-    /**
-     * Seed the root unit if none exists. Called after Flyway migration.
-     */
-    public OrgUnitResponse seedRoot(String name, String code, OrgUnitType type,
-                                      String description, String address, String phone,
-                                      UUID operatorId, String operatorName) {
-        long rootCount = orgUnitRepo.findByParentIdIsNull().size();
-        if (rootCount > 0) {
-            log.warn("Root unit already exists ({} roots found). Skipping seed.", rootCount);
-            return findById(orgUnitRepo.findByParentIdIsNull().get(0).getId());
-        }
-
-        OrgUnit root = OrgUnit.builder()
-                .name(name)
-                .code(code)
-                .type(type)
-                .description(description)
-                .address(address)
-                .phone(phone)
-                .status(OrgUnitStatus.APPROVED) // root is pre-approved
-                .sortOrder(0)
-                .build();
-
-        // Compute root path
-        String rootPath = materializedPathService.computeRootPath(root.getId());
-        root.setPath(rootPath);
-        root.setLevel(materializedPathService.calculateLevel(rootPath));
-        root.setApprovedAt(java.time.LocalDateTime.now());
-
-        OrgUnit saved = orgUnitRepo.save(root);
-        saveHistory(saved, "CREATED", "Tạo mới đơn vị gốc", operatorId, operatorName);
-        orgUnitCacheService.evictAfterCommit();
-
-        log.info("Seeded root org unit: {} ({}, path: {})", saved.getCode(), saved.getId(), saved.getPath());
-        return OrgUnitResponse.from(saved);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
     // ── Private helpers ──────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════════
 
     private void saveHistory(OrgUnit unit, String action, String details,
-                              UUID performedBy, String performedByName) {
+            UUID performedBy, String performedByName) {
         // REQUIRES_NEW via TransactionTemplate to isolate from
         // auth-loaded User entity (avoids User.groups shared-reference JPA bug)
         transactionTemplate.executeWithoutResult(status -> {
@@ -530,17 +486,20 @@ public class OrganizationService {
 
     /**
      * Auto-generate a unit code from the name.
-     * Strips diacritics, replaces spaces with underscores, uppercases, truncates, appends random suffix.
+     * Strips diacritics, replaces spaces with underscores, uppercases, truncates,
+     * appends random suffix.
      */
     private String generateCode(String name) {
-        if (name == null || name.isBlank()) return "ORG_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        if (name == null || name.isBlank())
+            return "ORG_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         String normalized = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
                 .replaceAll("[^a-zA-Z0-9\\s]", "")
                 .trim()
                 .replaceAll("\\s+", "_")
                 .toUpperCase();
-        if (normalized.length() > 30) normalized = normalized.substring(0, 30);
+        if (normalized.length() > 30)
+            normalized = normalized.substring(0, 30);
         String suffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         return normalized + "_" + suffix;
     }

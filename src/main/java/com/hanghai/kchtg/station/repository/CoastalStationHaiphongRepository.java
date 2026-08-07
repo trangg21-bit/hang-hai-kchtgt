@@ -30,7 +30,7 @@ public interface CoastalStationHaiphongRepository extends JpaRepository<CoastalS
 
     @Query("SELECT c FROM CoastalStationHaiphong c WHERE " +
             "c.deletedAt IS NULL AND " +
-            "c.approvalStatus = StationApprovalStatus.APPROVED_L2 AND " +
+            "c.approvalStatus = ApprovalStatus.APPROVED_LEVEL2 AND " +
             "(:orgUnitId IS NULL OR c.unitId = :orgUnitId) AND " +
             "(:search IS NULL OR LOWER(c.name) LIKE :search OR LOWER(c.code) LIKE :search)")
     List<CoastalStationHaiphong> searchGis(

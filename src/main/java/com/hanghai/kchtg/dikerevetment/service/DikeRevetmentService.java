@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.dikerevetment.service;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
@@ -60,7 +61,7 @@ public class DikeRevetmentService {
                 .status(req.getStatus())
                 .note(req.getNote())
                 .orgUnitId(req.getOrgUnitId())
-                .approvalStatus(DikeRevetmentApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
                 .isDeleted(false)
@@ -128,9 +129,9 @@ public class DikeRevetmentService {
     public Page<DikeRevetmentResponse> search(UUID orgUnitId, String keyword, DikeRevetmentType dikeRevetmentType, String status,
                                               String approvalStatusStr, int page, int size) {
         Page<DikeRevetment> results;
-        DikeRevetmentApprovalStatus approvalStatus = null;
+        ApprovalStatus approvalStatus = null;
         if (approvalStatusStr != null && !approvalStatusStr.isEmpty()) {
-            try { approvalStatus = DikeRevetmentApprovalStatus.valueOf(approvalStatusStr); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
+            try { approvalStatus = ApprovalStatus.valueOf(approvalStatusStr); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || dikeRevetmentType != null || status != null || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus,
@@ -209,7 +210,7 @@ public class DikeRevetmentService {
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
         // Only approved records can be soft-deleted
-        if (dr.getApprovalStatus() != DikeRevetmentApprovalStatus.APPROVED) {
+        if (dr.getApprovalStatus() != ApprovalStatus.APPROVED) {
             throw new IllegalStateException("Chi co de ke da duyet moi co the xoa mem");
         }
 
@@ -226,8 +227,8 @@ public class DikeRevetmentService {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        if (dr.getApprovalStatus() != DikeRevetmentApprovalStatus.PROPOSED
-                && dr.getApprovalStatus() != DikeRevetmentApprovalStatus.REJECTED) {
+        if (dr.getApprovalStatus() != ApprovalStatus.PROPOSED
+                && dr.getApprovalStatus() != ApprovalStatus.REJECTED) {
             throw new IllegalStateException("Chi co the phe duyet C1 khi trang thai la PROPOSED hoac REJECTED");
         }
 
@@ -244,13 +245,13 @@ public class DikeRevetmentService {
                 dr.setIsApprovedLevel2(true);
                 dr.setApproverLevel2(approvedBy);
                 dr.setApprovedDateLevel2(LocalDate.now());
-                dr.setApprovalStatus(DikeRevetmentApprovalStatus.APPROVED);
+                dr.setApprovalStatus(ApprovalStatus.APPROVED);
                 autoApproved = true;
             } else {
-                dr.setApprovalStatus(DikeRevetmentApprovalStatus.UNDER_REVIEW);
+                dr.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             }
         } else {
-            dr.setApprovalStatus(DikeRevetmentApprovalStatus.REJECTED);
+            dr.setApprovalStatus(ApprovalStatus.REJECTED);
             dr.setRejectionReason(req.getReason());
         }
 
@@ -266,7 +267,7 @@ public class DikeRevetmentService {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        if (dr.getApprovalStatus() != DikeRevetmentApprovalStatus.UNDER_REVIEW) {
+        if (dr.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
         }
 
@@ -280,9 +281,9 @@ public class DikeRevetmentService {
         dr.setApprovedDateLevel2(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getDecision())) {
-            dr.setApprovalStatus(DikeRevetmentApprovalStatus.APPROVED);
+            dr.setApprovalStatus(ApprovalStatus.APPROVED);
         } else {
-            dr.setApprovalStatus(DikeRevetmentApprovalStatus.REJECTED);
+            dr.setApprovalStatus(ApprovalStatus.REJECTED);
             dr.setRejectionReason(req.getReason());
         }
 
@@ -295,7 +296,7 @@ public class DikeRevetmentService {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        dr.setApprovalStatus(DikeRevetmentApprovalStatus.REJECTED);
+        dr.setApprovalStatus(ApprovalStatus.REJECTED);
         dr.setRejectionReason(req.getReason());
 
         Integer cap = req.getApprovalLevel() != null ? req.getApprovalLevel().getValue() : 1;
@@ -346,7 +347,7 @@ public class DikeRevetmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<DikeRevetmentResponse> findByApprovalStatus(DikeRevetmentApprovalStatus s) {
+    public List<DikeRevetmentResponse> findByApprovalStatus(ApprovalStatus s) {
         return repo.findByApprovalStatusAndIsDeletedFalse(s)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
@@ -359,9 +360,9 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public SearchResultResponse searchDocuments(UUID orgUnitId, String kw, DikeRevetmentType dikeRevetmentType, String status, String approvalStatusStr, int page, int size) {
-        DikeRevetmentApprovalStatus approvalStatus = null;
+        ApprovalStatus approvalStatus = null;
         if (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty()) {
-            try { approvalStatus = DikeRevetmentApprovalStatus.valueOf(approvalStatusStr.trim()); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
+            try { approvalStatus = ApprovalStatus.valueOf(approvalStatusStr.trim()); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         String statusVal = (status != null && !status.trim().isEmpty()) ? status.trim() : null;

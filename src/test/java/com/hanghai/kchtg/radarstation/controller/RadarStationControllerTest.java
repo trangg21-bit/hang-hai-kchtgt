@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.radarstation.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.radarstation.dto.ApprovalRequest;
 import com.hanghai.kchtg.radarstation.dto.RadarStationCreateRequest;
 import com.hanghai.kchtg.radarstation.dto.RadarStationResponse;
@@ -52,7 +53,7 @@ class RadarStationControllerTest {
                 .id(TEST_ID)
                 .stationName("Tram ABC")
                 .location("Hà Nội")
-                .approvalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .build();
     }
 

@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.station.dto.cospas;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -33,7 +33,7 @@ public class CoastalStationCospasSarsatResponse {
     private Double signalRange;
     private String operatingMode;
     private StationStatus status;
-    private StationApprovalStatus approvalStatus;
+    private ApprovalStatus approvalStatus;
     private ApprovalLevel approvalLevel;
     private UUID approvedBy;
     private LocalDateTime approvedDate;

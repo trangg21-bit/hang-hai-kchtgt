@@ -14,31 +14,32 @@ interface PermissionState {
  */
 function normalizePermissionKey(key: string): string {
   if (!key) return '';
-  if (key.includes(':')) return key;
+  const lower = key.toLowerCase();
 
   // Backward compatibility normalization for legacy UI keys
-  if (key.startsWith('user.')) return key.replace('user.view', 'user:read').replace('user.', 'user:');
-  if (key.startsWith('role.')) return key.replace('role.', 'role:');
-  if (key.startsWith('group.')) return key.replace('group.', 'group:');
-  if (key.startsWith('connection.')) return key.replace('connection.view', 'connection:read').replace('connection.', 'connection:');
-  if (key.startsWith('org.')) return key.replace('org.view', 'orgunit:read').replace('org.approve', 'orgunit:approve').replace('org.', 'orgunit:');
-  if (key.startsWith('symbol.')) return 'map:manage';
-  if (key.startsWith('gis.')) {
-    if (key.startsWith('gis.layer.')) return 'map:manage';
-    if (key.endsWith('.create')) return 'data:create';
-    if (key.endsWith('.edit') || key.endsWith('.delete') || key.endsWith('.submit')) return 'data:update';
-    if (key.endsWith('.approve-l1') || key.endsWith('.approve-l2')) return 'data:approve';
+  if (lower.startsWith('user.')) return lower.replace('user.view', 'user:read').replace('user.', 'user:');
+  if (lower.startsWith('role.')) return lower.replace('role.', 'role:');
+  if (lower.startsWith('group.')) return lower.replace('group.', 'group:');
+  if (lower.startsWith('connection.')) return lower.replace('connection.view', 'connection:read').replace('connection.', 'connection:');
+  if (lower.startsWith('org.')) return lower.replace('org.view', 'orgunit:read').replace('org.approve', 'orgunit:approve').replace('org.', 'orgunit:');
+  if (lower.startsWith('symbol.')) return 'map:manage';
+  if (lower.startsWith('gis.')) {
+    if (lower.startsWith('gis.layer.')) return 'map:manage';
+    if (lower.endsWith('.create')) return 'data:create';
+    if (lower.endsWith('.edit') || lower.endsWith('.delete') || lower.endsWith('.submit')) return 'data:update';
+    if (lower.endsWith('.approve-l1') || lower.endsWith('.approve-l2')) return 'data:approve';
     return 'data:read';
   }
 
-  return key.replace('.', ':');
+  return lower.replace('.', ':');
 }
 
 export const usePermissionStore = create<PermissionState>((set) => ({
   permissions: [],
 
   hasPermission: (key: string) => {
-    const perms = useAuthStore.getState().user?.permissions || [];
+    const rawPerms = useAuthStore.getState().user?.permissions || [];
+    const perms = rawPerms.map((p) => p.toLowerCase());
 
     // Admin override
     if (perms.includes('admin:manage') || perms.includes('*')) {

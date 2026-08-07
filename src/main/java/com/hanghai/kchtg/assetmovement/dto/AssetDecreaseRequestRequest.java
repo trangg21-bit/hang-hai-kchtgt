@@ -1,13 +1,15 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.UUID;
 
 /**
  * Request DTO cho Yeu Cau Giam Tai San (create/update).
  */
-@Data
+@Getter
+@Setter
 public class AssetDecreaseRequestRequest {
 
     private UUID assetId;
