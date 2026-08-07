@@ -803,10 +803,7 @@ export default function BerthForm() {
             <Button onClick={() => navigate('/berth')} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             <Button onClick={() => handleSave('DRAFT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Lưu tạm</Button>
             {isSystemAdmin && (
-              <Button type="primary" onClick={() => handleSave('SUBMIT')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Gửi phê duyệt</Button>
-            )}
-            {isSystemAdmin && (
-              <Button onClick={() => handleSave('SAVE_AND_APPROVE')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: statusOperational, borderColor: statusOperational, color: surfaceCard }}>Phê duyệt</Button>
+              <Button type="primary" onClick={() => handleSave('SAVE_AND_APPROVE')} loading={submitting} disabled={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Lưu và phê duyệt</Button>
             )}
           </Space>
         </Form.Item>

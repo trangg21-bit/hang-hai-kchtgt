@@ -27,6 +27,11 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
     Optional<Permission> findByCode(String code);
 
     /**
+     * Tìm tất cả permission có mã thuộc danh sách codes.
+     */
+    List<Permission> findByCodeIn(java.util.Collection<String> codes);
+
+    /**
      * Kiểm tra tồn tại permission theo code.
      *
      * @param code mã permission

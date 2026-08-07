@@ -35,6 +35,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PortService unit tests — F-008/F-009/F-010")
 class PortServiceTest {
@@ -53,6 +55,9 @@ class PortServiceTest {
 
     @Mock
     private ChangeTrackingService changeTrackingService;
+
+    @Mock
+    private ChangeHistoryService changeHistoryService;
 
     @Mock
     private UserResolverService userResolverService;

@@ -18,4 +18,17 @@ public class SecurityUtils {
         }
         return null; // or throw an exception if required
     }
+    public static String getCurrentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            if (auth.getPrincipal() instanceof User) {
+                return ((User) auth.getPrincipal()).getUsername();
+            } else if (auth.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+                return ((org.springframework.security.core.userdetails.UserDetails) auth.getPrincipal()).getUsername();
+            } else {
+                return auth.getName();
+            }
+        }
+        return null;
+    }
 }

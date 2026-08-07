@@ -103,7 +103,7 @@ public class LogExportController {
      * Thống kê logs theo status trong ngày.
      */
     @GetMapping("/stats/daily")
-    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    @PreAuthorize("@auth.check(authentication, 'admin:view')")
     public ResponseEntity<ApiResponse<List<Object[]>>> getDailyStats() {
         return ResponseEntity.ok(ApiResponse.success(logService.getDailyStats()));
     }
@@ -112,7 +112,7 @@ public class LogExportController {
      * Tổng số log trong hệ thống.
      */
     @GetMapping("/stats/total")
-    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    @PreAuthorize("@auth.check(authentication, 'admin:view')")
     public ResponseEntity<ApiResponse<Long>> getTotalCount() {
         return ResponseEntity.ok(ApiResponse.success(logService.getTotalCount()));
     }
@@ -123,7 +123,7 @@ public class LogExportController {
      * List aggregate statistics, optionally filtered by date range.
      */
     @GetMapping("/aggregate")
-    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    @PreAuthorize("@auth.check(authentication, 'admin:view')")
     public ResponseEntity<ApiResponse<List<LogAggregateResponse>>> listAggregates(
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to) {

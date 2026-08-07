@@ -120,6 +120,14 @@ public class PortController {
         return ResponseEntity.ok(ApiResponse.success("Từ chối cảng biển thành công", null));
     }
 
+    @GetMapping("/history/all")
+    @PreAuthorize("@auth.check(authentication, 'port:history')")
+    public ResponseEntity<ApiResponse<Object>> getAllHistory() {
+        log.info("Getting all Port history");
+        Object history = portApprovalService.getAllHistory();
+        return ResponseEntity.ok(ApiResponse.success("Lấy tất cả lịch sử cảng biển thành công", history));
+    }
+
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'port:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {

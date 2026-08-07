@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.config;
 
+import com.hanghai.kchtg.password.service.PasswordHashService;
 import com.hanghai.kchtg.security.JwtAuthFilter;
 import com.hanghai.kchtg.security.JwtProperties;
 import com.hanghai.kchtg.security.PermissionMiddleware;
@@ -132,8 +133,23 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public PasswordEncoder passwordEncoder(PasswordHashService passwordHashService) {
+        return new PasswordEncoder() {
+            private final BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder();
+
+            @Override
+            public String encode(CharSequence rawPassword) {
+                return bcrypt.encode(rawPassword);
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                if (rawPassword == null || encodedPassword == null) {
+                    return false;
+                }
+                return passwordHashService.verify(rawPassword.toString(), encodedPassword);
+            }
+        };
     }
 
     /**
