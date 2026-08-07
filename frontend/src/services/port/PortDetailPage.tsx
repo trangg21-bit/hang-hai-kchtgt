@@ -20,7 +20,7 @@ import type { GiayTo } from '../../app/document/types';
 import EmptyState from '../../components/EmptyState';
 import { berthCRUD, waterZoneCRUD } from '../../services/portService';
 import type { Berth, WaterZone } from '../../types/port';
-import { VUNGNUOOC_LOAI_MAP } from '../../types/port';
+
 import { usePermissionStore } from '../../store/permissionStore';
 import { organizationService } from '../../services/organizationService';
 import { symbolService } from '../symbolService';
@@ -603,10 +603,7 @@ function renderGeneralTab(
                 },
                 {
                   title: 'Loại vùng nước', dataIndex: 'loaiVungNuoc', width: 160,
-                  render: (v: string) => {
-                    const label = VUNGNUOOC_LOAI_MAP[v as keyof typeof VUNGNUOOC_LOAI_MAP]?.label || v;
-                    return <Tag style={{ borderRadius: radiusPill }}>{label}</Tag>;
-                  },
+                  render: (v: string) => v || '—',
                 },
                 {
                   title: 'Diện tích', dataIndex: 'area', width: 120,

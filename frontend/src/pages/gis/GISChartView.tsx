@@ -698,17 +698,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     return val;
   };
 
-  const getLoaiVungNuocText = (val?: string) => {
-    if (!val) return '—';
-    const v = val.toUpperCase();
-    if (v === 'NEO_DAU') return 'Khu neo đậu';
-    if (v === 'DON_TRA_HOA_TIEU') return 'Khu đón trả hoa tiêu';
-    if (v === 'QUAY_TRO_TAU') return 'Vùng quay trở tàu';
-    if (v === 'BEN_PHAO') return 'Bến phao';
-    if (v === 'CHUYEN_TAI') return 'Khu chuyển tải';
-    if (v === 'TRANH_BAO') return 'Khu tránh trú bão';
-    return val;
-  };
+  const getLoaiVungNuocText = (val?: string) => val || '—';
 
   const getGeometryTypeText = (val?: string) => {
     if (!val) return '—';
