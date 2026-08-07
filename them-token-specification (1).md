@@ -2,7 +2,7 @@
 
 **Version:** 2.2
 **Based on:** `frontend/src/theme.ts` (v5) + `frontend/src/tokens.ts` + Figma "Quản lý Tàu bay"
-**Ngày:** 07/08/2026 (44 style preset: 5.1-5.12)
+**Ngày:** 07/08/2026 (46 style preset 5.1-5.12 + Section 8 Sidebar phân cấp Menu)
 
 ---
 
@@ -319,7 +319,102 @@ Tất cả preset được định nghĩa trong `frontend/src/tokens.ts`. Dev im
 
 ---
 
-## 8. Drawer — Tạo mới (Create)
+## 8. Sidebar — Phân cấp Menu (Submenu Hierarchy)
+
+Sidebar dùng Ant Design `Menu` component, mode `dark`, theme `dark`. Phân cấp 3 tầng theo đúng Figma:
+
+```
+┌──────────────────────────────┐
+│  LOGO          CỤC HÀNG KHÔNG│  ← sidebar-header
+├──────────────────────────────┤
+│  Quản lý phương tiện HK       │  ← category group (BEM)
+│  ┌────────────────────────┐  │
+│  │ ▼ Quản lý Tàu bay      │  │  ← menu cha (SubMenu) — sidebarBg
+│  │   Quản lý thông tin    │  │  ← menu con (Item) — lùi 24px
+│  │   Trình phê duyệt      │  │
+│  │   Phê duyệt            │  │
+│  │   Báo cáo số liệu      │  │
+│  │ ▶ Quản lý phương tiện..│  │  ← menu cha khác (đóng)
+│  └────────────────────────┘  │
+├──────────────────────────────┤
+│  ☰ collapse       v1.0.0    │  ← sidebar-footer
+└──────────────────────────────┘
+```
+
+### 8.1 Cấp độ & Indent
+
+| Cấp | Component | Indent | Font | Weight | Color |
+|-----|-----------|--------|------|--------|-------|
+| 0 — Category | `<div>` BEM | 0 | 11px | 600 | `textOnDarkMuted` (55%) |
+| 1 — Parent | `<SubMenu>` | 0 | 13px | 400 | `textOnDark` (85%) |
+| 2 — Child | `<MenuItem>` | +24px | 13px | 400 | `textOnDark` (85%) |
+
+### 8.2 Trạng thái
+
+| Thành phần | Bình thường | Hover | Active/Selected |
+|-----------|-------------|-------|-----------------|
+| Parent (SubMenu) | Nền `sidebarBg`, chữ 85% | Nền sáng hơn 5% | — (không có selected) |
+| Child (Item) | Nền `sidebarBg` | Nền `actionPrimary` | Nền `actionPrimary`, chữ trắng, `font-weight:600`, glow `box-shadow: 0 0 12px rgba(14,111,214,0.4)` |
+| Icon expand | ▶ đóng / ▼ mở, 12px | — | — |
+
+### 8.3 CSS Class (theme.ts globalCssVars)
+
+```css
+/* Parent: SubMenu title */
+.ant-menu-dark .ant-menu-submenu-title {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  height: auto !important;
+}
+
+/* Child: menu item — height đủ cho text dài */
+.ant-menu-dark .ant-menu-item {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  height: auto !important;
+  padding-left: 48px !important;  /* lùi vào 24px so với parent */
+}
+
+/* Active child: nền actionPrimary + glow */
+.ant-menu-dark .ant-menu-item-selected {
+  background: #0E6FD6 !important;  /* actionPrimary */
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(14, 111, 214, 0.4);
+}
+
+/* Text dài xuống dòng thay vì ẩn */
+.ant-menu-dark .ant-menu-title-content {
+  white-space: normal;
+  line-height: 1.5 !important;
+}
+
+/* Category group label */
+.sidebar-category {
+  padding: 16px 24px 8px 24px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+```
+
+### 8.4 Agent workflow
+
+```
+PMO Lead
+  └── Dispatch Dev làm menu mới → PHẢI chép constraints vào prompt:
+        "Menu sidebar dùng AntD Menu dark. Phân cấp 3 tầng:
+         Category (BEM, 11px, uppercase, 55% opacity),
+         Parent (SubMenu, 13px, 85% opacity, padding 10px),
+         Child (Item, lùi 24px, active = nền actionPrimary + glow).
+         KHÔNG tự tạo sidebar riêng — dùng AppLayout.tsx.
+         CSS cho submenu đã có trong theme.ts globalCssVars."
+```
+
+---
+
+## 9. Drawer — Tạo mới (Create)
 
 ```
 ┌──────────────────────────────────────────┐ header
@@ -360,7 +455,7 @@ CSS tương đương:
 
 ---
 
-## 9. Drawer — Chỉnh sửa (Edit)
+## 10. Drawer — Chỉnh sửa (Edit)
 
 | Điểm | Khác với Tạo mới |
 |------|-----------------|
@@ -374,7 +469,7 @@ CSS tương đương:
 
 ---
 
-## 10. Drawer — Xem chi tiết (Detail)
+## 11. Drawer — Xem chi tiết (Detail)
 
 ```
 ┌──────────────────────────────────────────┐ header
@@ -411,7 +506,7 @@ CSS tương đương:
 
 ---
 
-## 11. Component Code Mẫu
+## 12. Component Code Mẫu
 
 ```tsx
 <Drawer
@@ -447,7 +542,7 @@ CSS tương đương:
 
 ---
 
-## 12. Quy tắc vàng
+## 13. Quy tắc vàng
 
 1. **Không hardcode** màu hex, spacing, font-size — dùng token từ `theme.ts` / `tokens.ts`. Ưu tiên dùng Style Preset (Section 5) thay vì tự ráp token thủ công.
 2. **Không tự tạo** Layout/Sider/Menu — dùng `AppLayout.tsx`
