@@ -21,7 +21,6 @@ const INFRA_TYPE_OPTIONS = [
   { value: 'piers', label: 'Cầu cảng' },
   { value: 'dry_ports', label: 'Cảng cạn' },
   { value: 'water_zones_anchorage', label: 'Khu neo đậu' },
-  { value: 'water_zones_quarantine', label: 'Khu kiểm dịch' },
   { value: 'water_zones_pilot_boarding', label: 'Khu đón trả hoa tiêu' },
   { value: 'water_zones_turning_basin', label: 'Khu quay trở tàu' },
   { value: 'water_zones_mooring_buoy', label: 'Bến phao' },

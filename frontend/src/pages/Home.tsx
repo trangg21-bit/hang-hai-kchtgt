@@ -134,7 +134,6 @@ const KCHT_LABEL_ROUTES: Record<string, string> = {
   'Cầu cảng': '/pier',
   'Khu neo đậu': '/water-zone?type=ANCHORAGE',
   'Khu chuyển tải': '/water-zone?type=TRANSSHIPMENT',
-  'Khu kiểm dịch': '/water-zone?type=QUARANTINE',
   'Khu đón trả hoa tiêu': '/water-zone?type=PILOT_BOARDING',
   'Khu quay trở tàu': '/water-zone?type=TURNING_BASIN',
   'Luồng hàng hải': '/navigation-channel',

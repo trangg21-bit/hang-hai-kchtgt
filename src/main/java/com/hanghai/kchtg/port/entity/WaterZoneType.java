@@ -8,12 +8,11 @@ import lombok.Getter;
 @Getter
 public enum WaterZoneType {
     ANCHORAGE(1),
-    QUARANTINE(2),
-    PILOT_BOARDING(3),
-    TURNING_BASIN(4),
-    MOORING_BUOY(5),
-    TRANSSHIPMENT(6),
-    STORM_SHELTER(7);
+    PILOT_BOARDING(2),
+    TURNING_BASIN(3),
+    MOORING_BUOY(4),
+    TRANSSHIPMENT(5),
+    STORM_SHELTER(6);
 
     private final int value;
 

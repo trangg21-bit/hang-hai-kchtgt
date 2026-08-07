@@ -1,0 +1,96 @@
+{
+  "triage_id": "TRI-1786092832485-fa62",
+  "created_at": 1786092832485,
+  "request_summary": "Xóa KIEM_DICH/QUARANTINE (Khu kiểm dịch) khỏi WaterZoneType enum và toàn bộ references do không có căn cứ từ TKCT/URD/khảo sát",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/intel/kcht-summary.md",
+      "frontend/src/app/waterzone/schema.ts",
+      "frontend/src/app/waterzone/types.ts",
+      "frontend/src/components/FilterBar.tsx",
+      "frontend/src/pages/gis/GISChartView.tsx",
+      "frontend/src/pages/Home.tsx",
+      "frontend/src/pages/port/WaterZoneForm.tsx",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/dashboard/service/KchtAssetCountService.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/WaterZoneType.java",
+      "src/main/java/com/hanghai/kchtg/report/service/ReportService.java"
+    ],
+    "impact_files": [
+      "docs/intel/kcht-summary.md",
+      "frontend/src/app/waterzone/schema.ts",
+      "frontend/src/app/waterzone/types.ts",
+      "frontend/src/components/FilterBar.tsx",
+      "frontend/src/pages/gis/GISChartView.tsx",
+      "frontend/src/pages/Home.tsx",
+      "frontend/src/pages/port/WaterZoneForm.tsx",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/dashboard/service/KchtAssetCountService.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/WaterZoneType.java",
+      "src/main/java/com/hanghai/kchtg/report/service/ReportService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "frontend/src/app/waterzone/schema.ts"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: schema:frontend/src/app/waterzone/schema.ts — floors at C3 regardless of size (11 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Vùng nước (/water-zone) — dropdown loại vùng nước hiện có 7 options, cần giảm xuống 6",
+  "blast_radius": 11,
+  "done_oracle": "WaterZoneType enum còn 6 giá trị (1-6), không còn QUARANTINE. Frontend chỉ hiển thị 6 loại vùng nước. Dashboard, report, GIS chart không còn reference đến quarantine/KIEM_DICH",
+  "change_type": "scope_shrink",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/entity/WaterZoneType.java",
+      "line": 11,
+      "quote": "    QUARANTINE(2),",
+      "source_hash": "ebe2db1dd6d45d0d34372b39e7749cf9d20266b7207c701c29f2c9354d4aeadc",
+      "quote_hash": "d3ae2a04078ba26d05883674f7286da065b427689099e0b99cc92b71e10f69d1",
+      "note": "Enum value cần xóa — là định nghĩa gốc của Khu kiểm dịch"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/dashboard/service/KchtAssetCountService.java",
+      "line": 36,
+      "quote": "            \"water_zones_anchorage\", \"water_zones_quarantine\", \"water_zones_pilot_boarding\",",
+      "source_hash": "962e252a0a38f346de274975455495fe31883fdba26945592593b3368eee2997",
+      "quote_hash": "494f9d31770269198acd4703030414e2c68e5b6889b696cc6878bdbfb0a0cc78",
+      "note": "Dashboard table list có water_zones_quarantine cần xóa"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/report/service/ReportService.java",
+      "line": 4563,
+      "quote": "                \"Luồng hàng hải, vùng đón trả hoa tiêu, vùng kiểm dịch.\");",
+      "source_hash": "95c59e36d0a90a294011fc968557a743fed9a48e472cc4f867e6d12e5c21de10",
+      "quote_hash": "f8ff1f717c59e51a402a490f31d2ffe31c35b29fc57749084e4ea1dfc03aab51",
+      "note": "Report category string có vùng kiểm dịch — cần đổi thành chỉ Luồng hàng hải, vùng đón trả hoa tiêu"
+    },
+    {
+      "file": "frontend/src/pages/port/WaterZoneForm.tsx",
+      "line": 222,
+      "quote": "              { label: 'Khu kiểm dịch', value: 'KIEM_DICH' },",
+      "source_hash": "30807830a0db7da791b7410d57ea10226d76e4fec151a9283d70c456f2d4e7c4",
+      "quote_hash": "7f16d20a70097ec772ac1be8ce7d63c11d89138675788cd6252722314c264fee",
+      "note": "Dropdown option frontend cần xóa"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "7a8e171d8f94c67de632bbd55ab90a3768d6e45a",
+    "dirty": true,
+    "captured_at": 1786092832666
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

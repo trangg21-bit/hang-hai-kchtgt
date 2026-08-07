@@ -526,7 +526,6 @@ export interface UpdateVungNuocRequest {
 
 export const VUNGNUOOC_LOAI_OPTIONS = [
   { label: 'Khu neo đậu', value: 'NEO_DAU' },
-  { label: 'Khu kiểm dịch', value: 'KIEM_DICH' },
   { label: 'Khu đón trả hoa tiêu', value: 'DON_TRA_HOA_TIEU' },
   { label: 'Vùng quay trở tàu', value: 'QUAY_TRO_TAU' },
   { label: 'Bến phao', value: 'BEN_PHAO' },
@@ -536,7 +535,6 @@ export const VUNGNUOOC_LOAI_OPTIONS = [
 
 export const VUNGNUOOC_LOAI_MAP = {
   NEO_DAU: { color: 'blue', label: 'Khu neo đậu' },
-  KIEM_DICH: { color: 'cyan', label: 'Khu kiểm dịch' },
   DON_TRA_HOA_TIEU: { color: 'pink', label: 'Khu đón trả hoa tiêu' },
   QUAY_TRO_TAU: { color: 'orange', label: 'Vùng quay trở tàu' },
   BEN_PHAO: { color: 'purple', label: 'Bến phao' },

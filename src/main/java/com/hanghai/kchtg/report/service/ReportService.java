@@ -4560,7 +4560,7 @@ if (expr != null && (expr.contains("table.")
         map.put(ObjectType.BUOY,
                 "Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ.");
         map.put(ObjectType.LIGHTHOUSE,
-                "Luồng hàng hải, vùng đón trả hoa tiêu, vùng kiểm dịch.");
+"Luồng hàng hải, vùng đón trả hoa tiêu.");
         map.put(ObjectType.OTHER,
                 "Khu chuyển tải, khu neo đậu, khu tránh, trú bão trong vùng nước cảng biển.");
 

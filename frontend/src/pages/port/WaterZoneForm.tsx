@@ -219,7 +219,6 @@ export default function WaterZoneForm() {
             label="Loại vùng nước"
             options={[
               { label: 'Khu neo đậu', value: 'NEO_DAU' },
-              { label: 'Khu kiểm dịch', value: 'KIEM_DICH' },
               { label: 'Khu đón trả hoa tiêu', value: 'DON_TRA_HOA_TIEU' },
               { label: 'Vùng quay trở tàu', value: 'QUAY_TRO_TAU' },
               { label: 'Bến phao', value: 'BEN_PHAO' },

@@ -702,7 +702,6 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     if (!val) return '—';
     const v = val.toUpperCase();
     if (v === 'NEO_DAU') return 'Khu neo đậu';
-    if (v === 'KIEM_DICH') return 'Khu kiểm dịch';
     if (v === 'DON_TRA_HOA_TIEU') return 'Khu đón trả hoa tiêu';
     if (v === 'QUAY_TRO_TAU') return 'Vùng quay trở tàu';
     if (v === 'BEN_PHAO') return 'Bến phao';
