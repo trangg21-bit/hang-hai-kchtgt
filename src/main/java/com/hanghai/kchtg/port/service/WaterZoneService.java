@@ -83,7 +83,7 @@ public class WaterZoneService {
                 .maxDepth(request.getMaxDepth()).avgDepth(request.getAvgDepth())
                 .waterZoneType(request.getWaterZoneType()).operationalStatus(request.getOperationalStatus())
                 .orgUnitId(parent.getOrgUnitId())
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .mapSymbolId(request.getMapSymbolId())
                 .spatialId(spatialId)
                 .build();
@@ -252,7 +252,7 @@ public class WaterZoneService {
             });
         }
 
-        entity.setApprovalStatus(ApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
 
         WaterZone saved = waterZoneRepository.save(entity);
 

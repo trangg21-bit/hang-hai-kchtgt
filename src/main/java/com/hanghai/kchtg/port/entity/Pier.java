@@ -1,6 +1,9 @@
 package com.hanghai.kchtg.port.entity;
 
-import com.hanghai.kchtg.common.entity.*;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -51,7 +54,7 @@ public class Pier extends BaseEntity {
     private OperationalStatus operationalStatus;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = ApprovalStatusConverter.class)
+    @Enumerated(EnumType.ORDINAL)
     private ApprovalStatus approvalStatus;
 
     @Column(name = "org_unit_id")

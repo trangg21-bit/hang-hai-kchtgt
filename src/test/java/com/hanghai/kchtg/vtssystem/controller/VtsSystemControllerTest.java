@@ -6,7 +6,7 @@ import com.hanghai.kchtg.vtssystem.dto.VtsSystemCreateRequest;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemListResponse;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemResponse;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemUpdateRequest;
-import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -143,3 +143,4 @@ class VtsSystemControllerTest {
         return auth;
     }
 }
+

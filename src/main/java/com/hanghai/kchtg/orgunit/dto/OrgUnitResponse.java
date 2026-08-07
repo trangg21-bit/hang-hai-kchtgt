@@ -1,10 +1,9 @@
 package com.hanghai.kchtg.orgunit.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -13,11 +12,6 @@ import java.util.UUID;
 
 /**
  * Response DTO representing an organisational unit with full materialized-path metadata.
- *
- * <p>
- * The {@code children} list is populated only for tree endpoints;
- * otherwise it is omitted from JSON via {@link JsonInclude.Include#NON_EMPTY}.
- * </p>
  */
 @Getter
 @Setter
@@ -31,9 +25,8 @@ public class OrgUnitResponse {
     private String name;
     private String code;
     private UUID parentId;
-    private OrgUnitType type;
     private OrgUnitStatus status;
-    private OrgUnitOperationalStatus operationalStatus;
+    private OperationalStatus operationalStatus;
     private String description;
     private String address;
     private String detailAddress;
@@ -61,7 +54,6 @@ public class OrgUnitResponse {
                 .name(entity.getName())
                 .code(entity.getCode())
                 .parentId(entity.getParentId())
-                .type(entity.getType())
                 .status(entity.getStatus())
                 .operationalStatus(entity.getOperationalStatus())
                 .description(entity.getDescription())

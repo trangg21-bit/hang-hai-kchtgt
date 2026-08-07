@@ -39,15 +39,15 @@ public class BerthApprovalService {
 
         if ("CANG_VU".equals(cap)) {
             if (entity.getApprovalStatus() != ApprovalStatus.DRAFT
-                && entity.getApprovalStatus() != ApprovalStatus.PENDING) {
+                && entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cảng vụ: trạng thái hiện tại không hợp lệ");
             }
-            entity.setApprovalStatus(ApprovalStatus.PORT_AUTHORITY);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
             entity.setPortAuthorityApprovedBy(userId);
             entity.setRejectionReason(null);
         } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.PORT_AUTHORITY) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Cảng vụ trước");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);

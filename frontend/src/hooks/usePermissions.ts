@@ -1,36 +1,95 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { permissionService } from '../services/permissionService';
 import type { MenuTreeNode } from '../types/permission';
 
-function flattenKeys(nodes: MenuTreeNode[]): string[] {
-  return nodes.flatMap((node) => [node.key, ...flattenKeys(node.children || [])]);
-}
+const RESOURCE_LABELS: Record<string, string> = {
+  port: 'Quản lý Cảng biển',
+  berth: 'Quản lý Bến cảng',
+  pier: 'Quản lý Cầu cảng',
+  dryport: 'Quản lý Cảng cạn',
+  waterarea: 'Quản lý Vùng nước',
+  waterzone: 'Quản lý Vùng nước',
+  navigationchannel: 'Quản lý Luồng hàng hải',
+  dikerevetment: 'Quản lý Đê kè / Đê chắn cát',
+  lighthousestation: 'Quản lý Nhà trạm đèn biển',
+  radarstation: 'Quản lý Trạm Radar',
+  vts: 'Quản lý Hệ thống VTS',
+  shiprepairfacility: 'Quản lý Cơ sở sửa chữa & đóng tàu',
+  shiprepair: 'Quản lý Cơ sở sửa chữa & đóng tàu',
+  buoy: 'Quản lý Phao tiêu báo hiệu',
+  beaconlight: 'Quản lý Đèn biển / Đăng tiêu',
+  buoystation: 'Quản lý Nhà trạm phao tiêu',
+  coastalstation: 'Quản lý Đài duyên hải',
+  specialstation: 'Quản lý Đài chuyên dùng / Vệ tinh',
+  user: 'Quản lý người dùng',
+  role: 'Quản lý vai trò & Phân quyền',
+  orgunit: 'Quản lý đơn vị tổ chức',
+  group: 'Quản lý nhóm người dùng',
+  groupmember: 'Quản lý thành viên nhóm',
+  document: 'Quản lý Văn bản pháp lý',
+  map: 'Quản lý Bản đồ & GIS',
+  log: 'Quản lý Nhật ký kiểm toán (Log)',
+  history: 'Quản lý Lịch sử kiểm toán',
+  admin: 'Quản trị hệ thống',
+  connection: 'Quản lý Kết nối chia sẻ dữ liệu',
+  report: 'Quản lý Báo cáo thống kê',
+  check: 'Kiểm tra & Rà soát dữ liệu',
+  api: 'Tích hợp & Chia sẻ API liên thông',
+  data: 'Quản lý Dữ liệu Bản đồ & GIS',
+  security: 'Quản lý An toàn thông tin & SIEM',
+  approve: 'Phê duyệt quy trình chung',
+  assetincrease: 'Quản lý Biến động tăng tài sản',
+  assetdecrease: 'Quản lý Biến động giảm tài sản',
+  inventoryasset: 'Quản lý Kiểm kê tài sản',
+  assetexploitation: 'Quản lý Khai thác tài sản',
+};
 
 /**
- * Cây chức năng AUTH_MENU của project gốc hh.csdl.
- * Các permission API resource:action vẫn được giữ ở endpoint /permissions,
- * nhưng không trộn vào cây chức năng hiển thị cho người quản trị.
+ * Hook usePermissions: Build dynamic permission tree directly from GET /api/permissions
+ * Eliminates legacy menu-tree API calls and legacy menu codes.
  */
 export function usePermissions() {
-  const menuQuery = useQuery({
-    queryKey: ['permission-menu-tree'],
-    queryFn: () => permissionService.listMenuTree(),
-    staleTime: 5 * 60 * 1000,
-  });
   const apiQuery = useQuery({
     queryKey: ['permission-catalog'],
     queryFn: () => permissionService.list(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const tree: MenuTreeNode[] = menuQuery.data || [];
+  const perms = apiQuery.data || [];
+  
+  // Group standard permissions by resource with memoization
+  const tree: MenuTreeNode[] = useMemo(() => {
+    if (!perms.length) return [];
+    const groups: Record<string, MenuTreeNode[]> = {};
+    perms.forEach((p) => {
+      const res = p.resource || p.key.split(':')[0] || 'other';
+      if (!groups[res]) groups[res] = [];
+      groups[res].push({
+        key: p.key,
+        code: p.key,
+        title: `${p.name} (${p.key})`,
+        children: [],
+      });
+    });
+
+    return Object.entries(groups).map(([res, children]) => ({
+      key: `group_${res}`,
+      code: `group_${res}`,
+      title: RESOURCE_LABELS[res] || res.toUpperCase(),
+      children,
+    }));
+  }, [perms]);
+
+  const allKeys = useMemo(() => perms.map((p) => p.key), [perms]);
+
   return {
     tree,
-    allKeys: flattenKeys(tree),
+    allKeys,
     allGroupKeys: [],
-    apiPermissions: apiQuery.data || [],
-    isLoading: menuQuery.isLoading || apiQuery.isLoading,
-    isError: menuQuery.isError || apiQuery.isError,
-    error: menuQuery.error || apiQuery.error,
+    apiPermissions: perms,
+    isLoading: apiQuery.isLoading,
+    isError: apiQuery.isError,
+    error: apiQuery.error,
   };
 }

@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.repository;
 
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -17,7 +17,7 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
 
     long countByOrgUnitId(UUID orgUnitId);
 
-    List<NavigationChannel> findByApprovalStatusAndIsDeletedFalse(NavigationChannelApprovalStatus approvalStatus);
+    List<NavigationChannel> findByApprovalStatusAndIsDeletedFalse(ApprovalStatus approvalStatus);
 
     List<NavigationChannel> findByIsDeletedFalse(Sort sort);
 
@@ -33,7 +33,7 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
     Page<NavigationChannel> searchDocuments(
             @org.springframework.data.repository.query.Param("orgUnitId") UUID orgUnitId,
             @org.springframework.data.repository.query.Param("keyword") String keyword,
-            @org.springframework.data.repository.query.Param("ApprovalStatus") NavigationChannelApprovalStatus ApprovalStatus,
+            @org.springframework.data.repository.query.Param("ApprovalStatus") ApprovalStatus ApprovalStatus,
             Pageable pageable);
     @Query("SELECT l FROM NavigationChannel l WHERE " +
             "l.isDeleted = false AND " +

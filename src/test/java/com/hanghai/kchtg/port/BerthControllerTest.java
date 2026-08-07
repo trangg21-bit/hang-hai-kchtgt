@@ -111,7 +111,7 @@ class BerthControllerTest {
                 .berthName("Bến Cảng Demo")
                 .portId(parentId)
                 .operationalStatus(OperationalStatus.OPERATIONAL)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
     }
 

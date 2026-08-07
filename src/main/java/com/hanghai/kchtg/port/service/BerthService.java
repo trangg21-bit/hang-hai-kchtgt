@@ -334,7 +334,7 @@ public class BerthService {
         if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
         } else {
-            entity.setApprovalStatus(ApprovalStatus.PENDING);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         Berth saved = berthRepository.save(entity);
@@ -491,7 +491,7 @@ public class BerthService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.PENDING);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
                 entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
                 break;

@@ -2,7 +2,7 @@ package com.hanghai.kchtg.shiprepairfacility.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,7 +29,7 @@ public class ShipRepairFacilityResponse {
     private String authority;
     private UUID orgUnitId;
     private String orgUnitName;
-    private ShipRepairApprovalStatus approvalStatus;
+    private ApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;
     private LocalDateTime approvedDateLevel1;

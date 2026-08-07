@@ -11,6 +11,7 @@ import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.beacon.service.BuoyService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -107,7 +108,7 @@ class BuoyServiceTest {
                 .range(12.0)
                 .isActive(true)
                 .status(status)
-                .approvalStatus("PENDING")
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
         setId(entity, id);
         entity.setCreatedAt(LocalDateTime.now().minusDays(1));
@@ -232,7 +233,7 @@ class BuoyServiceTest {
             assertThat(result.getName()).isEqualTo("Phao tiêu mới");
             assertThat(result.getType()).isEqualTo("SAFE_WATER");
             assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
+            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
 
             verify(buoyRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
@@ -378,7 +379,7 @@ class BuoyServiceTest {
         void updateApprovedEntityRevertsStatus() {
             UUID id = UUID.randomUUID();
             Buoy entity = makeEntity(id, "APPROVED_L1");
-            entity.setApprovalStatus("APPROVED");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setApprovalLevel(1);
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -390,7 +391,7 @@ class BuoyServiceTest {
             BuoyResponse result = service.update(id, request);
 
             assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
+            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
             assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
         }
 
@@ -494,7 +495,7 @@ class BuoyServiceTest {
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("PENDING_APPROVAL");
-            assertThat(saved.getApprovalStatus()).isEqualTo("PENDING");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.PROPOSED);
             assertThat(saved.getApprovalLevel()).isEqualTo(1);
             verify(notificationService).sendApprovalNotificationBuoy(entity);
         }
@@ -526,7 +527,7 @@ class BuoyServiceTest {
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
-            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
             assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDate()).isNotNull();
             assertThat(result.getStatus()).isEqualTo("APPROVED_L1");
@@ -561,7 +562,7 @@ class BuoyServiceTest {
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("PUBLISHED");
-            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
             assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
             assertThat(result.getStatus()).isEqualTo("PUBLISHED");
             verify(historyRepo).save(any());
@@ -593,7 +594,7 @@ class BuoyServiceTest {
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("REJECTED");
-            assertThat(saved.getApprovalStatus()).isEqualTo("REJECTED");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED);
             assertThat(saved.getRejectionReason()).isEqualTo("Lý do từ chối hợp lệ (đủ 10 ký tự)");
             assertThat(result.getStatus()).isEqualTo("REJECTED");
             assertThat(result.getApprovalStatus()).isEqualTo("REJECTED");

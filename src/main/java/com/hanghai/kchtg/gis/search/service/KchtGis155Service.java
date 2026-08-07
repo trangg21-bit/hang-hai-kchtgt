@@ -7,7 +7,7 @@ import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.gis.search.dto.GisObjectType;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -622,7 +622,7 @@ public class KchtGis155Service {
 
                 case DIKE_REVETMENT:
                     List<DikeRevetment> dikeRevList = dikeRevetmentRepository.searchDocuments(
-                            orgUnitId, searchLower, null, null, DikeRevetmentApprovalStatus.APPROVED, PageRequest.of(0, 10000))
+                            orgUnitId, searchLower, null, null, ApprovalStatus.APPROVED, PageRequest.of(0, 10000))
                             .getContent();
                     Map<UUID, GisSpatialObject> dikeRevSpatialMap = new HashMap<>();
                     if (!dikeRevList.isEmpty()) {

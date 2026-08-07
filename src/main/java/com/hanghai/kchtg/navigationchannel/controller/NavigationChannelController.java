@@ -2,7 +2,7 @@ package com.hanghai.kchtg.navigationchannel.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.navigationchannel.dto.*;
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.navigationchannel.service.NavigationChannelService;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
@@ -94,7 +94,7 @@ public class NavigationChannelController {
     @GetMapping("/approval-status/{status}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
     public ResponseEntity<ApiResponse<List<NavigationChannelResponse>>> filterByStatus(@PathVariable String status) {
-        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(NavigationChannelApprovalStatus.valueOf(status))));
+        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(ApprovalStatus.valueOf(status))));
     }
 
     @GetMapping("/search")

@@ -30,7 +30,8 @@ public class JwtUtil {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
 
-    public JwtUtil(JwtProperties jwtProperties, RoleRepository roleRepository, PermissionRepository permissionRepository) {
+    public JwtUtil(JwtProperties jwtProperties, RoleRepository roleRepository,
+            PermissionRepository permissionRepository) {
         this.jwtProperties = jwtProperties;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
@@ -39,7 +40,7 @@ public class JwtUtil {
     }
 
     // =========================================================================
-    //  SINGLE-TOKEN METHODS (legacy - backward-compatible)
+    // SINGLE-TOKEN METHODS (legacy - backward-compatible)
     // =========================================================================
 
     /**
@@ -93,7 +94,7 @@ public class JwtUtil {
     }
 
     // =========================================================================
-    //  DUAL-TOKEN METHODS (F-273 Wave 1)
+    // DUAL-TOKEN METHODS (F-273 Wave 1)
     // =========================================================================
 
     /**
@@ -106,8 +107,21 @@ public class JwtUtil {
     public String generateAccessToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
-        String role = user.getRoles().stream().map(Role::getCode).findFirst().orElse("ROLE_USER");
-        List<String> permissions = new ArrayList<>(user.getAllPermissions());
+        String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode()
+                : user.getRoles().stream().map(Role::getCode).findFirst().orElse("ROLE_USER");
+
+        Set<String> allPerms = user.getAllPermissions();
+        List<String> permissions;
+        boolean isAdminRole = role.toUpperCase().contains("ADMIN")
+                || user.getRoles().stream()
+                        .anyMatch(r -> r.getCode() != null && r.getCode().toUpperCase().contains("ADMIN"))
+                || allPerms.contains("admin:manage")
+                || allPerms.contains("*");
+        if (isAdminRole) {
+            permissions = List.of("admin:manage", "*");
+        } else {
+            permissions = new ArrayList<>(allPerms);
+        }
 
         Map<String, Object> claims = TokenClaimsBuilder.builder()
                 .subject(user.getUsername())
@@ -153,7 +167,7 @@ public class JwtUtil {
     }
 
     // =========================================================================
-    //  SHARED UTILITIES
+    // SHARED UTILITIES
     // =========================================================================
 
     /**
@@ -207,7 +221,8 @@ public class JwtUtil {
      * Lay permission_version claim tu JWT.
      * <p>
      * Dung cho co che thu hoi quyen tuc thi: token mang phien ban permission tai
-     * thoi diem phat hanh; neu lech voi phien ban hien tai cua user thi token da cu.
+     * thoi diem phat hanh; neu lech voi phien ban hien tai cua user thi token da
+     * cu.
      *
      * @return gia tri phien ban, hoac {@code null} neu token khong co claim nay
      *         (token cu phat hanh truoc khi tinh nang duoc bat - bo qua kiem tra).
@@ -230,18 +245,22 @@ public class JwtUtil {
     /**
      * Map Spring Security role de numeric level cho RBAC.
      * <ul>
-     *   <li>SUPER_ADMIN -> 4</li>
-     *   <li>ADMIN       -> 3</li>
-     *   <li>SUPPORT     -> 2</li>
-     *   <li>other       -> 1</li>
+     * <li>SUPER_ADMIN -> 4</li>
+     * <li>ADMIN -> 3</li>
+     * <li>SUPPORT -> 2</li>
+     * <li>other -> 1</li>
      * </ul>
      */
     private int resolveRoleLevel(String role) {
-        if (role == null) return 1;
+        if (role == null)
+            return 1;
         String upper = role.toUpperCase();
-        if (upper.startsWith("SUPER_ADMIN")) return 4;
-        if (upper.startsWith("ADMIN"))       return 3;
-        if (upper.startsWith("SUPPORT"))     return 2;
+        if (upper.startsWith("SUPER_ADMIN"))
+            return 4;
+        if (upper.startsWith("ADMIN"))
+            return 3;
+        if (upper.startsWith("SUPPORT"))
+            return 2;
         return 1;
     }
 

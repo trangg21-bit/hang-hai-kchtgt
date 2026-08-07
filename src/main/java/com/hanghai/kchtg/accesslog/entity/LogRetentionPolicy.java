@@ -42,4 +42,19 @@ public class LogRetentionPolicy {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Integer getRetentionDays() { return retentionDays; }
+    public void setRetentionDays(Integer retentionDays) { this.retentionDays = retentionDays; }
+    public Integer getMaxExportRows() { return maxExportRows; }
+    public void setMaxExportRows(Integer maxExportRows) { this.maxExportRows = maxExportRows; }
+    public String getCleanupSchedule() { return cleanupSchedule; }
+    public void setCleanupSchedule(String cleanupSchedule) { this.cleanupSchedule = cleanupSchedule; }
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

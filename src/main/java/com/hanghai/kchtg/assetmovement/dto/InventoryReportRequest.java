@@ -1,14 +1,16 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.UUID;
 
 /**
  * Request DTO cho Bao Cao Kiem Ke (create/update).
  */
-@Data
+@Getter
+@Setter
 public class InventoryReportRequest {
 
     @NotNull(message = "Kế hoạch kiểm kê không được để trống")

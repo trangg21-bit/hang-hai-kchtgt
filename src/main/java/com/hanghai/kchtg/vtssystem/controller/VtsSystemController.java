@@ -3,7 +3,7 @@ package com.hanghai.kchtg.vtssystem.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.vtssystem.dto.*;
-import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import com.hanghai.kchtg.security.SecurityUtils;

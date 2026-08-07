@@ -1,0 +1,265 @@
+BC: BÁO CÁO THỐNG KÊ
+BCC: Báo cáo thống kê chung
+BCCNDB: Nhóm chỉ tiêu chuyên ngành bảo đảm
+BCCNDB_195: Biểu Tổng hợp thông tin chung
+BCCNDB_196: Biểu Tổng hợp thông tin kết cấu hạ tầng giao thông hàng hải
+BCCNDB_197: Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải
+BCCNDB_198: Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Cầu cảng
+BCCNDB_199: Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Luồng hàng hải
+BCCNDB_200: Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Phao tiêu báo hiệu và nhà trạm quản lý vận hành
+BCCNDB_201: Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đèn biển và nhà trạm gắn với đèn biển
+BCCNDB_202: Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đê, kè
+BCCNDB_203: Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải
+BCCNDB_204: Báo cáo tình hình hoạt động của báo hiệu hàng hải và công trình đê, kè
+BCC_156: Báo cáo thống kê tăng giảm tài sản
+BCC_157: Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng
+BCC_158: Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải
+BCC_159: Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải
+BCC_160: Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải
+BCC_161: Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải
+BCC_162: Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý
+BCDL: Nhóm chỉ tiêu đo lường
+BCDL_176: Biểu 14-T: Báo cáo chi tiết tàu biển ra, vào cảng biển
+BCDL_177: Biểu 15-T: Báo cáo chi tiết phương tiện thủy nội địa ra, vào cảng biển
+BCDL_178: Biểu 16-Q: Thống kê tàu biển nước ngoài đến, rời tại khu vực cảng biển
+BCDL_179: Biểu 17-Q: Thống kê tàu biển Việt Nam vận tải quốc tế tại khu vực cảng biển
+BCDL_180: Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng
+BCDL_180N: Biểu 12-T:Khối lượng hàng hóa, hành khách thông qua cảng biển theo ngày
+BCDL_181: Biểu 12-N:Khối lượng hàng hóa, hành khách thông qua cảng biển theo năm
+BCDL_182: Biểu 13-T: Lượt tàu thuyền ra, vào cảng
+BCDL_182N: Biểu 13-T:Lượt tàu thuyền vào, rời cảng biển
+BCDL_183: Biểu 14-T: Khối lượng hàng hóa thông qua cảng biển bằng đội tàu biển Việt Nam và phương tiện thủy nội địa
+BCDL_183N: Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu thông qua cảng biển bằng đội tàu Việt Nam
+BCDL_184: Biểu 15-T: Khối lượng hàng hóa, lượt tàu thông qua cảng biển, bến trong khu vực quản lý
+BCDL_184N: Biểu 15-T:Khối lượng hàng hóa, hành khách thông qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý
+BCDN: Nhóm chỉ tiêu về doanh nghiệp
+BCDN_188: Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển
+BCDN_189: Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển
+BCKCHT: Nhóm chỉ tiêu kết cấu hạ tầng
+BCKCHT_163: Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng
+BCKCHT_164: Biểu 02-N: Năng lực thông qua cảng biển
+BCKCHT_165: Biểu 03-N: Thống kê cầu cảng
+BCKCHT_166: Biểu 04-N: Thống kê luồng hàng hải
+BCKCHT_167: Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão
+BCKCHT_168: Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu
+BCKCHT_169: Biểu 07-N: Thống kê bến phao, khu neo đậu
+BCKCHT_170: Biểu 08-N: Thống kê hệ thống đèn biển
+BCKCHT_171: Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng
+BCKCHT_172: Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng
+BCKCHT_173: Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)
+BCKCHT_174: Biểu 12-N: Hệ thống các đài thông tin duyên hải
+BCKCHT_175: Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát
+BCPTTV: Nhóm chỉ tiêu phương tiện và thuyền viên
+BCPTTV_185: Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải
+BCPTTV_186: Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam
+BCPTTV_187: Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt
+BCTHTN: Báo cáo tổng hợp theo ngày
+BCTT48: Nhóm báo cáo thông tư 48/2017/TT-BGTVT
+BCTT48_190: Biểu số 06-N: Năng lực thông qua bến cảng, cầu cảng thông tư 48/2017/TT-BGTVT
+BCTT48_191: Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý
+BCTT48_192: Biểu 28-T: Khối lượng hàng hóa thông qua cảng
+BCTT48_193: Biểu 29-N: Khối lượng hàng hóa thông qua cảng
+BCTT48_194: Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển
+HS: QUẢN LÝ THÔNG TIN HỒ SƠ THU THẬP
+HS_01: Quản lý hồ sơ
+HS_02: Tra cứu hồ sơ
+KCHTGIS: QUẢN LÝ KCHT TRÊN NỀN BẢN ĐỒ (GIS)
+KCHTGIS_151: Quản lý danh mục đối tượng điểm
+KCHTGIS_152: Quản lý danh mục đối tượng đường
+KCHTGIS_153: Quản lý danh mục đối tượng vùng
+KCHTGIS_154: Quản lý thông tin kết cấu hạ tầng hàng hải trên bản đồ
+KCHTGIS_155: Tra cứu thông tin kết cấu hạ tầng hàng hải trên bản đồ
+PDKC_039: Duyệt thông tin bến cảng
+PDKC_041: Duyệt thông tin cầu cảng
+PDKC_043: Duyệt thông tin Bến phao
+PDKC_045: Duyệt thông tin Khu tránh, trú bão
+PDKC_047: Duyệt thông tin khu chuyển tải
+PDKC_049: Duyệt thông tin khu neo đậu
+PDKC_051: Duyệt thông tin Cơ sở sửa chữa, đóng tàu
+PDKC_053: Duyệt thông tin đèn biển và nhà trạm gắn với đèn biển
+PDKC_055: Duyệt thông tin phao, tiêu và nhà trạm quản lý vận hành phao, tiêu
+PDKC_057: Duyệt thông tin hệ thống VTS
+PDKC_059: Duyệt thông tin Trung tâm điều hành VTS
+PDKC_061: Duyệt thông tin trạm radar
+PDKC_063: Duyệt thông tin hệ thống AIS
+PDKC_065: Duyệt thông tin hệ thống CCTV
+PDKC_067: Duyệt thông tin hệ thống SCADA
+PDKC_069: Duyệt thông tin hệ thống thông tin liên lạc VHF
+PDKC_071: Duyệt thông tin hệ thống truyền dẫn
+PDKC_073: Duyệt thông tin hệ thống phụ trợ VTS
+PDKC_075: Duyệt thông tin đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ
+PDKC_077: Duyệt thông tin luồng hàng hải
+PDKC_079: Duyệt thông tin đài TTDH
+PDKC_081: Duyệt thông tin đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng
+PDKC_083: Duyệt thông tin Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam
+PDKC_085: Duyệt thông tin đài thông tin nhận dạng và truy theo tầm xa (LRIT)
+PDKC_087: Duyệt thông tin Đài Trung tâm xử lý thông tin hàng hải Hà Nội
+PDTS: Phê duyệt
+PDTS_097: Phê duyệt thông tin tài sản bến cảng
+PDTS_099: Phê duyệt thông tin tài sản cầu cảng
+PDTS_101: Phê duyệt thông tin tài sản bến phao
+PDTS_103: Phê duyệt thông tin tài sản khu tránh, trú bão
+PDTS_105: Phê duyệt thông tin tài sản khu chuyển tải
+PDTS_107: Phê duyệt thông tin tài sản khu neo đậu
+PDTS_109: Phê duyệt thông tin tài sản Đèn biển và nhà trạm gắn liền với Đèn biển
+PDTS_111: Phê duyệt thông tin tài sản phao tiêu và nhà trạm quản lý phao tiêu
+PDTS_113: Phê duyệt thông tin tài sản hệ thống VTS
+PDTS_115: Phê duyệt thông tin tài sản trung tâm điều hành VTS
+PDTS_117: Phê duyệt thông tin tài sản trạm radar
+PDTS_119: Phê duyệt thông tin tài sản hệ thống AIS
+PDTS_121: Phê duyệt thông tin tài sản hệ thống CCTV
+PDTS_123: Phê duyệt thông tin tài sản hệ thống SCADA
+PDTS_125: Phê duyệt thông tin tài sản hệ thống thông tin liên lạc VHF
+PDTS_127: Phê duyệt thông tin tài sản hệ thống truyền dẫn
+PDTS_129: Phê duyệt thông tin tài sản hệ thống phụ trợ VTS
+PDTS_131: Phê duyệt thông tin tài sản Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ
+PDTS_133: Phê duyệt thông tin tài sản luồng hàng hải
+PDTS_135: Phê duyệt thông tin tài sản đài TTDH
+PDTS_137: Phê duyệt thông tin tài sản Đài thông tin Vệ tinh mặt đất Inmarsat Hải Phòng
+PDTS_139: Phê duyệt thông tin tài sản Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam
+PDTS_141: Phê duyệt thông tin tài sản Đài thông tin nhận dạng và truy theo tầm xa (LRIT)
+PDTS_143: Phê duyệt thông tin tài sản Đài Trung tâm xử lý thông tin hàng hải Hà Nội
+PDTS_145: Phê duyệt thông tin tài sản Cảng cạn
+PDTS_147: Phê duyệt thông tin xử lý tài sản KCHTGT hàng hải
+PDTS_149: Phê duyệt thông tin sản lượng cảng biển
+PDTS_CB: TSKCHT cảng biển
+PDTS_CB_THUOC_CB: Phê duyệt thông tin tài sản KCHT thuộc cảng biển
+PDTS_DBAT: TSKCHT bảo đảm ATHH
+PDTS_DBAT_THUOC_VTS: Phê duyệt thông tin tài sản KCHT thuộc hệ thống VTS
+PDTS_MVT: TSKCHT mạng viễn thông HH
+QHKCHT: QUẢN LÝ QUY HOẠCH
+QHKCHT_093: Quản lý danh sách thông tin quy hoạch bến cảng hàng hải
+QHKCHT_094: Tra cứu thông tin quy hoạch bến cảng hàng hải
+QHKCHT_095: Cập nhật thông tin quy hoạch bến cảng hàng hải
+QLKC_037: Quản lý Cảng biển
+QLKC_038: Quản lý bến cảng
+QLKC_040: Quản lý cầu cảng
+QLKC_042: Quản lý Bến phao
+QLKC_044: Quản lý Khu tránh, trú bão
+QLKC_046: Quản lý khu chuyển tải
+QLKC_048: Quản lý khu neo đậu
+QLKC_050: Quản lý Cơ sở sửa chữa, đóng tàu
+QLKC_052: Quản lý Đèn biển và nhà trạm gắn với Đèn biển
+QLKC_054: Quản lý Phao, tiêu và nhà trạm quản lý vận hành phao, tiêu
+QLKC_056: Quản lý hệ thống VTS
+QLKC_058: Quản lý Trung tâm điều hành VTS
+QLKC_060: Quản lý trạm radar
+QLKC_062: Quản lý hệ thống AIS
+QLKC_064: Quản lý hệ thống CCTV
+QLKC_066: Quản lý hệ thống SCADA
+QLKC_068: Quản lý hệ thống thông tin liên lạc VHF
+QLKC_070: Quản lý hệ thống truyền dẫn
+QLKC_072: Quản lý hệ thống phụ trợ VTS
+QLKC_074: Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ
+QLKC_076: Quản lý luồng hàng hải
+QLKC_078: Quản lý đài TTDH
+QLKC_080: Quản lý đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng
+QLKC_082: Quản lý Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam
+QLKC_084: Quản lý đài thông tin nhận dạng và truy theo tầm xa (LRIT)
+QLKC_086: Quản lý Đài Trung tâm xử lý thông tin hàng hải Hà Nội
+QLKC_088: Quản lý cảng cạn
+QLKC_089: Quản lý thông tin văn bản pháp lý
+QLND: QUẢN LÝ NGƯỜI DÙNG
+QLND_001: Quản lý tài khoản người dùng
+QLND_002: Quản lý nhóm người dùng
+QLTS: Quản lý
+QLTS_096: Quản lý tài sản bến cảng
+QLTS_098: Quản lý tài sản cầu cảng
+QLTS_100: Quản lý tài sản bến phao
+QLTS_102: Quản lý tài sản khu tránh, trú bão
+QLTS_104: Quản lý tài sản khu chuyển tải
+QLTS_106: Quản lý tài sản khu neo đậu
+QLTS_108: Quản lý tài sản đèn biển và nhà trạm gắn liền với đèn biển
+QLTS_110: Quản lý tài sản phao, tiêu và nhà trạm quản lý vận hành phao, tiêu
+QLTS_112: Quản lý tài sản hệ thống VTS
+QLTS_114: Quản lý tài sản trung tâm điều hành VTS
+QLTS_116: Quản lý tài sản trạm radar
+QLTS_118: Quản lý tài sản hệ thống AIS
+QLTS_120: Quản lý tài sản hệ thống CCTV
+QLTS_122: Quản lý tài sản hệ thống SCADA
+QLTS_124: Quản lý tài sản hệ thống thông tin liên lạc VHF
+QLTS_126: Quản lý tài sản hệ thống truyền dẫn
+QLTS_128: Quản lý tài sản hệ thống phụ trợ VTS
+QLTS_130: Quản lý tài sản Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ
+QLTS_132: Quản lý tài sản Luồng hàng hải
+QLTS_134: Quản lý tài sản đài TTDH
+QLTS_136: Quản lý tài sản đài thông tin Vệ tinh mặt đất Inmarsat Hải Phòng
+QLTS_138: Quản lý tài sản Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam
+QLTS_140: Quản lý tài sản đài thông tin nhận dạng và truy theo tầm xa (LRIT)
+QLTS_142: Quản lý tài sản Đài Trung tâm xử lý thông tin hàng hải Hà Nội
+QLTS_144: Quản lý tài sản cảng cạn
+QLTS_146: Quản lý Đề nghị xử lý tài sản KCHTGT hàng hải
+QLTS_148: Quản lý sản lượng cảng biển
+QLTS_150: Kiểm kê tài sản
+QLTS_CB: TSKCHT cảng biển
+QLTS_CB_THUOC_CB: Quản lý tài sản KCHT thuộc cảng biển
+QLTS_DBAT: TSKCHT bảo đảm ATHH
+QLTS_DBAT_THUOC_VTS: Quản lý tài sản KCHT thuộc hệ thống VTS
+QLTS_MVT: TSKCHT mạng viễn thông HH
+QTHT: QUẢN TRỊ HỆ THỐNG
+QTHT_000: Cấu hình hệ thống
+QTHT_003: Quản lý đơn vị
+QTHT_004: Quản lý tài khoản admin
+QTHT_005: Quản lý log truy cập
+QTHT_006: Quản lý biểu tượng trên bản đồ
+QTHT_007: Quản lý kết nối liên thông chia sẻ dữ liệu
+SIGNIN: Đăng nhập
+SIGNOUT: Đăng xuất
+TCKC_009: Tra cứu văn bản pháp lý
+TCKC_010: Tra cứu cảng biển
+TCKC_011: Tra cứu bến cảng
+TCKC_012: Tra cứu cầu cảng
+TCKC_013: Tra cứu bến phao
+TCKC_014: Tra cứu khu tránh, trú bão
+TCKC_015: Tra cứu khu chuyển tải
+TCKC_016: Tra cứu khu neo đậu
+TCKC_017: Tra cứu Cơ sở sửa chữa, đóng tàu
+TCKC_018: Tra cứu Đèn biển và nhà trạm gắn liền với đèn biển
+TCKC_019: Tra cứu Phao, tiêu và nhà trạm quản lý vận hành phao tiêu
+TCKC_020: Tra cứu hệ thống VTS
+TCKC_021: Tra cứu Trung tâm điều hành VTS
+TCKC_022: Tra cứu Trạm Radar
+TCKC_023: Tra cứu Hệ thống AIS
+TCKC_024: Tra cứu Hệ thống CCTV
+TCKC_025: Tra cứu Hệ thống SCADA
+TCKC_026: Tra cứu Hệ thống thông tin liên lạc VHF
+TCKC_027: Tra cứu Hệ thống truyền dẫn
+TCKC_028: Tra cứu Hệ thống phụ trợ VTS
+TCKC_029: Tra cứu Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ
+TCKC_030: Tra cứu Luồng hàng hải
+TCKC_031: Tra cứu Đài TTDH
+TCKC_032: Tra cứu Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng
+TCKC_033: Tra cứu Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam
+TCKC_034: Tra cứu Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)
+TCKC_035: Tra cứu Đài Trung tâm xử lý thông tin hàng hải Hà Nội
+TCKC_036: Tra cứu cảng cạn
+TCVTS: Tra cứu hệ thống VTS và KCHT thuộc VTS
+TC_008: Trang chủ
+THKCHT_268: Tích hợp các mảnh hải đồ điện tử
+THKCHT_268N: Tích hợp bản đồ quy hoạch cảng biển
+TSKT: QUẢN LÝ KCHT HÀNG HẢI
+TSKT_PDKC: Phê duyệt
+TSKT_PDKC_CB: Thông tin KCHT cảng biển
+TSKT_PDKC_CB_THUOC_CB: Duyệt thông tin KCHT thuộc cảng biển
+TSKT_PDKC_DBAT: Thông tin KCHT bảo đảm ATHH
+TSKT_PDKC_DBAT_THUOC_VTS: Duyệt thông tin KCHT thuộc hệ thống VTS
+TSKT_PDKC_MVT: Thông tin KCHT mạng viễn thông HH
+TSKT_QLKC: Quản lý
+TSKT_QLKC_CB: Thông tin KCHT cảng biển
+TSKT_QLKC_CB_THUOC_CB: Quản lý KCHT thuộc cảng biển
+TSKT_QLKC_DBAT: Thông tin KCHT bảo đảm ATHH
+TSKT_QLKC_DBAT_THUOC_VTS: Quản lý KCHT thuộc hệ thống VTS
+TSKT_QLKC_MVT: Thông tin KCHT mạng viễn thông HH
+TSKT_SUB: Quản lý thông tin KCHT hàng hải
+TSKT_TCKC: Tra cứu
+TSKT_TCKC_CB: Thông tin KCHT cảng biển
+TSKT_TCKC_CB_THUOC_CB: Tra cứu KCHT thuộc cảng biển
+TSKT_TCKC_DBAT: Thông tin KCHT bảo đảm ATHH
+TSKT_TCKC_DBAT_THUOC_VTS: Tra cứu KCHT thuộc hệ thống VTS
+TSKT_TCKC_MVT: Thông tin KCHT mạng viễn thông HH
+TSQL: Quản lý tài sản KCHT hàng hải
+TTVH: VẬN HÀNH KHAI THÁC, BẢO TRÌ
+TTVH_090: Quản lý thông tin vận hành khai thác
+TTVH_091: Quản lý thông tin bảo trì
+TTVH_092: Quản lý thông tin sự cố
+VMD_MTIS: HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI

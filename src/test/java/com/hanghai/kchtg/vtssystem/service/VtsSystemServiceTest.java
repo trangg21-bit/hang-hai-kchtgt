@@ -4,7 +4,7 @@ import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.vtssystem.dto.*;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
-import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
@@ -189,7 +189,7 @@ class VtsSystemServiceTest {
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
     }
 
@@ -207,7 +207,7 @@ class VtsSystemServiceTest {
             service.approveC1(TEST_ID, req,
                     java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-            assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+            assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
             assertFalse(entity.getApprovedLevel2());
             verify(historyRepository, times(1)).save(any());
         } finally {
@@ -217,7 +217,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_Approve() {
-        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
@@ -230,7 +230,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
@@ -277,3 +277,4 @@ class VtsSystemServiceTest {
         assertTrue(responses.isEmpty());
     }
 }
+

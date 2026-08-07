@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.port.service.shared;
 
 import com.hanghai.kchtg.port.entity.ApprovalLog;
-import com.hanghai.kchtg.port.entity.base.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ public class ApprovalWorkflowService {
     public ApprovalStatus approve(String currentStatus, String entityType, String entityId, String decidedBy) {
         ApprovalStatus status = parseStatus(currentStatus);
 
-        if (status != ApprovalStatus.PENDING) {
+        if (status != ApprovalStatus.PENDING_APPROVAL) {
             String msg = String.format("Cannot approve: %s [%s] is in state %s (must be PENDING)",
                     entityType, entityId, status);
             log.warn("Approval rejected: {}", msg);
@@ -87,7 +87,7 @@ public class ApprovalWorkflowService {
 
         ApprovalStatus status = parseStatus(currentStatus);
 
-        if (status != ApprovalStatus.PENDING) {
+        if (status != ApprovalStatus.PENDING_APPROVAL) {
             String msg = String.format("Cannot reject: %s [%s] is in state %s (must be PENDING)",
                     entityType, entityId, status);
             log.warn("Reject rejected: {}", msg);
@@ -121,7 +121,7 @@ public class ApprovalWorkflowService {
      */
     public ApprovalStatus resetToPending(String currentStatus) {
         parseStatus(currentStatus); // validate it exists
-        return ApprovalStatus.PENDING;
+        return ApprovalStatus.PENDING_APPROVAL;
     }
 
     private ApprovalStatus parseStatus(String raw) {

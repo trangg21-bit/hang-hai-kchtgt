@@ -82,12 +82,10 @@ export interface CreateGroupPayload {
 
 export interface UpdateGroupPayload {
   name?: string;
-  code?: string;
   description?: string;
   groupType?: string;
   permissions?: string[];
   status?: "active" | "inactive";
-  organizationId?: string;
 }
 
 export interface AddMemberPayload {

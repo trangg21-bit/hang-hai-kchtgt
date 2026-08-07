@@ -46,6 +46,7 @@ class UserServiceTest {
     @Mock private PasswordHistoryRepository passwordHistoryRepository;
     @Mock private UserStatusLogRepository userStatusLogRepository;
     @Mock private EntityManager entityManager;
+    @Mock private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
     @Mock private Authentication authentication;
     @Mock private SecurityContext securityContext;
 
@@ -61,7 +62,7 @@ class UserServiceTest {
         userService = new UserService(
                 userRepository, roleRepository, orgUnitRepository, groupRepository,
                 passwordEncoder, passwordPolicyValidator, permissionCacheService,
-                passwordHistoryRepository, userStatusLogRepository, entityManager);
+                passwordHistoryRepository, userStatusLogRepository, entityManager, orgUnitCacheService);
 
 
         // Setup roles

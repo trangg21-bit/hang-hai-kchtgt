@@ -1,9 +1,6 @@
 package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
-
-import java.util.UUID;
-
 import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -27,6 +24,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -80,6 +78,7 @@ public class UserService {
     private final PasswordHistoryRepository passwordHistoryRepository;
     private final UserStatusLogRepository userStatusLogRepository;
     private final EntityManager entityManager;
+    private final com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
 
     public UserService(UserRepository userRepository,
             RoleRepository roleRepository,
@@ -91,6 +90,23 @@ public class UserService {
             PasswordHistoryRepository passwordHistoryRepository,
             UserStatusLogRepository userStatusLogRepository,
             EntityManager entityManager) {
+        this(userRepository, roleRepository, orgUnitRepository, groupRepository, passwordEncoder,
+                passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
+                userStatusLogRepository, entityManager, null);
+    }
+
+    @Autowired
+    public UserService(UserRepository userRepository,
+            RoleRepository roleRepository,
+            OrgUnitRepository orgUnitRepository,
+            GroupRepository groupRepository,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyValidator passwordPolicyValidator,
+            PermissionCacheService permissionCacheService,
+            PasswordHistoryRepository passwordHistoryRepository,
+            UserStatusLogRepository userStatusLogRepository,
+            EntityManager entityManager,
+            @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
@@ -101,6 +117,7 @@ public class UserService {
         this.passwordHistoryRepository = passwordHistoryRepository;
         this.userStatusLogRepository = userStatusLogRepository;
         this.entityManager = entityManager;
+        this.orgUnitCacheService = orgUnitCacheService;
     }
 
     // =========================================================================
@@ -116,25 +133,91 @@ public class UserService {
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
             actualSize = MAX_PAGE_SIZE;
         }
-        
+
         Sort sort = pageable.getSort();
         if (sort == null || sort.isUnsorted()) {
             sort = Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT);
         }
-        
+
         Pageable cappedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 actualSize,
-                sort
-        );
-        
-        // We always use searchUsers if we have search, roleCode, or status filters, or we can use it universally!
+                sort);
+
+        // We always use searchUsers if we have search, roleCode, or status filters, or
+        // we can use it universally!
         return userRepository.searchUsers(
                 (search != null && !search.trim().isEmpty()) ? search.trim() : null,
                 (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
                 status,
-                cappedPageable
-        ).map(UserResponse::from);
+                cappedPageable).map(u -> UserResponse.from(u, orgUnitCacheService));
+    }
+
+    /**
+     * T-001: Lay danh sach nguoi dung kem theo thong ke statusCounts trong 1
+     * response duy nhat.
+     */
+    @Transactional(readOnly = true)
+    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search, String roleCode,
+            UserStatus status, Pageable pageable) {
+        int actualSize = pageable.getPageSize();
+        if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
+            actualSize = MAX_PAGE_SIZE;
+        }
+
+        Sort sort = pageable.getSort();
+        if (sort == null || sort.isUnsorted()) {
+            sort = Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT);
+        }
+
+        Pageable cappedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                actualSize,
+                sort);
+
+        Page<UserResponse> pageResult = userRepository.searchUsers(
+                (search != null && !search.trim().isEmpty()) ? search.trim() : null,
+                (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
+                status,
+                cappedPageable).map(u -> UserResponse.from(u, orgUnitCacheService));
+
+        java.util.Map<String, Long> counts = getStatusCounts();
+
+        return new com.hanghai.kchtg.user.dto.UserPageResponse(
+                pageResult.getContent(),
+                pageResult.getNumber(),
+                pageResult.getSize(),
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                counts);
+    }
+
+    /**
+     * Thong ke so luong nguoi dung theo tung trang thai (1 single SQL query).
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getStatusCounts() {
+        java.util.Map<String, Long> counts = new java.util.HashMap<>();
+        counts.put("total", 0L);
+        for (UserStatus s : UserStatus.values()) {
+            if (s != UserStatus.DELETED) {
+                counts.put(s.name().toLowerCase(java.util.Locale.ROOT), 0L);
+            }
+        }
+
+        List<Object[]> results = userRepository.countUsersByStatus();
+        long total = 0;
+        for (Object[] row : results) {
+            UserStatus s = (UserStatus) row[0];
+            Number c = (Number) row[1];
+            if (s != null && s != UserStatus.DELETED) {
+                long val = c.longValue();
+                counts.put(s.name().toLowerCase(java.util.Locale.ROOT), val);
+                total += val;
+            }
+        }
+        counts.put("total", total);
+        return counts;
     }
 
     /**
@@ -209,7 +292,8 @@ public class UserService {
 
         if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
+            if (auth == null
+                    || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
                 throw new AccessDeniedException("Chỉ có System Admin mới có quyền tạo System Admin");
             }
         }
@@ -319,6 +403,7 @@ public class UserService {
         log.info("Updated user: {} ({})", saved.getUsername(), saved.getId());
         return saved;
     }
+
     /**
      * T-002: Xoa nguoi dung (BR-003 guard).
      * Kiem tra kha nhien phanhen/bao cao FK references truoc khi soft delete.
@@ -333,11 +418,11 @@ public class UserService {
 
         if (user.getRoles().stream().anyMatch(r -> "ROLE_SYSTEM_ADMIN".equals(r.getCode()))) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
+            if (auth == null
+                    || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
                 throw new AccessDeniedException("Chỉ có System Admin mới có quyền xóa System Admin");
             }
         }
-
 
         // BR-003: Data-dependency check — query phanhen/bao cao FK references
         // If FK constraints exist in the DB, this will fail at constraint level.
@@ -353,38 +438,40 @@ public class UserService {
     /**
      * T-002: Kiem tra du lieu nghiep vu lien quan den nguoi dung (BR-003).
      * Queries information_schema for all FK tables referencing app_users,
-     * plus any table with audit columns (created_by / updated_by / deleted_by / etc.)
+     * plus any table with audit columns (created_by / updated_by / deleted_by /
+     * etc.)
      * pointing to this user. Blocks delete if any references exist.
      */
     private void checkBusinessDataReferences(User user) {
         List<String> ignoredSystemTables = List.of(
-            "app_users", "password_history", "user_status_log", 
-            "user_roles", "app_user_roles", "user_group_members", 
-            "group_members", "pending_approvals", "password_expiration_log"
-        );
+                "app_users", "password_history", "user_status_log",
+                "user_roles", "app_user_roles", "user_group_members",
+                "group_members", "pending_approvals", "password_expiration_log");
 
-        // 1. Query information_schema for all FK tables AND exact column names referencing app_users
+        // 1. Query information_schema for all FK tables AND exact column names
+        // referencing app_users
         @SuppressWarnings("unchecked")
         List<Object[]> fkReferences = entityManager.createNativeQuery(
-            "SELECT DISTINCT kcu.table_name, kcu.column_name FROM information_schema.table_constraints AS tc " +
-            "JOIN information_schema.key_column_usage AS kcu " +
-            "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema " +
-            "JOIN information_schema.constraint_column_usage AS ccu " +
-            "ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema " +
-            "WHERE tc.constraint_type = 'FOREIGN KEY' " +
-            "AND ccu.table_name = 'app_users' " +
-            "AND tc.table_schema = 'public'"
-        ).getResultList();
+                "SELECT DISTINCT kcu.table_name, kcu.column_name FROM information_schema.table_constraints AS tc " +
+                        "JOIN information_schema.key_column_usage AS kcu " +
+                        "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema " +
+                        "JOIN information_schema.constraint_column_usage AS ccu " +
+                        "ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema " +
+                        "WHERE tc.constraint_type = 'FOREIGN KEY' " +
+                        "AND ccu.table_name = 'app_users' " +
+                        "AND tc.table_schema = 'public'")
+                .getResultList();
 
         // 2. Check each dependent table using its exact foreign key column name
         for (Object[] row : fkReferences) {
             String tbl = (String) row[0];
             String col = (String) row[1];
-            if (ignoredSystemTables.contains(tbl)) continue;
+            if (ignoredSystemTables.contains(tbl))
+                continue;
 
             Number count = (Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
-            ).setParameter("userId", user.getId()).getSingleResult();
+                    "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId").setParameter("userId", user.getId())
+                    .getSingleResult();
             if (count.longValue() > 0) {
                 throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
             }
@@ -393,16 +480,18 @@ public class UserService {
         // 3. Check any table with audit columns referencing this user
         @SuppressWarnings("unchecked")
         List<Object[]> refColumns = entityManager.createNativeQuery(
-            "SELECT DISTINCT c.table_name, c.column_name, c.data_type FROM information_schema.columns c " +
-            "WHERE c.table_schema = 'public' " +
-            "AND c.column_name IN ('created_by','updated_by','deleted_by','approved_by','assigned_by','changed_by','operator_id') " +
-            "ORDER BY c.table_name"
-        ).getResultList();
+                "SELECT DISTINCT c.table_name, c.column_name, c.data_type FROM information_schema.columns c " +
+                        "WHERE c.table_schema = 'public' " +
+                        "AND c.column_name IN ('created_by','updated_by','deleted_by','approved_by','assigned_by','changed_by','operator_id') "
+                        +
+                        "ORDER BY c.table_name")
+                .getResultList();
 
         for (Object[] row : refColumns) {
             String tbl = (String) row[0];
             String col = (String) row[1];
-            if (ignoredSystemTables.contains(tbl)) continue;
+            if (ignoredSystemTables.contains(tbl))
+                continue;
 
             String dataType = (String) row[2];
             String userIdExpression;
@@ -422,9 +511,9 @@ public class UserService {
             }
 
             Number count = (Number) entityManager.createNativeQuery(
-                "SELECT COUNT(*) FROM \"" + tbl.replace("\"", "\"\"") + "\" WHERE \""
-                    + col.replace("\"", "\"\"") + "\" = " + userIdExpression
-            ).setParameter("userId", user.getId()).getSingleResult();
+                    "SELECT COUNT(*) FROM \"" + tbl.replace("\"", "\"\"") + "\" WHERE \""
+                            + col.replace("\"", "\"\"") + "\" = " + userIdExpression)
+                    .setParameter("userId", user.getId()).getSingleResult();
             if (count.longValue() > 0) {
                 throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
             }
@@ -437,7 +526,8 @@ public class UserService {
     // =========================================================================
 
     private void checkPasswordHistory(UUID userId, String newRawPassword) {
-        List<PasswordHistory> recentPasswords = passwordHistoryRepository.findTopNByUserIdOrderByCreatedAtDesc(userId, 3);
+        List<PasswordHistory> recentPasswords = passwordHistoryRepository.findTopNByUserIdOrderByCreatedAtDesc(userId,
+                3);
         for (PasswordHistory ph : recentPasswords) {
             if (passwordEncoder.matches(newRawPassword, ph.getPasswordHash())) {
                 throw new IllegalArgumentException("Mật khẩu mới không được trùng với 3 mật khẩu gần nhất");

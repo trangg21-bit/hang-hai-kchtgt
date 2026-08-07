@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.station.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.*;
@@ -53,7 +54,7 @@ public class CoastalStationVTS extends BaseEntity {
 
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
     @Column(name = "approval_status", columnDefinition = "smallint default 0")
-    protected StationApprovalStatus approvalStatus;
+    protected ApprovalStatus approvalStatus;
 
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
     protected ApprovalLevel approvalLevel;
@@ -89,6 +90,6 @@ public class CoastalStationVTS extends BaseEntity {
 
     private void setDefaultStatus() {
         this.status = StationStatus.PENDING_APPROVAL;
-        this.approvalStatus = StationApprovalStatus.PENDING;
+        this.approvalStatus = ApprovalStatus.PROPOSED;
     }
 }

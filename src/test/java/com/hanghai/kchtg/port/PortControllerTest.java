@@ -97,7 +97,7 @@ class PortControllerTest {
                 .provinceId(1)
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(OperationalStatus.OPERATIONAL)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
     }
 

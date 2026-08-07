@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

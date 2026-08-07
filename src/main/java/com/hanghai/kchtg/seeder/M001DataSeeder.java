@@ -5,7 +5,6 @@ import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
@@ -79,7 +78,6 @@ public class M001DataSeeder implements CommandLineRunner {
         OrgUnit root = OrgUnit.builder()
                 .name(names[0])
                 .code(codes[0])
-                .type(OrgUnitType.DEPARTMENT)
                 .address(cities[0])
                 .phone("024" + 1234567)
                 .status(OrgUnitStatus.APPROVED)
@@ -94,7 +92,6 @@ public class M001DataSeeder implements CommandLineRunner {
             OrgUnit u = OrgUnit.builder()
                     .name(names[i])
                     .code(codes[i])
-                    .type(OrgUnitType.PORT_AUTHORITY)
                     .parentId(root.getId())
                     .address(cities[i])
                     .phone("024" + (1234567 + i))
@@ -136,7 +133,7 @@ public class M001DataSeeder implements CommandLineRunner {
         OrgUnit child = OrgUnit.builder()
                 .name(name)
                 .code(code)
-                .type(OrgUnitType.PORT_AUTHORITY)
+                .parentId(parent.getId())
                 .parentId(parent.getId())
                 .address(parent.getAddress())
                 .phone(parent.getPhone())

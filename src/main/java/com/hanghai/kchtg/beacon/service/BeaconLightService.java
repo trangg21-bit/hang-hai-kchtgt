@@ -9,6 +9,7 @@ import com.hanghai.kchtg.beacon.entity.BeaconHistory;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
@@ -116,7 +117,7 @@ public class BeaconLightService {
                 .stationArea(request.getStationArea())
                 .status("DRAFT")
                 .approvalLevel(1)
-                .approvalStatus("PENDING")
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -222,7 +223,7 @@ public class BeaconLightService {
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus("DRAFT");
-            entity.setApprovalStatus("PENDING");
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setApprovalLevel(1);
         }
 
@@ -297,7 +298,7 @@ public class BeaconLightService {
         }
 
         entity.setStatus("PENDING_APPROVAL");
-        entity.setApprovalStatus("PENDING");
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(1);
         beaconLightRepo.save(entity);
 
@@ -322,7 +323,7 @@ public class BeaconLightService {
         }
 
         entity.setStatus("APPROVED_L1");
-        entity.setApprovalStatus("APPROVED");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         beaconLightRepo.save(entity);
@@ -345,7 +346,7 @@ public class BeaconLightService {
         }
 
         entity.setStatus("PUBLISHED");
-        entity.setApprovalStatus("APPROVED");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         beaconLightRepo.save(entity);
@@ -367,7 +368,7 @@ public class BeaconLightService {
         }
 
         entity.setStatus("DRAFT");
-        entity.setApprovalStatus("REJECTED");
+        entity.setApprovalStatus(ApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         beaconLightRepo.save(entity);
 
@@ -454,7 +455,7 @@ public class BeaconLightService {
                 .commissionedDate(entity.getCommissionedDate())
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getApprovalStatus().name())
                 .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())

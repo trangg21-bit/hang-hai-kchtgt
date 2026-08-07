@@ -58,6 +58,11 @@ function mapUser(item: any): User {
 }
 
 export const userService = {
+  async getStatusCounts(): Promise<Record<string, number>> {
+    const resp = await api.get('/users/status-counts');
+    return extractData<Record<string, number>>(resp);
+  },
+
   async list(params: {
     page?: number;
     pageSize?: number;
@@ -111,6 +116,7 @@ export const userService = {
       total,
       page: params.page || 1,
       pageSize: params.pageSize || 10,
+      statusCounts: rawData?.statusCounts,
     };
   },
 

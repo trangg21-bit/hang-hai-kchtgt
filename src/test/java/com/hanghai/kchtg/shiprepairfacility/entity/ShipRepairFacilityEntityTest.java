@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.shiprepairfacility.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -56,7 +57,7 @@ class ShipRepairFacilityEntityTest {
         entity.setFacilityType(FacilityType.REPAIR);
         entity.setCapacity("Khả năng 100");
         entity.setAuthority("Bộ Quốc phòng");
-        entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(UUID.randomUUID());
         entity.setApprovedDateLevel1(LocalDateTime.now());
@@ -75,7 +76,7 @@ class ShipRepairFacilityEntityTest {
         assertEquals(FacilityType.REPAIR, entity.getFacilityType());
         assertEquals("Khả năng 100", entity.getCapacity());
         assertEquals("Bộ Quốc phòng", entity.getAuthority());
-        assertEquals(ShipRepairApprovalStatus.APPROVED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
         
         assertNotNull(entity.getApprovedDateLevel1());
@@ -100,7 +101,7 @@ class ShipRepairFacilityEntityTest {
         entity.setApprovalStatus(null);
         entity.prePersist();
 
-        assertEquals(ShipRepairApprovalStatus.PROPOSED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
     }
 
     @Test
@@ -158,7 +159,7 @@ class ShipRepairFacilityEntityTest {
                 .address("Hà Nội")
                 .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
-                .approvalStatus(ShipRepairApprovalStatus.UNDER_REVIEW)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .approvedLevel1(true)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -167,7 +168,7 @@ class ShipRepairFacilityEntityTest {
 
         entity.prePersist();
 
-        assertEquals(ShipRepairApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
         assertFalse(entity.getIsDeleted());
@@ -186,13 +187,13 @@ class ShipRepairFacilityEntityTest {
 
         entity.prePersist();
 
-        assertEquals(ShipRepairApprovalStatus.PROPOSED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
         assertFalse(entity.getIsDeleted());
 
         // Update
-        entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(UUID.randomUUID());
         entity.setApprovedLevel2(true);
@@ -200,7 +201,7 @@ class ShipRepairFacilityEntityTest {
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         entity.setUpdatedDate(LocalDateTime.now());
 
-        assertEquals(ShipRepairApprovalStatus.APPROVED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
         
         assertTrue(entity.getApprovedLevel2());
@@ -208,8 +209,8 @@ class ShipRepairFacilityEntityTest {
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getUpdatedBy());
 
         // Revert to under review
-        entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
-        assertEquals(ShipRepairApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
 
         // Soft delete
         entity.setIsDeleted(true);
@@ -245,7 +246,7 @@ class ShipRepairFacilityEntityTest {
                 .facilityType(FacilityType.REPAIR)
                 .capacity("Khả năng 100")
                 .authority("Bộ Quốc phòng")
-                .approvalStatus(ShipRepairApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(true)
                 .approverLevel1(UUID.randomUUID())
                 .approvedDateLevel1(LocalDateTime.now())

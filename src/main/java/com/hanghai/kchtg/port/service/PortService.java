@@ -133,7 +133,7 @@ public class PortService {
                 .area(request.getArea())
                 .maxVesselCapacity(request.getMaxVesselCapacity())
                 .operationalStatus(request.getOperationalStatus())
-                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING)
+                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING_APPROVAL)
                 .orgUnitId(request.getOrgUnitId())
                 .portGroup(request.getPortGroup())
                 .mapSymbolId(request.getMapSymbolId())
@@ -405,7 +405,7 @@ public class PortService {
         entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
         // Reset to PENDING if currently APPROVED, REJECTED, or DRAFT (submit draft)
         if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.REJECTED || entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
-            entity.setApprovalStatus(ApprovalStatus.PENDING);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         // Update extended fields

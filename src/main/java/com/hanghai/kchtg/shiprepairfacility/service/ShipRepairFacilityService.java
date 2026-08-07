@@ -13,7 +13,7 @@ import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
@@ -49,7 +49,7 @@ public class ShipRepairFacilityService {
                 .capacity(request.getCapacity())
                 .authority(request.getAuthority())
                 .orgUnitId(request.getOrgUnitId())
-                .approvalStatus(ShipRepairApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
@@ -102,14 +102,14 @@ public class ShipRepairFacilityService {
      * List records sitting at a given approval status, mirroring the endpoint the
      * other infrastructure modules expose.
      */
-    public List<ShipRepairFacilityResponse> findByApprovalStatus(ShipRepairApprovalStatus approvalStatus) {
+    public List<ShipRepairFacilityResponse> findByApprovalStatus(ApprovalStatus approvalStatus) {
         return repository.findByApprovalStatusAndIsDeletedFalse(approvalStatus).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<ShipRepairFacilityResponse> findAll(int page, int size) {
-        return repository.findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus.APPROVED).stream()
+        return repository.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED).stream()
                 .map(this::toResponse).toList();
     }
 
@@ -121,8 +121,8 @@ public class ShipRepairFacilityService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
-        if (entity.getApprovalStatus() == ShipRepairApprovalStatus.APPROVED) {
-            entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         java.util.Map<String, String> previousValues = new java.util.LinkedHashMap<>();
@@ -227,7 +227,7 @@ public class ShipRepairFacilityService {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
-        if (entity.getApprovalStatus() != ShipRepairApprovalStatus.APPROVED) {
+        if (entity.getApprovalStatus() != ApprovalStatus.APPROVED) {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
@@ -253,12 +253,12 @@ public class ShipRepairFacilityService {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
-        if (entity.getApprovalStatus() != ShipRepairApprovalStatus.PROPOSED) {
+        if (entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setApprovalStatus(ShipRepairApprovalStatus.REJECTED);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
             entity.setApprovedLevel1(true);
@@ -270,10 +270,10 @@ public class ShipRepairFacilityService {
                 entity.setApprovedLevel2(true);
                 entity.setApproverLevel2(approvedBy);
                 entity.setApprovedDateLevel2(LocalDateTime.now());
-                entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED);
                 autoApproved = true;
             } else {
-                entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             }
         }
 
@@ -308,7 +308,7 @@ public class ShipRepairFacilityService {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
-        if (entity.getApprovalStatus() != ShipRepairApprovalStatus.UNDER_REVIEW) {
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new RuntimeException(
                     "Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
@@ -320,10 +320,10 @@ public class ShipRepairFacilityService {
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setApprovalStatus(ShipRepairApprovalStatus.REJECTED);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
-            entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setApprovedLevel2(true);
             entity.setApproverLevel2(approvedBy);
             entity.setApprovedDateLevel2(LocalDateTime.now());
@@ -373,11 +373,11 @@ public class ShipRepairFacilityService {
             String approvalStatus, String reviewStatus) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
                 : null;
-        ShipRepairApprovalStatus statusEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty())
-                ? ShipRepairApprovalStatus.fromString(approvalStatus)
+        ApprovalStatus statusEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty())
+                ? ApprovalStatus.fromString(approvalStatus)
                 : null;
-        ShipRepairApprovalStatus reviewStatusEnum = (reviewStatus != null && !reviewStatus.trim().isEmpty())
-                ? ShipRepairApprovalStatus.fromString(reviewStatus)
+        ApprovalStatus reviewStatusEnum = (reviewStatus != null && !reviewStatus.trim().isEmpty())
+                ? ApprovalStatus.fromString(reviewStatus)
                 : null;
         return repository.search(orgUnitId, keywordLike, provinceId, statusEnum, reviewStatusEnum).stream()
                 .map(this::toResponse).toList();

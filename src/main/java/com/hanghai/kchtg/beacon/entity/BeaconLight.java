@@ -1,8 +1,12 @@
 package com.hanghai.kchtg.beacon.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -81,8 +85,8 @@ public class BeaconLight extends BaseEntity {
     private String status = "DRAFT";
 
     @Column(name = "approval_status", nullable = false)
-    @Builder.Default
-    private String approvalStatus = "PENDING";
+    @Enumerated(EnumType.STRING)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "approval_level")
     private Integer approvalLevel;
@@ -98,6 +102,11 @@ public class BeaconLight extends BaseEntity {
 
     @Column(name = "spatial_id")
     private java.util.UUID spatialId;
+
+    @PrePersist
+    protected void onPrePersist() {
+        if (approvalStatus == null) approvalStatus = ApprovalStatus.PENDING_APPROVAL;
+    }
 
     @Column(name = "shape", length = 255)
     private String shape;

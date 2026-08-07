@@ -7,13 +7,6 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Request DTO for filtering access-log entries in the list endpoint.
- * <p>
- * All fields are optional — only supplied criteria are applied.
- * F-005 adds {@code type}, {@code severity}, and {@code keyword} filters.
- * </p>
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,33 +17,39 @@ public class AccessLogFilterRequest {
     private String action;
     private LocalDateTime from;
     private LocalDateTime to;
-
-    // ── F-005 new filters ────────────────────────────────────────────
-
-    /** Filter by log type (access, login, error, account, configuration). */
     private String type;
-
-    /** Filter by log severity (info, warning, error, critical). */
     private String severity;
-
-    /** Case-insensitive keyword search on detail/message field. */
     private String keyword;
-
-    // ── F-005 v2 filters (email, orgUnit, sessionId) ───────────────────
-
-    /** Filter by user email (denormalised on AccessLog). */
     private String email;
-
-    /** Filter by organisational unit (denormalised on AccessLog). */
     private String orgUnit;
-
-    /** Filter by session identifier. */
     private String sessionId;
-
-    /** Filter by username. */
     private String username;
-
-    /** Filter by granted permission status (true = access allowed, false = permission denied). */
     private Boolean granted;
 
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+    public String getModule() { return module; }
+    public void setModule(String module) { this.module = module; }
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
+    public LocalDateTime getFrom() { return from; }
+    public void setFrom(LocalDateTime from) { this.from = from; }
+    public LocalDateTime getTo() { return to; }
+    public void setTo(LocalDateTime to) { this.to = to; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+    public String getSeverity() { return severity; }
+    public void setSeverity(String severity) { this.severity = severity; }
+    public String getKeyword() { return keyword; }
+    public void setKeyword(String keyword) { this.keyword = keyword; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getOrgUnit() { return orgUnit; }
+    public void setOrgUnit(String orgUnit) { this.orgUnit = orgUnit; }
+    public String getSessionId() { return sessionId; }
+    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public Boolean getGranted() { return granted; }
+    public void setGranted(Boolean granted) { this.granted = granted; }
 }

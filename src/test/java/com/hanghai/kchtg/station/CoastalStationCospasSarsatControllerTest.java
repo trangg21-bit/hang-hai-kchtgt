@@ -11,7 +11,7 @@ import com.hanghai.kchtg.station.controller.CoastalStationCospasSarsatController
 import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatHistoryResponse;
 import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationCospasSarsat;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.service.CoastalStationCospasSarsatService;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -88,7 +88,7 @@ class CoastalStationCospasSarsatControllerTest {
         entity.setOperatingMode("Automatic");
         entity.setIsActive(true);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
     }
@@ -109,7 +109,7 @@ class CoastalStationCospasSarsatControllerTest {
                 .signalRange(5000.0)
                 .operatingMode("Automatic")
                 .status(StationStatus.PENDING_APPROVAL)
-                .approvalStatus(StationApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }
@@ -248,7 +248,7 @@ class CoastalStationCospasSarsatControllerTest {
         UUID id = UUID.randomUUID();
         CoastalStationCospasSarsat entity = makeEntity(id);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
-        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setStatus(StationStatus.APPROVED_L1);
         when(service.approveStation(eq(id), eq(true), any(Long.class))).thenReturn(entity);
 
@@ -272,7 +272,7 @@ class CoastalStationCospasSarsatControllerTest {
         UUID id = UUID.randomUUID();
         CoastalStationCospasSarsat entity = makeEntity(id);
         entity.setRejectionReason("Signal out of range");
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         when(service.rejectStation(eq(id), anyString(), any(Long.class))).thenReturn(entity);
 
         String json = """
@@ -338,3 +338,4 @@ class CoastalStationCospasSarsatControllerTest {
                 .andExpect(status().isBadRequest());
     }
 }
+

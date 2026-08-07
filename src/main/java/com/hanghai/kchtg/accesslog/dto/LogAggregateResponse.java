@@ -17,4 +17,18 @@ public class LogAggregateResponse {
     private Integer avgDuration;
     private String createdAt;
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getDate() { return date; }
+    public void setDate(String date) { this.date = date; }
+    public Long getTotalAccesses() { return totalAccesses; }
+    public void setTotalAccesses(Long totalAccesses) { this.totalAccesses = totalAccesses; }
+    public Long getUniqueUsers() { return uniqueUsers; }
+    public void setUniqueUsers(Long uniqueUsers) { this.uniqueUsers = uniqueUsers; }
+    public String getSuccessRate() { return successRate; }
+    public void setSuccessRate(String successRate) { this.successRate = successRate; }
+    public Integer getAvgDuration() { return avgDuration; }
+    public void setAvgDuration(Integer avgDuration) { this.avgDuration = avgDuration; }
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
 }

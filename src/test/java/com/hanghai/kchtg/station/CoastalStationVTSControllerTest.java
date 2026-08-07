@@ -11,7 +11,7 @@ import com.hanghai.kchtg.station.controller.CoastalStationVTSController;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSHistoryResponse;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationVTS;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.service.CoastalStationVTSService;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -84,7 +84,7 @@ class CoastalStationVTSControllerTest {
         entity.setContactPhone("+84123456789");
         entity.setIsActive(true);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
     }
@@ -101,7 +101,7 @@ class CoastalStationVTSControllerTest {
                 .contactPerson("John Doe")
                 .contactPhone("+84123456789")
                 .status(StationStatus.PENDING_APPROVAL)
-                .approvalStatus(StationApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }
@@ -236,7 +236,7 @@ class CoastalStationVTSControllerTest {
         UUID id = UUID.randomUUID();
         CoastalStationVTS entity = makeEntity(id);
         entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
-        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setStatus(StationStatus.APPROVED_L1);
         when(service.approveStation(eq(id), eq(true), any(Long.class))).thenReturn(entity);
 
@@ -260,7 +260,7 @@ class CoastalStationVTSControllerTest {
         UUID id = UUID.randomUUID();
         CoastalStationVTS entity = makeEntity(id);
         entity.setRejectionReason("Invalid data");
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         when(service.rejectStation(eq(id), anyString(), any(Long.class))).thenReturn(entity);
 
         String json = """
@@ -325,3 +325,4 @@ class CoastalStationVTSControllerTest {
                 .andExpect(status().isBadRequest());
     }
 }
+

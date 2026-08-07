@@ -33,7 +33,7 @@ Quản trị hệ thống truy cập module Quản lý đơn vị từ sidebar �
 
 ## In Scope
 
-- Tạo đơn vị mới (tên, mã, loại đơn vị, mô tả, địa chỉ, hệ số)
+- Tạo đơn vị mới (tên, mã tự động, mô tả, địa chỉ, tỉnh/thành phố, SĐT, trạng thái — loại đơn vị unitType tự động suy ra từ parentId)
 - Chỉnh sửa thông tin đơn vị
 - Xóa đơn vị (không xóa nếu có cán bộ/đối tượng liên quan)
 - Duyệt/Chấp thuận đơn vị (workflow approval)

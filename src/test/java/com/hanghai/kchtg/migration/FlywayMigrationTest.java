@@ -132,8 +132,8 @@ class FlywayMigrationTest {
         // The string statuses must have been mapped to their ordinals, not zeroed.
         assertThat(count("SELECT count(*) FROM coastal_station_vts WHERE status = 4"))
                 .as("PUBLISHED should map to 4").isEqualTo(1);
-        assertThat(count("SELECT count(*) FROM coastal_station_vts WHERE approval_status = 2"))
-                .as("APPROVED_L2 should map to 2").isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM coastal_station_vts WHERE approval_status = 4"))
+                .as("APPROVED_L2 should map to 4 (APPROVED_LEVEL2)").isEqualTo(1);
 
         // V90: audit columns converted, the username dropped, the real UUID kept.
         assertThat(columnType("coastal_station_vts", "created_by")).isEqualTo("uuid");

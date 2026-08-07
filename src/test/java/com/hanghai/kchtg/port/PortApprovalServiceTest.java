@@ -68,7 +68,7 @@ class PortApprovalServiceTest {
         ReflectionTestUtils.setField(testEntity, "id", testId);
         testEntity.setPortCode("CB-001");
         testEntity.setPortName("Cảng Test");
-        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
     }
 
     // ── APPROVE (F-011) ────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ class PortApprovalServiceTest {
 
         assertEquals(ApprovalStatus.APPROVED, testEntity.getApprovalStatus());
         verify(portRepository).save(testEntity);
-        verify(approvalWorkflowService).approve(eq("PENDING"), eq("Port"), eq(testId.toString()), eq("user-1"));
+        verify(approvalWorkflowService).approve(eq("PENDING_APPROVAL"), eq("Port"), eq(testId.toString()), eq("user-1"));
         verify(notificationService).sendApprovalNotification(eq("Port"), eq(testId.toString()), eq("user-1"), eq(null));
     }
 
@@ -109,7 +109,7 @@ class PortApprovalServiceTest {
 
         assertEquals(ApprovalStatus.REJECTED, testEntity.getApprovalStatus());
         verify(portRepository).save(testEntity);
-        verify(approvalWorkflowService).reject(eq("PENDING"), eq("Port"), eq(testId.toString()),
+        verify(approvalWorkflowService).reject(eq("PENDING_APPROVAL"), eq("Port"), eq(testId.toString()),
                 eq("user-1"), eq("Thiếu tài liệu"));
     }
 
@@ -171,7 +171,7 @@ class PortApprovalServiceTest {
         assertNotNull(result);
         assertEquals(testId.toString(), result.get("entityId"));
         assertEquals("Port", result.get("entityType"));
-        assertEquals(ApprovalStatus.PENDING, result.get("currentApprovalStatus"));
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.get("currentApprovalStatus"));
 
         @SuppressWarnings("unchecked")
         List<ChangeLog> history = (List<ChangeLog>) result.get("changeHistory");

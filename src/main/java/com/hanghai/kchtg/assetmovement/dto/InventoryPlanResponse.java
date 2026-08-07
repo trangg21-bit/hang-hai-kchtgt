@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -9,8 +8,11 @@ import java.util.UUID;
 /**
  * Response DTO cho Ke Hoach Kiem Ke.
  */
-@Data
+@Getter
+@Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class InventoryPlanResponse {
 
     private UUID id;

@@ -8,7 +8,7 @@ import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITRequest;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITUpdateRequest;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
@@ -140,19 +140,19 @@ public class CoastalStationLRITService {
             if (currentLevel == ApprovalLevel.LEVEL_0 && AdminAutoApproval.isAutoApprover()) {
                 // Administrators clear both levels in one step.
                 entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
-                entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
                 entity.setStatus(StationStatus.APPROVED_L2);
             } else if (currentLevel == ApprovalLevel.LEVEL_0) {
                 entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
-                entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
                 entity.setStatus(StationStatus.APPROVED_L1);
             } else if (currentLevel == ApprovalLevel.LEVEL_1) {
                 entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
-                entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
                 entity.setStatus(StationStatus.APPROVED_L2);
             } else {
                 entity.setStatus(StationStatus.PUBLISHED);
-                entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
             }
             entity.setApprovedBy(String.valueOf(userId));
             entity.setApprovedDate(LocalDateTime.now());
@@ -167,7 +167,7 @@ public class CoastalStationLRITService {
                     LocalDateTime.now()
             );
         } else {
-            entity.setApprovalStatus(StationApprovalStatus.PENDING);
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setStatus(StationStatus.PENDING_APPROVAL);
             entity.setApprovedBy(null);
             entity.setApprovedDate(null);
@@ -193,7 +193,7 @@ public class CoastalStationLRITService {
             throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setRejectionReason(rejectionReason);
         entity.setApprovedBy(null);

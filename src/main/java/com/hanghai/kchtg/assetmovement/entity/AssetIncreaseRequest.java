@@ -5,9 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -18,11 +17,12 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "asset_increase_requests")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@lombok.experimental.SuperBuilder
-@lombok.EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
 public class AssetIncreaseRequest extends BaseEntity {
 
     private UUID assetId;
@@ -62,5 +62,4 @@ public class AssetIncreaseRequest extends BaseEntity {
 
     @Version
     private Integer lockVersion;
-
 }

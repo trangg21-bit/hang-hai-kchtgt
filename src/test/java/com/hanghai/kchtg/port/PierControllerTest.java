@@ -96,7 +96,7 @@ class PierControllerTest {
                 .length(new BigDecimal("200.00"))
                 .designLoad(new BigDecimal("50000.00"))
                 .operationalStatus(OperationalStatus.OPERATIONAL)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
     }
 

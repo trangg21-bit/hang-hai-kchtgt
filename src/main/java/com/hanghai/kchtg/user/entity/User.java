@@ -86,8 +86,25 @@ public class User extends BaseEntity implements java.security.Principal {
      * Mỗi user chỉ có 1 role chính theo business rule.
      */
     @ManyToMany(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.BatchSize(size = 100)
     @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public OrgUnit getOrgUnit() { return orgUnit; }
+    public void setOrgUnit(OrgUnit orgUnit) { this.orgUnit = orgUnit; }
+    public Set<Role> getRoles() { return roles; }
+    public void setRoles(Set<Role> roles) { this.roles = roles; }
+
 
     /**
      * Lấy mã của role chính (role đầu tiên trong set).
@@ -110,10 +127,6 @@ public class User extends BaseEntity implements java.security.Principal {
                 perms.addAll(role.getPermissions().stream()
                         .map(p -> p.getCode()).collect(Collectors.toSet()));
             }
-            if (role.getMenuPermissions() != null) {
-                perms.addAll(role.getMenuPermissions().stream()
-                        .map(m -> m.getMenuCode()).collect(Collectors.toSet()));
-            }
         }
         if (permissionOverrides != null) {
             perms.addAll(permissionOverrides.stream()
@@ -130,7 +143,7 @@ public class User extends BaseEntity implements java.security.Principal {
                     for (Role groupRole : group.getRoles()) {
                         if (groupRole.getPermissions() != null) {
                             perms.addAll(groupRole.getPermissions().stream()
-                                    .map(p -> p.getCode())
+                                    .map(Permission::getCode)
                                     .collect(Collectors.toSet()));
                         }
                     }
@@ -163,8 +176,10 @@ public class User extends BaseEntity implements java.security.Principal {
      * Many-to-Many relationship mapped through join table.
      */
     @ManyToMany(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.BatchSize(size = 100)
     @JoinTable(name = "user_group_membership", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "user_group_id"))
     private List<UserGroup> groups = new ArrayList<>();
+
 
     /** Quyền cấp trực tiếp ngoài quyền kế thừa từ Role/Group. */
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)

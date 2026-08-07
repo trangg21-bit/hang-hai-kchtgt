@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.repository;
 
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +16,7 @@ import java.util.UUID;
 @Repository
 public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UUID> {
 
-    List<DikeRevetment> findByApprovalStatusAndIsDeletedFalse(DikeRevetmentApprovalStatus approvalStatus);
+    List<DikeRevetment> findByApprovalStatusAndIsDeletedFalse(ApprovalStatus approvalStatus);
 
     List<DikeRevetment> findByIsDeletedFalse(Sort sort);
 
@@ -38,6 +38,6 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             @org.springframework.data.repository.query.Param("keyword") String keyword,
             @org.springframework.data.repository.query.Param("dikeRevetmentType") DikeRevetmentType dikeRevetmentType,
             @org.springframework.data.repository.query.Param("status") String status,
-            @org.springframework.data.repository.query.Param("approvalStatus") DikeRevetmentApprovalStatus approvalStatus,
+            @org.springframework.data.repository.query.Param("approvalStatus") ApprovalStatus approvalStatus,
             Pageable pageable);
 }

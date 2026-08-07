@@ -12,7 +12,7 @@ import com.hanghai.kchtg.station.dto.lighthouse.CreateLighthouseStationRequest;
 import com.hanghai.kchtg.station.dto.lighthouse.LighthouseStationResponse;
 import com.hanghai.kchtg.station.dto.lighthouse.UpdateLighthouseStationRequest;
 import com.hanghai.kchtg.station.entity.LighthouseStation;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationHistory;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
@@ -90,7 +90,7 @@ public class LighthouseStationService {
                 .nextMaintenanceDate(request.getNextMaintenanceDate())
                 .isActive(request.getIsActive())
                 .status(StationStatus.DRAFT)
-                .approvalStatus(StationApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .build();
         notificationService.sendApprovalNotificationDen(entity);
 
@@ -168,7 +168,7 @@ public class LighthouseStationService {
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus(StationStatus.DRAFT);
-            entity.setApprovalStatus(StationApprovalStatus.PENDING);
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         }
 
@@ -264,7 +264,7 @@ public class LighthouseStationService {
         }
 
         entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         lighthouseRepo.save(entity);
 
@@ -289,7 +289,7 @@ public class LighthouseStationService {
         }
 
         entity.setStatus(StationStatus.APPROVED_L1);
-        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         lighthouseRepo.save(entity);
@@ -312,7 +312,7 @@ public class LighthouseStationService {
         }
 
         entity.setStatus(StationStatus.PUBLISHED);
-        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         lighthouseRepo.save(entity);
@@ -336,7 +336,7 @@ public class LighthouseStationService {
         }
 
         entity.setStatus(StationStatus.DRAFT);
-        entity.setApprovalStatus(StationApprovalStatus.REJECTED);
+        entity.setApprovalStatus(ApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         lighthouseRepo.save(entity);
 
