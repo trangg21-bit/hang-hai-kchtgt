@@ -39,6 +39,9 @@ export const dataSea2 = '#4f9bd8';
 export const dataSea3 = '#9ecdf0';
 export const dataTeal = '#bedaf2';    // icy light blue — continues sea gradient past dataSea3 (was teal #0ea5a3)
 
+// Infrastructure colors (dùng cho sidebar, layout — cần cho style preset)
+export const sidebarBg = '#12468C';
+
 // Font families
 export const fontSans = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 export const fontMono = "'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace";
@@ -60,7 +63,7 @@ export const radiusPill = 999;
 export const radiusTextArea = radiusSm; // TextArea uses tight 4px — pill/round looks wrong on multi-line
 
 // Spacing: tighter small, wider large — creates breathing room
-export const spaceXs = 4;
+export const spaceXs = 4;   // micro-gap: 4px — filter↔bảng, tab↔bảng, label→input, upload hint
 export const spaceSm = 8;
 export const spaceFormField = 12;
 export const spaceMd = 16;
@@ -68,8 +71,8 @@ export const spaceLg = 24;
 export const spaceXl = 32;
 export const spaceXxl = 48;
 
-// Page size: default rows per page for all list views
-export const pageSize = 20;
+// NOTE: pageSize moved to business constants — not a design token
+// Use DEFAULT_PAGE_SIZE from constants if needed, or inline 20.
 
 // Font size: 7 values — stronger hierarchy
 export const fontSizeSm = 10;   // metadata, captions — clearly subordinate
@@ -79,11 +82,16 @@ export const fontSizeXl = 18;   // page titles
 export const fontSizeHeading = 22;
 export const fontSizeDisplay = 28;
 export const fontSizeStat = 34; // KPI numbers — dominant, immediate impact
+export const fontSizeBreadcrumb = 14;     // breadcrumb path (ngoại lệ đã token hóa)
+export const fontSizeBreadcrumbLast = 16; // breadcrumb last item, bold (ngoại lệ đã token hóa)
 
 // Font weight: 3 values. 450, 550, 700+ are BANNED unless exceptional.
 export const fontWeightNormal = 400;
 export const fontWeightMedium = 500;
 export const fontWeightBold = 600;
+
+// Control dimensions
+export const controlHeight = 40; // Input, Select, Button — mọi ô nhập liệu và nút bấm
 
 
 // --- CONTENT-TYPE CONVENTIONS (fixed mappings, apply everywhere) ---
@@ -126,6 +134,357 @@ export const badgeBaseStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   display: 'inline-block',
 };
+
+
+// ============================================================
+// STYLE PRESETS — Mẫu giao diện đóng gói sẵn (Section 5)
+// Mỗi preset = 1 khu vực màn hình. Dev import về dùng luôn,
+// không tự ráp token thủ công.
+// ============================================================
+
+// --- 5.1 Ô nhập liệu & Nút bấm ---
+
+/** Input, InputNumber — viền pill, cao 40px */
+export const inputStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: controlHeight,
+};
+
+/** Select, DatePicker, TreeSelect — viền pill, cao 40px */
+export const selectStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: controlHeight,
+};
+
+/** Nút chính: "Tạo mới", "Lưu", "Phê duyệt", "Tìm kiếm" */
+export const primaryButtonStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: controlHeight,
+};
+
+/** Nút phụ: "Hủy", "Đóng", "Lưu tạm", "Xuất Excel" */
+export const outlineButtonStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: controlHeight,
+  borderColor: borderDefault,
+  color: textSecondary,
+};
+
+/** Nút nguy hiểm: "Xóa", "Từ chối" */
+export const dangerButtonStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: controlHeight,
+  borderColor: statusCritical,
+  color: statusCritical,
+};
+
+/** Nút icon tròn 38×38px: ↻ Làm mới trong Filter */
+export const iconButtonStyle: React.CSSProperties = {
+  width: 38,
+  height: 38,
+  borderRadius: '50%',
+  border: `1px solid ${borderDefault}`,
+  color: textSecondary,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+};
+
+
+// --- 5.2 Form trong Drawer/Modal ---
+
+/** marginBottom cho mọi <Form.Item> */
+export const formFieldStyle: React.CSSProperties = {
+  marginBottom: spaceFormField,
+};
+
+/** Row gutter form 2 cột */
+export const formRowGutter: [number, number] = [16, 16];
+
+/** Tiêu đề Drawer: màu sidebarBg, đậm, 15px */
+export const drawerTitleStyle: React.CSSProperties = {
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: 15,
+};
+
+/** Nút ✕ đóng Drawer góc phải */
+export const drawerCloseBtnStyle: React.CSSProperties = {
+  fontSize: 18,
+  color: textSecondary,
+};
+
+/** CSS đưa dấu * required sang bên phải label */
+export const requiredMarkStyle =
+  '.ant-form-item-required::before { display: inline-block; margin-left: 4px; order: 1; } .ant-form-item-required::after { display: none; }';
+
+
+// --- 5.3 Trang danh sách ---
+
+/** Container ngoài cùng trang danh sách */
+export const pageContainerStyle: React.CSSProperties = {
+  minHeight: '100%',
+  marginTop: -8,
+};
+
+/** Vùng breadcrumb + nút hành động, cách nội dung dưới 16px */
+export const screenHeaderStyle: React.CSSProperties = {
+  marginBottom: spaceMd,
+};
+
+/** Panel lọc dọc bên trái: rộng 280-360px, flex column */
+export const filterPanelStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+  minWidth: 280,
+  maxWidth: 360,
+};
+
+/** Vùng chứa trường filter (có scroll nếu dài) */
+export const filterFieldsStyle: React.CSSProperties = {
+  flex: 1,
+  overflowY: 'auto' as const,
+  padding: '12px 16px',
+};
+
+/** Chân filter: nút Tìm kiếm + Làm mới, căn giữa */
+export const filterFooterStyle: React.CSSProperties = {
+  borderTop: `1px solid ${borderDefault}`,
+  padding: '12px 16px',
+  display: 'flex',
+  justifyContent: 'center',
+  gap: spaceSm,
+};
+
+/** Nhãn mỗi trường filter: đậm, sidebarBg */
+export const filterLabelStyle: React.CSSProperties = {
+  fontSize: fontSizeMd,
+  fontWeight: fontWeightBold,
+  color: sidebarBg,
+};
+
+/** Thanh tab trạng thái: cardStyle + padding 7px 16px */
+export const statusTabsStyle: React.CSSProperties = {
+  ...cardStyle,
+  padding: '7px 16px',
+  marginBottom: spaceXs,
+};
+
+
+// --- 5.4 Bảng dữ liệu ---
+
+/** Hàng tiêu đề cột: nền surfacePage, đậm, hoa, sidebarBg */
+export const tableHeaderStyle: React.CSSProperties = {
+  background: surfacePage,
+  padding: '15px 16px',
+  fontSize: fontSizeMd,
+  fontWeight: fontWeightBold,
+  textTransform: 'uppercase' as const,
+  color: sidebarBg,
+};
+
+/** Ô dữ liệu: fontSizeMd, textPrimary, padding dọc 9px */
+export const tableCellStyle: React.CSSProperties = {
+  fontSize: fontSizeMd,
+  color: textPrimary,
+  paddingBlock: 9,
+};
+
+/** Nút số trang: tròn 32×32, dataSea1 */
+export const paginationBtnStyle: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  color: dataSea1,
+};
+
+/** Dropdown chọn cỡ trang: pill, 72×32 */
+export const paginationSizeSelectStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  width: 72,
+  height: 32,
+};
+
+
+// --- 5.5 Drawer ---
+
+/** Props chuẩn cho Drawer CRUD: 50% right, không nút X mặc định */
+export const drawerProps = {
+  width: '50%',
+  placement: 'right' as const,
+  closable: false,
+};
+
+/** Chân Drawer: nút căn giữa, gap 8px */
+export const drawerFooterStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'center',
+  gap: spaceSm,
+};
+
+/** <Descriptions> trong Xem chi tiết: bordered, 2 cột, label 180px */
+export const detailDescriptionsStyle = {
+  bordered: true,
+  column: 2 as const,
+  labelStyle: { width: 180 } as React.CSSProperties,
+};
+
+/** Tiêu đề section collapsible trong Xem chi tiết */
+export const detailSectionTitleStyle: React.CSSProperties = {
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+};
+
+
+// --- 5.6 Upload file ---
+
+/** Vùng kéo-thả/tải file: viền đứt, nền xám nhạt, căn giữa */
+export const uploadAreaStyle: React.CSSProperties = {
+  border: `1px dashed ${borderDefault}`,
+  borderRadius: radiusMd,
+  background: surfacePage,
+  padding: '24px 16px',
+  textAlign: 'center',
+  cursor: 'pointer',
+};
+
+/** Dòng gợi ý định dạng file bên dưới vùng upload */
+export const uploadHintStyle: React.CSSProperties = {
+  fontSize: fontSizeSm,
+  color: textTertiary,
+  marginTop: spaceXs,
+};
+
+/** Item file đã tải lên: icon + tên file, nền xám nhạt, bo góc */
+export const uploadFileItemStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: spaceSm,
+  padding: `${spaceXs}px ${spaceSm}px`,
+  background: surfacePage,
+  borderRadius: radiusSm,
+  fontSize: fontSizeMd,
+  color: textPrimary,
+};
+
+
+// --- 5.7 Import Excel ---
+
+/** Link tải file template Excel mẫu */
+export const importTemplateLinkStyle: React.CSSProperties = {
+  color: actionPrimary,
+  fontSize: fontSizeSm,
+  cursor: 'pointer',
+  marginBottom: spaceSm,
+  display: 'inline-block',
+};
+
+/** Vùng tải file Excel (kế thừa giao diện uploadAreaStyle) */
+export const importAreaStyle: React.CSSProperties = {
+  ...uploadAreaStyle,
+};
+
+
+// --- 5.8 Modal xác nhận (Xóa / Phê duyệt / Từ chối) ---
+
+/** Nội dung modal confirm: chữ căn giữa, padding dọc 16px */
+export const confirmModalBodyStyle: React.CSSProperties = {
+  fontSize: fontSizeMd,
+  color: textPrimary,
+  textAlign: 'center',
+  padding: `${spaceMd}px 0`,
+};
+
+/** Input/TextArea nhập lý do từ chối trong modal */
+export const rejectReasonStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: controlHeight,
+  marginTop: spaceMd,
+  marginBottom: spaceMd,
+};
+
+
+// --- 5.9 Timeline (Lịch sử thay đổi thông tin) ---
+
+/** Chấm tròn trên timeline: 12px, màu actionPrimary */
+export const timelineDotStyle: React.CSSProperties = {
+  width: 12,
+  height: 12,
+  borderRadius: '50%',
+  background: actionPrimary,
+  flexShrink: 0,
+};
+
+/** Nội dung một mục timeline: tên người, nguồn, thời gian */
+export const timelineContentStyle: React.CSSProperties = {
+  fontSize: fontSizeMd,
+  color: textPrimary,
+  lineHeight: 1.6,
+};
+
+/** Dòng hiển thị thay đổi (before → after): chữ nhỏ, secondary */
+export const timelineChangeStyle: React.CSSProperties = {
+  fontSize: fontSizeSm,
+  color: textSecondary,
+  marginTop: spaceXs,
+};
+
+/** Đường nối dọc giữa các chấm timeline: 1px, borderDefault */
+export const timelineLineStyle: React.CSSProperties = {
+  width: 1,
+  background: borderDefault,
+  marginLeft: 5,
+  flex: '1 0 auto',
+  minHeight: 8,
+};
+
+/** Timestamp trên timeline: fontSizeSm, textTertiary, đậm hơn metadata */
+export const timelineTimeStyle: React.CSSProperties = {
+  fontSize: fontSizeSm,
+  color: textTertiary,
+  fontWeight: fontWeightMedium,
+  marginBottom: spaceXs,
+};
+
+
+// --- 5.10 Multi-select ---
+
+/** Tag hiển thị số lượng đã chọn (vd: "+1", "+2 VN003-003") */
+export const multiSelectTagStyle: React.CSSProperties = {
+  ...badgeBaseStyle,
+  background: surfacePage,
+  color: actionPrimary,
+};
+
+/** Dòng hint giới hạn số bản ghi được chọn */
+export const multiSelectHintStyle: React.CSSProperties = {
+  fontSize: fontSizeSm,
+  color: textTertiary,
+  marginTop: spaceXs,
+};
+
+
+// --- 5.11 Breadcrumb ---
+
+/** Container breadcrumb: flex, gap 8px, fontSizeBreadcrumb */
+export const breadcrumbStyle: React.CSSProperties = {
+  fontSize: fontSizeBreadcrumb,
+  color: textSecondary,
+  display: 'flex',
+  alignItems: 'center',
+  gap: spaceSm,
+  marginBottom: spaceSm,
+};
+
+/** Mục breadcrumb cuối (trang hiện tại): đậm, to hơn, textPrimary */
+export const breadcrumbLastStyle: React.CSSProperties = {
+  fontSize: fontSizeBreadcrumbLast,
+  fontWeight: fontWeightBold,
+  color: textPrimary,
+};
+
 
 // Chart ECharts defaults
 export const chartGrid = { top: 16, right: 16, bottom: 16, left: 16, containLabel: true };

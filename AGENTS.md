@@ -129,6 +129,56 @@ PMO Lead
          Cấm dùng giá trị ngoài thang: radius 6/7/10, font 12/14/16/18/24, spacing 10/14/18."
 ```
 
+## Style Preset System (MANDATORY — áp dụng cho MỌI component UI)
+
+### Single source of truth
+
+`frontend/src/tokens.ts` Section 5 chứa **46 preset** đóng gói sẵn cho từng khu vực màn hình. Mỗi preset = 1 `React.CSSProperties` object, dùng token semantic bên trong. Dev import về dùng luôn, không tự ráp token thủ công.
+
+Tra cứu đầy đủ: [`them-token-specification (1).md`](them-token-specification%20(1).md) Section 5.
+
+### Quy tắc dùng preset
+
+1. **LUÔN dùng preset mặc định trước** — không tự ráp token khi đã có preset
+2. **Override bằng spread + token** khi cần custom:
+   ```ts
+   // ✅ ĐÚNG — spread preset + override bằng token
+   <Input style={{ ...inputStyle, width: 200 }} />
+   <Button style={{ ...primaryButtonStyle, marginLeft: spaceMd }} />
+
+   // ❌ SAI — hardcode giá trị thô ngoài thang số
+   <Input style={{ ...inputStyle, marginBottom: 14 }} />
+   <Button style={{ ...primaryButtonStyle, background: '#ff6600' }} />
+   ```
+3. **Layout property được phép dùng số thô**: `width`, `flex`, `minWidth`, `maxWidth` — vì đây là bố cục, không phải token thị giác
+4. **Pattern lặp ≥ 3 lần** → thêm preset mới vào `tokens.ts` Section 5, không copy-paste
+
+### Bảng: custom hợp lệ vs cấm
+
+| Property | Hợp lệ (override bằng) | Cấm (hardcode) |
+|----------|------------------------|----------------|
+| Màu sắc | Token trong palette 13 màu | `#ff6600` |
+| Spacing | `spaceXs`, `spaceSm`, `spaceMd`, `spaceLg`, `spaceXl`, `spaceFormField` | `6`, `14`, `18` |
+| Font-size | `fontSizeSm`, `fontSizeMd`, `fontSizeLg`, `fontSizeBreadcrumb` | `12`, `14`, `16` |
+| Border-radius | `radiusSm`, `radiusMd`, `radiusLg`, `radiusPill` | `6`, `10` |
+| Font-weight | `fontWeightNormal`, `fontWeightMedium`, `fontWeightBold` | `450`, `550`, `700` |
+| Màu trạng thái | `statusOperational`, `statusAttention`, `statusCritical` | `#1BAF7A` |
+| Layout | `width: 200`, `flex: 1`, `minWidth: 280` | — |
+
+### Agent workflow
+
+```
+PMO Lead
+  ├── Đọc them-token-specification (1).md Section 5 → biết 46 preset
+  └── Dispatch Dev → PHẢI chép constraints sau vào prompt:
+        "Trước khi code UI, đọc frontend/src/tokens.ts để biết 46 style preset.
+         Tra cứu them-token-specification (1).md Section 5.
+         Dùng preset mặc định, KHÔNG tự ráp token thủ công.
+         Khi cần custom: spread preset + override bằng token (KHÔNG hardcode).
+         Layout property (width, flex, minWidth) được phép dùng số.
+         Pattern lặp ≥ 3 lần → báo PMO để thêm preset mới vào tokens.ts."
+```
+
 ## Form & List UI Convention (MANDATORY — áp dụng cho MỌI màn danh sách và popup)
 
 ### List Screen Pattern
