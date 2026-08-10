@@ -32,12 +32,10 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { waterZoneApi } from './api';
-import type { WaterZone, VungNuocTrangThaiHoatDong, VungNuocTrangThaiPheDuyet, LoaiVungNuoc } from './types';
+import type { WaterZone, VungNuocTrangThaiHoatDong, VungNuocTrangThaiPheDuyet } from './types';
 import {
   WaterZone_HOAT_DONG_MAP,
   WaterZone_PHE_DUYET_MAP,
-  LOAI_VUNG_NUOC_OPTIONS,
-  translateLoaiVungNuoc,
 } from './types';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/port/schema';
 import DataTable from '../../components/DataTable';
@@ -112,8 +110,8 @@ export default function WaterZoneListPage() {
   const [filterHoatDong, setFilterHoatDong] = useState<VungNuocTrangThaiHoatDong | undefined>();
   const [filterPheDuyet, setFilterPheDuyet] = useState<VungNuocTrangThaiPheDuyet | undefined>();
   const [cangBienIdFilter, setCangBienIdFilter] = useState<string | undefined>();
-  const [filterLoaiVungNuoc, setFilterLoaiVungNuoc] = useState<LoaiVungNuoc | undefined>(
-    (searchParams.get('type') as LoaiVungNuoc) || undefined
+  const [filterLoaiVungNuoc, setFilterLoaiVungNuoc] = useState<string | undefined>(
+    searchParams.get('type') || undefined
   );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -259,7 +257,7 @@ export default function WaterZoneListPage() {
       return statusMap[val.toUpperCase()] || val;
     }
     if (fieldName === 'loaiVungNuoc') {
-      return translateLoaiVungNuoc(val);
+      return val || '—';
     }
     return val;
   }, [symbols]);
@@ -494,7 +492,7 @@ export default function WaterZoneListPage() {
       dataIndex: 'loaiVungNuoc',
       width: 150,
       ellipsis: true,
-      render: (loaiVungNuoc: string | null) => translateLoaiVungNuoc(loaiVungNuoc),
+      render: (loaiVungNuoc: string | null) => loaiVungNuoc || '—',
     },
     {
       title: 'Trạng thái HĐ',
@@ -680,13 +678,12 @@ export default function WaterZoneListPage() {
                 onChange={(val) => { setFilterPheDuyet(val as VungNuocTrangThaiPheDuyet | undefined); setPage(1); }}
                 options={Object.entries(WaterZone_PHE_DUYET_MAP).map(([value, { label }]) => ({ value, label }))}
               />
-              <Select
-                placeholder="Loại vùng nước"
+              <Input
                 allowClear
+                placeholder="Lọc loại vùng nước"
                 style={{ width: 180 }}
-                value={filterLoaiVungNuoc}
-                onChange={(val) => { setFilterLoaiVungNuoc(val as LoaiVungNuoc | undefined); setPage(1); }}
-                options={LOAI_VUNG_NUOC_OPTIONS}
+                value={filterLoaiVungNuoc || ''}
+                onChange={(e) => { setFilterLoaiVungNuoc(e.target.value || undefined); setPage(1); }}
               />
               <Select
                 placeholder="Cảng biển chủ"
@@ -806,7 +803,7 @@ export default function WaterZoneListPage() {
             </Col>
             <Col span={12}>
               <Form.Item label="Loại vùng nước" name="loaiVungNuoc">
-                <Select placeholder="Chọn loại vùng nước" allowClear options={LOAI_VUNG_NUOC_OPTIONS} />
+                <Input placeholder="Nhập loại vùng nước" maxLength={100} />
               </Form.Item>
             </Col>
           </Row>
@@ -955,7 +952,7 @@ export default function WaterZoneListPage() {
             </Col>
             <Col span={12}>
               <Form.Item label="Loại vùng nước" name="loaiVungNuoc">
-                <Select placeholder="Chọn loại vùng nước" allowClear options={LOAI_VUNG_NUOC_OPTIONS} />
+                <Input placeholder="Nhập loại vùng nước" maxLength={100} />
               </Form.Item>
             </Col>
           </Row>
