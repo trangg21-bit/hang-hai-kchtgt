@@ -1,0 +1,55 @@
+{
+  "triage_id": "TRI-1786338042151-1b82",
+  "created_at": 1786338042151,
+  "request_summary": "Thêm mapping PROPOSED→Đề xuất (blue) và PENDING_APPROVAL→Chờ phê duyệt (orange) vào trangThaiPheDuyetBadge",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/port/schema.ts"
+    ],
+    "impact_files": [
+      "frontend/src/services/port/schema.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "frontend/src/services/port/schema.ts"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: schema:frontend/src/services/port/schema.ts — floors at C3 regardless of size (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Bảng danh sách cảng biển - cột Trạng thái",
+  "blast_radius": 1,
+  "done_oracle": "PROPOSED hiện \"Đề xuất\" (blue), PENDING_APPROVAL hiện \"Chờ phê duyệt\" (orange)",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/port/schema.ts",
+      "line": 214,
+      "quote": "  if (norm === 'DRAFT') {\n    return { color: 'default', label: 'Nháp' };\n  }\n  return { color: 'default', label: status };\n};",
+      "source_hash": "31dc76d330ab3c7d33272e0a2d5b6ac7534d2c40657a15a9c409e04e4a9edd8a",
+      "quote_hash": "f8fa8ba1659f035f69d4bc8479d2407049d479ea9d841242b387246ad4f46328",
+      "note": "Fallback hiện tại — PROPOSED và PENDING_APPROVAL rơi vào đây, hiển thị raw status thay vì tiếng Việt"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786337797024-917a",
+    "breach_kind": "one_way_door"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "dc8e1b007c99839a3a97e1ad6c6a2369c7e84e9f",
+    "dirty": false,
+    "captured_at": 1786338042341
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

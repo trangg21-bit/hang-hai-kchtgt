@@ -292,7 +292,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PENDING:'Chờ duyệt', APPROVED:'Đã duyệt', REJECTED:'Từ chối' }; return m[val] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PROPOSED:'Đề xuất', PENDING:'Chờ duyệt', CHO_PHE_DUYET:'Chờ phê duyệt', PENDING_APPROVAL:'Chờ phê duyệt', APPROVED:'Đã duyệt', DA_PHE_DUYET:'Đã phê duyệt', REJECTED:'Từ chối', TU_CHOI:'Từ chối' }; return m[val] || m[val?.toUpperCase()] || val; }
   if (fn === 'operationalStatus') {
     const m: Record<string,string> = { OPERATIONAL:'Đang hoạt động', SUSPENDED:'Tạm ngừng',
       HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác', CHUA_KHAI_THAC:'Chưa khai thác', DUNG_KHAI_THAC:'Dừng khai thác' };
@@ -1417,11 +1417,17 @@ export default function PortListPage() {
         width: 160,
         render: (v: string) => {
           if (!v) return '—';
-          const badge = trangThaiPheDuyetBadge(v);
+          const normV = String(v).toUpperCase();
+          const directMap: Record<string, { color: string; label: string }> = {
+            PROPOSED: { color: 'blue', label: 'Đề xuất' },
+            PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt' },
+          };
+          const badge = directMap[normV] || trangThaiPheDuyetBadge(v);
           let color = textTertiary;
           if (badge.color === 'green') color = statusOperational;
           else if (badge.color === 'red') color = statusCritical;
           else if (badge.color === 'orange') color = statusAttention;
+          else if (badge.color === 'blue') color = actionPrimary;
           return (
             <span
               style={{
