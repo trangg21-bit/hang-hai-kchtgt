@@ -8,7 +8,9 @@ public enum ApprovalStatus {
     PENDING(1),
     PORT_AUTHORITY(2),
     APPROVED(3),
-    REJECTED(4);
+    REJECTED(4),
+    SUSPENDED(5),
+    DELETED(6);
 
     private final int value;
 
