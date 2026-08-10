@@ -251,7 +251,6 @@ Tất cả preset được định nghĩa trong `frontend/src/tokens.ts`. Dev im
 
 | Preset | Dùng cho |
 |--------|----------|
-| `filterLabelStyle` | Label trong panel filter: sidebarBg, đậm, marginBottom 4px |
 | `filterInputStyle` | Select/Input full-width trong filter: pill, cao 40px |
 
 ### 5.15 Content-type Conventions (có sẵn)

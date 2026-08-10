@@ -577,14 +577,6 @@ export const formSectionHeaderStyle: React.CSSProperties = {
 
 // --- 5.14 Filter Panel (Sidebar bộ lọc) ---
 
-/** Label trong panel filter */
-export const filterLabelStyle: React.CSSProperties = {
-  color: sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd,
-  marginBottom: spaceXs,
-};
-
 /** Select/Input full-width trong filter: pill, cao 40px */
 export const filterInputStyle: React.CSSProperties = {
   width: '100%',
