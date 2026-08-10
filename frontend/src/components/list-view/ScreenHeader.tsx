@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Breadcrumb } from 'antd';
 import {
   textSecondary, textTertiary, fontWeightBold, fontWeightMedium,
-  fontSizeLg, fontSizeMd, spaceSm, actionPrimary, borderDefault,
+  fontSizeLg, fontSizeXl, fontSizeMd, spaceSm, actionPrimary, borderDefault,
   radiusPill,
 } from '../../tokens';
 import { colors } from '../../theme';
@@ -32,7 +32,8 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ breadcrumb, breadcrumbs, ac
               <span style={{
                 color: idx === items.length - 1 ? colors.sidebarBg : textSecondary,
                 fontWeight: idx === items.length - 1 ? fontWeightBold : fontWeightMedium,
-                fontSize: idx === items.length - 1 ? fontSizeLg : 13,
+                fontSize: idx === items.length - 1 ? 16 : 14,
+                lineHeight: '20px',
               }}>
                 {item.label}
               </span>

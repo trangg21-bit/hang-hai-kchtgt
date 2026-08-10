@@ -1,6 +1,6 @@
 import React from 'react';
-import { Table, Empty, Dropdown, Button } from 'antd';
-import { MoreOutlined } from '@ant-design/icons';
+import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
+import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import {
   textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeMd, fontWeightBold,
@@ -19,6 +19,8 @@ export interface DataTableColumn {
   render?: (value: any, record: any) => React.ReactNode;
   dataIndex?: string; sorter?: boolean;
   sortOrder?: 'ascend' | 'descend' | null;
+  cellTitle?: (record: any) => string;
+  fixed?: 'left' | 'right';
 }
 
 export interface DataTableProps {
@@ -79,7 +81,11 @@ const DataTable: React.FC<DataTableProps> = ({
       title: col.label,
       width: col.width,
       sorter: sorterFn,
+      sortDirections: ['ascend', 'descend'],
+      showSorterTooltip: false,
       align: col.align,
+      fixed: col.fixed,
+      ellipsis: true,
       render: col.render ? col.render
         : col.type === 'mono'
           ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
@@ -98,10 +104,21 @@ const DataTable: React.FC<DataTableProps> = ({
                 }
               : undefined,
       onHeaderCell: () => ({
-        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap', textTransform: 'uppercase', padding: '16px 16px' },
+        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined },
+        onClick: col.sortable ? () => {
+          if (onSort && dataKey) {
+            const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';
+            onSort(dataKey, nextOrder);
+          }
+        } : undefined,
       }),
-      onCell: () => ({
-        style: { fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      title: col.sortable ? (
+        <Tooltip title={<span style={{ fontSize: 12 }}>{col.sortOrder === 'ascend' ? 'Nhấn để sắp xếp giảm dần' : 'Nhấn để sắp xếp tăng dần'}</span>}>
+          <span>{col.label}</span>
+        </Tooltip>
+      ) : col.label,
+      onCell: (record: any) => ({
+        style: { fontSize: fontSizeMd, color: textPrimary },
       }),
     };
 
@@ -116,9 +133,10 @@ const DataTable: React.FC<DataTableProps> = ({
   if (rowActions && columns && !columns.some((c) => c.key === 'actions')) {
     antdColumns?.push({
       key: 'actions',
-      title: '',
+      title: <UnorderedListOutlined />,
       width: 60,
       align: 'center',
+      fixed: 'right' as const,
       render: (_: unknown, record: any) => {
         const items = rowActions(record).map((a) => ({
           key: a.key, icon: a.icon, label: a.label, danger: a.danger, disabled: a.disabled,

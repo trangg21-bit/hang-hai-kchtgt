@@ -160,14 +160,20 @@ export const selectStyle: React.CSSProperties = {
 export const primaryButtonStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   height: controlHeight,
+  fontSize: fontSizeMd,
+  background: actionPrimary,
+  borderColor: actionPrimary,
+  color: '#FFFFFF',
 };
 
 /** Nút phụ: "Hủy", "Đóng", "Lưu tạm", "Xuất Excel" */
 export const outlineButtonStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   height: controlHeight,
-  borderColor: borderDefault,
-  color: textSecondary,
+  borderColor: actionPrimary,
+  color: actionPrimary,
+  fontSize: fontSizeMd,
+  cursor: 'pointer',
 };
 
 /** Nút nguy hiểm: "Xóa", "Từ chối" */
@@ -206,13 +212,19 @@ export const formRowGutter: [number, number] = [16, 16];
 export const drawerTitleStyle: React.CSSProperties = {
   color: sidebarBg,
   fontWeight: fontWeightBold,
-  fontSize: 15,
+  fontSize: fontSizeLg,
 };
 
 /** Nút ✕ đóng Drawer góc phải */
 export const drawerCloseBtnStyle: React.CSSProperties = {
   fontSize: 18,
   color: textSecondary,
+  borderRadius: radiusPill,
+  width: 36,
+  height: 36,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 /** CSS đưa dấu * required sang bên phải label */
@@ -508,3 +520,66 @@ export const chartTextStyle = {
 //   2. TrendChartCard error state "Thử lại" button
 //   3. (reserved for future)
 // Status colors, data colors, text colors do NOT count against budget.
+
+
+// --- 5.12 Detail View (Xem chi tiết) ---
+
+/** Label trong trang xem chi tiết: sidebarBg, đậm, fontSizeMd */
+export const detailLabelStyle: React.CSSProperties = {
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd,
+};
+
+/** Dòng hiển thị label:value trong detail: flex, padding, borderBottom */
+export const detailRowStyle: React.CSSProperties = {
+  display: 'flex',
+  padding: '10px 12px',
+  borderBottom: `1px solid ${borderDefault}`,
+};
+
+/** Label cột trong detail row: width 200px, không co */
+export const detailLabelColStyle: React.CSSProperties = {
+  width: 200,
+  flexShrink: 0,
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd,
+};
+
+/** Value trong detail row: flex 1, textPrimary */
+export const detailValueStyle: React.CSSProperties = {
+  color: textPrimary,
+  fontSize: fontSizeMd,
+  flex: 1,
+};
+
+
+// --- 5.13 Form Sub-Table (bảng con: GPS, KCHT, File) ---
+
+/** Empty state cho bảng con trong form: dashed border, căn giữa */
+export const formEmptyTableStyle: React.CSSProperties = {
+  padding: '32px 16px',
+  textAlign: 'center',
+  border: `1px dashed ${borderDefault}`,
+  borderRadius: radiusMd,
+  background: surfaceCard,
+};
+
+/** Section header cho bảng con: label + nút thêm */
+export const formSectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: spaceFormField,
+};
+
+
+// --- 5.14 Filter Panel (Sidebar bộ lọc) ---
+
+/** Select/Input full-width trong filter: pill, cao 40px */
+export const filterInputStyle: React.CSSProperties = {
+  width: '100%',
+  borderRadius: radiusPill,
+  height: controlHeight,
+};

@@ -45,8 +45,6 @@ import HomePage from './pages/Home';
 import PermissionGuard from './components/PermissionGuard';
 import PasswordResetPage from './pages/PasswordResetPage';
 import PortList from './services/port/PortListPage';
-import PortCreatePage from './services/port/PortCreatePage';
-import PortUpdatePage from './services/port/PortUpdatePage';
 import PortApprovePage from './services/port/PortApprovePage';
 import PortDeleteConfirm from './services/port/PortDeleteConfirm';
 
@@ -187,9 +185,7 @@ export default function App() {
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
                 <Route path="/port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
-                <Route path="/port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
-                <Route path="/port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
-                <Route path="/port/:id/approve" element={<PermissionGuard permission={['port:approvec1', 'port:approvec2']}><PortApprovePage /></PermissionGuard>} />
+                <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
