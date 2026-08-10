@@ -11,7 +11,7 @@ import com.hanghai.kchtg.radarstation.dto.*;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.security.AdminAutoApproval;
@@ -56,7 +56,7 @@ public class RadarStationService {
                 .vtsSystemId(request.getVtsSystemId())
                 .towerHeight(request.getTowerHeight())
                 .radarRange(request.getRadarRange())
-                .approvalStatus(RadarStationApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                .approvedLevel2(false)
                 .build();
@@ -110,14 +110,14 @@ public class RadarStationService {
      * List records sitting at a given approval status, mirroring the endpoint the
      * other infrastructure modules expose.
      */
-    public List<RadarStationResponse> findByApprovalStatus(RadarStationApprovalStatus approvalStatus) {
+    public List<RadarStationResponse> findByApprovalStatus(ApprovalStatus approvalStatus) {
         return repository.findByApprovalStatusAndDeletedAtIsNull(approvalStatus).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<RadarStationResponse> findAll(int page, int size) {
-        return repository.findByApprovalStatusAndDeletedAtIsNull(RadarStationApprovalStatus.APPROVED).stream()
+        return repository.findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -130,8 +130,8 @@ public class RadarStationService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
-        if (entity.getApprovalStatus() == RadarStationApprovalStatus.APPROVED) {
-            entity.setApprovalStatus(RadarStationApprovalStatus.UNDER_REVIEW);
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         if (request.getStationName() != null) entity.setStationName(request.getStationName());
@@ -186,7 +186,7 @@ public class RadarStationService {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (entity.getApprovalStatus() != RadarStationApprovalStatus.APPROVED) {
+        if (entity.getApprovalStatus() != ApprovalStatus.APPROVED) {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
@@ -210,12 +210,12 @@ public class RadarStationService {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (entity.getApprovalStatus() != RadarStationApprovalStatus.PROPOSED) {
+        if (entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setApprovalStatus(RadarStationApprovalStatus.REJECTED);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
             entity.setApprovedLevel1(true);
@@ -227,10 +227,10 @@ public class RadarStationService {
                 entity.setApprovedLevel2(true);
                 entity.setApproverLevel2(approvedBy);
                 entity.setApprovedDateLevel2(LocalDateTime.now());
-                entity.setApprovalStatus(RadarStationApprovalStatus.APPROVED);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED);
                 autoApproved = true;
             } else {
-                entity.setApprovalStatus(RadarStationApprovalStatus.UNDER_REVIEW);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             }
         }
 
@@ -261,7 +261,7 @@ public class RadarStationService {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (entity.getApprovalStatus() != RadarStationApprovalStatus.UNDER_REVIEW) {
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
@@ -271,10 +271,10 @@ public class RadarStationService {
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setApprovalStatus(RadarStationApprovalStatus.REJECTED);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
-            entity.setApprovalStatus(RadarStationApprovalStatus.APPROVED);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setApprovedLevel2(true);
             entity.setApproverLevel2(approvedBy);
             entity.setApprovedDateLevel2(LocalDateTime.now());
@@ -318,7 +318,7 @@ public class RadarStationService {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + keyword.trim().toLowerCase() + "%"
                 : null;
-        RadarStationApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty()) ? RadarStationApprovalStatus.fromString(approvalStatusStr) : null;
+        ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty()) ? ApprovalStatus.fromString(approvalStatusStr) : null;
         return repository.search(orgUnitId, keywordLike, conditionStatus, statusEnum, org.springframework.data.domain.Pageable.unpaged()).stream()
                 .map(this::toResponse)
                 .toList();

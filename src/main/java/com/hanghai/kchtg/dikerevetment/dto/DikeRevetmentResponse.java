@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import lombok.AllArgsConstructor;
@@ -35,7 +35,7 @@ public class DikeRevetmentResponse {
     private String note;
     private UUID orgUnitId;
     private String orgUnitName;
-    private DikeRevetmentApprovalStatus approvalStatus;
+    private ApprovalStatus approvalStatus;
     private Boolean isApprovedLevel1;
     private UUID approverLevel1;
     private LocalDate approvedDateLevel1;

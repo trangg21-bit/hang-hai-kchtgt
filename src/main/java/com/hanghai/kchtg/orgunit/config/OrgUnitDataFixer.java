@@ -2,7 +2,6 @@ package com.hanghai.kchtg.orgunit.config;
 
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ import java.util.List;
 
 /**
  * Startup runner: seeds demo org hierarchy if DB is empty, then fixes missing parent_id.
- * Idempotent — safe to run on every startup.
  */
 @Component
 @Order(1)
@@ -34,14 +32,12 @@ public class OrgUnitDataFixer implements ApplicationRunner {
             long count = repo.count();
             log.info("OrgUnitDataFixer: {} org units in DB", count);
 
-            // ── Phase 1: Seed demo data if empty ──
             if (count == 0) {
                 seedDemoData();
                 count = repo.count();
                 log.info("OrgUnitDataFixer: seeded {} demo org units", count);
             }
 
-            // ── Phase 2: Fix orphan parent_id ──
             fixOrphans();
 
         } catch (Exception e) {
@@ -50,11 +46,9 @@ public class OrgUnitDataFixer implements ApplicationRunner {
     }
 
     private void seedDemoData() {
-        // 1. Root: Cục Hàng hải và Đường thủy Việt Nam
         OrgUnit root = OrgUnit.builder()
                 .name("Cục Hàng hải và Đường thủy Việt Nam")
                 .code("CUC_HHVT")
-                .type(OrgUnitType.DEPARTMENT)
                 .description("Đơn vị gốc - Cục Hàng hải và Đường thủy Việt Nam")
                 .status(OrgUnitStatus.APPROVED)
                 .parentId(null)
@@ -64,25 +58,22 @@ public class OrgUnitDataFixer implements ApplicationRunner {
                 .build();
         root = repo.save(root);
 
-        // 2. Cảng vụ (level 2 under root)
-        OrgUnit cvHp = child(root, "Cảng vụ Hàng hải Hải Phòng", "CV_HH_HP", OrgUnitType.PORT_AUTHORITY, 1);
-        OrgUnit cvQn = child(root, "Cảng vụ Hàng hải Quảng Ninh", "CV_HH_QN", OrgUnitType.PORT_AUTHORITY, 2);
-        child(root, "Cảng vụ Hàng hải TP. Hồ Chí Minh", "CV_HH_HCM", OrgUnitType.PORT_AUTHORITY, 3);
+        OrgUnit cvHp = child(root, "Cảng vụ Hàng hải Hải Phòng", "CV_HH_HP", 1);
+        OrgUnit cvQn = child(root, "Cảng vụ Hàng hải Quảng Ninh", "CV_HH_QN", 2);
+        child(root, "Cảng vụ Hàng hải TP. Hồ Chí Minh", "CV_HH_HCM", 3);
 
-        // 3. Đại diện (level 3 under Cảng vụ)
-        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", "DD_CVHP_DV", OrgUnitType.PORT_AUTHORITY, 1);
-        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", "DD_CVHP_BD", OrgUnitType.PORT_AUTHORITY, 2);
-        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", "DD_CVQN_MC", OrgUnitType.PORT_AUTHORITY, 1);
-        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", "DD_CVQN_VD", OrgUnitType.PORT_AUTHORITY, 2);
+        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", "DD_CVHP_DV", 1);
+        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", "DD_CVHP_BD", 2);
+        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", "DD_CVQN_MC", 1);
+        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", "DD_CVQN_VD", 2);
 
         log.info("OrgUnitDataFixer: seeded Cục HHVT + 3 Cảng vụ + 4 Đại diện");
     }
 
-    private OrgUnit child(OrgUnit parent, String name, String code, OrgUnitType type, int sort) {
+    private OrgUnit child(OrgUnit parent, String name, String code, int sort) {
         OrgUnit child = OrgUnit.builder()
                 .name(name)
                 .code(code)
-                .type(type)
                 .description(name)
                 .status(OrgUnitStatus.APPROVED)
                 .parentId(parent.getId())
@@ -94,11 +85,7 @@ public class OrgUnitDataFixer implements ApplicationRunner {
     }
 
     private void fixOrphans() {
-        // Find root CUC
-        List<OrgUnit> roots = repo.findByParentIdIsNull().stream()
-                .filter(u -> u.getType() == OrgUnitType.DEPARTMENT)
-                .toList();
-
+        List<OrgUnit> roots = repo.findByParentIdIsNull();
         if (roots.isEmpty()) {
             log.info("OrgUnitDataFixer: no root CUC — skipping orphan fix");
             return;
@@ -106,9 +93,7 @@ public class OrgUnitDataFixer implements ApplicationRunner {
 
         OrgUnit root = roots.get(0);
 
-        // Find orphan CANG_VU / CHI_CUC
         List<OrgUnit> orphans = repo.findByParentIdIsNull().stream()
-                .filter(u -> u.getType() == OrgUnitType.PORT_AUTHORITY || u.getType() == OrgUnitType.SUB_DEPARTMENT)
                 .filter(u -> !u.getId().equals(root.getId()))
                 .toList();
 

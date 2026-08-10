@@ -5,12 +5,12 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum ApprovalStatus {
     DRAFT(0),
-    PENDING(1),
-    PORT_AUTHORITY(2),
-    APPROVED(3),
-    REJECTED(4),
-    SUSPENDED(5),
-    DELETED(6);
+    PROPOSED(1),
+    PENDING_APPROVAL(2),
+    APPROVED_LEVEL1(3),
+    APPROVED_LEVEL2(4),
+    APPROVED(5),
+    REJECTED(6);
 
     private final int value;
 
@@ -33,13 +33,15 @@ public enum ApprovalStatus {
                 }
             }
             String upper = name.toUpperCase().trim();
-            // Backward compatibility for old Vietnamese constant values
             switch (upper) {
                 case "NHAP": return DRAFT;
-                case "CHO_PHE_DUYET": return PENDING;
-                case "CHO_PD_CAP_CUC": return PORT_AUTHORITY;
-                case "DUOC_PHE_DUYET": return APPROVED;
-                case "TU_CHOI": return REJECTED;
+                case "PROPOSED": return PROPOSED;
+                case "PENDING": case "CHO_PHE_DUYET": case "UNDER_REVIEW":
+                case "PORT_AUTHORITY": case "CHO_PD_CAP_CUC": return PENDING_APPROVAL;
+                case "APPROVED_L1": case "APPROVED_LEVEL1": return APPROVED_LEVEL1;
+                case "APPROVED_L2": case "APPROVED_LEVEL2": return APPROVED_LEVEL2;
+                case "APPROVED": case "DUOC_PHE_DUYET": case "PUBLISHED": return APPROVED;
+                case "REJECTED": case "TU_CHOI": return REJECTED;
             }
             return ApprovalStatus.valueOf(upper);
         } catch (IllegalArgumentException e) {

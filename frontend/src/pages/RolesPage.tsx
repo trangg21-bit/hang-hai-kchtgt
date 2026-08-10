@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useDeferredValue } from 'react';
 import {
   Button,
   Tag,
@@ -47,9 +47,7 @@ export default function RolesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
-  const [checkedPermissionKeys, setCheckedPermissionKeys] = useState<string[]>([]);
   const [menuSearch, setMenuSearch] = useState('');
-  const [permissionSearch, setPermissionSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const [page, setPage] = useState(1);
@@ -57,9 +55,11 @@ export default function RolesPage() {
 
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const { tree, apiPermissions, isLoading: permissionsLoading, isError: permissionsError } = usePermissions();
+  const { tree, isLoading: permissionsLoading, isError: permissionsError } = usePermissions();
+  const deferredMenuSearch = useDeferredValue(menuSearch);
+
   const filteredTree = useMemo(() => {
-    const keyword = menuSearch.trim().toLowerCase();
+    const keyword = deferredMenuSearch.trim().toLowerCase();
     if (!keyword) return tree;
     const filter = (nodes: typeof tree): typeof tree => nodes.flatMap((node) => {
       const children = filter(node.children || []);
@@ -67,34 +67,17 @@ export default function RolesPage() {
       return matches || children.length ? [{ ...node, children }] : [];
     });
     return filter(tree);
-  }, [tree, menuSearch]);
-  const expandedMenuKeys = useMemo(() => {
+  }, [tree, deferredMenuSearch]);
+
+  const [userExpandedKeys, setUserExpandedKeys] = useState<string[] | null>(null);
+
+  const autoExpandedKeys = useMemo(() => {
+    if (!modalOpen) return [];
     const keys = (nodes: typeof tree): string[] => nodes.flatMap((node) => [node.key, ...keys(node.children || [])]);
     return keys(filteredTree);
-  }, [filteredTree]);
-  const parentByKey = useMemo(() => {
-    const parents: Record<string, string> = {};
-    const visit = (nodes: typeof tree) => nodes.forEach((node) => {
-      (node.children || []).forEach((child) => {
-        parents[child.key] = node.key;
-      });
-      visit(node.children || []);
-    });
-    visit(tree);
-    return parents;
-  }, [tree]);
-  const filteredApiPermissions = useMemo(() => {
-    const keyword = permissionSearch.trim().toLowerCase();
-    return apiPermissions
-      .filter((permission) => !keyword
-        || permission.key.toLowerCase().includes(keyword)
-        || permission.name.toLowerCase().includes(keyword)
-        || permission.group.toLowerCase().includes(keyword))
-      .map((permission) => ({
-        key: permission.key,
-        title: `${permission.name} (${permission.key})`,
-      }));
-  }, [apiPermissions, permissionSearch]);
+  }, [filteredTree, modalOpen]);
+
+  const effectiveExpandedKeys = userExpandedKeys ?? autoExpandedKeys;
 
   const { data: rolesData, isLoading, isError, error, refetch } = useRoles({
     page,
@@ -112,56 +95,61 @@ export default function RolesPage() {
   const openCreateModal = useCallback(() => {
     setEditingRole(null);
     setCheckedKeys([]);
-    setCheckedPermissionKeys([]);
     setMenuSearch('');
-    setPermissionSearch('');
-    form.resetFields();
-    form.setFieldsValue({ menuCodes: [], permissions: [] });
+    setUserExpandedKeys(null);
     setModalOpen(true);
+    setTimeout(() => {
+      form.resetFields();
+      form.setFieldsValue({ menuCodes: [], permissions: [] });
+    }, 0);
   }, [form]);
 
   const openEditModal = useCallback(
     (role: Role) => {
+      const activePerms = (role.permissions && role.permissions.length > 0) ? role.permissions : (role.menuCodes ?? []);
       setEditingRole(role);
-      setCheckedKeys(role.menuCodes ?? []);
-      setCheckedPermissionKeys(role.permissions ?? []);
+      setCheckedKeys(activePerms);
       setMenuSearch('');
-      setPermissionSearch('');
-      form.setFieldsValue({
-        name: role.name,
-        code: role.code,
-        description: role.description,
-        menuCodes: role.menuCodes ?? [],
-        permissions: role.permissions ?? [],
-      });
+      setUserExpandedKeys(null);
       setModalOpen(true);
+      setTimeout(() => {
+        form.setFieldsValue({
+          name: role.name,
+          code: role.code,
+          description: role.description,
+          menuCodes: activePerms,
+          permissions: activePerms,
+        });
+      }, 0);
     },
     [form],
   );
 
+  const leafKeysSet = useMemo(() => {
+    const set = new Set<string>();
+    const visit = (nodes: typeof tree) => {
+      nodes.forEach((node) => {
+        if (!node.children || node.children.length === 0) {
+          set.add(node.key);
+        } else {
+          visit(node.children);
+        }
+      });
+    };
+    visit(tree);
+    return set;
+  }, [tree]);
+
+  const selectedLeafCount = useMemo(() => {
+    return checkedKeys.filter((k) => leafKeysSet.has(k)).length;
+  }, [checkedKeys, leafKeysSet]);
+
   const handleTreeCheck: TreeProps['onCheck'] = useCallback(
     (checked) => {
       const keys = Array.isArray(checked) ? checked : checked.checked;
-      const selected = new Set(keys.map(String));
-      keys.map(String).forEach((key) => {
-        let parent = parentByKey[key];
-        while (parent) {
-          selected.add(parent);
-          parent = parentByKey[parent];
-        }
-      });
-      const mapped = Array.from(selected);
+      const mapped = keys.map(String);
       setCheckedKeys(mapped);
-      form.setFieldsValue({ menuCodes: mapped });
-    },
-    [form, parentByKey],
-  );
-
-  const handleApiPermissionCheck: TreeProps['onCheck'] = useCallback(
-    (checked) => {
-      const keys = (Array.isArray(checked) ? checked : checked.checked).map(String);
-      setCheckedPermissionKeys(keys);
-      form.setFieldsValue({ permissions: keys });
+      form.setFieldsValue({ menuCodes: mapped, permissions: mapped });
     },
     [form],
   );
@@ -171,16 +159,19 @@ export default function RolesPage() {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const actualMenuCodes = checkedKeys;
-      const actualPermissions = checkedPermissionKeys;
+      const selectedPerms = checkedKeys.filter((k) => !k.startsWith('group_'));
+      if (selectedPerms.length === 0) {
+        toast.error('Vui lòng chọn ít nhất một quyền cho vai trò');
+        return;
+      }
 
       if (editingRole) {
         const payload: UpdateRolePayload = {
           name: values.name,
           code: values.code,
           description: values.description,
-          permissions: actualPermissions,
-          menuCodes: actualMenuCodes,
+          permissions: selectedPerms,
+          menuCodes: selectedPerms,
         };
         await updateRole.mutateAsync({ id: editingRole.id, payload });
       } else {
@@ -188,8 +179,8 @@ export default function RolesPage() {
           name: values.name,
           code: values.code,
           description: values.description,
-          permissions: actualPermissions,
-          menuCodes: actualMenuCodes,
+          permissions: selectedPerms,
+          menuCodes: selectedPerms,
         };
         await createRole.mutateAsync(payload);
       }
@@ -201,7 +192,7 @@ export default function RolesPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRole, form, checkedKeys, checkedPermissionKeys, createRole, updateRole]);
+  }, [editingRole, form, checkedKeys, createRole, updateRole]);
 
   const handleDelete = useCallback(
     (role: Role) => {
@@ -328,29 +319,19 @@ export default function RolesPage() {
             <Form.Item name="code" {...labelProps('Mã vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã vai trò' }, { pattern: /^[a-zA-Z0-9_]+$/, message: 'Chỉ chứa chữ, số và dấu gạch dưới' }]}>
               <Input placeholder="vd: senior_admin" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-            <Form.Item
-              name="menuCodes"
-              {...labelProps('Phân quyền')}
-              style={{ marginBottom: spaceFormField }}
-              rules={[{
-                validator: (_: unknown, value: string[]) => {
-                  if ((!value || value.length === 0) && checkedPermissionKeys.length === 0) return Promise.reject(new Error('Vui lòng chọn ít nhất một quyền cho vai trò'));
-                  return Promise.resolve();
-                },
-              }]}
-            >
+            <Form.Item {...labelProps('Phân quyền')} style={{ marginBottom: spaceFormField }}>
               <Card
                 size="small"
                 title={
                   <Space>
                     <KeyOutlined />
                     <span>Danh sách quyền</span>
-                    <Tag>{getCheckedCount()} quyền đã chọn</Tag>
+                    <Tag color="blue">{selectedLeafCount} quyền đã chọn</Tag>
                   </Space>
                 }
                 style={{ borderColor: borderDefault }}
               >
-                <Spin spinning={permissionsLoading} tip="Đang tải danh sách quyền...">
+                <Spin spinning={permissionsLoading} description="Đang tải danh sách quyền...">
                   {permissionsError ? (
                     <Typography.Text type="danger">Không thể tải danh sách quyền từ hệ thống.</Typography.Text>
                   ) : (
@@ -358,36 +339,22 @@ export default function RolesPage() {
                       <Input
                         allowClear
                         value={menuSearch}
-                        onChange={(event) => setMenuSearch(event.target.value)}
+                        onChange={(event) => {
+                          setMenuSearch(event.target.value);
+                          setUserExpandedKeys(null);
+                        }}
                         placeholder="Tìm tên chức năng"
                         style={{ borderRadius: radiusPill, height: 40, marginBottom: 8 }}
                       />
                       <Tree
                         checkable
-                        expandedKeys={expandedMenuKeys}
-                        autoExpandParent
+                        checkStrictly
+                        expandedKeys={effectiveExpandedKeys}
+                        onExpand={(keys) => setUserExpandedKeys(keys as string[])}
                         checkedKeys={checkedKeys}
                         onCheck={handleTreeCheck}
                         treeData={filteredTree}
-                        style={{ maxHeight: 320, overflow: 'auto' }}
-                      />
-                      <Typography.Text strong style={{ display: 'block', margin: '16px 0 8px' }}>
-                        Quyền thao tác API
-                      </Typography.Text>
-                      <Input
-                        allowClear
-                        value={permissionSearch}
-                        onChange={(event) => setPermissionSearch(event.target.value)}
-                        placeholder="Tìm theo mã hoặc tên quyền"
-                        style={{ borderRadius: radiusPill, height: 40, marginBottom: 8 }}
-                      />
-                      <Tree
-                        checkable
-                        checkedKeys={checkedPermissionKeys}
-                        onCheck={handleApiPermissionCheck}
-                        treeData={filteredApiPermissions}
-                        selectable={false}
-                        style={{ maxHeight: 240, overflow: 'auto' }}
+                        style={{ maxHeight: 420, overflow: 'auto' }}
                       />
                     </>
                   )}

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react
 import { Typography, Tooltip, Modal, Form, Input, Select, Row, Col, Spin, Button, Descriptions } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
+import { useUsers, useUserStatusCounts, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { useRoles } from '../hooks/useRoles';
 import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -21,6 +21,7 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
   active: { color: 'green', label: 'Hoạt động' },
   locked: { color: 'red', label: 'Đã khóa' },
   inactive: { color: 'default', label: 'Không hoạt động' },
+  pending_approval: { color: 'orange', label: 'Chờ phê duyệt' },
   PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt' },
 };
 
@@ -55,19 +56,19 @@ export default function UsersPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   useEffect(() => {
+    if (!modalOpen) return;
+    let isMounted = true;
     (async () => {
       try {
-        // Use the real hierarchy endpoint. The user form must never fall back
-        // to static mock organizations, otherwise IDs/names can be submitted
-        // that do not exist in the UAT database.
         const orgs = await organizationService.getTree({ allowMockFallback: false });
-        setOrganizations(orgs);
+        if (isMounted) setOrganizations(orgs);
       } catch (err) {
         console.error('Không thể tải danh sách đơn vị trực thuộc', err);
-        setOrganizations([]);
+        if (isMounted) setOrganizations([]);
       }
     })();
-  }, []);
+    return () => { isMounted = false; };
+  }, [modalOpen]);
 
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
@@ -77,21 +78,7 @@ export default function UsersPage() {
   });
 
   const { data: rolesData } = useRoles();
-  const countFilter = {
-    page: 1,
-    pageSize: 1,
-    search: search || undefined,
-    roleId: filterRoleId,
-  };
-  const { data: dataActive } = useUsers({ ...countFilter, status: 'active' });
-  const { data: dataLocked } = useUsers({ ...countFilter, status: 'locked' });
-  const { data: dataInactive } = useUsers({ ...countFilter, status: 'inactive' });
-  const { data: dataPending } = useUsers({ ...countFilter, status: 'PENDING_APPROVAL' });
-  const totalAll = (dataActive?.total || 0) + (dataLocked?.total || 0) + (dataInactive?.total || 0) + (dataPending?.total || 0);
-  const countActive = dataActive?.total || 0;
-  const countLocked = dataLocked?.total || 0;
-  const countInactive = dataInactive?.total || 0;
-  const countPending = dataPending?.total || 0;
+  const statusCounts = (data as any)?.statusCounts;
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -288,11 +275,11 @@ export default function UsersPage() {
       <div style={{ ...cardStyle, marginBottom: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px 16px' }}>
         <StatusTabs
           tabs={[
-            { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
-            { key: 'active', label: 'Hoạt động', count: countActive, color: actionPrimary, active: filterStatus === 'active' },
-            { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', count: countPending, color: '#faad14', active: filterStatus === 'PENDING_APPROVAL' },
-            { key: 'locked', label: 'Đã khóa', count: countLocked, color: statusCritical, active: filterStatus === 'locked' },
-            { key: 'inactive', label: 'Không hoạt động', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
+            { key: 'all', label: 'Tất cả', count: statusCounts?.total ?? (data?.total || 0), color: textSecondary, active: !filterStatus },
+            { key: 'active', label: 'Hoạt động', count: statusCounts?.active ?? 0, color: actionPrimary, active: filterStatus === 'active' },
+            { key: 'pending_approval', label: 'Chờ phê duyệt', count: statusCounts?.pending_approval ?? 0, color: '#faad14', active: filterStatus === 'pending_approval' || filterStatus === 'PENDING_APPROVAL' },
+            { key: 'locked', label: 'Đã khóa', count: statusCounts?.locked ?? 0, color: statusCritical, active: filterStatus === 'locked' },
+            { key: 'inactive', label: 'Không hoạt động', count: statusCounts?.inactive ?? 0, color: statusDraft, active: filterStatus === 'inactive' },
           ]}
           onChange={handleTabChange}
         />
@@ -351,7 +338,7 @@ export default function UsersPage() {
         destroyOnHidden
         confirmLoading={resetPasswordSubmitting}
         width={600}
-        maskClosable={false}
+        mask={{ closable: false }}
         footer={[
           <Button
             key="cancel"
@@ -439,7 +426,7 @@ export default function UsersPage() {
         open={detailUser !== null}
         onCancel={() => setDetailUser(null)}
         destroyOnHidden
-        maskClosable={false}
+        mask={{ closable: false }}
         width={600}
         footer={[
           <Button key="close" type="primary" onClick={() => setDetailUser(null)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Đóng</Button>,

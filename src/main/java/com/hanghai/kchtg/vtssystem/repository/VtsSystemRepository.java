@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.vtssystem.repository;
 
-import com.hanghai.kchtg.vtssystem.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import org.springframework.data.domain.Page;

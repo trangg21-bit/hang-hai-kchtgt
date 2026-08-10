@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { PERMISSIONS } from '../../constants/permissions';
 import {
   Alert,
   Button,
@@ -1198,7 +1199,7 @@ export default function PortListPage() {
       ];
       const status = record.approvalStatus;
       // Chỉnh sửa: tất cả trạng thái
-      if (hasPerm?.('Port:update')) {
+      if (hasPerm?.(PERMISSIONS.PORT.UPDATE)) {
         actions.push({
           key: 'edit',
           label: 'Chỉnh sửa',
@@ -1282,7 +1283,7 @@ export default function PortListPage() {
         });
       }
       // DRAFT: Gửi phê duyệt
-      if (status === 'DRAFT' && hasPerm?.('Port:update')) {
+      if (status === 'DRAFT' && hasPerm?.(PERMISSIONS.PORT.UPDATE)) {
         actions.push({
           key: 'submit',
           label: 'Gửi phê duyệt',
@@ -1291,7 +1292,7 @@ export default function PortListPage() {
         });
       }
       // PENDING: Phê duyệt + Từ chối
-      if (status === 'PENDING' && hasPerm?.('Port:approve')) {
+      if (status === 'PENDING' && (hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2))) {
         actions.push({
           key: 'approve',
           label: 'Phê duyệt',
@@ -1307,7 +1308,7 @@ export default function PortListPage() {
         });
       }
       // Xóa: tất cả trạng thái (kể cả PENDING)
-      if (hasPerm?.('Port:delete')) {
+      if (hasPerm?.(PERMISSIONS.PORT.DELETE)) {
         actions.push({
           key: 'delete',
           label: 'Xóa',

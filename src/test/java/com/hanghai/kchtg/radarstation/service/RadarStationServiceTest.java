@@ -21,7 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -77,7 +77,7 @@ class RadarStationServiceTest {
                 .id(TEST_ID)
                 .stationName("Tram ABC")
                 .location("Hà Nội")
-                .approvalStatus(RadarStationApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
@@ -93,7 +93,7 @@ class RadarStationServiceTest {
     void testCreate() {
         RadarStation saved = RadarStation.builder()
                 .id(TEST_ID).stationName("Tram ABC").location("Hà Nội")
-                .approvalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false).approvedLevel2(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
 
@@ -103,7 +103,7 @@ class RadarStationServiceTest {
         RadarStationResponse response = service.create(createRequest,
                 java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
-        assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.PROPOSED,
+        assertEquals(ApprovalStatus.PROPOSED,
                 response.getApprovalStatus());
         verify(repository, times(1)).save(any());
     }
@@ -140,7 +140,7 @@ class RadarStationServiceTest {
     void testDelete_ApprovedEntity() {
         RadarStation approvedEntity = RadarStation.builder()
                 .id(TEST_ID).stationName("ABC").location("Hà Nội")
-                .approvalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED)
+                .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false).approvedLevel2(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
 
@@ -168,14 +168,14 @@ class RadarStationServiceTest {
 
         RadarStationResponse response = service.approveC1(TEST_ID, req,
                 java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.UNDER_REVIEW,
+        assertEquals(ApprovalStatus.PENDING_APPROVAL,
                 entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
     }
 
     @Test
     void testApproveC2_Approve() {
-        entity.setApprovalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
@@ -183,14 +183,14 @@ class RadarStationServiceTest {
 
         RadarStationResponse response = service.approveC2(TEST_ID, req,
                 java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED,
+        assertEquals(ApprovalStatus.APPROVED,
                 entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel2());
     }
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setApprovalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
@@ -212,7 +212,7 @@ class RadarStationServiceTest {
 
         RadarStationResponse response = service.approveC1(TEST_ID, req,
                 java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.REJECTED,
+        assertEquals(ApprovalStatus.REJECTED,
                 entity.getApprovalStatus());
         assertEquals("Không đủ điều kiện", entity.getRejectionReason());
     }
@@ -244,3 +244,4 @@ class RadarStationServiceTest {
         assertTrue(responses.isEmpty());
     }
 }
+

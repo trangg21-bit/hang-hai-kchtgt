@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.security;
 
+import com.hanghai.kchtg.security.constants.PermissionConstants;
+import static com.hanghai.kchtg.security.constants.PermissionConstants.*;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -17,8 +19,6 @@ import java.util.UUID;
  * Usage: @PreAuthorize("@auth.check(authentication, 'resource:action')")
  *
  * Returns boolean so SpEL evaluates the actual grant/deny value.
- * Returning AuthorizationDecision was a bug: any non-null object is truthy in SpEL,
- * causing all @PreAuthorize guards to always pass regardless of isGranted().
  */
 @Component("auth")
 public class PermissionAuthorizationManager {
@@ -55,7 +55,21 @@ public class PermissionAuthorizationManager {
         }
 
         Set<String> userPermissions = extractPermissions(authentication);
-        return userPermissions.contains(requiredPermission);
+        if (userPermissions.contains(requiredPermission)) {
+            return true;
+        }
+
+        // Aliases for approve actions: resource:approve matches resource:approvec1 or resource:approvec2
+        String approveSuffix = ":" + ACTION_APPROVE;
+        if (requiredPermission != null && requiredPermission.endsWith(approveSuffix)) {
+            String prefix = requiredPermission.substring(0, requiredPermission.length() - approveSuffix.length());
+            if (userPermissions.contains(PermissionConstants.build(prefix, ACTION_APPROVE_C1)) 
+                    || userPermissions.contains(PermissionConstants.build(prefix, ACTION_APPROVE_C2))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public Set<String> extractPermissions(Authentication authentication) {
@@ -69,10 +83,6 @@ public class PermissionAuthorizationManager {
         return resolvePermissions(user);
     }
 
-    /**
-     * Resolves the {@link User} behind the authentication principal, whether it is
-     * the entity itself, a Spring Security user, or a bare username string.
-     */
     private User resolveUser(Object principal) {
         if (principal instanceof User user) {
             return user;
@@ -86,14 +96,6 @@ public class PermissionAuthorizationManager {
         return null;
     }
 
-    /**
-     * Returns the user's effective permissions, using Redis as a best-effort cache.
-     * <p>
-     * The cache is a pure optimization: any failure (Redis unavailable, miss, empty
-     * result) falls back to computing permissions straight from the database, so an
-     * authorization decision is never blocked or altered by cache state. The cache is
-     * invalidated whenever the user's roles or a role's permissions change.
-     */
     private Set<String> resolvePermissions(User user) {
         UUID userId = user.getId();
         if (userId != null) {

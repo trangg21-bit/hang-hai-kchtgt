@@ -39,4 +39,19 @@ public class LogAggregate {
 
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public LocalDate getDate() { return date; }
+    public void setDate(LocalDate date) { this.date = date; }
+    public Long getTotalAccesses() { return totalAccesses; }
+    public void setTotalAccesses(Long totalAccesses) { this.totalAccesses = totalAccesses; }
+    public Long getUniqueUsers() { return uniqueUsers; }
+    public void setUniqueUsers(Long uniqueUsers) { this.uniqueUsers = uniqueUsers; }
+    public BigDecimal getSuccessRate() { return successRate; }
+    public void setSuccessRate(BigDecimal successRate) { this.successRate = successRate; }
+    public Integer getAvgDuration() { return avgDuration; }
+    public void setAvgDuration(Integer avgDuration) { this.avgDuration = avgDuration; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

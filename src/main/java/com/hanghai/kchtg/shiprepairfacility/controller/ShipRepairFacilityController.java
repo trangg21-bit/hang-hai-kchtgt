@@ -2,7 +2,7 @@ package com.hanghai.kchtg.shiprepairfacility.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.service.ShipRepairFacilityService;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
@@ -148,7 +148,7 @@ public class ShipRepairFacilityController {
             @PathVariable String status) {
         try {
             return ResponseEntity.ok(ApiResponse.success(
-                    service.findByApprovalStatus(ShipRepairApprovalStatus.valueOf(status))));
+                    service.findByApprovalStatus(ApprovalStatus.valueOf(status))));
         } catch (Exception e) {
             log.warn("Lỗi khi lọc cơ sở sửa chữa theo trạng thái phê duyệt: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

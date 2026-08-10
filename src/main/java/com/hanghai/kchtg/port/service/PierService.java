@@ -364,7 +364,7 @@ public class PierService {
             });
         }
 
-        entity.setApprovalStatus(ApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
 
         Pier saved = pierRepository.save(entity);
 
@@ -383,7 +383,7 @@ public class PierService {
         if (entity.getDeletedAt() != null) {
             throw new IllegalStateException("Cầu cảng đã bị xóa trước đó");
         }
-        if (entity.getApprovalStatus() != ApprovalStatus.PENDING) {
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new IllegalStateException("Chỉ có thể xóa cầu cảng ở trạng thái Chờ phê duyệt và chưa được gửi duyệt");
         }
 

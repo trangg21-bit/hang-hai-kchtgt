@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import jakarta.persistence.*;

@@ -114,7 +114,7 @@ export default function GroupList() {
     try {
       const values = await form.validateFields(); setSubmitting(true);
       if (editingGroup) {
-        const payload: UpdateGroupPayload = { name: values.name, code: values.code, groupType: values.groupType, description: values.description, status: values.status, organizationId: values.organizationId };
+        const payload: UpdateGroupPayload = { name: values.name, groupType: values.groupType, description: values.description, status: values.status };
         await groupService.update(editingGroup.id, payload);
         toast.success('Đã cập nhật nhóm');
       } else {

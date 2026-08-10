@@ -88,7 +88,7 @@ class DryPortServiceTest {
             testEntity.setArea(new BigDecimal("10000.00"));
             testEntity.setTeuCapacity(new BigDecimal("50000.00"));
             testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
-            testEntity.setApprovalStatus(ApprovalStatus.PENDING);
+            testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         @Test
@@ -112,7 +112,7 @@ class DryPortServiceTest {
             assertNotNull(result);
             assertEquals("CC-000002", result.getDryPortCode());
             assertEquals("Cảng cạn mới", result.getDryPortName());
-            assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
+            assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
             verify(dryPortRepository).save(any(DryPort.class));
         }
 
@@ -143,7 +143,7 @@ class DryPortServiceTest {
             DryPortResponse result = service.update(request);
 
             assertEquals("Cảng Cạn Cập Nhật", result.getDryPortName());
-            assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
+            assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
             assertEquals("CC-001", result.getDryPortCode()); // code unchanged
             verify(changeHistoryService).recordChanges(eq("DryPort"), any(), any(), any(), any());
         }
@@ -226,7 +226,7 @@ class DryPortServiceTest {
             ReflectionTestUtils.setField(testEntity, "id", testId);
             testEntity.setDryPortCode("CC-001");
             testEntity.setDryPortName("Cảng Cạn Demo");
-            testEntity.setApprovalStatus(ApprovalStatus.PENDING);
+            testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         @Test
@@ -238,7 +238,7 @@ class DryPortServiceTest {
             approvalService.approve(testId, "admin-user", null);
 
             assertEquals(ApprovalStatus.APPROVED, testEntity.getApprovalStatus());
-            verify(approvalWorkflowService).approve(eq("PENDING"), eq("DryPort"),
+            verify(approvalWorkflowService).approve(eq("PENDING_APPROVAL"), eq("DryPort"),
                     eq(testId.toString()), eq("admin-user"));
             verify(dryPortRepository).save(testEntity);
         }
@@ -252,7 +252,7 @@ class DryPortServiceTest {
             approvalService.approve(testId, "admin-user", "Hồ sơ chưa đầy đủ");
 
             assertEquals(ApprovalStatus.REJECTED, testEntity.getApprovalStatus());
-            verify(approvalWorkflowService).reject(eq("PENDING"), eq("DryPort"),
+            verify(approvalWorkflowService).reject(eq("PENDING_APPROVAL"), eq("DryPort"),
                     eq(testId.toString()), eq("admin-user"), eq("Hồ sơ chưa đầy đủ"));
             verify(dryPortRepository).save(testEntity);
         }

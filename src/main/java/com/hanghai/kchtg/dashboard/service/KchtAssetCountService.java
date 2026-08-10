@@ -33,7 +33,7 @@ public class KchtAssetCountService {
 
     public static final String[] KCHT_TABLES = {
             "ports", "berths", "piers", "dry_ports",
-            "water_zones_anchorage", "water_zones_quarantine", "water_zones_pilot_boarding",
+            "water_zones_anchorage", "water_zones_pilot_boarding",
             "water_zones_turning_basin", "water_zones_mooring_buoy", "water_zones_transshipment", "water_zones_storm_shelter",
             "beacon_light", "buoy",
             "navigation_channel", "dike_revetment",
@@ -51,7 +51,6 @@ public class KchtAssetCountService {
         LABELS.put("piers", "Cầu cảng");
         LABELS.put("dry_ports", "Cảng cạn");
         LABELS.put("water_zones_anchorage", "Khu neo đậu");
-        LABELS.put("water_zones_quarantine", "Khu kiểm dịch");
         LABELS.put("water_zones_pilot_boarding", "Khu đón trả hoa tiêu");
         LABELS.put("water_zones_turning_basin", "Khu quay trở tàu");
         LABELS.put("water_zones_mooring_buoy", "Bến phao");
@@ -78,12 +77,11 @@ public class KchtAssetCountService {
     private Integer getWaterZoneType(String tableItem) {
         return switch (tableItem) {
             case "water_zones_anchorage" -> 1;
-            case "water_zones_quarantine" -> 2;
-            case "water_zones_pilot_boarding" -> 3;
-            case "water_zones_turning_basin" -> 4;
-            case "water_zones_mooring_buoy" -> 5;
-            case "water_zones_transshipment" -> 6;
-            case "water_zones_storm_shelter" -> 7;
+            case "water_zones_pilot_boarding" -> 2;
+            case "water_zones_turning_basin" -> 3;
+            case "water_zones_mooring_buoy" -> 4;
+            case "water_zones_transshipment" -> 5;
+            case "water_zones_storm_shelter" -> 6;
             default -> null;
         };
     }

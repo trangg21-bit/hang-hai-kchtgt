@@ -6,7 +6,7 @@ import com.hanghai.kchtg.dikerevetment.dto.ApprovalRequest;
 import com.hanghai.kchtg.dikerevetment.dto.ApprovalResponse;
 import com.hanghai.kchtg.dikerevetment.dto.DikeRevetmentCreateRequest;
 import com.hanghai.kchtg.dikerevetment.dto.DikeRevetmentResponse;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +47,7 @@ class DikeRevetmentControllerTest {
                 .height(5.0)
                 .surfaceMaterial("Betong")
                 .status("Tot")
-                .approvalStatus(DikeRevetmentApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
@@ -119,3 +119,4 @@ class DikeRevetmentControllerTest {
         assertThat(ctrlResp.getBody().getData().getStatus()).isEqualTo("APPROVED");
     }
 }
+

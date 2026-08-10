@@ -18,8 +18,6 @@ import {
 import type { WaterZone } from '../../types/port';
 import {
   BECBANG_STATUS_MAP,
-  VUNGNUOOC_LOAI_OPTIONS,
-  VUNGNUOOC_LOAI_MAP,
 } from '../../types/port';
 import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -169,7 +167,7 @@ export default function WaterZoneList() {
 
   const filterFields = useMemo(() => [
     { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo mã, tên...' },
-    { key: 'loaiVungNuoc', type: 'select' as const, label: 'Loại vùng nước', placeholder: 'Chọn loại', options: VUNGNUOOC_LOAI_OPTIONS },
+    { key: 'loaiVungNuoc', type: 'text' as const, label: 'Loại vùng nước', placeholder: 'Nhập loại' },
   ], []);
 
   const headerActions = useMemo(() => [
@@ -187,10 +185,7 @@ export default function WaterZoneList() {
     { key: 'doSauTrungBinh', label: 'Độ sâu TB', dataIndex: 'doSauTrungBinh', width: 120, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(1) || '—'}</span> },
     {
       key: 'loaiVungNuoc', label: 'Loại vùng nước', dataIndex: 'loaiVungNuoc', width: 160,
-      render: (loaiVungNuoc: string) => {
-        const m = VUNGNUOOC_LOAI_MAP[loaiVungNuoc as keyof typeof VUNGNUOOC_LOAI_MAP];
-        return m ? <Tag color={m.color}>{VUNGNUOOC_LOAI_OPTIONS.find((o) => o.value === loaiVungNuoc)?.label || loaiVungNuoc}</Tag> : <Tag>{loaiVungNuoc}</Tag>;
-      },
+      render: (loaiVungNuoc: string) => loaiVungNuoc || '—',
     },
     {
       key: 'operationalStatus', label: 'Trạng thái hoạt động', dataIndex: 'operationalStatus', width: 160, align: 'center' as const,

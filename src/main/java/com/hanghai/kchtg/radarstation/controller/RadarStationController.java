@@ -2,7 +2,7 @@ package com.hanghai.kchtg.radarstation.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.radarstation.dto.*;
-import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.radarstation.service.RadarStationService;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
@@ -143,7 +143,7 @@ public class RadarStationController {
             @PathVariable String status) {
         try {
             return ResponseEntity.ok(ApiResponse.success(
-                    service.findByApprovalStatus(RadarStationApprovalStatus.valueOf(status))));
+                    service.findByApprovalStatus(ApprovalStatus.valueOf(status))));
         } catch (Exception e) {
             log.warn("Lỗi khi lọc trạm radar theo trạng thái phê duyệt: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

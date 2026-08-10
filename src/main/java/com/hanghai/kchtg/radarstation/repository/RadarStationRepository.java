@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.radarstation.repository;
 
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,7 +15,7 @@ import java.util.UUID;
 @Repository
 public interface RadarStationRepository extends JpaRepository<RadarStation, UUID> {
 
-    List<RadarStation> findByApprovalStatusAndDeletedAtIsNull(RadarStationApprovalStatus approvalStatus);
+    List<RadarStation> findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     List<RadarStation> findByVtsSystemId(UUID vtsSystemId);
 
@@ -36,7 +36,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
         @Param("conditionStatus") String conditionStatus,
-        @Param("approvalStatus") RadarStationApprovalStatus approvalStatus,
+        @Param("approvalStatus") ApprovalStatus approvalStatus,
         Pageable pageable
     );
 

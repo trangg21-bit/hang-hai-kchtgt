@@ -36,8 +36,9 @@ public class RoleResponse {
         resp.setName(role.getName());
         resp.setCode(role.getCode());
         resp.setDescription(role.getDescription());
-        resp.setPermissions(role.getPermissions().stream().map(Permission::getCode).collect(Collectors.toList()));
-        resp.setMenuCodes(role.getMenuPermissions().stream().map(SystemMenu::getMenuCode).collect(Collectors.toList()));
+        List<String> permCodes = role.getPermissions().stream().map(Permission::getCode).collect(Collectors.toList());
+        resp.setPermissions(permCodes);
+        resp.setMenuCodes(permCodes);
         resp.setStatus(role.getStatus() != null ? role.getStatus().name() : null);
         resp.setUserCount(role.getUserCount());
         resp.setCreatedAt(role.getCreatedAt());

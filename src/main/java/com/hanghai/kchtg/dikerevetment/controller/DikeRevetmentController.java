@@ -2,7 +2,7 @@ package com.hanghai.kchtg.dikerevetment.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.dikerevetment.dto.*;
-import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.user.entity.User;
@@ -94,7 +94,7 @@ public class DikeRevetmentController {
     @GetMapping("/approval-status/{status}")
     @PreAuthorize("@auth.check(authentication, 'dikerevetment:read')")
     public ResponseEntity<ApiResponse<List<DikeRevetmentResponse>>> filterByStatus(@PathVariable String status) {
-        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(DikeRevetmentApprovalStatus.valueOf(status))));
+        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(ApprovalStatus.valueOf(status))));
     }
 
     @GetMapping("/search")

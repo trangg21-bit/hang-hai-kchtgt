@@ -72,7 +72,7 @@ class PierServiceTest {
         activeBerth.setBerthCode("BEN-001");
         activeBerth.setBerthName("Bến Cảng Demo");
         activeBerth.setOperationalStatus(OperationalStatus.OPERATIONAL);
-        activeBerth.setApprovalStatus(ApprovalStatus.PENDING);
+        activeBerth.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
 
         testEntity = new Pier();
         ReflectionTestUtils.setField(testEntity, "id", testId);
@@ -82,7 +82,7 @@ class PierServiceTest {
         testEntity.setLength(new BigDecimal("200.00"));
         testEntity.setDesignLoad(new BigDecimal("50000.00"));
         testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
-        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
     }
 
     // ── CREATE — INT-005 parent guard ──────────────────────────────────────
@@ -163,7 +163,7 @@ class PierServiceTest {
         PierResponse result = service.update(request);
 
         assertEquals("Cầu Đã Cập Nhật", result.getPierName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
         assertEquals("CAU-001", result.getPierCode()); // code unchanged
         verify(changeHistoryService).recordChanges(eq("Pier"), any(), any(), any(), any());
     }

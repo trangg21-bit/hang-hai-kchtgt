@@ -92,7 +92,7 @@ class PortServiceTest {
         testEntity.setProvince("Hà Nội");
         testEntity.setArea(new BigDecimal("5000.00"));
         testEntity.setOperationalStatus(OperationalStatus.OPERATIONAL);
-        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
     }
 
     // ── CREATE (F-008) ─────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ class PortServiceTest {
         assertNotNull(result);
         assertEquals("CB-002", result.getPortCode());
         assertEquals("Cảng mới", result.getPortName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
         verify(portRepository, times(1)).save(any(Port.class));
     }
 
@@ -195,7 +195,7 @@ class PortServiceTest {
         PortResponse result = service.update(request);
 
         assertEquals("Cảng Đã Cập Nhật", result.getPortName());
-        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus()); // reset
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus()); // reset
         assertEquals("CB-001", result.getPortCode()); // code unchanged
     }
 

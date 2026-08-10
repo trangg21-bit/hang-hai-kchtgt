@@ -63,7 +63,7 @@ class ChangeHistoryDiffTest {
                 .province("Hà Nội")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(OperationalStatus.OPERATIONAL)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
 
         // Build new entity (portName = "New Name", everything else same)
@@ -72,7 +72,7 @@ class ChangeHistoryDiffTest {
                 .province("Hà Nội")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(OperationalStatus.OPERATIONAL)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
 
         List<String> changedFields = changeTrackingService.recordChanges(
@@ -103,7 +103,7 @@ class ChangeHistoryDiffTest {
                 .province("Hà Nội")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(OperationalStatus.OPERATIONAL)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
 
         Port newEntity = Port.builder()
@@ -111,7 +111,7 @@ class ChangeHistoryDiffTest {
                 .province("Hà Nội")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(OperationalStatus.OPERATIONAL)
-                .approvalStatus(ApprovalStatus.PENDING)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
 
         List<String> changedFields = changeTrackingService.recordChanges(

@@ -1900,7 +1900,7 @@ export default function BerthListPage() {
         onOk={doApprove}
         confirmLoading={submitting}
         destroyOnHidden
-        maskClosable={false}
+        mask={{ closable: false }}
       >
         <Form form={approveForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -1929,7 +1929,7 @@ export default function BerthListPage() {
         onOk={doReject}
         confirmLoading={submitting}
         destroyOnHidden
-        maskClosable={false}
+        mask={{ closable: false }}
       >
         <Form form={rejectForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item

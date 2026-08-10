@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
@@ -34,7 +34,7 @@ public class F158ReportHandler extends BaseReportHandler {
         Map<UUID, VtsSystem> vtsCache = new HashMap<>();
 
         List<RadarStation> stationList = radarStationRepository.findAll().stream()
-                .filter(t -> t.getApprovalStatus() == RadarStationApprovalStatus.APPROVED)
+                .filter(t -> t.getApprovalStatus() == ApprovalStatus.APPROVED)
                 .filter(t -> t.getDeletedAt() == null)
                 .filter(t -> t.getUpdatedAt() == null || t.getUpdatedAt().getYear() <= reportYear)
                 .toList();
@@ -88,7 +88,7 @@ public class F158ReportHandler extends BaseReportHandler {
         Map<UUID, VtsSystem> vtsCache = new HashMap<>();
 
         List<RadarStation> stationList = radarStationRepository.findAll().stream()
-                .filter(t -> t.getApprovalStatus() == RadarStationApprovalStatus.APPROVED)
+                .filter(t -> t.getApprovalStatus() == ApprovalStatus.APPROVED)
                 .filter(t -> t.getDeletedAt() == null)
                 .filter(t -> t.getUpdatedAt() == null || t.getUpdatedAt().getYear() <= reportYear)
                 .toList();

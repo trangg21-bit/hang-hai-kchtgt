@@ -5,7 +5,7 @@ import { usePermissionStore } from '../store/permissionStore';
 import { useAuthStore } from '../store/authStore';
 
 interface Props {
-  permission: string;
+  permission: string | string[];
   children: ReactNode;
   fallback?: ReactNode;
   disableOnly?: boolean; // if true, render children but disable actions instead of hiding
@@ -13,8 +13,17 @@ interface Props {
 
 export default function PermissionGuard({ permission, children, fallback, disableOnly }: Props) {
   const hasPermission = usePermissionStore((s) => s.hasPermission);
+  const hasAnyPermission = usePermissionStore((s) => s.hasAnyPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions);
-  const isAllowed = userPermissions !== undefined && hasPermission(permission);
+  
+  const checkPermission = () => {
+    if (Array.isArray(permission)) {
+      return hasAnyPermission(permission);
+    }
+    return hasPermission(permission);
+  };
+
+  const isAllowed = userPermissions !== undefined && checkPermission();
 
   if (!isAllowed) {
     if (disableOnly) {

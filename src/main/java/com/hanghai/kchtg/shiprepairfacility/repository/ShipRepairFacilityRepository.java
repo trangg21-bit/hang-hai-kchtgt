@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.shiprepairfacility.repository;
 
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,7 +13,7 @@ import java.util.UUID;
 @Repository
 public interface ShipRepairFacilityRepository extends JpaRepository<ShipRepairFacility, UUID> {
 
-    List<ShipRepairFacility> findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus approvalStatus);
+    List<ShipRepairFacility> findByApprovalStatusAndIsDeletedFalse(ApprovalStatus approvalStatus);
 
     @Query("SELECT c FROM ShipRepairFacility c WHERE " +
             "(:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) AND " +
@@ -25,8 +25,8 @@ public interface ShipRepairFacilityRepository extends JpaRepository<ShipRepairFa
     List<ShipRepairFacility> search(@Param("orgUnitId") UUID orgUnitId,
                                     @Param("keyword") String keyword,
                                     @Param("provinceId") Integer provinceId,
-                                    @Param("approvalStatus") ShipRepairApprovalStatus approvalStatus,
-                                    @Param("reviewStatus") ShipRepairApprovalStatus reviewStatus);
+                                    @Param("approvalStatus") ApprovalStatus approvalStatus,
+                                    @Param("reviewStatus") ApprovalStatus reviewStatus);
     @Query("SELECT c FROM ShipRepairFacility c WHERE " +
            "c.isDeleted = false AND " +
            "(:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) AND " +

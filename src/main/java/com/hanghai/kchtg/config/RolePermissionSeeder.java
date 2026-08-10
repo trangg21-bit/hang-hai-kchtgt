@@ -50,11 +50,23 @@ public class RolePermissionSeeder implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final SystemMenuRepository systemMenuRepository;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @Override
     @Transactional
     public void run(String... args) {
         log.info("🔐 Starting role/permission seeding...");
+
+        // Auto-unlock admin user & set password to 'admin123'
+        userRepository.findByUsername("admin").ifPresent(adminUser -> {
+            adminUser.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("admin123"));
+            adminUser.setStatus(com.hanghai.kchtg.user.entity.UserStatus.ACTIVE);
+            adminUser.setAccountLockedUntil(null);
+            adminUser.setFailedLoginCount(0);
+            adminUser.setFailedTotpCount(0);
+            userRepository.save(adminUser);
+            log.info("🔓 Admin account unlocked and password set to 'admin123'");
+        });
 
         // If any of the known roles already exist, skip seeding entirely.
         // (Roles are only seeded once; subsequent runs do not overwrite existing data.)
@@ -270,6 +282,47 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(permissionsByCode, "vts", "history", "Xem lịch sử VTS",
                 "Xem lịch sử thay đổi VTS");
 
+        // ---- M-002 entity permissions (port, berth, pier, dryport, waterzone) ----
+        // port
+        seedPermission(permissionsByCode, "port", "create", "Tạo mới cảng biển", "Tạo mới cảng biển");
+        seedPermission(permissionsByCode, "port", "read", "Xem cảng biển", "Xem danh sách và chi tiết cảng biển");
+        seedPermission(permissionsByCode, "port", "update", "Cập nhật cảng biển", "Chỉnh sửa cảng biển");
+        seedPermission(permissionsByCode, "port", "delete", "Xóa cảng biển", "Xóa cảng biển");
+        seedPermission(permissionsByCode, "port", "approve", "Phê duyệt cảng biển", "Phê duyệt cảng biển");
+        seedPermission(permissionsByCode, "port", "history", "Xem lịch sử cảng biển", "Xem lịch sử cảng biển");
+
+        // berth
+        seedPermission(permissionsByCode, "berth", "create", "Tạo mới bến cảng", "Tạo mới bến cảng");
+        seedPermission(permissionsByCode, "berth", "read", "Xem bến cảng", "Xem danh sách và chi tiết bến cảng");
+        seedPermission(permissionsByCode, "berth", "update", "Cập nhật bến cảng", "Chỉnh sửa bến cảng");
+        seedPermission(permissionsByCode, "berth", "delete", "Xóa bến cảng", "Xóa bến cảng");
+        seedPermission(permissionsByCode, "berth", "approve", "Phê duyệt bến cảng", "Phê duyệt bến cảng");
+        seedPermission(permissionsByCode, "berth", "history", "Xem lịch sử bến cảng", "Xem lịch sử bến cảng");
+
+        // pier
+        seedPermission(permissionsByCode, "pier", "create", "Tạo mới cầu cảng", "Tạo mới cầu cảng");
+        seedPermission(permissionsByCode, "pier", "read", "Xem cầu cảng", "Xem danh sách và chi tiết cầu cảng");
+        seedPermission(permissionsByCode, "pier", "update", "Cập nhật cầu cảng", "Chỉnh sửa cầu cảng");
+        seedPermission(permissionsByCode, "pier", "delete", "Xóa cầu cảng", "Xóa cầu cảng");
+        seedPermission(permissionsByCode, "pier", "approve", "Phê duyệt cầu cảng", "Phê duyệt cầu cảng");
+        seedPermission(permissionsByCode, "pier", "history", "Xem lịch sử cầu cảng", "Xem lịch sử cầu cảng");
+
+        // dryport
+        seedPermission(permissionsByCode, "dryport", "create", "Tạo mới cảng cạn", "Tạo mới cảng cạn");
+        seedPermission(permissionsByCode, "dryport", "read", "Xem cảng cạn", "Xem danh sách và chi tiết cảng cạn");
+        seedPermission(permissionsByCode, "dryport", "update", "Cập nhật cảng cạn", "Chỉnh sửa cảng cạn");
+        seedPermission(permissionsByCode, "dryport", "delete", "Xóa cảng cạn", "Xóa cảng cạn");
+        seedPermission(permissionsByCode, "dryport", "approve", "Phê duyệt cảng cạn", "Phê duyệt cảng cạn");
+        seedPermission(permissionsByCode, "dryport", "history", "Xem lịch sử cảng cạn", "Xem lịch sử cảng cạn");
+
+        // waterzone
+        seedPermission(permissionsByCode, "waterzone", "create", "Tạo mới khu nước", "Tạo mới khu nước");
+        seedPermission(permissionsByCode, "waterzone", "read", "Xem khu nước", "Xem danh sách và chi tiết khu nước");
+        seedPermission(permissionsByCode, "waterzone", "update", "Cập nhật khu nước", "Chỉnh sửa khu nước");
+        seedPermission(permissionsByCode, "waterzone", "delete", "Xóa khu nước", "Xóa khu nước");
+        seedPermission(permissionsByCode, "waterzone", "approve", "Phê duyệt khu nước", "Phê duyệt khu nước");
+        seedPermission(permissionsByCode, "waterzone", "history", "Xem lịch sử khu nước", "Xem lịch sử khu nước");
+
         // Permissions will be saved automatically via @ManyToMany cascade when saving roles.
         log.info("📦 Prepared {} permissions for role assignment", permissionsByCode.size());
 
@@ -418,15 +471,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
     /** Đồng bộ toàn bộ cây chức năng AUTH_MENU cho quản trị hệ thống. */
     @Transactional
     void assignSystemAdminMenus() {
-        roleRepository.findByCode("ROLE_SYSTEM_ADMIN").ifPresent(role -> {
-            List<SystemMenu> menus = systemMenuRepository
-                    .findByAppCodeAndStatusAndHideMenuOrderByOrderNoAscMenuCodeAsc("VMD_MTIS", 1, false);
-            if (!menus.isEmpty()) {
-                role.setMenuPermissions(new HashSet<>(menus));
-                roleRepository.save(role);
-                log.info("Synchronized {} original menu permissions to ROLE_SYSTEM_ADMIN", menus.size());
-            }
-        });
+        // Legacy menu synchronization removed in favor of single permission architecture
     }
 
     /**

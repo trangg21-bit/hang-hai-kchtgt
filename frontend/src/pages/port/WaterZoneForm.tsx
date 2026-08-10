@@ -214,19 +214,11 @@ export default function WaterZoneForm() {
           />
 
           <FormField
-            type="select"
+            type="text"
             name="loaiVungNuoc"
             label="Loại vùng nước"
-            options={[
-              { label: 'Khu neo đậu', value: 'NEO_DAU' },
-              { label: 'Khu kiểm dịch', value: 'KIEM_DICH' },
-              { label: 'Khu đón trả hoa tiêu', value: 'DON_TRA_HOA_TIEU' },
-              { label: 'Vùng quay trở tàu', value: 'QUAY_TRO_TAU' },
-              { label: 'Bến phao', value: 'BEN_PHAO' },
-              { label: 'Khu chuyển tải', value: 'CHUYEN_TAI' },
-              { label: 'Khu tránh trú bão', value: 'TRANH_BAO' },
-            ]}
-            disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
+            placeholder="Nhập loại vùng nước"
+            maxLength={100}
           />
 
           <Row gutter={16}>

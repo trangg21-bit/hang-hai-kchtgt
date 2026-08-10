@@ -2,7 +2,7 @@ package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.navigationchannel.repository.ChannelRouteDetailRepository;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -43,7 +43,7 @@ public class F151ReportHandler extends BaseReportHandler {
                         || (nc.getUpdatedAt() != null && nc.getUpdatedAt().getYear() <= reportYear)
                         || (nc.getCreatedAt() != null && nc.getCreatedAt().getYear() <= reportYear))
                 .filter(nc -> nc.getApprovalStatus() == null
-                        || nc.getApprovalStatus() == NavigationChannelApprovalStatus.APPROVED)
+                        || nc.getApprovalStatus() == ApprovalStatus.APPROVED)
                 .toList();
 
         List<String> headers = List.of(
@@ -146,7 +146,7 @@ public class F151ReportHandler extends BaseReportHandler {
                         || (nc.getUpdatedAt() != null && nc.getUpdatedAt().getYear() <= reportYear)
                         || (nc.getCreatedAt() != null && nc.getCreatedAt().getYear() <= reportYear))
                 .filter(nc -> nc.getApprovalStatus() == null
-                        || nc.getApprovalStatus() == NavigationChannelApprovalStatus.APPROVED)
+                        || nc.getApprovalStatus() == ApprovalStatus.APPROVED)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();

@@ -125,62 +125,34 @@ public class RoleService {
     }
 
 
-    private Set<SystemMenu> resolveMenuCodes(List<String> menuCodes) {
-        if (menuCodes == null || menuCodes.isEmpty()) {
-            return new HashSet<>();
-        }
-        Set<String> normalized = menuCodes.stream()
-                .filter(java.util.Objects::nonNull)
-                .map(String::trim)
-                .filter(code -> !code.isEmpty())
-                .collect(Collectors.toSet());
-        if (normalized.isEmpty()) {
-            return new HashSet<>();
-        }
-        List<SystemMenu> menus = systemMenuRepository.findAllById(normalized);
-        return new HashSet<>(menus);
-    }
-
-    /**
-     * Tạo mới vai trò.
-     *
-     * @throws IllegalArgumentException nếu code đã tồn tại
-     */
     @Transactional
     public Role create(CreateRoleRequest request) {
         java.util.Optional<Role> existingOpt = roleRepository.findByCodeIncludeDeleted(request.getCode());
+        Role role;
         if (existingOpt.isPresent()) {
             Role existingRole = existingOpt.get();
             if (existingRole.getDeletedAt() != null || existingRole.getStatus() == RoleStatus.DELETED) {
-                // Restore the soft-deleted role
-                existingRole.setName(request.getName());
-                existingRole.setDescription(request.getDescription());
-                existingRole.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
-                existingRole.setStatus(RoleStatus.ACTIVE);
-                existingRole.setDeletedAt(null);
-                existingRole.setDeletedBy(null);
-                existingRole.setUserCount(0);
-
-                Role saved = roleRepository.save(existingRole);
-                auditLog("ROLE_CREATE", "Role-" + saved.getCode(), "Khôi phục và cập nhật vai trò " + saved.getCode());
-                log.info("Restored and updated role: {} ({})", saved.getCode(), saved.getId());
-                return saved;
+                role = existingRole;
+                role.setDeletedAt(null);
+                role.setDeletedBy(null);
             } else {
                 throw new IllegalArgumentException("Mã vai trò đã tồn tại: " + request.getCode());
             }
+        } else {
+            role = new Role();
         }
 
-        Role role = new Role();
         role.setName(request.getName());
         role.setCode(request.getCode());
         role.setDescription(request.getDescription());
-        role.setMenuPermissions(resolveMenuCodes(request.getMenuCodes()));
+        Set<Permission> initialPerms = new java.util.HashSet<>();
         if (request.getPermissions() != null) {
-            List<Permission> perms = permissionRepository.findByCodeIn(request.getPermissions());
-            role.setPermissions(new java.util.HashSet<>(perms));
-        } else {
-            role.setPermissions(new java.util.HashSet<>());
+            initialPerms.addAll(permissionRepository.findByCodeIn(request.getPermissions()));
         }
+        if (request.getMenuCodes() != null) {
+            initialPerms.addAll(permissionRepository.findByCodeIn(request.getMenuCodes()));
+        }
+        role.setPermissions(initialPerms);
         role.setStatus(RoleStatus.ACTIVE);
         role.setUserCount(0);
 
@@ -214,22 +186,23 @@ public class RoleService {
         }
         boolean permissionsChanged = false;
 
+        Set<String> requestedCodes = new java.util.HashSet<>();
         if (request.getPermissions() != null) {
-            List<Permission> perms = permissionRepository.findByCodeIn(request.getPermissions());
+            requestedCodes.addAll(request.getPermissions());
+        }
+        if (request.getMenuCodes() != null) {
+            requestedCodes.addAll(request.getMenuCodes());
+        }
+
+        if (request.getPermissions() != null || request.getMenuCodes() != null) {
+            List<Permission> perms = permissionRepository.findByCodeIn(new java.util.ArrayList<>(requestedCodes));
             Set<Permission> newPerms = new java.util.HashSet<>(perms);
             if (role.getPermissions() == null) {
                 role.setPermissions(newPerms);
             } else {
-                role.getPermissions().retainAll(newPerms);
+                role.getPermissions().clear();
                 role.getPermissions().addAll(newPerms);
             }
-            permissionsChanged = true;
-        }
-
-        if (request.getMenuCodes() != null) {
-            Set<SystemMenu> menus = resolveMenuCodes(request.getMenuCodes());
-            role.getMenuPermissions().retainAll(menus);
-            role.getMenuPermissions().addAll(menus);
             permissionsChanged = true;
         }
 

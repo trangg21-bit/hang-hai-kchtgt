@@ -1,10 +1,8 @@
 package com.hanghai.kchtg.orgunit.dto;
 
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -12,11 +10,6 @@ import java.util.UUID;
 
 /**
  * Request body for creating a new organisational unit.
- *
- * <p>
- * Validates BR-013 (unique code),
- * BR-003-08 (name required, max 200).
- * </p>
  */
 @Data
 public class CreateOrgUnitRequest {
@@ -31,9 +24,6 @@ public class CreateOrgUnitRequest {
 
     /** Parent unit ID (nullable — root unit if omitted). */
     private UUID parentId;
-
-    /** Unit type — optional, auto-inferred from parentId if omitted. */
-    private OrgUnitType type;
 
     /** Optional description of the unit. */
     private String description;
@@ -56,5 +46,5 @@ public class CreateOrgUnitRequest {
     private OrgUnitStatus status;
 
     /** Operational availability. Defaults to ACTIVE when omitted. */
-    private OrgUnitOperationalStatus operationalStatus;
+    private OperationalStatus operationalStatus;
 }

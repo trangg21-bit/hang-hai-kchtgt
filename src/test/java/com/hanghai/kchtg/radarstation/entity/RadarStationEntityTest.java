@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.radarstation.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -35,13 +36,13 @@ class RadarStationEntityTest {
         entity.setStationName("Tram ABC");
         entity.setLocation("Hà Nội");
         entity.setStationType("Radar X");
-        entity.setApprovalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         entity.setUpdatedAt(LocalDateTime.now());
 
         assertEquals(uuid, entity.getId());
         assertEquals("Tram ABC", entity.getStationName());
-        assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertNotNull(entity.getUpdatedAt());
     }
 
@@ -59,10 +60,10 @@ class RadarStationEntityTest {
         assertNull(entity.getApprovalStatus());  // null before persist
         assertFalse(entity.getApprovedLevel1());
 
-        entity.setApprovalStatus(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedLevel1(true);
         entity.setApprovedLevel2(true);
-        assertEquals(com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus.APPROVED, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
 
         entity.softDelete(java.util.UUID.randomUUID());
         assertNotNull(entity.getDeletedAt());

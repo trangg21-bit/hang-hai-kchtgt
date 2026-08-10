@@ -5,9 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -17,11 +16,12 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "inventory_plans")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@lombok.experimental.SuperBuilder
-@lombok.EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
 public class InventoryPlan extends BaseEntity {
 
     @Column(length = 200)
@@ -59,5 +59,4 @@ public class InventoryPlan extends BaseEntity {
 
     @Version
     private Integer lockVersion;
-
 }

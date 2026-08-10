@@ -397,7 +397,7 @@ export default function PermissionsPage() {
         destroyOnHidden
         confirmLoading={submitting}
         width={600}
-        maskClosable={false}
+        mask={{ closable: false }}
         footer={[
           <Button
             key="cancel"

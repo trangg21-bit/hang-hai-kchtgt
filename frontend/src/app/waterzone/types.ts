@@ -91,7 +91,7 @@ export interface VungNuocFilters {
   operationalStatus?: VungNuocTrangThaiHoatDong;
   approvalStatus?: VungNuocTrangThaiPheDuyet;
   portId?: string;
-  loaiVungNuoc?: LoaiVungNuoc;
+  loaiVungNuoc?: string;
   sortBy?: 'waterZoneCode' | 'waterZoneName' | 'createdAt' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
   page: number;
@@ -111,20 +111,6 @@ export const WaterZone_PHE_DUYET_MAP: Record<VungNuocTrangThaiPheDuyet, { color:
   'TU_CHOI': { color: 'red', label: 'Từ chối' },
 };
 
-export type LoaiVungNuoc = 'ANCHORAGE' | 'QUARANTINE' | 'PILOT_BOARDING' | 'TURNING_BASIN' | 'MOORING_BUOY' | 'TRANSSHIPMENT' | 'STORM_SHELTER';
-
-export const LOAI_VUNG_NUOC_OPTIONS = [
-  { value: 'ANCHORAGE', label: 'Khu neo đậu' },
-  { value: 'QUARANTINE', label: 'Khu kiểm dịch' },
-  { value: 'PILOT_BOARDING', label: 'Khu đón trả hoa tiêu' },
-  { value: 'TURNING_BASIN', label: 'Vùng quay trở tàu' },
-  { value: 'MOORING_BUOY', label: 'Bến phao' },
-  { value: 'TRANSSHIPMENT', label: 'Khu chuyển tải' },
-  { value: 'STORM_SHELTER', label: 'Khu tránh trú bão' },
-];
-
 export const translateLoaiVungNuoc = (val: string | null): string => {
-  if (!val) return '—';
-  const found = LOAI_VUNG_NUOC_OPTIONS.find(o => o.value === val);
-  return found ? found.label : val;
+  return val || '—';
 };
