@@ -328,7 +328,7 @@ export default function PortListPage() {
 
   // ── Permission ──────────────────────────────────────────────────
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const canSubmitForApproval = hasPerm?.('admin:manage') || hasPerm?.('Port:approve');
+  const canSubmitForApproval = hasPerm?.('admin:manage') || hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2);
 
   // ── State ───────────────────────────────────────────────────────
   const [search, setSearch] = useState('');
@@ -457,7 +457,8 @@ export default function PortListPage() {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [actionType, setActionType] = useState<'draft' | 'submit'>('submit');
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
+  const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('submit');
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
 
@@ -788,7 +789,8 @@ export default function PortListPage() {
     }
 
     // Validate required fields for submit
-    if (actionType === 'submit') {
+    const currentAction = actionTypeRef.current;
+    if (currentAction === 'submit' || currentAction === 'approve') {
       if (!values.orgUnitId) { toast.error('Đơn vị quản lý là bắt buộc khi gửi phê duyệt'); return; }
       if (!values.province) { toast.error('Tỉnh/Thành phố là bắt buộc khi gửi phê duyệt'); return; }
       if (values.portClass == null || values.portClass === '') { toast.error('Phân cấp cảng biển là bắt buộc khi gửi phê duyệt'); return; }
@@ -822,7 +824,7 @@ export default function PortListPage() {
         area: values.area as number | undefined,
         maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: actionType === 'draft' ? 'DRAFT' : 'CHO_PHE_DUYET',
+        approvalStatus: currentAction === 'draft' ? 'DRAFT' : 'APPROVED',
         orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
         portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         mapSymbolId: (values.mapSymbolId as string) || undefined,
@@ -867,11 +869,11 @@ export default function PortListPage() {
           .filter((inf) => inf.infraName?.trim())
           .map((inf) => ({ stt: inf.stt, infraName: inf.infraName.trim(), quantity: Number(inf.quantity) })),
         remarks: (values.remarks as string) || undefined,
-        action: actionType,
+        action: currentAction,
       };
       const createdPort = await import('./api').then((m) => m.createCangBien(payload));
       const createdPortId = createdPort?.id || (createdPort as any)?.portId;
-      toast.success(actionType === 'draft' ? 'Lưu tạm thành công' : 'Gửi phê duyệt thành công');
+      toast.success(currentAction === 'draft' ? 'Lưu tạm thành công' : 'Gửi phê duyệt thành công');
       createForm.resetFields();
 
       setInfraList([]);
@@ -937,7 +939,7 @@ export default function PortListPage() {
         area: values.area as number | undefined,
         maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: 'CHO_PHE_DUYET',
+        approvalStatus: 'APPROVED',
         orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
         portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         mapSymbolId: (values.gisLocation as any)?.mapSymbolId || (values.mapSymbolId as string) || undefined,
@@ -1291,8 +1293,8 @@ export default function PortListPage() {
           onClick: () => handleSubmitDraft(record),
         });
       }
-      // PENDING: Phê duyệt + Từ chối
-      if (status === 'PENDING' && (hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2))) {
+      // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
+      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && (hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2))) {
         actions.push({
           key: 'approve',
           label: 'Phê duyệt',
@@ -1605,8 +1607,8 @@ export default function PortListPage() {
           extra={<Button type="text" onClick={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); }} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
             <div style={drawerFooterStyle}>
-              <Button onClick={() => { setActionType('draft'); createForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
-              {canSubmitForApproval && <Button type="primary" onClick={() => { setActionType('submit'); createForm.submit(); }} loading={submitting} style={primaryButtonStyle}>Lưu và phê duyệt</Button>}
+              <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
+              {canSubmitForApproval && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting} style={primaryButtonStyle}>Lưu và phê duyệt</Button>}
             </div>
           }
           styles={{
@@ -1643,7 +1645,7 @@ export default function PortListPage() {
             layout="vertical"
             onFinish={handleCreateFinish}
             onFinishFailed={handleFormFailed}
-            initialValues={{ approvalStatus: 'CHO_PHE_DUYET', coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }}
+            initialValues={{ approvalStatus: 'APPROVED', coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }}
           >
             <Tabs activeKey={createTabKey} onChange={setCreateTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
               {
@@ -3169,7 +3171,7 @@ export default function PortListPage() {
                         ['Địa điểm (Tỉnh/Thành phố)', selectedRecord.province || '—'],
                         ['Địa điểm chi tiết', selectedRecord.detailedLocation || '—'],
                         ['Phân cấp cảng biển', selectedRecord.portClass != null ? (selectedRecord.portClass === 5 ? 'Cấp đặc biệt' : `Cấp ${selectedRecord.portClass}`) : '—'],
-                        ['Trạng thái phê duyệt', selectedRecord.approvalStatus ? <Tag color={trangThaiPheDuyetBadge(selectedRecord.approvalStatus).color}>{trangThaiPheDuyetBadge(selectedRecord.approvalStatus).label}</Tag> : '—'],
+                        ['Trạng thái phê duyệt', selectedRecord.approvalStatus ? (() => { const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus); let c = textTertiary; if (b.color === 'green') c = statusOperational; else if (b.color === 'red') c = statusCritical; else if (b.color === 'orange') c = statusAttention; else if (b.color === 'blue') c = actionPrimary; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>; })() : '—'],
                         ['Phạm vi vùng nước cảng biển', selectedRecord.waterAreaScope || '—'],
                         ['Tổng số bến cảng', selectedRecord.totalBerths ?? '—'],
                         ['Tổng số khu neo đậu, khu chuyển tải', selectedRecord.totalAnchoragesTransshipment ?? '—'],
