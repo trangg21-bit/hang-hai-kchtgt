@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1786437058374-45d1",
+  "created_at": 1786437058374,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Cập nhật feature-brief F-092 (M-004 - Quản lý Đài TTDH - Tạo mới): bổ sung 12 trường thiếu (đơn vị khai thác, vùng phủ sóng, dịch vụ cung cấp, tình trạng khai thác, geometryType, mapSymbolId, coordinateSystem, displayRule, latitude/longitude trong entity, file đính kèm), sửa logic mã đài thành tự sinh, đồng bộ entity Java + DTO + DB migration",
+  "reason": "Đây là công việc cập nhật tài liệu BA feature-brief trong SDLC pipeline M-004/F-092, yêu cầu đồng bộ cả entity/DTO/DB migration",
+  "signals": [
+    "feature-brief F-092 M-004",
+    "SDLC documentation update",
+    "entity/DTO/DB sync required",
+    "12 missing fields identified"
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "triage_id": "TRI-1786437127016-e1d5",
+  "created_at": 1786437127016,
+  "request_summary": "Bổ sung 12 trường thiếu vào entity/DTO/DB CoastalStationVTS (đơn vị khai thác, vùng phủ sóng, dịch vụ, tình trạng khai thác, geometryType, mapSymbolId, coordinateSystem, displayRule, latitude/longitude, file đính kèm), sửa mã đài thành tự sinh, đồng bộ feature-brief F-092 và lean-spec M-004",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/ba/00-lean-spec.md",
+      "src/main/java/com/hanghai/kchtg/station/dto/coastal/CoastalStationVTSRequest.java",
+      "src/main/java/com/hanghai/kchtg/station/dto/coastal/CoastalStationVTSResponse.java",
+      "src/main/java/com/hanghai/kchtg/station/entity/CoastalStationVTS.java",
+      "src/main/java/com/hanghai/kchtg/station/entity/CoastalStationVTSAttachment.java",
+      "src/main/java/com/hanghai/kchtg/station/repository/CoastalStationVTSAttachmentRepository.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationVTSService.java",
+      "src/main/resources/db/migration/"
+    ],
+    "impact_files": [
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/ba/00-lean-spec.md",
+      "src/main/java/com/hanghai/kchtg/station/dto/coastal/CoastalStationVTSRequest.java",
+      "src/main/java/com/hanghai/kchtg/station/dto/coastal/CoastalStationVTSResponse.java",
+      "src/main/java/com/hanghai/kchtg/station/entity/CoastalStationVTS.java",
+      "src/main/java/com/hanghai/kchtg/station/entity/CoastalStationVTSAttachment.java",
+      "src/main/java/com/hanghai/kchtg/station/repository/CoastalStationVTSAttachmentRepository.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationVTSService.java",
+      "src/main/resources/db/migration/"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/ — floors at C3 regardless of size (9 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Danh sách Đài TTDH → Modal Tạo mới (POST /api/v1/stations/coastal)",
+  "blast_radius": 9,
+  "done_oracle": "Feature-brief F-092 phản ánh đủ 12 trường mới; entity Java + DTO đồng bộ; Flyway migration sẵn sàng; ai-kit-verify M-004 pass; mvn clean compile thành công",
+  "change_type": "scope_expansion",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/entity/CoastalStationVTS.java",
+      "line": 31,
+      "quote": "    @Column(length = 50)\n    protected String code;",
+      "source_hash": "0662f7f96fa429092a7c88b282799f14168f5ae6d9ebe0d74c537d38f2c5de17",
+      "quote_hash": "5c04c61afd95a866027c26882594045da264b06911eeb54632d3af3cc3b9c25a",
+      "note": "Mã đài hiện do user nhập, cần sửa thành tự sinh"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/entity/CoastalStationVTS.java",
+      "line": 41,
+      "quote": "    @Column(name = \"unit_id\")\n    protected UUID unitId;",
+      "source_hash": "0662f7f96fa429092a7c88b282799f14168f5ae6d9ebe0d74c537d38f2c5de17",
+      "quote_hash": "7078ce1f9bf848334627e1c243a29ef61d5200ff211da17a9a18dbefe5e1a650",
+      "note": "Đơn vị quản lý đã có, cần thêm operatingUnitId bên cạnh"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/entity/CoastalStationVTS.java",
+      "line": 46,
+      "quote": "    @Column(name = \"spatial_id\")\n    protected UUID spatialId;",
+      "source_hash": "0662f7f96fa429092a7c88b282799f14168f5ae6d9ebe0d74c537d38f2c5de17",
+      "quote_hash": "c9d1873e7d4ba4ee10c445fb56d0f4d3ed9b60ff039335bb76a7b9073e2ebabd",
+      "note": "spatialId đã có nhưng thiếu coordinateSystem, displayRule, mapSymbolId, geometryType"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/dto/coastal/CoastalStationVTSRequest.java",
+      "line": 16,
+      "quote": "    private Double latitude;\n    private Double longitude;",
+      "source_hash": "2119ed0fb1091b07961aada25b40be58bcd3a55bf0f0db77ec94740fef3b62b7",
+      "quote_hash": "50b129f7566a9b8f0755bd18a58d109ff04551dc26fde1358fecf1c39e000e26",
+      "note": "DTO đã có latitude/longitude nhưng entity không có - bug"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/service/CoastalStationVTSService.java",
+      "line": 35,
+      "quote": "        if (repository.findByCode(request.getStationCode()).isPresent()) {\n            throw new IllegalArgumentException(\"Mã đã tồn tại: \" + request.getStationCode());",
+      "source_hash": "bdfacaec1c0a897a7ff8b5964345c943b6c20cbeb701eb784eb444bd9cd1e516",
+      "quote_hash": "e6f437bf43ca339f0ad7dd5fae9e4c7cc0a7ad30ca1c50cefbb43a101bf482ef",
+      "note": "Service kiểm tra code trùng - cần sửa thành tự sinh code"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f1be301530bab0b7dba1e5de35f944b171d89067",
+    "dirty": true,
+    "captured_at": 1786437127221
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}
