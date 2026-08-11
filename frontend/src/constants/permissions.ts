@@ -54,8 +54,7 @@ export const PERMISSIONS = {
     CREATE: 'port:create',
     UPDATE: 'port:update',
     DELETE: 'port:delete',
-    APPROVE_C1: 'port:approvec1',
-    APPROVE_C2: 'port:approvec2',
+    APPROVED: 'port:approved',
     HISTORY: 'port:history',
   },
 
