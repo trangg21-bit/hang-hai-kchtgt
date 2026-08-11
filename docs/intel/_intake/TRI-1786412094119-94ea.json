@@ -1,0 +1,51 @@
+{
+  "triage_id": "TRI-1786412094119-94ea",
+  "created_at": 1786412094119,
+  "request_summary": "Tăng max HTTP header size của Tomcat từ 2MB lên 32KB (đồng bộ cấu hình YAML, properties và TomcatConfig Java), thêm logging để xác nhận giá trị được set. Sửa lỗi \"Request header is too large\" do JWT token chứa quá nhiều permissions.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/config/TomcatConfig.java",
+      "src/main/resources/application-local.properties",
+      "src/main/resources/application-local.yml",
+      "src/main/resources/application.yml"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/config/TomcatConfig.java",
+      "src/main/resources/application-local.properties",
+      "src/main/resources/application-local.yml",
+      "src/main/resources/application.yml"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Mọi API request qua Vite proxy → Spring Boot backend đều trả về HTTP 400 \"Request header is too large\"",
+  "blast_radius": 4,
+  "done_oracle": "Backend khởi động thành công với log xác nhận maxHttpHeaderSize=32768, request GET /api/v1/ports và /api/users/me thành công (HTTP 200)",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/config/TomcatConfig.java",
+    "src/main/resources/application-local.properties",
+    "src/main/resources/application-local.yml",
+    "src/main/resources/application.yml"
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1786412042832",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3af495d4213d53bf5dceb5431966873dbd217793",
+    "dirty": true,
+    "captured_at": 1786412094300
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

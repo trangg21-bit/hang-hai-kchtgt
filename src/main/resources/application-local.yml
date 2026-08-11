@@ -1,8 +1,9 @@
 server:
   port: 8080
-  max-http-header-size: 2MB
+  max-http-header-size: 32KB
+  max-http-request-header-size: 32KB
   tomcat:
-    max-http-header-size: 2MB
+    max-http-header-size: 32KB
 
 spring:
   datasource:
