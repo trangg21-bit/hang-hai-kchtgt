@@ -40,15 +40,9 @@ body {
 }
 
 .list-view-table .ant-table-body {
-  height: auto !important;
-  max-height: calc(100vh - 350px) !important;
+  height: var(--list-table-scroll-y) !important;
+  max-height: var(--list-table-scroll-y) !important;
   overflow-y: auto !important;
-}
-
-/* Leave enough room for the horizontal scrollbar and pagination on VTS. */
-.vts-system-table .ant-table-body {
-  height: calc(100vh - 390px) !important;
-  max-height: calc(100vh - 390px) !important;
 }
 
 /* ---- GIS Map: Sidebar tabs fill height ---- */

@@ -193,6 +193,17 @@ Mọi màn hình danh sách (quản lý người dùng, vai trò, đơn vị, v.
 | `DataTable`    | Bảng dữ liệu có sort + dropdown hành động                |
 | `Pagination`   | Điều hướng trang                                         |
 
+Chi tiết kích thước và contract giao diện dùng chung được quy định tại
+[`docs/conventions/list-screen-ui-standard.md`](docs/conventions/list-screen-ui-standard.md).
+Developer/AI phải đọc tài liệu này trước khi tạo hoặc chỉnh sửa màn hình danh sách.
+
+### Bộ lọc đơn vị phân cấp (MANDATORY)
+
+- Mọi filter đơn vị phải dùng dropdown dạng cây (`TreeSelect`/`Cascader`) khi có `parentId`; không dùng `Select` phẳng.
+- Dựng cây từ `id`, `name`, `code`, `parentId`; không dùng `path` ở frontend.
+- Giữ giá trị chọn là `orgUnitId` khi gọi API; backend chịu trách nhiệm giới hạn phạm vi theo quyền.
+- Tuân thủ reference và chi tiết tại [`docs/conventions/list-screen-ui-standard.md`](docs/conventions/list-screen-ui-standard.md).
+
 ### Form/Modal Pattern
 
 Mọi form trong modal popup **PHẢI** dùng:
@@ -229,6 +240,7 @@ PMO Lead
         "Dùng ScreenHeader + FilterBar + StatusTabs + DataTable + Pagination
          từ frontend/src/components/list-view/.
          KHÔNG tự tạo search/filter UI riêng, KHÔNG tự tạo table riêng.
+         Filter đơn vị có parentId phải dùng TreeSelect/Cascader dạng cây, giữ value là orgUnitId.
          Form.Item marginBottom = spaceFormField (12px).
          Input/Select borderRadius = radiusPill (999px), height = 40.
          Xem UsersPage.tsx làm mẫu chuẩn.

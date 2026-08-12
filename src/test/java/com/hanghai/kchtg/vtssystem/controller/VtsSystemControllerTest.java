@@ -21,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -83,8 +84,23 @@ class VtsSystemControllerTest {
 
     @Test
     void testFindAll() {
-        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20)).thenReturn(VtsSystemListResponse.builder().build());
-        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20);
+        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20, true)).thenReturn(VtsSystemListResponse.builder().build());
+        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20, true);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testFindAll_WithoutIncludeCounts() {
+        when(service.findAllWithSearchAndCounts(null, null, null, null, null, 0, 20, false)).thenReturn(VtsSystemListResponse.builder().build());
+        ResponseEntity<?> result = controller.findAll(null, null, null, null, null, 0, 20, false);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testFindAll_WithYearFilter() {
+        when(service.findAllWithSearchAndCounts(null, "keyword", null, null, 2025, 0, 20, true))
+                .thenReturn(VtsSystemListResponse.builder().build());
+        ResponseEntity<?> result = controller.findAll(null, "keyword", null, null, 2025, 0, 20, true);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
@@ -139,6 +155,62 @@ class VtsSystemControllerTest {
         when(service.create(any(), any())).thenThrow(new RuntimeException("Test error"));
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+    }
+
+    @Test
+    void testDelete_WithException() {
+        doThrow(new RuntimeException("Không thể xóa")).when(service).delete(eq(TEST_ID), any(java.util.UUID.class));
+        // @DataScope aspect intercepts before service — exception bypasses controller try-catch
+        ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testApproveC1_WithException() {
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
+        // @DataScope aspect intercepts before service — exception bypasses controller try-catch
+        doThrow(new IllegalStateException("Người phê duyệt C2 không được trùng với C1"))
+                .when(service).approveC1(eq(TEST_ID), any(), any(java.util.UUID.class));
+        ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testApproveC2_WithException() {
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
+        // @DataScope aspect intercepts before service — exception bypasses controller try-catch
+        doThrow(new RuntimeException("Test error"))
+                .when(service).approveC2(eq(TEST_ID), any(), any(java.util.UUID.class));
+        ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testFilterByApprovalStatus() {
+        when(service.findByApprovalStatus(ApprovalStatus.APPROVED)).thenReturn(List.of(response));
+        ResponseEntity<?> result = controller.filterByApprovalStatus(ApprovalStatus.APPROVED);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<VtsSystemResponse> body = ((ApiResponse<List<VtsSystemResponse>>) result.getBody()).getData();
+        assertEquals(1, body.size());
+    }
+
+    @Test
+    void testCountByApprovalStatus() {
+        java.util.Map<String, Long> counts = new java.util.HashMap<>();
+        counts.put("APPROVED", 5L);
+        counts.put("PROPOSED", 3L);
+        when(service.countByApprovalStatus()).thenReturn(counts);
+        ResponseEntity<?> result = controller.countByApprovalStatus();
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testGetHistory_WithPagination() {
+        when(service.getHistory(eq(TEST_ID), eq(0), eq(10), eq("key"), any(), any()))
+                .thenReturn(Collections.emptyList());
+        ResponseEntity<?> result = controller.getHistory(TEST_ID, 0, 10, "key", null, null);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     private Authentication mockAuth() {

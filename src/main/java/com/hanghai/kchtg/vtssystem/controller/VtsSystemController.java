@@ -60,8 +60,10 @@ public class VtsSystemController {
             @RequestParam(required = false) ApprovalStatus approvalStatus,
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        VtsSystemListResponse responses = service.findAllWithSearchAndCounts(orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "true") boolean includeCounts) {
+        VtsSystemListResponse responses = service.findAllWithSearchAndCounts(
+                orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size, includeCounts);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
     }
 

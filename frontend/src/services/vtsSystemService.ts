@@ -22,7 +22,7 @@ export const vtsSystemCRUD = {
     return Array.isArray(data) ? data : [];
   },
 
-  async list(params?: ListParams): Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> {
+  async list(params?: ListParams & { includeCounts?: boolean }): Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> {
     const res = await api.get(VTS_BASE_PATH, {
       params: {
         orgUnitId: params?.orgUnitId,
@@ -32,6 +32,7 @@ export const vtsSystemCRUD = {
         conditionStatus: params?.conditionStatus,
         approvalStatus: params?.approvalStatus,
         year: params?.year,
+        includeCounts: params?.includeCounts ?? true,
       },
     });
     const data = res.data?.data || {};

@@ -1,5 +1,7 @@
 # Form & List UI Convention
 
+> Contract giao diện và kích thước dùng chung: [`list-screen-ui-standard.md`](./list-screen-ui-standard.md).
+
 ## List Screen Pattern
 
 ### Component Stack (top to bottom)

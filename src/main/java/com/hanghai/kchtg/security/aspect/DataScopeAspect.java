@@ -1,7 +1,8 @@
 package com.hanghai.kchtg.security.aspect;
 
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.annotation.DataScope;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
@@ -19,9 +20,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Spring AOP Aspect phân quyền phạm vi dữ liệu theo Đơn vị (OrgUnit Data Scope).
@@ -38,7 +43,7 @@ import java.util.UUID;
 public class DataScopeAspect {
 
     private final UserRepository userRepository;
-    private final OrgUnitRepository orgUnitRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
     @PersistenceContext
     private final EntityManager entityManager;
 
@@ -102,26 +107,23 @@ public class DataScopeAspect {
     }
 
     private List<UUID> collectSubtreeIds(OrgUnit userOrgUnit) {
-        String path = userOrgUnit.getPath();
-        if (path != null && !path.isBlank()) {
-            return orgUnitRepository.findByPathLikeAndDeletedAtIsNull(path).stream()
-                    .map(OrgUnit::getId)
-                    .filter(java.util.Objects::nonNull)
-                    .toList();
-        }
+        Map<UUID, List<UUID>> childIdsByParent = orgUnitCacheService.getList().stream()
+                .filter(unit -> unit.getId() != null && unit.getParentId() != null)
+                .collect(Collectors.groupingBy(
+                        OrgUnitResponse::getParentId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(OrgUnitResponse::getId, Collectors.toList())));
 
-        // Fallback for legacy rows that have not been populated with materialized path.
-        List<UUID> result = new ArrayList<>();
+        LinkedHashSet<UUID> result = new LinkedHashSet<>();
         List<UUID> queue = new ArrayList<>();
         queue.add(userOrgUnit.getId());
         for (int index = 0; index < queue.size(); index++) {
             UUID currentId = queue.get(index);
-            result.add(currentId);
-            orgUnitRepository.findByParentId(currentId).stream()
-                    .map(OrgUnit::getId)
-                    .filter(java.util.Objects::nonNull)
-                    .forEach(queue::add);
+            if (!result.add(currentId)) {
+                continue;
+            }
+            queue.addAll(childIdsByParent.getOrDefault(currentId, List.of()));
         }
-        return result;
+        return List.copyOf(result);
     }
 }

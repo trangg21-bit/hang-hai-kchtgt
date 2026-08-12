@@ -3,7 +3,6 @@ package com.hanghai.kchtg.common.repository;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,7 +31,7 @@ public interface ApprovalHistoryRepository extends JpaRepository<ApprovalHistory
               AND h.approvedDate <= COALESCE(:toDate, h.approvedDate)
             ORDER BY h.approvedDate DESC
             """)
-    Page<ApprovalHistory> searchHistory(
+    List<ApprovalHistory> searchHistory(
             @Param("refType") InfrastructureType refType,
             @Param("refId") UUID refId,
             @Param("keyword") String keyword,

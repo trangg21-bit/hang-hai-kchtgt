@@ -25,6 +25,8 @@ export const layout = {
   sidebarCollapsedWidth: 80,
   headerHeight: 64,
   footerHeight: 56,
+  listTableMinWidth: 1400,
+  listTableScrollY: 'calc(100vh - 380px)',
 };
 
 // ============================================================
@@ -302,6 +304,7 @@ export const globalCssVars = `
 
   --shadow-card: ${shadow.card};
   --shadow-card-hover: ${shadow.cardHover};
+  --list-table-scroll-y: ${layout.listTableScrollY};
 
   --font-family: ${fontFamily};
 }

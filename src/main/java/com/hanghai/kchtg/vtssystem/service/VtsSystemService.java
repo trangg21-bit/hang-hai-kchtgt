@@ -23,6 +23,7 @@ import com.hanghai.kchtg.vtssystem.entity.VtsZone;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -67,7 +68,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class VtsSystemService {
 
-    private record DataScopeContext(boolean enabled, String path, UUID orgUnitId) {
+    private record DataScopeContext(boolean enabled, List<UUID> orgUnitIds) {
     }
 
     private final VtsSystemRepository repository;
@@ -259,13 +260,8 @@ public class VtsSystemService {
         DataScopeContext scope = resolveDataScope();
         List<OrgUnitResponse> all = orgUnitCacheService.getList();
         if (!scope.enabled()) return all;
-        if (scope.path() != null && !scope.path().isBlank()) {
-            return all.stream()
-                    .filter(unit -> unit.getPath() != null && unit.getPath().startsWith(scope.path()))
-                    .toList();
-        }
         return all.stream()
-                .filter(unit -> scope.orgUnitId() != null && scope.orgUnitId().equals(unit.getId()))
+                .filter(unit -> scope.orgUnitIds().contains(unit.getId()))
                 .toList();
     }
 
@@ -297,14 +293,14 @@ public class VtsSystemService {
         String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         if (year == null) {
-            return repository.search(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId, keywordLike,
+            return repository.search(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
                     conditionStatus, approvalStatus, pageable)
                     .map(this::toLightResponse);
         }
         LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
         LocalDateTime toDate = fromDate.plusYears(1);
         return repository
-                .searchByCreatedDateRange(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId, keywordLike,
+                .searchByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
                         conditionStatus, approvalStatus, fromDate, toDate, pageable)
                 .map(this::toLightResponse);
     }
@@ -316,6 +312,12 @@ public class VtsSystemService {
 
     public VtsSystemListResponse findAllWithSearchAndCounts(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus, ApprovalStatus approvalStatus, Integer year, int page, int size) {
+        return findAllWithSearchAndCounts(orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size, true);
+    }
+
+    public VtsSystemListResponse findAllWithSearchAndCounts(UUID orgUnitId, String keyword,
+            ConditionStatus conditionStatus, ApprovalStatus approvalStatus, Integer year, int page, int size,
+            boolean includeCounts) {
         DataScopeContext scope = resolveDataScope();
         String keywordLike = toKeywordLike(keyword);
         Page<VtsSystemListItemResponse> pageResult = findAllListItems(orgUnitId, keyword, conditionStatus, approvalStatus,
@@ -323,7 +325,9 @@ public class VtsSystemService {
         return VtsSystemListResponse.builder()
                 .items(pageResult.getContent())
                 .total(pageResult.getTotalElements())
-                .statusCounts(countByApprovalStatus(scope, orgUnitId, keywordLike, conditionStatus))
+                .statusCounts(includeCounts
+                        ? countByApprovalStatus(scope, orgUnitId, keywordLike, conditionStatus)
+                        : Collections.emptyMap())
                 .build();
     }
 
@@ -337,13 +341,13 @@ public class VtsSystemService {
         String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         if (year == null) {
-            return repository.searchList(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId, keywordLike,
+            return repository.searchList(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
                     conditionStatus, approvalStatus, pageable)
                     .map(this::toListItemResponse);
         }
         LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
         LocalDateTime toDate = fromDate.plusYears(1);
-        return repository.searchListByCreatedDateRange(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId,
+        return repository.searchListByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), orgUnitId,
                 keywordLike, conditionStatus, approvalStatus, fromDate, toDate, pageable)
                 .map(this::toListItemResponse);
     }
@@ -633,7 +637,7 @@ public class VtsSystemService {
                         InfrastructureType.VTS_SYSTEM, id, pageable);
             } else {
                 list = historyRepository.searchHistory(InfrastructureType.VTS_SYSTEM, id, normalizedKeyword,
-                        fromDate, toDate, pageable).getContent();
+                        fromDate, toDate, pageable);
             }
         } else {
             list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_SYSTEM, id);
@@ -732,12 +736,12 @@ public class VtsSystemService {
         Page<VtsSystem> pageResult;
         DataScopeContext scope = resolveDataScope();
         if (year == null) {
-            pageResult = repository.search(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId, keywordLike,
+            pageResult = repository.search(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
                     conditionStatus, approvalStatus, pageable);
         } else {
             LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
             LocalDateTime toDate = fromDate.plusYears(1);
-            pageResult = repository.searchByCreatedDateRange(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId,
+            pageResult = repository.searchByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), orgUnitId,
                     keywordLike, conditionStatus, approvalStatus, fromDate, toDate, pageable);
         }
         return pageResult.getContent().stream()
@@ -1111,7 +1115,7 @@ public class VtsSystemService {
     private java.util.Map<String, Long> countByApprovalStatus(DataScopeContext scope, UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus) {
         java.util.Map<String, Long> counts = new java.util.LinkedHashMap<>();
-        for (Object[] row : repository.countByApprovalStatus(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId,
+        for (Object[] row : repository.countByApprovalStatus(scope.enabled(), scope.orgUnitIds(), orgUnitId,
                 keyword, conditionStatus)) {
             counts.put(((ApprovalStatus) row[0]).name(), (Long) row[1]);
         }
@@ -1128,27 +1132,52 @@ public class VtsSystemService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
-            return new DataScopeContext(false, null, null);
+            return new DataScopeContext(false, List.of());
         }
 
         User currentUser = authentication.getPrincipal() instanceof User principalUser
                 ? principalUser
                 : userRepository.findByUsernameWithRelations(authentication.getName()).orElse(null);
         if (currentUser == null) {
-            return new DataScopeContext(true, null, null);
+            return new DataScopeContext(true, List.of());
         }
 
         boolean nationwide = currentUser.getRoles().stream()
                 .map(role -> role.getCode())
                 .anyMatch(Set.of("ROLE_SYSTEM_ADMIN", "ROLE_ADMIN")::contains);
         if (nationwide) {
-            return new DataScopeContext(false, null, null);
+            return new DataScopeContext(false, List.of());
         }
 
         if (currentUser.getOrgUnit() == null || currentUser.getOrgUnit().getId() == null) {
-            return new DataScopeContext(true, null, null);
+            return new DataScopeContext(true, List.of());
         }
-        return new DataScopeContext(true, currentUser.getOrgUnit().getPath(), currentUser.getOrgUnit().getId());
+        return new DataScopeContext(true, resolveSubtreeIdsByParentId(currentUser.getOrgUnit().getId()));
+    }
+
+    /**
+     * Resolve the user's visible organisational subtree from parent_id. The
+     * materialized path is display metadata only and must not decide access.
+     */
+    private List<UUID> resolveSubtreeIdsByParentId(UUID rootId) {
+        Map<UUID, List<UUID>> childIdsByParent = orgUnitCacheService.getList().stream()
+                .filter(unit -> unit.getId() != null && unit.getParentId() != null)
+                .collect(Collectors.groupingBy(
+                        OrgUnitResponse::getParentId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(OrgUnitResponse::getId, Collectors.toList())));
+
+        LinkedHashSet<UUID> result = new LinkedHashSet<>();
+        List<UUID> queue = new ArrayList<>();
+        queue.add(rootId);
+        for (int index = 0; index < queue.size(); index++) {
+            UUID currentId = queue.get(index);
+            if (!result.add(currentId)) {
+                continue;
+            }
+            queue.addAll(childIdsByParent.getOrDefault(currentId, List.of()));
+        }
+        return List.copyOf(result);
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {

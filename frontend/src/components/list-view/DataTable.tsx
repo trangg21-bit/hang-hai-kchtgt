@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -7,7 +7,7 @@ import {
   statusOperational, statusCritical, statusDraft, statusAttention,
   radiusPill, borderDefault,
 } from '../../tokens';
-import { colors } from '../../theme';
+import { colors, layout } from '../../theme';
 
 const tableHeaderBg = colors.bodyBg;
 
@@ -49,15 +49,35 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, ...rest
+  columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, scroll, ...rest
 }) => {
+  const tableShellRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const resetHorizontalScroll = () => {
+      tableShellRef.current?.querySelectorAll<HTMLElement>(
+        '.ant-table-header, .ant-table-body, .ant-table-content, .ant-table-sticky-scroll',
+      ).forEach((element) => {
+        element.scrollLeft = 0;
+        element.scrollTo?.({ left: 0, behavior: 'auto' });
+      });
+    };
+
+    resetHorizontalScroll();
+    const frameId = window.requestAnimationFrame(resetHorizontalScroll);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [dataSource]);
+
   if (children) {
     return (
-      <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
-        className="list-view-table"
-        pagination={false}
-        locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
-        {...rest}>{children}</Table>
+      <div ref={tableShellRef} style={{ width: '100%', minWidth: 0 }}>
+        <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
+          className="list-view-table"
+          pagination={false}
+          scroll={scroll}
+          locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+          {...rest}>{children}</Table>
+      </div>
     );
   }
 
@@ -163,12 +183,15 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   return (
-    <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
-      className="list-view-table"
-      pagination={false}
-      locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
-      onChange={handleTableChange}
-      {...rest} />
+    <div ref={tableShellRef} style={{ width: '100%', minWidth: 0 }}>
+      <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
+        className="list-view-table"
+        pagination={false}
+        locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+        onChange={handleTableChange}
+        scroll={{ x: layout.listTableMinWidth, y: layout.listTableScrollY, ...scroll }}
+        {...rest} />
+    </div>
   );
 };
 

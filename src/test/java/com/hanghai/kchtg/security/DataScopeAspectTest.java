@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.security;
 
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.annotation.DataScope;
 import com.hanghai.kchtg.security.aspect.DataScopeAspect;
 import com.hanghai.kchtg.user.entity.Role;
@@ -43,7 +43,7 @@ class DataScopeAspectTest {
     private UserRepository userRepository;
 
     @Mock
-    private OrgUnitRepository orgUnitRepository;
+    private OrgUnitCacheService orgUnitCacheService;
 
     @Mock
     private EntityManager entityManager;
@@ -96,12 +96,13 @@ class DataScopeAspectTest {
         adminUser.setRoles(Set.of(adminRole));
 
         // Manually construct aspect to ensure correct mock injection
-        aspect = new DataScopeAspect(userRepository, orgUnitRepository, entityManager);
+        aspect = new DataScopeAspect(userRepository, orgUnitCacheService, entityManager);
 
         lenient().when(dataScope.orgUnitParam()).thenReturn("orgUnitId");
         lenient().when(entityManager.unwrap(Session.class)).thenReturn(session);
         lenient().when(session.enableFilter("orgUnitFilter")).thenReturn(filter);
         lenient().when(filter.setParameterList(eq("orgUnitIds"), anyCollection())).thenReturn(filter);
+        lenient().when(orgUnitCacheService.getList()).thenReturn(List.of());
     }
 
     @AfterEach

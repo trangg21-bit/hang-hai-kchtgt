@@ -23,11 +23,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     @Query("""
         SELECT t FROM VtsSystem t
         WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN (
-                SELECT child.id FROM OrgUnit child
-                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
-                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
-              ))
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
@@ -39,8 +35,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     """)
     Page<VtsSystem> search(
         @Param("scopeEnabled") boolean scopeEnabled,
-        @Param("scopePath") String scopePath,
-        @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+        @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
         @Param("conditionStatus") ConditionStatus conditionStatus,
@@ -51,11 +46,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     @Query("""
         SELECT t FROM VtsSystem t
         WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN (
-                SELECT child.id FROM OrgUnit child
-                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
-                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
-              ))
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
@@ -66,8 +57,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     """)
     Page<VtsSystem> searchByCreatedDateRange(
             @Param("scopeEnabled") boolean scopeEnabled,
-            @Param("scopePath") String scopePath,
-            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+            @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
             @Param("conditionStatus") ConditionStatus conditionStatus,
@@ -91,11 +81,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.updatedAt AS updatedDate
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN (
-                SELECT child.id FROM OrgUnit child
-                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
-                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
-              ))
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
@@ -109,11 +95,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         SELECT COUNT(t)
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN (
-                SELECT child.id FROM OrgUnit child
-                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
-                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
-              ))
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
@@ -124,8 +106,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         """)
     Page<VtsSystemListProjection> searchList(
             @Param("scopeEnabled") boolean scopeEnabled,
-            @Param("scopePath") String scopePath,
-            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+            @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
             @Param("conditionStatus") ConditionStatus conditionStatus,
@@ -147,11 +128,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.updatedAt AS updatedDate
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN (
-                SELECT child.id FROM OrgUnit child
-                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
-                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
-              ))
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
@@ -167,11 +144,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         SELECT COUNT(t)
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN (
-                SELECT child.id FROM OrgUnit child
-                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
-                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
-              ))
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
@@ -184,8 +157,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         """)
     Page<VtsSystemListProjection> searchListByCreatedDateRange(
             @Param("scopeEnabled") boolean scopeEnabled,
-            @Param("scopePath") String scopePath,
-            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+            @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
             @Param("conditionStatus") ConditionStatus conditionStatus,
@@ -206,11 +178,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     @Query("""
         SELECT t.approvalStatus, COUNT(t) FROM VtsSystem t
         WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN (
-                SELECT child.id FROM OrgUnit child
-                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
-                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
-              ))
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR (
                 CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
@@ -222,8 +190,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     """)
     List<Object[]> countByApprovalStatus(
             @Param("scopeEnabled") boolean scopeEnabled,
-            @Param("scopePath") String scopePath,
-            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+            @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
             @Param("conditionStatus") ConditionStatus conditionStatus
