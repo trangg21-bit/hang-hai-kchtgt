@@ -184,7 +184,9 @@ class VtsSystemServiceTest {
 
         VtsSystemResponse response = service.update(TEST_ID, updateReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
-        assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
+        assertFalse(entity.getApprovedLevel1());
+        assertFalse(entity.getApprovedLevel2());
         verify(repository, times(1)).save(any());
     }
 
@@ -238,7 +240,7 @@ class VtsSystemServiceTest {
     }
 
     @Test
-    void testUpdate_RejectedEntity_ResubmitsAsUnderReviewAndResetsApproval() {
+    void testUpdate_RejectedEntity_ResubmitsAsProposedAndResetsApproval() {
         entity.setApprovalStatus(ApprovalStatus.REJECTED);
         entity.setRejectionReason("Cần bổ sung thông tin");
         entity.setApprovedLevel1(true);
@@ -254,7 +256,7 @@ class VtsSystemServiceTest {
         service.update(TEST_ID, updateReq,
                 UUID.fromString("00000000-0000-0000-0000-000000000003"));
 
-        assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
         assertNull(entity.getRejectionReason());
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());

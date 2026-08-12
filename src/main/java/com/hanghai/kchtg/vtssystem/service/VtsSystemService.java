@@ -429,19 +429,19 @@ public class VtsSystemService {
             });
         }
 
-        boolean approvalRestart = previousApprovalStatus != ApprovalStatus.UNDER_REVIEW
+        boolean approvalRestart = previousApprovalStatus != ApprovalStatus.PROPOSED
                 || Boolean.TRUE.equals(entity.getApprovedLevel1())
                 || Boolean.TRUE.equals(entity.getApprovedLevel2());
-        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
-        if (approvalRestart) {
-            entity.setRejectionReason(null);
-            entity.setApprovedLevel1(false);
-            entity.setApproverLevel1(null);
-            entity.setApprovedDateLevel1(null);
-            entity.setApprovedLevel2(false);
-            entity.setApproverLevel2(null);
-            entity.setApprovedDateLevel2(null);
-        }
+        // Any data change invalidates previous approval and must return to C1.
+        // UNDER_REVIEW is reserved for the state after C1 has actually approved.
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+        entity.setRejectionReason(null);
+        entity.setApprovedLevel1(false);
+        entity.setApproverLevel1(null);
+        entity.setApprovedDateLevel1(null);
+        entity.setApprovedLevel2(false);
+        entity.setApproverLevel2(null);
+        entity.setApprovedDateLevel2(null);
 
         entity.setUpdatedBy(effectiveUserId);
 
@@ -461,7 +461,7 @@ public class VtsSystemService {
                                 + (previousValues.isEmpty() ? "" : "; " + formatPreviousValues(previousValues))
                         : formatPreviousValues(previousValues))
                 .newValue(approvalRestart
-                        ? getFieldDisplayName(VtsSystem.Fields.approvalStatus) + "=" + formatDisplayValue(VtsSystem.Fields.approvalStatus, ApprovalStatus.UNDER_REVIEW.name())
+                        ? getFieldDisplayName(VtsSystem.Fields.approvalStatus) + "=" + formatDisplayValue(VtsSystem.Fields.approvalStatus, ApprovalStatus.PROPOSED.name())
                                 + (previousValues.isEmpty() ? "" : "; " + formatNewValues(saved, previousValues))
                         : formatNewValues(saved, previousValues))
                 .build());

@@ -25,14 +25,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN (
                 SELECT child.id FROM OrgUnit child
-                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
-                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
+                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR
-            LOWER(t.systemName) LIKE :keyword OR
-            LOWER(t.code) LIKE :keyword OR
-            LOWER(t.address) LIKE :keyword)
+          AND (CAST(:keyword AS string) IS NULL OR
+            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
+            LOWER(t.code) LIKE CAST(:keyword AS string) OR
+            LOWER(t.address) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
         ORDER BY t.createdAt DESC
@@ -53,11 +53,11 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN (
                 SELECT child.id FROM OrgUnit child
-                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
-                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
+                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR LOWER(t.systemName) LIKE :keyword OR LOWER(t.code) LIKE :keyword OR LOWER(t.address) LIKE :keyword)
+          AND (CAST(:keyword AS string) IS NULL OR LOWER(t.systemName) LIKE CAST(:keyword AS string) OR LOWER(t.code) LIKE CAST(:keyword AS string) OR LOWER(t.address) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
           AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
@@ -93,14 +93,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN (
                 SELECT child.id FROM OrgUnit child
-                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
-                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
+                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR
-            LOWER(t.systemName) LIKE :keyword OR
-            LOWER(t.code) LIKE :keyword OR
-            LOWER(t.address) LIKE :keyword)
+          AND (CAST(:keyword AS string) IS NULL OR
+            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
+            LOWER(t.code) LIKE CAST(:keyword AS string) OR
+            LOWER(t.address) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
         ORDER BY t.createdAt DESC
@@ -111,14 +111,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN (
                 SELECT child.id FROM OrgUnit child
-                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
-                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
+                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR
-            LOWER(t.systemName) LIKE :keyword OR
-            LOWER(t.code) LIKE :keyword OR
-            LOWER(t.address) LIKE :keyword)
+          AND (CAST(:keyword AS string) IS NULL OR
+            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
+            LOWER(t.code) LIKE CAST(:keyword AS string) OR
+            LOWER(t.address) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
         """)
@@ -149,14 +149,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN (
                 SELECT child.id FROM OrgUnit child
-                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
-                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
+                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR
-            LOWER(t.systemName) LIKE :keyword OR
-            LOWER(t.code) LIKE :keyword OR
-            LOWER(t.address) LIKE :keyword)
+          AND (CAST(:keyword AS string) IS NULL OR
+            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
+            LOWER(t.code) LIKE CAST(:keyword AS string) OR
+            LOWER(t.address) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
           AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
@@ -169,14 +169,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN (
                 SELECT child.id FROM OrgUnit child
-                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
-                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
+                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR
-            LOWER(t.systemName) LIKE :keyword OR
-            LOWER(t.code) LIKE :keyword OR
-            LOWER(t.address) LIKE :keyword)
+          AND (CAST(:keyword AS string) IS NULL OR
+            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
+            LOWER(t.code) LIKE CAST(:keyword AS string) OR
+            LOWER(t.address) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
           AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
@@ -198,7 +198,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     @Query("SELECT t FROM VtsSystem t WHERE " +
            "t.deletedAt IS NULL AND " +
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
-           "(:search IS NULL OR LOWER(t.systemName) LIKE :search OR LOWER(t.code) LIKE :search OR LOWER(t.address) LIKE :search)")
+           "(CAST(:search AS string) IS NULL OR LOWER(t.systemName) LIKE CAST(:search AS string) OR LOWER(t.code) LIKE CAST(:search AS string) OR LOWER(t.address) LIKE CAST(:search AS string))")
     List<VtsSystem> searchFiltered(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
@@ -208,14 +208,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN (
                 SELECT child.id FROM OrgUnit child
-                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
-                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+                WHERE ((CAST(:scopePath AS string) IS NOT NULL AND child.path LIKE CONCAT(CAST(:scopePath AS string), '%'))
+                    OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR (
-                LOWER(t.systemName) LIKE :keyword OR
-                LOWER(t.code) LIKE :keyword OR
-                LOWER(t.address) LIKE :keyword
+          AND (CAST(:keyword AS string) IS NULL OR (
+                LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
+                LOWER(t.code) LIKE CAST(:keyword AS string) OR
+                LOWER(t.address) LIKE CAST(:keyword AS string)
               ))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
         GROUP BY t.approvalStatus
