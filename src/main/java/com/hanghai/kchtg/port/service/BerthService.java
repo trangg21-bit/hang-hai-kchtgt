@@ -22,6 +22,11 @@ import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -57,6 +62,10 @@ public class BerthService {
     private final UserRepository userRepository;
     private final OrgUnitCacheService orgUnitCacheService;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final AttachmentRepository attachmentRepository;
+
+    @Value("${app.upload.attachment-path:uploads/attachments}")
+    private String attachmentPath;
 
     @Transactional
     public BerthResponse create(CreateBerthRequest request) {
@@ -136,14 +145,16 @@ public class BerthService {
 
     @Transactional(readOnly = true)
     public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId,
             String berthCode, String berthName, UUID portId,
             String waterway, String berthType,
-            String operationalStatus, String approvalStatus, String search) {
+            String operationalStatus, String approvalStatus, String search,
+            Integer structureType, String operationalFunction,
+            Integer provinceId, String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus)
@@ -158,8 +169,21 @@ public class BerthService {
                 // ignore
             }
         }
+        java.time.LocalDateTime updatedFromDt = null;
+        if (updatedFrom != null && !updatedFrom.trim().isEmpty()) {
+            try {
+                updatedFromDt = java.time.LocalDateTime.parse(updatedFrom.replace(" ", "T"));
+            } catch (Exception e) { /* ignore */ }
+        }
+        java.time.LocalDateTime updatedToDt = null;
+        if (updatedTo != null && !updatedTo.trim().isEmpty()) {
+            try {
+                updatedToDt = java.time.LocalDateTime.parse(updatedTo.replace(" ", "T"));
+            } catch (Exception e) { /* ignore */ }
+        }
         Page<Berth> pageResult = berthRepository.searchBerths(orgUnitId, search, berthCode, berthName, portId,
-                waterway, berthTypeEnum, statusEnum, approvalEnum, pageable);
+                waterway, berthTypeEnum, approvalEnum, statusEnum, false,
+                structureType, operationalFunction, provinceId, updatedFromDt, updatedToDt, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(Berth::getPortId)
@@ -333,8 +357,6 @@ public class BerthService {
         entity.setMapSymbolId(request.getMapSymbolId());
         if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else {
-            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         Berth saved = berthRepository.save(entity);
@@ -491,17 +513,86 @@ public class BerthService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
                 entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
                 break;
+            case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
+                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setPortAuthorityApprovedAt(LocalDateTime.now());
+                entity.setPortAuthorityApprovedBy(SecurityUtils.getCurrentUserId().toString());
                 entity.setDepartmentApprovedAt(LocalDateTime.now());
                 entity.setDepartmentApprovedBy(SecurityUtils.getCurrentUserId().toString());
                 break;
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
         }
+    }
+    // ── Attachment operations ──────────────────────────────────────────
+
+    @Transactional
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
+        if (existingCount + files.size() > 10) {
+            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
+        }
+
+        List<Attachment> savedAttachments = new java.util.ArrayList<>();
+        java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
+        for (MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
+
+            try {
+                java.nio.file.Path dir = basePath.resolve(entityType).resolve(entityId.toString());
+                java.nio.file.Files.createDirectories(dir);
+                java.nio.file.Path filePath = dir.resolve(storageFileName);
+                file.transferTo(filePath.toFile());
+            } catch (Exception e) {
+                log.error("Failed to save file: {}/{}/{}/{}", basePath, entityType, entityId, storageFileName, e);
+                throw new RuntimeException("Không thể lưu file: " + originalFilename);
+            }
+            String storagePath = basePath.resolve(entityType).resolve(entityId.toString()).resolve(storageFileName).toString();
+
+            Attachment attachment = new Attachment();
+            attachment.setEntityType(entityType);
+            attachment.setEntityId(entityId);
+            attachment.setFileName(originalFilename);
+            attachment.setFilePath(storagePath);
+            attachment.setFileSize(file.getSize());
+            attachment.setContentType(file.getContentType());
+            attachment.setUploadedBy(userId);
+            savedAttachments.add(attachmentRepository.save(attachment));
+        }
+        return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
+    }
+
+    public List<AttachmentDto> listAttachments(String entityType, UUID entityId) {
+        return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId)
+                .stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc entity này");
+        }
+        try { java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath())); }
+        catch (Exception e) { log.warn("Không thể xóa file: {}", attachment.getFilePath(), e); }
+        attachmentRepository.delete(attachment);
+    }
+
+    private AttachmentDto toAttachmentDto(Attachment entity) {
+        AttachmentDto dto = new AttachmentDto();
+        dto.setId(entity.getId()); dto.setEntityType(entity.getEntityType()); dto.setEntityId(entity.getEntityId());
+        dto.setFileName(entity.getFileName()); dto.setFilePath(entity.getFilePath());
+        dto.setFileSize(entity.getFileSize()); dto.setContentType(entity.getContentType());
+        dto.setUploadedBy(entity.getUploadedBy()); dto.setUploadedAt(entity.getUploadedAt());
+        return dto;
     }
 }

@@ -96,6 +96,8 @@ public class UpdatePortRequest {
 
     private String remarks;
 
+    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
+
     // ── Child lists ───────────────────────────────────────────────────
 
     private List<PortCoordinateDto> coordinateList;

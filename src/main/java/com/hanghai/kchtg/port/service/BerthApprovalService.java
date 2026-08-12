@@ -38,16 +38,15 @@ public class BerthApprovalService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
 
         if ("CANG_VU".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.DRAFT
-                && entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cảng vụ: trạng thái hiện tại không hợp lệ");
             }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
             entity.setPortAuthorityApprovedBy(userId);
             entity.setRejectionReason(null);
         } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Cảng vụ trước");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
