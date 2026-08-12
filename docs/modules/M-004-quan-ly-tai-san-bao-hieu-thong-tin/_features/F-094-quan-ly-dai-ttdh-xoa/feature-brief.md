@@ -73,24 +73,20 @@ Ngăn chặn mất dữ liệu vĩnh viễn — các đài bị xóa (dù chưa 
 
 ## 2. Ai dùng? Dùng như thế nào?
 
-Quyền thao tác và xem tính năng được áp dụng theo hệ thống phân quyền tập trung của hệ thống. Mỗi vai trò người dùng sẽ có phạm vi truy cập và thao tác khác nhau trên tính năng này, được kiểm soát bởi cơ chế RBAC (Role-Based Access Control).
+### 2.1. Cơ chế phân quyền
 
-### 2.1. Logic phân quyền chung
+Xóa Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:delete` theo từng tài khoản người dùng. Backend chỉ kiểm tra một điều kiện: bản ghi phải ở trạng thái "Lưu tạm" — không phân biệt ai là người tạo hay cấp nào.
 
-| Vai trò | Quyền xem | Quyền xóa | Phạm vi dữ liệu | Ghi chú |
-|---|---|---|---|---|
-| system-admin | Toàn bộ | ✅ | Toàn bộ | |
-| admin (Security) | Toàn bộ | ✅ | Toàn bộ | |
-| Cấp Cục | Toàn bộ | ✅ (mọi bản ghi Lưu tạm) | Toàn quốc | R13 |
-| Cấp Cảng vụ/Chi cục | Đơn vị mình | ✅ (bản ghi Lưu tạm, đơn vị mình) | Đơn vị mình | R12 |
-| Cán bộ | Đơn vị mình | ✅ (bản ghi Lưu tạm, đơn vị mình) | Đơn vị mình | |
-| Cá nhân | Không | Không | Không | |
+| Vai trò | Permission | Quyền xóa |
+|---|---|---|
+| ROLE_SYSTEM_ADMIN | *(bypass)* | Mọi bản ghi Lưu tạm, toàn quốc |
+| ROLE_ADMIN | `data:delete` | Mọi bản ghi Lưu tạm, toàn quốc |
+| ROLE_SPECIALIST | `data:delete` | Bản ghi Lưu tạm, đơn vị mình |
 
-### 2.2. Logic phân quyền đặc biệt cho tài khoản Admin Cục
+- Data scoping lọc theo `orgUnitId`. SYSTEM_ADMIN bypass.
+- Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN): xem thông tin người thực hiện xóa, thời gian xóa, thông tin chỉnh sửa cuối cùng.
 
-- **Xem full dữ liệu:** toàn bộ đơn vị, không giới hạn.
-- **Xem thông tin người thực hiện xóa:** Admin Cục thấy được ai đã xóa (chuyển sang Lịch sử) và thời điểm xóa.
-- **Xem thông tin người chỉnh sửa cuối cùng.**
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
 ---
 
@@ -139,7 +135,7 @@ Quyền thao tác và xem tính năng được áp dụng theo hệ thống phâ
 | BR-094-04 | Bản ghi Lịch sử vẫn hiển thị trong danh sách (không @SQLRestriction) | List query | F-094 design |
 | BR-094-05 | Ghi station_history với actionType = DELETE | Audit log | F-097 |
 | BR-094-06 | Xác nhận trước khi xóa bằng hộp thoại | UI | UX convention |
-| BR-094-07 | Phân quyền: Cấp Cục xóa mọi bản ghi Lưu tạm; Cấp CC/Cán bộ chỉ xóa bản ghi đơn vị mình | RBAC | R12, R13 |
+| BR-094-07 | Phân quyền qua `data:delete` — SYSTEM_ADMIN bypass, role khác cần được cấp permission | RBAC | PermissionMiddleware |
 
 ---
 
@@ -174,7 +170,7 @@ Tính năng này **không thêm trường mới** vào bảng `coastal_station_v
 
 | Method | Endpoint | Mô tả | Phân quyền |
 |---|---|---|---|
-| DELETE | `/api/v1/stations/coastal/{id}` | Xóa (DRAFT → Lịch sử) | Cấp Cục, Cảng vụ/Chi cục, Cán bộ |
+| DELETE | `/api/v1/stations/coastal/{id}` | Xóa (DRAFT → Lịch sử) | `data:delete` |
 
 **Request:** Không có body.
 
@@ -335,14 +331,13 @@ Nút "Xóa" trong dropdown:
 
 ### 10.9. Phân quyền hiển thị
 
-| Vai trò | Thấy nút Xóa | Điều kiện |
-|---|---|---|
-| system-admin | ✅ | status = Lưu tạm |
-| admin (Security) | ✅ | status = Lưu tạm |
-| Cấp Cục | ✅ | status = Lưu tạm (mọi đơn vị) |
-| Cấp Cảng vụ/Chi cục | ✅ | status = Lưu tạm + đơn vị mình |
-| Cán bộ | ✅ | status = Lưu tạm + đơn vị mình |
-| Cá nhân | ❌ | — |
+| Vai trò | Permission | Thấy nút Xóa | Điều kiện |
+|---|---|---|---|
+| ROLE_SYSTEM_ADMIN | *(bypass)* | ✅ | status = Lưu tạm (mọi đơn vị) |
+| ROLE_ADMIN | `data:delete` | ✅ | status = Lưu tạm (mọi đơn vị) |
+| ROLE_SPECIALIST | `data:delete` | ✅ | status = Lưu tạm + đơn vị mình |
+| ROLE_PORT_OPERATOR | *(không có)* | ❌ | — |
+| ROLE_PUBLIC_USER | *(không có)* | ❌ | — |
 
 ### 10.10. Giao diện trên điện thoại
 

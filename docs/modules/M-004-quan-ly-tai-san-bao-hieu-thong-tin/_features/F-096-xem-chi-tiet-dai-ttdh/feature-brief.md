@@ -29,9 +29,26 @@ Chọn "Xem chi tiết" → GET /{id} → Modal/Drawer hiển thị đầy đủ
 
 ---
 
-## 2. Ai dùng?
+## 2. Ai dùng? Dùng như thế nào?
 
-Tất cả vai trò được phân quyền xem. Admin Cục thấy thêm audit fields (người tạo, thời gian tạo, người sửa, thời gian sửa).
+### 2.1. Cơ chế phân quyền
+
+Xem chi tiết Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:read` theo từng tài khoản người dùng.
+
+| Vai trò | Permission | Ghi chú |
+|---|---|---|
+| ROLE_SYSTEM_ADMIN | *(bypass)* | Xem toàn bộ + audit fields |
+| ROLE_ADMIN | `data:read` | Xem + audit fields |
+| ROLE_LEADER | `data:read` | Xem thông tin chung |
+| ROLE_SPECIALIST | `data:read` | Xem thông tin chung |
+| ROLE_PORT_OPERATOR | `data:read` | Xem thông tin chung |
+| ROLE_PUBLIC_USER | `data:read` | Xem thông tin chung |
+| ROLE_INTEGRATION | `data:read` | Xem qua API |
+| ROLE_SECURITY_MONITOR | *(không có `data:*`)* | Không có quyền |
+
+- **Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN):** xem thêm audit fields (người tạo, thời gian tạo, người sửa, thời gian sửa).
+
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
 ---
 

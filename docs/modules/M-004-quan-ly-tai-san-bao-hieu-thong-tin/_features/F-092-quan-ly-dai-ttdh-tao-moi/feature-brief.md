@@ -32,7 +32,7 @@ x-legacy:
 Cho phép cán bộ nghiệp vụ tạo mới một Đài Thông tin Duyên hải (TTDH) trong hệ thống. Form tạo mới bao gồm các nhóm thông tin:
 
 **Nhóm A — Thông tin chung (hành chính):**
-- **Đơn vị quản lý (unitId):** mặc định theo đơn vị của user đăng nhập (R4), bắt buộc.
+- **Đơn vị quản lý (unitId):** mặc định theo đơn vị của user đăng nhập (R4), bắt buộc. Với tài khoản Admin Cục: hiển thị dropdown chọn đơn vị (không tự động điền).
 - **Đơn vị khai thác (operatingUnitId):** có thể khác đơn vị quản lý, không bắt buộc (R6).
 - **Mã đài (code):** hệ thống tự sinh format `DTTDH-xxxxx`, không cho người dùng nhập, immutable (R1, R2, R3).
 - **Tên đài (name):** bắt buộc, tối đa 255 ký tự.
@@ -41,7 +41,7 @@ Cho phép cán bộ nghiệp vụ tạo mới một Đài Thông tin Duyên hả
 - **Địa điểm chi tiết (detailedLocation):** bắt buộc, tối đa 500 ký tự.
 - **Vùng phủ sóng (coverageArea):** không bắt buộc, mô tả phạm vi hoạt động.
 - **Dịch vụ cung cấp (servicesProvided):** chọn nhiều từ 9 dịch vụ cố định (xem 2.2 trong handoff), không bắt buộc.
-- **Tình trạng (usageStatus):** Đang sử dụng / Không sử dụng, mặc định Đang sử dụng. **Đây là tình trạng vận hành thực tế, KHÔNG phải trạng thái phê duyệt.**
+- **Tình trạng (usageStatus):** Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành. Mặc định: Chưa khai thác/vận hành. **Đây là tình trạng vận hành thực tế, KHÔNG phải trạng thái phê duyệt.**
 - **Ghi chú (remarks):** tối đa 2000 ký tự.
 
 **Nhóm B — GIS & Bản đồ:**
@@ -56,7 +56,10 @@ Cho phép cán bộ nghiệp vụ tạo mới một Đài Thông tin Duyên hả
 
 **Các trường bị ẩn:** Tần số liên lạc, transmitPower, equipmentType — không hiển thị trên form Đài TTDH.
 
-Form có 3 nút Lưu: **Lưu tạm** (status = Lưu tạm), **Lưu và gửi phê duyệt** (status = Chờ duyệt cấp Cảng vụ/Chi cục), **Lưu và phê duyệt** (status = Đã phê duyệt, chỉ Cấp Cục — R14).
+Form có 3 nút Lưu:
+- **Lưu tạm** → status = Lưu tạm
+- **Lưu và gửi phê duyệt** → nếu user thuộc Chi cục/Cảng vụ: Chờ duyệt CC; nếu user thuộc Cục: Chờ duyệt Cục (bỏ qua CC)
+- **Lưu và phê duyệt** → status = Đã phê duyệt (chỉ Lãnh đạo Cục — ROLE_ADMIN, ROLE_SYSTEM_ADMIN)
 
 ### 1.2. Tại sao cần tính năng này?
 
@@ -64,44 +67,88 @@ Số hóa quy trình đăng ký Đài TTDH thuộc nhóm Mạng viễn thông h�
 
 ### 1.3. Luồng hoạt động chính
 
+**Luồng 1 — Chuyên viên Chi cục/Cảng vụ:**
+
 **Bước 1: Mở form tạo mới**
-- Người dùng truy cập màn hình danh sách Đài TTDH → Chọn "Thêm mới".
-- Hệ thống: hiển thị modal form với các nhóm A→C. Mã đài hiển thị read-only "Mã đài sẽ được tự sinh khi lưu". Đơn vị quản lý mặc định theo user. Nút "Lưu và phê duyệt" chỉ hiển thị cho Cấp Cục.
+- **Người dùng:** mở form tạo mới từ màn hình danh sách Đài TTDH (nút "Thêm mới").
 
-**Bước 2: Nhập dữ liệu**
-- Người dùng: điền các trường, chọn dịch vụ (multi-select), thêm dòng tọa độ, upload file.
-- Hệ thống: validate real-time (trim(), độ dài, range tọa độ).
+**Bước 2: Hệ thống hiển thị form tạo mới**
+- **Hệ thống:** hiển thị modal form với nhóm A (thông tin chung), nhóm B (GIS & bản đồ), nhóm C (file đính kèm); mã đài read-only; đơn vị quản lý mặc định theo user.
 
-**Bước 3a: Nhấn "Lưu tạm"**
-- Hệ thống: tự sinh mã `DTTDH-xxxxx`. Validate: name không rỗng, stationLevel đã chọn, provinceId đã chọn. Tình trạng mặc định Đang sử dụng. Lưu status = Lưu tạm. HTTP 200.
-- Khi lỗi: HTTP 400 + thông báo tiếng Việt.
+**Bước 3-6: Nhập thông tin**
+- Nhập bắt buộc (tên, phân loại, Tỉnh/TP, địa điểm), tùy chọn (dịch vụ, GIS, file), chọn Tình trạng.
 
-**Bước 3b: Nhấn "Lưu và gửi phê duyệt"**
-- Hệ thống: tự sinh mã. Validate đầy đủ: name, stationLevel, unitId, provinceId, detailedLocation bắt buộc. Tọa độ tối thiểu 1 dòng. File ≤ 10MB, định dạng pdf/jpg/png/docx/xlsx. Lưu status = Chờ duyệt cấp Cảng vụ/Chi cục. HTTP 200.
+**Bước 7: Nhấn "Lưu và gửi phê duyệt"**
+- Hệ thống: validate đầy đủ → tự sinh mã → lưu status = **Chờ duyệt cấp Cảng vụ/Chi cục** → HTTP 200.
 
-**Bước 3c: Nhấn "Lưu và phê duyệt" (chỉ Cấp Cục)**
-- Hệ thống: tự sinh mã. Validate đầy đủ như 3b. Lưu status = Đã phê duyệt. HTTP 200.
+**Bước 8: Lãnh đạo Chi cục duyệt (F-095)**
+- Duyệt → Chờ duyệt cấp Cục; Từ chối → Từ chối CC (sửa & gửi lại).
+
+**Bước 9: Lãnh đạo Cục duyệt (F-095)**
+- Duyệt → Đã phê duyệt.
+
+**Luồng 2 — Chuyên viên Cục:**
+
+**Bước 1-6:** Tương tự luồng 1.
+
+**Bước 7: Nhấn "Lưu và gửi phê duyệt"**
+- Hệ thống: validate đầy đủ → tự sinh mã → lưu status = **Chờ duyệt cấp Cục** (bỏ qua cấp Chi cục) → HTTP 200.
+
+**Bước 8: Lãnh đạo Cục duyệt (F-095)**
+- Duyệt → Đã phê duyệt; Từ chối → Từ chối Cục (sửa & gửi lại).
+
+**Luồng 3 — Lãnh đạo Cục (phê duyệt trực tiếp):**
+
+**Bước 1-6:** Tương tự.
+
+**Bước 7: Nhấn "Lưu và phê duyệt"**
+- Hệ thống: validate đầy đủ → tự sinh mã → lưu status = **Đã phê duyệt** (R14) → HTTP 200.
 
 ---
 
 ## 2. Ai dùng? Dùng như thế nào?
 
-### 2.1. Logic phân quyền chung
+### 2.1. Cơ chế phân quyền
 
-| Vai trò | Quyền xem | Quyền thao tác | Phạm vi dữ liệu | Ghi chú |
+Chức năng Tạo mới Đài TTDH được bảo vệ bởi **2 tầng phân quyền**:
+
+#### Tầng 1: PermissionMiddleware (bắt buộc — mọi request)
+
+`PermissionMiddleware` (`src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java`) chạy sau khi xác thực JWT, kiểm tra **từng tài khoản người dùng** xem có permission tương ứng không:
+
+| HTTP method | Endpoint | Resource (URL → DB) | Action | Permission yêu cầu |
 |---|---|---|---|---|
-| system-admin | Toàn bộ | Tạo mới | Toàn bộ | |
-| admin (Security) | Toàn bộ | Tạo mới | Toàn bộ | |
-| Cấp Cục | Toàn bộ | Tạo mới + Lưu và phê duyệt | Toàn bộ | R13, R14 |
-| Cấp Cảng vụ/Chi cục | Đơn vị mình | Tạo mới | Đơn vị mình | R12 |
-| Cán bộ | Đơn vị mình | Tạo mới | Đơn vị mình | |
-| Cá nhân | Không | Không | Không | |
+| POST | `/api/v1/stations/coastal` | `stations` → `data` | `create` | `data:create` |
+| GET | `/api/v1/stations/coastal` | `stations` → `data` | `read` | `data:read` |
+| PUT | `/api/v1/stations/coastal/{id}` | `stations` → `data` | `update` | `data:update` |
+| DELETE | `/api/v1/stations/coastal/{id}` | `stations` → `data` | `delete` | `data:delete` |
+| POST | `/api/v1/stations/coastal/{id}/approve` | `stations` → `data` | `approve` | `data:approve` |
+| POST | `/api/v1/stations/coastal/{id}/reject` | `stations` → `data` | `approve` | `data:approve` |
 
-### 2.2. Logic phân quyền đặc biệt cho tài khoản Admin Cục
+> **Cơ chế:** Permission của user được resolve từ cache/DB theo `userId` → tập hợp các permission do role của user sở hữu. Middleware kiểm tra chính xác user hiện tại có permission `resource:action` không — đây là **phân quyền theo tài khoản**, không phải kiểm tra tên role trực tiếp.
 
-- **Xem full dữ liệu:** toàn bộ đơn vị, không giới hạn.
-- **Xem thông tin người tạo, thời gian tạo, người sửa, thời gian sửa.**
-- **Xem thông tin người chỉnh sửa cuối cùng.**
+#### Tầng 2: Phân quyền nghiệp vụ (vai trò → permission)
+
+Bảng dưới ánh xạ **vai trò nghiệp vụ** sang **role Spring Security** và **permission** tương ứng (nguồn: `RolePermissionSeeder.java`):
+
+| Vai trò nghiệp vụ | Role trong hệ thống | Permission được gán | Quyền trên Đài TTDH |
+|---|---|---|---|
+| Quản trị hệ thống | `ROLE_SYSTEM_ADMIN` | *(bypass — full access)* | Tạo, xem, sửa, xóa, phê duyệt toàn bộ |
+| Quản trị đơn vị | `ROLE_ADMIN` | `data:read`, `data:update`, `data:approve` | Xem, sửa + Phê duyệt |
+| Lãnh đạo | `ROLE_LEADER` | `data:approve` | Phê duyệt (C1/C2) |
+| Chuyên viên | `ROLE_SPECIALIST` | `data:create`, `data:read`, `data:update` | Tạo mới, xem, sửa |
+| Cán bộ vận hành | `ROLE_PORT_OPERATOR` | `data:read`, `data:update` | Xem, sửa |
+| Người dùng công khai | `ROLE_PUBLIC_USER` | `data:read` | Xem |
+| Tích hợp hệ thống | `ROLE_INTEGRATION` | `data:read`, `data:write` | Xem + ghi API |
+| Giám sát an ninh | `ROLE_SECURITY_MONITOR` | *(không có `data:*`)* | Không có quyền |
+
+#### Ghi chú quan trọng
+
+- **Nút "Lưu và phê duyệt"** (status → Đã phê duyệt): hiển thị cho user có `data:approve` — tương ứng `ROLE_SYSTEM_ADMIN`, `ROLE_ADMIN`, `ROLE_LEADER`.
+- **Phạm vi dữ liệu (data scoping):** không do PermissionMiddleware xử lý mà do service layer lọc theo `orgUnitId` của user đăng nhập. User chỉ thấy dữ liệu trong đơn vị mình, trừ `ROLE_SYSTEM_ADMIN` được xem toàn bộ.
+- `ROLE_SYSTEM_ADMIN` **bypass toàn bộ** permission check (`PermissionAuthorizationManager.check()` dòng 55-58) — không cần khai báo từng permission.
+- Controller `CoastalStationVTSController` **không có `@PreAuthorize`** annotation — toàn bộ enforcement qua PermissionMiddleware.
+- **Admin Cục (Quản trị đơn vị):** xem toàn bộ dữ liệu tất cả đơn vị (không giới hạn phạm vi); xem thông tin người tạo, thời gian tạo, người sửa, thời gian sửa, và thông tin chỉnh sửa cuối cùng.
 
 ---
 
@@ -113,7 +160,7 @@ Số hóa quy trình đăng ký Đài TTDH thuộc nhóm Mạng viễn thông h�
 - **US-092-02:** Là Cán bộ, tôi muốn hệ thống tự sinh mã đài `DTTDH-xxxxx` để đảm bảo mã duy nhất.
 - **US-092-03:** Là Cán bộ, tôi muốn chọn Phân loại đài (Loại I→V) từ dropdown.
 - **US-092-04:** Là Cán bộ, tôi muốn Đơn vị quản lý được điền sẵn theo user đăng nhập.
-- **US-092-05:** Là Cán bộ, tôi muốn chọn Tình trạng (Đang sử dụng / Không sử dụng), mặc định Đang sử dụng.
+- **US-092-05:** Là Cán bộ, tôi muốn chọn Tình trạng (Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành), mặc định Chưa khai thác/vận hành.
 - **US-092-06:** Là Cán bộ, tôi muốn chọn nhiều dịch vụ từ danh sách 9 dịch vụ cố định.
 - **US-092-07:** Là Cán bộ, tôi muốn thêm nhiều dòng tọa độ vào bảng động và upload file đính kèm.
 
@@ -147,7 +194,7 @@ Số hóa quy trình đăng ký Đài TTDH thuộc nhóm Mạng viễn thông h�
 
 **AC-092-08 — Từ chối file > 10MB:** "Dung lượng file không được vượt quá 10MB".
 
-**AC-092-09 — Tình trạng mặc định:** Không chọn → mặc định "Đang sử dụng".
+**AC-092-09 — Tình trạng mặc định:** Không chọn → mặc định "Chưa khai thác/vận hành".
 
 **AC-092-10 — Dịch vụ multi-select:** Chọn được nhiều dịch vụ, lưu dạng mảng/bitmask.
 
@@ -168,9 +215,9 @@ Số hóa quy trình đăng ký Đài TTDH thuộc nhóm Mạng viễn thông h�
 | BR-092-01 | Mã đài tự sinh `DTTDH-xxxxx`, sequential, unique, immutable | code | R1, R2, R3 |
 | BR-092-02 | Name bắt buộc, max 255, trim() | name | @NotBlank, @Size(max=255) |
 | BR-092-03 | stationLevel bắt buộc, Loại I→V | stationLevel | @NotNull |
-| BR-092-04 | Đơn vị quản lý mặc định theo user đăng nhập | unitId | R4 |
+| BR-092-04 | Đơn vị quản lý mặc định theo user; Admin Cục hiển thị dropdown chọn đơn vị | unitId | R4 |
 | BR-092-05 | Đơn vị khai thác có thể khác đơn vị quản lý | operatingUnitId | R6 |
-| BR-092-06 | Tình trạng mặc định "Đang sử dụng" (2 giá trị: Đang sử dụng / Không sử dụng) | usageStatus | Handoff 2.1#10 |
+| BR-092-06 | Tình trạng mặc định "Chưa khai thác/vận hành" (3 giá trị: Chưa khai thác/vận hành, Đang khai thác/vận hành, Dừng khai thác/vận hành) | usageStatus | Handoff 2.1#10 |
 | BR-092-07 | Dịch vụ cung cấp: chọn nhiều từ 9 dịch vụ cố định (INMARSAT, COSPAS-SARSAT, DSC, RTP, MSI RTP, MSI NAVTEX, MSI EGC, LRIT, Kết nối TT hàng hải) | servicesProvided | Handoff 2.2 |
 | BR-092-08 | Ghi chú max 2000 ký tự | remarks | Handoff 2.1#11 |
 | BR-092-09 | Địa điểm chi tiết bắt buộc khi gửi duyệt, max 500 | detailedLocation | Handoff 2.1#7 |
@@ -199,7 +246,7 @@ Số hóa quy trình đăng ký Đài TTDH thuộc nhóm Mạng viễn thông h�
 - 🔴 **operatingUnitId:** UUID đơn vị khai thác
 - 🔴 **coverageArea:** max 500
 - 🔴 **servicesProvided:** multi-select, lưu dạng JSON array / bitmask
-- 🔴 **usageStatus:** 0=Không sử dụng, 1=Đang sử dụng, default 1
+- 🔴 **usageStatus:** 0=Chưa khai thác/vận hành, 1=Đang khai thác/vận hành, 2=Dừng khai thác/vận hành, default 0
 - 🔴 **geometryType:** GisGeometryType enum (POINT/LINE/POLYGON), ORDINAL
 - 🔴 **mapSymbolId:** UUID
 - 🔴 **coordinateSystem:** Integer
@@ -230,8 +277,8 @@ Pattern: PortAttachment (UUID PK, fileName, filePath, fileSize, contentType, upl
 
 | Method | Endpoint | Mô tả | Phân quyền |
 |---|---|---|---|
-| POST | `/api/v1/stations/coastal` | Tạo mới (multipart) | Cấp Cục, Cảng vụ/Chi cục, Cán bộ |
-| POST | `/api/v1/stations/coastal/{id}/attachments` | Upload thêm file | Như trên |
+| POST | `/api/v1/stations/coastal` | Tạo mới (multipart) | `data:create` |
+| POST | `/api/v1/stations/coastal/{id}/attachments` | Upload thêm file | `data:create` |
 
 ---
 
@@ -248,7 +295,7 @@ Pattern: PortAttachment (UUID PK, fileName, filePath, fileSize, contentType, upl
 - **detailedLocation:** text input, max 500, required khi gửi duyệt
 - **coverageArea:** text input, max 500
 - **servicesProvided:** multi-select 9 dịch vụ
-- **usageStatus:** select Đang sử dụng / Không sử dụng, default Đang sử dụng
+- **usageStatus:** select Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành, default Chưa khai thác/vận hành
 - **remarks:** textarea, max 2000
 
 ### 8.2. Form tạo mới (Nhóm B — GIS)
@@ -303,8 +350,9 @@ Sidebar 272px, header 64px, nền `surfacePage`. Dùng ScreenHeader, FilterBar, 
 | `textTertiary` | Code readonly, caption |
 | `surfaceCard` | Nền card/modal |
 | `actionPrimary` | Nút chính |
-| `statusOperational` | Badge Đang sử dụng |
-| `statusAttention` | Badge Không sử dụng |
+| `statusOperational` | Badge Đang khai thác/vận hành |
+| `statusAttention` | Badge Dừng khai thác/vận hành |
+| `textTertiary` | Badge Chưa khai thác/vận hành |
 
 ### 10.3. DataTable
 
@@ -315,7 +363,7 @@ Sidebar 272px, header 64px, nền `surfacePage`. Dùng ScreenHeader, FilterBar, 
 | Tên đài | name | — |
 | Tỉnh/TP | provinceId → tên | — |
 | Phân loại | Badge Loại I→V | — |
-| Tình trạng | Badge Đang sử dụng/Không sử dụng | Đang sử dụng |
+| Tình trạng | Badge Chưa KT/Đang KT/Dừng KT | Chưa khai thác/vận hành |
 | Trạng thái | Badge 7 trạng thái (thêm Lịch sử) | Lưu tạm |
 
 ### 10.4. Modal Tạo mới

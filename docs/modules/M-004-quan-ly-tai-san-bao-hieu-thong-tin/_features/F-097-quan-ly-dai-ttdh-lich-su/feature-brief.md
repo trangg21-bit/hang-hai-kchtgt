@@ -29,9 +29,25 @@ Chọn "Lịch sử" → GET /{id}/history → Timeline sắp xếp giảm dần
 
 ---
 
-## 2. Ai dùng?
+## 2. Ai dùng? Dùng như thế nào?
 
-Tất cả vai trò được phân quyền xem. Admin Cục xem đầy đủ changedBy.
+### 2.1. Cơ chế phân quyền
+
+Xem lịch sử dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:read` theo từng tài khoản người dùng.
+
+| Vai trò | Permission | Ghi chú |
+|---|---|---|
+| ROLE_SYSTEM_ADMIN | *(bypass)* | Xem đầy đủ changedBy |
+| ROLE_ADMIN | `data:read` | Xem đầy đủ changedBy |
+| ROLE_LEADER | `data:read` | Xem lịch sử |
+| ROLE_SPECIALIST | `data:read` | Xem lịch sử |
+| ROLE_PORT_OPERATOR | `data:read` | Xem lịch sử |
+| ROLE_PUBLIC_USER | `data:read` | Xem lịch sử |
+| ROLE_INTEGRATION | `data:read` | Xem qua API |
+
+- Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN): xem đầy đủ changedBy.
+
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
 ---
 

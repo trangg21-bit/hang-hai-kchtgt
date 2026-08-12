@@ -21,48 +21,69 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Luồng phê duyệt 2 cấp cho Đài TTDH:
+Luồng phê duyệt 2 cấp cho Đài TTDH, tùy theo đơn vị của người tạo:
 
+**Luồng A — Chuyên viên Chi cục/Cảng vụ tạo:**
 ```
 Lưu tạm → Chờ duyệt CC → Chờ duyệt Cục → Đã phê duyệt
                 ↘ Từ chối CC       ↘ Từ chối Cục
                    (sửa & gửi lại → Chờ duyệt CC)
 ```
 
-**Cấp 1 — Cảng vụ/Chi cục:** Duyệt/Từ chối bản ghi "Chờ duyệt cấp Cảng vụ/Chi cục".
-**Cấp 2 — Cục:** Duyệt/Từ chối bản ghi "Chờ duyệt cấp Cục". Cục cũng có quyền **phê duyệt trực tiếp** từ Lưu tạm (R14).
+**Luồng B — Chuyên viên Cục tạo:**
+```
+Lưu tạm → Chờ duyệt Cục → Đã phê duyệt
+                ↘ Từ chối Cục
+                   (sửa & gửi lại → Chờ duyệt Cục)
+```
+
+**Cấp 1 — Lãnh đạo Cảng vụ/Chi cục:** Duyệt/Từ chối bản ghi "Chờ duyệt cấp Cảng vụ/Chi cục" (chỉ áp dụng với bản ghi do Chi cục tạo).
+**Cấp 2 — Lãnh đạo Cục:** Duyệt/Từ chối bản ghi "Chờ duyệt cấp Cục". Lãnh đạo Cục cũng có quyền **phê duyệt trực tiếp** từ Lưu tạm (R14).
 
 **Bắt buộc:** Cả duyệt và từ chối đều phải nhập **nội dung phê duyệt** (lý do).
 
-**Từ chối không phải lịch sử** (R16) — bản ghi bị từ chối vẫn là trạng thái hiện tại, được phép sửa và gửi lại. Khi gửi lại, luôn về "Chờ duyệt cấp Cảng vụ/Chi cục" (bắt đầu lại từ đầu — R17).
+**Từ chối không phải lịch sử** (R16). Khi gửi lại từ Từ chối: nếu user Chi cục → về Chờ duyệt CC; nếu user Cục → về Chờ duyệt Cục (bắt đầu lại từ đầu — R17).
 
-**Lịch sử (trạng thái thứ 7):** bản ghi ở trạng thái "Lịch sử" không thể duyệt hoặc từ chối (read-only, đến từ DRAFT delete — F-094).
+**Lịch sử:** bản ghi "Lịch sử" không thể duyệt/từ chối (F-094).
 
 ### 1.2. Luồng chính
 
-**Duyệt Cấp 1 (Cảng vụ/Chi cục):** Chọn "Phê duyệt" → Nhập nội dung → Xác nhận → Status: Chờ duyệt CC → Chờ duyệt Cục → HTTP 200.
+**Duyệt bản ghi do Chi cục tạo (Luồng A):**
 
+**Duyệt Cấp 1 (Lãnh đạo Chi cục):** Chọn "Phê duyệt" → Nhập nội dung → Status: Chờ duyệt CC → Chờ duyệt Cục → HTTP 200.
 **Từ chối Cấp 1:** Chọn "Từ chối" → Nhập lý do (≥ 10 ký tự) → Status: Chờ duyệt CC → Từ chối CC → HTTP 200.
 
-**Duyệt Cấp 2 (Cục):** Tương tự → Status: Chờ duyệt Cục → Đã phê duyệt.
+**Duyệt Cấp 2 (Lãnh đạo Cục):** Chọn "Phê duyệt" → Nhập nội dung → Status: Chờ duyệt Cục → Đã phê duyệt → HTTP 200.
+**Từ chối Cấp 2:** Chọn "Từ chối" → Nhập lý do → Status: Chờ duyệt Cục → Từ chối Cục → HTTP 200.
 
-**Từ chối Cấp 2:** Tương tự → Status: Chờ duyệt Cục → Từ chối Cục.
+**Duyệt bản ghi do Cục tạo (Luồng B — bỏ qua Cấp 1):**
 
-**Phê duyệt trực tiếp (Cục):** Từ Lưu tạm → nhập nội dung → Đã phê duyệt (R14).
+**Duyệt (Lãnh đạo Cục):** Chọn "Phê duyệt" → Nhập nội dung → Status: Chờ duyệt Cục → Đã phê duyệt → HTTP 200.
+**Từ chối:** Chọn "Từ chối" → Nhập lý do → Status: Chờ duyệt Cục → Từ chối Cục → HTTP 200.
+
+**Phê duyệt trực tiếp (Lãnh đạo Cục):** Từ Lưu tạm → nhập nội dung → Đã phê duyệt (R14).
 
 ---
 
-## 2. Ai dùng?
+## 2. Ai dùng? Dùng như thế nào?
 
-| Thao tác | Cảng vụ/Chi cục | Cục |
-|----------|:---:|:---:|
-| Duyệt cấp 1 | ✅ | — |
-| Từ chối cấp 1 | ✅ | — |
-| Duyệt cấp 2 | — | ✅ |
-| Từ chối cấp 2 | — | ✅ |
-| Phê duyệt trực tiếp | — | ✅ (R14) |
+### 2.1. Cơ chế phân quyền
 
-Admin Cục: xem full lịch sử phê duyệt, nội dung phê duyệt.
+Phê duyệt Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:approve` theo từng tài khoản người dùng.
+
+| Thao tác | Permission yêu cầu | Vai trò có permission |
+|----------|---|---|
+| Duyệt cấp 1 (Cảng vụ/Chi cục) | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Từ chối cấp 1 | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Duyệt cấp 2 (Cục) | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Từ chối cấp 2 | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Phê duyệt trực tiếp (Cục) | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER (R14) |
+
+- **SYSTEM_ADMIN:** bypass toàn bộ permission check.
+- **Admin Cục (ROLE_ADMIN):** xem full lịch sử phê duyệt, nội dung phê duyệt, audit fields.
+- **Self-approval prevention:** kiểm tra ở service layer (creatorId != approverId).
+
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
 ---
 

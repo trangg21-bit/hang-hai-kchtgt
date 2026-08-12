@@ -25,22 +25,23 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Cho phép cập nhật thông tin Đài TTDH. Quyền cập nhật phụ thuộc trạng thái hiện tại (R7, R10, R11):
+Cho phép cập nhật thông tin Đài TTDH. Quyền cập nhật phụ thuộc trạng thái hiện tại và vai trò người dùng:
 
-| Trạng thái | Được Sửa? | Ghi chú |
-|-----------|:---:|---------|
-| Lưu tạm | ✅ | Sửa tất cả trừ mã đài |
-| Chờ duyệt cấp CC | ❌ | Khóa hoàn toàn (R11) |
-| Từ chối cấp CC | ✅ | Sửa & gửi lại (R15) |
-| Chờ duyệt cấp Cục | ❌ | Khóa hoàn toàn (R11) |
-| Từ chối cấp Cục | ✅ | Sửa & gửi lại (R15) |
-| Đã phê duyệt | ✅ | Sửa → tự về Lưu tạm (R10) |
-| Lịch sử | ❌ | Read-only (F-094) |
+| Trạng thái | Được Sửa? | Ai sửa? | Nút hiển thị | Kết quả |
+|-----------|:---:|---------|------------|--------|
+| Lưu tạm | ✅ | Tất cả có quyền | Lưu tạm, Lưu và gửi, Lưu và phê duyệt (Cục) | Giữ Lưu tạm hoặc gửi duyệt |
+| Chờ duyệt cấp CC | ❌ | — | — | Khóa hoàn toàn (R11) |
+| Từ chối cấp CC | ✅ | Tất cả có quyền | Lưu và gửi, Lưu và phê duyệt (Cục) | Chuyển sang Chờ duyệt CC (R17) |
+| Chờ duyệt cấp Cục | ❌ | — | — | Khóa hoàn toàn (R11) |
+| Từ chối cấp Cục | ✅ | Tất cả có quyền | Lưu và gửi, Lưu và phê duyệt (Cục) | Chuyển sang Chờ duyệt CC (R17) |
+| Đã phê duyệt | ✅ | **Chỉ Cục** | Lưu và phê duyệt | Giữ nguyên Đã phê duyệt |
+| Lịch sử | ❌ | — | — | Read-only (F-094) |
 
 **Ràng buộc đặc biệt:**
 - **Mã đài (code):** immutable — không thể sửa (R2).
 - **Đơn vị quản lý (unitId):** bị khóa khi sửa — không thể thay đổi (R5).
-- **Sửa Đã phê duyệt:** trạng thái tự động quay về "Lưu tạm", cần duyệt lại (R10).
+- **Bản ghi Từ chối:** ẩn nút "Lưu tạm", chỉ có "Lưu và gửi phê duyệt" → chuyển thẳng sang Chờ duyệt CC.
+- **Bản ghi Đã phê duyệt:** Chỉ Cục được sửa, chỉ có nút "Lưu và phê duyệt" → giữ nguyên trạng thái Đã phê duyệt. Chuyên viên/Cán bộ không được sửa.
 
 ### 1.2. Tại sao cần?
 
@@ -48,32 +49,39 @@ Thông tin đài thay đổi theo thời gian (nâng cấp, thay đổi dịch v
 
 ### 1.3. Luồng chính
 
-Người dùng chọn "Sửa" từ dropdown → Modal hiển thị dữ liệu hiện tại → Chỉnh sửa (code, unitId bị disable) → Nhấn Lưu tạm hoặc Lưu và gửi phê duyệt → Validate → HTTP 200/400.
+Người dùng chọn "Sửa" từ dropdown → Modal hiển thị dữ liệu hiện tại → Chỉnh sửa (code, unitId bị disable) → Tùy trạng thái và vai trò hiển thị nút tương ứng → Validate → HTTP 200/400.
 
 ---
 
-## 2. Ai dùng?
+## 2. Ai dùng? Dùng như thế nào?
 
-### 2.1. Phân quyền
+### 2.1. Cơ chế phân quyền
 
-| Vai trò | Quyền sửa | Phạm vi |
+Cập nhật Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:update` theo từng tài khoản người dùng.
+
+| Vai trò | Permission | Quyền sửa |
 |---|---|---|
-| Cấp Cục | Mọi bản ghi (Lưu tạm/Từ chối/Đã phê duyệt) | Toàn quốc (R13) |
-| Cấp Cảng vụ/Chi cục | Bản ghi đơn vị mình (Lưu tạm/Từ chối/Đã phê duyệt) | Đơn vị mình (R12) |
-| Cán bộ | Bản ghi đơn vị mình | Đơn vị mình |
+| ROLE_SYSTEM_ADMIN | *(bypass)* | Mọi bản ghi, toàn quốc |
+| ROLE_ADMIN | `data:update` | Mọi bản ghi, toàn quốc |
+| ROLE_SPECIALIST | `data:update` | Bản ghi đơn vị mình |
+| ROLE_PORT_OPERATOR | `data:update` | Bản ghi đơn vị mình |
 
-### 2.2. Admin Cục
+- **Cục (ROLE_ADMIN):** sửa được mọi bản ghi. Khi sửa Đã phê duyệt: chỉ có nút "Lưu và phê duyệt" → giữ nguyên trạng thái Đã phê duyệt.
+- **Chuyên viên/Cán bộ (ROLE_SPECIALIST, ROLE_PORT_OPERATOR):** sửa được Lưu tạm và Từ chối. **Không sửa được Đã phê duyệt.** Khi sửa Từ chối: ẩn Lưu tạm, chỉ có Lưu và gửi → Chờ duyệt CC.
+- Data scoping lọc theo `orgUnitId`. SYSTEM_ADMIN bypass.
+- Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN): xem thông tin người sửa, thời gian sửa.
 
-Xem full + thông tin người sửa, thời gian sửa.
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
 ---
 
 ## 3. User Stories
 
-- **US-093-01:** Là Cán bộ, tôi muốn sửa Đài TTDH ở trạng thái Lưu tạm/Từ chối.
-- **US-093-02:** Là Cán bộ, tôi muốn sửa Đài đã phê duyệt, hệ thống tự đưa về Lưu tạm (R10).
-- **US-093-03:** Là Cán bộ, tôi muốn Đơn vị quản lý bị khóa khi sửa (R5).
-- **US-093-04:** Là Cán bộ, tôi muốn thay đổi dịch vụ và tọa độ của đài.
+- **US-093-01:** Là Cán bộ, tôi muốn sửa Đài TTDH ở trạng thái Lưu tạm.
+- **US-093-02:** Là Cán bộ, tôi muốn sửa Đài bị Từ chối và gửi duyệt lại (ẩn Lưu tạm, chỉ Lưu và gửi).
+- **US-093-03:** Là Cục, tôi muốn sửa Đài đã phê duyệt và lưu ngay không cần duyệt lại.
+- **US-093-04:** Là Cán bộ, tôi muốn Đơn vị quản lý bị khóa khi sửa (R5).
+- **US-093-05:** Là Cán bộ, tôi muốn thay đổi dịch vụ và tọa độ của đài.
 
 ---
 
@@ -85,7 +93,7 @@ Xem full + thông tin người sửa, thời gian sửa.
 
 **AC-093-03 — UnitId bị khóa:** UnitId bị disable khi sửa (R5).
 
-**AC-093-04 — Sửa Đã phê duyệt → Lưu tạm:** Khi sửa bản ghi Đã phê duyệt, status tự động về Lưu tạm (R10).
+**AC-093-04 — Cục sửa Đã phê duyệt:** Cục sửa bản ghi Đã phê duyệt → chỉ có nút "Lưu và phê duyệt" → bản ghi giữ nguyên trạng thái Đã phê duyệt, ghi lịch sử UPDATE. Chuyên viên/Cán bộ không được sửa.
 
 **AC-093-05 — Từ chối sửa Chờ duyệt:** Bản ghi Chờ duyệt (bất kỳ cấp) → từ chối sửa, HTTP 400 (R11).
 
@@ -97,11 +105,11 @@ Xem full + thông tin người sửa, thời gian sửa.
 
 | ID | Rule | Source |
 |----|------|--------|
-| BR-093-01 | Chỉ sửa khi: Lưu tạm, Từ chối CC, Từ chối Cục, Đã phê duyệt. Lịch sử: không thể sửa. | R7, F-094 |
+| BR-093-01 | Chỉ sửa khi: Lưu tạm, Từ chối CC, Từ chối Cục (tất cả); Đã phê duyệt (chỉ Cục). Lịch sử: không thể sửa. | R7, F-094 |
 | BR-093-02 | Đơn vị quản lý bị khóa khi sửa | R5 |
-| BR-093-03 | Sửa Đã phê duyệt → tự về Lưu tạm | R10 |
+| BR-093-03 | Cục sửa Đã phê duyệt: chỉ nút "Lưu và phê duyệt" → giữ nguyên Đã phê duyệt | — |
 | BR-093-04 | Chờ duyệt bị khóa hoàn toàn | R11 |
-| BR-093-05 | Gửi duyệt lại từ Từ chối → về Chờ duyệt CC | R17 |
+| BR-093-05 | Gửi duyệt lại từ Từ chối: ẩn Lưu tạm, chỉ Lưu và gửi → về Chờ duyệt CC | R17 |
 
 ---
 
@@ -127,7 +135,7 @@ Trường bị ẩn: frequencyBand, transmitPower, equipmentType.
 
 ### 8.1. Form sửa
 
-Modal như F-092, dữ liệu điền sẵn. Code và unitId hiển thị disabled (nền xám). Nút: Lưu tạm, Lưu và gửi phê duyệt. Nếu sửa từ Đã phê duyệt: hiển thị cảnh báo "Bản ghi sẽ quay về trạng thái Lưu tạm và cần được duyệt lại".
+Modal như F-092, dữ liệu điền sẵn. Code và unitId hiển thị disabled. Nút hiển thị theo trạng thái: Lưu tạm (Lưu tạm + Lưu và gửi + Lưu và phê duyệt nếu Cục), Từ chối (ẩn Lưu tạm, chỉ Lưu và gửi + Lưu và phê duyệt nếu Cục), Đã phê duyệt (chỉ Cục, chỉ Lưu và phê duyệt).
 
 ### 8.2. Ghi lịch sử
 
