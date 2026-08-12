@@ -223,7 +223,7 @@ export default function HistoryTimeline({ history, loading, error, onRetry }: Hi
     return (
       <Alert
         type="error"
-        message="Không tải được lịch sử"
+        title="Không tải được lịch sử"
         description={error}
         showIcon
         action={

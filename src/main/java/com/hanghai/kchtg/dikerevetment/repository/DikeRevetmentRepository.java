@@ -16,23 +16,23 @@ import java.util.UUID;
 @Repository
 public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UUID> {
 
-    List<DikeRevetment> findByApprovalStatusAndIsDeletedFalse(ApprovalStatus approvalStatus);
+    List<DikeRevetment> findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
-    List<DikeRevetment> findByIsDeletedFalse(Sort sort);
+    List<DikeRevetment> findByDeletedAtIsNull(Sort sort);
 
-    Page<DikeRevetment> findByIsDeletedFalse(Pageable pageable);
+    Page<DikeRevetment> findByDeletedAtIsNull(Pageable pageable);
 
-    List<DikeRevetment> findByDikeRevetmentTypeAndIsDeletedFalse(DikeRevetmentType dikeRevetmentType);
+    List<DikeRevetment> findByDikeRevetmentTypeAndDeletedAtIsNull(DikeRevetmentType dikeRevetmentType);
 
-    List<DikeRevetment> findByLocationContainingAndIsDeletedFalse(String location);
+    List<DikeRevetment> findByLocationContainingAndDeletedAtIsNull(String location);
 
     @Query("SELECT d FROM DikeRevetment d WHERE " +
+            "d.deletedAt IS NULL AND " +
             "(:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) AND " +
             "(:keyword IS NULL OR LOWER(d.location) LIKE :keyword) AND " +
             "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +
             "(:status IS NULL OR d.status = :status) AND " +
-            "(:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) AND " +
-            "d.isDeleted = false")
+            "(:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus)")
     Page<DikeRevetment> searchDocuments(
             @org.springframework.data.repository.query.Param("orgUnitId") UUID orgUnitId,
             @org.springframework.data.repository.query.Param("keyword") String keyword,

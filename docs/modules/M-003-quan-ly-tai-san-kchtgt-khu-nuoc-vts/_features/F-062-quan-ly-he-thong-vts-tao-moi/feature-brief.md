@@ -1,17 +1,27 @@
 ---
 id: F-062
-name: "Quan ly He thong VTS - Tao moi"
+name: Quan ly He thong VTS - Tao moi
 slug: quan-ly-he-thong-vts-tao-moi
 module-id: M-003
 status: proposed
 classification: local
 priority: P0
-created: "2026-06-30T00:00:00Z"
-last-updated: "2026-07-31T00:00:00Z"
+created: 2026-06-30T00:00:00Z
+last-updated: 2026-08-10T06:21:49Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - frontend/src/pages/vtssystem/VtsSystemForm.tsx
+  - frontend/src/types/vtsSystem.ts
+  - src/main/java/com/hanghai/kchtg/vtssystem/entity/VtsSystem.java
+  - src/main/java/com/hanghai/kchtg/vtssystem/dto/VtsSystemCreateRequest.java
+  - src/main/java/com/hanghai/kchtg/vtssystem/dto/VtsSystemResponse.java
+  - src/main/java/com/hanghai/kchtg/vtssystem/dto/VtsSystemUpdateRequest.java
+  - src/main/java/com/hanghai/kchtg/vtssystem/service/VtsSystemService.java
+  - src/main/resources/db/migration/V20260810__add_vts_fields.sql
+  - src/test/java/com/hanghai/kchtg/vtssystem/service/VtsSystemServiceTest.java
+  - frontend/src/services/vtsSystemService.test.ts
 ---
-
 # Feature: Quan ly He thong VTS - Tao moi
 
 ## Mô tả chung

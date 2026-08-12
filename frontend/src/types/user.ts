@@ -15,6 +15,17 @@ export interface User {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+  groupIds?: string[];
+  groupNames?: string[];
+  permissionCodes?: string[];
+  permissionNames?: string[];
+  createdBy?: string;
+  createdByName?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  deletedAt?: string;
+  deletedBy?: string;
+  deletedByName?: string;
 }
 
 export interface CreateUserPayload {

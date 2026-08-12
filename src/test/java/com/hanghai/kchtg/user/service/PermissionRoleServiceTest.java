@@ -52,6 +52,14 @@ class PermissionRoleServiceTest {
         assertThat(permissionRoleService.checkPermission(userId, "orgunit", "read")).isFalse();
     }
 
+    @Test
+    void superAdminRoleBypassesAllPermissions() {
+        User user = userWithRole("ROLE_SUPER_ADMIN");
+        when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
+
+        assertThat(permissionRoleService.checkPermission(userId, "vts", "delete")).isTrue();
+    }
+
     private User userWithPermission(String permissionCode) {
         Permission permission = new Permission();
         permission.setCode(permissionCode);
@@ -59,6 +67,16 @@ class PermissionRoleServiceTest {
         Role role = new Role();
         role.setCode("ROLE_ADMIN");
         role.setPermissions(Set.of(permission));
+
+        User user = new User();
+        user.setId(userId);
+        user.setRoles(Set.of(role));
+        return user;
+    }
+
+    private User userWithRole(String roleCode) {
+        Role role = new Role();
+        role.setCode(roleCode);
 
         User user = new User();
         user.setId(userId);

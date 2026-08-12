@@ -12,6 +12,7 @@ import com.hanghai.kchtg.port.service.BerthService;
 import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.port.service.PortCacheService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +60,9 @@ class BerthServiceTest {
 
     @Mock
     private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+
+    @Mock
+    private PortCacheService portCacheService;
 
     private UUID parentId;
     private UUID testId;

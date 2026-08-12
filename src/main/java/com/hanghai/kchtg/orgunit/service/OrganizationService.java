@@ -78,9 +78,7 @@ public class OrganizationService {
      */
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> findAll() {
-        return orgUnitRepo.findAllActiveOrderByPath().stream()
-                .map(OrgUnitResponse::from)
-                .collect(Collectors.toList());
+        return orgUnitCacheService.getList();
     }
 
     /**

@@ -16,7 +16,7 @@ public class ApprovalResponse {
 
     private UUID id;
     private String status;
-    private String quyetDinh;
+    private String decision;
     private UUID approvedBy;
     private LocalDateTime approvedDate;
     private String reason;

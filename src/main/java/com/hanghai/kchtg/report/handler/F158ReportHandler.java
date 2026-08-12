@@ -68,7 +68,7 @@ public class F158ReportHandler extends BaseReportHandler {
             r.put("Tên hệ thống", vts.getSystemName() != null ? vts.getSystemName() : "");
             r.put("Đơn vị quản lý, khai thác", donVi.isEmpty() ? "" : donVi + " - " + donVi);
             r.put("Phạm vi vùng phủ sóng", isFirst ? (vts.getScope() != null ? vts.getScope() : "") : "");
-            r.put("Vị trí Trung tâm điều hành", vts.getLocation() != null ? vts.getLocation() : "");
+            r.put("Vị trí Trung tâm điều hành", vts.getAddress() != null ? vts.getAddress() : (vts.getProvinceId() != null ? String.valueOf(vts.getProvinceId()) : ""));
             r.put("Vị trí, Địa danh", station.getLocation() != null ? station.getLocation() : "");
             r.put("Chiều cao tháp radar (m)", formatMeter(station.getTowerHeight(), "m"));
             r.put("Tầm hiệu lực radar", formatMeter(station.getRadarRange(), "Nm"));
@@ -114,7 +114,7 @@ public class F158ReportHandler extends BaseReportHandler {
             item.put("fkDonViQl", vts.getOrgUnitId() != null ? resolveOrgName(vts.getOrgUnitId()) : "");
             item.put("fkDonViKt", vts.getOrgUnitId() != null ? resolveOrgName(vts.getOrgUnitId()) : "");
             item.put("vungPhuSong", isFirst ? (vts.getScope() != null ? vts.getScope() : "") : "");
-            item.put("diaDiem", vts.getLocation() != null ? vts.getLocation() : "");
+            item.put("diaDiem", vts.getAddress() != null ? vts.getAddress() : (vts.getProvinceId() != null ? String.valueOf(vts.getProvinceId()) : ""));
             item.put("soLuong", "");
             item.put("viTriDiaDanh", station.getLocation() != null ? station.getLocation() : "");
             item.put("chieuCaoThapRadar", formatMeter(station.getTowerHeight(), "m"));

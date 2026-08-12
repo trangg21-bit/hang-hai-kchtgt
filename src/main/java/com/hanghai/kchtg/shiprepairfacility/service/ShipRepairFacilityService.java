@@ -22,9 +22,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,7 +57,6 @@ public class ShipRepairFacilityService {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(createdBy)
                 .build();
 
@@ -92,7 +96,7 @@ public class ShipRepairFacilityService {
     public ShipRepairFacilityResponse getById(UUID id) {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
-        if (entity.getIsDeleted()) {
+        if (entity.getDeletedAt() != null) {
             throw new RuntimeException("Cơ sở sửa chữa, đóng tàu đã bị xóa với ID: " + id);
         }
         return toResponse(entity);
@@ -103,13 +107,13 @@ public class ShipRepairFacilityService {
      * other infrastructure modules expose.
      */
     public List<ShipRepairFacilityResponse> findByApprovalStatus(ApprovalStatus approvalStatus) {
-        return repository.findByApprovalStatusAndIsDeletedFalse(approvalStatus).stream()
+        return repository.findByApprovalStatusAndDeletedAtIsNull(approvalStatus).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<ShipRepairFacilityResponse> findAll(int page, int size) {
-        return repository.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED).stream()
+        return repository.findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED).stream()
                 .map(this::toResponse).toList();
     }
 
@@ -117,7 +121,7 @@ public class ShipRepairFacilityService {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
-        if (entity.getIsDeleted()) {
+        if (entity.getDeletedAt() != null) {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
@@ -231,8 +235,7 @@ public class ShipRepairFacilityService {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
-        entity.setDeletedBy(deletedBy);
-        entity.setIsDeleted(true);
+        entity.softDelete(deletedBy);
         repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
@@ -257,7 +260,7 @@ public class ShipRepairFacilityService {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
         }
 
-        if ("REJECTED".equals(request.getQuyetDinh())) {
+        if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
             entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
@@ -283,7 +286,7 @@ public class ShipRepairFacilityService {
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_1)
-                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
+                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason(request.getReason())
@@ -294,7 +297,7 @@ public class ShipRepairFacilityService {
                     .refId(saved.getId())
                     .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
+                    .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
                     .approvedBy(approvedBy)
                     .approvedDate(LocalDateTime.now())
                     .reason(request.getReason())
@@ -319,7 +322,7 @@ public class ShipRepairFacilityService {
                     "Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
-        if ("REJECTED".equals(request.getQuyetDinh())) {
+        if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
             entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
@@ -335,7 +338,7 @@ public class ShipRepairFacilityService {
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_2)
-                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
+                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason(request.getReason())
@@ -345,28 +348,50 @@ public class ShipRepairFacilityService {
     }
 
     public List<HistoryEntry> getHistory(UUID shipRepairFacilityId) {
-        return historyRepository
+        List<ApprovalHistory> historyList = historyRepository
                 .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY,
-                        shipRepairFacilityId)
-                .stream().map(h -> HistoryEntry.builder()
+                        shipRepairFacilityId);
+        Set<UUID> userIds = historyList.stream()
+                .map(ApprovalHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNames = resolveUserNames(userIds);
+
+        return historyList.stream().map(h -> HistoryEntry.builder()
                         .id(h.getId())
                         .approvalLevel(h.getApprovalLevel())
                         .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                        .approvedBy(resolveUserName(h.getApprovedBy()))
+                        .approvedBy(h.getApprovedBy() != null ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
                         .approvedDate(h.getApprovedDate())
                         .reason(h.getReason())
                         .build())
                 .toList();
     }
 
+    private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNullIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<com.hanghai.kchtg.user.entity.User> users = userRepository.findAllByIdInWithOrgUnit(nonNullIds);
+        Map<UUID, String> map = new java.util.HashMap<>();
+        for (com.hanghai.kchtg.user.entity.User u : users) {
+            String userStr = (u.getFullName() != null && !u.getFullName().trim().isEmpty())
+                    ? u.getFullName()
+                    : u.getUsername();
+            map.put(u.getId(), userStr);
+        }
+        return map;
+    }
+
     private String resolveUserName(UUID userId) {
         if (userId == null)
             return null;
-        return userRepository.findById(userId)
-                .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
-                        ? u.getFullName()
-                        : u.getUsername())
-                .orElse(userId.toString());
+        Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
+        return map.getOrDefault(userId, userId.toString());
     }
 
     public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, Integer provinceId,
@@ -380,22 +405,28 @@ public class ShipRepairFacilityService {
                 ? ApprovalStatus.fromString(reviewStatus)
                 : null;
         return repository.search(orgUnitId, keywordLike, provinceId, statusEnum, reviewStatusEnum).stream()
-                .map(this::toResponse).toList();
+                .map(e -> toResponse(e, false)).toList();
     }
 
     private ShipRepairFacilityResponse toResponse(ShipRepairFacility entity) {
-        List<ShipRepairFacilityAttachmentResponse> attachments = attachmentRepository
-                .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.SHIP_REPAIR_FACILITY)
-                .stream().map(a -> ShipRepairFacilityAttachmentResponse.builder()
-                        .id(a.getId())
-                        .fileName(a.getFileName())
-                        .filePath(a.getFilePath())
-                        .fileSize(a.getFileSize())
-                        .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
-                        .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
-                        .uploadedDate(a.getUploadedDate())
-                        .build())
-                .toList();
+        return toResponse(entity, true);
+    }
+
+    private ShipRepairFacilityResponse toResponse(ShipRepairFacility entity, boolean includeAttachments) {
+        List<ShipRepairFacilityAttachmentResponse> attachments = includeAttachments
+                ? attachmentRepository
+                        .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.SHIP_REPAIR_FACILITY)
+                        .stream().map(a -> ShipRepairFacilityAttachmentResponse.builder()
+                                .id(a.getId())
+                                .fileName(a.getFileName())
+                                .filePath(a.getFilePath())
+                                .fileSize(a.getFileSize())
+                                .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
+                                .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
+                                .uploadedDate(a.getUploadedDate())
+                                .build())
+                        .toList()
+                : null;
 
         GisGeometryType geomType = null;
         String coords = null;
@@ -433,7 +464,6 @@ public class ShipRepairFacilityService {
                 .createdDate(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
                 .updatedDate(entity.getUpdatedAt())
-                .isDeleted(entity.getIsDeleted())
                 .attachments(attachments)
                 .spatialId(entity.getSpatialId())
                 .geometryType(geomType)

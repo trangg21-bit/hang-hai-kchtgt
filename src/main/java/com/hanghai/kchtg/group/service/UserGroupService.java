@@ -1,19 +1,17 @@
 package com.hanghai.kchtg.group.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
-
 import com.hanghai.kchtg.group.dto.*;
 import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
-import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.entity.Role;
-import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
+import com.hanghai.kchtg.user.entity.Role;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.RoleRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,11 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Service quan ly nhom nguoi dung (User Group).
@@ -148,6 +142,15 @@ public class UserGroupService {
             group.setStatus(request.getStatus());
         }
 
+        if (request.getPermissions() != null) {
+            details.append("Phân quyền chức năng đã cập nhật; ");
+            group.setPermissions(new ArrayList<>(request.getPermissions()));
+            for (UUID memberUserId : groupMemberRepository.findUserIdsByUserGroupIdAndStatus(id,
+                    GroupMemberStatus.ACTIVE)) {
+                permissionCacheService.invalidateAndIncrementVersion(memberUserId);
+            }
+        }
+
         UserGroup saved = groupRepository.save(group);
 
         if (details.length() > 0) {
@@ -205,7 +208,8 @@ public class UserGroupService {
         // Data scope: Admin Cục sees all; regular users see only their org unit
         UUID orgFilter = resolveOrganizationFilter();
 
-        Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, groupTypeInt, statusInt, orgFilter, pageable);
+        Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, groupTypeInt, statusInt, orgFilter,
+                pageable);
 
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
@@ -336,7 +340,8 @@ public class UserGroupService {
         UserGroup group = findEntityById(groupId);
         Set<UUID> requestedIds = request.getRoleIds() == null
                 ? Set.of()
-                : request.getRoleIds().stream().filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+                : request.getRoleIds().stream().filter(java.util.Objects::nonNull)
+                        .collect(java.util.stream.Collectors.toSet());
 
         List<Role> roles = requestedIds.isEmpty() ? List.of() : roleRepository.findAllById(requestedIds);
         Set<UUID> foundIds = roles.stream().map(Role::getId).collect(java.util.stream.Collectors.toSet());
@@ -545,11 +550,13 @@ public class UserGroupService {
 
     /**
      * Resolve the organizationId filter for data scope.
-     * Returns null for Admin Cục (sees all); returns the current user's orgUnit.id for others.
+     * Returns null for Admin Cục (sees all); returns the current user's orgUnit.id
+     * for others.
      */
     private UUID resolveOrganizationFilter() {
         User currentUser = getCurrentUser();
-        if (currentUser == null) return null;
+        if (currentUser == null)
+            return null;
 
         // Admin Cục (ROLE_SYSTEM_ADMIN) sees all
         String primaryRole = currentUser.getPrimaryRoleCode();
@@ -591,7 +598,8 @@ public class UserGroupService {
     }
 
     /**
-     * Synchronize the permission-inheritance projection used by User#getAllPermissions.
+     * Synchronize the permission-inheritance projection used by
+     * User#getAllPermissions.
      */
     private void attachGroupToUser(User user, UserGroup group) {
         boolean groupAttached = user.getGroups().stream()

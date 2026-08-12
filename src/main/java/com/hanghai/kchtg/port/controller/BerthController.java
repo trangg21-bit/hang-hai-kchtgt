@@ -19,7 +19,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
+
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import com.hanghai.kchtg.security.SecurityUtils;
 
 @RestController
 @RequestMapping("/api/v1/berths")
@@ -71,11 +77,17 @@ public class BerthController {
             @RequestParam(required = false) String waterway,
             @RequestParam(required = false) String berthType,
             @RequestParam(required = false) String operationalStatus,
-            @RequestParam(required = false) String approvalStatus) {
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) Integer structureType,
+            @RequestParam(required = false) String operationalFunction,
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo) {
         log.info("Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, search, berthCode, berthName, portId, operationalStatus, approvalStatus);
         Page<BerthResponse> result = berthService.findAll(page, size, orgUnitId,
-                berthCode, berthName, portId, waterway, berthType, operationalStatus, approvalStatus, search);
+                berthCode, berthName, portId, waterway, berthType, operationalStatus, approvalStatus, search,
+                structureType, operationalFunction, provinceId, updatedFrom, updatedTo);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bến cảng thành công", result));
     }
 
@@ -131,5 +143,40 @@ public class BerthController {
     public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> getChildren(@PathVariable UUID id) {
         long cauCangCount = pierRepository.countByBerthIdAndDeletedAtIsNull(id);
         return ResponseEntity.ok(ApiResponse.success("Thành công", java.util.Map.of("cauCangCount", cauCangCount)));
+    }
+
+    // ── Attachment endpoints ────────────────────────────────────────────
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@auth.check(authentication, 'berth:update')")
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files,
+            Authentication authentication) {
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
+        }
+        UUID userId = SecurityUtils.getCurrentUserId();
+        List<AttachmentDto> result = berthService.uploadAttachments("BERTH", id, files, userId);
+        return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'berth:read')")
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+        List<AttachmentDto> result = berthService.listAttachments("BERTH", id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @PreAuthorize("@auth.check(authentication, 'berth:update')")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId,
+            Authentication authentication) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        berthService.deleteAttachment("BERTH", id, attId, userId);
+        return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 }

@@ -2,7 +2,7 @@
 
 **Version:** 2.2
 **Based on:** `frontend/src/theme.ts` (v5) + `frontend/src/tokens.ts` + Figma "Quản lý Tàu bay"
-**Ngày:** 07/08/2026 (46 style preset 5.1-5.12 + Section 8 Sidebar phân cấp Menu)
+**Ngày:** 10/08/2026 (54 style preset 5.1-5.15 + Section 8 Sidebar phân cấp Menu)
 
 ---
 
@@ -231,7 +231,29 @@ Tất cả preset được định nghĩa trong `frontend/src/tokens.ts`. Dev im
 | `breadcrumbStyle` | Container: flex, fontSizeBreadcrumb (14px) |
 | `breadcrumbLastStyle` | Mục cuối (trang hiện tại): đậm, fontSizeBreadcrumbLast (16px) |
 
-### 5.12 Content-type Conventions (có sẵn)
+### 5.12 Detail View (Xem chi tiết)
+
+| Preset | Dùng cho |
+|--------|----------|
+| `detailLabelStyle` | Label trong trang xem chi tiết: sidebarBg, đậm, fontSizeMd |
+| `detailRowStyle` | Dòng hiển thị label:value: flex, padding 10px 12px, borderBottom |
+| `detailLabelColStyle` | Cột label trong detail row: width 200px, không co, sidebarBg, đậm |
+| `detailValueStyle` | Cột value trong detail row: flex 1, textPrimary, fontSizeMd |
+
+### 5.13 Form Sub-Table (Bảng con trong form: GPS, KCHT, File)
+
+| Preset | Dùng cho |
+|--------|----------|
+| `formEmptyTableStyle` | Ô trống cho bảng con: dashed border, căn giữa, nền surfaceCard |
+| `formSectionHeaderStyle` | Header section bảng con: flex space-between, label + nút thêm |
+
+### 5.14 Filter Panel (Sidebar bộ lọc danh sách)
+
+| Preset | Dùng cho |
+|--------|----------|
+| `filterInputStyle` | Select/Input full-width trong filter: pill, cao 40px |
+
+### 5.15 Content-type Conventions (có sẵn)
 
 | Preset | Dùng cho |
 |--------|----------|
@@ -241,7 +263,7 @@ Tất cả preset được định nghĩa trong `frontend/src/tokens.ts`. Dev im
 | `dividerStyle` | Separator / hairline |
 | `actionStyle` | Action / pill button style |
 
-> **Tổng: 46 preset.** Cách dùng: `import { inputStyle } from '../tokens'; <Input style={inputStyle} />`
+> **Tổng: 54 preset.** Cách dùng: `import { inputStyle } from '../tokens'; <Input style={inputStyle} />`
 
 ---
 

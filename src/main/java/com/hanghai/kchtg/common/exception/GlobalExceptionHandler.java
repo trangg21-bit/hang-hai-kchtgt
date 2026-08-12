@@ -142,6 +142,18 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("Tình trạng hiệu lực không hợp lệ"));
         }
 
+        if (detail != null && detail.contains("fk_vts_system_province")) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Địa điểm (Tỉnh/Thành phố) được chọn không tồn tại trong hệ thống"));
+        }
+
+        if (detail != null && (detail.contains("violates foreign key constraint") || detail.contains("foreign key constraint"))) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Dữ liệu liên kết (Đơn vị/Cảng biển/Tỉnh thành) không tồn tại trong hệ thống"));
+        }
+
         log.warn("Data integrity violation: {}", detail);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)

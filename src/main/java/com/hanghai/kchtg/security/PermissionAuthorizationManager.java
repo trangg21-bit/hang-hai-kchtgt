@@ -59,6 +59,17 @@ public class PermissionAuthorizationManager {
             return true;
         }
 
+        if (requiredPermission != null) {
+            String normNoColon = requiredPermission.replace(":approve:", ":approve");
+            if (userPermissions.contains(normNoColon)) {
+                return true;
+            }
+            String normColon = requiredPermission.replace(":approvec1", ":approve:c1").replace(":approvec2", ":approve:c2");
+            if (userPermissions.contains(normColon)) {
+                return true;
+            }
+        }
+
         // Aliases for approve actions: resource:approve matches resource:approvec1 or resource:approvec2
         String approveSuffix = ":" + ACTION_APPROVE;
         if (requiredPermission != null && requiredPermission.endsWith(approveSuffix)) {

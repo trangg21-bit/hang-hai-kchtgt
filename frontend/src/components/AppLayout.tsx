@@ -61,13 +61,13 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/asset/decrease': 'data:read',
   '/asset/inventory': 'data:read',
   '/asset/exploitation': 'data:read',
-  '/navigation-channel': 'navigationchannel:read',
-  '/dike-revetment': 'dikerevetment:read',
-  '/ship-repair-facility': 'shiprepairfacility:read',
-  '/radar-station': 'radarstation:read',
-  '/vts-system': 'radarstation:read',
-  '/station/coastal': 'radarstation:read',
-  '/station/special': 'radarstation:read',
+  '/navigation-channel': ['navigationchannel:read', 'navigationchannel:create', 'navigationchannel:update', 'navigationchannel:delete', 'navigationchannel:approve:c1', 'navigationchannel:approve:c2', 'admin:manage'],
+  '/dike-revetment': ['dikerevetment:read', 'dikerevetment:create', 'dikerevetment:update', 'dikerevetment:delete', 'dikerevetment:approve:c1', 'dikerevetment:approve:c2', 'admin:manage'],
+  '/ship-repair-facility': ['shiprepairfacility:read', 'shiprepairfacility:create', 'shiprepairfacility:update', 'shiprepairfacility:delete', 'shiprepairfacility:approve:c1', 'shiprepairfacility:approve:c2', 'admin:manage'],
+  '/radar-station': ['radarstation:read', 'radarstation:create', 'radarstation:update', 'radarstation:delete', 'radarstation:approve:c1', 'radarstation:approve:c2', 'admin:manage'],
+  '/vts-system': ['vts:read', 'admin:manage'],
+  '/station/coastal': ['vts:read', 'radarstation:read', 'admin:manage'],
+  '/station/special': ['vts:read', 'radarstation:read', 'admin:manage'],
   '/connections': 'connection:read',
   '/interconnect': 'connection:read',
   '/reports': 'report:read',
@@ -168,7 +168,9 @@ export default function AppLayout() {
   } else if (pathSegments[0] === 'lighthouse-station' || pathSegments[0] === 'buoy-station' || pathSegments[0] === 'documents' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'port' || pathSegments[0] === 'berth' || pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
+  } else if (pathSegments[0] === 'port') {
+    selectedKey = 'port-parent';
+  } else if (pathSegments[0] === 'berth' || pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
     selectedKey = '/' + pathSegments[0];
@@ -184,7 +186,11 @@ export default function AppLayout() {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
-      } else if (['/port', '/berth', '/pier', '/dry-port', '/water-zone'].includes(selectedKey)) {
+      } else if (selectedKey === '/berth') {
+        setOpenKeys(['cangben', 'port-parent']);
+      } else if (selectedKey === 'port-parent') {
+        setOpenKeys(['cangben', 'port-parent']);
+      } else if (['/pier', '/dry-port', '/water-zone'].includes(selectedKey)) {
         setOpenKeys(['cangben']);
       } else if (selectedKey.startsWith('/asset')) {
         setOpenKeys(['asset-movement']);
@@ -250,8 +256,16 @@ export default function AppLayout() {
       icon: <ContainerOutlined />,
       label: 'Quản lý KCHT Hàng Hải',
       children: [
-        canAccessMenu('/port') ? { key: '/port', label: 'Quản lý cảng biển', icon: <EnvironmentOutlined /> } : null,
-        canAccessMenu('/berth') ? { key: '/berth', label: 'Quản lý bến cảng', icon: <ContainerOutlined /> } : null,
+        (canAccessMenu('/port') || canAccessMenu('/berth')) ? {
+          key: 'port-parent',
+          label: 'Quản lý cảng biển',
+          icon: <EnvironmentOutlined />,
+          onTitleClick: () => navigate('/port'),
+          className: selectedKey === 'port-parent' ? 'submenu-active' : '',
+          children: [
+            canAccessMenu('/berth') ? { key: '/berth', label: 'Quản lý bến cảng', icon: <ContainerOutlined /> } : null,
+          ].filter(Boolean),
+        } : null,
         canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <ApartmentOutlined /> } : null,
         canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <HomeOutlined /> } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
@@ -624,6 +638,10 @@ export default function AppLayout() {
       <style>{`
         .ant-layout-sider {
           transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        }
+        .submenu-active.ant-menu-submenu > .ant-menu-submenu-title {
+          color: #fff !important;
+          background: rgba(255, 255, 255, 0.1) !important;
         }
       `}</style>
       <Layout style={{ height: '100vh', position: 'relative', overflow: 'hidden' }}>

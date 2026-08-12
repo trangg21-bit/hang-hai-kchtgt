@@ -1,17 +1,18 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Space, Dropdown, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined, EyeOutlined } from '@ant-design/icons';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Space, Dropdown, Row, Col, Drawer } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined, EyeOutlined } from '@ant-design/icons';
 import { organizationService } from '../../services/organizationService';
 
 import type { Organization, CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader, FilterBar } from '../../components/list-view';
+import { ScreenHeader } from '../../components/list-view';
+import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
-import { statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textTertiary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd } from '../../tokens';
+import { statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textTertiary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
 import { colors } from '../../theme';
 
 const { confirm } = Modal;
@@ -52,6 +53,7 @@ export default function UnitList() {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedKeys(prev => {
@@ -265,15 +267,37 @@ export default function UnitList() {
       });
   }, [allOrgs, search, filterStatus]);
 
-  const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mã...' },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', width: 180, options: [
-      { value: '', label: 'Tất cả' },
-      { value: 'approved', label: 'Sử dụng' },
-      { value: 'inactive', label: 'Không sử dụng' },
-      { value: 'pending', label: 'Chờ phê duyệt' },
-    ]},
-  ], []);
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: 12, marginTop: 16 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
+        <Input placeholder="Tìm theo tên, mã..." allowClear
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onPressEnter={() => {}}
+          style={{ borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
+        <Select placeholder="Chọn trạng thái" allowClear
+          value={filterStatus}
+          onChange={(val) => setFilterStatus(val)}
+          options={[
+            { value: 'approved', label: 'Sử dụng' },
+            { value: 'inactive', label: 'Không sử dụng' },
+            { value: 'pending', label: 'Chờ phê duyệt' },
+          ]}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </div>
+    </>
+  );
+
+  const statusTabs = [
+    { key: 'all', label: 'Tất cả', count: allOrgs.length, color: textSecondary, active: !filterStatus },
+    { key: 'approved', label: 'Sử dụng', count: allOrgs.filter(o => (o.operationalStatus === 'inactive' ? 'inactive' : (o.status === 'pending' ? 'pending' : 'approved')) === 'approved').length, color: statusOperational, active: filterStatus === 'approved' },
+    { key: 'inactive', label: 'Không sử dụng', count: allOrgs.filter(o => (o.operationalStatus === 'inactive' ? 'inactive' : (o.status === 'pending' ? 'pending' : 'approved')) === 'inactive').length, color: statusCritical, active: filterStatus === 'inactive' },
+    { key: 'pending', label: 'Chờ phê duyệt', count: allOrgs.filter(o => (o.operationalStatus === 'inactive' ? 'inactive' : (o.status === 'pending' ? 'pending' : 'approved')) === 'pending').length, color: statusAttention, active: filterStatus === 'pending' },
+  ];
   const headerActions = useMemo(() => {
     const actions: any[] = [];
     if (hasPerm('orgunit:manage')) actions.push({ key: 'create', label: 'Thêm đơn vị', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
@@ -281,10 +305,23 @@ export default function UnitList() {
   }, [hasPerm, openCreateModal]);
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý đơn vị' }]} actions={headerActions} />
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
-      <div style={{ ...cardStyle, padding: '8px 16px' }}>
+      <FilterTableLayout
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        onFilterApply={() => {}}
+        onFilterReset={() => { setSearch(''); setFilterStatus(''); }}
+        loading={isLoading}
+        error={isError}
+        onRetry={fetchOrgs}
+        filterContent={filterContent}
+        statusTabs={statusTabs}
+        onStatusTabChange={(key) => {
+          setFilterStatus(key === 'all' ? '' : key);
+        }}
+      >
+        <div style={{ ...cardStyle, padding: '8px 16px' }}>
         {/* Table header row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: COL_GAP, padding: '8px 0', borderBottom: `1px solid ${borderDefault}`, marginBottom: 4 }}>
           <div style={{ flex: 1, minWidth: 300, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', paddingLeft: 24, whiteSpace: 'nowrap' }}>Tên đơn vị</div>
@@ -386,16 +423,26 @@ export default function UnitList() {
           </>
         )}
       </div>
+      </FilterTableLayout>
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isViewing ? 'Chi tiết đơn vị' : (editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị')}</span>}
-        open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={640} mask={{ closable: false }}
-        footer={isViewing ? [
-          <Button key="close" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Đóng</Button>
-        ] : [
-          <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>,
-        ]}
+      <Drawer
+        {...drawerProps}
+        title={<span style={drawerTitleStyle}>{isViewing ? 'Chi tiết đơn vị' : (editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị')}</span>}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            {isViewing ? (
+              <Button type="primary" onClick={() => setModalOpen(false)} style={primaryButtonStyle}>Đóng</Button>
+            ) : (
+              <>
+                <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+                <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>
+              </>
+            )}
+          </div>
+        }
       >
         <Spin spinning={submitting}>
           <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }} disabled={isViewing}>
@@ -438,7 +485,7 @@ export default function UnitList() {
             </Form.Item>
           </Form>
         </Spin>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

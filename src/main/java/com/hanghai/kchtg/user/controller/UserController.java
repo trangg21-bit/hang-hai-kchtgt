@@ -7,6 +7,7 @@ import com.hanghai.kchtg.user.dto.ChangeStatusRequest;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
+import com.hanghai.kchtg.user.dto.UserDetailResponse;
 import com.hanghai.kchtg.user.dto.UserPageResponse;
 import com.hanghai.kchtg.user.dto.GrantUserPermissionRequest;
 import com.hanghai.kchtg.user.dto.UserPermissionOverrideResponse;
@@ -18,6 +19,7 @@ import com.hanghai.kchtg.admin.entity.AdminAuditLog;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -53,16 +55,19 @@ public class UserController {
     private final AdminAuditLogRepository adminAuditLogRepository;
     private final PermissionCacheService permissionCacheService;
     private final UserRepository userRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     public UserController(UserService userService, UserPermissionService userPermissionService,
                           @Nullable AdminAuditLogRepository adminAuditLogRepository,
                           @Nullable PermissionCacheService permissionCacheService,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          @Nullable OrgUnitCacheService orgUnitCacheService) {
         this.userService = userService;
         this.userPermissionService = userPermissionService;
         this.adminAuditLogRepository = adminAuditLogRepository;
         this.permissionCacheService = permissionCacheService;
         this.userRepository = userRepository;
+        this.orgUnitCacheService = orgUnitCacheService;
     }
 
     /**
@@ -89,8 +94,16 @@ public class UserController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
-    public ResponseEntity<ApiResponse<UserResponse>> getById(@PathVariable UUID id) {
-        UserResponse user = UserResponse.from(userService.findById(id));
+    public ResponseEntity<ApiResponse<UserDetailResponse>> getById(@PathVariable UUID id) {
+        var entity = userService.findById(id);
+        var auditIds = java.util.stream.Stream.of(entity.getCreatedBy(), entity.getUpdatedBy(), entity.getDeletedBy())
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        var auditNames = userRepository.findAllById(auditIds).stream()
+                .collect(java.util.stream.Collectors.toMap(com.hanghai.kchtg.user.entity.User::getId,
+                        user -> user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername() : user.getFullName(),
+                        (first, second) -> first));
+        UserDetailResponse user = UserDetailResponse.from(entity, orgUnitCacheService, auditNames);
         return ResponseEntity.ok(ApiResponse.success(user));
     }
 

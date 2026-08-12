@@ -23,11 +23,11 @@ export const BECBANG_STATUS_MAP = APPROVAL_STATUS_MAP;
 export const BECBANG_APPROVAL_STATUS_MAP = APPROVAL_STATUS_MAP;
 
 // ── Berth-specific status types (5-value approval) ──────────────────
-export type BerthActivityStatus = 'DANG_KHAI_THAC' | 'CHUA_KHAI_THAC' | 'DUNG_KHAI_THAC';
+export type BerthActivityStatus = 'NOT_YET_OPERATIONAL' | 'OPERATIONAL' | 'SUSPENDED';
 export const BERTH_ACTIVITY_STATUS_MAP: Record<BerthActivityStatus, {color:string;label:string}> = {
-  DANG_KHAI_THAC: {color:'green',label:'Đang khai thác'},
-  CHUA_KHAI_THAC: {color:'orange',label:'Chưa khai thác'},
-  DUNG_KHAI_THAC: {color:'red',label:'Dừng khai thác'},
+  NOT_YET_OPERATIONAL: {color:'orange',label:'Chưa khai thác'},
+  OPERATIONAL: {color:'green',label:'Đang khai thác'},
+  SUSPENDED: {color:'red',label:'Dừng khai thác'},
 };
 export type BerthApprovalStatus = 'NHAP'|'CHO_PHE_DUYET'|'CHO_PD_CAP_CUC'|'DA_PHE_DUYET'|'TU_CHOI';
 export const BERTH_APPROVAL_STATUS_MAP: Record<BerthApprovalStatus,{color:string;label:string}> = {
@@ -37,7 +37,7 @@ export const BERTH_APPROVAL_STATUS_MAP: Record<BerthApprovalStatus,{color:string
   DA_PHE_DUYET:{color:'green',label:'Đã phê duyệt'},
   TU_CHOI:{color:'red',label:'Từ chối'},
 };
-export type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE';
+export type SaveAction = 'DRAFT' | 'SUBMIT' | 'APPROVED' | 'UPDATE';
 
 // ── 1. Cảng Biển ─────────────────────────────────────────────────────
 

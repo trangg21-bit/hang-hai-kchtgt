@@ -9,7 +9,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,16 +23,15 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class VtsSystem extends BaseEntity {
     @Column(name = "province_id")
     private Integer provinceId;
 
     @Column(name = "system_name", nullable = false, length = 255)
     private String systemName;
-
-    @Column(name = "location", nullable = false, length = 500)
-    private String location;
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
@@ -51,8 +52,34 @@ public class VtsSystem extends BaseEntity {
     @Column(name = "scope", length = 2000)
     private String scope;
 
+    @Column(name = "note", length = 2000)
+    private String note;
+
+    @Column(name = "code", length = 50, unique = true)
+    private String code;
+
+
+
+    @Column(name = "address", length = 500)
+    private String address;
+
+    @Column(name = "maritime_notice", length = 2000)
+    private String maritimeNotice;
+
+    @Column(name = "operation_start_date")
+    private LocalDate operationStartDate;
+
     @Column(name = "spatial_id")
     private UUID spatialId;
+
+    @Column(name = "owning_org_id")
+    private UUID owningOrgId;
+
+    @Column(name = "operating_org_id")
+    private UUID operatingOrgId;
+
+    @Column(name = "port_id")
+    private UUID portId;
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "approval_status", nullable = false, columnDefinition = "SMALLINT")
@@ -81,14 +108,21 @@ public class VtsSystem extends BaseEntity {
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
+    @OneToMany(mappedBy = "vtsSystem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<VtsZone> zones = new ArrayList<>();
+
     @OneToMany(mappedBy = "vtsSystem")
     @Builder.Default
     private List<RadarStation> radarStations = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
-        if (approvalStatus == null) approvalStatus = ApprovalStatus.PROPOSED;
-        if (approvedLevel1 == null) approvedLevel1 = false;
-        if (approvedLevel2 == null) approvedLevel2 = false;
+        if (approvalStatus == null)
+            approvalStatus = ApprovalStatus.PROPOSED;
+        if (approvedLevel1 == null)
+            approvedLevel1 = false;
+        if (approvedLevel2 == null)
+            approvedLevel2 = false;
     }
 }

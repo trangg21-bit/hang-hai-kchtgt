@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, App as AntApp, theme } from 'antd';
@@ -7,89 +7,87 @@ import viVN from 'antd/locale/vi_VN';
 import { setStaticMessage } from './components/ToastNotification';
 import { useAuthStore } from './store/authStore';
 import AppLayout from './components/AppLayout';
-import UsersPage from './pages/UsersPage';
-import RolesPage from './pages/RolesPage';
-import PointObjectList from './pages/gis/PointObjectList';
-import PointObjectForm from './pages/gis/PointObjectForm';
-import LineObjectList from './pages/gis/LineObjectList';
-import LineObjectForm from './pages/gis/LineObjectForm';
-import PolygonObjectList from './pages/gis/PolygonObjectList';
-import PolygonObjectForm from './pages/gis/PolygonObjectForm';
-import MapLayerList from './pages/gis/MapLayerList';
-import GISSearch from './pages/gis/GISSearch';
-import GISChartView from './pages/gis/GISChartView';
-import S63PermitsPage from './pages/gis/S63PermitsPage';
-import LoginPage from './pages/Login';
-import ReportList from './pages/reports/ReportList';
-import ReportViewer from './pages/reports/ReportViewer';
-import Bcc157Form from './pages/reports/Bcc157Form';
-import ConnectionList from './pages/connections/ConnectionList';
-import ConnectionForm from './pages/connections/ConnectionForm';
-import ConnectionHealth from './pages/connections/ConnectionHealth';
-import UnitList from './pages/organizations/UnitList';
-import UnitForm from './pages/organizations/UnitForm';
-import UnitTree from './pages/organizations/UnitTree';
-import GroupList from './pages/groups/GroupList';
-import GroupForm from './pages/groups/GroupForm';
-import GroupMembers from './pages/groups/GroupMembers';
-import LogsPage from './pages/LogsPage';
-import InterconnectPage from './pages/InterconnectPage';
-import SettingsPage from './pages/SettingsPage';
-import BeaconList from './pages/beacons/BeaconList';
-import BeaconForm from './pages/beacons/BeaconForm';
-import BuoyList from './pages/buoys/BuoyList';
-import BuoyForm from './pages/buoys/BuoyForm';
-import BeaconHistoryList from './pages/history/BeaconHistoryList';
-import SymbolList from './pages/symbols/SymbolList';
-import HomePage from './pages/Home';
+import { Spin } from 'antd';
+const UsersPage = lazy(() => import('./pages/UsersPage'));
+const RolesPage = lazy(() => import('./pages/RolesPage'));
+const PointObjectList = lazy(() => import('./pages/gis/PointObjectList'));
+const PointObjectForm = lazy(() => import('./pages/gis/PointObjectForm'));
+const LineObjectList = lazy(() => import('./pages/gis/LineObjectList'));
+const LineObjectForm = lazy(() => import('./pages/gis/LineObjectForm'));
+const PolygonObjectList = lazy(() => import('./pages/gis/PolygonObjectList'));
+const PolygonObjectForm = lazy(() => import('./pages/gis/PolygonObjectForm'));
+const MapLayerList = lazy(() => import('./pages/gis/MapLayerList'));
+const GISSearch = lazy(() => import('./pages/gis/GISSearch'));
+const GISChartView = lazy(() => import('./pages/gis/GISChartView'));
+const S63PermitsPage = lazy(() => import('./pages/gis/S63PermitsPage'));
+const LoginPage = lazy(() => import('./pages/Login'));
+const ReportList = lazy(() => import('./pages/reports/ReportList'));
+const ReportViewer = lazy(() => import('./pages/reports/ReportViewer'));
+const Bcc157Form = lazy(() => import('./pages/reports/Bcc157Form'));
+const ConnectionList = lazy(() => import('./pages/connections/ConnectionList'));
+const ConnectionForm = lazy(() => import('./pages/connections/ConnectionForm'));
+const ConnectionHealth = lazy(() => import('./pages/connections/ConnectionHealth'));
+const UnitList = lazy(() => import('./pages/organizations/UnitList'));
+const UnitForm = lazy(() => import('./pages/organizations/UnitForm'));
+const UnitTree = lazy(() => import('./pages/organizations/UnitTree'));
+const GroupList = lazy(() => import('./pages/groups/GroupList'));
+const GroupForm = lazy(() => import('./pages/groups/GroupForm'));
+const GroupMembers = lazy(() => import('./pages/groups/GroupMembers'));
+const LogsPage = lazy(() => import('./pages/LogsPage'));
+const InterconnectPage = lazy(() => import('./pages/InterconnectPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const BeaconList = lazy(() => import('./pages/beacons/BeaconList'));
+const BeaconForm = lazy(() => import('./pages/beacons/BeaconForm'));
+const BuoyList = lazy(() => import('./pages/buoys/BuoyList'));
+const BuoyForm = lazy(() => import('./pages/buoys/BuoyForm'));
+const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
+const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
+const HomePage = lazy(() => import('./pages/Home'));
 import PermissionGuard from './components/PermissionGuard';
-import PasswordResetPage from './pages/PasswordResetPage';
-import PortList from './services/port/PortListPage';
-import PortCreatePage from './services/port/PortCreatePage';
-import PortUpdatePage from './services/port/PortUpdatePage';
-import PortApprovePage from './services/port/PortApprovePage';
-import PortDeleteConfirm from './services/port/PortDeleteConfirm';
+const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
+const PortList = lazy(() => import('./services/port/PortListPage'));
+const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
+const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm'));
 
-import BerthList from './pages/port/BerthList';
-import BerthForm from './pages/port/BerthForm';
+const BerthList = lazy(() => import('./pages/port/BerthList'));
 
-import PierList from './pages/port/PierList';
-import PierForm from './pages/port/PierForm';
+const PierList = lazy(() => import('./pages/port/PierList'));
+const PierForm = lazy(() => import('./pages/port/PierForm'));
 
-import DryPortList from './pages/port/DryPortList';
-import DryPortForm from './pages/port/DryPortForm';
+const DryPortList = lazy(() => import('./pages/port/DryPortList'));
+const DryPortForm = lazy(() => import('./pages/port/DryPortForm'));
 
-import WaterZoneListPage from './app/waterzone/WaterZoneListPage';
+const WaterZoneListPage = lazy(() => import('./app/waterzone/WaterZoneListPage'));
 
-import DocumentUploadPage from './app/document/DocumentUploadPage';
+const DocumentUploadPage = lazy(() => import('./app/document/DocumentUploadPage'));
 
 // M-003: Khu nước & VTS — Quản lý tàu bè
-import NavigationChannelList from './pages/navigationchannel/NavigationChannelList';
-import NavigationChannelForm from './pages/navigationchannel/NavigationChannelForm';
-import DikeRevetmentList from './pages/dikerevetment/DikeRevetmentList';
-import DikeRevetmentForm from './pages/dikerevetment/DikeRevetmentForm';
-import ShipRepairFacilityList from './pages/shiprepair/ShipRepairFacilityList';
-import ShipRepairFacilityForm from './pages/shiprepair/ShipRepairFacilityForm';
-import RadarStationList from './pages/radarstation/RadarStationList';
-import RadarStationForm from './pages/radarstation/RadarStationForm';
-import VtsSystemList from './pages/vtssystem/VtsSystemList';
-import VtsSystemForm from './pages/vtssystem/VtsSystemForm';
+const NavigationChannelList = lazy(() => import('./pages/navigationchannel/NavigationChannelList'));
+const NavigationChannelForm = lazy(() => import('./pages/navigationchannel/NavigationChannelForm'));
+const DikeRevetmentList = lazy(() => import('./pages/dikerevetment/DikeRevetmentList'));
+const DikeRevetmentForm = lazy(() => import('./pages/dikerevetment/DikeRevetmentForm'));
+const ShipRepairFacilityList = lazy(() => import('./pages/shiprepair/ShipRepairFacilityList'));
+const ShipRepairFacilityForm = lazy(() => import('./pages/shiprepair/ShipRepairFacilityForm'));
+const RadarStationList = lazy(() => import('./pages/radarstation/RadarStationList'));
+const RadarStationForm = lazy(() => import('./pages/radarstation/RadarStationForm'));
+const VtsSystemList = lazy(() => import('./pages/vtssystem/VtsSystemList'));
+const VtsSystemForm = lazy(() => import('./pages/vtssystem/VtsSystemForm'));
 
 // M-005 & M-006: Biến động tài sản & Văn bản pháp lý
-import AssetIncreaseList from './pages/assetmovement/AssetIncreaseList';
-import AssetDecreaseList from './pages/assetmovement/AssetDecreaseList';
-import InventoryList from './pages/assetmovement/InventoryList';
-import AssetExploitationList from './pages/assetmovement/AssetExploitationList';
-import LegalDocumentList from './pages/document/LegalDocumentList';
-import IncidentList from './pages/document/IncidentList';
-import PortPlanningList from './pages/document/PortPlanningList';
+const AssetIncreaseList = lazy(() => import('./pages/assetmovement/AssetIncreaseList'));
+const AssetDecreaseList = lazy(() => import('./pages/assetmovement/AssetDecreaseList'));
+const InventoryList = lazy(() => import('./pages/assetmovement/InventoryList'));
+const AssetExploitationList = lazy(() => import('./pages/assetmovement/AssetExploitationList'));
+const LegalDocumentList = lazy(() => import('./pages/document/LegalDocumentList'));
+const IncidentList = lazy(() => import('./pages/document/IncidentList'));
+const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
 
 // M-014 & M-015: Nhà trạm & Đài duyên hải
-import LighthouseStationList from './pages/station/LighthouseStationList';
-import BuoyStationList from './pages/station/BuoyStationList';
-import BuoyStationForm from './pages/station/BuoyStationForm';
-import CoastalStationList from './pages/station/CoastalStationList';
-import SpecialStationList from './pages/station/SpecialStationList';
+const LighthouseStationList = lazy(() => import('./pages/station/LighthouseStationList'));
+const BuoyStationList = lazy(() => import('./pages/station/BuoyStationList'));
+const BuoyStationForm = lazy(() => import('./pages/station/BuoyStationForm'));
+const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
+const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -116,7 +114,8 @@ export default function App() {
       >
         <AntApp>
           <BrowserRouter>
-            <Routes>
+            <Suspense fallback={<Spin /> }>
+              <Routes>
               {/* Login — outside layout */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<PasswordResetPage mode="forgot" />} />
@@ -187,14 +186,10 @@ export default function App() {
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
                 <Route path="/port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
-                <Route path="/port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
-                <Route path="/port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
-                <Route path="/port/:id/approve" element={<PermissionGuard permission={['port:approvec1', 'port:approvec2']}><PortApprovePage /></PermissionGuard>} />
+                <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
-                <Route path="/berth/create" element={<PermissionGuard permission="berth:create"><><BerthList /><BerthForm /></></PermissionGuard>} />
-                <Route path="/berth/:id/edit" element={<PermissionGuard permission="berth:update"><><BerthList /><BerthForm /></></PermissionGuard>} />
 
                 <Route path="/Pier" element={<PermissionGuard permission="pier:read"><PierList /></PermissionGuard>} />
                 <Route path="/Pier/create" element={<PermissionGuard permission="pier:create"><><PierList /><PierForm /></></PermissionGuard>} />
@@ -271,7 +266,8 @@ export default function App() {
                   missing appeared to log the user out. Only anonymous visitors
                   belong at /login; a signed-in user goes back to the dashboard. */}
               <Route path="*" element={<UnknownRouteRedirect />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           </BrowserRouter>
           <RegisterAntdStatic />
         </AntApp>

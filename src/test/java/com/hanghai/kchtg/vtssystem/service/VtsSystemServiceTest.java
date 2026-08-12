@@ -6,10 +6,14 @@ import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import com.hanghai.kchtg.vtssystem.entity.VtsZone;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.vtssystem.repository.VtsZoneRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,7 +53,13 @@ class VtsSystemServiceTest {
     private OrgUnitCacheService orgUnitCacheService;
 
     @Mock
+    private PortCacheService portCacheService;
+
+    @Mock
     private com.hanghai.kchtg.user.repository.UserRepository userRepository;
+
+    @Mock
+    private VtsZoneRepository zoneRepository;
 
     @InjectMocks
     private VtsSystemService service;
@@ -61,7 +71,8 @@ class VtsSystemServiceTest {
     void setUp() {
         entity = VtsSystem.builder()
                 .systemName("VTS ABC")
-                .location("Hà Nội")
+                .code("VTS-OLD")
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
@@ -70,14 +81,19 @@ class VtsSystemServiceTest {
 
         createRequest = VtsSystemCreateRequest.builder()
                 .systemName("VTS ABC")
-                .location("Hà Nội")
+                .code("VTS-ABC")
+                .conditionStatus(com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
+                .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
+                .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
+                .provinceId(1)
                 .build();
     }
 
     @Test
     void testCreate() {
         VtsSystem saved = VtsSystem.builder()
-                .systemName("VTS ABC").location("Hà Nội").approvalStatus(ApprovalStatus.PROPOSED)
+                .systemName("VTS ABC").approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false).approvedLevel2(false).build();
         saved.setId(TEST_ID);
 
@@ -87,15 +103,80 @@ class VtsSystemServiceTest {
         VtsSystemResponse response = service.create(createRequest, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
         assertEquals(ApprovalStatus.PROPOSED, response.getApprovalStatus());
+        assertNotNull(response.getZones());
+        assertTrue(response.getZones().isEmpty());
+        assertNotNull(response.getAttachments());
+        assertTrue(response.getAttachments().isEmpty());
+        verify(repository).existsByCode("VTS-ABC");
         verify(repository, times(1)).save(any());
     }
 
     @Test
+    void testCreate_WithZones_DoesNotPreAssignZoneIds() {
+        VtsZoneDto zoneDto = VtsZoneDto.builder()
+                .code("ZONE_1")
+                .name("Vùng 1")
+                .build();
+
+        VtsSystemCreateRequest reqWithZones = VtsSystemCreateRequest.builder()
+                .systemName("VTS Zone Test")
+                .code("VTS-ZONE")
+                .conditionStatus(com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
+                .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
+                .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
+                .provinceId(1)
+                .zones(List.of(zoneDto))
+                .build();
+
+        when(repository.save(any())).thenAnswer(invocation -> {
+            VtsSystem passedEntity = invocation.getArgument(0);
+            assertNotNull(passedEntity.getZones());
+            assertEquals(1, passedEntity.getZones().size());
+            assertNull(passedEntity.getZones().get(0).getId());
+            passedEntity.setId(TEST_ID);
+            return passedEntity;
+        });
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+
+        VtsSystemResponse res = service.create(reqWithZones, UUID.randomUUID());
+        assertNotNull(res);
+        verify(repository, times(1)).save(any());
+    }
+
+    @Test
+    void testCreate_RejectsMissingRequiredFieldsBeforePersistence() {
+        VtsSystemCreateRequest invalidRequest = VtsSystemCreateRequest.builder()
+                .systemName("VTS thiếu dữ liệu")
+                .code("VTS-MISSING")
+                .build();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.create(invalidRequest, UUID.randomUUID()));
+
+        assertEquals("Đơn vị quản lý không được để trống", exception.getMessage());
+        verify(repository, never()).existsByCode(anyString());
+        verify(repository, never()).save(any());
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
     void testGetById() {
+        UUID managingUnitId = entity.getOrgUnitId();
+        UUID owningUnitId = UUID.fromString("00000000-0000-0000-0000-000000000011");
+        UUID operatingUnitId = UUID.fromString("00000000-0000-0000-0000-000000000012");
+        entity.setOwningOrgId(owningUnitId);
+        entity.setOperatingOrgId(operatingUnitId);
+        when(orgUnitCacheService.getName(managingUnitId)).thenReturn("Đơn vị quản lý");
+        when(orgUnitCacheService.getName(owningUnitId)).thenReturn("Đơn vị chủ quản");
+        when(orgUnitCacheService.getName(operatingUnitId)).thenReturn("Đơn vị vận hành");
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         VtsSystemResponse response = service.getById(TEST_ID);
         assertNotNull(response);
         assertEquals(TEST_ID, response.getId());
+        assertEquals("Đơn vị quản lý", response.getOrgUnitName());
+        assertEquals("Đơn vị chủ quản", response.getOwningOrgName());
+        assertEquals("Đơn vị vận hành", response.getOperatingOrgName());
     }
 
     @Test
@@ -114,7 +195,69 @@ class VtsSystemServiceTest {
 
         VtsSystemResponse response = service.update(TEST_ID, updateReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
+        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
+        assertFalse(entity.getApprovedLevel1());
+        assertFalse(entity.getApprovedLevel2());
         verify(repository, times(1)).save(any());
+    }
+
+    @Test
+    void testCreate_RejectsDuplicateCode() {
+        when(repository.existsByCode("VTS-ABC")).thenReturn(true);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.create(createRequest, UUID.randomUUID()));
+
+        assertEquals("Mã hệ thống VTS đã tồn tại trong hệ thống", exception.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void testUpdate_RejectsChangingImmutableCode() {
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .code("VTS-NEW")
+                .build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.update(TEST_ID, updateReq, UUID.randomUUID()));
+
+        assertEquals("Mã hệ thống VTS không được phép thay đổi sau khi tạo", exception.getMessage());
+        assertEquals("VTS-OLD", entity.getCode());
+        verify(repository, never()).save(any());
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void testUpdate_RejectsDuplicateCodeBeforeImmutableCodeCheck() {
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .code("VTS-DUPLICATE")
+                .build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.existsByCodeAndIdNot("VTS-DUPLICATE", TEST_ID)).thenReturn(true);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.update(TEST_ID, updateReq, UUID.randomUUID()));
+
+        assertEquals("Mã hệ thống VTS đã tồn tại trong hệ thống", exception.getMessage());
+        verify(repository, never()).save(any());
+        verify(repository).existsByCodeAndIdNot("VTS-DUPLICATE", TEST_ID);
+    }
+
+    @Test
+    void testUpdate_RejectsChangingImmutableManagingUnit() {
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000099"))
+                .build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.update(TEST_ID, updateReq, UUID.randomUUID()));
+
+        assertEquals("Đơn vị quản lý không được phép thay đổi sau khi tạo", exception.getMessage());
+        assertEquals(UUID.fromString("00000000-0000-0000-0000-000000000010"), entity.getOrgUnitId());
+        verify(repository, never()).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
     @Test
@@ -162,7 +305,7 @@ class VtsSystemServiceTest {
     @Test
     void testDelete_ApprovedEntity() {
         VtsSystem approvedEntity = VtsSystem.builder()
-                .systemName("ABC").location("Hà Nội").approvalStatus(ApprovalStatus.APPROVED)
+                .systemName("ABC").approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false).approvedLevel2(false).build();
         approvedEntity.setId(TEST_ID);
 
@@ -183,13 +326,13 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC1_Approve() {
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
     }
 
@@ -199,7 +342,7 @@ class VtsSystemServiceTest {
                 new UsernamePasswordAuthenticationToken(
                         "admin", null, List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
         try {
-            ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+            ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
             when(repository.save(any())).thenReturn(entity);
             when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
@@ -207,7 +350,7 @@ class VtsSystemServiceTest {
             service.approveC1(TEST_ID, req,
                     java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-            assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
+            assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
             assertFalse(entity.getApprovedLevel2());
             verify(historyRepository, times(1)).save(any());
         } finally {
@@ -217,8 +360,9 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_Approve() {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovedLevel1(true);
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
@@ -230,10 +374,10 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
@@ -244,7 +388,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testRejectC1() {
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("REJECTED").reason("Không đủ điều kiện").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.REJECTED.name()).reason("Không đủ điều kiện").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
@@ -255,13 +399,29 @@ class VtsSystemServiceTest {
     }
 
     @Test
+    void testRejectC2() {
+        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovedLevel1(true);
+        entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.REJECTED.name()).reason("Không đồng ý cấp 2").build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+
+        service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
+        assertEquals("Không đồng ý cấp 2", entity.getRejectionReason());
+    }
+
+    @Test
     void testGetHistory() {
         ApprovalHistory history = ApprovalHistory.builder()
                 .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).refId(TEST_ID).refType(InfrastructureType.VTS_SYSTEM).approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
                 .status(ApprovalHistoryStatus.fromValue("APPROVED")).approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now()).reason("Duyệt").build();
+        when(repository.existsById(TEST_ID)).thenReturn(true);
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_SYSTEM, TEST_ID)).thenReturn(Arrays.asList(history));
-        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
         assertNotNull(entries);
@@ -271,10 +431,201 @@ class VtsSystemServiceTest {
 
     @Test
     void testSearch() {
-        when(repository.search(null, null, null, null, org.springframework.data.domain.PageRequest.of(0, 100))).thenReturn(org.springframework.data.domain.Page.empty());
+        when(repository.search(false, List.of(), null, null, null, null,
+                org.springframework.data.domain.PageRequest.of(0, 100))).thenReturn(org.springframework.data.domain.Page.empty());
         List<VtsSystemResponse> responses = service.search(null, null, null, null);
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
     }
-}
 
+    // ===== Additional missing test cases =====
+
+    @Test
+    void testCreate_AcceptsWhitespaceTrimmedCode() {
+        VtsSystemCreateRequest req = VtsSystemCreateRequest.builder()
+                .systemName("VTS Trim")
+                .code("  VTS-TRIM  ")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
+                .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
+                .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
+                .provinceId(1)
+                .build();
+
+        VtsSystem saved = VtsSystem.builder()
+                .systemName("VTS Trim").approvalStatus(ApprovalStatus.PROPOSED)
+                .approvedLevel1(false).approvedLevel2(false).build();
+        saved.setId(TEST_ID);
+
+        when(repository.save(any())).thenReturn(saved);
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+
+        VtsSystemResponse response = service.create(req, UUID.randomUUID());
+        assertNotNull(response);
+        verify(repository).existsByCode("VTS-TRIM");
+    }
+
+    @Test
+    void testCreate_CoordinatesNotProvided_SpatialIdIsNull() {
+        VtsSystemCreateRequest req = VtsSystemCreateRequest.builder()
+                .systemName("VTS No Coords")
+                .code("VTS-NOCOORD")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
+                .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
+                .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
+                .provinceId(1)
+                .build();
+
+        VtsSystem saved = VtsSystem.builder()
+                .systemName("VTS No Coords").approvalStatus(ApprovalStatus.PROPOSED)
+                .approvedLevel1(false).approvedLevel2(false).build();
+        saved.setId(TEST_ID);
+
+        when(repository.save(any())).thenReturn(saved);
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+
+        VtsSystemResponse response = service.create(req, UUID.randomUUID());
+        assertNotNull(response);
+        assertNull(response.getSpatialId());
+    }
+
+    @Test
+    void testGetZones() {
+        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(zoneRepository.findByVtsSystemIdOrderByCreatedAtAsc(TEST_ID))
+                .thenReturn(List.of());
+
+        List<VtsZoneDto> zones = service.getZones(TEST_ID);
+        assertNotNull(zones);
+        assertTrue(zones.isEmpty());
+    }
+
+    @Test
+    void testGetAttachments() {
+        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(TEST_ID, InfrastructureType.VTS_SYSTEM))
+                .thenReturn(List.of());
+
+        List<VtsSystemAttachmentResponse> attachments = service.getAttachments(TEST_ID);
+        assertNotNull(attachments);
+        assertTrue(attachments.isEmpty());
+    }
+
+    @Test
+    void testUpdate_ZonesReplaceAllOldZones() {
+        VtsZoneDto zoneDto = VtsZoneDto.builder()
+                .code("ZONE_NEW")
+                .name("Vùng mới")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .build();
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .zones(List.of(zoneDto))
+                .build();
+
+        VtsSystemUpdateRequest oldReq = VtsSystemUpdateRequest.builder()
+                .zones(List.of())
+                .build();
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+
+        service.update(TEST_ID, updateReq, UUID.randomUUID());
+        assertNotNull(entity.getZones());
+        assertEquals(1, entity.getZones().size());
+        assertEquals("ZONE_NEW", entity.getZones().get(0).getCode());
+    }
+
+    @Test
+    void testApproveC1_RejectsInvalidDecision() {
+        ApprovalRequest req = ApprovalRequest.builder()
+                .decision("INVALID_STATUS")
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.approveC1(TEST_ID, req, UUID.randomUUID()));
+        assertTrue(ex.getMessage().contains("Quyết định phê duyệt không hợp lệ"));
+    }
+
+    @Test
+    void testApproveC1_RejectRequiresReason() {
+        ApprovalRequest req = ApprovalRequest.builder()
+                .decision(ApprovalStatus.REJECTED.name())
+                .reason(null)
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.approveC1(TEST_ID, req, UUID.randomUUID()));
+        assertTrue(ex.getMessage().contains("Lý do từ chối là bắt buộc"));
+    }
+
+    @Test
+    void testApproveC2_RejectsInvalidDecision() {
+        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovedLevel1(true);
+
+        ApprovalRequest req = ApprovalRequest.builder()
+                .decision("INVALID")
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.approveC2(TEST_ID, req, UUID.randomUUID()));
+        assertTrue(ex.getMessage().contains("Quyết định phê duyệt không hợp lệ"));
+    }
+
+    @Test
+    void testDelete_RejectedEntity_Throws() {
+        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        assertThrows(RuntimeException.class,
+                () -> service.delete(TEST_ID, UUID.randomUUID()));
+    }
+
+    @Test
+    void testCountByApprovalStatus() {
+        java.util.Map<String, Long> counts = service.countByApprovalStatus();
+        assertNotNull(counts);
+    }
+
+    @Test
+    void testCountByApprovalStatus_WithFilters() {
+        java.util.Map<String, Long> counts = service.countByApprovalStatus(
+                null, null, null);
+        assertNotNull(counts);
+    }
+
+    @Test
+    void testGetById_WithZonesAndAttachments() {
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .zones(List.of())
+                .build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+
+        service.update(TEST_ID, updateReq, UUID.randomUUID());
+
+        VtsSystemResponse response = service.getById(TEST_ID, true, true);
+        assertNotNull(response);
+        assertNotNull(response.getZones());
+        assertNotNull(response.getAttachments());
+    }
+
+    @Test
+    void testSearch_WithYear() {
+        when(repository.searchByCreatedDateRange(false, List.of(), null, null, null,
+                null,
+                java.time.LocalDateTime.of(2025, 1, 1, 0, 0),
+                java.time.LocalDateTime.of(2026, 1, 1, 0, 0),
+                org.springframework.data.domain.PageRequest.of(0, 100)))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        List<VtsSystemResponse> responses = service.search(null, null, null, null, 2025);
+        assertNotNull(responses);
+        assertTrue(responses.isEmpty());
+    }
+}

@@ -103,3 +103,15 @@ export const VIETNAM_PROVINCE_OPTIONS = VIETNAM_PROVINCES.map((label, index) => 
   label,
   value: String(VIETNAM_PROVINCE_IDS[index]),
 }));
+
+export const getProvinceIdByName = (name?: string): number | undefined => {
+  if (!name) return undefined;
+  const idx = VIETNAM_PROVINCES.indexOf(name as any);
+  return idx !== -1 ? VIETNAM_PROVINCE_IDS[idx] : undefined;
+};
+
+export const getProvinceNameById = (id?: number): string | undefined => {
+  if (!id) return undefined;
+  const idx = VIETNAM_PROVINCE_IDS.indexOf(id as any);
+  return idx !== -1 ? VIETNAM_PROVINCES[idx] : undefined;
+};

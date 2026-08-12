@@ -1,10 +1,15 @@
 server:
-  port: 8080
-  max-http-header-size: 2MB
+  port: 8081
+  max-http-header-size: 32KB
+  max-http-request-header-size: 32KB
   tomcat:
-    max-http-header-size: 2MB
+    max-http-header-size: 32KB
 
 spring:
+  flyway:
+    enabled: true
+    out-of-order: true
+    validate-on-migrate: false
   datasource:
     url: jdbc:postgresql://${DB_HOST:10.0.229.20}:${DB_PORT:5432}/${DB_NAME:vmd_csdl_v2}
     driver-class-name: org.postgresql.Driver

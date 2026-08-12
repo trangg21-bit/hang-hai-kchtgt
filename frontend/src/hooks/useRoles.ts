@@ -12,6 +12,17 @@ export function useRoles(params?: { page?: number; pageSize?: number; search?: s
   });
 }
 
+/**
+ * Hook nhẹ cho dropdown chọn vai trò — chỉ gọi /api/roles/simple, không JOIN permissions.
+ */
+export function useRolesSimple() {
+  return useQuery({
+    queryKey: ['roles', 'simple'],
+    queryFn: () => roleService.listSimple(),
+    staleTime: 5 * 60_000, // cache 5 phút
+  });
+}
+
 export function useRole(id: string | undefined) {
   return useQuery({
     queryKey: ['roles', id],

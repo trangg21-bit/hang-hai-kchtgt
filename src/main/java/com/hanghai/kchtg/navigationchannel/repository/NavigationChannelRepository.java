@@ -17,26 +17,26 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
 
     long countByOrgUnitId(UUID orgUnitId);
 
-    List<NavigationChannel> findByApprovalStatusAndIsDeletedFalse(ApprovalStatus approvalStatus);
+    List<NavigationChannel> findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
-    List<NavigationChannel> findByIsDeletedFalse(Sort sort);
+    List<NavigationChannel> findByDeletedAtIsNull(Sort sort);
 
-    Page<NavigationChannel> findByIsDeletedFalse(Pageable pageable);
+    Page<NavigationChannel> findByDeletedAtIsNull(Pageable pageable);
 
-    List<NavigationChannel> findByChannelNameContainingAndIsDeletedFalse(String channelName);
+    List<NavigationChannel> findByChannelNameContainingAndDeletedAtIsNull(String channelName);
 
     @Query("SELECT l FROM NavigationChannel l WHERE " +
+            "l.deletedAt IS NULL AND " +
             "(:orgUnitId IS NULL OR l.orgUnitId = :orgUnitId) AND " +
             "(:keyword IS NULL OR LOWER(l.channelName) LIKE :keyword) AND " +
-            "(:ApprovalStatus IS NULL OR l.approvalStatus = :ApprovalStatus) AND " +
-            "l.isDeleted = false")
+            "(:ApprovalStatus IS NULL OR l.approvalStatus = :ApprovalStatus)")
     Page<NavigationChannel> searchDocuments(
             @org.springframework.data.repository.query.Param("orgUnitId") UUID orgUnitId,
             @org.springframework.data.repository.query.Param("keyword") String keyword,
             @org.springframework.data.repository.query.Param("ApprovalStatus") ApprovalStatus ApprovalStatus,
             Pageable pageable);
     @Query("SELECT l FROM NavigationChannel l WHERE " +
-            "l.isDeleted = false AND " +
+            "l.deletedAt IS NULL AND " +
             "(:orgUnitId IS NULL OR l.orgUnitId = :orgUnitId) AND " +
             "(:search IS NULL OR LOWER(l.channelName) LIKE :search)")
     List<NavigationChannel> searchFiltered(

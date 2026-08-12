@@ -102,7 +102,7 @@ class M003RbacSecurityTest {
     private static final String DIKEREVETMENT_APPROVE_BODY =
             "{\"nguoiPheDuyet\":\"Admin\",\"decision\":\"APPROVED\"}";
     private static final String GENERIC_APPROVE_BODY =
-            "{\"quyetDinh\":\"APPROVED\"}";
+            "{\"decision\":\"APPROVED\"}";
 
     // =========================================================================
     // ALLOW path — SYSTEM_ADMIN → approve/c1 (200)

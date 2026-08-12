@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useDeferredValue } from 'react';
+import { useState, useCallback, useMemo, useDeferredValue } from 'react';
 import {
   Button,
   Tag,
@@ -10,6 +10,7 @@ import {
   Spin,
   Card,
   Space,
+  Drawer,
 } from 'antd';
 import {
   PlusOutlined,
@@ -31,10 +32,11 @@ import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
-import { ScreenHeader, FilterBar, DataTable } from '../components/list-view';
+import { ScreenHeader, DataTable } from '../components/list-view';
+import FilterTableLayout, { type StatusTab } from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
 import type { Role, CreateRolePayload, UpdateRolePayload } from '../types/role';
-import { actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, statusOperational, statusCritical } from '../tokens';
+import { actionPrimary, textSecondary, fontSizeMd, fontWeightMedium, fontWeightBold, radiusPill, borderDefault, spaceFormField, statusOperational, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
 
@@ -45,6 +47,7 @@ const labelProps = (text: string) => ({ label: <span style={{ color: colors.side
 export default function RolesPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
   const [menuSearch, setMenuSearch] = useState('');
@@ -214,7 +217,7 @@ export default function RolesPage() {
     [deleteRole],
   );
 
-  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+  const handleFilterSearch = useCallback((values: Record<string, string | undefined>) => {
     setSearch(values.search || '');
     setPage(1);
   }, []);
@@ -229,8 +232,6 @@ export default function RolesPage() {
     setPageSize(ps);
   }, []);
 
-  const getCheckedCount = () => checkedKeys.length + checkedPermissionKeys.length;
-
   // ---- Row actions ----
   const rowActions = useCallback((record: Role) => {
     const actions: {
@@ -244,32 +245,65 @@ export default function RolesPage() {
 
   // ---- Columns ----
   const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'name', label: 'Tên vai trò', dataIndex: 'name', width: 220, align: 'left' as const, render: (text: string, record: Role) => (
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'nameCode', label: 'Mã – Tên vai trò', dataIndex: 'name', width: 280, align: 'left' as const, render: (text: string, record: Role) => (
       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Typography.Text strong>{text}</Typography.Text>
-        {record.id === 'role-001' && <Tag color="volcano">Hệ thống</Tag>}
+        <Typography.Text strong>{record.code} – {text}</Typography.Text>
+        {record.id === 'role-001' && <Tag color="volcano" style={{ borderRadius: radiusPill }}>Hệ thống</Tag>}
       </span>
     ) },
     { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 260, align: 'left' as const, render: (text?: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
-    { key: 'permissions', label: 'Chức năng', dataIndex: 'menuCodes', width: 130, align: 'center' as const, render: (_: string[], record: Role) => {
+    { key: 'permissions', label: 'Chức năng', dataIndex: 'menuCodes', width: 140, align: 'center' as const, render: (_: string[], record: Role) => {
       const count = (record.menuCodes?.length ?? 0) || record.permissions.length;
-      return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{count} chức năng</span>;
+      return (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
+          border: `1px solid ${actionPrimary}40`, borderRadius: radiusPill,
+          fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+          background: `${actionPrimary}15`, color: actionPrimary, whiteSpace: 'nowrap'
+        }}>
+          {count} chức năng
+        </span>
+      );
     } },
-    { key: 'userCount', label: 'Người dùng', dataIndex: 'userCount', width: 120, align: 'center' as const, render: (count: number) => (
-      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: count > 0 ? `${statusOperational}15` : `${textSecondary}15`, color: count > 0 ? statusOperational : textSecondary }}>{count}</span>
-    ) },
-    { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 140, align: 'center' as const, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY')}</span> : <Typography.Text type="secondary">—</Typography.Text> },
+    { key: 'userCount', label: 'Người dùng', dataIndex: 'userCount', width: 120, align: 'center' as const, render: (count: number) => {
+      const color = count > 0 ? statusOperational : textSecondary;
+      return (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
+          border: `1px solid ${color}40`, borderRadius: radiusPill,
+          fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+          background: `${color}15`, color, whiteSpace: 'nowrap'
+        }}>
+          {count}
+        </span>
+      );
+    } },
+    { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 150, align: 'center' as const, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY')}</span> : <Typography.Text type="secondary">—</Typography.Text> },
   ], [page, pageSize]);
 
-  // ---- Filter fields ----
-  const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mô tả...' },
-  ], []);
+  // ---- Filter content ----
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: 12, marginTop: 16 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
+        <Input
+          placeholder="Tìm theo tên, mô tả..."
+          allowClear
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onPressEnter={() => { handleFilterSearch({ search }); }}
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+    </>
+  );
+
+  const statusTabs: StatusTab[] = [];
 
   // ---- Header actions ----
   const headerActions = useMemo(() => {
-    const actions: any[] = [];
+    const actions: Array<{ key: string; label: string; variant?: string; icon?: React.ReactNode; onClick: () => void }> = [];
     if (hasPerm('role.create')) actions.push({ key: 'create', label: 'Tạo vai trò', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
     return actions;
   }, [hasPerm, openCreateModal]);
@@ -282,37 +316,49 @@ export default function RolesPage() {
       return <EmptyState description="Chưa có vai trò nào" />;
     }
     return (
-      <div style={{ overflowX: 'auto' }}>
-        <DataTable columns={columns} dataSource={roles} rowKey="id" rowActions={rowActions} scroll={{ x: 930 }} />
+      <>
+        <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
+        <DataTable columns={columns} dataSource={roles} rowKey="id" rowActions={rowActions} scroll={{ x: 1400, y: 'calc(100vh - 350px)' }} />
         <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
-      </div>
+      </>
     );
   };
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Phân quyền' }]} actions={headerActions} />
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
-      <div style={{ ...cardStyle, padding: '8px 16px', marginBottom: 4 }}>
+      <FilterTableLayout
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        onFilterApply={handleFilterSearch}
+        onFilterReset={handleFilterReset}
+        loading={isLoading}
+        error={isError}
+        onRetry={() => refetch()}
+        filterContent={filterContent}
+        statusTabs={statusTabs}
+        onStatusTabChange={() => {}}
+      >
         {renderContent()}
-      </div>
+      </FilterTableLayout>
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRole ? 'Sửa vai trò' : 'Tạo vai trò mới'}</span>}
+      <Drawer
+        {...drawerProps}
+        title={<span style={drawerTitleStyle}>{editingRole ? 'Sửa vai trò' : 'Tạo vai trò mới'}</span>}
         open={modalOpen}
-        onOk={handleSubmit}
-        onCancel={() => setModalOpen(false)}
-        destroyOnHidden
-        confirmLoading={submitting}
-        width={700}
-        mask={{ closable: false }}
-        footer={[
-          <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingRole ? 'Cập nhật' : 'Tạo mới'}</Button>,
-        ]}
+        onClose={() => setModalOpen(false)}
+        extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+            <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingRole ? 'Cập nhật' : 'Tạo mới'}</Button>
+          </div>
+        }
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }}
+            labelCol={{ style: { padding: 0, marginBottom: 4 } }}
+          >
             <Form.Item name="name" {...labelProps('Tên vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}>
               <Input placeholder="vd: Quản trị viên" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
@@ -348,7 +394,6 @@ export default function RolesPage() {
                       />
                       <Tree
                         checkable
-                        checkStrictly
                         expandedKeys={effectiveExpandedKeys}
                         onExpand={(keys) => setUserExpandedKeys(keys as string[])}
                         checkedKeys={checkedKeys}
@@ -366,8 +411,7 @@ export default function RolesPage() {
             </Form.Item>
           </Form>
         </Spin>
-      </Modal>
+      </Drawer>
     </div>
   );
 }
-

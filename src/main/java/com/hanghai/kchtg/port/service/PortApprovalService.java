@@ -40,6 +40,7 @@ public class PortApprovalService {
     private final ChangeLogRepository changeLogRepository;
     private final ApprovalLogRepository approvalLogRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final PortCacheService portCacheService;
 
     @Transactional
     public void approve(UUID id, String userId, String reason) {
@@ -77,6 +78,7 @@ public class PortApprovalService {
         }
         Port saved = portRepository.save(entity);
         changeHistoryService.recordChanges("Port", saved.getId().toString(), "system", snapshot, saved);
+        portCacheService.evictAfterCommit();
 
         if (reason != null && !reason.isBlank()) {
             changeHistoryService.insertChangeRecord("Port", saved.getId(), "Lý do từ chối", null, reason, userId);

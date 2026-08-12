@@ -1,0 +1,43 @@
+{
+  "triage_id": "TRI-1786497281754-d24e",
+  "created_at": 1786497281754,
+  "request_summary": "Tối ưu upload/delete attachment VTS: trả về attachment data từ service, cập nhật local state thay vì reload full detail (loadVtsDetail) sau mỗi thao tác file",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/vtssystem/VtsSystemForm.tsx",
+      "frontend/src/services/vtsSystemService.ts"
+    ],
+    "impact_files": [
+      "frontend/src/pages/vtssystem/VtsSystemForm.tsx",
+      "frontend/src/services/vtsSystemService.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình chi tiết/chỉnh sửa VTS - tab File đính kèm, nút Upload/Xóa",
+  "blast_radius": 2,
+  "done_oracle": "Sau khi upload/delete file, frontend cập nhật attachments list trong record state mà không gọi loadVtsDetail. tsc --noEmit pass.",
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1786496771090",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "259dcff790ec1558678b6dc609e21961c82288ef",
+    "dirty": true,
+    "captured_at": 1786497281899
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

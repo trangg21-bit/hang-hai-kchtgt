@@ -23,7 +23,8 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
 
     @Query("""
         SELECT t FROM RadarStation t
-        WHERE (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+        WHERE t.deletedAt IS NULL
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:keyword IS NULL OR
             LOWER(t.stationName) LIKE :keyword OR
             LOWER(t.location) LIKE :keyword OR

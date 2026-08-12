@@ -12,7 +12,7 @@ class VtsSystemEntityTest {
     @Test
     void testBuilderCreation() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("VTS ABC").location("Hà Nội").build();
+                .systemName("VTS ABC").build();
         assertNotNull(entity);
         assertEquals("VTS ABC", entity.getSystemName());
     }
@@ -20,7 +20,7 @@ class VtsSystemEntityTest {
     @Test
     void testDefaultValues() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("ABC").location("Hà Nội").build();
+                .systemName("ABC").build();
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
         // Not deleted by default → deletedAt should be null
@@ -33,7 +33,6 @@ class VtsSystemEntityTest {
         java.util.UUID uuid = java.util.UUID.randomUUID();
         entity.setId(uuid);
         entity.setSystemName("VTS ABC");
-        entity.setLocation("Hà Nội");
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         entity.setUpdatedAt(LocalDateTime.now());
@@ -47,14 +46,14 @@ class VtsSystemEntityTest {
     @Test
     void testPrePersist_ApprovalStatusDefault() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("ABC").location("Hà Nội").build();
+                .systemName("ABC").build();
         assertNull(entity.getApprovalStatus());  // null before persist
     }
 
     @Test
     void testFullLifecycle() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("VTS ABC").location("Hà Nội").build();
+                .systemName("VTS ABC").build();
         assertNull(entity.getApprovalStatus());  // null before persist
         assertFalse(entity.getApprovedLevel1());
 

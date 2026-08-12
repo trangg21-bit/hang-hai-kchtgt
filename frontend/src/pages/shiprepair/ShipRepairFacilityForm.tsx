@@ -195,9 +195,9 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
     setIsSubmitting(true);
     try {
       if (action === 'approveC1') {
-        const pheDuyetData: PheDuyetRequest = {
-          quyetDinh: 'APPROVED',
-          lyDo: undefined,
+        const pheDuyetData: ApprovalRequest = {
+          decision: 'APPROVED',
+          reason: undefined,
         };
         const res = await shipRepairFacilityApproval.approveC1(id, pheDuyetData);
         if (window.parent && (window.parent as any).kchtDetailCache) {
@@ -205,10 +205,11 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
         }
         toast.success('Phê duyệt C1 thành công');
         setRecord({ ...record, approvalStatus: 'UNDER_REVIEW' });
+        if (onSuccess) onSuccess();
       } else if (action === 'approveC2') {
-        const pheDuyetData: PheDuyetRequest = {
-          quyetDinh: 'APPROVED',
-          lyDo: undefined,
+        const pheDuyetData: ApprovalRequest = {
+          decision: 'APPROVED',
+          reason: undefined,
         };
         const res = await shipRepairFacilityApproval.approveC2(id, pheDuyetData);
         if (window.parent && (window.parent as any).kchtDetailCache) {
@@ -216,10 +217,11 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
         }
         toast.success('Phê duyệt C2 thành công');
         setRecord({ ...record, approvalStatus: 'APPROVED' });
+        if (onSuccess) onSuccess();
       } else if (action === 'reject') {
-        const pheDuyetData: PheDuyetRequest = {
-          quyetDinh: 'REJECTED',
-          lyDo: payload?.lyDo as string,
+        const pheDuyetData: ApprovalRequest = {
+          decision: 'REJECTED',
+          reason: payload?.lyDo as string,
         };
 
         let updatedRecord;

@@ -25,6 +25,8 @@ export const layout = {
   sidebarCollapsedWidth: 80,
   headerHeight: 64,
   footerHeight: 56,
+  listTableMinWidth: 1400,
+  listTableScrollY: 'calc(100vh - 380px)',
 };
 
 // ============================================================
@@ -302,6 +304,7 @@ export const globalCssVars = `
 
   --shadow-card: ${shadow.card};
   --shadow-card-hover: ${shadow.cardHover};
+  --list-table-scroll-y: ${layout.listTableScrollY};
 
   --font-family: ${fontFamily};
 }
@@ -717,6 +720,10 @@ body, .ant-layout {
 textarea.ant-input {
   border-radius: 4px !important;
 }
+
+/* ---------- Required mark (*) bên phải label ---------- */
+.ant-form-item-required::before { display: inline-block; margin-left: 4px; order: 1; }
+.ant-form-item-required::after { display: none; }
 `;
 
 // ============================================================

@@ -28,6 +28,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class Berth extends BaseEntity {
 
     @Column(name = "berth_code", nullable = false, unique = true, length = 50)

@@ -1,13 +1,13 @@
-import React from 'react';
-import { Table, Empty, Dropdown, Button } from 'antd';
-import { MoreOutlined } from '@ant-design/icons';
+import React, { useLayoutEffect, useRef } from 'react';
+import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
+import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import {
   textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeMd, fontWeightBold,
   statusOperational, statusCritical, statusDraft, statusAttention,
   radiusPill, borderDefault,
 } from '../../tokens';
-import { colors } from '../../theme';
+import { colors, layout } from '../../theme';
 
 const tableHeaderBg = colors.bodyBg;
 
@@ -16,9 +16,11 @@ export interface DataTableColumn {
   type?: 'text' | 'status' | 'action' | 'number' | 'date' | 'mono';
   width?: number | string;
   align?: 'left' | 'center' | 'right';
-  render?: (value: any, record: any) => React.ReactNode;
+  render?: (value: any, record: any, index?: number) => React.ReactNode;
   dataIndex?: string; sorter?: boolean;
   sortOrder?: 'ascend' | 'descend' | null;
+  cellTitle?: (record: any) => string;
+  fixed?: 'left' | 'right';
 }
 
 export interface DataTableProps {
@@ -47,15 +49,35 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, ...rest
+  columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, scroll, ...rest
 }) => {
+  const tableShellRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const resetHorizontalScroll = () => {
+      tableShellRef.current?.querySelectorAll<HTMLElement>(
+        '.ant-table-header, .ant-table-body, .ant-table-content, .ant-table-sticky-scroll',
+      ).forEach((element) => {
+        element.scrollLeft = 0;
+        element.scrollTo?.({ left: 0, behavior: 'auto' });
+      });
+    };
+
+    resetHorizontalScroll();
+    const frameId = window.requestAnimationFrame(resetHorizontalScroll);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [dataSource]);
+
   if (children) {
     return (
-      <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
-        className="list-view-table"
-        pagination={false}
-        locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
-        {...rest}>{children}</Table>
+      <div ref={tableShellRef} style={{ width: '100%', minWidth: 0 }}>
+        <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
+          className="list-view-table"
+          pagination={false}
+          scroll={scroll}
+          locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+          {...rest}>{children}</Table>
+      </div>
     );
   }
 
@@ -76,11 +98,14 @@ const DataTable: React.FC<DataTableProps> = ({
     const colObj: any = {
       key: col.key,
       dataIndex: dataKey,
-      title: col.label,
       width: col.width,
       sorter: sorterFn,
+      sortDirections: ['ascend', 'descend'],
+      showSorterTooltip: false,
       align: col.align,
-      render: col.render ? col.render
+      fixed: col.fixed,
+      ellipsis: true,
+      render: col.render ? (val: any, record: any, index: number) => col.render!(val, record, index)
         : col.type === 'mono'
           ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
           : col.type === 'date'
@@ -98,10 +123,21 @@ const DataTable: React.FC<DataTableProps> = ({
                 }
               : undefined,
       onHeaderCell: () => ({
-        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap', textTransform: 'uppercase', padding: '16px 16px' },
+        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined },
+        onClick: col.sortable ? () => {
+          if (onSort && dataKey) {
+            const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';
+            onSort(dataKey, nextOrder);
+          }
+        } : undefined,
       }),
-      onCell: () => ({
-        style: { fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      title: col.sortable ? (
+        <Tooltip title={<span style={{ fontSize: 12 }}>{col.sortOrder === 'ascend' ? 'Nhấn để sắp xếp giảm dần' : 'Nhấn để sắp xếp tăng dần'}</span>}>
+          <span>{col.label}</span>
+        </Tooltip>
+      ) : col.label,
+      onCell: (record: any) => ({
+        style: { fontSize: fontSizeMd, color: textPrimary },
       }),
     };
 
@@ -116,8 +152,9 @@ const DataTable: React.FC<DataTableProps> = ({
   if (rowActions && columns && !columns.some((c) => c.key === 'actions')) {
     antdColumns?.push({
       key: 'actions',
-      title: '',
+      title: <UnorderedListOutlined />,
       width: 60,
+      fixed: 'right' as const,
       align: 'center',
       render: (_: unknown, record: any) => {
         const items = rowActions(record).map((a) => ({
@@ -146,12 +183,15 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   return (
-    <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
-      className="list-view-table"
-      pagination={false}
-      locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
-      onChange={handleTableChange}
-      {...rest} />
+    <div ref={tableShellRef} style={{ width: '100%', minWidth: 0 }}>
+      <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
+        className="list-view-table"
+        pagination={false}
+        locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
+        onChange={handleTableChange}
+        scroll={{ x: layout.listTableMinWidth, y: layout.listTableScrollY, ...scroll }}
+        {...rest} />
+    </div>
   );
 };
 

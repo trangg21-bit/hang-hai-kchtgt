@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.orgunit.service;
 
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import org.springframework.cache.Cache;
@@ -10,9 +11,11 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Long-lived directory cache used to resolve organisational unit IDs to display names.
@@ -23,6 +26,7 @@ public class OrgUnitCacheService {
 
     public static final String CACHE_NAME = "orgUnitDirectory";
     private static final String DIRECTORY_KEY = "all";
+    private static final String LIST_KEY = "list";
 
     private final OrgUnitRepository orgUnitRepository;
     private final CacheManager cacheManager;
@@ -73,12 +77,27 @@ public class OrgUnitCacheService {
         getCache().clear();
     }
 
+    /**
+     * Return the cached full list of all active org units (no pagination).
+     */
+    @Transactional(readOnly = true)
+    public List<OrgUnitResponse> getList() {
+        Cache cache = getCache();
+        return cache.get(LIST_KEY, this::loadList);
+    }
+
     private Map<UUID, String> loadDirectory() {
         Map<UUID, String> directory = new LinkedHashMap<>();
         for (OrgUnit unit : orgUnitRepository.findAllActiveOrderByPath()) {
             directory.put(unit.getId(), unit.getName());
         }
         return Map.copyOf(directory);
+    }
+
+    private List<OrgUnitResponse> loadList() {
+        return orgUnitRepository.findAllActiveOrderByPath().stream()
+                .map(OrgUnitResponse::from)
+                .collect(Collectors.toList());
     }
 
     private Cache getCache() {

@@ -13,8 +13,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ApprovalRequest {
 
-    @NotBlank(message = "quyetDinh is required")
-    private String quyetDinh;
+    @NotBlank(message = "Decision is required")
+    private String decision;
 
     @Size(max = 500)
     private String reason;

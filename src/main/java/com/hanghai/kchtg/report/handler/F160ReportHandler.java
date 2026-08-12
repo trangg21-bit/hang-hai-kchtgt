@@ -33,7 +33,7 @@ public class F160ReportHandler extends BaseReportHandler {
         int reportYear = getReportYear(request);
 
         List<DikeRevetment> items = dikeRevetmentRepository
-                .findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED)
+                .findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED)
                 .stream()
                 .sorted(Comparator.comparing(DikeRevetment::getId))
                 .filter(d -> skipFilter || targetUnitId.equals(d.getOrgUnitId()))
@@ -84,7 +84,7 @@ public class F160ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
         List<DikeRevetment> items = dikeRevetmentRepository
-                .findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED)
+                .findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED)
                 .stream()
                 .sorted(Comparator.comparing(DikeRevetment::getId))
                 .filter(d -> skipFilter || targetUnitId.equals(d.getOrgUnitId()))

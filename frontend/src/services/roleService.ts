@@ -77,6 +77,15 @@ export const roleService = {
   },
 
   /**
+   * GET /api/roles/simple — lightweight, chỉ {id, name, code} cho dropdown.
+   * Không JOIN bảng permissions, không menuCodes.
+   */
+  async listSimple(): Promise<{ id: string; name: string; code: string }[]> {
+    const resp = await api.get('/roles/simple');
+    return extractData(resp) || [];
+  },
+
+  /**
    * GET /api/roles/:id
    */
   async getById(id: string): Promise<ApiResponse<Role>> {

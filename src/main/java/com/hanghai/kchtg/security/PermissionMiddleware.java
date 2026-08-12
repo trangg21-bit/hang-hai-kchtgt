@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.security;
 
-import static com.hanghai.kchtg.security.constants.PermissionConstants.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -13,6 +15,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.security.core.Authentication;
@@ -21,10 +26,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.util.LinkedHashMap;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+
+import static com.hanghai.kchtg.security.constants.PermissionConstants.*;
+import static java.util.Map.entry;
 
 /**
  * Permission enforcement middleware that runs AFTER authentication (F-275 3-Level RBAC).
@@ -41,10 +50,30 @@ public class PermissionMiddleware extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionMiddleware.class);
 
+    private static final List<String> PUBLIC_PATH_PREFIXES = List.of(
+            "/api/auth/",
+            "/api/public/",
+            "/api/health/",
+            "/api/v1/auth/",
+            "/api/v1/dashboard/",
+            "/api/v1/integration/share/",
+            "/api/org-units/options",
+            "/api/v1/org-units/options"
+    );
+
+    private static final Set<String> SKIP_PERMISSION_ORG_UNIT_PATHS = Set.of(
+            "/api/org-units",
+            "/api/org-units/",
+            "/api/v1/org-units",
+            "/api/v1/org-units/"
+    );
+
     private final PermissionRoleService permissionRoleService;
     private final UserRepository userRepository;
     private final PermissionRepository permissionRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     public PermissionMiddleware(PermissionRoleService permissionRoleService,
                                 UserRepository userRepository,
@@ -80,6 +109,16 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             return;
         }
 
+        // The JWT has already been signature-validated by JwtAuthFilter. Keep
+        // the middleware consistent with @PreAuthorize: system-admin
+        // authorities are global and must not depend on a second DB role
+        // lookup, which can be stale while the token is still valid.
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (isSystemAdmin(authentication)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Check permission
         if (!permissionRoleService.checkPermission(userId, resource, action)) {
             String requiredPermission = resource + ":" + action;
@@ -91,16 +130,25 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    private boolean isSystemAdmin(Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .anyMatch(authority -> "ROLE_SYSTEM_ADMIN".equals(authority)
+                        || "ROLE_SUPER_ADMIN".equals(authority)
+                        || "SYSTEM_ADMIN".equals(authority));
+    }
+
     private boolean shouldSkip(String path, String method) {
-        if ("OPTIONS".equalsIgnoreCase(method)) {
+        if (HttpMethod.OPTIONS.name().equalsIgnoreCase(method)) {
             return true;
         }
-        return path.startsWith("/api/auth/")
-                || path.startsWith("/api/public/")
-                || path.startsWith("/api/health/")
-                || path.startsWith("/api/v1/auth/")
-                || path.startsWith("/api/v1/dashboard/")
-                || path.startsWith("/api/v1/integration/share/");
+        if (HttpMethod.GET.name().equalsIgnoreCase(method) && SKIP_PERMISSION_ORG_UNIT_PATHS.contains(path)) {
+            return true;
+        }
+        return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
     }
 
     /**
@@ -178,52 +226,54 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         }
     }
 
-    private static final java.util.Map<String, String> URL_TO_PERMISSION = java.util.Map.ofEntries(
-            java.util.Map.entry("groups", "group"),
-            java.util.Map.entry("access-logs", "log"),
-            java.util.Map.entry("logs", "log"),
-            java.util.Map.entry("log-export", "log"),
-            java.util.Map.entry("org-units", "orgunit"),
-            java.util.Map.entry("data-connections", "connection"),
-            java.util.Map.entry("beacon-lights", "data"),
-            java.util.Map.entry("buoys", "data"),
-            java.util.Map.entry("beacon-history", "data"),
-            java.util.Map.entry("point-objects", "data"),
-            java.util.Map.entry("line-objects", "data"),
-            java.util.Map.entry("polygon-objects", "data"),
-            java.util.Map.entry("map-layers", "map"),
-            java.util.Map.entry("map-icons", "map"),
-            java.util.Map.entry("symbols", "map"),
-            java.util.Map.entry("ports", "port"),
-            java.util.Map.entry("berths", "berth"),
-            java.util.Map.entry("piers", "pier"),
-            java.util.Map.entry("dry-ports", "dryport"),
-            java.util.Map.entry("water-zones", "waterzone"),
-            java.util.Map.entry("navigation-channel", "navigationchannel"),
-            java.util.Map.entry("dike-revetment", "dikerevetment"),
-            java.util.Map.entry("ship-repair-facility", "shiprepair"),
-            java.util.Map.entry("radar-station", "radarstation"),
-            java.util.Map.entry("vts-system", "vts"),
-            java.util.Map.entry("port-planning", "document"),
-            java.util.Map.entry("planning-adjustments", "document"),
-            java.util.Map.entry("operation-plans", "document"),
-            java.util.Map.entry("maintenance-plans", "document"),
-            java.util.Map.entry("legal-documents", "document"),
-            java.util.Map.entry("incidents", "incident"),
-            java.util.Map.entry("reports", "report"),
-            java.util.Map.entry("bcc157", "report"),
-            java.util.Map.entry("statistics", "report"),
-            java.util.Map.entry("lighthouse-station", "data"),
-            java.util.Map.entry("buoy-station", "data"),
-            java.util.Map.entry("stations", "data"),
-            java.util.Map.entry("users", "user"),
-            java.util.Map.entry("roles", "role"),
-            java.util.Map.entry("permissions", "role"),
-            java.util.Map.entry("approvals", "approve"),
-            java.util.Map.entry("dashboard", "dashboard"),
-            java.util.Map.entry("backups", "admin"),
-            java.util.Map.entry("siem", "security"),
-            java.util.Map.entry("admin", "admin")
+    private static final Map<String, String> URL_TO_PERMISSION = Map.ofEntries(
+            entry("groups", "group"),
+            entry("access-logs", "log"),
+            entry("logs", "log"),
+            entry("log-export", "log"),
+            entry("org-units", "orgunit"),
+            entry("data-connections", "connection"),
+            entry("beacon-lights", "data"),
+            entry("buoys", "data"),
+            entry("beacon-history", "data"),
+            entry("point-objects", "data"),
+            entry("line-objects", "data"),
+            entry("polygon-objects", "data"),
+            entry("map-layers", "map"),
+            entry("map-icons", "map"),
+            entry("symbols", "map"),
+            entry("ports", "port"),
+            entry("berths", "berth"),
+            entry("piers", "pier"),
+            entry("dry-ports", "dryport"),
+            entry("water-zones", "waterzone"),
+            entry("navigation-channel", "navigationchannel"),
+            entry("dike-revetment", "dikerevetment"),
+            entry("ship-repair-facility", "shiprepair"),
+            entry("radar-station", "radarstation"),
+            entry("vts-system", "vts"),
+            entry("vts-systems", "vts"),
+            entry("he-thong-vts", "vts"),
+            entry("port-planning", "document"),
+            entry("planning-adjustments", "document"),
+            entry("operation-plans", "document"),
+            entry("maintenance-plans", "document"),
+            entry("legal-documents", "document"),
+            entry("incidents", "incident"),
+            entry("reports", "report"),
+            entry("bcc157", "report"),
+            entry("statistics", "report"),
+            entry("lighthouse-station", "data"),
+            entry("buoy-station", "data"),
+            entry("stations", "data"),
+            entry("users", "user"),
+            entry("roles", "role"),
+            entry("permissions", "role"),
+            entry("approvals", "approve"),
+            entry("dashboard", "dashboard"),
+            entry("backups", "admin"),
+            entry("siem", "security"),
+            entry("admin", "admin")
     );
 
     /**
@@ -243,16 +293,33 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (normalizedPath.contains("history")) {
             return ACTION_HISTORY;
         }
+        // File upload/delete are edits to the VTS record. Keep this aligned
+        // with VtsSystemController, which protects both operations with
+        // vts:update rather than vts:create/vts:delete.
+        if (normalizedPath.contains("/attachments")) {
+            if (HttpMethod.POST.matches(method)
+                    || HttpMethod.PUT.matches(method)
+                    || HttpMethod.PATCH.matches(method)
+                    || HttpMethod.DELETE.matches(method)) {
+                return ACTION_UPDATE;
+            }
+        }
         if (normalizedPath.contains("submit")) {
             return ACTION_CREATE;
         }
-        return switch (method.toUpperCase()) {
-            case "GET" -> ACTION_READ;
-            case "POST" -> ACTION_CREATE;
-            case "PUT", "PATCH" -> ACTION_UPDATE;
-            case "DELETE" -> ACTION_DELETE;
-            default -> ACTION_READ;
-        };
+        if (HttpMethod.GET.matches(method)) {
+            return ACTION_READ;
+        }
+        if (HttpMethod.POST.matches(method)) {
+            return ACTION_CREATE;
+        }
+        if (HttpMethod.PUT.matches(method) || HttpMethod.PATCH.matches(method)) {
+            return ACTION_UPDATE;
+        }
+        if (HttpMethod.DELETE.matches(method)) {
+            return ACTION_DELETE;
+        }
+        return ACTION_READ;
     }
 
     /**
@@ -286,18 +353,19 @@ public class PermissionMiddleware extends OncePerRequestFilter {
      */
     private void writeForbiddenResponse(HttpServletResponse response, String path, String requiredPermission)
             throws IOException {
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(HttpStatus.FORBIDDEN.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("status", 403);
-        body.put("error", "Forbidden");
-        body.put("path", path);
-        body.put("message", "Không có quyền truy cập");
-        body.put("timestamp", Instant.now().toString());
-        body.put("requiredPermission", requiredPermission);
-        body.put("granted", false);
+        ApiResponse<Map<String, Object>> errorBody = ApiResponse.error(
+                "Không có quyền truy cập",
+                Map.of(
+                        "path", path,
+                        "requiredPermission", requiredPermission,
+                        "granted", false
+                )
+        );
 
-        response.getWriter().write(objectMapper.writeValueAsString(body));
+        response.getWriter().write(objectMapper.writeValueAsString(errorBody));
     }
 }

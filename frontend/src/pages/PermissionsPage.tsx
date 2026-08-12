@@ -1,24 +1,28 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Modal, Form, Input, Select, Button, Spin, Row, Col } from 'antd';
+import { Modal, Form, Input, Select, Button, Spin, Row, Col, Drawer } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
-import ErrorState from '../components/ErrorState';
-import { ScreenHeader, FilterBar, DataTable } from '../components/list-view';
+
+import { ScreenHeader, DataTable } from '../components/list-view';
+import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
 import {
-  cardStyle,
   spaceFormField,
   radiusPill,
-  actionPrimary,
   textSecondary,
-  borderDefault,
   fontWeightBold,
-  fontWeightMedium,
   fontSizeMd,
-  fontSizeLg,
+  drawerProps,
+  drawerTitleStyle,
+  drawerCloseBtnStyle,
+  drawerFooterStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  filterInputStyle,
+  filterLabelStyle,
 } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
@@ -71,6 +75,7 @@ export default function PermissionsPage() {
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -83,7 +88,7 @@ export default function PermissionsPage() {
     sortOrder,
   }), [page, pageSize, search, filterFeature, sortField, sortOrder]);
 
-  const { data, isLoading, isError, error, refetch } = useQuery<PermissionListResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<PermissionListResponse>({
     queryKey: ['permissions', queryParams],
     queryFn: async () => {
       const params: Record<string, any> = {
@@ -271,24 +276,39 @@ export default function PermissionsPage() {
     [openEditModal, handleDelete],
   );
 
-  const filterFields = useMemo(
-    () => [
-      {
-        key: 'search',
-        type: 'search' as const,
-        label: 'Tìm kiếm',
-        placeholder: 'Tìm theo tên, mã quyền...',
-      },
-      {
-        key: 'feature',
-        type: 'select' as const,
-        label: 'Tính năng',
-        placeholder: 'Chọn tính năng',
-        options: FEATURE_OPTIONS,
-      },
-    ],
-    [],
+  const handleFilterApply = useCallback(() => {
+    setPage(1);
+  }, []);
+
+  const filterContent = useMemo(
+    () => (
+      <>
+        <div style={{ marginBottom: spaceFormField }}>
+          <div style={filterLabelStyle}>Tìm kiếm</div>
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo tên, mã quyền..."
+            style={filterInputStyle}
+            onPressEnter={handleFilterApply}
+          />
+        </div>
+        <div style={{ marginBottom: spaceFormField }}>
+          <div style={filterLabelStyle}>Tính năng</div>
+          <Select
+            value={filterFeature}
+            onChange={setFilterFeature}
+            placeholder="Chọn tính năng"
+            options={FEATURE_OPTIONS}
+            style={filterInputStyle}
+          />
+        </div>
+      </>
+    ),
+    [search, filterFeature, handleFilterApply],
   );
+
+  const statusTabs: Array<{ key: string; label: string; count: number; color: string; active: boolean }> = [];
 
   const headerActions = useMemo(
     () => [
@@ -301,15 +321,6 @@ export default function PermissionsPage() {
       },
     ],
     [openCreateModal],
-  );
-
-  const handleFilterSearch = useCallback(
-    (values: Record<string, any>) => {
-      setSearch(values.search || '');
-      setFilterFeature(values.feature || undefined);
-      setPage(1);
-    },
-    [],
   );
 
   const handleFilterReset = useCallback(() => {
@@ -331,14 +342,6 @@ export default function PermissionsPage() {
   const isMutating = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const renderContent = () => {
-    if (isLoading) return <LoadingSkeleton rows={8} />;
-    if (isError)
-      return (
-        <ErrorState
-          message={error?.message || 'Không thể tải danh sách quyền hạn'}
-          onRetry={() => refetch()}
-        />
-      );
     const tableData = data?.data ?? [];
     if (tableData.length === 0) {
       if (search || filterFeature)
@@ -359,7 +362,7 @@ export default function PermissionsPage() {
           rowKey="id"
           rowActions={rowActions}
           loading={isMutating}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 1000, y: 500 }}
           onSort={handleSort}
         />
         <Pagination
@@ -373,61 +376,36 @@ export default function PermissionsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
-      <ScreenHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý quyền hạn' }]}
-        actions={headerActions}
-      />
-      <FilterBar
-        fields={filterFields}
-        onSearch={handleFilterSearch}
-        onReset={handleFilterReset}
-      />
-      <div style={{ ...cardStyle, padding: '8px 16px' }}>{renderContent()}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+      <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
+      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý quyền hạn' }]} actions={headerActions} />
+      <FilterTableLayout
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        onFilterApply={handleFilterApply}
+        onFilterReset={handleFilterReset}
+        loading={isLoading}
+        error={isError}
+        onRetry={() => refetch()}
+        filterContent={filterContent}
+        statusTabs={statusTabs}
+        onStatusTabChange={() => {}}
+      >
+        {isLoading ? <LoadingSkeleton rows={8} /> : renderContent()}
+      </FilterTableLayout>
 
-      <Modal
-        title={
-          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-            {editingPermission ? 'Sửa quyền hạn' : 'Thêm quyền hạn'}
-          </span>
-        }
+      <Drawer
+        {...drawerProps}
+        title={<span style={drawerTitleStyle}>{editingPermission ? 'Sửa quyền hạn' : 'Thêm quyền hạn'}</span>}
         open={modalOpen}
-        onOk={handleSubmit}
-        onCancel={() => setModalOpen(false)}
-        destroyOnHidden
-        confirmLoading={submitting}
-        width={600}
-        mask={{ closable: false }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setModalOpen(false)}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-              borderColor: borderDefault,
-              color: textSecondary,
-            }}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="ok"
-            type="primary"
-            onClick={handleSubmit}
-            loading={submitting}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-              background: actionPrimary,
-              borderColor: actionPrimary,
-            }}
-          >
-            {editingPermission ? 'Cập nhật' : 'Tạo mới'}
-          </Button>,
-        ]}
+        onClose={() => setModalOpen(false)}
+        extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+            <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingPermission ? 'Cập nhật' : 'Tạo mới'}</Button>
+          </div>
+        }
       >
         <Spin spinning={submitting}>
           <Form
@@ -509,7 +487,7 @@ export default function PermissionsPage() {
             </Form.Item>
           </Form>
         </Spin>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

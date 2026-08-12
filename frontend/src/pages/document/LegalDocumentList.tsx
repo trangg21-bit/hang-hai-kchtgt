@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert } from 'antd';
+import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  ReloadOutlined,
   InboxOutlined,
   DownloadOutlined,
   EyeOutlined,
@@ -29,8 +28,7 @@ import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import {
   ScreenHeader,
-  FilterBar,
-  StatusTabs,
+  FilterTableLayout,
   DataTable,
 } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -51,6 +49,12 @@ import {
   statusOperational,
   statusDraft,
   radiusSm,
+  drawerProps,
+  drawerTitleStyle,
+  drawerCloseBtnStyle,
+  drawerFooterStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 
@@ -114,6 +118,8 @@ export default function LegalDocumentList() {
   const [total, setTotal] = useState(0);
   const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LegalDocumentResponse | null>(null);
@@ -375,63 +381,124 @@ export default function LegalDocumentList() {
     { key: 'EXPIRED', label: 'Đã hết hiệu lực', count: countExpired, color: statusDraft, active: status === 'EXPIRED' },
   ], [status, countAll, countDraft, countEffective, countExpiring, countExpired]);
 
-  const filterFields = useMemo(() => [
-    { key: 'keyword', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên văn bản...' },
-    { key: 'issuingAuthority', type: 'search' as const, label: 'Cơ quan', placeholder: 'Cơ quan ban hành...' },
-    { key: 'applicationArea', type: 'search' as const, label: 'Phạm vi', placeholder: 'Phạm vi áp dụng...' },
-    { key: 'type', type: 'select' as const, label: 'Loại văn bản', placeholder: 'Chọn loại',
-      options: [{ label: 'Luật', value: 'LAW' }, { label: 'Nghị định', value: 'DECREE' }, { label: 'Thông tư', value: 'CIRCULAR' }, { label: 'Quyết định', value: 'DECISION' }] },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
-      options: [{ label: 'Lưu tạm', value: 'DRAFT' }, { label: 'Còn hiệu lực', value: 'EFFECTIVE' }, { label: 'Sắp hết hiệu lực', value: 'EXPIRING_SOON' }, { label: 'Đã hết hiệu lực', value: 'EXPIRED' }] },
-    { key: 'issueDateRange', type: 'dateRange' as const, label: 'Ngày ban hành', placeholder: 'Từ — Đến' },
-  ], []);
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: 12, marginTop: 16 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
+        <Input placeholder="Tìm theo tên văn bản..." allowClear
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onPressEnter={handleFilterSearch}
+          style={{ borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Cơ quan</div>
+        <Input placeholder="Cơ quan ban hành..." allowClear
+          value={issuingAuthority}
+          onChange={(e) => setIssuingAuthority(e.target.value)}
+          style={{ borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Phạm vi</div>
+        <Input placeholder="Phạm vi áp dụng..." allowClear
+          value={applicationArea}
+          onChange={(e) => setApplicationArea(e.target.value)}
+          style={{ borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Loại văn bản</div>
+        <Select placeholder="Chọn loại" allowClear
+          value={documentType}
+          onChange={setDocumentType}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}>
+          <Select.Option value="LAW">Luật</Select.Option>
+          <Select.Option value="DECREE">Nghị định</Select.Option>
+          <Select.Option value="CIRCULAR">Thông tư</Select.Option>
+          <Select.Option value="DECISION">Quyết định</Select.Option>
+        </Select>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
+        <Select placeholder="Chọn trạng thái" allowClear
+          value={status}
+          onChange={setStatus}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}>
+          <Select.Option value="DRAFT">Lưu tạm</Select.Option>
+          <Select.Option value="EFFECTIVE">Còn hiệu lực</Select.Option>
+          <Select.Option value="EXPIRING_SOON">Sắp hết hiệu lực</Select.Option>
+          <Select.Option value="EXPIRED">Đã hết hiệu lực</Select.Option>
+        </Select>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Ngày ban hành</div>
+        <DatePicker.RangePicker
+          value={issueDateStart && issueDateEnd ? [dayjs(issueDateStart), dayjs(issueDateEnd)] : null}
+          onChange={(dates) => {
+            setIssueDateStart(dates ? dates[0]?.format('YYYY-MM-DD') || null : null);
+            setIssueDateEnd(dates ? dates[1]?.format('YYYY-MM-DD') || null : null);
+          }}
+          style={{ width: '100%', borderRadius: radiusPill }}
+        />
+      </div>
+    </>
+  );
+
+  const renderContent = () => {
+    if (loading) return <LoadingSkeleton rows={8} />;
+    if (isError) return <ErrorState message={errorMessage} onRetry={loadData} />;
+    if (dataSource.length === 0) {
+      if (keyword || issuingAuthority || documentType || status || applicationArea || issueDateStart || issueDateEnd) {
+        return <EmptyState description="Không tìm thấy văn bản pháp lý nào phù hợp" />;
+      }
+      return <EmptyState description="Chưa có văn bản pháp lý nào" />;
+    }
+    return <>
+      <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
+      <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1500, y: 500 }} />
+      <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+    </>;
+  };
+
+  const headerActions = useMemo(() => {
+    const actions: any[] = [];
+    if (hasPerm('document:create')) {
+      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => handleOpenModal() });
+    }
+    return actions;
+  }, [hasPerm, handleOpenModal]);
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
-      <ScreenHeader
-        breadcrumb={[{ label: 'Văn bản pháp lý' }]}
-        actions={
-          hasPerm('document:create')
-            ? [{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => handleOpenModal() }]
-            : []
-        }
-      />
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+      <ScreenHeader breadcrumb={[{ label: 'Văn bản pháp lý' }]} actions={headerActions} />
+      <FilterTableLayout
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        onFilterApply={() => { handleFilterSearch({ keyword, issuingAuthority, type: documentType, status, applicationArea, issueDateRange: issueDateStart && issueDateEnd ? [dayjs(issueDateStart), dayjs(issueDateEnd)] : null }); }}
+        onFilterReset={handleFilterReset}
+        loading={loading}
+        error={isError}
+        onRetry={loadData}
+        filterContent={filterContent}
+        statusTabs={statusTabs}
+        onStatusTabChange={handleTabChange}
+      >
+        {renderContent()}
+      </FilterTableLayout>
 
-      <div style={{ ...cardStyle, marginBottom: spaceMd, display: 'flex', justifyContent: 'center', padding: '8px 16px' }}>
-        <StatusTabs tabs={statusTabs} onChange={handleTabChange} />
-      </div>
-
-      <div style={{ ...cardStyle, padding: spaceMd }}>
-        {loading ? <LoadingSkeleton rows={8} /> :
-         isError ? <ErrorState message={errorMessage} onRetry={loadData} /> :
-         dataSource.length === 0 ? <EmptyState description="Chưa có văn bản pháp lý nào" /> :
-         <>
-           <div style={{ overflowX: 'auto' }}>
-             <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1500 }} />
-           </div>
-           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
-         </>
-        }
-      </div>
-
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-          {editingItem ? (editingItem.validityStatus === 'EXPIRED' ? 'Chi tiết văn bản (Đã hết hiệu lực)' : 'Chỉnh sửa văn bản pháp lý') : 'Thêm mới văn bản pháp lý'}
-        </span>}
+      <Drawer
+        {...drawerProps}
+        title={<span style={drawerTitleStyle}>{editingItem ? (editingItem.validityStatus === 'EXPIRED' ? 'Chi tiết văn bản (Đã hết hiệu lực)' : 'Chỉnh sửa văn bản pháp lý') : 'Thêm mới văn bản pháp lý'}</span>}
         open={isModalOpen}
-        onOk={handleSubmit}
-        onCancel={handleCancel}
-        confirmLoading={submitting}
-        width={700}
-        footer={[
-          <Button key="cancel" onClick={handleCancel}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          editingItem?.validityStatus !== 'EXPIRED' && (
-            <Button key="submit" type="primary" onClick={handleSubmit} loading={submitting}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Lưu</Button>
-          ),
-        ].filter(Boolean)}
+        onClose={handleCancel}
+        extra={<Button type="text" onClick={handleCancel} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button onClick={handleCancel} style={outlineButtonStyle}>Hủy</Button>
+            {editingItem?.validityStatus !== 'EXPIRED' && (
+              <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>Lưu</Button>
+            )}
+          </div>
+        }
       >
         <Spin spinning={submitting}>
           {editingItem?.validityStatus === 'EXPIRED' && (
@@ -517,7 +584,7 @@ export default function LegalDocumentList() {
             </Form.Item>
           </Form>
         </Spin>
-      </Modal>
+      </Drawer>
 
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Lịch sử văn bản</span>}

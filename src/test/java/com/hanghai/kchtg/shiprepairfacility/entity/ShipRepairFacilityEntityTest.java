@@ -41,7 +41,7 @@ class ShipRepairFacilityEntityTest {
         // @Builder.Default values should be applied
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
-        assertFalse(entity.getIsDeleted());
+        assertNull(entity.getDeletedAt());
     }
 
     @Test
@@ -66,7 +66,6 @@ class ShipRepairFacilityEntityTest {
         entity.setApprovedDateLevel2(LocalDateTime.now());
         entity.setRejectionReason("Không đủ điều kiện");
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        entity.setUpdatedDate(LocalDateTime.now());
 
         assertEquals(uuid, entity.getId());
         assertEquals("Cơ sở ABC", entity.getFacilityName());
@@ -85,7 +84,6 @@ class ShipRepairFacilityEntityTest {
         assertNotNull(entity.getApprovedDateLevel2());
         assertEquals("Không đủ điều kiện", entity.getRejectionReason());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getUpdatedBy());
-        assertNotNull(entity.getUpdatedDate());
     }
 
     @Test
@@ -146,10 +144,9 @@ class ShipRepairFacilityEntityTest {
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
-        entity.setIsDeleted(null);
         entity.prePersist();
 
-        assertFalse(entity.getIsDeleted());
+        assertNull(entity.getDeletedAt());
     }
 
     @Test
@@ -162,7 +159,6 @@ class ShipRepairFacilityEntityTest {
                 .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .approvedLevel1(true)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
@@ -171,7 +167,7 @@ class ShipRepairFacilityEntityTest {
         assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
-        assertFalse(entity.getIsDeleted());
+        assertNull(entity.getDeletedAt());
     }
 
     @Test
@@ -190,7 +186,7 @@ class ShipRepairFacilityEntityTest {
         assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
-        assertFalse(entity.getIsDeleted());
+        assertNull(entity.getDeletedAt());
 
         // Update
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -199,7 +195,6 @@ class ShipRepairFacilityEntityTest {
         entity.setApprovedLevel2(true);
         entity.setApproverLevel2(UUID.randomUUID());
         entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        entity.setUpdatedDate(LocalDateTime.now());
 
         assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
@@ -213,8 +208,8 @@ class ShipRepairFacilityEntityTest {
         assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
 
         // Soft delete
-        entity.setIsDeleted(true);
-        assertTrue(entity.getIsDeleted());
+        entity.setDeletedAt(LocalDateTime.now());
+        assertNotNull(entity.getDeletedAt());
     }
 
     @Test
@@ -254,17 +249,13 @@ class ShipRepairFacilityEntityTest {
                 .approverLevel2(UUID.randomUUID())
                 .approvedDateLevel2(LocalDateTime.now())
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .createdDate(LocalDateTime.now())
-                .updatedDate(LocalDateTime.now())
-                .updatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .isDeleted(false)
                 .build();
 
         assertEquals(uuid, entity.getId());
         assertEquals("ABC", entity.getFacilityName());
         assertTrue(entity.getApprovedLevel1());
         assertTrue(entity.getApprovedLevel2());
-        assertFalse(entity.getIsDeleted());
+        assertNull(entity.getDeletedAt());
     }
 
     @Test

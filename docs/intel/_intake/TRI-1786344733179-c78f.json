@@ -1,0 +1,98 @@
+{
+  "triage_id": "TRI-1786344733179-c78f",
+  "created_at": 1786344733179,
+  "request_summary": "Đổi enum ConditionStatus từ GOOD/DEGRADED/DAMAGED thành OPERATIONAL/STOPPED/MAINTENANCE/UNDER_CONSTRUCTION, đồng bộ frontend options/map, cập nhật logic hiển thị, đặt mặc định OPERATIONAL khi tạo mới VTS System",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/vtssystem/VtsSystemForm.tsx",
+      "frontend/src/types/vtsSystem.ts",
+      "src/main/java/com/hanghai/kchtg/gis/search/service/KchtGis155Service.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/entity/ConditionStatus.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/service/VtsSystemService.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/vtssystem/VtsSystemForm.tsx",
+      "frontend/src/types/vtsSystem.ts",
+      "src/main/java/com/hanghai/kchtg/gis/search/service/KchtGis155Service.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/entity/ConditionStatus.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/service/VtsSystemService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Tạo mới Hệ thống VTS - dropdown Tình trạng",
+  "blast_radius": 5,
+  "done_oracle": "Dropdown Tình trạng hiển thị 4 options mới, mặc định chọn \"Đang hoạt động\", backend enum đồng bộ, mvn compile + tsc --noEmit pass",
+  "change_type": "business_rule",
+  "declared_write_scope": [
+    "frontend/src/pages/vtssystem/VtsSystemForm.tsx",
+    "frontend/src/types/vtsSystem.ts",
+    "src/main/java/com/hanghai/kchtg/gis/search/service/KchtGis155Service.java",
+    "src/main/java/com/hanghai/kchtg/vtssystem/entity/ConditionStatus.java",
+    "src/main/java/com/hanghai/kchtg/vtssystem/service/VtsSystemService.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/vtssystem/entity/ConditionStatus.java",
+      "line": 8,
+      "quote": "public enum ConditionStatus {",
+      "source_hash": "6c789805e619a1196c2edf37923c0b4e2b86a6d8a3f24b5b67d02163cd720c6e",
+      "quote_hash": "22e3ad3f9d7c84499b973abcd7425f85e3acad20df43ee8d62ee2811f0a7d9af",
+      "note": "Enum GOOD/DEGRADED/DAMAGED → OPERATIONAL/STOPPED/MAINTENANCE/UNDER_CONSTRUCTION"
+    },
+    {
+      "file": "frontend/src/types/vtsSystem.ts",
+      "line": 1,
+      "quote": "export enum ConditionStatus {",
+      "source_hash": "3c052b956f97d9c676eb3f265092a3c8b87e6680b5be14b73e17d9d8fcccc45b",
+      "quote_hash": "6db4b2db15253e3ba8e9f3edfbe4b751de0a5b7c6f8c3d7c9f7f9a05cb471467",
+      "note": "Frontend enum đồng bộ"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/vtssystem/service/VtsSystemService.java",
+      "line": 691,
+      "quote": "if (\"conditionStatus\".equals(field)) {",
+      "source_hash": "2347b8a517f7ff9c97dfce1fbb504e8da45a6dd0e3b3030105cd3d59d5d551a5",
+      "quote_hash": "da3d6fa1e8535676d477a5dd695ede0f140479d0c3227b50c846f11da6840eb1",
+      "note": "Switch hiển thị giá trị cũ"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/gis/search/service/KchtGis155Service.java",
+      "line": 980,
+      "quote": ".diaChiChiTiet(\"Vị trí: \" + (vts.getLocation() != null ? vts.getLocation() : \"\") + \", Tình trạng: \" + (vts.getConditionStatus() != null ? (\"TOT\".equals(vts.getConditionStatus()) ? \"Tốt\" : \"XUONG_CAP\".equals(vts.getConditionStatus()) ? \"Xuống cấp\" : \"Hư hỏng\") : \"\") + \", Mức độ phụ trách: \" + (vts.getResponsibilityLevel() != null ? vts.getResponsibilityLevel() : \"\"))",
+      "source_hash": "9c2a0d9ce48060bd50ef44ac628a7a1713cff8bdd18d54c289c56003a83506c5",
+      "quote_hash": "7d57956ccb5fddba280c10d0f931dabf94675b61544091321eb9b1dbe5abf886",
+      "note": "GIS hiển thị giá trị cũ"
+    },
+    {
+      "file": "frontend/src/pages/vtssystem/VtsSystemForm.tsx",
+      "line": 480,
+      "quote": "            onFinish={handleSubmitForm}",
+      "source_hash": "7746d5b51b5181633ec39cc925ea082a90368f7083b28d122e2f1f467c68e658",
+      "quote_hash": "31bae9a95f629b572c6960bf88df4c29dc5fd2d6ddaf57a2408d5c8f636aa2f7",
+      "note": "Form create/edit VTS System - cần thêm initialValues conditionStatus"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1786343090162",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3af495d4213d53bf5dceb5431966873dbd217793",
+    "dirty": true,
+    "captured_at": 1786344733360
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

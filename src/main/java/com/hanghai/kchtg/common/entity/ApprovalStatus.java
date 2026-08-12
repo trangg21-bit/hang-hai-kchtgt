@@ -10,7 +10,8 @@ public enum ApprovalStatus {
     APPROVED_LEVEL1(3),
     APPROVED_LEVEL2(4),
     APPROVED(5),
-    REJECTED(6);
+    REJECTED(6),
+    UNDER_REVIEW(7);
 
     private final int value;
 
@@ -36,7 +37,8 @@ public enum ApprovalStatus {
             switch (upper) {
                 case "NHAP": return DRAFT;
                 case "PROPOSED": return PROPOSED;
-                case "PENDING": case "CHO_PHE_DUYET": case "UNDER_REVIEW":
+                case "UNDER_REVIEW": return UNDER_REVIEW;
+                case "PENDING": case "CHO_PHE_DUYET":
                 case "PORT_AUTHORITY": case "CHO_PD_CAP_CUC": return PENDING_APPROVAL;
                 case "APPROVED_L1": case "APPROVED_LEVEL1": return APPROVED_LEVEL1;
                 case "APPROVED_L2": case "APPROVED_LEVEL2": return APPROVED_LEVEL2;

@@ -13,7 +13,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "approval_history", indexes = {
-        @Index(name = "idx_approval_history_ref", columnList = "ref_type, ref_id")
+        @Index(name = "idx_approval_history_ref", columnList = "ref_type, ref_id, approved_date DESC"),
+        @Index(name = "idx_approval_history_ref_id_date", columnList = "ref_id, approved_date DESC")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -46,7 +47,8 @@ public class ApprovalHistory {
     private UUID approvedBy;
 
     @CreatedDate
-    @Column(name = "approved_date", nullable = false, updatable = false, columnDefinition = "TIMESTAMP")
+    @Column(name = "approved_date", nullable = false, updatable = false,
+            columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime approvedDate;
 
     @Column(name = "reason", length = 500)
@@ -60,4 +62,16 @@ public class ApprovalHistory {
 
     @Column(name = "new_value", columnDefinition = "TEXT")
     private String newValue;
+
+    /**
+     * The auditing listener normally fills this field. Keep a local fallback so
+     * history entries created through builders never lose their event time when
+     * auditing metadata is unavailable in a test or alternate persistence path.
+     */
+    @PrePersist
+    protected void initializeApprovedDate() {
+        if (approvedDate == null) {
+            approvedDate = LocalDateTime.now();
+        }
+    }
 }

@@ -7,7 +7,9 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -26,7 +28,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/api/v1/vts-system", "/api/v1/he-thong-vts"})
+@RequestMapping({"/api/v1/vts-systems", "/api/v1/vts-system", "/api/v1/he-thong-vts"})
 public class VtsSystemController {
 
     private final VtsSystemService service;
@@ -49,6 +51,7 @@ public class VtsSystemController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
     @GetMapping
     public ResponseEntity<ApiResponse<VtsSystemListResponse>> findAll(
             @RequestParam(required = false) UUID orgUnitId,
@@ -57,21 +60,47 @@ public class VtsSystemController {
             @RequestParam(required = false) ApprovalStatus approvalStatus,
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        VtsSystemListResponse responses = service.findAllWithSearchAndCounts(orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "true") boolean includeCounts) {
+        VtsSystemListResponse responses = service.findAllWithSearchAndCounts(
+                orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size, includeCounts);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @GetMapping("/org-unit-options")
+    public ResponseEntity<ApiResponse<List<com.hanghai.kchtg.orgunit.dto.OrgUnitResponse>>> getOrgUnitOptions() {
+        return ResponseEntity.ok(ApiResponse.success("Danh sÃ¡ch Ä‘Æ¡n vá»‹ theo phÃ¢n quyá»n", service.getScopedOrgUnitOptions()));
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> getById(
             @PathVariable UUID id,
+            @RequestParam(defaultValue = "true") boolean includeZones,
+            @RequestParam(defaultValue = "true") boolean includeAttachments,
             Authentication authentication) {
-        VtsSystemResponse response = service.getById(id);
+        VtsSystemResponse response = service.getById(id, includeZones, includeAttachments);
         return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
     }
 
+    @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
+    @GetMapping("/{id}/zones")
+    public ResponseEntity<ApiResponse<List<VtsZoneDto>>> getZones(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng VTS thành công", service.getZones(id)));
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> getAttachments(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tài liệu đính kèm thành công", service.getAttachments(id)));
+    }
+
     @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    @DataScope
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> update(
             @PathVariable UUID id,
@@ -81,11 +110,14 @@ public class VtsSystemController {
             VtsSystemResponse response = service.update(id, request, SecurityUtils.getCurrentUserId());
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            e.printStackTrace();
+            String msg = e.getMessage() != null && !e.getMessage().isEmpty() ? e.getMessage() : e.toString();
+            return ResponseEntity.badRequest().body(ApiResponse.error(msg));
         }
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:delete')")
+    @DataScope
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id,
@@ -98,7 +130,8 @@ public class VtsSystemController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:approve:c1')")
+    @PreAuthorize("@auth.check(authentication, 'vts:approvec1')")
+    @DataScope
     @PostMapping("/{id}/approve/c1")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> approveC1(
             @PathVariable UUID id,
@@ -112,7 +145,8 @@ public class VtsSystemController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:approve:c2')")
+    @PreAuthorize("@auth.check(authentication, 'vts:approvec2')")
+    @DataScope
     @PostMapping("/{id}/approve/c2")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> approveC2(
             @PathVariable UUID id,
@@ -131,6 +165,7 @@ public class VtsSystemController {
      * infrastructure modules expose, which the frontend already calls.
      */
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
     @GetMapping("/approval-status/{status}")
     public ResponseEntity<ApiResponse<List<VtsSystemResponse>>> filterByApprovalStatus(
             @PathVariable ApprovalStatus status) {
@@ -138,6 +173,7 @@ public class VtsSystemController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<VtsSystemResponse>>> search(
             @RequestParam(required = false) UUID orgUnitId,
@@ -150,14 +186,25 @@ public class VtsSystemController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:history')")
+    @DataScope
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
-            @PathVariable UUID id) {
-        List<HistoryEntry> entries = service.getHistory(id);
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime toDate) {
+        List<HistoryEntry> entries = service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", entries));
     }
 
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
+        return getHistory(id, null, null, null, null, null);
+    }
+
     @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    @DataScope
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<VtsSystemAttachmentResponse>> uploadAttachment(
             @PathVariable UUID id,
@@ -172,6 +219,7 @@ public class VtsSystemController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    @DataScope
     @DeleteMapping("/{id}/attachments/{attachmentId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
@@ -185,6 +233,7 @@ public class VtsSystemController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
     @GetMapping("/{id}/attachments/{attachmentId}/download")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable UUID id,
@@ -212,6 +261,7 @@ public class VtsSystemController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
+    @DataScope
     @GetMapping("/approval-status/counts")
     public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> countByApprovalStatus() {
         return ResponseEntity.ok(ApiResponse.success(service.countByApprovalStatus()));

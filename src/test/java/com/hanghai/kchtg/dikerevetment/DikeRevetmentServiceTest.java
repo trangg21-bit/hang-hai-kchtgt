@@ -64,7 +64,6 @@ class DikeRevetmentServiceTest {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .createdAt(LocalDateTime.of(2026, 6, 1, 10, 0))
                 .build();
@@ -107,7 +106,7 @@ class DikeRevetmentServiceTest {
     }
 
     @Test void findAll_shouldReturnSorted() {
-        when(repo.findByIsDeletedFalse(any(Sort.class))).thenReturn(List.of(testEntity));
+        when(repo.findByDeletedAtIsNull(any(Sort.class))).thenReturn(List.of(testEntity));
         assertThat(service.findAll()).hasSize(1);
     }
 
@@ -170,7 +169,7 @@ class DikeRevetmentServiceTest {
     }
 
     @Test void findByApprovalStatus_shouldReturnFiltered() {
-        when(repo.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED))
+        when(repo.findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED))
                 .thenReturn(List.of(testEntity));
         assertThat(service.findByApprovalStatus(ApprovalStatus.APPROVED)).hasSize(1);
     }

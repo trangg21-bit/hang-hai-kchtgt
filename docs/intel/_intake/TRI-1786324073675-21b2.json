@@ -1,0 +1,81 @@
+{
+  "triage_id": "TRI-1786324073675-21b2",
+  "created_at": 1786324073675,
+  "request_summary": "Security fix: add @Filter orgUnitFilter to 9 entities missing Data Scope filtering (WaterZone, Pier, DryPort, Berth, RadarStation, VtsSystem, ShipRepairFacility, DikeRevetment, NavigationChannel)",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/dikerevetment/entity/DikeRevetment.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/entity/NavigationChannel.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/Berth.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/DryPort.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/Pier.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/WaterZone.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/entity/RadarStation.java",
+      "src/main/java/com/hanghai/kchtg/shiprepairfacility/entity/ShipRepairFacility.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/entity/VtsSystem.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/dikerevetment/entity/DikeRevetment.java",
+      "src/main/java/com/hanghai/kchtg/navigationchannel/entity/NavigationChannel.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/Berth.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/DryPort.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/Pier.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/WaterZone.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/entity/RadarStation.java",
+      "src/main/java/com/hanghai/kchtg/shiprepairfacility/entity/ShipRepairFacility.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/entity/VtsSystem.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 9 edit-target files exceed the inline gate (9 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "DataScopeAspect calls session.enableFilter(\"orgUnitFilter\") but entities missing @Filter annotation cause Hibernate to ignore the filter, exposing all data regardless of org unit",
+  "blast_radius": 9,
+  "done_oracle": "mvn test passes; every entity with orgUnitId field has @org.hibernate.annotations.Filter(name = \"orgUnitFilter\", condition = \"org_unit_id IN (:orgUnitIds)\")",
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/common/entity/BaseEntity.java",
+      "line": 35,
+      "quote": "@org.hibernate.annotations.FilterDef(\n        name = \"orgUnitFilter\",\n        parameters = @org.hibernate.annotations.ParamDef(name = \"orgUnitIds\", type = java.util.UUID.class)\n)",
+      "source_hash": "4e066cbba8f2d7687fc07265e9612dd51063755c198ed9756ad4db3e77e1201e",
+      "quote_hash": "d0818b46a207bc541637cd75e9068e198b236f8a1e8a42d98ff58fffdf47b88d",
+      "note": "FilterDef is defined on BaseEntity, inherited by all subclasses"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/security/aspect/DataScopeAspect.java",
+      "line": 102,
+      "quote": "session.enableFilter(\"orgUnitFilter\")",
+      "source_hash": "be7e56f6b9cdff9b5e0dd5ab13cf1522b4b3b43e3f73560cf8e04c9afaad55f9",
+      "quote_hash": "63441e123769c9c2726154c3d9558c45077d751bf6c892a57334d03c128fd8ae",
+      "note": "Aspect enables the filter but Hibernate only applies WHERE clause to entities with @Filter annotation"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/entity/Port.java",
+      "line": 34,
+      "quote": "@org.hibernate.annotations.Filter(name = \"orgUnitFilter\", condition = \"org_unit_id IN (:orgUnitIds)\")",
+      "source_hash": "e87eadd7580bbe9cbaed0f1c4963b74a17e099308777828b304afe981684c021",
+      "quote_hash": "7824d04546c8d497e97182a99f2183037bf7426a8fd5e3de0050f3f4cb47b11b",
+      "note": "Only Port has @Filter; 8 other entities with orgUnitId are missing it"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1786323967594",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "af08c59ae9a0f229c52c747ae58f45e3ed0ec338",
+    "dirty": true,
+    "captured_at": 1786324073836
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

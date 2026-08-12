@@ -31,6 +31,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "ports",
         uniqueConstraints = @UniqueConstraint(columnNames = "port_code"))
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @Getter
 @Setter
 @NoArgsConstructor

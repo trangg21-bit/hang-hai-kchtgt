@@ -8,7 +8,7 @@ import {
 import { colors } from '../../theme';
 
 export interface FilterField {
-  key: string; type: 'search' | 'select' | 'dateRange' | 'date'; label: string;
+  key: string; type: 'search' | 'select' | 'dateRange' | 'date' | 'radio'; label: string;
   placeholder?: string; options?: { value: string | number; label: string }[]; width?: number;
 }
 
@@ -144,7 +144,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
             )}
           </>
         )}
-        <div style={{ display: 'flex', gap: spaceSm, justifyContent: centerActions ? 'center' : undefined, flex: centerActions ? 1 : undefined }}>
+        {(itemList.length > 3 || centerActions) && <div style={{ width: '100%' }} />}
+        <div style={{ display: 'flex', gap: spaceSm, justifyContent: centerActions ? 'center' : undefined, flex: centerActions ? 1 : undefined, marginLeft: itemList.length > 3 ? 'auto' : undefined }}>
           <Button icon={<ReloadOutlined />} onClick={handleReset}
             style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
           <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}

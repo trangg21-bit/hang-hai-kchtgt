@@ -24,6 +24,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class RadarStation extends BaseEntity {
     @Column(name = "province_id")
     private Integer provinceId;

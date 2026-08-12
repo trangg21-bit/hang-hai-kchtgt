@@ -977,7 +977,7 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(vts.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Hệ thống VTS")
                                 .location("")
-                                .diaChiChiTiet("Vị trí: " + (vts.getLocation() != null ? vts.getLocation() : "") + ", Tình trạng: " + (vts.getConditionStatus() != null ? ("TOT".equals(vts.getConditionStatus()) ? "Tốt" : "XUONG_CAP".equals(vts.getConditionStatus()) ? "Xuống cấp" : "Hư hỏng") : "") + ", Mức độ phụ trách: " + (vts.getResponsibilityLevel() != null ? vts.getResponsibilityLevel() : ""))
+                                .diaChiChiTiet("Vị trí: " + (vts.getAddress() != null ? vts.getAddress() : (vts.getProvinceId() != null ? String.valueOf(vts.getProvinceId()) : "")) + ", Tình trạng: " + (vts.getConditionStatus() != null ? switch (vts.getConditionStatus()) { case OPERATIONAL -> "Đang hoạt động"; case STOPPED -> "Dừng hoạt động"; case MAINTENANCE -> "Đang bảo trì"; case UNDER_CONSTRUCTION -> "Đang xây dựng"; } : "") + ", Mức độ phụ trách: " + (vts.getResponsibilityLevel() != null ? vts.getResponsibilityLevel() : ""))
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, vts.getSpatialId(), objectType, GisObjectType.POINT, vtsSpatialMap);

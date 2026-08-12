@@ -28,10 +28,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 /**
  * Service for NavigationChannel (F-038 to F-043).
@@ -85,7 +90,6 @@ public class NavigationChannelService {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
-                .isDeleted(false)
                 .createdBy(null)
                 .build();
 
@@ -120,13 +124,13 @@ public class NavigationChannelService {
 
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> findAll() {
-        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
+        return repo.findByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<NavigationChannelResponse> findAll(int page, int size) {
-        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
+        return repo.findByDeletedAtIsNull(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
                 .map(this::toResponse);
     }
 
@@ -142,9 +146,9 @@ public class NavigationChannelService {
             results = repo.searchDocuments(orgUnitId, keyword, approvalStatus,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
-            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
+            results = repo.findByDeletedAtIsNull(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         }
-        return results.map(this::toResponse);
+        return results.map(nc -> toResponse(nc, false));
     }
 
     @Transactional
@@ -223,7 +227,7 @@ public class NavigationChannelService {
             throw new IllegalStateException("Chi co luong hang hai da duyet moi co the xoa mem");
         }
 
-        nc.setIsDeleted(true);
+        nc.setDeletedAt(LocalDateTime.now());
         if (nc.getSpatialId() != null) {
             gisSpatialObjectService.delete(nc.getSpatialId());
         }
@@ -340,24 +344,46 @@ public class NavigationChannelService {
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id) {
         List<ApprovalHistory> history = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.NAVIGATION_CHANNEL, id);
+        Set<UUID> userIds = history.stream()
+                .map(ApprovalHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNames = resolveUserNames(userIds);
+
         return history.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
                 .navigationChannelId(h.getRefId())
                 .approvalLevel(h.getApprovalLevel())
                 .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approvedBy(resolveUserName(h.getApprovedBy()))
+                .approvedBy(h.getApprovedBy() != null ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
                 .approvedDate(h.getApprovedDate())
                 .reason(h.getReason())
                 .build()).collect(Collectors.toList());
     }
 
+    private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNullIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<com.hanghai.kchtg.user.entity.User> users = userRepository.findAllByIdInWithOrgUnit(nonNullIds);
+        Map<UUID, String> map = new java.util.HashMap<>();
+        for (com.hanghai.kchtg.user.entity.User u : users) {
+            String userStr = (u.getFullName() != null && !u.getFullName().trim().isEmpty())
+                    ? u.getFullName()
+                    : u.getUsername();
+            map.put(u.getId(), userStr);
+        }
+        return map;
+    }
+
     private String resolveUserName(UUID userId) {
         if (userId == null) return null;
-        return userRepository.findById(userId)
-                .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
-                        ? u.getFullName()
-                        : u.getUsername())
-                .orElse(userId.toString());
+        Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
+        return map.getOrDefault(userId, userId.toString());
     }
 
     @Transactional(readOnly = true)
@@ -371,13 +397,13 @@ public class NavigationChannelService {
 
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> findByApprovalStatus(ApprovalStatus s) {
-        return repo.findByApprovalStatusAndIsDeletedFalse(s)
+        return repo.findByApprovalStatusAndDeletedAtIsNull(s)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> searchByChannelNameContaining(String kw) {
-        return repo.findByChannelNameContainingAndIsDeletedFalse(kw)
+        return repo.findByChannelNameContainingAndDeletedAtIsNull(kw)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -394,7 +420,7 @@ public class NavigationChannelService {
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, keywordLike, status, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         return SearchResultResponse.builder()
-                .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
+                .results(r.getContent().stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
                 .totalPages(r.getTotalPages())
                 .currentPage(r.getNumber())
@@ -403,35 +429,43 @@ public class NavigationChannelService {
     }
 
     private NavigationChannelResponse toResponse(NavigationChannel nc) {
-        List<NavigationChannelAttachmentResponse> atts = attachmentRepository
-                .findByRefIdAndRefTypeOrderByUploadedDateDesc(nc.getId(), InfrastructureType.NAVIGATION_CHANNEL)
-                .stream()
-                .map(a -> NavigationChannelAttachmentResponse.builder()
-                        .id(a.getId())
-                        .fileName(a.getFileName())
-                        .filePath(a.getFilePath())
-                        .fileSize(a.getFileSize())
-                        .uploadDate(a.getUploadedDate() != null ? a.getUploadedDate().toLocalDate() : null)
-                        .build())
-                .collect(Collectors.toList());
+        return toResponse(nc, true);
+    }
 
-        List<ApprovalResponse> hist;
-        try {
-            List<ApprovalHistory> histories = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.NAVIGATION_CHANNEL, nc.getId());
-            hist = histories.stream()
-                    .map(h -> ApprovalResponse.builder()
-                            .id(String.valueOf(h.getId()))
-                            .navigationChannelId(h.getRefId())
-                            .approvalLevel(h.getApprovalLevel())
-                            .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                            .approvedBy(h.getApprovedBy())
-                            .approvedDate(h.getApprovedDate())
-                            .reason(h.getReason())
-                            .build())
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("Could not load approvalHistory for navigation channel {}: {}", nc.getId(), e.getMessage());
-            hist = new ArrayList<>();
+    private NavigationChannelResponse toResponse(NavigationChannel nc, boolean includeDetails) {
+        List<NavigationChannelAttachmentResponse> atts = includeDetails
+                ? attachmentRepository
+                        .findByRefIdAndRefTypeOrderByUploadedDateDesc(nc.getId(), InfrastructureType.NAVIGATION_CHANNEL)
+                        .stream()
+                        .map(a -> NavigationChannelAttachmentResponse.builder()
+                                .id(a.getId())
+                                .fileName(a.getFileName())
+                                .filePath(a.getFilePath())
+                                .fileSize(a.getFileSize())
+                                .uploadDate(a.getUploadedDate() != null ? a.getUploadedDate().toLocalDate() : null)
+                                .build())
+                        .collect(Collectors.toList())
+                : null;
+
+        List<ApprovalResponse> hist = null;
+        if (includeDetails) {
+            try {
+                List<ApprovalHistory> histories = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.NAVIGATION_CHANNEL, nc.getId());
+                hist = histories.stream()
+                        .map(h -> ApprovalResponse.builder()
+                                .id(String.valueOf(h.getId()))
+                                .navigationChannelId(h.getRefId())
+                                .approvalLevel(h.getApprovalLevel())
+                                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                                .approvedBy(h.getApprovedBy())
+                                .approvedDate(h.getApprovedDate())
+                                .reason(h.getReason())
+                                .build())
+                        .collect(Collectors.toList());
+            } catch (Exception e) {
+                log.warn("Could not load approvalHistory for navigation channel {}: {}", nc.getId(), e.getMessage());
+                hist = new ArrayList<>();
+            }
         }
 
         GisGeometryType geomType = null;
@@ -445,7 +479,7 @@ public class NavigationChannelService {
             }
         }
 
-        List<ChannelRouteDetailResponse> chiTietList = nc.getChannelRouteDetailList() != null
+        List<ChannelRouteDetailResponse> chiTietList = (includeDetails && nc.getChannelRouteDetailList() != null)
                 ? nc.getChannelRouteDetailList().stream()
                         .map(ct -> ChannelRouteDetailResponse.builder()
                                 .id(ct.getId())
@@ -470,7 +504,7 @@ public class NavigationChannelService {
                                 .channelProtectionScope(ct.getChannelProtectionScope())
                                 .build())
                         .collect(Collectors.toList())
-                : new ArrayList<>();
+                : (includeDetails ? new ArrayList<>() : null);
 
         String resolvedOrgUnitName = resolveOrgUnitName(nc.getOrgUnitId());
 
@@ -503,7 +537,6 @@ public class NavigationChannelService {
                 .approverLevel2(nc.getApproverLevel2())
                 .approvedDateLevel2(nc.getApprovedDateLevel2())
                 .rejectionReason(nc.getRejectionReason())
-                .isDeleted(nc.getIsDeleted())
                 .createdAt(nc.getCreatedAt())
                 .updatedAt(nc.getUpdatedAt())
                 .createdBy(nc.getCreatedBy())

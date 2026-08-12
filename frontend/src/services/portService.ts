@@ -28,9 +28,29 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
   return sp;
 }
 
+const clearPortOptionsCache = () => {
+  const getWin = () => (window.top || window) as any;
+  getWin().__portOptionsCache = null;
+};
+
 // ── Port CRUD ───────────────────────────────────────────────────
 
 export const portCRUD = {
+  async getOptions(): Promise<{ id: string; portCode?: string; portName?: string }[]> {
+    const getWin = () => (window.top || window) as any;
+    if (getWin().__portOptionsCache) {
+      return getWin().__portOptionsCache;
+    }
+    try {
+      const res = await api.get('/v1/ports/options');
+      const list = res.data.data || [];
+      getWin().__portOptionsCache = list;
+      return list;
+    } catch {
+      return [];
+    }
+  },
+
   async findAll(params?: {
     page?: number;
     size?: number;
@@ -96,16 +116,19 @@ export const portCRUD = {
 
   async create(payload: CreatePortRequest): Promise<Port> {
     const res = await api.post('/v1/ports', payload);
+    clearPortOptionsCache();
     return res.data.data;
   },
 
   async update(payload: UpdatePortRequest & { id: string }): Promise<Port> {
     const res = await api.put('/v1/ports', payload);
+    clearPortOptionsCache();
     return res.data.data;
   },
 
   async delete(id: string): Promise<void> {
     await api.delete(`/v1/ports/${id}`);
+    clearPortOptionsCache();
   },
 };
 
@@ -430,10 +453,12 @@ export const waterZoneCRUD = {
 export const portApproval = {
   async approve(id: string): Promise<void> {
     await api.post(`/v1/ports/${id}/approve`);
+    clearPortOptionsCache();
   },
 
   async reject(id: string, reason: string): Promise<void> {
     await api.post(`/v1/ports/${id}/reject`, null, { params: { reason } });
+    clearPortOptionsCache();
   },
 };
 

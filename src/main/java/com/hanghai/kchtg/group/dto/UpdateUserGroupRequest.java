@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -25,10 +26,15 @@ public class UpdateUserGroupRequest {
     @Size(max = 500, message = "Mô tả tối đa 500 ký tự")
     private String description;
 
-    /** Đơn vị quản lý — chấp nhận nhưng bỏ qua khi cập nhật (read-only per BA §10.7). */
+    /**
+     * Đơn vị quản lý — chấp nhận nhưng bỏ qua khi cập nhật (read-only per BA
+     * §10.7).
+     */
     private UUID organizationId;
 
     private GroupType groupType;
 
     private GroupStatus status;
+
+    private List<String> permissions;
 }

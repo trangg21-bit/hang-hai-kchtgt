@@ -77,58 +77,53 @@ export default function AttachmentList({
 
   if (!attachments || attachments.length === 0) {
     if (readonly) {
-      return <Empty description="Chưa có tài liệu đính kèm" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+      return <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />;
     }
   }
 
   const columns: any[] = [
     {
-      title: 'Tên tệp',
-      dataIndex: 'fileName',
-      key: 'fileName',
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: unknown, __: unknown, index: number) => index + 1,
     },
     {
-      title: 'Thao tác',
-      key: 'action',
-      width: 200,
-      render: (_: unknown, record: Attachment) => (
-        <Space>
-          <Button
-            type="link"
-            size="small"
-            icon={<DownloadOutlined />}
-            onClick={() => {
-              const link = document.createElement('a');
-              link.href = record.filePath;
-              link.download = record.fileName;
-              link.click();
-            }}
-          >
-            Tải xuống
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => window.open(record.filePath, '_blank', 'noopener,noreferrer')}
-          >
-            Xem
-          </Button>
-          {!readonly && (
-            <Button
-              type="link"
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-              loading={deleting}
-            >
-              Xóa
-            </Button>
-          )}
-        </Space>
+      title: 'Tên file',
+      dataIndex: 'fileName',
+      key: 'fileName',
+      render: (text: string, record: Attachment) => (
+        <a
+          style={{ color: '#1890ff', cursor: 'pointer' }}
+          onClick={() => {
+            const link = document.createElement('a');
+            link.href = record.filePath;
+            link.download = record.fileName;
+            link.click();
+          }}
+        >
+          {text || '—'}
+        </a>
       ),
     },
+    ...(!readonly ? [
+      {
+        title: 'Thao tác',
+        key: 'action',
+        width: 100,
+        render: (_: unknown, record: Attachment) => (
+          <Button
+            type="link"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+            loading={deleting}
+          />
+        ),
+      },
+    ] : []),
   ];
 
   return (

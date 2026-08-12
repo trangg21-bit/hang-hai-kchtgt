@@ -2,6 +2,7 @@ package com.hanghai.kchtg.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.PortCacheService;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
@@ -27,6 +28,11 @@ public class CacheConfig {
                 OrgUnitCacheService.CACHE_NAME,
                 Caffeine.newBuilder()
                         .maximumSize(1)
+                        .build());
+        cacheManager.registerCustomCache(
+                PortCacheService.CACHE_NAME,
+                Caffeine.newBuilder()
+                        .maximumSize(2)
                         .build());
         return cacheManager;
     }

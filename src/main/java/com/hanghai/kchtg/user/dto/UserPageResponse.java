@@ -7,7 +7,7 @@ import java.util.Map;
  * DTO phan trang nguoi dung kem theo thong ke so luong trang thai (merged response).
  */
 public class UserPageResponse {
-    private List<UserResponse> content;
+    private List<UserListItemResponse> content;
     private int pageNumber;
     private int pageSize;
     private long totalElements;
@@ -17,7 +17,7 @@ public class UserPageResponse {
     public UserPageResponse() {
     }
 
-    public UserPageResponse(List<UserResponse> content, int pageNumber, int pageSize, long totalElements, int totalPages, Map<String, Long> statusCounts) {
+    public UserPageResponse(List<UserListItemResponse> content, int pageNumber, int pageSize, long totalElements, int totalPages, Map<String, Long> statusCounts) {
         this.content = content;
         this.pageNumber = pageNumber;
         this.pageSize = pageSize;
@@ -26,11 +26,11 @@ public class UserPageResponse {
         this.statusCounts = statusCounts;
     }
 
-    public List<UserResponse> getContent() {
+    public List<UserListItemResponse> getContent() {
         return content;
     }
 
-    public void setContent(List<UserResponse> content) {
+    public void setContent(List<UserListItemResponse> content) {
         this.content = content;
     }
 

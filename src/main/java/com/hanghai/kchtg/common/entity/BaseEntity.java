@@ -31,6 +31,10 @@ import java.util.UUID;
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @SQLRestriction("deleted_at IS NULL")
+@org.hibernate.annotations.FilterDef(
+        name = "orgUnitFilter",
+        parameters = @org.hibernate.annotations.ParamDef(name = "orgUnitIds", type = java.util.UUID.class)
+)
 public abstract class BaseEntity {
 
     /**

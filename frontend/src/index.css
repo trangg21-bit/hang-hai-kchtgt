@@ -26,11 +26,23 @@ body {
   display: none;
 }
 
-/* ---- Table row transition (không có trong globalCssVars) ---- */
+/* ---- Table row transition & responsive height fit ---- */
 .ant-table-row { transition: background 0.15s; }
-.list-view-table .ant-table-container,
-.list-view-table .ant-table-content {
-  overflow-y: hidden !important;
+
+.filter-table-spin,
+.filter-table-spin .ant-spin-nested-loading,
+.filter-table-spin .ant-spin-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.list-view-table .ant-table-body {
+  height: var(--list-table-scroll-y) !important;
+  max-height: var(--list-table-scroll-y) !important;
+  overflow-y: auto !important;
 }
 
 /* ---- GIS Map: Sidebar tabs fill height ---- */
