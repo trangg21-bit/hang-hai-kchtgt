@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ApprovalRequest {
     @NotBlank(message = "Quyết định phê duyệt không được để trống")
-    private String quyetDinh;
+    private String decision;
 
     private String reason;
 }

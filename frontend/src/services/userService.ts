@@ -54,6 +54,25 @@ function mapUser(item: any): User {
     lastLoginAt: item.lastLoginAt ? new Date(item.lastLoginAt).toISOString() : undefined,
     createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
     updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : '',
+    groupIds: Array.isArray(item.groupIds) ? item.groupIds : undefined,
+    groupNames: Array.isArray(item.groupNames) ? item.groupNames : undefined,
+    permissionCodes: Array.isArray(item.permissionCodes)
+      ? item.permissionCodes
+      : Array.isArray(item.permissions)
+        ? item.permissions.map((permission: any) => typeof permission === 'string' ? permission : permission.code).filter(Boolean)
+        : undefined,
+    permissionNames: Array.isArray(item.permissionNames)
+      ? item.permissionNames
+      : Array.isArray(item.permissions)
+        ? item.permissions.map((permission: any) => typeof permission === 'string' ? permission : permission.name).filter(Boolean)
+        : undefined,
+    createdBy: item.createdBy ?? undefined,
+    createdByName: item.createdByName ?? undefined,
+    updatedBy: item.updatedBy ?? undefined,
+    updatedByName: item.updatedByName ?? undefined,
+    deletedAt: item.deletedAt ? new Date(item.deletedAt).toISOString() : undefined,
+    deletedBy: item.deletedBy ?? undefined,
+    deletedByName: item.deletedByName ?? undefined,
   };
 }
 
@@ -161,11 +180,8 @@ export const userService = {
     return { success: true, data: null };
   },
 
-  async toggleLock(id: string): Promise<ApiResponse<User>> {
-    const detailResp = await api.get(`/users/${id}`);
-    const rawUser = extractData(detailResp) as any;
-    const isCurrentlyLocked = rawUser.status === 'LOCKED';
-
+  async toggleLock(id: string, currentStatus: string): Promise<ApiResponse<User>> {
+    const isCurrentlyLocked = currentStatus.toLowerCase() === 'locked';
     const endpoint = isCurrentlyLocked ? `/users/${id}/unlock` : `/users/${id}/lock`;
     const resp = await api.post(endpoint);
     const u = mapUser(extractData(resp));

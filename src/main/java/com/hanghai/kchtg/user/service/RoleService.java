@@ -91,6 +91,14 @@ public class RoleService {
         return roles;
     }
 
+    /**
+     * Lấy danh sách role rút gọn (id, name, code) — không JOIN permissions, dùng cho dropdown.
+     */
+    @Transactional(readOnly = true)
+    public List<com.hanghai.kchtg.user.dto.RoleSimpleResponse> findAllSimple() {
+        return roleRepository.findSimpleRoles();
+    }
+
     @Transactional
     public Page<Role> findAll(Pageable pageable) {
         Page<Role> roles = roleRepository.findByStatusNot(RoleStatus.DELETED, pageable);

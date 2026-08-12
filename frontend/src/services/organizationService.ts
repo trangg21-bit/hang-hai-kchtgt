@@ -138,26 +138,38 @@ const getGlobalWindow = (): any => {
   }
 };
 
+const ORG_CACHE_TTL_MS = 5 * 60_000;
+
 const getCachedOrgs = (): Organization[] | null => {
   const globalWin = getGlobalWindow();
-  return globalWin.__orgUnitsCache || null;
+  const cachedAt = Number(globalWin.__orgUnitsCacheAt || 0);
+  if (!globalWin.__orgUnitsCache || !cachedAt || Date.now() - cachedAt > ORG_CACHE_TTL_MS) {
+    globalWin.__orgUnitsCache = null;
+    globalWin.__orgUnitsCacheAt = 0;
+    return null;
+  }
+  return globalWin.__orgUnitsCache;
 };
 
 const setCachedOrgs = (orgs: Organization[]) => {
   const globalWin = getGlobalWindow();
   globalWin.__orgUnitsCache = orgs;
+  globalWin.__orgUnitsCacheAt = Date.now();
 };
 
 const clearCachedOrgs = () => {
   const globalWin = getGlobalWindow();
   globalWin.__orgUnitsCache = null;
+  globalWin.__orgUnitsCacheAt = 0;
 };
+
+export const invalidateOrganizationCache = clearCachedOrgs;
 
 export const organizationService = {
   /**
-   * GET /api/org-units
-   * Note: Backend returns flat list (no pagination endpoint).
-   * Frontend applies pagination client-side.
+   * GET /api/org-units/options for an unfiltered directory list, or the
+   * paginated endpoint when filters are supplied. Frontend applies pagination
+   * client-side for the cached directory list.
    */
   async list(
     params?: { page?: number; pageSize?: number; search?: string; status?: string; parentId?: string }
@@ -179,12 +191,14 @@ export const organizationService = {
     }
 
     try {
-      const resp = await api.get("/org-units", {
-        params: {
-          size: 1000,
-          parentId: params?.parentId,
-        }
-      });
+      const resp = isCacheable
+        ? await api.get("/org-units/options")
+        : await api.get("/org-units", {
+            params: {
+              size: 1000,
+              parentId: params?.parentId,
+            }
+          });
       const rawData: any = extractData(resp);
       const items: any[] = Array.isArray(rawData)
         ? rawData

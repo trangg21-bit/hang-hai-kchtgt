@@ -342,12 +342,12 @@ export default function PortListPage() {
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [filterCollapsed, setFilterCollapsed] = useState(false);
-  const defaultOrgUnitId = useRef<string | undefined>();
+  const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortField, setSortField] = useState('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [activeStatusTab, setActiveStatusTab] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -461,7 +461,7 @@ export default function PortListPage() {
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('submit');
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
-  const [symbols, setSymbols] = useState<Symbol[]>([]);
+  const [symbols, setSymbols] = useState<any[]>([]);
 
   const symbolMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -1116,7 +1116,7 @@ export default function PortListPage() {
     if (!submittingRecord) return;
     setSubmitModalOpen(false);
     try {
-      await updateCangBien({ id: submittingRecord.id, approvalStatus: 'PENDING' });
+      await updateCangBien({ id: submittingRecord.id, approvalStatus: 'PENDING' } as any);
       toast.success('Đã gửi phê duyệt');
       setSubmittingRecord(null);
       fetchData();
@@ -1204,6 +1204,14 @@ export default function PortListPage() {
           },
         },
       ];
+      if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => historyHandler(record),
+        });
+      }
       const status = record.approvalStatus;
       // Chỉnh sửa: tất cả trạng thái
       if (hasPerm?.(PERMISSIONS.PORT.UPDATE)) {
@@ -1469,6 +1477,20 @@ export default function PortListPage() {
     width: '100%',
     borderRadius: radiusPill,
     height: 40,
+  };
+  const historyTabStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    borderRadius: 0,
+    border: 'none',
+    background: 'transparent',
+    fontSize: fontSizeMd,
+    padding: `0 ${spaceMd}px`,
   };
 
   // ── Render ───────────────────────────────────────────────────────
@@ -3341,7 +3363,7 @@ export default function PortListPage() {
 
       {/* ── History Modal ──────────────────────────────────────────── */}
       <Modal
-        maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
+        styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' }, body: { padding: spaceMd, maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Space size={spaceSm}>
@@ -3357,10 +3379,10 @@ export default function PortListPage() {
         <div style={{ flexShrink: 0 }}>
         {!loadingHistory && (
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceSm, alignItems: 'center' }}>
-            <Radio.Group value={historyMode} size="small"
+            <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}
               onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setLoadingHistory(true); setHistoryRecords([]); if (mode === 'all') { const { fetchPortAllHistory } = await import('./api'); fetchPortAllHistory({ page: 0, size: 500 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); setHistoryEntityNames(d.entityNames || {}); }).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); } else { const { fetchportHistory } = await import('./api'); fetchportHistory(historyEntityId, { page: 0, size: 200 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); }).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); } }}>
-              <Radio.Button value="current" style={{ borderRadius: `${radiusPill}px 0 0 ${radiusPill}px`, fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : undefined }}>Bản ghi hiện tại {historyMode === 'current' ? <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyRecords.filter((r: any, i: number, arr: any[]) => { const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime()/1000); const a = r.changedBy || ''; return arr.findIndex((x: any) => Math.floor(new Date(x.changedAt || x.createdAt || 0).getTime()/1000) === s && (x.changedBy || '') === a) === i; }).length}</Tag> : <span style={{ marginLeft: 4 }}>...</span>}</Radio.Button>
-              <Radio.Button value="all" style={{ borderRadius: `0 ${radiusPill}px ${radiusPill}px 0`, fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : undefined }}>Tất cả bản ghi {historyMode === 'all' ? <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyRecords.filter((r: any, i: number, arr: any[]) => { const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime()/1000); const a = r.changedBy || ''; return arr.findIndex((x: any) => Math.floor(new Date(x.changedAt || x.createdAt || 0).getTime()/1000) === s && (x.changedBy || '') === a) === i; }).length}</Tag> : <span style={{ marginLeft: 4 }}>...</span>}</Radio.Button>
+              <Radio.Button value="current" style={{ ...historyTabStyle, borderBottom: `2px solid ${historyMode === 'current' ? actionPrimary : 'transparent'}`, fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại {historyMode === 'current' ? <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyRecords.filter((r: any, i: number, arr: any[]) => { const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime()/1000); const a = r.changedBy || ''; return arr.findIndex((x: any) => Math.floor(new Date(x.changedAt || x.createdAt || 0).getTime()/1000) === s && (x.changedBy || '') === a) === i; }).length}</Tag> : <span style={{ marginLeft: 4 }}>...</span>}</Radio.Button>
+              <Radio.Button value="all" style={{ ...historyTabStyle, borderBottom: `2px solid ${historyMode === 'all' ? actionPrimary : 'transparent'}`, fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi {historyMode === 'all' ? <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyRecords.filter((r: any, i: number, arr: any[]) => { const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime()/1000); const a = r.changedBy || ''; return arr.findIndex((x: any) => Math.floor(new Date(x.changedAt || x.createdAt || 0).getTime()/1000) === s && (x.changedBy || '') === a) === i; }).length}</Tag> : <span style={{ marginLeft: 4 }}>...</span>}</Radio.Button>
             </Radio.Group>
           </div>
         )}
@@ -3399,7 +3421,7 @@ export default function PortListPage() {
       )}
 
       {/* Approve Modal */}
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
+      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }}
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận phê duyệt</span>}
         open={approveModalOpen} onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
         footer={[
@@ -3417,7 +3439,8 @@ export default function PortListPage() {
       </Modal>
 
       {/* Reject Modal */}
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalVisible} onCancel={() => { setRejectModalVisible(false); setRejectTarget(null); setRejectReason(''); }}
         footer={[
           <Button key="cancel" onClick={() => { setRejectModalVisible(false); setRejectTarget(null); setRejectReason(''); }}
@@ -3442,7 +3465,7 @@ export default function PortListPage() {
       </Modal>
 
       {/* Submit Modal */}
-      <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
+      <Modal styles={{ mask: { background: 'rgba(0, 0, 0, 0.4)' } }}
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi phê duyệt</span>}
         open={submitModalOpen} onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
         footer={[

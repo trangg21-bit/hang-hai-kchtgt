@@ -27,6 +27,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class WaterZone extends BaseEntity {
     @Column(name = "province_id")
     private Integer provinceId;

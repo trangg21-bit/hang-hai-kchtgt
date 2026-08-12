@@ -70,9 +70,6 @@ class DikeRevetmentEntityTest {
         entity.setRejectionReason("Thiet ke chua dat yeu cau");
         assertEquals("Thiet ke chua dat yeu cau", entity.getRejectionReason());
 
-        entity.setIsDeleted(false);
-        assertFalse(entity.getIsDeleted());
-
         entity.setCreatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getCreatedBy());
 
@@ -128,7 +125,7 @@ class DikeRevetmentEntityTest {
         DikeRevetment dr = DikeRevetment.builder().dikeRevetmentType(DikeRevetmentType.RIVER_DIKE).location("y").build();
         assertFalse(dr.getIsApprovedLevel1());
         assertFalse(dr.getIsApprovedLevel2());
-        assertFalse(dr.getIsDeleted());
+        assertNull(dr.getDeletedAt());
         assertNull(dr.getApprovedDateLevel1());
         assertNull(dr.getApprovedDateLevel2());
         assertNull(dr.getCreatedAt());

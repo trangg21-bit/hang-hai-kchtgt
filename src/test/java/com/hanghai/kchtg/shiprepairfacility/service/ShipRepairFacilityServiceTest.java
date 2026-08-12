@@ -72,7 +72,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
@@ -98,7 +97,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
@@ -143,24 +141,23 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
         List<ShipRepairFacility> entities = Arrays.asList(approvedEntity);
-        when(repository.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED)).thenReturn(entities);
+        when(repository.findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED)).thenReturn(entities);
 
         List<ShipRepairFacilityResponse> responses = service.findAll(0, 20);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
         assertEquals(ApprovalStatus.APPROVED, responses.get(0).getApprovalStatus());
-        verify(repository, times(1)).findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED);
+        verify(repository, times(1)).findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED);
     }
 
     @Test
     void testFindAll_Empty() {
-        when(repository.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.APPROVED)).thenReturn(Collections.emptyList());
+        when(repository.findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus.APPROVED)).thenReturn(Collections.emptyList());
 
         List<ShipRepairFacilityResponse> responses = service.findAll(0, 20);
 
@@ -185,7 +182,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
         when(repository.save(any())).thenReturn(updatedEntity);
@@ -211,7 +207,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(true)
                 .approvedLevel2(true)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
@@ -239,10 +234,9 @@ class ShipRepairFacilityServiceTest {
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
-                .approvedLevel2(false)
-                .isDeleted(true)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
+        deletedEntity.softDelete(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
         ShipRepairFacilityUpdateRequest updateReqDto = ShipRepairFacilityUpdateRequest.builder()
                 .facilityName("ABC mới").build();
@@ -270,7 +264,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
@@ -280,7 +273,7 @@ class ShipRepairFacilityServiceTest {
 
         service.delete(TEST_ID, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-        assertTrue(approvedEntity.getIsDeleted());
+        assertNotNull(approvedEntity.getDeletedAt());
         verify(repository, times(1)).save(any());
         verify(attachmentRepository, times(1)).deleteByRefIdAndRefType(TEST_ID, InfrastructureType.SHIP_REPAIR_FACILITY);
         verify(historyRepository, times(1)).save(any());
@@ -303,7 +296,7 @@ class ShipRepairFacilityServiceTest {
     @Test
     void testApproveC1_Approve() {
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
@@ -321,7 +314,7 @@ class ShipRepairFacilityServiceTest {
     void testApproveC1_Reject() {
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         ApprovalRequest req = ApprovalRequest.builder()
-                .quyetDinh("REJECTED")
+                .decision("REJECTED")
                 .reason("Không đủ điều kiện")
                 .build();
 
@@ -338,7 +331,7 @@ class ShipRepairFacilityServiceTest {
     @Test
     void testApproveC1_WrongStatus_Throws() {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
@@ -348,7 +341,7 @@ class ShipRepairFacilityServiceTest {
     @Test
     void testApproveC2_Approve() {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
@@ -366,7 +359,7 @@ class ShipRepairFacilityServiceTest {
     void testApproveC2_Reject() {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         ApprovalRequest req = ApprovalRequest.builder()
-                .quyetDinh("REJECTED")
+                .decision("REJECTED")
                 .reason("Không phù hợp")
                 .build();
 
@@ -383,7 +376,7 @@ class ShipRepairFacilityServiceTest {
     @Test
     void testApproveC2_WrongStatus_Throws() {
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
@@ -395,7 +388,7 @@ class ShipRepairFacilityServiceTest {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
@@ -459,7 +452,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
@@ -484,7 +476,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
@@ -508,7 +499,6 @@ class ShipRepairFacilityServiceTest {
                 .approvalStatus(ApprovalStatus.REJECTED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 

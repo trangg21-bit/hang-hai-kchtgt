@@ -77,6 +77,13 @@ public class RoleController {
         return ResponseEntity.ok(ApiResponse.success(roles));
     }
 
+    @GetMapping("/simple")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    public ResponseEntity<ApiResponse<List<com.hanghai.kchtg.user.dto.RoleSimpleResponse>>> findSimple() {
+        List<com.hanghai.kchtg.user.dto.RoleSimpleResponse> roles = roleService.findAllSimple();
+        return ResponseEntity.ok(ApiResponse.success(roles));
+    }
+
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<RoleResponse>> create(@Valid @RequestBody CreateRoleRequest request) {

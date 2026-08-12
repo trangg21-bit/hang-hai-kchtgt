@@ -60,9 +60,7 @@ class ShipRepairFacilityControllerTest {
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .approvedLevel1(true)
                 .approvedLevel2(true)
-                .isDeleted(false)
                 .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .createdDate(LocalDateTime.now())
                 .build();
     }
 
@@ -189,7 +187,7 @@ class ShipRepairFacilityControllerTest {
 
     @Test
     void testApproveC1_Approve() {
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
         when(service.approveC1(eq(TEST_ID), eq(req), any(java.util.UUID.class))).thenReturn(response);
 
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
@@ -201,7 +199,7 @@ class ShipRepairFacilityControllerTest {
     @Test
     void testApproveC1_Reject() {
         ApprovalRequest req = ApprovalRequest.builder()
-                .quyetDinh("REJECTED")
+                .decision("REJECTED")
                 .reason("Không đủ điều kiện")
                 .build();
         ShipRepairFacilityResponse rejectedResponse = ShipRepairFacilityResponse.builder()
@@ -215,7 +213,7 @@ class ShipRepairFacilityControllerTest {
 
     @Test
     void testApproveC2_Approve() {
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
         when(service.approveC2(eq(TEST_ID), eq(req), any(java.util.UUID.class))).thenReturn(response);
 
         ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());

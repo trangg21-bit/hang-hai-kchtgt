@@ -71,7 +71,6 @@ class F151ReportHandlerTest {
                 .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
                 .stationStaffAmount(2)
                 .clearanceHeight("10m")
-                .isDeleted(false)
                 .build();
 
         // Two ChannelRouteDetail children
@@ -106,7 +105,7 @@ class F151ReportHandlerTest {
                 .build();
 
         // Mocks
-        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+        when(navigationChannelRepository.findByDeletedAtIsNull(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of(nc));
         when(channelRouteDetailRepository.findByNavigationChannelIdOrderBySequenceNoAsc(ncId))
                 .thenReturn(List.of(child1, child2));
@@ -182,7 +181,6 @@ class F151ReportHandlerTest {
                 .latestStationRepairDate(LocalDate.of(2025, 3, 15))
                 .stationStaffAmount(2)
                 .clearanceHeight("10m")
-                .isDeleted(false)
                 .build();
 
         ChannelRouteDetail child1 = ChannelRouteDetail.builder()
@@ -215,7 +213,7 @@ class F151ReportHandlerTest {
                 .dedicated(true)
                 .build();
 
-        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+        when(navigationChannelRepository.findByDeletedAtIsNull(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of(nc));
         when(channelRouteDetailRepository.findByNavigationChannelIdOrderBySequenceNoAsc(ncId))
                 .thenReturn(List.of(child1, child2));
@@ -279,7 +277,6 @@ class F151ReportHandlerTest {
                 .channelName("Luồng A")
                 .orgUnitId(orgUnitId)
                 .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
-                .isDeleted(false)
                 .build();
 
         NavigationChannel nonMatchingNc = NavigationChannel.builder()
@@ -287,10 +284,9 @@ class F151ReportHandlerTest {
                 .channelName("Luồng B")
                 .orgUnitId(otherOrgUnitId)
                 .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
-                .isDeleted(false)
                 .build();
 
-        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+        when(navigationChannelRepository.findByDeletedAtIsNull(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of(matchingNc, nonMatchingNc));
 
         // Only the matching nc reaches the children query
@@ -328,7 +324,7 @@ class F151ReportHandlerTest {
     @Test
     void testPreview_emptyData_returnsZeroRows() {
         /* ── given ─────────────────────────────────────────────── */
-        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+        when(navigationChannelRepository.findByDeletedAtIsNull(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of());
 
         ReportPreviewRequest request = ReportPreviewRequest.builder()

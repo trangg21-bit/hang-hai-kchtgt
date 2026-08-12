@@ -20,10 +20,8 @@ export function useUsers(params: ListParams) {
     queryKey: ['users', params],
     queryFn: () => userService.list(params),
     staleTime: 30_000,
-    // The account lockout can expire and be cleared by a login outside the
-    // admin screen. Poll so an already-open user list reflects that change.
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 
@@ -91,7 +89,8 @@ export function useToggleLockUser() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => userService.toggleLock(id),
+    mutationFn: ({ id, currentStatus }: { id: string; currentStatus: string }) =>
+      userService.toggleLock(id, currentStatus),
     onSuccess: (res) => {
       const statusText = res.data.status === 'locked' ? 'đã bị khóa' : 'đã được mở khóa';
       message.success(`Tài khoản ${statusText}`);

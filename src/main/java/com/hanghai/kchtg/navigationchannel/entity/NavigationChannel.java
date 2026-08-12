@@ -16,6 +16,10 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 @Entity
 @Table(name = "navigation_channel")
+// TODO: refactor to extend BaseEntity — remove own id/createdAt/updatedAt/createdBy/updatedBy/deletedAt/deletedBy,
+//       change @Data @Builder to @Getter @Setter @SuperBuilder, remove @PrePersist @PreUpdate.
+//       Then @FilterDef can be removed (inherited from BaseEntity), keep only @Filter.
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class NavigationChannel {
     @Column(name = "province_id")
@@ -53,7 +57,6 @@ public class NavigationChannel {
     @Column(name = "approver_level2") private UUID approverLevel2;
     @Column(name = "approved_date_level2") private LocalDate approvedDateLevel2;
     @Column(name = "rejection_reason", length = 500) private String rejectionReason;
-    @Column(name = "is_deleted", nullable = false) @Builder.Default private Boolean isDeleted = false;
     @Column(name = "created_at", updatable = false) private LocalDateTime createdAt;
     @Column(name = "updated_at") private LocalDateTime updatedAt;
     @Column(name = "created_by") private UUID createdBy;

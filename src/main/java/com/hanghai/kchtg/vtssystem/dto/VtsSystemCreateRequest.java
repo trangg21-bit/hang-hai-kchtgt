@@ -3,11 +3,14 @@ package com.hanghai.kchtg.vtssystem.dto;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -18,15 +21,38 @@ public class VtsSystemCreateRequest {
     @NotBlank(message = "Tên hệ thống không được để trống")
     private String systemName;
 
-    @NotBlank(message = "Vị trí không được để trống")
-    private String location;
-
+    @NotNull(message = "Tình trạng không được để trống")
     private ConditionStatus conditionStatus;
     private String responsibilityLevel;
     private String source;
     private String partner;
+
+    @NotNull(message = "Đơn vị quản lý không được để trống")
     private UUID orgUnitId;
     private String scope;
+
+    @NotNull(message = "Đơn vị chủ quản không được để trống")
+    private UUID owningOrgId;
+
+    @NotNull(message = "Đơn vị vận hành không được để trống")
+    private UUID operatingOrgId;
+    private UUID portId;
+
+    private List<VtsZoneDto> zones;
+
+    @NotBlank(message = "Mã hệ thống VTS không được để trống")
+    private String code;
+
+    @NotNull(message = "Địa điểm (Tỉnh/TP) không được để trống")
+    private Integer provinceId;
+
+    private String address;
+
+    private String maritimeNotice;
+
+    private LocalDate operationStartDate;
+
+    private String note;
 
     private GisGeometryType geometryType;
     private String coordinates;

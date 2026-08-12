@@ -23,6 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.annotation.DataScope;
+
 @RestController
 @RequestMapping("/api/v1/ports")
 @RequiredArgsConstructor
@@ -50,6 +52,13 @@ public class PortController {
         return ResponseEntity.ok(ApiResponse.success("Sinh mã cảng thành công", Map.of("portCode", code)));
     }
 
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<List<PortOptionResponse>>> getOptions() {
+        log.info("Getting Port options list");
+        List<PortOptionResponse> options = portService.getOptions();
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh mục cảng biển thành công", options));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'port:read')")
     public ResponseEntity<ApiResponse<PortResponse>> getById(@PathVariable UUID id) {
@@ -59,6 +68,7 @@ public class PortController {
     }
 
     @GetMapping
+    @DataScope
     @PreAuthorize("@auth.check(authentication, 'port:read')")
     public ResponseEntity<ApiResponse<Page<PortResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,

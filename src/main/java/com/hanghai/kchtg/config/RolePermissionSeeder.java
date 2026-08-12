@@ -380,7 +380,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "dikerevetment:create", "dikerevetment:read", "dikerevetment:update",
                 "shiprepair:create", "shiprepair:read", "shiprepair:update",
                 "radarstation:create", "radarstation:read", "radarstation:update",
-                "vts:create", "vts:read", "vts:update"
+                "vts:create", "vts:read", "vts:update", "vts:delete", "vts:history"
         ));
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
                 "orgunit:read", "data:read", "data:update",
@@ -628,7 +628,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
         ));
         rolePermMap.put("ROLE_SPECIALIST", List.of(
             "document:read", "document:create", "document:update",
-            "group:read"
+            "group:read",
+            "vts:create", "vts:read", "vts:update", "vts:delete", "vts:history"
         ));
         rolePermMap.put("ROLE_PORT_OPERATOR", List.of("document:read", "group:read"));
         rolePermMap.put("ROLE_PUBLIC_USER", List.of("document:read", "group:read"));

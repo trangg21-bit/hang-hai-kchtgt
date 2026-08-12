@@ -38,6 +38,9 @@ BEGIN
                 EXECUTE format('UPDATE %I SET deleted_at = CURRENT_TIMESTAMP WHERE is_deleted = true;', t_name);
                 EXECUTE format('ALTER TABLE %I DROP COLUMN is_deleted;', t_name);
             END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t_name AND column_name = 'is_delete') THEN
+                EXECUTE format('ALTER TABLE %I DROP COLUMN is_delete;', t_name);
+            END IF;
 
             -- Add deleted_by
             EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(100);', t_name);

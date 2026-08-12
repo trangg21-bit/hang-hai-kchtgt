@@ -48,13 +48,17 @@ class VtsSystemControllerTest {
     void setUp() {
         createRequest = VtsSystemCreateRequest.builder()
                 .systemName("VTS ABC")
-                .location("Hà Nội")
+                .code("VTS-ABC")
+                .conditionStatus(com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
+                .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
+                .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
+                .provinceId(1)
                 .build();
 
         response = VtsSystemResponse.builder()
                 .id(TEST_ID)
                 .systemName("VTS ABC")
-                .location("Hà Nội")
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .build();
     }
@@ -69,8 +73,8 @@ class VtsSystemControllerTest {
 
     @Test
     void testGetById() {
-        when(service.getById(TEST_ID)).thenReturn(response);
-        ResponseEntity<?> result = controller.getById(TEST_ID, mockAuth());
+        when(service.getById(TEST_ID, false, false)).thenReturn(response);
+        ResponseEntity<?> result = controller.getById(TEST_ID, false, false, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
         VtsSystemResponse body = ((ApiResponse<VtsSystemResponse>) result.getBody()).getData();
@@ -102,7 +106,7 @@ class VtsSystemControllerTest {
 
     @Test
     void testApproveC1() {
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         when(service.approveC1(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -110,7 +114,7 @@ class VtsSystemControllerTest {
 
     @Test
     void testApproveC2() {
-        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         when(service.approveC2(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -143,4 +147,3 @@ class VtsSystemControllerTest {
         return auth;
     }
 }
-

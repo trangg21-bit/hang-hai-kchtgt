@@ -22,15 +22,25 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
 
     @Query("""
         SELECT t FROM VtsSystem t
-        WHERE (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+        WHERE t.deletedAt IS NULL
+          AND (:scopeEnabled = false OR t.orgUnitId IN (
+                SELECT child.id FROM OrgUnit child
+                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
+                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+              ))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:keyword IS NULL OR
             LOWER(t.systemName) LIKE :keyword OR
-            LOWER(t.location) LIKE :keyword)
+            LOWER(t.code) LIKE :keyword OR
+            LOWER(t.address) LIKE :keyword)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
         ORDER BY t.createdAt DESC
     """)
     Page<VtsSystem> search(
+        @Param("scopeEnabled") boolean scopeEnabled,
+        @Param("scopePath") String scopePath,
+        @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
         @Param("conditionStatus") ConditionStatus conditionStatus,
@@ -40,8 +50,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
 
     @Query("""
         SELECT t FROM VtsSystem t
-        WHERE (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR LOWER(t.systemName) LIKE :keyword OR LOWER(t.location) LIKE :keyword)
+        WHERE t.deletedAt IS NULL
+          AND (:scopeEnabled = false OR t.orgUnitId IN (
+                SELECT child.id FROM OrgUnit child
+                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
+                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+              ))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR LOWER(t.systemName) LIKE :keyword OR LOWER(t.code) LIKE :keyword OR LOWER(t.address) LIKE :keyword)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
           AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
@@ -49,6 +65,127 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         ORDER BY t.createdAt DESC
     """)
     Page<VtsSystem> searchByCreatedDateRange(
+            @Param("scopeEnabled") boolean scopeEnabled,
+            @Param("scopePath") String scopePath,
+            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("keyword") String keyword,
+            @Param("conditionStatus") ConditionStatus conditionStatus,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate,
+        Pageable pageable
+    );
+
+    @Query(value = """
+        SELECT t.id AS id,
+               t.code AS code,
+               t.systemName AS systemName,
+               t.address AS address,
+               t.conditionStatus AS conditionStatus,
+               t.responsibilityLevel AS responsibilityLevel,
+               t.partner AS partner,
+               t.orgUnitId AS orgUnitId,
+               t.approvalStatus AS approvalStatus,
+               t.approverLevel1 AS approverLevel1,
+               t.updatedAt AS updatedDate
+        FROM VtsSystem t
+        WHERE t.deletedAt IS NULL
+          AND (:scopeEnabled = false OR t.orgUnitId IN (
+                SELECT child.id FROM OrgUnit child
+                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
+                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+              ))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR
+            LOWER(t.systemName) LIKE :keyword OR
+            LOWER(t.code) LIKE :keyword OR
+            LOWER(t.address) LIKE :keyword)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+        ORDER BY t.createdAt DESC
+        """,
+        countQuery = """
+        SELECT COUNT(t)
+        FROM VtsSystem t
+        WHERE t.deletedAt IS NULL
+          AND (:scopeEnabled = false OR t.orgUnitId IN (
+                SELECT child.id FROM OrgUnit child
+                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
+                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+              ))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR
+            LOWER(t.systemName) LIKE :keyword OR
+            LOWER(t.code) LIKE :keyword OR
+            LOWER(t.address) LIKE :keyword)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+        """)
+    Page<VtsSystemListProjection> searchList(
+            @Param("scopeEnabled") boolean scopeEnabled,
+            @Param("scopePath") String scopePath,
+            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("keyword") String keyword,
+            @Param("conditionStatus") ConditionStatus conditionStatus,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
+            Pageable pageable
+    );
+
+    @Query(value = """
+        SELECT t.id AS id,
+               t.code AS code,
+               t.systemName AS systemName,
+               t.address AS address,
+               t.conditionStatus AS conditionStatus,
+               t.responsibilityLevel AS responsibilityLevel,
+               t.partner AS partner,
+               t.orgUnitId AS orgUnitId,
+               t.approvalStatus AS approvalStatus,
+               t.approverLevel1 AS approverLevel1,
+               t.updatedAt AS updatedDate
+        FROM VtsSystem t
+        WHERE t.deletedAt IS NULL
+          AND (:scopeEnabled = false OR t.orgUnitId IN (
+                SELECT child.id FROM OrgUnit child
+                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
+                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+              ))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR
+            LOWER(t.systemName) LIKE :keyword OR
+            LOWER(t.code) LIKE :keyword OR
+            LOWER(t.address) LIKE :keyword)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+          AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
+          AND (:toDate IS NULL OR t.createdAt < :toDate)
+        ORDER BY t.createdAt DESC
+        """,
+        countQuery = """
+        SELECT COUNT(t)
+        FROM VtsSystem t
+        WHERE t.deletedAt IS NULL
+          AND (:scopeEnabled = false OR t.orgUnitId IN (
+                SELECT child.id FROM OrgUnit child
+                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
+                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+              ))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR
+            LOWER(t.systemName) LIKE :keyword OR
+            LOWER(t.code) LIKE :keyword OR
+            LOWER(t.address) LIKE :keyword)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+          AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
+          AND (:toDate IS NULL OR t.createdAt < :toDate)
+        """)
+    Page<VtsSystemListProjection> searchListByCreatedDateRange(
+            @Param("scopeEnabled") boolean scopeEnabled,
+            @Param("scopePath") String scopePath,
+            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
             @Param("conditionStatus") ConditionStatus conditionStatus,
@@ -57,14 +194,40 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             @Param("toDate") LocalDateTime toDate,
             Pageable pageable
     );
+
     @Query("SELECT t FROM VtsSystem t WHERE " +
            "t.deletedAt IS NULL AND " +
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
-           "(:search IS NULL OR LOWER(t.systemName) LIKE :search OR LOWER(t.location) LIKE :search)")
+           "(:search IS NULL OR LOWER(t.systemName) LIKE :search OR LOWER(t.code) LIKE :search OR LOWER(t.address) LIKE :search)")
     List<VtsSystem> searchFiltered(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
 
-    @Query("SELECT t.approvalStatus, COUNT(t) FROM VtsSystem t WHERE t.deletedAt IS NULL GROUP BY t.approvalStatus")
-    List<Object[]> countByApprovalStatus();
+    @Query("""
+        SELECT t.approvalStatus, COUNT(t) FROM VtsSystem t
+        WHERE t.deletedAt IS NULL
+          AND (:scopeEnabled = false OR t.orgUnitId IN (
+                SELECT child.id FROM OrgUnit child
+                WHERE ((:scopePath IS NOT NULL AND child.path LIKE CONCAT(COALESCE(:scopePath, ''), '%'))
+                    OR (:scopePath IS NULL AND child.id = :scopeOrgUnitId))
+              ))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR (
+                LOWER(t.systemName) LIKE :keyword OR
+                LOWER(t.code) LIKE :keyword OR
+                LOWER(t.address) LIKE :keyword
+              ))
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+        GROUP BY t.approvalStatus
+    """)
+    List<Object[]> countByApprovalStatus(
+            @Param("scopeEnabled") boolean scopeEnabled,
+            @Param("scopePath") String scopePath,
+            @Param("scopeOrgUnitId") UUID scopeOrgUnitId,
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("keyword") String keyword,
+            @Param("conditionStatus") ConditionStatus conditionStatus
+    );
+
+    boolean existsByCode(String code);
 }

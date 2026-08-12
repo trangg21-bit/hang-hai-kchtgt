@@ -13,7 +13,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VtsSystemListResponse {
-    private List<VtsSystemResponse> items;
+    private List<VtsSystemListItemResponse> items;
     private long total;
     private Map<String, Long> statusCounts;
 }

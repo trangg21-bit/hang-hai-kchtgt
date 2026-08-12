@@ -36,7 +36,7 @@ public class F151ReportHandler extends BaseReportHandler {
         int reportYear = getReportYear(request);
 
         List<NavigationChannel> ncList = navigationChannelRepository
-                .findByIsDeletedFalse(Sort.unsorted())
+                .findByDeletedAtIsNull(Sort.unsorted())
                 .stream()
                 .filter(nc -> skipFilter || targetUnitId.equals(nc.getOrgUnitId()))
                 .filter(nc -> (nc.getUpdatedAt() == null && nc.getCreatedAt() == null)
@@ -139,7 +139,7 @@ public class F151ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
         List<NavigationChannel> ncList = navigationChannelRepository
-                .findByIsDeletedFalse(Sort.unsorted())
+                .findByDeletedAtIsNull(Sort.unsorted())
                 .stream()
                 .filter(nc -> skipFilter || targetUnitId.equals(nc.getOrgUnitId()))
                 .filter(nc -> (nc.getUpdatedAt() == null && nc.getCreatedAt() == null)

@@ -86,6 +86,8 @@ api.interceptors.response.use(
     error.message = friendlyMsg;
 
     const isAuthRequest = error.config?.url?.includes('/auth/login');
+    const isDocumentEntityRequest = error.config?.url?.includes('/v1/documents/entity/');
+    const isHistoryRequest = error.config?.url?.includes('/history');
 
     if (status === 401) {
       const isIntegrationRequest = error.config?.url?.includes('/v1/integration/share');
@@ -114,13 +116,12 @@ api.interceptors.response.use(
         localStorage.removeItem('auth_token');
         window.location.href = '/login';
       } else {
-        if (!isAuthRequest) {
+        if (!isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest) {
           showUniqueError(friendlyMsg);
         }
       }
     } else {
-      // Do not auto-toast 400 validation errors to avoid double toasts (let the component catch block handle it)
-      if (!isAuthRequest && status !== 400) {
+      if (!isAuthRequest) {
         showUniqueError(friendlyMsg);
       }
     }

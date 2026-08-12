@@ -27,24 +27,25 @@ export default function ApprovalActionBar({
 }: ApprovalActionBarProps) {
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
 
-  const hasPermission = (perm: string): boolean => permissions.includes(perm);
+  const hasPermission = (perm: string): boolean => permissions.includes(perm) || permissions.includes('*') || permissions.includes('admin:manage');
 
-  const approvalPermission = (level: 'c1' | 'c2') => approvalPermissionStyle === 'documented'
-    ? `${entityPermissionPrefix}:approve:${level}`
-    : `${entityPermissionPrefix}:approve${level}`;
+  const hasApprovePerm = (level: 'c1' | 'c2') =>
+    hasPermission(`${entityPermissionPrefix}:approve:${level}`) ||
+    hasPermission(`${entityPermissionPrefix}:approve${level}`) ||
+    hasPermission(`${entityPermissionPrefix}:approve_${level}`);
 
   // C1 is available only for PROPOSED. REJECTED must be edited and resubmitted first.
   const isC1Stage = currentStatus === 'PROPOSED';
-  const canApproveC1 = isC1Stage && hasPermission(approvalPermission('c1'));
-  const canRejectAtC1 = isC1Stage && hasPermission(approvalPermission('c1'));
+  const canApproveC1 = isC1Stage && hasApprovePerm('c1');
+  const canRejectAtC1 = isC1Stage && hasApprovePerm('c1');
 
-  // C2 stage: UNDER_REVIEW
-  const isC2Stage = currentStatus === 'UNDER_REVIEW';
-  const canApproveC2 = isC2Stage && hasPermission(approvalPermission('c2'));
+  // C2 stage: UNDER_REVIEW or PENDING_APPROVAL
+  const isC2Stage = currentStatus === 'UNDER_REVIEW' || currentStatus === 'PENDING_APPROVAL';
+  const canApproveC2 = isC2Stage && hasApprovePerm('c2');
   const canRejectAtC2 =
     isC2Stage &&
     !(currentUserId && nguoiPheDuyetC1 === currentUserId) &&
-    (hasPermission(approvalPermission('c1')) || hasPermission(approvalPermission('c2')));
+    (hasApprovePerm('c1') || hasApprovePerm('c2'));
 
   const canDelete = currentStatus === 'APPROVED' && hasPermission(`${entityPermissionPrefix}:delete`);
 

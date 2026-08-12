@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Modal, Form, Input, Spin, Button, Select, TreeSelect, Descriptions, Tree, Empty } from 'antd';
+import { Typography, Modal, Form, Input, Spin, Button, Select, TreeSelect, Descriptions, Tree, Empty, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
+import { usePermissions } from '../../hooks/usePermissions';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
@@ -11,12 +12,13 @@ import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../../components
 import Pagination from '../../components/list-view/Pagination';
 import { groupService } from '../../services/groupService';
 import type { Group, CreateGroupPayload, UpdateGroupPayload, GroupRole } from '../../services/groupService';
-import { roleService } from '../../services/roleService';
 import { organizationService } from '../../services/organizationService';
 import type { Role } from '../../types/role';
-import { actionPrimary, textSecondary, statusDraft, statusCritical, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, statusOperational } from '../../tokens';
+import { actionPrimary, textSecondary, textTertiary, statusDraft, statusCritical, statusAttention, statusOperational, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm } from '../../tokens';
 import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
+import { rawPermissionTree } from '../../constants/permissions';
+
 const { confirm } = Modal;
 
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
@@ -47,9 +49,9 @@ export default function GroupList() {
   const [detailGroup, setDetailGroup] = useState<Group | null>(null);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const { tree: rawPermissionTree } = usePermissions();
   const [permissionGroup, setPermissionGroup] = useState<Group | null>(null);
-  const [permissionRoles, setPermissionRoles] = useState<Role[]>([]);
-  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
   const [permissionSearch, setPermissionSearch] = useState('');
   const [permissionLoading, setPermissionLoading] = useState(false);
   const [permissionSaving, setPermissionSaving] = useState(false);
@@ -163,15 +165,10 @@ export default function GroupList() {
     setPermissionSearch('');
     setPermissionLoading(true);
     try {
-      const [roles, assigned] = await Promise.all([
-        roleService.listActive(),
-        groupService.getPermissions(group.id),
-      ]);
-      setPermissionRoles(roles.filter((role) => role.id && role.name));
-      setSelectedRoleIds(assigned.map((role: GroupRole) => role.id));
+      const details = await groupService.getById(group.id);
+      setSelectedPermissionKeys(details.permissions || group.permissions || []);
     } catch (err: unknown) {
-      setPermissionRoles([]);
-      setSelectedRoleIds([]);
+      setSelectedPermissionKeys([]);
       toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền của nhóm');
     } finally {
       setPermissionLoading(false);
@@ -182,17 +179,28 @@ export default function GroupList() {
     if (!permissionGroup) return;
     setPermissionSaving(true);
     try {
-      await groupService.updatePermissions(permissionGroup.id, selectedRoleIds);
-      toast.success('Đã cập nhật phân quyền cho nhóm');
+      const selectedPerms = selectedPermissionKeys.filter((k) => !k.startsWith('group_'));
+      await groupService.update(permissionGroup.id, { permissions: selectedPerms });
+      toast.success('Đã cập nhật phân quyền chức năng cho nhóm');
       setPermissionGroup(null);
+      fetchGroups();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Cập nhật phân quyền thất bại');
     } finally {
       setPermissionSaving(false);
     }
-  }, [permissionGroup, selectedRoleIds]);
+  }, [permissionGroup, selectedPermissionKeys, fetchGroups]);
 
-
+  const permissionTreeData = useMemo(() => {
+    const keyword = permissionSearch.trim().toLowerCase();
+    if (!keyword) return rawPermissionTree;
+    const filter = (nodes: typeof rawPermissionTree): typeof rawPermissionTree => nodes.flatMap((node) => {
+      const children = filter(node.children || []);
+      const matches = node.title.toLowerCase().includes(keyword) || node.key.toLowerCase().includes(keyword);
+      return matches || children.length ? [{ ...node, children }] : [];
+    });
+    return filter(rawPermissionTree);
+  }, [rawPermissionTree, permissionSearch]);
 
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
     setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setFilterStatus(values.status || undefined); setFilterGroupType(values.groupType || undefined); setFilterMyGroups(values.scope === 'myGroups'); setPage(1);
@@ -224,46 +232,25 @@ export default function GroupList() {
     return actions;
   }, [hasPerm, navigate, handleViewDetail, openPermissionModal, openEditModal, handleDelete, handleLock]);
 
-  const permissionTreeData = useMemo(() => {
-    const query = permissionSearch.trim().toLowerCase();
-    const roles = permissionRoles
-      .filter((role) => !query || role.name.toLowerCase().includes(query) || role.code.toLowerCase().includes(query))
-      .map((role) => ({
-        key: role.id,
-        title: (
-          <span>
-            <Typography.Text strong>{role.name}</Typography.Text>
-            <Typography.Text type="secondary" style={{ marginLeft: spaceSm }}>({role.code})</Typography.Text>
-          </span>
-        ),
-      }));
-    return [{ key: 'role-root', title: 'Danh sách vai trò', children: roles }];
-  }, [permissionRoles, permissionSearch]);
-
   const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const,
       render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 200,
-      render: (text: string, record: Group) => (
-        <Typography.Text
-          strong
-          style={{ color: actionPrimary, cursor: 'pointer' }}
-          onClick={() => handleViewDetail(record)}
-        >
-          {text}
+    { key: 'nameCode', label: 'Mã – Tên nhóm', dataIndex: 'name', width: 280,
+      render: (_text: string, record: Group) => (
+        <Typography.Text strong style={{ color: actionPrimary, cursor: 'pointer' }} onClick={() => handleViewDetail(record)}>
+          {record.code} – {record.name}
         </Typography.Text>
       ) },
-    { key: 'code', label: 'Mã nhóm', dataIndex: 'code', width: 120 },
     { key: 'organizationName', label: 'Đơn vị', dataIndex: 'organizationName', width: 180,
       render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'groupType', label: 'Loại nhóm', dataIndex: 'groupType', width: 140, align: 'center' as const,
       render: (text: string) => {
         const typeConfig: Record<string, { label: string; color: string }> = {
-          department: { label: 'Phòng ban', color: '#1677ff' },
-          project: { label: 'Dự án', color: '#722ed1' },
-          custom: { label: 'Tùy chỉnh', color: '#8c8c8c' },
+          department: { label: 'Phòng ban', color: actionPrimary },
+          project: { label: 'Dự án', color: statusAttention },
+          custom: { label: 'Tùy chỉnh', color: textTertiary },
         };
-        const config = typeConfig[text] || { label: text, color: '#8c8c8c' };
+        const config = typeConfig[text] || { label: text, color: textTertiary };
         return (
           <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${config.color}15`, color: config.color }}>
             {config.label}
@@ -385,11 +372,11 @@ export default function GroupList() {
             <Descriptions.Item label="Loại nhóm">
               {(() => {
                 const typeConfig: Record<string, { label: string; color: string }> = {
-                  department: { label: 'Phòng ban', color: '#1677ff' },
-                  project: { label: 'Dự án', color: '#722ed1' },
-                  custom: { label: 'Tùy chỉnh', color: '#8c8c8c' },
+                  department: { label: 'Phòng ban', color: actionPrimary },
+                  project: { label: 'Dự án', color: statusAttention },
+                  custom: { label: 'Tùy chỉnh', color: textTertiary },
                 };
-                const config = typeConfig[detailGroup.groupType] || { label: detailGroup.groupType, color: '#8c8c8c' };
+                const config = typeConfig[detailGroup.groupType] || { label: detailGroup.groupType, color: textTertiary };
                 return (
                   <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${config.color}15`, color: config.color }}>
                     {config.label}
@@ -426,7 +413,7 @@ export default function GroupList() {
 
       {/* Modal Phân quyền cho nhóm */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Phân quyền cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>}
         open={!!permissionGroup}
         onCancel={() => setPermissionGroup(null)}
         destroyOnHidden
@@ -438,33 +425,32 @@ export default function GroupList() {
         ]}
       >
         <Spin spinning={permissionLoading}>
+          <Alert
+            type="info"
+            showIcon
+            message="Kế thừa quyền chức năng theo Nhóm"
+            description="Tất cả thành viên khi gia nhập nhóm này sẽ tự động được kế thừa các Mã quyền chức năng được chọn bên dưới."
+            style={{ marginTop: spaceSm, marginBottom: spaceSm, borderRadius: radiusMd }}
+          />
           <Input.Search
             allowClear
             value={permissionSearch}
             onChange={(event) => setPermissionSearch(event.target.value)}
-            placeholder="Tìm theo tên hoặc mã vai trò"
+            placeholder="Tìm theo tên hoặc mã quyền (vd: port:read, Cảng biển...)"
             style={{ margin: `${spaceMd}px 0` }}
           />
-          {permissionRoles.length === 0 && !permissionLoading ? (
-            <Empty description="Chưa có vai trò hoạt động" />
+          {permissionTreeData.length === 0 && !permissionLoading ? (
+            <Empty description="Không tìm thấy quyền phù hợp" />
           ) : (
             <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 360, overflowY: 'auto' }}>
               <Tree
                 checkable
                 defaultExpandAll
                 treeData={permissionTreeData}
-                checkedKeys={selectedRoleIds}
-                onCheck={(checkedKeys) => {
-                  const keys = Array.isArray(checkedKeys) ? checkedKeys : checkedKeys.checked;
-                  const query = permissionSearch.trim().toLowerCase();
-                  const visibleRoleIds = new Set(permissionRoles
-                    .filter((role) => !query || role.name.toLowerCase().includes(query) || role.code.toLowerCase().includes(query))
-                    .map((role) => role.id));
-                  const checkedVisibleIds = keys.map(String).filter((key) => visibleRoleIds.has(key));
-                  setSelectedRoleIds((current) => [
-                    ...current.filter((id) => !visibleRoleIds.has(id)),
-                    ...checkedVisibleIds,
-                  ]);
+                checkedKeys={selectedPermissionKeys}
+                onCheck={(checked) => {
+                  const keys = Array.isArray(checked) ? checked : checked.checked;
+                  setSelectedPermissionKeys(keys.map(String));
                 }}
               />
             </div>

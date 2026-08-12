@@ -79,7 +79,7 @@ public class OrgUnitController {
      * </p>
      */
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<OrgUnitResponse>>> list(
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false, defaultValue = "asc") String sortDir,
@@ -93,6 +93,15 @@ public class OrgUnitController {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by(direction, sortField));
         Page<OrgUnitResponse> result = organizationService.findAll(pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * Full active-unit options list for selectors and directory lookups.
+     * The service resolves this list from the long-lived backend cache.
+     */
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getOptions() {
+        return ResponseEntity.ok(ApiResponse.success(organizationService.findAll()));
     }
 
     /**

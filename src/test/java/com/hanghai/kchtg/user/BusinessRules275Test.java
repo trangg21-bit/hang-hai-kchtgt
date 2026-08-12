@@ -8,6 +8,7 @@ import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.SystemMenuRepository;
@@ -36,6 +37,7 @@ public class BusinessRules275Test {
     private PermissionCacheService permissionCacheService;
     private AdminAuditLogRepository adminAuditLogRepository;
     private OrgUnitRepository orgUnitRepository;
+    private OrgUnitCacheService orgUnitCacheService;
 
     private RoleService roleService;
     private UserService userService;
@@ -52,7 +54,8 @@ public class BusinessRules275Test {
         orgUnitRepository = mock(OrgUnitRepository.class);
 
         roleService = new RoleService(roleRepository, permissionRepository, systemMenuRepository, userRepository, permissionCacheService, adminAuditLogRepository);
-        userController = new UserController(userService, mock(UserPermissionService.class), adminAuditLogRepository, permissionCacheService, userRepository);
+        orgUnitCacheService = mock(OrgUnitCacheService.class);
+        userController = new UserController(userService, mock(UserPermissionService.class), adminAuditLogRepository, permissionCacheService, userRepository, orgUnitCacheService);
     }
 
     @Test
@@ -111,7 +114,7 @@ public class BusinessRules275Test {
         when(userServiceMock.findById(userId)).thenReturn(user);
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        UserController controller = new UserController(userServiceMock, mock(UserPermissionService.class), adminAuditLogRepository, permissionCacheService, userRepository);
+        UserController controller = new UserController(userServiceMock, mock(UserPermissionService.class), adminAuditLogRepository, permissionCacheService, userRepository, orgUnitCacheService);
 
         controller.revokeUserRole(userId, "ROLE_ADMIN");
 

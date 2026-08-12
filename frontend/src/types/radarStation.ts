@@ -61,12 +61,12 @@ export interface CreateRadarStationRequest {
 export interface UpdateRadarStationRequest extends CreateRadarStationRequest {}
 
 export interface ApprovalRequest {
-  quyetDinh: string;
+  decision: string;
   reason?: string;
 }
 
 export interface PheDuyetRequest {
-  quyetDinh: string;
+  decision: string;
   lyDo?: string;
 }
 

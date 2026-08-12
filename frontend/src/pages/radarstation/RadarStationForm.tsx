@@ -239,8 +239,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     setIsSubmitting(true);
     try {
       if (action === 'approveC1') {
-        const pheDuyetData: PheDuyetRequest = {
-          quyetDinh: 'APPROVED',
+        const pheDuyetData: ApprovalRequest = {
+          decision: 'APPROVED',
         };
         const res = await radarStationApproval.approveC1(id, pheDuyetData);
         if (window.parent && (window.parent as any).kchtDetailCache) {
@@ -249,9 +249,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         toast.success('Phê duyệt C1 thành công');
         setRecord({ ...record, approvalStatus: 'UNDER_REVIEW' });
         setHasChanges(true);
+        if (onSuccess) onSuccess();
       } else if (action === 'approveC2') {
-        const pheDuyetData: PheDuyetRequest = {
-          quyetDinh: 'APPROVED',
+        const pheDuyetData: ApprovalRequest = {
+          decision: 'APPROVED',
         };
         const res = await radarStationApproval.approveC2(id, pheDuyetData);
         if (window.parent && (window.parent as any).kchtDetailCache) {
@@ -260,10 +261,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         toast.success('Phê duyệt C2 thành công');
         setRecord({ ...record, approvalStatus: 'APPROVED' });
         setHasChanges(true);
+        if (onSuccess) onSuccess();
       } else if (action === 'reject') {
-        const pheDuyetData: PheDuyetRequest = {
-          quyetDinh: 'REJECTED',
-          lyDo: payload?.lyDo as string,
+        const pheDuyetData: ApprovalRequest = {
+          decision: 'REJECTED',
+          reason: payload?.lyDo as string,
         };
 
         let updatedRecord;

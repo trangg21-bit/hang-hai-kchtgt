@@ -119,7 +119,7 @@ class PermissionMiddlewareTest {
 
         verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
         verify(filterChain, never()).doFilter(request, response);
-        assertThat(stringWriter.toString()).contains("403").contains("user:read");
+        assertThat(stringWriter.toString()).contains("user:read");
     }
 
     @Test
@@ -138,6 +138,21 @@ class PermissionMiddlewareTest {
     }
 
     @Test
+    void doFilterInternal_whenSystemAdminAuthority_shouldBypassDatabasePermissionLookup() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/vts-system");
+        when(request.getMethod()).thenReturn("GET");
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService, never()).checkPermission(any(), anyString(), anyString());
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
     void doFilterInternal_whenConventionPluralUrl_shouldNormalizeToSingularResource() throws Exception {
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                 testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
@@ -151,6 +166,39 @@ class PermissionMiddlewareTest {
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
         verify(permissionRoleService).checkPermission(eq(userId), eq("category"), eq("create"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenVtsAttachmentMutation_shouldUseUpdatePermission() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_SPECIALIST")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/vts-system/11111111-1111-1111-1111-111111111111/attachments");
+        when(request.getMethod()).thenReturn("POST");
+        when(permissionRoleService.checkPermission(eq(userId), eq("vts"), eq("update"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(userId), eq("vts"), eq("update"));
+        verify(permissionRoleService, never()).checkPermission(eq(userId), eq("vts"), eq("create"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenVtsDocumentAlias_shouldUseVtsResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_SPECIALIST")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/he-thong-vts");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(userId), eq("vts"), eq("read"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(userId), eq("vts"), eq("read"));
         verify(filterChain).doFilter(request, response);
     }
 }

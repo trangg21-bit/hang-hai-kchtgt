@@ -92,7 +92,10 @@ public class PermissionRoleService {
             return false;
         }
         return user.getRoles().stream()
-                .anyMatch(role -> superAdminRoleCode.equals(role.getCode()));
+                .anyMatch(role -> superAdminRoleCode.equals(role.getCode())
+                        || "ROLE_SYSTEM_ADMIN".equals(role.getCode())
+                        || "ROLE_SUPER_ADMIN".equals(role.getCode())
+                        || "SYSTEM_ADMIN".equals(role.getCode()));
     }
 
     /**

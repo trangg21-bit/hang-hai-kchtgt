@@ -28,6 +28,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class Pier extends BaseEntity {
 
     @Column(name = "pier_code", nullable = false, unique = true, length = 50)

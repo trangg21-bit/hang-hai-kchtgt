@@ -7,6 +7,7 @@ import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
+import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
 import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
 import com.hanghai.kchtg.port.entity.Port;
@@ -22,6 +23,7 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.persistence.EntityNotFoundException;
@@ -77,6 +79,7 @@ public class PortService {
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
     private final AttachmentRepository attachmentRepository;
     private final PortAttachmentRepository portAttachmentRepository;
+    private final PortCacheService portCacheService;
     private final OrgUnitCacheService orgUnitCacheService;
 
     @Value("${app.upload.attachment-path:uploads/port-attachments}")
@@ -252,6 +255,7 @@ public class PortService {
         changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", emptySnapshot, saved);
 
         log.info("Created Port [{}] code={}", saved.getId(), saved.getPortCode());
+        portCacheService.evictAfterCommit();
         return toResponse(saved);
     }
 
@@ -305,6 +309,11 @@ public class PortService {
         }
 
         return results.map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PortOptionResponse> getOptions() {
+        return portCacheService.getOptions();
     }
 
     // ── UPDATE ──────────────────────────────────────────────────
@@ -407,9 +416,10 @@ public class PortService {
         if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
         if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
         entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
-        // Keep existing status unless request explicitly provides one
         if (request.getApprovalStatus() != null) {
             entity.setApprovalStatus(request.getApprovalStatus());
+        } else {
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         // Update extended fields
@@ -488,6 +498,7 @@ public class PortService {
         changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", preImage, saved);
 
         log.info("Updated Port [{}] code={}", saved.getId(), saved.getPortCode());
+        portCacheService.evictAfterCommit();
         return toResponse(saved);
     }
 
@@ -537,6 +548,7 @@ public class PortService {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         log.info("Soft-deleted Port [{}] code={}", entity.getId(), entity.getPortCode());
+        portCacheService.evictAfterCommit();
     }
 
     // ── CHILD GUARD (Feature 1) ────────────────────────────
@@ -593,6 +605,7 @@ public class PortService {
                 .orElseThrow(() -> new EntityNotFoundException("Không thể tải cảng biển sau khi khôi phục"));
 
         log.info("Restored Port [{}] code={}", restored.getId(), restored.getPortCode());
+        portCacheService.evictAfterCommit();
         return toResponse(restored);
     }
 

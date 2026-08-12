@@ -1,29 +1,41 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { Typography, Tooltip, Modal, Form, Input, Select, Row, Col, Spin, Button, Descriptions } from 'antd';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Descriptions, Row, Col, Drawer, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useUsers, useUserStatusCounts, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
-import { useRoles } from '../hooks/useRoles';
+import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
+import { useRolesSimple } from '../hooks/useRoles';
 import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
-import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../components/list-view';
+import { ScreenHeader, DataTable } from '../components/list-view';
+import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService, type Organization } from '../services/organizationService';
-import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd } from '../tokens';
+import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
 const { confirm } = Modal;
 
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  active: { color: 'green', label: 'Hoạt động' },
-  locked: { color: 'red', label: 'Đã khóa' },
-  inactive: { color: 'default', label: 'Không hoạt động' },
-  pending_approval: { color: 'orange', label: 'Chờ phê duyệt' },
-  PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt' },
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Hoạt động',
+  locked: 'Đã khóa',
+  inactive: 'Không hoạt động',
+  pending_approval: 'Chờ phê duyệt',
+  PENDING_APPROVAL: 'Chờ phê duyệt',
 };
+
+function getStatusBadgeClass(status: string): string {
+  switch (status) {
+    case 'active': return 'status-badge--active';
+    case 'locked': return 'status-badge--locked';
+    case 'inactive': return 'status-badge--inactive';
+    case 'pending_approval':
+    case 'PENDING_APPROVAL': return 'status-badge--pending';
+    default: return '';
+  }
+}
 
 function getRoleTagClass(roleId: string): string {
   switch (roleId) {
@@ -38,6 +50,7 @@ function getRoleTagClass(roleId: string): string {
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function UsersPage() {
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filterRoleId, setFilterRoleId] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
@@ -52,8 +65,17 @@ export default function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
-  const [detailUser, setDetailUser] = useState<User | null>(null);
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data: detailResponse, isLoading: detailLoading } = useUser(detailUserId ?? undefined);
+  const detailUser = detailResponse?.data ?? null;
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -77,7 +99,7 @@ export default function UsersPage() {
     roleId: filterRoleId, status: filterStatus, sortField, sortOrder,
   });
 
-  const { data: rolesData } = useRoles();
+  const { data: rolesData } = useRolesSimple();
   const statusCounts = (data as any)?.statusCounts;
 
   const createUser = useCreateUser();
@@ -138,7 +160,7 @@ export default function UsersPage() {
 
   const handleToggleLock = useCallback((user: User) => {
     const willBeLocked = user.status !== 'locked';
-    confirm({ title: willBeLocked ? 'Xác nhận khóa tài khoản' : 'Xác nhận mở khóa tài khoản', icon: <ExclamationCircleOutlined />, content: willBeLocked ? `Tài khoản "${user.fullName}" sẽ bị khóa và không thể đăng nhập. Tiếp tục?` : `Tài khoản "${user.fullName}" sẽ được mở khóa. Tiếp tục?`, okText: willBeLocked ? 'Khóa' : 'Mở khóa', okType: willBeLocked ? 'danger' : 'primary', cancelText: 'Hủy', onOk: () => toggleLock.mutateAsync(user.id) });
+    confirm({ title: willBeLocked ? 'Xác nhận khóa tài khoản' : 'Xác nhận mở khóa tài khoản', icon: <ExclamationCircleOutlined />, content: willBeLocked ? `Tài khoản "${user.fullName}" sẽ bị khóa và không thể đăng nhập. Tiếp tục?` : `Tài khoản "${user.fullName}" sẽ được mở khóa. Tiếp tục?`, okText: willBeLocked ? 'Khóa' : 'Mở khóa', okType: willBeLocked ? 'danger' : 'primary', cancelText: 'Hủy', onOk: () => toggleLock.mutateAsync({ id: user.id, currentStatus: user.status }) });
   }, [toggleLock]);
 
   const handleResetPassword = useCallback((user: User) => {
@@ -178,11 +200,9 @@ export default function UsersPage() {
     });
   }, [forgotPassword]);
 
-  const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(values.search?.trim() || ''); setFilterRoleId(values.roleId || undefined); setFilterStatus(values.status || undefined); setPage(1);
-  }, []);
+  const handleFilterApply = useCallback(() => { setPage(1); }, []);
 
-  const handleFilterReset = useCallback(() => { setSearch(''); setFilterRoleId(undefined); setFilterStatus(undefined); setPage(1); }, []);
+  const handleFilterReset = useCallback(() => { setSearchInput(''); setSearch(''); setFilterRoleId(undefined); setFilterStatus(undefined); setPage(1); }, []);
 
   const handleTabChange = useCallback((key: string) => { setFilterStatus(key === 'all' ? undefined : key); setPage(1); }, []);
 
@@ -205,7 +225,7 @@ export default function UsersPage() {
     }[] = [];
 
     if (hasPerm('user.view')) {
-      actions.push({ key: 'view', label: 'Xem chi tiết tài khoản', icon: <EyeOutlined />, onClick: () => setDetailUser(record) });
+      actions.push({ key: 'view', label: 'Xem chi tiết tài khoản', icon: <EyeOutlined />, onClick: () => setDetailUserId(record.id) });
     }
 
     if (record.status === 'PENDING_APPROVAL') {
@@ -222,9 +242,8 @@ export default function UsersPage() {
   }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleForgotPassword, handleDelete, handleApprove, handleReject]);
 
   const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 200, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
-    { key: 'username', label: 'Tên đăng nhập', dataIndex: 'username', width: 150, sortable: true, align: 'left' as const, sortOrder: sortField === 'username' ? sortOrder : null },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'nameCode', label: 'Tên đăng nhập – Họ và tên', dataIndex: 'fullName', width: 300, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (_text: string, record: User) => <Typography.Text strong>{record.username} – {record.fullName}</Typography.Text> },
     { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null },
     { key: 'roleName', label: 'Vai trò', dataIndex: 'roleName', width: 180, sortable: true, align: 'center' as const, sortOrder: sortField === 'roleName' ? sortOrder : null, render: (text: string, record: User) => {
       const variant = getRoleTagClass(record.roleId);
@@ -241,7 +260,7 @@ export default function UsersPage() {
     } },
     { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <Typography.Text type="secondary">Chưa đăng nhập</Typography.Text> },
-    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, sortable: true, align: 'center' as const, sortOrder: sortField === 'status' ? sortOrder : null, render: (status: string) => { const isActive = status === 'active'; const isLocked = status === 'locked'; const color = isActive ? actionPrimary : isLocked ? statusCritical : statusDraft; const label = STATUS_MAP[status]?.label || status; return ( <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}> {label} </span> ); } },
+    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, sortable: true, align: 'center' as const, sortOrder: sortField === 'status' ? sortOrder : null, render: (status: string) => { return (<span className={`status-badge ${getStatusBadgeClass(status)}`}>{STATUS_LABEL[status] || status}</span>); } },
   ], [page, pageSize, sortField, sortOrder]);
 
   const renderContent = () => {
@@ -252,15 +271,46 @@ export default function UsersPage() {
       if (search || filterRoleId || filterStatus) return <EmptyState description="Không tìm thấy người dùng nào phù hợp" />;
       return <EmptyState description="Chưa có người dùng nào" />;
     }
-    return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={deleteUser.isPending || toggleLock.isPending} scroll={{ x: 1200 }} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
+    return <><style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1200, y: 500 }} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></>;
   };
 
 
-  const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, email, username...' },
-    { key: 'roleId', type: 'select' as const, label: 'Vai trò', placeholder: 'Chọn vai trò', options: rolesData?.map((r: any) => ({ value: r.code, label: r.name })) || [] },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }] },
-  ], [rolesData]);
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: 12, marginTop: 16 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
+        <Input placeholder="Tìm theo tên, email, username..." allowClear
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Vai trò</div>
+        <Select placeholder="Chọn vai trò" allowClear
+          value={filterRoleId}
+          onChange={(val) => setFilterRoleId(val)}
+          options={rolesData?.map((r: any) => ({ value: r.code, label: r.name })) || []}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
+        <Select placeholder="Chọn trạng thái" allowClear
+          value={filterStatus}
+          onChange={(val) => setFilterStatus(val)}
+          options={[{ value: 'active', label: 'Hoạt động' }, { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }]}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </div>
+    </>
+  );
+
+  const statusTabs = [
+    { key: 'all', label: 'Tất cả', count: statusCounts?.total ?? (data?.total || 0), color: textSecondary, active: !filterStatus },
+    { key: 'active', label: 'Hoạt động', count: statusCounts?.active ?? 0, color: actionPrimary, active: filterStatus === 'active' },
+    { key: 'pending_approval', label: 'Chờ phê duyệt', count: statusCounts?.pending_approval ?? 0, color: statusAttention, active: filterStatus === 'pending_approval' || filterStatus === 'PENDING_APPROVAL' },
+    { key: 'locked', label: 'Đã khóa', count: statusCounts?.locked ?? 0, color: statusCritical, active: filterStatus === 'locked' },
+    { key: 'inactive', label: 'Không hoạt động', count: statusCounts?.inactive ?? 0, color: statusDraft, active: filterStatus === 'inactive' },
+  ];
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
@@ -269,30 +319,35 @@ export default function UsersPage() {
   }, [hasPerm, openCreateModal]);
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý người dùng' }]} actions={headerActions} />
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
-      <div style={{ ...cardStyle, marginBottom: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px 16px' }}>
-        <StatusTabs
-          tabs={[
-            { key: 'all', label: 'Tất cả', count: statusCounts?.total ?? (data?.total || 0), color: textSecondary, active: !filterStatus },
-            { key: 'active', label: 'Hoạt động', count: statusCounts?.active ?? 0, color: actionPrimary, active: filterStatus === 'active' },
-            { key: 'pending_approval', label: 'Chờ phê duyệt', count: statusCounts?.pending_approval ?? 0, color: '#faad14', active: filterStatus === 'pending_approval' || filterStatus === 'PENDING_APPROVAL' },
-            { key: 'locked', label: 'Đã khóa', count: statusCounts?.locked ?? 0, color: statusCritical, active: filterStatus === 'locked' },
-            { key: 'inactive', label: 'Không hoạt động', count: statusCounts?.inactive ?? 0, color: statusDraft, active: filterStatus === 'inactive' },
-          ]}
-          onChange={handleTabChange}
-        />
-      </div>
-      <div style={{ ...cardStyle, padding: '8px 16px' }}>
+      <FilterTableLayout
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        onFilterApply={handleFilterApply}
+        onFilterReset={handleFilterReset}
+        loading={isLoading}
+        error={isError}
+        onRetry={() => refetch()}
+        filterContent={filterContent}
+        statusTabs={statusTabs}
+        onStatusTabChange={handleTabChange}
+      >
         {renderContent()}
-      </div>
+      </FilterTableLayout>
 
-      <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} forceRender confirmLoading={submitting} width={600} mask={{ closable: false }}
-        footer={[
-          <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>,
-        ]}
+      <Drawer
+        {...drawerProps}
+        title={<span style={drawerTitleStyle}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+            <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>
+          </div>
+        }
       >
         <Spin spinning={submitting}>
           <Form form={form} layout="vertical" style={{ marginTop: 16 }}
@@ -328,7 +383,7 @@ export default function UsersPage() {
             )}
           </Form>
         </Spin>
-      </Modal>
+      </Drawer>
 
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Đặt lại mật khẩu</span>}
@@ -421,31 +476,39 @@ export default function UsersPage() {
         </Spin>
       </Modal>
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết tài khoản</span>}
-        open={detailUser !== null}
-        onCancel={() => setDetailUser(null)}
-        destroyOnHidden
-        mask={{ closable: false }}
-        width={600}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setDetailUser(null)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Đóng</Button>,
-        ]}
+      <Drawer
+        {...drawerProps}
+        title={<span style={drawerTitleStyle}>Chi tiết tài khoản</span>}
+        open={detailUserId !== null}
+        onClose={() => setDetailUserId(null)}
+        extra={<Button type="text" onClick={() => setDetailUserId(null)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button type="primary" onClick={() => setDetailUserId(null)} style={primaryButtonStyle}>Đóng</Button>
+          </div>
+        }
       >
-        {detailUser && (
+        {detailLoading ? <Spin /> : detailUser && (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="Tên đăng nhập">{detailUser.username}</Descriptions.Item>
             <Descriptions.Item label="Họ và tên">{detailUser.fullName}</Descriptions.Item>
             <Descriptions.Item label="Email">{detailUser.email}</Descriptions.Item>
             <Descriptions.Item label="Số điện thoại">{detailUser.phone || '—'}</Descriptions.Item>
             <Descriptions.Item label="Vai trò">{detailUser.roleName}</Descriptions.Item>
+            <Descriptions.Item label="Nhóm quyền">{detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'}</Descriptions.Item>
+            <Descriptions.Item label="Quyền hiệu lực">
+              {detailUser.permissionCodes?.length ? <>{detailUser.permissionCodes.map((permission) => <Tag key={permission}>{permission}</Tag>)}</> : '—'}
+            </Descriptions.Item>
             <Descriptions.Item label="Đơn vị trực thuộc">{detailUser.orgUnitName || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">{STATUS_MAP[detailUser.status]?.label || detailUser.status}</Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">{STATUS_LABEL[detailUser.status] || detailUser.status}</Descriptions.Item>
             <Descriptions.Item label="Đăng nhập gần nhất">{detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
             <Descriptions.Item label="Ngày tạo">{detailUser.createdAt ? dayjs(detailUser.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
+            <Descriptions.Item label="Người tạo">{detailUser.createdByName || '—'}</Descriptions.Item>
+            <Descriptions.Item label="Ngày cập nhật">{detailUser.updatedAt ? dayjs(detailUser.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
+            <Descriptions.Item label="Người cập nhật">{detailUser.updatedByName || '—'}</Descriptions.Item>
           </Descriptions>
         )}
-      </Modal>
+      </Drawer>
     </div>
   );
 }

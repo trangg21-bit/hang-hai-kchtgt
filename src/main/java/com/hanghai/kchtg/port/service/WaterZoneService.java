@@ -20,6 +20,7 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -46,6 +47,7 @@ public class WaterZoneService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
+    private final PortCacheService portCacheService;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
     private final OrgUnitCacheService orgUnitCacheService;
 
@@ -303,7 +305,7 @@ public class WaterZoneService {
 
         String portName = preResolvedPortName;
         if (portName == null && e.getPortId() != null) {
-            portName = portRepository.findById(e.getPortId()).map(Port::getPortName).orElse(null);
+            portName = portCacheService.getName(e.getPortId());
         }
 
         String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(e.getCreatedBy());

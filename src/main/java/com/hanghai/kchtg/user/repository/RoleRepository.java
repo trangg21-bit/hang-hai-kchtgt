@@ -57,4 +57,11 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
      * Kiểm tra code có tồn tại ngoài ID này (dùng khi update).
      */
     boolean existsByCodeAndIdNot(String code, UUID id);
+
+    /**
+     * Lấy danh sách role rút gọn (id, name, code) — không JOIN permissions, dùng cho dropdown.
+     */
+    @Query("SELECT new com.hanghai.kchtg.user.dto.RoleSimpleResponse(r.id, r.name, r.code) " +
+           "FROM Role r WHERE r.status <> com.hanghai.kchtg.user.entity.RoleStatus.DELETED ORDER BY r.name")
+    List<com.hanghai.kchtg.user.dto.RoleSimpleResponse> findSimpleRoles();
 }

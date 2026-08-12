@@ -717,6 +717,10 @@ body, .ant-layout {
 textarea.ant-input {
   border-radius: 4px !important;
 }
+
+/* ---------- Required mark (*) bên phải label ---------- */
+.ant-form-item-required::before { display: inline-block; margin-left: 4px; order: 1; }
+.ant-form-item-required::after { display: none; }
 `;
 
 // ============================================================

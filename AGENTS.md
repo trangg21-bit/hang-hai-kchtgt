@@ -441,3 +441,11 @@ _Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn 
    - **ĐỒNG BỘ 100% VỚI DỰ ÁN GỐC**: Khi phát triển hoặc sửa đổi bất kỳ thực thể/giao diện nào (ví dụ: quản lý biểu tượng bản đồ), bắt buộc phải đối chiếu và kiểm tra kỹ dự án gốc `hh.csdl` (cấu trúc bảng cơ sở dữ liệu, các DTOs API và mã nguồn React UI) để lập trình các trường dữ liệu, tính năng (như uploader/base64) và bố cục giao diện khớp 100% với dự án gốc, tránh tự thiết kế khác biệt.
    - **ĐỒNG BỘ HIỂN THỊ KCHT LÊN BẢN ĐỒ**: Tất cả các đối tượng hàng hải như Cảng biển, Đèn biển, Bến cảng, Phao tiêu, Đê kè, Luồng hàng hải... gọi chung là **KCHT (Kết cấu hạ tầng hàng hải)**. Tất cả các đối tượng này bắt buộc phải được hiển thị lên bản đồ theo cơ chế đồng bộ và nhất quán giống nhau.
    - **ÁNH XẠ ENUM XUỐNG DATABASE**: Đối với những trường có giá trị cố định (ví dụ: trạng thái, loại đối tượng), bắt buộc phải lưu ở Database dưới dạng số nguyên (INT/SMALLINT/TINYINT) và map trên Java thành Enum sử dụng `@Enumerated(EnumType.ORDINAL)`. Tuyệt đối không lưu giá trị chuỗi (VARCHAR) xuống Database cho các trường Enum để tối ưu hiệu năng và dung lượng.
+   - **CẤM HARDCODE CHUỖI VÀ BẮT BUỘC DÙNG CONSTANTS/ENUM**:
+     - Tất cả class Entity và DTO cập nhật bắt buộc phải khai báo `@FieldNameConstants` từ Lombok.
+     - Tuyệt đối KHÔNG hardcode tên thuộc tính dạng String thủ công (như `"provinceId"`, `"systemName"`, `"approvalStatus"`, `"deletedAt"`). BẮT BUỘC dùng hằng số compile-time do Lombok sinh ra (ví dụ: `VtsSystem.Fields.systemName`, `EntityFields.DELETED_AT`).
+     - Tuyệt đối KHÔNG hardcode giá trị Enum dạng String thủ công (như `"APPROVED"`, `"REJECTED"`, `"PROPOSED"`). BẮT BUỘC dùng tham chiếu từ Enum (ví dụ: `ApprovalStatus.APPROVED.name()`).
+     - Tái sử dụng `ApprovalHistoryUtils.recordSoftDelete(...)` và `EntityUpdateUtils.copyPropertiesIfPresent(...)` cho mọi thực thể hạ tầng.
+   - **QUY ƯỚC ĐẶT TÊN ĐA NGÔN NGỮ (ENGLISH FOR CODE - VIETNAMESE FOR TEXT)**:
+     - Tên bảng CSDL, tên cột, tên biến Java, tên thuộc tính DTO, tham số API JSON và Endpoint REST BẮT BUỘC 100% dùng **tiếng Anh chuẩn** (ví dụ: `decision` thay vì `quyetDinh`, `rejectionReason` thay vì `lyDoTuChoi`).
+     - Thông báo lỗi trả về cho client, Toast message và nội dung giao diện BẮT BUỘC 100% là **tiếng Việt có dấu** rõ nghĩa.

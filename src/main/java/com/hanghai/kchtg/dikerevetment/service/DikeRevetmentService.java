@@ -64,7 +64,6 @@ public class DikeRevetmentService {
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
-                .isDeleted(false)
                 .createdBy(userId)
                 .build();
 
@@ -115,13 +114,13 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<DikeRevetmentResponse> findAll() {
-        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
+        return repo.findByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<DikeRevetmentResponse> findAll(int page, int size) {
-        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
+        return repo.findByDeletedAtIsNull(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
                 .map(this::toResponse);
     }
 
@@ -137,7 +136,7 @@ public class DikeRevetmentService {
             results = repo.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
-            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
+            results = repo.findByDeletedAtIsNull(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         }
         return results.map(this::toResponse);
     }
@@ -214,7 +213,7 @@ public class DikeRevetmentService {
             throw new IllegalStateException("Chi co de ke da duyet moi co the xoa mem");
         }
 
-        dr.setIsDeleted(true);
+        dr.setDeletedAt(LocalDateTime.now());
         if (dr.getSpatialId() != null) {
             gisSpatialObjectService.delete(dr.getSpatialId());
         }
@@ -348,13 +347,13 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<DikeRevetmentResponse> findByApprovalStatus(ApprovalStatus s) {
-        return repo.findByApprovalStatusAndIsDeletedFalse(s)
+        return repo.findByApprovalStatusAndDeletedAtIsNull(s)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<DikeRevetmentResponse> searchByType(DikeRevetmentType dikeRevetmentType) {
-        return repo.findByDikeRevetmentTypeAndIsDeletedFalse(dikeRevetmentType)
+        return repo.findByDikeRevetmentTypeAndDeletedAtIsNull(dikeRevetmentType)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -437,7 +436,6 @@ public class DikeRevetmentService {
                 .approverLevel2(dr.getApproverLevel2())
                 .approvedDateLevel2(dr.getApprovedDateLevel2())
                 .rejectionReason(dr.getRejectionReason())
-                .isDeleted(dr.getIsDeleted())
                 .createdAt(dr.getCreatedAt())
                 .updatedAt(dr.getUpdatedAt())
                 .createdBy(dr.getCreatedBy())

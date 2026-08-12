@@ -54,8 +54,20 @@ export const documentApi = {
       page: (params?.page ?? 1) - 1,
       size: params?.size,
     });
-    const res = await api.get(`/v1/documents/entity/${entityType}/${entityId}?${sp}`);
-    return parsePage<Document>(res);
+    try {
+      const res = await api.get(`/v1/documents/entity/${entityType}/${entityId}?${sp}`);
+      return parsePage<Document>(res);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        return {
+          data: [],
+          total: 0,
+          page: params?.page ?? 1,
+          pageSize: params?.size ?? 20,
+        };
+      }
+      throw err;
+    }
   },
 
   /**

@@ -21,6 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class ShipRepairFacility extends BaseEntity {
 
     @Id
@@ -88,24 +89,6 @@ public class ShipRepairFacility extends BaseEntity {
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
-    @CreatedDate
-    @Column(name = "created_date", nullable = false, updatable = false)
-    private LocalDateTime createdDate;
-
-    @LastModifiedDate
-    @Column(name = "updated_date")
-    private LocalDateTime updatedDate;
-
-    @Column(name = "updated_by")
-    private UUID updatedBy;
-
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
-
-    @Column(name = "deleted_by")
-    private UUID deletedBy;
-
     @PrePersist
     public void prePersist() {
         if (this.approvalStatus == null) {
@@ -116,9 +99,6 @@ public class ShipRepairFacility extends BaseEntity {
         }
         if (this.approvedLevel2 == null) {
             this.approvedLevel2 = false;
-        }
-        if (this.isDeleted == null) {
-            this.isDeleted = false;
         }
     }
 }

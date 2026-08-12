@@ -11,6 +11,7 @@ import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
+import com.hanghai.kchtg.user.dto.UserListItemResponse;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
@@ -175,11 +176,11 @@ public class UserService {
                 actualSize,
                 sort);
 
-        Page<UserResponse> pageResult = userRepository.searchUsers(
+        Page<UserListItemResponse> pageResult = userRepository.searchUserList(
                 (search != null && !search.trim().isEmpty()) ? search.trim() : null,
                 (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
                 status,
-                cappedPageable).map(u -> UserResponse.from(u, orgUnitCacheService));
+                cappedPageable).map(u -> UserListItemResponse.from(u, orgUnitCacheService));
 
         java.util.Map<String, Long> counts = getStatusCounts();
 
@@ -551,6 +552,9 @@ public class UserService {
     public User changeStatus(UUID id, UserStatus status, String reason) {
         User user = findById(id);
         UserStatus oldStatus = user.getStatus();
+        if (oldStatus == status) {
+            return user;
+        }
         user.setStatus(status);
         User saved = userRepository.save(user);
 

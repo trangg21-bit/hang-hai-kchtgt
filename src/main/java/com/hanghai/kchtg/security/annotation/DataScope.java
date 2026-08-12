@@ -1,31 +1,17 @@
 package com.hanghai.kchtg.security.annotation;
 
-import com.hanghai.kchtg.common.entity.EntityFields;
-import com.hanghai.kchtg.security.DataScopeAspect;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
- * Annotation to mark methods that require data scope filtering (F-275 3-Level RBAC).
- * <p>
- * Applied by {@link DataScopeAspect} to enforce
- * organization-level data access restrictions based on the current user's role.
- * </p>
+ * Annotation dùng để đánh dấu các method (Controller hoặc Service)
+ * cần tự động phân quyền phạm vi dữ liệu theo Đơn vị (OrgUnit Data Scope).
  */
-@Target(ElementType.METHOD)
+@Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
+@Documented
 public @interface DataScope {
-
     /**
-     * The entity field name representing the organization (default: "orgUnit").
+     * Tên tham số đại diện cho OrgUnit ID trong method (mặc định "orgUnitId").
      */
-    String orgField() default "orgUnit";
-
-    /**
-     * The entity field name representing the record owner (default: "createdBy").
-     */
-    String ownerField() default EntityFields.CREATED_BY;
+    String orgUnitParam() default "orgUnitId";
 }

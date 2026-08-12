@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-07T06:30:13.397Z",
+  "last_modified_at": "2026-08-10T06:22:39.298Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -45,18 +45,20 @@
     "M-003": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "queued",
-      "claimed_by": null,
-      "claimed_at": null,
-      "heartbeat_at": null,
+      "status": "skipped",
+      "claimed_by": "tab-2930046ca029d0f7",
+      "claimed_at": "2026-08-10T06:10:07.652Z",
+      "heartbeat_at": "2026-08-10T06:22:39.298Z",
       "current_stage": null,
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-08-10T06:10:07.652Z",
+      "completed_at": "2026-08-10T06:22:39.297Z",
       "auto_pass_count": 0,
-      "attempt": 0,
+      "attempt": 1,
       "name": "Quản lý tài sản KCHTGT - Khu nước & VTS",
       "slug": "quan-ly-tai-san-kchtgt-khu-nuoc-vts",
-      "risk_path": "M"
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null
     },
     "M-004": {
       "depends_on": [],
@@ -429,8 +431,8 @@
     "M-1001": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-a890f7f3907fd107",
+      "status": "orphaned",
+      "claimed_by": null,
       "claimed_at": "2026-08-07T06:30:13.397Z",
       "heartbeat_at": "2026-08-07T06:30:13.397Z",
       "current_stage": null,
@@ -441,8 +443,9 @@
       "name": "Consolidate Approval Status Enums",
       "slug": "consolidate-approval-status-enums",
       "risk_path": "M",
-      "claimed_pid": 8100,
-      "claimed_host": "PTPM-SONPN-PC"
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-a890f7f3907fd107"
     }
   },
   "tabs": {
@@ -568,12 +571,20 @@
     "tab-a890f7f3907fd107": {
       "started_at": "2026-08-07T06:30:13.397Z",
       "last_seen": "2026-08-07T06:30:13.397Z",
-      "claimed_modules": [
-        "M-1001"
-      ],
+      "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [],
       "skipped_modules": []
+    },
+    "tab-2930046ca029d0f7": {
+      "started_at": "2026-08-10T06:10:07.652Z",
+      "last_seen": "2026-08-10T06:22:39.298Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-003"
+      ]
     }
   }
 }

@@ -83,6 +83,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findAllWithRelations();
 
     /**
+     * Tìm danh sách người dùng theo danh sách ID kèm thông tin OrgUnit (tránh N+1 query khi hiển thị lịch sử).
+     */
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.orgUnit WHERE u.id IN :ids")
+    List<User> findAllByIdInWithOrgUnit(@org.springframework.data.repository.query.Param("ids") java.util.Collection<UUID> ids);
+
+    /**
      * Tìm người dùng theo ID với JOIN FETCH.
      */
     @Query("SELECT u FROM User u "
@@ -139,5 +145,27 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             @org.springframework.data.repository.query.Param("roleCode") String roleCode,
             @org.springframework.data.repository.query.Param("status") UserStatus status,
             org.springframework.data.domain.Pageable pageable);
-}
 
+    @Query(value = "SELECT u.id AS id, u.username AS username, u.email AS email, u.fullName AS fullName, " +
+           "u.orgUnit.id AS orgUnitId, u.status AS status, u.lastLoginAt AS lastLoginAt, " +
+           "r.code AS roleCode " +
+           "FROM User u LEFT JOIN u.roles r " +
+           "WHERE (:search IS NULL OR :search = '' OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND (:roleCode IS NULL OR :roleCode = '' OR r.code = :roleCode) " +
+           "AND (:status IS NULL OR u.status = :status)",
+           countQuery = "SELECT COUNT(DISTINCT u) FROM User u LEFT JOIN u.roles r " +
+           "WHERE (:search IS NULL OR :search = '' OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND (:roleCode IS NULL OR :roleCode = '' OR r.code = :roleCode) " +
+           "AND (:status IS NULL OR u.status = :status)")
+    org.springframework.data.domain.Page<UserListProjection> searchUserList(
+            @org.springframework.data.repository.query.Param("search") String search,
+            @org.springframework.data.repository.query.Param("roleCode") String roleCode,
+            @org.springframework.data.repository.query.Param("status") UserStatus status,
+            org.springframework.data.domain.Pageable pageable);
+}

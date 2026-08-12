@@ -1,5 +1,4 @@
 server:
-  port: 8080
   max-http-header-size: 32KB
   max-http-request-header-size: 32KB
   tomcat:
@@ -9,13 +8,6 @@ server:
 spring:
   application:
     name: kchtg-m001-quan-tri-he-thong
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 50
-    out-of-order: true
-    validate-on-migrate: false
-
   # Default profile (dev with H2)
   profiles:
     active: local

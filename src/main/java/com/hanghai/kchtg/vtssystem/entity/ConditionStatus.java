@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
 /**
- * Physical condition status of a VTS system asset.
- * Stored as SMALLINT ordinal in the database (0=GOOD, 1=DEGRADED, 2=DAMAGED).
+ * Operational condition status of a VTS system asset.
+ * Stored as SMALLINT ordinal in the database (0=OPERATIONAL, 1=STOPPED, 2=MAINTENANCE, 3=UNDER_CONSTRUCTION).
  */
 public enum ConditionStatus {
-    GOOD,
-    DEGRADED,
-    DAMAGED
+    OPERATIONAL,
+    STOPPED,
+    MAINTENANCE,
+    UNDER_CONSTRUCTION
 }

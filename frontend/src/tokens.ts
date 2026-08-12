@@ -322,11 +322,15 @@ export const paginationSizeSelectStyle: React.CSSProperties = {
 
 // --- 5.5 Drawer ---
 
-/** Props chuẩn cho Drawer CRUD: 50% right, không nút X mặc định */
+/** Props chuẩn cho Drawer CRUD: width 1000px, right, không nút X mặc định */
 export const drawerProps = {
-  width: '50%',
+  size: 1000 as any,
   placement: 'right' as const,
   closable: false,
+  styles: {
+    header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+    body: { padding: '0 24px 12px 24px' },
+  },
 };
 
 /** Chân Drawer: nút căn giữa, gap 8px */

@@ -23,8 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
@@ -214,7 +220,7 @@ public class RadarStationService {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
         }
 
-        if ("REJECTED".equals(request.getQuyetDinh())) {
+        if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
             entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
@@ -239,7 +245,7 @@ public class RadarStationService {
         historyRepository.save(ApprovalHistory.builder()
                 .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_1)
-                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
+                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .reason(request.getReason())
                 .build());
@@ -248,7 +254,7 @@ public class RadarStationService {
             historyRepository.save(ApprovalHistory.builder()
                     .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
+                    .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
                     .approvedBy(approvedBy)
                     .reason(request.getReason())
                     .build());
@@ -270,7 +276,7 @@ public class RadarStationService {
             throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
-        if ("REJECTED".equals(request.getQuyetDinh())) {
+        if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
             entity.setApprovalStatus(ApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
@@ -285,7 +291,7 @@ public class RadarStationService {
         historyRepository.save(ApprovalHistory.builder()
                 .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_2)
-                .status(ApprovalHistoryStatus.fromValue(request.getQuyetDinh()))
+                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .reason(request.getReason())
                 .build());
@@ -294,24 +300,46 @@ public class RadarStationService {
     }
 
     public List<HistoryEntry> getHistory(UUID radarStationId) {
-        return historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, radarStationId)
-                .stream().map(h -> HistoryEntry.builder()
+        List<ApprovalHistory> historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, radarStationId);
+        Set<UUID> userIds = historyList.stream()
+                .map(ApprovalHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNames = resolveUserNames(userIds);
+
+        return historyList.stream().map(h -> HistoryEntry.builder()
                         .id(h.getId())
                         .approvalLevel(h.getApprovalLevel())
                         .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                        .approvedBy(resolveUserName(h.getApprovedBy()))
+                        .approvedBy(h.getApprovedBy() != null ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
                         .approvedDate(h.getApprovedDate())
                         .reason(h.getReason())
                         .build()).toList();
     }
 
+    private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNullIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<com.hanghai.kchtg.user.entity.User> users = userRepository.findAllByIdInWithOrgUnit(nonNullIds);
+        Map<UUID, String> map = new java.util.HashMap<>();
+        for (com.hanghai.kchtg.user.entity.User u : users) {
+            String userStr = (u.getFullName() != null && !u.getFullName().trim().isEmpty())
+                    ? u.getFullName()
+                    : u.getUsername();
+            map.put(u.getId(), userStr);
+        }
+        return map;
+    }
+
     private String resolveUserName(UUID userId) {
         if (userId == null) return null;
-        return userRepository.findById(userId)
-                .map(u -> (u.getFullName() != null && !u.getFullName().trim().isEmpty())
-                        ? u.getFullName()
-                        : u.getUsername())
-                .orElse(userId.toString());
+        Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
+        return map.getOrDefault(userId, userId.toString());
     }
 
     public List<RadarStationResponse> search(UUID orgUnitId, String keyword, String conditionStatus, String approvalStatusStr) {

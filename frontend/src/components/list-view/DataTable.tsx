@@ -16,7 +16,7 @@ export interface DataTableColumn {
   type?: 'text' | 'status' | 'action' | 'number' | 'date' | 'mono';
   width?: number | string;
   align?: 'left' | 'center' | 'right';
-  render?: (value: any, record: any) => React.ReactNode;
+  render?: (value: any, record: any, index?: number) => React.ReactNode;
   dataIndex?: string; sorter?: boolean;
   sortOrder?: 'ascend' | 'descend' | null;
   cellTitle?: (record: any) => string;
@@ -78,7 +78,6 @@ const DataTable: React.FC<DataTableProps> = ({
     const colObj: any = {
       key: col.key,
       dataIndex: dataKey,
-      title: col.label,
       width: col.width,
       sorter: sorterFn,
       sortDirections: ['ascend', 'descend'],
@@ -86,7 +85,7 @@ const DataTable: React.FC<DataTableProps> = ({
       align: col.align,
       fixed: col.fixed,
       ellipsis: true,
-      render: col.render ? col.render
+      render: col.render ? (val: any, record: any, index: number) => col.render!(val, record, index)
         : col.type === 'mono'
           ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
           : col.type === 'date'
@@ -135,8 +134,8 @@ const DataTable: React.FC<DataTableProps> = ({
       key: 'actions',
       title: <UnorderedListOutlined />,
       width: 60,
-      align: 'center',
       fixed: 'right' as const,
+      align: 'center',
       render: (_: unknown, record: any) => {
         const items = rowActions(record).map((a) => ({
           key: a.key, icon: a.icon, label: a.label, danger: a.danger, disabled: a.disabled,

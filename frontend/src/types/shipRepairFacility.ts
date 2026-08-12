@@ -57,7 +57,7 @@ export interface CreateShipRepairFacilityRequest {
 export interface UpdateShipRepairFacilityRequest extends CreateShipRepairFacilityRequest {}
 
 export interface ApprovalRequest {
-  quyetDinh: string;
+  decision: string;
   reason?: string;
 }
 

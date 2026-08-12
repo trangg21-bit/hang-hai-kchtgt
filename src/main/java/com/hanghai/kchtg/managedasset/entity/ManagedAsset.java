@@ -20,6 +20,10 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "ts_ql")
+// TODO: refactor to extend BaseEntity — remove own id/createdAt/updatedAt,
+//       change @Getter @Setter @Builder to @Getter @Setter @SuperBuilder.
+//       Then @FilterDef can be removed (inherited from BaseEntity), keep only @Filter.
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @Getter
 @Setter
 @NoArgsConstructor

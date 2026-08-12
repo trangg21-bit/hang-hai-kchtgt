@@ -31,7 +31,13 @@ function normalizePermissionKey(key: string): string {
     return 'data:read';
   }
 
-  return lower.replace('.', ':');
+  // Approval permissions are stored canonically as vts:approvec1/approvec2
+  // (and the same convention is used by the permission seeder). Accept the
+  // more readable nested form used by some screens as an alias.
+  return lower
+    .replace('.', ':')
+    .replace(':approve:c1', ':approvec1')
+    .replace(':approve:c2', ':approvec2');
 }
 
 export const usePermissionStore = create<PermissionState>((set) => ({
