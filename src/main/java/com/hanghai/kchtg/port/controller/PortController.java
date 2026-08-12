@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.port.dto.port.*;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.service.PortApprovalService;
 import com.hanghai.kchtg.port.service.PortService;
 import jakarta.validation.Valid;
@@ -160,28 +161,23 @@ public class PortController {
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("@auth.check(authentication, 'port:update')")
-    public ResponseEntity<ApiResponse<List<PortAttachmentDto>>> uploadAttachments(
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
             Authentication authentication) {
-
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
         }
-
         UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
-        log.info("Uploading {} attachments for Port id={}, userId={}", files.size(), id, userId);
-
-        List<PortAttachmentDto> result = portService.uploadAttachments(id, files, userId);
+        List<AttachmentDto> result = portService.uploadAttachmentsGeneric(id, files, userId);
         return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
     }
 
     @GetMapping("/{id}/attachments")
     @PreAuthorize("@auth.check(authentication, 'port:read')")
-    public ResponseEntity<ApiResponse<List<PortAttachmentDto>>> listAttachments(@PathVariable UUID id) {
-        log.info("Listing attachments for Port id={}", id);
-        List<PortAttachmentDto> result = portService.listAttachments(id);
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+        List<AttachmentDto> result = portService.listAttachmentsGeneric(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
     }
 
@@ -191,11 +187,8 @@ public class PortController {
             @PathVariable UUID id,
             @PathVariable UUID attId,
             Authentication authentication) {
-
         UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
-        log.info("Deleting attachment id={} for Port id={}, userId={}", attId, id, userId);
-
-        portService.deleteAttachment(id, attId, userId);
+        portService.deleteAttachmentGeneric(id, attId, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 }

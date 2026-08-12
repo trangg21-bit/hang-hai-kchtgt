@@ -362,6 +362,7 @@ export default function PortListPage() {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [portSystemOpen, setPortSystemOpen] = useState(true);
   const [detailCollapsed, setDetailCollapsed] = useState<Record<string, boolean>>({});
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -757,6 +758,10 @@ export default function PortListPage() {
   const createGeometryType = Form.useWatch('geometryType', createForm);
   const updateGeometryType = Form.useWatch('geometryType', updateForm) || 'POINT';
 
+  // Khi chọn loại đối tượng → tự set hệ quy chiếu & quy tắc hiển thị
+  useEffect(() => { if (createGeometryType) createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [createGeometryType]);
+  useEffect(() => { if (updateGeometryType && updateGeometryType !== 'POINT') updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [updateGeometryType]);
+
   const handleCreateFinish = async (values: Record<string, unknown>) => {
     const portCode = String(values.portCode || '').trim();
     const portName = String(values.portName).trim();
@@ -939,7 +944,7 @@ export default function PortListPage() {
         area: values.area as number | undefined,
         maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: 'APPROVED',
+        approvalStatus: selectedRecord.approvalStatus,
         orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
         portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         mapSymbolId: (values.gisLocation as any)?.mapSymbolId || (values.mapSymbolId as string) || undefined,
@@ -974,7 +979,7 @@ export default function PortListPage() {
         remarks: (values.remarks as string) || undefined,
       };
       const res = await import('./api').then((m) => m.updateCangBien(payload));
-      toast.success('Cập nhật thành công — chờ phê duyệt lại');
+      toast.success('Cập nhật thành công');
       if (window.parent && (window.parent as any).kchtDetailCache) {
         (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
       }
@@ -1645,12 +1650,12 @@ export default function PortListPage() {
             layout="vertical"
             onFinish={handleCreateFinish}
             onFinishFailed={handleFormFailed}
-            initialValues={{ approvalStatus: 'APPROVED', coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }}
+            initialValues={{ approvalStatus: 'APPROVED' }}
           >
             <Tabs activeKey={createTabKey} onChange={setCreateTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
               {
                 key: 'general', label: 'Thông tin chung',
-                children: (<div style={{ paddingTop: 16 }}>
+                children: (<div style={{ paddingTop: 3 }}>
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
@@ -1933,7 +1938,7 @@ export default function PortListPage() {
               },
               {
                 key: 'gis', label: 'Thông tin vị trí',
-                children: (<div style={{ paddingTop: 16 }}>
+                children: (<div style={{ paddingTop: 3 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
@@ -2159,7 +2164,7 @@ export default function PortListPage() {
               },
               {
                 key: 'infra', label: 'Công trình KCHT',
-                children: (<div style={{ paddingTop: 16 }}>
+                children: (<div style={{ paddingTop: 3 }}>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
@@ -2268,7 +2273,7 @@ export default function PortListPage() {
               },
               {
                 key: 'files', label: 'File đính kèm',
-                children: (<div style={{ paddingTop: 16 }}>
+                children: (<div style={{ paddingTop: 3 }}>
                       {/* File label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
@@ -2395,7 +2400,7 @@ export default function PortListPage() {
           extra={<Button type="text" onClick={closeUpdateModal} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
             <div style={drawerFooterStyle}>
-              <Button type="primary" htmlType="submit" loading={submitting} onClick={() => updateForm.submit()} style={primaryButtonStyle}>Lưu và phê duyệt</Button>
+              <Button type="primary" htmlType="submit" loading={submitting} onClick={() => updateForm.submit()} style={primaryButtonStyle}>Cập nhật</Button>
             </div>
           }
           styles={{
@@ -2418,7 +2423,7 @@ export default function PortListPage() {
                   key: 'general',
                   label: 'Thông tin chung',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
@@ -2704,7 +2709,7 @@ export default function PortListPage() {
                   key: 'gis',
                   label: 'Thông tin vị trí',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
@@ -2908,7 +2913,7 @@ export default function PortListPage() {
                   key: 'infrastructure',
                   label: 'Kết cấu hạ tầng',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Kết cấu hạ tầng</span>
@@ -3020,7 +3025,7 @@ export default function PortListPage() {
                   key: 'attachments',
                   label: 'File đính kèm',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       {/* File label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
@@ -3160,8 +3165,8 @@ export default function PortListPage() {
                 {
                   key: 'general', label: 'Thông tin chung',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
-                      <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; }`}</style>
+                    <div style={{ paddingTop: 3 }}>
+                      <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
                       <div className="detail-grid">
                       {[
                         ['Đơn vị quản lý', selectedRecord.orgUnitId ? (orgUnits.find((o) => o.id === selectedRecord.orgUnitId)?.name || '—') : '—'],
@@ -3195,17 +3200,35 @@ export default function PortListPage() {
                         </div>
                       ))}
                       </div>
+                      <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setPortSystemOpen(!portSystemOpen)}>
+                        <span style={{ color: portSystemOpen ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{portSystemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
+                      </div>
+                      {portSystemOpen && (
+                        <div className="detail-grid" style={{ marginTop: 4 }}>
+                          {[
+                            ['Ngày tạo', selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'],
+                            ['Người tạo', selectedRecord.createdByName || selectedRecord.createdBy || '—'],
+                            ['Ngày cập nhật', selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'],
+                            ['Người cập nhật', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
+                          ].map(([label, value], i) => (
+                            <div key={i} className="detail-row">
+                              <span className="detail-label">{label}</span>
+                              <span className="detail-value">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ),
                 },
                 {
                   key: 'gis', label: 'Thông tin vị trí',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       <div className="detail-grid">
                       {[
                         ['Loại đối tượng', selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'],
-                        ['Biểu tượng bản đồ', selectedRecord.mapSymbolId ? (symbols.find((s) => s.id === selectedRecord.mapSymbolId)?.name || selectedRecord.mapSymbolId) : '—'],
+                        ['Biểu tượng bản đồ', (() => { const sym = symbols.find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolId || '—'; })(),],
                         ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'],
                         ['Quy tắc hiển thị', 'Độ, phút, giây (DMS)'],
                       ].map(([label, value], i) => (
@@ -3239,7 +3262,7 @@ export default function PortListPage() {
                             pts.push({ lat: selectedRecord.latitude, lng: selectedRecord.longitude });
                           }
                           return pts.length === 0 ? (
-                            <div style={{ marginTop: spaceXs, color: textTertiary, fontSize: fontSizeMd }}>—</div>
+                            <div style={{ marginTop: spaceXs, color: textTertiary, fontSize: fontSizeMd }}>Không có tọa độ</div>
                           ) : (
                             <Table className="list-view-table" dataSource={pts.map((p, i) => ({ ...p, key: i }))} pagination={false} size="middle" bordered style={{ marginTop: spaceXs }}>
                               <Table.Column title="STT" key="stt" width={60} align="center"
@@ -3267,17 +3290,17 @@ export default function PortListPage() {
                 {
                   key: 'infra', label: 'Công trình KCHT',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
                       </div>
                       {(!(selectedRecord as any).infrastructureList || (selectedRecord as any).infrastructureList.length === 0) ? (
                         <span style={{ color: textTertiary }}>Không có công trình KCHT</span>
                       ) : (
-                        <Table className="list-view-table" dataSource={((selectedRecord as any).infrastructureList || []).map((i: any, idx: number) => ({ ...i, key: idx }))} pagination={false} size="middle" bordered>
+                        <Table className="list-view-table" dataSource={((selectedRecord as any).infrastructureList || []).map((i: any, idx: number) => ({ ...i, key: idx }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}>
                           <Table.Column title="STT" dataIndex="stt" key="stt" width={60} align="center"
                             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                          <Table.Column title="Tên Công Trình" dataIndex="infraName" key="name"
+                          <Table.Column title="Tên Công Trình" dataIndex="infraName" key="name" align="center"
                             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                           <Table.Column title="Số Lượng" dataIndex="quantity" key="qty" width={100} align="center"
                             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
@@ -3289,42 +3312,22 @@ export default function PortListPage() {
                 {
                   key: 'files', label: 'File đính kèm',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
                       </div>
                       {detailFiles.length === 0 ? (
-                        <span style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có tài liệu đính kèm</span>
+                        <span style={{ color: textTertiary, fontSize: fontSizeMd, paddingLeft: 12 }}>Không có tài liệu đính kèm</span>
                       ) : (
-                        <Table className="list-view-table" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered>
+                        <Table className="list-view-table" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}>
                           <Table.Column title="STT" key="stt" width={60} align="center"
                             render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
                             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                          <Table.Column title="Tên file" key="name" dataIndex="fileName"
-                            render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
+                          <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
+                            render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
                             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                         </Table>
                       )}
-                    </div>
-                  ),
-                },
-                {
-                  key: 'system', label: 'Hệ thống',
-                  children: (
-                    <div style={{ paddingTop: 16 }}>
-                      <div className="detail-grid">
-                      {[
-                        ['Người tạo', selectedRecord.createdByName || selectedRecord.createdBy || '—'],
-                        ['Ngày tạo', selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'],
-                        ['Cập nhật bởi', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
-                        ['Ngày cập nhật', selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'],
-                      ].map(([label, value], i) => (
-                        <div key={i} className="detail-row">
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value">{value}</span>
-                        </div>
-                      ))}
-                      </div>
                     </div>
                   ),
                 },

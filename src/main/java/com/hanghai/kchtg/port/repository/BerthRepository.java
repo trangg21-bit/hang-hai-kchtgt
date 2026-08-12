@@ -57,7 +57,12 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
             "AND (CAST(:waterway AS string) IS NULL OR LOWER(b.waterway) LIKE LOWER(CONCAT('%', CAST(:waterway AS string), '%'))) " +
             "AND (:berthType IS NULL OR b.berthType = :berthType) " +
             "AND (:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) " +
-            "AND ((:operationalStatusNull = true AND b.operationalStatus IS NULL) OR (:operationalStatusNull = false AND (:operationalStatus IS NULL OR b.operationalStatus = :operationalStatus)))")
+            "AND ((:operationalStatusNull = true AND b.operationalStatus IS NULL) OR (:operationalStatusNull = false AND (:operationalStatus IS NULL OR b.operationalStatus = :operationalStatus))) " +
+            "AND (:structureType IS NULL OR b.structureType = :structureType) " +
+            "AND (CAST(:operationalFunction AS string) IS NULL OR LOWER(b.operationalFunction) LIKE LOWER(CONCAT('%', CAST(:operationalFunction AS string), '%'))) " +
+            "AND (:provinceId IS NULL OR b.provinceId = :provinceId) " +
+            "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR b.updatedAt >= :updatedFrom) " +
+            "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR b.updatedAt <= :updatedTo) ")
     Page<Berth> searchBerths(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search,
@@ -69,6 +74,11 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("operationalStatus") OperationalStatus operationalStatus,
             @Param("operationalStatusNull") boolean operationalStatusNull,
+            @Param("structureType") Integer structureType,
+            @Param("operationalFunction") String operationalFunction,
+            @Param("provinceId") Integer provinceId,
+            @Param("updatedFrom") java.time.LocalDateTime updatedFrom,
+            @Param("updatedTo") java.time.LocalDateTime updatedTo,
             Pageable pageable);
 
     /**
@@ -81,6 +91,6 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
                                       OperationalStatus operationalStatus, ApprovalStatus approvalStatus,
                                       Pageable pageable) {
         return searchBerths(orgUnitId, search, berthCode, berthName, portId, waterway, berthType,
-                approvalStatus, operationalStatus, false, pageable);
+                approvalStatus, operationalStatus, false, null, null, null, null, null, pageable);
     }
 }

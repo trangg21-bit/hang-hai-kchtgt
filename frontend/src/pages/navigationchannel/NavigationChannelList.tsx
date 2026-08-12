@@ -81,9 +81,12 @@ export default function NavigationChannelList() {
         channelCode: filterChannelCode || undefined,
         approvalStatus: filterStatus as any,
       };
-      const res = await navigationChannelCRUD.search(params);
-      setDataSource(res.items);
-      setTotal(res.total);
+      // TODO: Tạm comment vì lỗi DB thiếu cột is_deleted — bỏ comment sau khi chạy migration V20260811155000
+      // const res = await navigationChannelCRUD.search(params);
+      // setDataSource(res.items);
+      // setTotal(res.total);
+      setDataSource([]);
+      setTotal(0);
     } catch (err: unknown) {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách'));

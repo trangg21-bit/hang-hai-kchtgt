@@ -3,6 +3,9 @@ package com.hanghai.kchtg.port.service;
 import com.hanghai.kchtg.port.dto.port.PortAttachmentDto;
 import com.hanghai.kchtg.port.dto.port.PortCoordinateDto;
 import com.hanghai.kchtg.port.dto.port.PortInfrastructureDto;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
@@ -72,6 +75,7 @@ public class PortService {
     private final UserResolverService userResolverService;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final AttachmentRepository attachmentRepository;
     private final PortAttachmentRepository portAttachmentRepository;
     private final OrgUnitCacheService orgUnitCacheService;
 
@@ -403,9 +407,9 @@ public class PortService {
         if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
         if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
         entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
-        // Reset to PENDING if currently APPROVED, REJECTED, or DRAFT (submit draft)
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.REJECTED || entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
-            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        // Keep existing status unless request explicitly provides one
+        if (request.getApprovalStatus() != null) {
+            entity.setApprovalStatus(request.getApprovalStatus());
         }
 
         // Update extended fields
@@ -905,5 +909,45 @@ public class PortService {
         dto.setUploadedBy(entity.getUploadedBy());
         dto.setUploadedAt(entity.getUploadedAt());
         return dto;
+    }
+
+    // ── Generic attachment operations (shared attachments table) ────────
+
+    @Transactional
+    public List<AttachmentDto> uploadAttachmentsGeneric(UUID portId, List<MultipartFile> files, UUID userId) {
+        long count = attachmentRepository.countByEntityTypeAndEntityId("PORT", portId);
+        if (count + files.size() > 10) throw new IllegalArgumentException("Tối đa 10 file");
+        List<Attachment> saved = new ArrayList<>();
+        java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+        for (MultipartFile f : files) {
+            String fn = f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + fn;
+            java.nio.file.Path dir = basePath.resolve("PORT").resolve(portId.toString());
+            java.nio.file.Path filePath = dir.resolve(storageFileName);
+            try { java.nio.file.Files.createDirectories(dir); f.transferTo(filePath.toFile()); }
+            catch (Exception e) { throw new RuntimeException("Không thể lưu: " + fn); }
+            String sp = filePath.toString();
+            Attachment a = new Attachment(); a.setEntityType("PORT"); a.setEntityId(portId); a.setFileName(fn); a.setFilePath(sp); a.setFileSize(f.getSize()); a.setContentType(f.getContentType()); a.setUploadedBy(userId);
+            saved.add(attachmentRepository.save(a));
+        }
+        return saved.stream().map(this::toAttachmentDto2).collect(Collectors.toList());
+    }
+
+    public List<AttachmentDto> listAttachmentsGeneric(UUID portId) {
+        return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("PORT", portId)
+                .stream().map(this::toAttachmentDto2).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteAttachmentGeneric(UUID portId, UUID attId, UUID userId) {
+        Attachment a = attachmentRepository.findById(attId).orElseThrow(() -> new EntityNotFoundException("Không tìm thấy: " + attId));
+        try { java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(a.getFilePath())); } catch (Exception e) { log.warn("Xóa thất bại: {}", a.getFilePath()); }
+        attachmentRepository.delete(a);
+    }
+
+    private AttachmentDto toAttachmentDto2(Attachment e) {
+        AttachmentDto d = new AttachmentDto(); d.setId(e.getId()); d.setEntityType(e.getEntityType()); d.setEntityId(e.getEntityId());
+        d.setFileName(e.getFileName()); d.setFilePath(e.getFilePath()); d.setFileSize(e.getFileSize()); d.setContentType(e.getContentType());
+        d.setUploadedBy(e.getUploadedBy()); d.setUploadedAt(e.getUploadedAt()); return d;
     }
 }
