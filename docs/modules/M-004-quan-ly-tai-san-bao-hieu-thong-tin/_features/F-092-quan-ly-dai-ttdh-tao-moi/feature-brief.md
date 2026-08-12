@@ -371,10 +371,11 @@ Sidebar 272px, header 64px, nền `surfacePage`. Dùng ScreenHeader, FilterBar, 
 - Width: 800px, scrollable
 - Form.Item marginBottom: `spaceFormField` (12px)
 - Input/Select: `radiusPill` (999px), `height: 40`
+- Required mark (*): nằm bên phải label (`requiredMarkPosition: 'right'`)
 - Dịch vụ: multi-select với 9 options
-- Bảng tọa độ: table với InputNumber precision 6 + nút Xóa + nút "Thêm tọa độ"
+- Bảng tọa độ: table với InputNumber precision 6 + nút Xóa + nút "Thêm tọa độ" (`formSectionHeaderStyle`, `formEmptyTableStyle`)
 - Upload: Ant Design Upload, multiple, accept pdf/jpg/png/docx/xlsx
-- Footer: Hủy (outlined), Lưu tạm (outlined), Lưu và gửi phê duyệt (primary), Lưu và phê duyệt (primary xanh, chỉ Cấp Cục)
+- Nút: `Hủy` + `Lưu tạm` → `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`); `Lưu và gửi` → `primaryButtonStyle`; `Lưu và phê duyệt` → `primaryButtonStyle` + màu `statusOperational`
 - Tất cả nút: `radiusPill`, `height: 40`
 
 ### 10.5. Responsive

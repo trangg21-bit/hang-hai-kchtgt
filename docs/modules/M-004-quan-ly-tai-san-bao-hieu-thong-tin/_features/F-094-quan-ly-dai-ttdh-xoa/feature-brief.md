@@ -206,7 +206,7 @@ Nút "Xóa" trong dropdown hành động của DataTable chỉ hiển thị khi 
 
 - Tiêu đề: "Xác nhận xóa"
 - Nội dung: "Bạn có chắc chắn muốn xóa Đài TTDH **[Tên đài]**? Bản ghi sẽ được chuyển sang trạng thái Lịch sử."
-- Nút "Hủy" (outlined, `radiusPill`, `height: 40`)
+- Nút "Hủy": `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`, `radiusPill`, `height: 40`)
 - Nút "Xóa" (màu `statusCritical`, `radiusPill`, `height: 40`)
 
 ### 8.3. Sau khi xóa
@@ -283,7 +283,7 @@ Màn hình danh sách Đài TTDH dùng chung bố cục toàn hệ thống, bao 
 | Khi cần... | Dùng token | Màu thực tế |
 |---|---|---|
 | Nút Xóa (danger action) | `statusCritical` | `#D14343` |
-| Nút Hủy (outlined) | `borderDefault` + `textSecondary` | |
+| Nút Hủy | `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`) |
 | Nền hộp thoại xác nhận | `surfaceCard` | `#FFFFFF` |
 | Text xác nhận | `textPrimary` | `#0c2438` |
 | Badge "Lịch sử" | `textTertiary` (dark gray) | `#93a3b3` |
@@ -299,7 +299,7 @@ Màn hình danh sách Đài TTDH dùng chung bố cục toàn hệ thống, bao 
 ### 10.4. Style có sẵn
 
 - **Nút Xóa:** màu `statusCritical`, style `primaryButtonStyle` + `danger`
-- **Nút Hủy:** outlined, style `secondaryButtonStyle`
+- **Nút Hủy:** `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`, `radiusPill`, `height: 40`)
 - **Hộp thoại:** dùng `cardStyle` (nền trắng, viền 0.5px, bo góc 12px, padding 16px)
 - **Icon cảnh báo:** `ExclamationCircleOutlined` màu `statusCritical`
 

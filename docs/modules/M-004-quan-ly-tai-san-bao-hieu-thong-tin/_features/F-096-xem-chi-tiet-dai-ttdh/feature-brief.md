@@ -130,4 +130,12 @@ Performance < 200ms. Cache unit names. XSS-safe.
 
 ## 10. UI
 
-Modal/Drawer, width 800px. Dùng `badgeBaseStyle` cho tất cả badge. Dùng `cardStyle` cho từng section. Dùng `metaStyle` cho thời gian. Màu badge: Lưu tạm/Chờ duyệt=`statusAttention`, Từ chối=`statusCritical`, Đã phê duyệt=`statusOperational`, Lịch sử=`textTertiary` (dark gray).
+Drawer, width `drawerProps.size` (1000px). Dùng preset từ `tokens.ts`:
+- **Từng dòng thông tin:** `detailRowStyle` (flex, padding 10px 12px, borderBottom)
+- **Label:** `detailLabelColStyle` (width 200px, sidebarBg, bold, fontSizeMd)
+- **Value:** `detailValueStyle` (flex 1, textPrimary, fontSizeMd)
+- **Badge:** `badgeBaseStyle` cho tất cả badge. Màu: Lưu tạm/Chờ duyệt=`statusAttention`, Từ chối=`statusCritical`, Đã phê duyệt=`statusOperational`, Lịch sử=`textTertiary`
+- **Card section:** `cardStyle`
+- **Thời gian:** `metaStyle`
+- **Drawer header:** `drawerProps.styles.header` (padding 12px 24px, borderBottom)
+- **Required mark (*):** nằm bên phải label (theme.ts `requiredMarkPosition: 'right'`)
