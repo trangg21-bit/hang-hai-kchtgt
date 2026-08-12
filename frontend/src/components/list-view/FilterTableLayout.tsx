@@ -108,7 +108,7 @@ export default function FilterTableLayout({
 
         {/* DataTable card */}
         <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Spin spinning={loading ?? false}>
+          <Spin spinning={loading ?? false} wrapperClassName="filter-table-spin">
             {error ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <p>Đã xảy ra lỗi khi tải danh sách.</p>

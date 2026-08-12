@@ -18,6 +18,7 @@ public class HistoryEntry {
     private ApprovalLevel approvalLevel;
     private String status;
     private String approvedBy;
+    private String orgUnitName;
     private LocalDateTime approvedDate;
     private String reason;
     private String changedField;

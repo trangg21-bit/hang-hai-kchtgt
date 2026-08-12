@@ -35,7 +35,7 @@ import type {
   ApprovalRequest,
 } from '../../types/vtsSystem';
 import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
-import { drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, inputStyle, selectStyle, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, statusDraft } from '../../tokens';
+import { drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, inputStyle, selectStyle, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, statusDraft, actionPrimary } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
 
@@ -55,16 +55,37 @@ export interface VtsSystemFormProps {
   onSuccess?: () => void;
 }
 
+const CONDITION_COLOR: Record<string, string> = {
+  [ConditionStatus.OPERATIONAL]: statusOperational,
+  [ConditionStatus.STOPPED]: statusCritical,
+  [ConditionStatus.MAINTENANCE]: statusAttention,
+  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+};
+
 const renderConditionStatusBadge = (status?: ConditionStatus | string) => {
   if (!status) return '—';
   const label = CONDITION_STATUS_MAP[status as ConditionStatus] || status;
-  let color: 'success' | 'error' | 'warning' | 'default' = 'default';
-  if (status === ConditionStatus.OPERATIONAL || status === 'OPERATIONAL') color = 'success';
-  else if (status === ConditionStatus.STOPPED || status === 'STOPPED') color = 'error';
-  else if (status === ConditionStatus.MAINTENANCE || status === 'MAINTENANCE') color = 'warning';
-  else if (status === ConditionStatus.UNDER_CONSTRUCTION || status === 'UNDER_CONSTRUCTION') color = 'default';
+  const color = CONDITION_COLOR[status as ConditionStatus] || textSecondary;
 
-  return <Tag color={color} style={{ borderRadius: radiusPill, margin: 0 }}>{label}</Tag>;
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '2px 10px',
+        border: `1px solid ${color}40`,
+        borderRadius: radiusPill,
+        fontSize: fontSizeMd,
+        fontWeight: fontWeightMedium,
+        background: `${color}15`,
+        color,
+        marginLeft: -6,
+      }}
+    >
+      {label}
+    </span>
+  );
 };
 
 type VtsDetailCacheWindow = Window & {
@@ -490,7 +511,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   if (isDetailMode) {
     const detailContent = (
       <div style={{ paddingTop: 16 }}>
-        <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; }`}</style>
+        <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .detail-value .ant-tag { margin-left: -6px !important; }`}</style>
         {record && (
           <Tabs
             defaultActiveKey="general"

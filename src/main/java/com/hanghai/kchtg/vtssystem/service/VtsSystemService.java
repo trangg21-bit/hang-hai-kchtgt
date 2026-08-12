@@ -45,6 +45,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
+import java.text.Normalizer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -104,7 +105,8 @@ public class VtsSystemService {
 
     public VtsSystemResponse create(VtsSystemCreateRequest request, UUID userId) {
         validateCreateRequest(request);
-        if (repository.existsByCode(request.getCode())) {
+        String normalizedCode = request.getCode().trim();
+        if (repository.existsByCode(normalizedCode)) {
             throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
         }
         VtsSystem entity = VtsSystem.builder()
@@ -119,7 +121,7 @@ public class VtsSystemService {
                 .portId(request.getPortId())
                 .scope(request.getScope())
                 .note(request.getNote())
-                .code(request.getCode())
+                .code(normalizedCode)
                 .provinceId(request.getProvinceId())
                 .address(request.getAddress())
                 .maritimeNotice(request.getMaritimeNotice())
@@ -267,6 +269,23 @@ public class VtsSystemService {
                 .toList();
     }
 
+    private static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return Normalizer.normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+    }
+
+    private static String toKeywordLike(String keyword) {
+        String normalized = normalizeSearchKeyword(keyword);
+        if (normalized == null) {
+            return null;
+        }
+        return "%" + normalized + "%";
+    }
+
     public Page<VtsSystemResponse> findAllWithSearch(UUID orgUnitId, String keyword, ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus, int page, int size) {
         return findAllWithSearch(orgUnitId, keyword, conditionStatus, approvalStatus, null, page, size);
@@ -275,8 +294,7 @@ public class VtsSystemService {
     public Page<VtsSystemResponse> findAllWithSearch(UUID orgUnitId, String keyword, ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus, Integer year, int page, int size) {
         DataScopeContext scope = resolveDataScope();
-        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
-                : null;
+        String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         if (year == null) {
             return repository.search(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId, keywordLike,
@@ -299,8 +317,7 @@ public class VtsSystemService {
     public VtsSystemListResponse findAllWithSearchAndCounts(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus, ApprovalStatus approvalStatus, Integer year, int page, int size) {
         DataScopeContext scope = resolveDataScope();
-        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
-                : null;
+        String keywordLike = toKeywordLike(keyword);
         Page<VtsSystemListItemResponse> pageResult = findAllListItems(orgUnitId, keyword, conditionStatus, approvalStatus,
                 year, page, size, scope);
         return VtsSystemListResponse.builder()
@@ -317,8 +334,7 @@ public class VtsSystemService {
     private Page<VtsSystemListItemResponse> findAllListItems(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus, ApprovalStatus approvalStatus, Integer year, int page, int size,
             DataScopeContext scope) {
-        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
-                : null;
+        String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         if (year == null) {
             return repository.searchList(scope.enabled(), scope.path(), scope.orgUnitId(), orgUnitId, keywordLike,
@@ -343,8 +359,14 @@ public class VtsSystemService {
                     "Hệ thống VTS đã được phê duyệt, không thể cập nhật trực tiếp. Vui lòng thực hiện quy trình sửa đổi và phê duyệt lại.");
         }
 
-        if (request.getCode() != null && !request.getCode().equals(entity.getCode())) {
-            throw new IllegalArgumentException("Mã hệ thống VTS không được phép thay đổi sau khi tạo");
+        if (request.getCode() != null) {
+            String requestedCode = request.getCode().trim();
+            if (!requestedCode.equals(entity.getCode())) {
+                if (repository.existsByCodeAndIdNot(requestedCode, id)) {
+                    throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
+                }
+                throw new IllegalArgumentException("Mã hệ thống VTS không được phép thay đổi sau khi tạo");
+            }
         }
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().equals(entity.getOrgUnitId())) {
             throw new IllegalArgumentException("Đơn vị quản lý không được phép thay đổi sau khi tạo");
@@ -591,13 +613,28 @@ public class VtsSystemService {
     }
 
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+        return getHistory(id, page, pageSize, null, null, null);
+    }
+
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+            LocalDateTime fromDate, LocalDateTime toDate) {
         // Check the parent VTS first so a user cannot read history by guessing an ID
         // when the history table itself is not org-scoped.
         ensureExists(id);
         List<ApprovalHistory> list;
         if (page != null && pageSize != null && pageSize > 0) {
             Pageable pageable = PageRequest.of(page, pageSize);
-            list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_SYSTEM, id, pageable);
+            String normalizedKeyword = normalizeSearchKeyword(keyword);
+            if (normalizedKeyword == null && fromDate == null && toDate == null) {
+                // Opening the history drawer must not execute the text-search
+                // expression. This keeps legacy BYTEA audit columns readable
+                // until their schema migration has been applied.
+                list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.VTS_SYSTEM, id, pageable);
+            } else {
+                list = historyRepository.searchHistory(InfrastructureType.VTS_SYSTEM, id, normalizedKeyword,
+                        fromDate, toDate, pageable).getContent();
+            }
         } else {
             list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_SYSTEM, id);
         }
@@ -605,7 +642,9 @@ public class VtsSystemService {
                 .map(ApprovalHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, String> userNameMap = resolveUserNames(userIds);
+        Map<UUID, User> userMap = resolveUsers(userIds);
+        Map<UUID, String> userNameMap = new java.util.HashMap<>();
+        userMap.forEach((userId, user) -> userNameMap.put(userId, formatUserIdentity(user)));
 
         return list.stream()
                 .map(h -> HistoryEntry.builder()
@@ -613,6 +652,9 @@ public class VtsSystemService {
                         .approvalLevel(h.getApprovalLevel())
                         .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                         .approvedBy(h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
+                        .orgUnitName(h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null
+                                && userMap.get(h.getApprovedBy()).getOrgUnit() != null
+                                ? userMap.get(h.getApprovedBy()).getOrgUnit().getName() : null)
                         .approvedDate(h.getApprovedDate())
                         .reason(h.getReason())
                         .changedField(h.getChangedField())
@@ -685,8 +727,7 @@ public class VtsSystemService {
 
     public List<VtsSystemResponse> search(UUID orgUnitId, String keyword, ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus, Integer year) {
-        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
-                : null;
+        String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(0, 100);
         Page<VtsSystem> pageResult;
         DataScopeContext scope = resolveDataScope();
@@ -727,11 +768,11 @@ public class VtsSystemService {
                         .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.VTS_SYSTEM).stream()
                         .map(this::toAttachmentResponse)
                         .collect(Collectors.toList())
-                : null;
+                : Collections.emptyList();
 
         List<VtsZoneDto> zones = includeZones && entity.getZones() != null
                 ? entity.getZones().stream().map(this::toZoneDto).collect(Collectors.toList())
-                : null;
+                : Collections.emptyList();
 
         GisGeometryType geomType = null;
         String coords = null;
@@ -1111,25 +1152,32 @@ public class VtsSystemService {
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
-        if (userIds == null || userIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
-        if (nonNullIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        List<com.hanghai.kchtg.user.entity.User> users = userRepository.findAllByIdInWithOrgUnit(nonNullIds);
+        Map<UUID, User> users = resolveUsers(userIds);
         Map<UUID, String> map = new java.util.HashMap<>();
-        for (com.hanghai.kchtg.user.entity.User u : users) {
-            String userStr = (u.getEmail() != null && !u.getEmail().trim().isEmpty())
-                    ? u.getEmail()
-                    : ((u.getFullName() != null && !u.getFullName().trim().isEmpty()) ? u.getFullName() : u.getUsername());
-            if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
-                userStr = userStr + " - " + u.getOrgUnit().getName();
-            }
-            map.put(u.getId(), userStr);
-        }
+        users.forEach((userId, user) -> map.put(userId, formatUserName(user)));
         return map;
+    }
+
+    private Map<UUID, User> resolveUsers(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Collections.emptyMap();
+        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNullIds.isEmpty()) return Collections.emptyMap();
+        return userRepository.findAllByIdInWithOrgUnit(nonNullIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (first, second) -> first));
+    }
+
+    private String formatUserName(User user) {
+        String userStr = formatUserIdentity(user);
+        if (user.getOrgUnit() != null && user.getOrgUnit().getName() != null && !user.getOrgUnit().getName().isBlank()) {
+            userStr = userStr + " - " + user.getOrgUnit().getName();
+        }
+        return userStr;
+    }
+
+    private String formatUserIdentity(User user) {
+        return (user.getEmail() != null && !user.getEmail().trim().isEmpty())
+                ? user.getEmail()
+                : ((user.getFullName() != null && !user.getFullName().trim().isEmpty()) ? user.getFullName() : user.getUsername());
     }
 
     private String resolveUserName(UUID userId) {

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Typography, Modal, Input, Drawer, Tag, Button, DatePicker, Space, Divider, Select } from 'antd';
+import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select } from 'antd';
 import {
   EditOutlined,
   DeleteOutlined,
@@ -9,10 +9,6 @@ import {
   CloseOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
-  ClockCircleFilled,
-  ArrowRightOutlined,
-  DownOutlined,
-  UpOutlined,
 } from '@ant-design/icons';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import type { VtsSystemResponse, ListParams, ApprovalRequest } from '../../types/vtsSystem';
@@ -28,10 +24,10 @@ import VtsSystemForm from './VtsSystemForm';
 import toast from '../../components/ToastNotification';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
-  cardStyle, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm,
+  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
+  radiusSm, radiusPill, spaceFormField, spaceMd, spaceSm, spaceLg,
   statusOperational, statusDraft, statusCritical, statusAttention,
-  surfaceCard, surfacePage, shadowSm, radiusLg, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle,
+  surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 import dayjs from 'dayjs';
@@ -68,6 +64,8 @@ const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
+const HISTORY_PAGE_SIZE = 20;
+
 // ── History helpers ──────────────────────────────────────────────
 
 function historyFieldName(fn: string): string {
@@ -92,6 +90,28 @@ function historyFieldValue(fn: string, val: string | null): string {
     const separator = part.indexOf('=');
     return separator >= 0 ? part.slice(separator + 1).trim() : part.trim();
   }).filter(Boolean).join('; ');
+  const historyFieldKeys = fn.split(/[,;]+/).map(normalizeHistoryKey);
+  const isApprovalField = fn === 'approvalStatus'
+    || historyFieldKeys.includes('approvalstatus')
+    || historyFieldKeys.includes('trang thai phe duyet');
+  if (isApprovalField) {
+    const statusMap: Record<string, string> = {
+      PROPOSED: 'Chờ phê duyệt',
+      PENDING_APPROVAL: 'Đang xem xét',
+      PENDING: 'Đang xem xét',
+      UNDER_REVIEW: 'Đang xem xét',
+      APPROVED_LEVEL1: 'Đã phê duyệt C1',
+      APPROVED_LEVEL2: 'Đã phê duyệt C2',
+      APPROVED: 'Đã phê duyệt',
+      DA_PHE_DUYET: 'Đã phê duyệt',
+      REJECTED: 'Từ chối',
+      TU_CHOI: 'Từ chối',
+    };
+    return displayValue.split(';').map((value) => {
+      const normalizedValue = value.trim();
+      return statusMap[normalizedValue] || statusMap[normalizedValue.toUpperCase()] || normalizedValue;
+    }).join('; ');
+  }
   if (fn === 'orgUnitId' || fn === 'owningOrgId' || fn === 'operatingOrgId' || fn === 'portId') return displayValue;
   if (fn === 'provinceId') { const num = Number(displayValue); if (!isNaN(num)) return getProvinceNameById(num) || displayValue; return displayValue; }
   if (fn === 'approvalStatus') { const m: Record<string, string> = { PROPOSED: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ phê duyệt', PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', DA_PHE_DUYET: 'Đã phê duyệt', REJECTED: 'Từ chối', TU_CHOI: 'Từ chối' }; return m[displayValue] || m[displayValue?.toUpperCase()] || displayValue; }
@@ -140,13 +160,36 @@ function getActionLabel(items: any[]): { label: string; color: string } {
   return { label: 'Chỉnh sửa', color: 'blue' };
 }
 
-function getChangeCount(items: any[]): number {
-  return items.reduce((total, item) => {
-    const field = historyField(item);
-    if (!field) return total + 1;
-    const fields = normalizedHistoryFields(field);
-    return total + Math.max(fields.length, 1);
-  }, 0);
+function getHistoryActionAccent(items: any[], action: { color: string }): string {
+  const statuses = items.map((item: any) => String(item.status || '').toUpperCase());
+  const approvalValues = items
+    .filter((item: any) => {
+      const key = normalizeHistoryKey(historyField(item));
+      return key === 'approvalstatus' || key.includes('trang thai phe duyet');
+    })
+    .flatMap((item: any) => historyFieldValue(historyField(item), historyNewValue(item)).split(';'))
+    .map((value: string) => normalizeHistoryKey(value));
+
+  if (statuses.includes('REJECTED') || approvalValues.some((value) => value === 'rejected' || value === 'tu choi')) {
+    return statusCritical;
+  }
+  if (statuses.includes('APPROVED') || approvalValues.some((value) => value === 'approved' || value.startsWith('da phe duyet'))) {
+    return statusOperational;
+  }
+  if (statuses.includes('PROPOSED') || approvalValues.some((value) => value === 'proposed' || value === 'cho phe duyet')) {
+    return statusAttention;
+  }
+  if (statuses.includes('UNDER_REVIEW') || approvalValues.some((value) => value === 'under_review' || value === 'dang xem xet')) {
+    return actionPrimary;
+  }
+
+  return action.color === 'red'
+    ? statusCritical
+    : action.color === 'green'
+      ? statusOperational
+      : action.color === 'gold' || action.color === 'orange'
+        ? statusAttention
+        : actionPrimary;
 }
 
 function normalizeHistoryKey(value: string): string {
@@ -258,7 +301,6 @@ export default function VtsSystemList() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  const [historyExpanded, setHistoryExpanded] = useState<Record<number, boolean>>({});
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
@@ -356,36 +398,62 @@ export default function VtsSystemList() {
 
   // ── History drawer ──────────────────────────────────────────────
 
-  const handleViewHistory = async (record: VtsSystemResponse) => {
+  const handleViewHistory = (record: VtsSystemResponse) => {
     setSelectedRecord(record);
     setHistoryModalOpen(true);
     setHistoryRecords([]);
-    setLoadingHistory(true);
+    setLoadingHistory(false);
     setLoadingMoreHistory(false);
     setHasMoreHistory(true);
-    setHistoryExpanded({});
     setHistorySearch('');
     setHistoryDateFrom('');
     setHistoryDateTo('');
-    try {
-      const history = await vtsSystemApproval.getHistory(record.id, 0, 200);
-      const items = history || [];
-      setHistoryRecords(items);
-      setHasMoreHistory(items.length === 200);
-    } catch { toast.error('Không thể tải lịch sử'); }
-    finally { setLoadingHistory(false); }
   };
+
+  useEffect(() => {
+    if (!historyModalOpen || !selectedRecord) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      try {
+        const history = await vtsSystemApproval.getHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historySearch,
+          fromDate: historyDateFrom,
+          toDate: historyDateTo,
+        });
+        if (cancelled) return;
+        const items = history || [];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    }, historySearch.trim() ? 300 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [historyModalOpen, selectedRecord?.id, historySearch, historyDateFrom, historyDateTo]);
 
   const loadMoreHistory = async () => {
     if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
     setLoadingMoreHistory(true);
     try {
-      const nextPage = Math.floor(historyRecords.length / 200) + 1;
-      const history = await vtsSystemApproval.getHistory(selectedRecord.id, nextPage, 200);
+      const nextPage = Math.floor(historyRecords.length / HISTORY_PAGE_SIZE) + 1;
+      const history = await vtsSystemApproval.getHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historySearch,
+        fromDate: historyDateFrom,
+        toDate: historyDateTo,
+      });
       if (history && history.length > 0) {
         setHistoryRecords(prev => [...prev, ...history]);
       }
-      setHasMoreHistory((history || []).length === 200);
+      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
     } catch { /* ignore */ }
     finally { setLoadingMoreHistory(false); }
   };
@@ -404,19 +472,19 @@ export default function VtsSystemList() {
       render: (val: string) => <Typography.Text strong>{val || '—'}</Typography.Text> },
     { key: 'address', label: 'Địa điểm chi tiết', dataIndex: 'address', width: 220, sortable: true,
       render: (val: string) => val || '—' },
-    { key: 'conditionStatus', label: 'Tình trạng', dataIndex: 'conditionStatus', width: 120, sortable: true, align: 'center' as const,
+    { key: 'conditionStatus', label: 'Tình trạng', dataIndex: 'conditionStatus', width: 150, sortable: true, align: 'center' as const,
       render: (val: ConditionStatus) => {
         if (!val) return '—';
         const display = CONDITION_STATUS_MAP[val] || val;
         const color = CONDITION_COLOR[val] || textSecondary;
-        return <span style={{ color, fontWeight: fontWeightMedium }}>{display}</span>;
+        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color, whiteSpace: 'nowrap' }}>{display}</span>;
       }},
     { key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 180 },
     { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 140, sortable: true, align: 'center' as const,
       render: (val: ApprovalStatus) => {
         const label = APPROVAL_STATUS_MAP[val] || val;
         const color = APPROVAL_COLOR[val] || textSecondary;
-        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
+        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
       }},
     { key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 150, sortable: true, align: 'center' as const, render: (val: string) => formatDate(val) },
   ], [page, pageSize]);
@@ -452,7 +520,7 @@ export default function VtsSystemList() {
     { key: ApprovalStatus.PROPOSED, label: 'Chờ phê duyệt', count: countProposed, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PROPOSED },
     { key: ApprovalStatus.UNDER_REVIEW, label: 'Đang xem xét', count: countUnderReview, color: actionPrimary, active: filterApprovalStatus === ApprovalStatus.UNDER_REVIEW },
     { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
-    { key: ApprovalStatus.REJECTED, label: 'Từ chối', count: countRejected, color: statusDraft, active: filterApprovalStatus === ApprovalStatus.REJECTED },
+    { key: ApprovalStatus.REJECTED, label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED },
   ], [total, countAllFiltered, filterApprovalStatus, countProposed, countUnderReview, countApproved, countRejected]);
 
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
@@ -477,11 +545,8 @@ export default function VtsSystemList() {
   // ── History rendering ──────────────────────────────────────────
 
   const fmtTime = (ts: string) => {
-    const d = new Date(ts);
-    return d.toLocaleString('vi-VN', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    });
+    const d = dayjs(ts);
+    return `${d.format('HH:mm:ss')} - ${d.isSame(dayjs(), 'day') ? 'Hôm nay' : d.format('DD/MM/YYYY')}`;
   };
 
   const renderHistoryTimeline = (records: any[]) => {
@@ -490,23 +555,6 @@ export default function VtsSystemList() {
     const q = historySearch.toLowerCase().trim();
     const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
     for (const r of sorted) {
-      if (q) {
-        const field = historyField(r);
-        const oldValue = historyOldValue(r);
-        const newValue = historyNewValue(r);
-        const fn = field.toLowerCase();
-        const ov = (oldValue || '').toLowerCase();
-        const nv = (newValue || '').toLowerCase();
-        const lb = historyFieldName(field).toLowerCase();
-        const od = historyFieldValue(field, oldValue).toLowerCase();
-        const nd = historyFieldValue(field, newValue).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
-      }
-      if (historyDateFrom || historyDateTo) {
-        const cd = historyTimestamp(r).substring(0, 16);
-        if (historyDateFrom && cd < historyDateFrom) continue;
-        if (historyDateTo && cd > historyDateTo) continue;
-      }
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
@@ -523,60 +571,39 @@ export default function VtsSystemList() {
     return (
       <div>{groups.map((g, gi) => {
         const action = getActionLabel(g.items);
-        const canExpand = action.label !== 'Tạo mới';
-        const changes = canExpand ? g.items.flatMap((item: any) => historyChangeRows(item)) : [];
+        const changes = g.items.flatMap((item: any) => historyChangeRows(item));
+        const actionAccent = getHistoryActionAccent(g.items, action);
+        const unitName = g.items[0]?.orgUnitName || g.items[0]?.unitName || '—';
+        const informationTitle = action.label === 'Tạo mới' ? 'Thông tin tạo mới:' : 'Thông tin thay đổi:';
         return (
-        <div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
-            <div style={{ width: 24, height: 24, borderRadius: '50%', background: surfaceCard, border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} />
-            </div>
-            {gi < groups.length - 1 && (<div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: spaceXs }} />)}
+        <div key={gi} style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 0.38fr) minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceMd : 0 }}>
+          <div style={{ minWidth: 0, paddingTop: spaceXs }}>
+            <Typography.Text style={{ display: 'block', fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5 }}>
+              {g.ts ? fmtTime(g.ts) : '—'}
+            </Typography.Text>
+            <Typography.Text style={{ display: 'block', marginTop: spaceXs, fontSize: fontSizeMd, color: textSecondary, lineHeight: 1.5 }}>
+              Người cập nhật: {g.actor || '—'}
+            </Typography.Text>
+            <Typography.Text style={{ display: 'block', fontSize: fontSizeMd, color: textSecondary, lineHeight: 1.5 }}>
+              Đơn vị: {unitName}
+            </Typography.Text>
           </div>
-          <div style={{ ...cardStyle, flex: 1, padding: 0, marginBottom: 0, borderRadius: radiusLg, boxShadow: shadowSm, overflow: 'hidden' }}>
-            <div onClick={canExpand ? () => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] })) : undefined} style={{ display: 'flex', alignItems: 'center', gap: spaceSm, minWidth: 0, cursor: canExpand ? 'pointer' : 'default', padding: `${spaceMd}px`, background: historyExpanded[gi] ? surfacePage : surfaceCard }}>
-              <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'baseline', gap: spaceSm }}>
-                <Typography.Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold, whiteSpace: 'nowrap' }}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>
-                {g.actor && (<Typography.Text ellipsis={{ tooltip: g.actor }} style={{ minWidth: 0, fontSize: fontSizeMd, color: textSecondary }}>— {g.actor}</Typography.Text>)}
-              </div>
-              <Tag color={action.color} style={{ fontSize: fontSizeSm, margin: 0, borderRadius: radiusPill, whiteSpace: 'nowrap' }}>{action.label}</Tag>
-              {canExpand && (<>
-                <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightMedium, color: actionPrimary, background: `${actionPrimary}15`, borderRadius: radiusPill, padding: `${spaceXs}px ${spaceSm}px`, whiteSpace: 'nowrap' }}>{getChangeCount(g.items)} thay đổi</span>
-                <Button
-                  type="text"
-                  aria-label="Xem thay đổi"
-                  icon={<EyeOutlined style={{ color: actionPrimary }} />}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setHistoryExpanded((prev) => ({ ...prev, [gi]: true }));
-                  }}
-                  style={{ width: 28, height: 28, padding: 0, borderRadius: radiusPill }}
-                />
-                {historyExpanded[gi] ? (<UpOutlined style={{ fontSize: 12, color: textTertiary }} />) : (<DownOutlined style={{ fontSize: 12, color: textTertiary }} />)}
-              </>)}
-            </div>
-            {canExpand && historyExpanded[gi] === true && (<div style={{ padding: `${spaceSm}px ${spaceMd}px ${spaceMd}px` }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 0.65fr) minmax(160px, 0.85fr) 24px minmax(160px, 0.85fr)', gap: spaceSm, alignItems: 'center', padding: `${spaceXs}px ${spaceXs}px`, color: textTertiary, fontSize: fontSizeSm, fontWeight: fontWeightMedium }}>
-                <span>Trường thay đổi</span>
-                <span style={{ textAlign: 'left' }}>Giá trị cũ</span>
-                <span />
-                <span>Giá trị mới</span>
-              </div>
-              <Divider style={{ margin: `${spaceXs}px 0`, borderColor: borderDefault }} />
-              <div>{changes.map((change, ri: number) => {
-                  const fn = change.field;
-                  const oldValue = change.oldValue;
-                  const newValue = change.newValue;
-                  const ov = oldValue !== null ? historyFieldValue(fn, oldValue) : null;
-                  const nv = newValue !== null ? historyFieldValue(fn, newValue) : null;
-                  return (<div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 0.65fr) minmax(160px, 0.85fr) 24px minmax(160px, 0.85fr)', gap: spaceSm, alignItems: 'start', padding: `${spaceSm}px ${spaceXs}px`, borderBottom: ri < changes.length - 1 ? `1px solid ${borderDefault}` : undefined }}>
-                    <div style={{ minWidth: 0, fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary, lineHeight: 1.5, overflowWrap: 'anywhere' }}>{fn ? historyFieldName(fn) : '—'}</div>
-                    <div title={ov ?? '—'} style={{ minWidth: 0, fontSize: fontSizeMd, color: statusCritical, textDecoration: 'line-through', textAlign: 'left', lineHeight: 1.5, overflowWrap: 'anywhere' }}>{ov ?? '—'}</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: spaceXs, color: textTertiary }}><ArrowRightOutlined /></div>
-                    <div title={nv ?? '—'} style={{ minWidth: 0, fontSize: fontSizeMd, color: statusOperational, fontWeight: fontWeightMedium, textAlign: 'left', lineHeight: 1.5, overflowWrap: 'anywhere' }}>{nv ?? '—'}</div>
-                  </div>);
-                })}</div>
-            </div>)}</div>
+          <div style={{ minWidth: 0, background: surfacePage, borderLeft: `${spaceXs}px solid ${actionAccent}`, borderRadius: radiusSm, padding: spaceMd }}>
+            <Typography.Text style={{ display: 'block', color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold, marginBottom: spaceXs }}>
+              {informationTitle}
+            </Typography.Text>
+            {changes.length > 0 ? <div>{changes.map((change, ri: number) => {
+                const fn = change.field;
+                const ov = change.oldValue !== null ? historyFieldValue(fn, change.oldValue) : null;
+                const nv = change.newValue !== null ? historyFieldValue(fn, change.newValue) : null;
+                return (<div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.15fr) minmax(90px, 0.85fr) 24px minmax(120px, 1.35fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
+                  <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                  <span title={ov ?? '—'} style={{ minWidth: 0, color: textSecondary, overflowWrap: 'anywhere' }}>{ov ?? '—'}</span>
+                  <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
+                  <span title={nv ?? '—'} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{nv ?? '—'}</span>
+                </div>);
+              })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
+          </div>
         </div>
         );
       })}</div>
@@ -666,7 +693,7 @@ export default function VtsSystemList() {
           <DataTable columns={columns} dataSource={[]} rowKey="id" emptyState={<EmptyState description="Chưa có hệ thống VTS nào" />} />
         ) : (
           <>
-            <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1400, y: 500 }} />
+            <DataTable className="vts-system-table" columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1400, y: 'calc(100vh - 390px)' }} />
             <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
           </>
         )}
@@ -704,10 +731,10 @@ export default function VtsSystemList() {
             <Input.Search placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
               onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
             <DatePicker placeholder="Từ ngày" value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={d => setHistoryDateFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              onChange={d => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
             <DatePicker placeholder="Đến ngày" value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={d => setHistoryDateTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+              onChange={d => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
           </div>
         </div>

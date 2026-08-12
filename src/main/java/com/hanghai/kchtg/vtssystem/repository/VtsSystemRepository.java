@@ -30,9 +30,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
-            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
-            LOWER(t.code) LIKE CAST(:keyword AS string) OR
-            LOWER(t.address) LIKE CAST(:keyword AS string))
+            CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
         ORDER BY t.createdAt DESC
@@ -57,7 +57,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                     OR (CAST(:scopePath AS string) IS NULL AND child.id = :scopeOrgUnitId))
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (CAST(:keyword AS string) IS NULL OR LOWER(t.systemName) LIKE CAST(:keyword AS string) OR LOWER(t.code) LIKE CAST(:keyword AS string) OR LOWER(t.address) LIKE CAST(:keyword AS string))
+          AND (CAST(:keyword AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
           AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
@@ -98,9 +98,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
-            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
-            LOWER(t.code) LIKE CAST(:keyword AS string) OR
-            LOWER(t.address) LIKE CAST(:keyword AS string))
+            CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
         ORDER BY t.createdAt DESC
@@ -116,9 +116,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
-            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
-            LOWER(t.code) LIKE CAST(:keyword AS string) OR
-            LOWER(t.address) LIKE CAST(:keyword AS string))
+            CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
         """)
@@ -154,9 +154,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
-            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
-            LOWER(t.code) LIKE CAST(:keyword AS string) OR
-            LOWER(t.address) LIKE CAST(:keyword AS string))
+            CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
           AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
@@ -174,9 +174,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
-            LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
-            LOWER(t.code) LIKE CAST(:keyword AS string) OR
-            LOWER(t.address) LIKE CAST(:keyword AS string))
+            CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
           AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
@@ -198,7 +198,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     @Query("SELECT t FROM VtsSystem t WHERE " +
            "t.deletedAt IS NULL AND " +
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
-           "(CAST(:search AS string) IS NULL OR LOWER(t.systemName) LIKE CAST(:search AS string) OR LOWER(t.code) LIKE CAST(:search AS string) OR LOWER(t.address) LIKE CAST(:search AS string))")
+           "(CAST(:search AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:search AS string) OR CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:search AS string) OR CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:search AS string))")
     List<VtsSystem> searchFiltered(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
@@ -213,9 +213,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR (
-                LOWER(t.systemName) LIKE CAST(:keyword AS string) OR
-                LOWER(t.code) LIKE CAST(:keyword AS string) OR
-                LOWER(t.address) LIKE CAST(:keyword AS string)
+                CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
+                CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+                CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string)
               ))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
         GROUP BY t.approvalStatus
@@ -230,4 +230,6 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     );
 
     boolean existsByCode(String code);
+
+    boolean existsByCodeAndIdNot(String code, UUID id);
 }

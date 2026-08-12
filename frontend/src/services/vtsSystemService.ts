@@ -113,10 +113,13 @@ export const vtsSystemApproval = {
     return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
   },
 
-  async getHistory(id: string, page?: number, pageSize?: number): Promise<HistoryEntry[]> {
+  async getHistory(id: string, page?: number, pageSize?: number, filters?: { keyword?: string; fromDate?: string; toDate?: string }): Promise<HistoryEntry[]> {
     const params = new URLSearchParams();
     if (page !== undefined && page !== null) params.append('page', String(page));
     if (pageSize !== undefined && pageSize !== null) params.append('pageSize', String(pageSize));
+    if (filters?.keyword?.trim()) params.append('keyword', filters.keyword.trim());
+    if (filters?.fromDate) params.append('fromDate', filters.fromDate);
+    if (filters?.toDate) params.append('toDate', filters.toDate);
     const query = params.toString() ? `?${params.toString()}` : '';
     const res = await api.get(`${VTS_BASE_PATH}/${id}/history${query}`);
     return toArray<HistoryEntry>(res.data);

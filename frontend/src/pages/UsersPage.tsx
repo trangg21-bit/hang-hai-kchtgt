@@ -271,7 +271,7 @@ export default function UsersPage() {
       if (search || filterRoleId || filterStatus) return <EmptyState description="Không tìm thấy người dùng nào phù hợp" />;
       return <EmptyState description="Chưa có người dùng nào" />;
     }
-    return <><style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1200, y: 500 }} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></>;
+    return <><style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1400, y: 'calc(100vh - 350px)' }} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></>;
   };
 
 

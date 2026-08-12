@@ -173,7 +173,7 @@ export default function RadarStationList() {
       title: 'Tình trạng',
       dataIndex: 'conditionStatus',
       key: 'conditionStatus',
-      width: 120,
+      width: 150,
       render: (val: string) => {
         if (!val) return '—';
         const colorMap: Record<string, string> = {

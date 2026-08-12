@@ -127,6 +127,7 @@ export interface HistoryEntry {
   approvalLevel?: number | string;
   status: string;
   approvedBy: string;
+  orgUnitName?: string;
   approvedDate: string;
   reason?: string;
   changedField?: string;

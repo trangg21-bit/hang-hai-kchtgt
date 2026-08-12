@@ -97,6 +97,11 @@ class VtsSystemServiceTest {
         VtsSystemResponse response = service.create(createRequest, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
         assertEquals(ApprovalStatus.PROPOSED, response.getApprovalStatus());
+        assertNotNull(response.getZones());
+        assertTrue(response.getZones().isEmpty());
+        assertNotNull(response.getAttachments());
+        assertTrue(response.getAttachments().isEmpty());
+        verify(repository).existsByCode("VTS-ABC");
         verify(repository, times(1)).save(any());
     }
 
@@ -191,6 +196,17 @@ class VtsSystemServiceTest {
     }
 
     @Test
+    void testCreate_RejectsDuplicateCode() {
+        when(repository.existsByCode("VTS-ABC")).thenReturn(true);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.create(createRequest, UUID.randomUUID()));
+
+        assertEquals("Mã hệ thống VTS đã tồn tại trong hệ thống", exception.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void testUpdate_RejectsChangingImmutableCode() {
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .code("VTS-NEW")
@@ -204,6 +220,22 @@ class VtsSystemServiceTest {
         assertEquals("VTS-OLD", entity.getCode());
         verify(repository, never()).save(any());
         verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void testUpdate_RejectsDuplicateCodeBeforeImmutableCodeCheck() {
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .code("VTS-DUPLICATE")
+                .build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.existsByCodeAndIdNot("VTS-DUPLICATE", TEST_ID)).thenReturn(true);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.update(TEST_ID, updateReq, UUID.randomUUID()));
+
+        assertEquals("Mã hệ thống VTS đã tồn tại trong hệ thống", exception.getMessage());
+        verify(repository, never()).save(any());
+        verify(repository).existsByCodeAndIdNot("VTS-DUPLICATE", TEST_ID);
     }
 
     @Test

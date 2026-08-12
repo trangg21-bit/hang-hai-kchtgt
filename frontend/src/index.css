@@ -26,11 +26,29 @@ body {
   display: none;
 }
 
-/* ---- Table row transition (không có trong globalCssVars) ---- */
+/* ---- Table row transition & responsive height fit ---- */
 .ant-table-row { transition: background 0.15s; }
-.list-view-table .ant-table-container,
-.list-view-table .ant-table-content {
-  overflow-y: hidden !important;
+
+.filter-table-spin,
+.filter-table-spin .ant-spin-nested-loading,
+.filter-table-spin .ant-spin-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.list-view-table .ant-table-body {
+  height: auto !important;
+  max-height: calc(100vh - 350px) !important;
+  overflow-y: auto !important;
+}
+
+/* Leave enough room for the horizontal scrollbar and pagination on VTS. */
+.vts-system-table .ant-table-body {
+  height: calc(100vh - 390px) !important;
+  max-height: calc(100vh - 390px) !important;
 }
 
 /* ---- GIS Map: Sidebar tabs fill height ---- */

@@ -9,6 +9,7 @@ import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.annotation.DataScope;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -188,13 +189,16 @@ public class VtsSystemController {
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
-        List<HistoryEntry> entries = service.getHistory(id, page, pageSize);
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime toDate) {
+        List<HistoryEntry> entries = service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", entries));
     }
 
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
-        return getHistory(id, null, null);
+        return getHistory(id, null, null, null, null, null);
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:update')")

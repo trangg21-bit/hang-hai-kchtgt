@@ -35,7 +35,7 @@ export default function PortDetailContent({
           key: 'general', label: 'Thông tin chung',
           children: (
             <div style={{ paddingTop: 16 }}>
-              <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1}`}</style>
+              <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1}.detail-value .ant-tag{margin-left:-6px!important}`}</style>
               <div className="detail-grid">
                 {[
                   ['Đơn vị quản lý', selectedRecord.orgUnitId ? (orgUnits.find((o) => o.id === selectedRecord.orgUnitId)?.name || '—') : '—'],

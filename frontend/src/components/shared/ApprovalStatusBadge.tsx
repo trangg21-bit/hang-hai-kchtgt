@@ -1,4 +1,4 @@
-import { actionPrimary, statusAttention, statusOperational, statusCritical, textTertiary } from '../../tokens';
+import { actionPrimary, statusAttention, statusOperational, statusCritical, textTertiary, radiusPill } from '../../tokens';
 
 export type ApprovalStatusType = 'PROPOSED' | 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | string;
 
@@ -29,12 +29,13 @@ export default function ApprovalStatusBadge({ status, size = 'default' }: Approv
         alignItems: 'center',
         gap: 4,
         padding: size === 'small' ? '1px 8px' : '2px 10px',
-        borderRadius: 8,
+        borderRadius: radiusPill,
         fontSize: size === 'small' ? '12px' : '13px',
         fontWeight: 500,
         background: `${config.color}15`,
         color: config.color,
-        border: `1px solid ${config.color}30`,
+        border: `1px solid ${config.color}40`,
+        marginLeft: -6,
       }}
     >
       {config.label}

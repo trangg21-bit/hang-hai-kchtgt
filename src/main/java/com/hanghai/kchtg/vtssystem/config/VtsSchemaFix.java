@@ -58,6 +58,32 @@ public class VtsSchemaFix implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE vts_zone ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;");
             jdbcTemplate.execute("ALTER TABLE vts_zone ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;");
 
+            // Older databases may have persisted audit text columns as BYTEA.
+            // Convert them before the history search applies LOWER()/LIKE.
+            jdbcTemplate.execute("""
+                    DO $$
+                    DECLARE
+                        target_column_name text;
+                    BEGIN
+                        FOREACH target_column_name IN ARRAY ARRAY['changed_field', 'previous_value', 'new_value', 'reason'] LOOP
+                            IF EXISTS (
+                                SELECT 1
+                                FROM information_schema.columns c
+                                WHERE c.table_schema = 'public'
+                                  AND c.table_name = 'approval_history'
+                                  AND c.column_name = target_column_name
+                                  AND c.udt_name = 'bytea'
+                            ) THEN
+                                EXECUTE format(
+                                    'ALTER TABLE public.approval_history ALTER COLUMN %I TYPE TEXT USING convert_from(%I, ''UTF8'')',
+                                    target_column_name,
+                                    target_column_name
+                                );
+                            END IF;
+                        END LOOP;
+                    END $$;
+                    """);
+
             log.info("VtsSchemaFix executed successfully.");
         } catch (Exception e) {
             log.error("Failed to execute VtsSchemaFix", e);

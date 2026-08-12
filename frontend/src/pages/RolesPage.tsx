@@ -249,18 +249,37 @@ export default function RolesPage() {
     { key: 'nameCode', label: 'Mã – Tên vai trò', dataIndex: 'name', width: 280, align: 'left' as const, render: (text: string, record: Role) => (
       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Typography.Text strong>{record.code} – {text}</Typography.Text>
-        {record.id === 'role-001' && <Tag color="volcano">Hệ thống</Tag>}
+        {record.id === 'role-001' && <Tag color="volcano" style={{ borderRadius: radiusPill }}>Hệ thống</Tag>}
       </span>
     ) },
     { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 260, align: 'left' as const, render: (text?: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
-    { key: 'permissions', label: 'Chức năng', dataIndex: 'menuCodes', width: 130, align: 'center' as const, render: (_: string[], record: Role) => {
+    { key: 'permissions', label: 'Chức năng', dataIndex: 'menuCodes', width: 140, align: 'center' as const, render: (_: string[], record: Role) => {
       const count = (record.menuCodes?.length ?? 0) || record.permissions.length;
-      return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{count} chức năng</span>;
+      return (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
+          border: `1px solid ${actionPrimary}40`, borderRadius: radiusPill,
+          fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+          background: `${actionPrimary}15`, color: actionPrimary, whiteSpace: 'nowrap'
+        }}>
+          {count} chức năng
+        </span>
+      );
     } },
-    { key: 'userCount', label: 'Người dùng', dataIndex: 'userCount', width: 120, align: 'center' as const, render: (count: number) => (
-      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: count > 0 ? `${statusOperational}15` : `${textSecondary}15`, color: count > 0 ? statusOperational : textSecondary }}>{count}</span>
-    ) },
-    { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 140, align: 'center' as const, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY')}</span> : <Typography.Text type="secondary">—</Typography.Text> },
+    { key: 'userCount', label: 'Người dùng', dataIndex: 'userCount', width: 120, align: 'center' as const, render: (count: number) => {
+      const color = count > 0 ? statusOperational : textSecondary;
+      return (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
+          border: `1px solid ${color}40`, borderRadius: radiusPill,
+          fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+          background: `${color}15`, color, whiteSpace: 'nowrap'
+        }}>
+          {count}
+        </span>
+      );
+    } },
+    { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 150, align: 'center' as const, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY')}</span> : <Typography.Text type="secondary">—</Typography.Text> },
   ], [page, pageSize]);
 
   // ---- Filter content ----
@@ -299,7 +318,7 @@ export default function RolesPage() {
     return (
       <>
         <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
-        <DataTable columns={columns} dataSource={roles} rowKey="id" rowActions={rowActions} scroll={{ x: 930, y: 500 }} />
+        <DataTable columns={columns} dataSource={roles} rowKey="id" rowActions={rowActions} scroll={{ x: 1400, y: 'calc(100vh - 350px)' }} />
         <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
       </>
     );
