@@ -1686,7 +1686,7 @@ export default function PortListPage() {
             onFinishFailed={handleFormFailed}
             initialValues={{ approvalStatus: 'APPROVED' }}
           >
-            <Tabs activeKey={createTabKey} onChange={setCreateTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
+            <Tabs activeKey={createTabKey} onChange={setCreateTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }} items={[
               {
                 key: 'general', label: 'Thông tin chung',
                 children: (<div style={{ paddingTop: 16 }}>
@@ -2451,7 +2451,7 @@ export default function PortListPage() {
           >
             <Tabs
               defaultActiveKey="general"
-              tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
+              tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
               items={[
                 {
                   key: 'general',
@@ -3194,7 +3194,7 @@ export default function PortListPage() {
           {selectedRecord && (
             <Tabs
               defaultActiveKey="general"
-              tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
+              tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
               items={[
                 {
                   key: 'general', label: 'Thông tin chung',
