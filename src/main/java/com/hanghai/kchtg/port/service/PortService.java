@@ -423,7 +423,11 @@ public class PortService {
         if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
         if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
         entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
-        if (request.getApprovalStatus() != null) {
+        // Khi chỉnh sửa: nếu đang "Được phê duyệt" → quay về "Chờ phê duyệt" để duyệt lại;
+        // "Nháp" giữ nguyên Nháp, các trạng thái còn lại giữ nguyên.
+        if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        } else if (request.getApprovalStatus() != null) {
             entity.setApprovalStatus(request.getApprovalStatus());
         } else {
             entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);

@@ -421,22 +421,29 @@ export default function PierList() {
       </Drawer>
 
       <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cầu cảng</span>} open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); }}
+        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
         footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); }}
+          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
             style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="delete" type="primary" danger onClick={handleConfirmDelete}
             style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}>
-        <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: 24 }}>
-          Bạn sắp xóa cầu cảng <strong>{deletingRecord?.pierName}</strong>. Hành động này không thể hoàn tác.
-        </p>
-        <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-          Vui lòng nhập <strong>tên cầu</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-        </p>
-        <Input placeholder="Nhập tên cầu hoặc XÓA" value={deleteConfirmText}
-          onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
-          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
+        ]}
+        width={480}>
+        <div style={{ padding: '8px 0' }}>
+          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
+            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
+            Vui lòng nhập <strong>tên cầu</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
+          </p>
+          {deletingRecord && (
+            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
+              Cầu cảng: <strong style={{ color: textPrimary }}>{deletingRecord.pierName}</strong>
+            </p>
+          )}
+          <Input placeholder="Nhập tên cầu hoặc XÓA" value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
+            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
+        </div>
       </Modal>
 
       <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }} title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
