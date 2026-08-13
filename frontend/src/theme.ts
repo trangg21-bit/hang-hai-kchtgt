@@ -722,9 +722,9 @@ body, .ant-layout {
   background: var(--bg-body);
 }
 
-/* ---------- TextArea — tight corners, never pill/round ---------- */
+/* ---------- TextArea — bo góc chặt (4px) làm mặc định; từng form có thể override bằng token radiusPill ---------- */
 textarea.ant-input {
-  border-radius: 4px !important;
+  border-radius: 4px;
 }
 
 /* ---------- Required mark (*) bên phải label ---------- */

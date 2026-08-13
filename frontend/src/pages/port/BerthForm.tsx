@@ -41,6 +41,8 @@ const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' }, { value: 'LINE', label: 'Đối tượng đường' }, { value: 'POLYGON', label: 'Đối tượng vùng' },
 ];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
+// Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
+const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
 
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
@@ -115,10 +117,14 @@ export default forwardRef(function BerthForm({ form, id, onFinish }: BerthFormPr
 
   useEffect(() => { if (!isSystemAdmin && !isEdit) { api.get('/users/me').then(r => { const p = r.data?.data ?? r.data; if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId }); }).catch(() => {}); } }, []);
 
-  // Khi chọn loại đối tượng → tự set hệ quy chiếu & quy tắc hiển thị
+  // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
   useEffect(() => {
-    if (watchedGeometryType) {
-      form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    if (!watchedGeometryType) return;
+    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    // Form thêm mới: điểm → 1 tọa độ, đường → 2 tọa độ, vùng → 3 tọa độ
+    if (!isEdit) {
+      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 0;
+      setCoordinateList(Array.from({ length: count }, () => ({ latitude: null, longitude: null })));
     }
   }, [watchedGeometryType]);
 

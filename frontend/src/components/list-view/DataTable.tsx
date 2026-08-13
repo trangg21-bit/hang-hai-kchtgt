@@ -25,6 +25,21 @@ const actionColumnCellStyle: React.CSSProperties = {
 // scroll.y cap can auto-fit to its content without risking vertical overflow.
 const AUTO_FIT_ROW_HEIGHT = 60;
 
+// Stable, order-insensitive fingerprint of the rows currently shown. It lets the
+// scroll-reset effect tell a real data change (new page / filter / reload) apart
+// from a client-side re-sort, so sorting no longer snaps the horizontal scroll
+// back to the first column while the user is scrolled right.
+function computeRowSetSignature(dataSource: any[], rowKey: string | ((record: any) => string)): string {
+  return dataSource
+    .map((record) => {
+      if (typeof rowKey === 'function') return String(rowKey(record));
+      const v = record?.[rowKey];
+      return v != null ? String(v) : '';
+    })
+    .sort()
+    .join('|');
+}
+
 export interface DataTableColumn {
   key: string; label: string; sortable?: boolean; twoLine?: boolean;
   type?: 'text' | 'status' | 'action' | 'number' | 'date' | 'mono';
@@ -66,6 +81,7 @@ const DataTable: React.FC<DataTableProps> = ({
   columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, scroll, ...rest
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
+  const dataSignatureRef = useRef<string | null>(null);
   // Preserve a content-sized table when the page explicitly requests
   // `max-content`. For lists whose columns are narrower than the common
   // minimum width, replacing it with a larger fixed width leaves an empty
@@ -74,6 +90,16 @@ const DataTable: React.FC<DataTableProps> = ({
   const resolvedScroll = scroll;
 
   useLayoutEffect(() => {
+    // A client-side re-sort produces a brand-new `dataSource` array with the SAME
+    // rows in a different order. Reset the horizontal scroll only when the set of
+    // rows actually changes (filter / pagination / reload) — otherwise clicking a
+    // sortable header while scrolled right would snap back to the first column.
+    const signature = computeRowSetSignature(dataSource, rowKey);
+    if (dataSignatureRef.current !== null && signature === dataSignatureRef.current) {
+      return; // same rows, just re-ordered — keep the current scroll position
+    }
+    dataSignatureRef.current = signature;
+
     const resetHorizontalScroll = () => {
       tableShellRef.current?.querySelectorAll<HTMLElement>(
         '.ant-table-header, .ant-table-body, .ant-table-content, .ant-table-sticky-scroll',
@@ -86,7 +112,7 @@ const DataTable: React.FC<DataTableProps> = ({
     resetHorizontalScroll();
     const frameId = window.requestAnimationFrame(resetHorizontalScroll);
     return () => window.cancelAnimationFrame(frameId);
-  }, [dataSource]);
+  }, [dataSource, rowKey]);
 
   // Auto-fit the table body to its content when the rows fit inside a numeric
   // scroll.y cap, so the pagination (and any trailing content) sits directly

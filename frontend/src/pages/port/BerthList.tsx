@@ -444,8 +444,9 @@ export default function BerthList() {
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = deletingRecord.berthName || 'XÓA';
-    if (deleteConfirmText.trim() !== expectedText && deleteConfirmText.trim() !== 'XÓA') {
+    const expectedText = (deletingRecord.berthName || 'XÓA').trim().toLowerCase();
+    const input = deleteConfirmText.trim().toLowerCase();
+    if (input !== expectedText && input !== 'xóa') {
       toast.error('Vui lòng nhập đúng tên bến hoặc gõ "XÓA" để xác nhận'); return;
     }
     try {

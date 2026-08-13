@@ -1,0 +1,45 @@
+{
+  "triage_id": "TRI-1786603649511-3ed6",
+  "created_at": 1786603649511,
+  "request_summary": "Cho phép nhập tên hoặc từ khóa 'xóa' không phân biệt hoa/thường và khoảng trắng thừa trong popup xác nhận xóa của cảng biển, bến cảng, cầu cảng",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/pages/port/PierList.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/pages/port/PierList.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Popup xác nhận xóa trên màn danh sách cảng biển (PortListPage), bến cảng (BerthList), cầu cảng (PierList)",
+  "blast_radius": 3,
+  "done_oracle": "Nhập tên hoặc 'XÓA'/'xóa'/' XÓA ' (khác hoa thường, có khoảng trắng thừa) đều xác nhận xóa thành công; nhập sai vẫn báo lỗi. npx tsc --noEmit trong frontend/ không có lỗi",
+  "declared_write_scope": [
+    "frontend/src/pages/port/BerthList.tsx",
+    "frontend/src/pages/port/PierList.tsx",
+    "frontend/src/services/port/PortListPage.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3ec0a9caf8e320c96281ff7df0c9e85d3bafe71c",
+    "dirty": true,
+    "captured_at": 1786603649712
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}
