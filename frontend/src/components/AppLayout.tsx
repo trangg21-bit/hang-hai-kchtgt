@@ -23,8 +23,9 @@ import {
   ApiOutlined,
   ContainerOutlined,
   SearchOutlined,
-  EnvironmentOutlined,
-  ApartmentOutlined,
+  GlobalOutlined,
+  BankOutlined,
+  BuildOutlined,
   AimOutlined,
   HomeOutlined,
 } from '@ant-design/icons';
@@ -170,7 +171,9 @@ export default function AppLayout() {
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'port') {
     selectedKey = 'port-parent';
-  } else if (pathSegments[0] === 'berth' || pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
+  } else if (pathSegments[0] === 'berth') {
+    selectedKey = 'berth-parent';
+  } else if (pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
     selectedKey = '/' + pathSegments[0];
@@ -186,11 +189,13 @@ export default function AppLayout() {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
-      } else if (selectedKey === '/berth') {
-        setOpenKeys(['cangben', 'port-parent']);
+      } else if (selectedKey === 'berth-parent') {
+        setOpenKeys(['cangben', 'port-parent', 'berth-parent']);
       } else if (selectedKey === 'port-parent') {
         setOpenKeys(['cangben', 'port-parent']);
-      } else if (['/pier', '/dry-port', '/water-zone'].includes(selectedKey)) {
+      } else if (selectedKey === '/pier') {
+        setOpenKeys(['cangben', 'port-parent', 'berth-parent']);
+      } else if (['/dry-port', '/water-zone'].includes(selectedKey)) {
         setOpenKeys(['cangben']);
       } else if (selectedKey.startsWith('/asset')) {
         setOpenKeys(['asset-movement']);
@@ -256,17 +261,25 @@ export default function AppLayout() {
       icon: <ContainerOutlined />,
       label: 'Quản lý KCHT Hàng Hải',
       children: [
-        (canAccessMenu('/port') || canAccessMenu('/berth')) ? {
+        (canAccessMenu('/port') || canAccessMenu('/berth') || canAccessMenu('/pier')) ? {
           key: 'port-parent',
           label: 'Quản lý cảng biển',
-          icon: <EnvironmentOutlined />,
+          icon: <GlobalOutlined />,
           onTitleClick: () => navigate('/port'),
           className: selectedKey === 'port-parent' ? 'submenu-active' : '',
           children: [
-            canAccessMenu('/berth') ? { key: '/berth', label: 'Quản lý bến cảng', icon: <ContainerOutlined /> } : null,
+            (canAccessMenu('/berth') || canAccessMenu('/pier')) ? {
+              key: 'berth-parent',
+              label: 'Quản lý bến cảng',
+              icon: <BankOutlined />,
+              onTitleClick: () => navigate('/berth'),
+              className: selectedKey === 'berth-parent' ? 'submenu-active' : '',
+              children: [
+                canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <BuildOutlined /> } : null,
+              ].filter(Boolean),
+            } : null,
           ].filter(Boolean),
         } : null,
-        canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <ApartmentOutlined /> } : null,
         canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <HomeOutlined /> } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
@@ -533,7 +546,7 @@ export default function AppLayout() {
           onOpenChange={setOpenKeys}
           items={menuItems}
           onClick={handleMenuClick}
-          inlineIndent={24}
+          inlineIndent={12}
           style={{ borderInlineEnd: 'none', paddingTop: 4 }}
         />
       </div>

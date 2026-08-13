@@ -513,8 +513,8 @@ export default function BerthList() {
   const filterContent = (
     <>
       {/* ── Cơ bản: ĐVQL + Tên cảng biển + Tình trạng ──────────── */}
-      <div style={{ marginBottom: 12, marginTop: 16 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Đơn vị quản lý</div>
+      <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
         <Select placeholder="Chọn đơn vị" showSearch optionFilterProp="label"
           value={managingUnitId} onChange={(v) => { setManagingUnitId(v); setPage(1); }}
           options={[{ label: 'Tất cả', value: '__all__' }, ...organizations.map((o) => ({ label: o.name, value: o.id }))]}
@@ -522,14 +522,14 @@ export default function BerthList() {
       </div>
       {/* TODO: Bỏ comment khi backend hỗ trợ lọc theo tên cảng biển
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tên cảng biển</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng biển</div>
         <Input placeholder="Tìm theo tên cảng biển..." allowClear value={filterBerthName}
           onChange={(e) => { setFilterBerthName(e.target.value); setPage(1); }}
           onPressEnter={handleFilterApply} style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       */}
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tình trạng</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
         <Select placeholder="Chọn tình trạng" allowClear value={filterOperationalStatus}
           onChange={(v) => { setFilterOperationalStatus(v); setPage(1); }}
           options={[
@@ -543,7 +543,7 @@ export default function BerthList() {
       {/* ── Nâng cao: toggle 8 trường ──────────────────────────── */}
       {filterCollapsed && (<>
       <div style={{ marginBottom: 12, marginTop: 4 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Thuộc cảng biển</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
         <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
           value={filterPortId} onChange={(v) => { setFilterPortId(v); setPage(1); }}
           options={portOptions.map(o => ({ label: o.label, value: o.value }))}
@@ -551,41 +551,41 @@ export default function BerthList() {
       </div>
       {/* TODO: Đổi thành dropdown khi có API danh sách luồng hàng hải
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Thuộc luồng hàng hải</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
         <Input placeholder="Tìm theo luồng HH..." allowClear value={filterWaterway}
           onChange={(e) => { setFilterWaterway(e.target.value); setPage(1); }}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       */}
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tên bến cảng</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên bến cảng</div>
         <Input placeholder="Tìm theo tên bến..." allowClear value={filterBerthName}
           onChange={(e) => { setFilterBerthName(e.target.value); setPage(1); }}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       {/* TODO: Bật khi cần lọc theo mã bến cảng
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Mã bến cảng</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã bến cảng</div>
         <Input placeholder="Tìm theo mã bến..." allowClear value={filterBerthCode}
           onChange={(e) => { setFilterBerthCode(e.target.value); setPage(1); }}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       */}
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Loại kết cấu</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu</div>
         <Select placeholder="Chọn loại" allowClear value={filterStructureType}
           onChange={(v) => { setFilterStructureType(v); setPage(1); }}
           options={STRUCTURE_TYPE_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Công năng khai thác</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
         <Input placeholder="Tìm theo công năng..." allowClear value={filterOperationalFunction}
           onChange={(e) => { setFilterOperationalFunction(e.target.value); setPage(1); }}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Địa điểm (Tỉnh/TP)</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
         <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
           value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
@@ -593,7 +593,7 @@ export default function BerthList() {
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Ngày cập nhật</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
         <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
           placeholder={['Từ ngày', 'Đến ngày']} allowClear
           value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
@@ -602,7 +602,7 @@ export default function BerthList() {
       </div>
       {/* TODO: Bỏ comment khi cần lọc theo trạng thái phê duyệt
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
         <Select placeholder="Chọn trạng thái" allowClear value={filterApprovalStatus}
           onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
           options={[
@@ -649,52 +649,52 @@ export default function BerthList() {
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span> },
       { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 200, fixed: 'left' as const, sortable: true, sortOrder,
         render: (_v: string | null, record: Berth) => orgMap.get(record.orgUnitId || '') || _v || '—' },
-      { key: 'berthName', label: <span>Tên bến cảng<br />Thuộc cảng biển</span>, dataIndex: 'berthName', width: 180, fixed: 'left' as const, sortable: true, sortOrder,
+      { key: 'berthName', label: <span>Tên bến cảng/Loại kết cấu</span>, dataIndex: 'berthName', width: 200, fixed: 'left' as const, sortable: true, sortOrder,
         render: (v: string, record: Berth) => {
-          const portName = portOptions.find(o => o.value === record.portId)?.label || record.portId || '—';
+          const structureLabel = STRUCTURE_TYPE_OPTIONS.find(o => o.value === record.structureType)?.label || '—';
           return (
             <div>
               <a onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{v}</a>
-              <span>{portName}</span>
+              <span style={{ opacity: 0.85 }}>{structureLabel}</span>
             </div>
           );
         } },
+      { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 140,
+        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
       { key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 150, sortable: true, sortOrder,
         render: (v: number | null) => v ? VIETNAM_PROVINCES[v - 1] : '—' },
-      { key: 'structureType', label: 'Loại kết cấu', dataIndex: 'structureType', width: 140,
-        render: (v: number | null) => STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || '—' },
       { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 200,
         render: (v: string | null) => v || '—' },
     ];
 
     // Audit columns — only for Admin Cục / admin-operation (BR-018-05)
     const auditColumns: any[] = isAuditViewer ? [
-      { key: 'updatedAt', label: <span>Ngày cập nhật<br /><span>Cán bộ cập nhật</span></span>, dataIndex: 'updatedAt', width: 190, sortable: true, sortOrder,
+      { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 190, sortable: true, sortOrder,
         render: (v: string | null, record: Berth) => (
           <div>
-            <span>{formatDate(v)}</span><br />
-            <span>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'submittedForApprovalAt', label: <span>Ngày gửi Phê duyệt<br /><span>Cán bộ gửi Phê duyệt</span></span>, dataIndex: 'submittedForApprovalAt', width: 200, sortable: true, sortOrder,
+      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 200, sortable: true, sortOrder,
         render: (v: string | null, record: Berth) => (
           <div>
-            <span>{formatDate(v)}</span><br />
-            <span>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'portAuthorityApprovedAt', label: <span>Ngày Phê duyệt Cảng vụ<br /><span>Cán bộ Phê duyệt Cảng vụ</span></span>, dataIndex: 'portAuthorityApprovedAt', width: 210, sortable: true, sortOrder,
+      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ Phê duyệt Cảng vụ</span>, dataIndex: 'portAuthorityApprovedAt', width: 210, sortable: true, sortOrder,
         render: (v: string | null, record: Berth) => (
           <div>
-            <span>{formatDate(v)}</span><br />
-            <span>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'departmentApprovedAt', label: <span>Ngày Phê duyệt Cục<br /><span>Cán bộ Phê duyệt Cục</span></span>, dataIndex: 'departmentApprovedAt', width: 200, sortable: true, sortOrder,
+      { key: 'departmentApprovedAt', label: <span>Cán bộ Phê duyệt Cục</span>, dataIndex: 'departmentApprovedAt', width: 200, sortable: true, sortOrder,
         render: (v: string | null, record: Berth) => (
           <div>
-            <span>{formatDate(v)}</span><br />
-            <span>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
     ] : [];
@@ -773,7 +773,7 @@ export default function BerthList() {
         error={isError}
         onRetry={() => void fetchData()}
       >
-        <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
+        <style>{`.list-view-table .ant-table-cell { padding-block: 9.5px !important; }`}</style>
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id"
             emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{filterBerthName || filterBerthCode || filterProvince ? 'Không tìm thấy bến cảng nào phù hợp' : 'Chưa có bến cảng nào'}</div></div>}

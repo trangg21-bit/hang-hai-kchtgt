@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import dayjs from 'dayjs';
 import { Tabs, Table, Space, InputNumber } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
@@ -25,6 +26,11 @@ export interface PierDetailContentProps {
 }
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
+
+function formatDateOnly(d: string | null | undefined): string {
+  if (!d) return '—';
+  try { return dayjs(d).format('DD/MM/YYYY'); } catch { return d; }
+}
 
 const LOAI_CAU_LABELS: Record<string, string> = {
   CONTAINER: 'Container', TONG_HOP: 'Tổng hợp', HANH_KHACH: 'Hành khách',
@@ -77,7 +83,7 @@ export default function PierDetailContent({
                   ['Tên cầu cảng', r.pierName || '—'],
                   ['Địa điểm (Tỉnh/Thành phố)', r.province || '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
-                  ['Loại cầu', pierTypeMap[r.pierType || r.loaiCau || ''] || LOAI_CAU_LABELS[r.loaiCau || ''] || r.loaiCau || r.pierType || '—'],
+                  ['Loại cầu', pierTypeMap[r.pierType || r.loaiCau || ''] || LOAI_CAU_LABELS[r.pierType || r.loaiCau || ''] || r.pierType || r.loaiCau || '—'],
                   ['Chiều dài (m)', r.length != null ? r.length : '—'],
                   ['Chiều rộng (m)', r.width != null ? r.width : '—'],
                   ['Tải trọng thiết kế (T/m²)', r.designLoad != null ? r.designLoad : '—'],
@@ -132,8 +138,8 @@ export default function PierDetailContent({
               <div className="detail-grid">
                 {[
                   ['Số văn bản', r.documentNumber || '—'],
-                  ['Ngày văn bản', r.documentDate || '—'],
-                  ['Thời điểm công bố mở, đưa vào sử dụng', r.openingAnnouncementDate || '—'],
+                  ['Ngày văn bản', formatDateOnly(r.documentDate)],
+                  ['Thời điểm công bố mở, đưa vào sử dụng', formatDateOnly(r.openingAnnouncementDate)],
                   ['Quyết định công bố/ Văn bản cho phép khai thác', r.openingDecision || '—'],
                   ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreementDoc || '—'],
                   ['Phạm vi khu nước neo buộc tàu', r.waterAreaNeutralScope || '—'],

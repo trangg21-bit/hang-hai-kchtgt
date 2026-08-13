@@ -43,15 +43,25 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(p.pierCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(p.pierName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
             "AND (:berthId IS NULL OR p.berthId = :berthId) " +
+            "AND (:portId IS NULL OR p.portId = :portId) " +
             "AND (:pierType IS NULL OR p.pierType = :pierType) " +
+            "AND (CAST(:province AS string) IS NULL OR LOWER(p.province) LIKE LOWER(CONCAT('%', CAST(:province AS string), '%'))) " +
             "AND (:operationalStatus IS NULL OR p.operationalStatus = :operationalStatus) " +
             "AND (:approvalStatus IS NULL OR p.approvalStatus = :approvalStatus)")
     Page<Pier> searchPiers(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search,
             @Param("berthId") UUID berthId,
+            @Param("portId") UUID portId,
             @Param("pierType") PierType pierType,
+            @Param("province") String province,
             @Param("operationalStatus") OperationalStatus operationalStatus,
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             Pageable pageable);
+
+    /** Backward-compatible overload used by GIS search — no port/province filter. */
+    default Page<Pier> searchPiers(UUID orgUnitId, String search, UUID berthId, PierType pierType,
+            OperationalStatus operationalStatus, ApprovalStatus approvalStatus, Pageable pageable) {
+        return searchPiers(orgUnitId, search, berthId, null, pierType, null, operationalStatus, approvalStatus, pageable);
+    }
 }

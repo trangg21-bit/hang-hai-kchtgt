@@ -183,25 +183,25 @@ public class PierService {
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
             String search, UUID berthId,
             String status, String approvalStatus) {
-        return findAll(page, size, orgUnitId, search, berthId, (PierType) null, status, approvalStatus);
+        return findAll(page, size, orgUnitId, search, berthId, null, (PierType) null, null, status, approvalStatus);
     }
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
-            String search, UUID berthId, PierType pierType,
+            String search, UUID berthId, UUID portId, PierType pierType, String province,
             String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
-        Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, pierType, statusEnum, approvalEnum, pageable);
+        Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, portId, pierType, province, statusEnum, approvalEnum, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(Pier::getBerthId)
