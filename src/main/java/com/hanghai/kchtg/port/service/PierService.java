@@ -158,7 +158,14 @@ public class PierService {
                 .investmentAgreementDoc(request.getInvestmentAgreementDoc())
                 // ── Spec Group G: GIS additional ──
                 .waterAreaNeutralScope(request.getWaterAreaNeutralScope())
+                .coordinateSystem(request.getCoordinateSystem())
+                .displayRule(request.getDisplayRule())
                 .build();
+
+        // Handle saveAction the same way as Berth (DRAFT / SUBMIT / SAVE_AND_APPROVE / APPROVED)
+        String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
+        applySaveAction(entity, action);
+
         Pier saved = pierRepository.save(entity);
 
         // BR-020-05: Auto audit log for creation
@@ -300,6 +307,8 @@ public class PierService {
                 .openingDecision(entity.getOpeningDecision())
                 .investmentAgreementDoc(entity.getInvestmentAgreementDoc())
                 .waterAreaNeutralScope(entity.getWaterAreaNeutralScope())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayRule(entity.getDisplayRule())
                 .spatialId(entity.getSpatialId())
                 .build();
 
@@ -327,6 +336,60 @@ public class PierService {
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
         entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getCoordinateSystem() != null)
+            entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayRule() != null)
+            entity.setDisplayRule(request.getDisplayRule());
+        if (request.getPortId() != null)
+            entity.setPortId(request.getPortId());
+        if (request.getNavigationChannelId() != null)
+            entity.setNavigationChannelId(request.getNavigationChannelId());
+        if (request.getProvince() != null)
+            entity.setProvince(request.getProvince());
+        if (request.getDetailedLocation() != null)
+            entity.setDetailedLocation(request.getDetailedLocation());
+        if (request.getConstructionGrade() != null)
+            entity.setConstructionGrade(request.getConstructionGrade());
+        if (request.getStructureType() != null)
+            entity.setStructureType(request.getStructureType());
+        if (request.getConditionStatus() != null)
+            entity.setConditionStatus(request.getConditionStatus());
+        if (request.getWidth() != null)
+            entity.setWidth(request.getWidth());
+        if (request.getCurrentWaterDepth() != null)
+            entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
+        if (request.getDesignBedElevation() != null)
+            entity.setDesignBedElevation(request.getDesignBedElevation());
+        if (request.getPublishedVesselDWT() != null)
+            entity.setPublishedVesselDWT(request.getPublishedVesselDWT());
+        if (request.getMaintenanceApprovalDate() != null)
+            entity.setMaintenanceApprovalDate(request.getMaintenanceApprovalDate());
+        if (request.getSafetyAssessmentDate() != null)
+            entity.setSafetyAssessmentDate(request.getSafetyAssessmentDate());
+        if (request.getLastInspectionDate() != null)
+            entity.setLastInspectionDate(request.getLastInspectionDate());
+        if (request.getOperatingPierCount() != null)
+            entity.setOperatingPierCount(request.getOperatingPierCount());
+        if (request.getPublishedPierCount() != null)
+            entity.setPublishedPierCount(request.getPublishedPierCount());
+        if (request.getInvestmentAgreementPierCount() != null)
+            entity.setInvestmentAgreementPierCount(request.getInvestmentAgreementPierCount());
+        if (request.getCargoThroughput() != null)
+            entity.setCargoThroughput(request.getCargoThroughput());
+        if (request.getReceivesLargeVessel() != null)
+            entity.setReceivesLargeVessel(request.getReceivesLargeVessel());
+        if (request.getDocumentNumber() != null)
+            entity.setDocumentNumber(request.getDocumentNumber());
+        if (request.getDocumentDate() != null)
+            entity.setDocumentDate(request.getDocumentDate());
+        if (request.getOpeningAnnouncementDate() != null)
+            entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
+        if (request.getOpeningDecision() != null)
+            entity.setOpeningDecision(request.getOpeningDecision());
+        if (request.getInvestmentAgreementDoc() != null)
+            entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
+        if (request.getWaterAreaNeutralScope() != null)
+            entity.setWaterAreaNeutralScope(request.getWaterAreaNeutralScope());
 
         if (request.getCoordinates() != null) {
             if (request.getCoordinates().trim().isEmpty()) {
@@ -364,7 +427,9 @@ public class PierService {
             });
         }
 
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        if (request.getSaveAction() != null) {
+            applySaveAction(entity, request.getSaveAction());
+        }
 
         Pier saved = pierRepository.save(entity);
 
@@ -382,9 +447,6 @@ public class PierService {
 
         if (entity.getDeletedAt() != null) {
             throw new IllegalStateException("Cầu cảng đã bị xóa trước đó");
-        }
-        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("Chỉ có thể xóa cầu cảng ở trạng thái Chờ phê duyệt và chưa được gửi duyệt");
         }
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
@@ -478,6 +540,8 @@ public class PierService {
                 .investmentAgreementDoc(e.getInvestmentAgreementDoc())
                 // ── Spec Group G: GIS additional ──
                 .waterAreaNeutralScope(e.getWaterAreaNeutralScope())
+                .coordinateSystem(e.getCoordinateSystem())
+                .displayRule(e.getDisplayRule())
                 .build();
     }
 
@@ -487,6 +551,23 @@ public class PierService {
             return GisGeometryType.valueOf(typeStr.toUpperCase());
         } catch (IllegalArgumentException ex) {
             return GisGeometryType.LINE;
+        }
+    }
+
+    private void applySaveAction(Pier entity, String action) {
+        switch (action) {
+            case "DRAFT":
+                entity.setApprovalStatus(ApprovalStatus.DRAFT);
+                break;
+            case "SUBMIT":
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                break;
+            case "APPROVED":
+            case "SAVE_AND_APPROVE":
+                entity.setApprovalStatus(ApprovalStatus.APPROVED);
+                break;
+            default:
+                entity.setApprovalStatus(ApprovalStatus.DRAFT);
         }
     }
 

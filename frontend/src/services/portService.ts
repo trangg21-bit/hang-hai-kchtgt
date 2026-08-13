@@ -250,22 +250,24 @@ export const pierCRUD = {
   },
 
   async search(params?: {
-    pierCode?: string;
-    pierName?: string;
+    search?: string;
     berthId?: string;
-    loaiCau?: string;
-    operationalStatus?: string;
+    portId?: string;
+    pierType?: string;
+    province?: string;
+    status?: string;
     orgUnitId?: string;
     approvalStatus?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Pier>> {
     const sp = buildSearchParams({
-      pierCode: params?.pierCode,
-      pierName: params?.pierName,
+      search: params?.search,
       berthId: params?.berthId,
-      loaiCau: params?.loaiCau,
-      operationalStatus: params?.operationalStatus,
+      portId: params?.portId,
+      pierType: params?.pierType,
+      province: params?.province,
+      status: params?.status,
       orgUnitId: params?.orgUnitId,
       approvalStatus: params?.approvalStatus,
       page: params?.page !== undefined ? params.page - 1 : undefined,
