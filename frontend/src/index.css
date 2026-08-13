@@ -42,7 +42,24 @@ body {
 .list-view-table .ant-table-body {
   height: var(--list-table-scroll-y) !important;
   max-height: var(--list-table-scroll-y) !important;
-  overflow-y: auto !important;
+  /* Keep the vertical scrollbar gutter even for a one-row result. AntD's
+     fixed-right column uses this gutter when calculating its sticky offset. */
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable;
+}
+
+/* Keep the empty state centered in the same full-height body as a populated
+   list. AntD otherwise sizes the placeholder row only to its content and
+   leaves a visible separator underneath it. */
+.list-view-table .ant-table-placeholder > td {
+  height: var(--list-table-scroll-y) !important;
+  padding: 0 !important;
+  vertical-align: middle;
+  border-bottom: 0 !important;
+}
+
+.list-view-table .ant-table-placeholder .ant-empty {
+  margin: 0;
 }
 
 /* ---- GIS Map: Sidebar tabs fill height ---- */

@@ -4,6 +4,7 @@ export interface PageResponse<T> {
   totalPages: number;
   size: number;
   number: number;
+  statusCounts?: Record<string, number>;
 }
 
 export interface LegalDocumentCreateRequest {

@@ -6,13 +6,18 @@ import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+
 @Component
 public class VtsSchemaFix implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(VtsSchemaFix.class);
     private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
 
-    public VtsSchemaFix(JdbcTemplate jdbcTemplate) {
+    public VtsSchemaFix(JdbcTemplate jdbcTemplate, DataSource dataSource) {
         this.jdbcTemplate = jdbcTemplate;
+        this.dataSource = dataSource;
     }
 
     @Override
@@ -60,7 +65,8 @@ public class VtsSchemaFix implements CommandLineRunner {
 
             // Older databases may have persisted audit text columns as BYTEA.
             // Convert them before the history search applies LOWER()/LIKE.
-            jdbcTemplate.execute("""
+            if (isPostgreSql()) {
+                jdbcTemplate.execute("""
                     DO $$
                     DECLARE
                         target_column_name text;
@@ -83,10 +89,22 @@ public class VtsSchemaFix implements CommandLineRunner {
                         END LOOP;
                     END $$;
                     """);
+            } else {
+                log.info("Skipping PostgreSQL-only approval history conversion for non-PostgreSQL database.");
+            }
 
             log.info("VtsSchemaFix executed successfully.");
         } catch (Exception e) {
             log.error("Failed to execute VtsSchemaFix", e);
+        }
+    }
+
+    private boolean isPostgreSql() {
+        try (Connection connection = dataSource.getConnection()) {
+            return "PostgreSQL".equalsIgnoreCase(connection.getMetaData().getDatabaseProductName());
+        } catch (Exception e) {
+            log.warn("Unable to determine database product; skipping PostgreSQL-only schema fix.", e);
+            return false;
         }
     }
 }

@@ -14,5 +14,4 @@ public interface UserListProjection {
     UUID getOrgUnitId();
     UserStatus getStatus();
     LocalDateTime getLastLoginAt();
-    String getRoleCode();
 }

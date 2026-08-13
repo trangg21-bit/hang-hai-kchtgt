@@ -25,8 +25,6 @@ import { MinusCircleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined, File
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
-import { portCRUD } from '../../services/portService';
-import { organizationService } from '../../services/organizationService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   VtsSystemResponse,
@@ -44,6 +42,7 @@ import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 
 export interface VtsSystemFormProps {
   open?: boolean;
@@ -166,20 +165,17 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     if (!isDetailMode) {
       (async () => {
         try {
-          const resp = await organizationService.list({ pageSize: 1000 });
-          setOrganizations(resp.data || []);
+          const [scopedOrganizations, scopedPorts] = await Promise.all([
+            vtsSystemCRUD.getScopedOrgUnitOptions(),
+            vtsSystemCRUD.getScopedPortOptions(),
+          ]);
+          const allowedOrgUnitIds = new Set(scopedOrganizations.map((organization) => String(organization.id)));
+          setOrganizations(scopedOrganizations);
+          setPortOptions(scopedPorts
+            .filter((port) => port.orgUnitId && allowedOrgUnitIds.has(String(port.orgUnitId)))
+            .map((port) => ({ value: port.id, label: port.portName || port.id })));
         } catch (err) {
-          console.error('Không thể tải danh sách đơn vị', err);
-        }
-      })();
-    }
-    if (!isDetailMode) {
-      (async () => {
-        try {
-          const opts = await portCRUD.getOptions();
-          setPortOptions(opts.map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id })));
-        } catch (err) {
-          console.error('Failed to load ports', err);
+          console.error('Không thể tải danh sách đơn vị và cảng biển', err);
         }
       })();
     } else {
@@ -755,15 +751,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                     rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                     style={{ marginBottom: spaceFormField }}
                   >
-                    <Select
+                    <OrgUnitTreeSelect
+                      organizations={organizations}
                       placeholder="Chọn đơn vị quản lý"
                       disabled={isEditMode}
-                      showSearch
-                      filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                      options={organizations.map((org) => ({
-                        value: org.id,
-                        label: org.code ? `${org.code} - ${org.name}` : org.name,
-                      }))}
                       style={{ borderRadius: radiusPill, height: 40 }}
                     />
                   </Form.Item>
@@ -788,14 +779,9 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         rules={[{ required: true, message: 'Vui lòng chọn đơn vị chủ quản' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Select
+                        <OrgUnitTreeSelect
+                          organizations={organizations}
                           placeholder="Chọn đơn vị chủ quản"
-                          showSearch
-                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                          options={organizations.map((org) => ({
-                            value: org.id,
-                            label: org.code ? `${org.code} - ${org.name}` : org.name,
-                          }))}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>
@@ -807,14 +793,9 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Select
+                        <OrgUnitTreeSelect
+                          organizations={organizations}
                           placeholder="Chọn đơn vị vận hành"
-                          showSearch
-                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                          options={organizations.map((org) => ({
-                            value: org.id,
-                            label: org.code ? `${org.code} - ${org.name}` : org.name,
-                          }))}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>
@@ -832,7 +813,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                           placeholder="Chọn cảng biển"
                           allowClear
                           showSearch
-                          optionFilterProp="label"
+                          filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
                           options={portOptions}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
@@ -1148,15 +1129,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             name="orgUnitId"
             rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
           >
-            <Select
+            <OrgUnitTreeSelect
+              organizations={organizations}
               placeholder="Chọn đơn vị quản lý"
               allowClear
-              showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              options={organizations.map((org) => ({
-                value: org.id,
-                label: org.code ? `${org.code} - ${org.name}` : org.name,
-              }))}
             />
           </Form.Item>
 
@@ -1165,15 +1141,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             name="owningOrgId"
             rules={[{ required: true, message: 'Vui lòng chọn đơn vị chủ quản' }]}
           >
-            <Select
+            <OrgUnitTreeSelect
+              organizations={organizations}
               placeholder="Chọn đơn vị chủ quản"
               allowClear
-              showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              options={organizations.map((org) => ({
-                value: org.id,
-                label: org.code ? `${org.code} - ${org.name}` : org.name,
-              }))}
             />
           </Form.Item>
 
@@ -1182,15 +1153,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             name="operatingOrgId"
             rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
           >
-            <Select
+            <OrgUnitTreeSelect
+              organizations={organizations}
               placeholder="Chọn đơn vị vận hành"
               allowClear
-              showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              options={organizations.map((org) => ({
-                value: org.id,
-                label: org.code ? `${org.code} - ${org.name}` : org.name,
-              }))}
             />
           </Form.Item>
 
@@ -1198,7 +1164,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             label="Thuộc cảng biển"
             name="portId"
           >
-            <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label" options={portOptions} />
+            <Select
+              placeholder="Chọn cảng biển"
+              allowClear
+              showSearch
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+              options={portOptions}
+            />
           </Form.Item>
 
           <Form.Item

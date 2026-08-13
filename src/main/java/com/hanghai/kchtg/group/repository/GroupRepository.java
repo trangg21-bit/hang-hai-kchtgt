@@ -91,6 +91,7 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
     @Query("SELECT COUNT(g) FROM UserGroup g "
           + "WHERE g.deletedAt IS NULL "
           + "AND (:groupType IS NULL OR cast(g.groupType as integer) = :groupType) "
+          + "AND (:organizationId IS NULL OR g.organizationId = :organizationId) "
           + "AND (:search IS NULL OR :search = '' OR "
           + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
           + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
@@ -98,6 +99,7 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
           + "AND cast(g.status as integer) = :status")
     long countByFiltersAndStatus(@Param("search") String search,
                                  @Param("groupType") Integer groupType,
+                                 @Param("organizationId") UUID organizationId,
                                  @Param("status") Integer status);
 
     /**

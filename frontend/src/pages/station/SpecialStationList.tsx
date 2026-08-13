@@ -201,10 +201,10 @@ export default function SpecialStationList() {
 
   const rowActions = useCallback((record: CoastalStationInmarsatResponse) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean; }[] = [];
-    if (hasPerm('station:edit')) {
+    if (hasPerm('specialstation:update')) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
     }
-    if (hasPerm('station:delete')) {
+    if (hasPerm('specialstation:delete')) {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => confirmDelete(record), danger: true });
     }
     return actions;
@@ -232,7 +232,7 @@ export default function SpecialStationList() {
         <ScreenHeader
           breadcrumb={[{ label: 'Quản lý nhà trạm' }, { label: 'Đài vệ tinh Inmarsat' }]}
           actions={[
-            ...(hasPerm('station:create') ? [{
+            ...(hasPerm('specialstation:create') ? [{
               key: 'create',
               label: 'Thêm đài vệ tinh',
               variant: 'primary' as const,

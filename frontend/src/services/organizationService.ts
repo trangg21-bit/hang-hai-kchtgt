@@ -140,12 +140,30 @@ const getGlobalWindow = (): any => {
 
 const ORG_CACHE_TTL_MS = 5 * 60_000;
 
+/**
+ * Organisation data is scoped by the authenticated user. A shared browser
+ * cache must therefore never be reused across users or permission versions.
+ */
+const getOrgCacheKey = (): string => {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return 'anonymous';
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return `${payload.user_id || payload.sub || 'unknown'}:${payload.permission_version ?? 'unknown'}`;
+  } catch {
+    return 'unknown';
+  }
+};
+
 const getCachedOrgs = (): Organization[] | null => {
   const globalWin = getGlobalWindow();
   const cachedAt = Number(globalWin.__orgUnitsCacheAt || 0);
-  if (!globalWin.__orgUnitsCache || !cachedAt || Date.now() - cachedAt > ORG_CACHE_TTL_MS) {
+  const cacheKey = getOrgCacheKey();
+  if (!globalWin.__orgUnitsCache || globalWin.__orgUnitsCacheKey !== cacheKey
+    || !cachedAt || Date.now() - cachedAt > ORG_CACHE_TTL_MS) {
     globalWin.__orgUnitsCache = null;
     globalWin.__orgUnitsCacheAt = 0;
+    globalWin.__orgUnitsCacheKey = null;
     return null;
   }
   return globalWin.__orgUnitsCache;
@@ -155,19 +173,21 @@ const setCachedOrgs = (orgs: Organization[]) => {
   const globalWin = getGlobalWindow();
   globalWin.__orgUnitsCache = orgs;
   globalWin.__orgUnitsCacheAt = Date.now();
+  globalWin.__orgUnitsCacheKey = getOrgCacheKey();
 };
 
 const clearCachedOrgs = () => {
   const globalWin = getGlobalWindow();
   globalWin.__orgUnitsCache = null;
   globalWin.__orgUnitsCacheAt = 0;
+  globalWin.__orgUnitsCacheKey = null;
 };
 
 export const invalidateOrganizationCache = clearCachedOrgs;
 
 export const organizationService = {
   /**
-   * GET /api/org-units/options for an unfiltered directory list, or the
+   * GET /api/common/options/org-units for the authenticated user's directory list, or the
    * paginated endpoint when filters are supplied. Frontend applies pagination
    * client-side for the cached directory list.
    */
@@ -192,7 +212,7 @@ export const organizationService = {
 
     try {
       const resp = isCacheable
-        ? await api.get("/org-units/options")
+        ? await api.get("/common/options/org-units")
         : await api.get("/org-units", {
             params: {
               size: 1000,

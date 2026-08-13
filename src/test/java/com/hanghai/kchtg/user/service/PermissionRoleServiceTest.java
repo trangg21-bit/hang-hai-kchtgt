@@ -1,18 +1,17 @@
 package com.hanghai.kchtg.user.service;
 
-import com.hanghai.kchtg.user.entity.Permission;
-import com.hanghai.kchtg.user.entity.Role;
+import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserPermissionOverride;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,7 +29,6 @@ class PermissionRoleServiceTest {
     @BeforeEach
     void setUp() {
         permissionRoleService = new PermissionRoleService(userRepository);
-        ReflectionTestUtils.setField(permissionRoleService, "superAdminRoleCode", "ROLE_SYSTEM_ADMIN");
         userId = UUID.randomUUID();
     }
 
@@ -53,34 +51,47 @@ class PermissionRoleServiceTest {
     }
 
     @Test
-    void superAdminRoleBypassesAllPermissions() {
-        User user = userWithRole("ROLE_SUPER_ADMIN");
+    void directGlobalPermissionBypassesAllPermissions() {
+        User user = userWithPermission("admin:all");
         when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
         assertThat(permissionRoleService.checkPermission(userId, "vts", "delete")).isTrue();
     }
 
-    private User userWithPermission(String permissionCode) {
-        Permission permission = new Permission();
-        permission.setCode(permissionCode);
+    @Test
+    void directAndActiveGroupPermissionsAreCombined() {
+        User user = userWithPermission("vts:update");
+        UserGroup group = new UserGroup();
+        group.setStatus(GroupStatus.ACTIVE);
+        group.setPermissions(java.util.List.of("vts:read", "VTS:history"));
+        user.setGroups(java.util.List.of(group));
+        when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
-        Role role = new Role();
-        role.setCode("ROLE_ADMIN");
-        role.setPermissions(Set.of(permission));
-
-        User user = new User();
-        user.setId(userId);
-        user.setRoles(Set.of(role));
-        return user;
+        assertThat(permissionRoleService.checkPermission(userId, "vts", "update")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "vts", "read")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "vts", "history")).isTrue();
     }
 
-    private User userWithRole(String roleCode) {
-        Role role = new Role();
-        role.setCode(roleCode);
+    @Test
+    void inactiveGroupPermissionsAreNotEffective() {
+        User user = userWithPermission("vts:update");
+        UserGroup group = new UserGroup();
+        group.setStatus(GroupStatus.INACTIVE);
+        group.setPermissions(java.util.List.of("vts:read"));
+        user.setGroups(java.util.List.of(group));
+        when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
+        assertThat(permissionRoleService.checkPermission(userId, "vts", "update")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "vts", "read")).isFalse();
+    }
+
+    private User userWithPermission(String permissionCode) {
         User user = new User();
         user.setId(userId);
-        user.setRoles(Set.of(role));
+        UserPermissionOverride override = new UserPermissionOverride();
+        override.setUser(user);
+        override.setPermissionCode(permissionCode);
+        user.setPermissionOverrides(java.util.List.of(override));
         return user;
     }
 }

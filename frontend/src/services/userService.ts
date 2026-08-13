@@ -1,44 +1,26 @@
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import type { PaginatedResponse, ApiResponse } from '../types/common';
-import { MOCK_USERS } from './mockData';
 import api from './api';
-
-// Simulate network delay
-const delay = (ms = 600) => new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 300));
-
-// In-memory mutable copy
-let users: User[] = [...MOCK_USERS];
 
 function extractData<T>(response: any): T {
   return response.data?.data ?? response.data;
 }
 
 function mapUser(item: any): User {
-  let roleCode = item.role ?? '';
-  if (roleCode && !roleCode.startsWith('ROLE_')) {
-    roleCode = `ROLE_${roleCode}`;
-  }
-
-  const roleName = roleCode === 'ROLE_SYSTEM_ADMIN' ? 'Quản trị hệ thống' :
-                   roleCode === 'ROLE_ADMIN' ? 'Quản trị đơn vị' :
-                   roleCode === 'ROLE_SPECIALIST' ? 'Chuyên viên' :
-                   roleCode === 'ROLE_LEADER' ? 'Lãnh đạo' :
-                   roleCode === 'ROLE_PORT_OPERATOR' ? 'Người dùng tại Cảng' :
-                   roleCode === 'ROLE_PUBLIC_USER' ? 'Người dùng công cộng' :
-                   roleCode === 'ROLE_SECURITY_MONITOR' ? 'Giám sát an ninh (SIEM)' :
-                   roleCode === 'ROLE_MANAGER' ? 'Quản lý người dùng' :
-                   'Người xem (Viewer)';
-
   const statusMap: Record<string, User['status']> = {
-    'active': 'active',
-    'locked': 'locked',
-    'inactive': 'inactive',
-    'deleted': 'inactive',
-    'pending_verification': 'PENDING_VERIFICATION',
-    'pending_approval': 'PENDING_APPROVAL'
+    active: 'active',
+    locked: 'locked',
+    inactive: 'inactive',
+    deleted: 'inactive',
+    pending_verification: 'PENDING_VERIFICATION',
+    pending_approval: 'PENDING_APPROVAL',
   };
-
-  const statusKey = (item.status || 'ACTIVE').toLowerCase();
+  const statusKey = String(item.status || 'ACTIVE').toLowerCase();
+  const permissions = Array.isArray(item.permissionCodes)
+    ? item.permissionCodes
+    : Array.isArray(item.permissions)
+      ? item.permissions.map((permission: any) => typeof permission === 'string' ? permission : permission.code).filter(Boolean)
+      : undefined;
 
   return {
     id: item.id ?? '',
@@ -46,8 +28,6 @@ function mapUser(item: any): User {
     fullName: item.fullName ?? '',
     email: item.email ?? '',
     phone: item.phone ?? '',
-    roleId: roleCode,
-    roleName,
     orgUnitId: item.orgUnitId ?? undefined,
     orgUnitName: item.orgUnitName ?? undefined,
     status: statusMap[statusKey] || 'active',
@@ -56,16 +36,7 @@ function mapUser(item: any): User {
     updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : '',
     groupIds: Array.isArray(item.groupIds) ? item.groupIds : undefined,
     groupNames: Array.isArray(item.groupNames) ? item.groupNames : undefined,
-    permissionCodes: Array.isArray(item.permissionCodes)
-      ? item.permissionCodes
-      : Array.isArray(item.permissions)
-        ? item.permissions.map((permission: any) => typeof permission === 'string' ? permission : permission.code).filter(Boolean)
-        : undefined,
-    permissionNames: Array.isArray(item.permissionNames)
-      ? item.permissionNames
-      : Array.isArray(item.permissions)
-        ? item.permissions.map((permission: any) => typeof permission === 'string' ? permission : permission.name).filter(Boolean)
-        : undefined,
+    permissionCodes: permissions,
     createdBy: item.createdBy ?? undefined,
     createdByName: item.createdByName ?? undefined,
     updatedBy: item.updatedBy ?? undefined,
@@ -77,102 +48,64 @@ function mapUser(item: any): User {
 }
 
 export const userService = {
-  async getStatusCounts(): Promise<Record<string, number>> {
-    const resp = await api.get('/users/status-counts');
-    return extractData<Record<string, number>>(resp);
-  },
-
   async list(params: {
     page?: number;
     pageSize?: number;
     search?: string;
-    roleId?: string;
     status?: string;
     sortField?: string;
     sortOrder?: 'ascend' | 'descend' | null;
   }): Promise<PaginatedResponse<User>> {
-    const backendPage = params.page ? params.page - 1 : 0;
-
-    const resp = await api.get('/users', {
+    const response = await api.get('/users', {
       params: {
-        search: params.search,
-        roleCode: params.roleId,
+        search: params.search?.trim() || undefined,
         status: params.status ? params.status.toUpperCase() : undefined,
-        page: backendPage,
-        size: params.pageSize || 10,
-      }
+        page: params.page ? params.page - 1 : 0,
+        size: params.pageSize || 20,
+        sortField: params.sortField || undefined,
+        sortOrder: params.sortOrder || undefined,
+      },
     });
-
-    const rawData: any = extractData(resp);
-    const items: any[] = Array.isArray(rawData)
-      ? rawData
-      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
-
-    const total = Array.isArray(rawData) ? rawData.length : (rawData?.totalElements || 0);
-
-    let mappedUsers = items.map(mapUser);
-
-    if (params.sortField && params.sortOrder) {
-      const field = params.sortField;
-      const order = params.sortOrder;
-      mappedUsers.sort((a: any, b: any) => {
-        let valA = a[field] ?? '';
-        let valB = b[field] ?? '';
-
-        if (typeof valA === 'string') {
-          valA = valA.localeCompare(valB, 'vi', { sensitivity: 'base' });
-          return order === 'ascend' ? valA : -valA;
-        }
-
-        if (valA < valB) return order === 'ascend' ? -1 : 1;
-        if (valA > valB) return order === 'ascend' ? 1 : -1;
-        return 0;
-      });
-    }
-
+    const rawData: any = extractData(response);
+    const items: any[] = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.content) ? rawData.content : []);
     return {
-      data: mappedUsers,
-      total,
+      data: items.map(mapUser),
+      total: Array.isArray(rawData) ? rawData.length : (rawData?.totalElements || 0),
       page: params.page || 1,
-      pageSize: params.pageSize || 10,
+      pageSize: params.pageSize || 20,
       statusCounts: rawData?.statusCounts,
     };
   },
 
   async getById(id: string): Promise<ApiResponse<User>> {
-    const resp = await api.get(`/users/${id}`);
-    const u = mapUser(extractData(resp));
-    return { success: true, data: u };
+    const response = await api.get(`/users/${id}`);
+    return { success: true, data: mapUser(extractData(response)) };
   },
 
   async create(payload: CreateUserPayload): Promise<ApiResponse<User>> {
-    const resp = await api.post('/users', {
+    const response = await api.post('/users', {
       username: payload.username,
       fullName: payload.fullName,
       email: payload.email,
       phone: payload.phone,
-      password: payload.password || 'admin123',
-      role: payload.role,
+      password: payload.password,
+      permissionCodes: payload.permissionCodes,
       orgUnitId: payload.orgUnitId,
-      status: 'ACTIVE'
+      status: 'ACTIVE',
     });
-
-    const u = mapUser(extractData(resp));
-    return { success: true, data: u };
+    return { success: true, data: mapUser(extractData(response)) };
   },
 
   async update(id: string, payload: UpdateUserPayload): Promise<ApiResponse<User>> {
-    const resp = await api.put(`/users/${id}`, {
+    const response = await api.put(`/users/${id}`, {
       fullName: payload.fullName,
       email: payload.email,
       phone: payload.phone,
-      role: payload.role,
+      permissionCodes: payload.permissionCodes,
       orgUnitId: payload.orgUnitId,
-      status: payload.status ? payload.status.toUpperCase() : undefined
+      status: payload.status ? payload.status.toUpperCase() : undefined,
     });
-
-    const u = mapUser(extractData(resp));
-    return { success: true, data: u };
+    return { success: true, data: mapUser(extractData(response)) };
   },
 
   async delete(id: string): Promise<ApiResponse<null>> {
@@ -181,17 +114,14 @@ export const userService = {
   },
 
   async toggleLock(id: string, currentStatus: string): Promise<ApiResponse<User>> {
-    const isCurrentlyLocked = currentStatus.toLowerCase() === 'locked';
-    const endpoint = isCurrentlyLocked ? `/users/${id}/unlock` : `/users/${id}/lock`;
-    const resp = await api.post(endpoint);
-    const u = mapUser(extractData(resp));
-    return { success: true, data: u };
+    const endpoint = currentStatus.toLowerCase() === 'locked' ? `/users/${id}/unlock` : `/users/${id}/lock`;
+    const response = await api.post(endpoint);
+    return { success: true, data: mapUser(extractData(response)) };
   },
 
   async changeStatus(id: string, status: string): Promise<ApiResponse<User>> {
-    const resp = await api.patch(`/users/${id}/status`, { status });
-    const u = mapUser(extractData(resp));
-    return { success: true, data: u };
+    const response = await api.patch(`/users/${id}/status`, { status });
+    return { success: true, data: mapUser(extractData(response)) };
   },
 
   async resetPassword(id: string, newPassword: string): Promise<ApiResponse<null>> {
@@ -204,33 +134,54 @@ export const userService = {
     return { success: true, data: null };
   },
 
-  async getUserRoles(userId: string): Promise<any[]> {
-    const resp = await api.get(`/v1/users/${userId}/roles`);
-    return extractData<any[]>(resp) || [];
-  },
-
-  async assignUserRole(userId: string, roleCode: string): Promise<ApiResponse<User>> {
-    const resp = await api.post(`/v1/users/${userId}/roles`, { roleCode });
-    return { success: true, data: mapUser(extractData(resp)) };
-  },
-
-  async revokeUserRole(userId: string, roleId: string): Promise<ApiResponse<User>> {
-    const resp = await api.delete(`/v1/users/${userId}/roles/${roleId}`);
-    return { success: true, data: mapUser(extractData(resp)) };
-  },
-
   async getUserPermissions(userId: string): Promise<any[]> {
-    const resp = await api.get(`/v1/users/${userId}/permissions`);
-    return extractData<any[]>(resp) || [];
+    const response = await api.get(`/users/${userId}/permissions`);
+    return extractData<any[]>(response) || [];
   },
 
   async grantUserPermission(userId: string, permissionCode: string, reason?: string): Promise<ApiResponse<any>> {
-    const resp = await api.post(`/v1/users/${userId}/permissions`, { permissionCode, reason });
-    return { success: true, data: extractData(resp) };
+    const response = await api.post(`/users/${userId}/permissions`, { permissionCode: permissionCode.trim(), reason });
+    return { success: true, data: extractData(response) };
+  },
+
+  async replaceDirectPermissions(userId: string, permissionCodes: string[]): Promise<string[]> {
+    const requested = [...new Set(
+      (permissionCodes || [])
+        .map((code) => code.trim().toLowerCase())
+        .filter(Boolean),
+    )];
+
+    try {
+      const response = await api.put(`/users/${userId}/permissions`, requested);
+      const items = extractData<any[]>(response) || [];
+      return items.map((item) => typeof item === 'string' ? item : item.permissionCode).filter(Boolean);
+    } catch (error: any) {
+      // Keep compatibility with a BE instance that has the GET/POST/DELETE
+      // endpoints but has not loaded the newer bulk PUT endpoint yet.
+      if (error.response?.status !== 404) throw error;
+
+      const currentItems = await userService.getUserPermissions(userId);
+      const current = new Set(currentItems
+        .map((item) => typeof item === 'string' ? item : item.permissionCode)
+        .filter(Boolean)
+        .map((code: string) => code.trim().toLowerCase()));
+      const next = new Set(requested);
+
+      await Promise.all([
+        ...requested
+          .filter((code) => !current.has(code))
+          .map((code) => userService.grantUserPermission(userId, code)),
+        ...[...current]
+          .filter((code) => !next.has(code))
+          .map((code) => userService.revokeUserPermission(userId, code)),
+      ]);
+
+      return requested;
+    }
   },
 
   async revokeUserPermission(userId: string, permissionCode: string): Promise<ApiResponse<null>> {
-    await api.delete(`/v1/users/${userId}/permissions/${permissionCode}`);
+    await api.delete(`/users/${userId}/permissions/${permissionCode.trim()}`);
     return { success: true, data: null };
   },
 };

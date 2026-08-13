@@ -2,6 +2,7 @@ package com.hanghai.kchtg.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -37,11 +38,15 @@ public class CreateUserRequest {
     @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")
     private String phone;
 
-    /** Vai trò (e.g. ROLE_USER, ROLE_ADMIN). Mặc định là ROLE_USER. */
-    @Size(max = 50, message = "Vai trò không được vượt quá 50 ký tự")
-    @NotBlank(message = "Vui lòng chọn vai trò")
-    private String role;
+    /**
+     * Các permission cấp trực tiếp cho tài khoản (không bắt buộc).
+     *
+     * Quyền được cấp sau khi tạo user thông qua thao tác "Phân quyền";
+     * không còn là trường bắt buộc của form tạo tài khoản.
+     */
+    private List<String> permissionCodes;
 
+    @NotNull(message = "Vui lòng chọn đơn vị trực thuộc")
     private UUID orgUnitId;
 
     private List<UUID> groupIds;

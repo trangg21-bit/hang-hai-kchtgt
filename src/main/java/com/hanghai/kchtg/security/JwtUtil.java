@@ -1,8 +1,6 @@
 package com.hanghai.kchtg.security;
 
 import com.hanghai.kchtg.security.service.TokenClaimsBuilder;
-import com.hanghai.kchtg.user.entity.Permission;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
@@ -107,31 +105,15 @@ public class JwtUtil {
     public String generateAccessToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
-        String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode()
-                : user.getRoles().stream().map(Role::getCode).findFirst().orElse("ROLE_USER");
-
         Set<String> allPerms = user.getAllPermissions();
-        List<String> permissions;
-        boolean isAdminRole = role.toUpperCase().contains("ADMIN")
-                || user.getRoles().stream()
-                        .anyMatch(r -> r.getCode() != null && r.getCode().toUpperCase().contains("ADMIN"))
-                || allPerms.contains("admin:manage")
-                || allPerms.contains("*");
-        if (isAdminRole) {
-            permissions = List.of("admin:manage", "*");
-        } else {
-            permissions = new ArrayList<>(allPerms);
-        }
+        List<String> permissions = new ArrayList<>(allPerms);
 
         Map<String, Object> claims = TokenClaimsBuilder.builder()
                 .subject(user.getUsername())
                 .jti(UUID.randomUUID().toString())
                 .userId(user.getId().toString())
                 .claim("email", user.getEmail())
-                .role(role)
-                .roles(List.of(role))
                 .permissions(permissions)
-                .claim("role_level", resolveRoleLevel(role))
                 .claim("totp_enabled", Boolean.TRUE.equals(user.getTotpEnabled()))
                 .claim("permission_version", user.getPermissionVersion())
                 .build();

@@ -7,7 +7,6 @@ import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
@@ -26,9 +25,6 @@ public class PermissionRoleService {
     private static final Logger log = LoggerFactory.getLogger(PermissionRoleService.class);
 
     private final UserRepository userRepository;
-
-    @Value("${security.permission.super-admin-role-code:ROLE_SYSTEM_ADMIN}")
-    private String superAdminRoleCode;
 
     public PermissionRoleService(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -57,7 +53,7 @@ public class PermissionRoleService {
         if (user == null) {
             return false;
         }
-        // Super Admin bypass
+        // Global access is now a direct permission grant, not a role.
         if (isSuperAdmin(user)) {
             return true;
         }
@@ -77,25 +73,18 @@ public class PermissionRoleService {
                 || permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE_C2))
         );
 
-        return permissions.contains(requiredPermission)
+        return permissions.contains("*")
+                || permissions.contains(requiredPermission)
                 || permissions.contains(wildcardPermission)
                 || permissions.contains(aggregatePermission)
                 || legacyWritePermission
                 || isApproveMatch;
     }
 
-    /**
-     * Check if the user is a Super Admin by inspecting role codes.
-     */
+    /** Check whether the user has the direct global permission. */
     public boolean isSuperAdmin(User user) {
-        if (user == null || user.getRoles() == null) {
-            return false;
-        }
-        return user.getRoles().stream()
-                .anyMatch(role -> superAdminRoleCode.equals(role.getCode())
-                        || "ROLE_SYSTEM_ADMIN".equals(role.getCode())
-                        || "ROLE_SUPER_ADMIN".equals(role.getCode())
-                        || "SYSTEM_ADMIN".equals(role.getCode()));
+        Set<String> permissions = user == null ? Set.of() : user.getAllPermissions();
+        return permissions.contains("*") || permissions.contains("admin:all");
     }
 
     /**

@@ -26,7 +26,7 @@ import dayjs from 'dayjs';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { organizationService } from '../../services/organizationService';
 import type { NavigationChannelResponse, ListParams } from '../../types/navigationChannel';
-import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import NavigationChannelForm from './NavigationChannelForm';
 
@@ -40,8 +40,7 @@ const APPROVAL_STATUS_OPTIONS = [
 export default function NavigationChannelList() {
   const isInIframe = window.self !== window.top;
   const navigate = useNavigate();
-  const currentUser = useAuthStore((s) => s.user);
-  const userPermissions = currentUser?.permissions || [];
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterChannelCode, setFilterChannelCode] = useState('');
@@ -188,9 +187,9 @@ export default function NavigationChannelList() {
       key: 'action',
       width: 150,
       render: (_: unknown, record: NavigationChannelResponse) => {
-        const canRead = userPermissions.includes('navigationchannel:read');
-        const canUpdate = userPermissions.includes('navigationchannel:update');
-        const canDelete = userPermissions.includes('navigationchannel:delete');
+        const canRead = hasPerm('navigationchannel:read');
+        const canUpdate = hasPerm('navigationchannel:update');
+        const canDelete = hasPerm('navigationchannel:delete');
         const isProposed = record.approvalStatus === 'PROPOSED';
         const isApproved = record.approvalStatus === 'APPROVED';
 
@@ -257,7 +256,7 @@ export default function NavigationChannelList() {
                 style={{ width: 200 }}
               />
               <Select
-                placeholder="Trạng thái phê duyệt"
+                placeholder="Tất cả"
                 options={APPROVAL_STATUS_OPTIONS}
                 value={filterStatus}
                 onChange={(val) => { setFilterStatus(val); setPage(1); }}

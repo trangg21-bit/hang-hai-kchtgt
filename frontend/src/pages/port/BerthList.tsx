@@ -515,7 +515,7 @@ export default function BerthList() {
       {/* ── Cơ bản: ĐVQL + Tên cảng biển + Tình trạng ──────────── */}
       <div style={{ marginBottom: 12, marginTop: 16 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Đơn vị quản lý</div>
-        <Select placeholder="Chọn đơn vị" showSearch optionFilterProp="label"
+        <Select placeholder="Tất cả" showSearch optionFilterProp="label"
           value={managingUnitId} onChange={(v) => { setManagingUnitId(v); setPage(1); }}
           options={[{ label: 'Tất cả', value: '__all__' }, ...organizations.map((o) => ({ label: o.name, value: o.id }))]}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
@@ -530,7 +530,7 @@ export default function BerthList() {
       */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tình trạng</div>
-        <Select placeholder="Chọn tình trạng" allowClear value={filterOperationalStatus}
+        <Select placeholder="Tất cả" allowClear value={filterOperationalStatus}
           onChange={(v) => { setFilterOperationalStatus(v); setPage(1); }}
           options={[
             { value: 'OPERATIONAL', label: 'Đang khai thác/Vận hành' },
@@ -544,7 +544,7 @@ export default function BerthList() {
       {filterCollapsed && (<>
       <div style={{ marginBottom: 12, marginTop: 4 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Thuộc cảng biển</div>
-        <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
+        <Select placeholder="Tất cả" allowClear showSearch optionFilterProp="label"
           value={filterPortId} onChange={(v) => { setFilterPortId(v); setPage(1); }}
           options={portOptions.map(o => ({ label: o.label, value: o.value }))}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
@@ -573,7 +573,7 @@ export default function BerthList() {
       */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Loại kết cấu</div>
-        <Select placeholder="Chọn loại" allowClear value={filterStructureType}
+        <Select placeholder="Tất cả" allowClear value={filterStructureType}
           onChange={(v) => { setFilterStructureType(v); setPage(1); }}
           options={STRUCTURE_TYPE_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
@@ -586,7 +586,7 @@ export default function BerthList() {
       </div>
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Địa điểm (Tỉnh/TP)</div>
-        <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+        <Select placeholder="Tất cả" allowClear showSearch
           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
           value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
           options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}

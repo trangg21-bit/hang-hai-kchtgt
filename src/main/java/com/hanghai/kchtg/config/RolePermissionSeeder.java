@@ -140,6 +140,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "Xóa văn bản pháp lý");
 
         // ---- admin/system settings ----
+        seedPermission(permissionsByCode, "admin", "all", "Toàn quyền hệ thống",
+                "Toàn bộ quyền trực tiếp trên hệ thống");
         seedPermission(permissionsByCode, "admin", "manage", "Quản trị hệ thống",
                 "Cấu hình hệ thống, chính sách bảo mật");
         seedPermission(permissionsByCode, "admin", "view", "Xem log hệ thống",
@@ -507,6 +509,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "document", "create", "Tạo văn bản pháp lý", "Tạo mới văn bản pháp lý");
         seedPermission(newPerms, "document", "update", "Sửa văn bản pháp lý", "Chỉnh sửa văn bản pháp lý");
         seedPermission(newPerms, "document", "delete", "Xóa văn bản pháp lý", "Xóa văn bản pháp lý");
+        seedPermission(newPerms, "admin", "all", "Toàn quyền hệ thống", "Toàn bộ quyền trực tiếp trên hệ thống");
         seedPermission(newPerms, "admin", "manage", "Quản trị hệ thống", "Cấu hình hệ thống, chính sách bảo mật");
         seedPermission(newPerms, "admin", "view", "Xem log hệ thống", "Xem nhật ký truy cập và audit log");
         seedPermission(newPerms, "log", "manage", "Quản lý log", "Xem, xuất, lưu trữ audit log");

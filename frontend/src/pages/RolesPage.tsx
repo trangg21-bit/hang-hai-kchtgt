@@ -19,7 +19,6 @@ import {
   ExclamationCircleOutlined,
   KeyOutlined,
 } from '@ant-design/icons';
-import type { TreeProps } from 'antd';
 import dayjs from 'dayjs';
 import {
   useRoles,
@@ -27,7 +26,7 @@ import {
   useUpdateRole,
   useDeleteRole,
 } from '../hooks/useRoles';
-import { usePermissions } from '../hooks/usePermissions';
+import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
 import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
@@ -146,16 +145,6 @@ export default function RolesPage() {
   const selectedLeafCount = useMemo(() => {
     return checkedKeys.filter((k) => leafKeysSet.has(k)).length;
   }, [checkedKeys, leafKeysSet]);
-
-  const handleTreeCheck: TreeProps['onCheck'] = useCallback(
-    (checked) => {
-      const keys = Array.isArray(checked) ? checked : checked.checked;
-      const mapped = keys.map(String);
-      setCheckedKeys(mapped);
-      form.setFieldsValue({ menuCodes: mapped, permissions: mapped });
-    },
-    [form],
-  );
 
   const handleSubmit = useCallback(async () => {
     try {
@@ -396,8 +385,13 @@ export default function RolesPage() {
                         checkable
                         expandedKeys={effectiveExpandedKeys}
                         onExpand={(keys) => setUserExpandedKeys(keys as string[])}
-                        checkedKeys={checkedKeys}
-                        onCheck={handleTreeCheck}
+                        checkedKeys={getVisiblePermissionKeys(checkedKeys, filteredTree)}
+                        onCheck={(checked) => {
+                          const keys = Array.isArray(checked) ? checked : checked.checked;
+                          const merged = mergePermissionKeys(checkedKeys, keys.map(String), filteredTree);
+                          setCheckedKeys(merged);
+                          form.setFieldsValue({ menuCodes: merged, permissions: merged });
+                        }}
                         treeData={filteredTree}
                         style={{ maxHeight: 420, overflow: 'auto' }}
                       />

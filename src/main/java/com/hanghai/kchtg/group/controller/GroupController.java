@@ -54,6 +54,7 @@ public class GroupController {
      * - myGroups (optional: true = only groups user belongs to, Ca nhan)
      */
     @GetMapping
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<PaginatedGroupResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -81,6 +82,7 @@ public class GroupController {
      * Role: All authenticated users
      */
     @GetMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<UserGroupResponse>> get(@PathVariable UUID id) {
         UserGroupResponse group = service.findById(id);
         // Re-resolve org name via cache to ensure non-null in direct GET response
@@ -211,6 +213,7 @@ public class GroupController {
      * Role: Admin, Lanh dao, Can bo, Ca nhan
      */
     @GetMapping("/{id}/members")
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<PaginatedGroupMemberResponse>> listMembers(
             @PathVariable UUID id,
             @RequestParam(required = false) String search,

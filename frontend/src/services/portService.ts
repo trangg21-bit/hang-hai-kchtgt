@@ -36,13 +36,13 @@ const clearPortOptionsCache = () => {
 // ── Port CRUD ───────────────────────────────────────────────────
 
 export const portCRUD = {
-  async getOptions(): Promise<{ id: string; portCode?: string; portName?: string }[]> {
+  async getOptions(): Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> {
     const getWin = () => (window.top || window) as any;
     if (getWin().__portOptionsCache) {
       return getWin().__portOptionsCache;
     }
     try {
-      const res = await api.get('/v1/ports/options');
+      const res = await api.get('/common/options/ports');
       const list = res.data.data || [];
       getWin().__portOptionsCache = list;
       return list;

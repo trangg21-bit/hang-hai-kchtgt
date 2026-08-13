@@ -228,7 +228,7 @@ export default function PortPlanningList() {
             style={{ width: 250 }}
           />
           <Select
-            placeholder="Tình trạng quy hoạch"
+            placeholder="Tất cả"
             value={filterStatus}
             onChange={(val) => {
               setFilterStatus(val);

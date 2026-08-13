@@ -32,8 +32,8 @@ public class UpdateUserRequest {
     @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")
     private String phone;
 
-    @Size(max = 50, message = "Vai trò không được vượt quá 50 ký tự")
-    private String role;
+    /** Nếu khác null, thay thế toàn bộ permission trực tiếp của tài khoản. */
+    private List<String> permissionCodes;
 
     private UUID orgUnitId;
 
