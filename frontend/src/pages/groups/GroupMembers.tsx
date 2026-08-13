@@ -14,11 +14,13 @@ import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import { spaceMd, spaceFormField, radiusPill, fontSizeMd, fontSizeLg, fontWeightBold, actionPrimary, textSecondary, borderDefault, cardStyle } from '../../tokens';
 import { colors } from '../../theme';
+import { usePermissionStore } from '../../store/permissionStore';
 
 export default function GroupMembers() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [form] = Form.useForm();
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [dataSource, setDataSource] = useState<GroupMember[]>([]);
   const [total, setTotal] = useState(0);
@@ -110,9 +112,11 @@ export default function GroupMembers() {
   const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
 
   // ---- Row actions ----
-  const rowActions = useCallback((record: GroupMember) => [
-    { key: 'remove', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleRemove(record), danger: true },
-  ], [handleRemove]);
+  const rowActions = useCallback((record: GroupMember) => (
+    hasPerm('groupmember:manage')
+      ? [{ key: 'remove', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleRemove(record), danger: true }]
+      : []
+  ), [hasPerm, handleRemove]);
 
   // ---- Columns ----
   const columns = useMemo(() => [
@@ -145,8 +149,8 @@ export default function GroupMembers() {
   // ---- Header actions ----
   const headerActions = useMemo(() => [
     { key: 'back', label: 'Quay lại', variant: 'subtle' as const, icon: <ArrowLeftOutlined />, onClick: () => navigate('/groups') },
-    { key: 'add', label: 'Thêm thành viên', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => setAddModalOpen(true) },
-  ], [navigate]);
+    ...(hasPerm('groupmember:manage') ? [{ key: 'add', label: 'Thêm thành viên', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => setAddModalOpen(true) }] : []),
+  ], [hasPerm, navigate]);
 
   return (
     <div style={{ minHeight: '100%', marginTop: -8 }}>

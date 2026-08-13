@@ -273,7 +273,7 @@ export default function BeaconHistoryList() {
           <Col xs={24} md={18}>
             <Space wrap>
               <Select
-                placeholder="Loại báo hiệu"
+                placeholder="Tất cả"
                 style={{ width: 180 }}
                 value={beaconType}
                 onChange={(val) => setBeaconType(val)}
@@ -293,7 +293,7 @@ export default function BeaconHistoryList() {
                 onChange={handleDateChange}
               />
               <Select
-                placeholder="Loại hành động"
+                placeholder="Tất cả"
                 allowClear
                 style={{ width: 180 }}
                 value={actionType}

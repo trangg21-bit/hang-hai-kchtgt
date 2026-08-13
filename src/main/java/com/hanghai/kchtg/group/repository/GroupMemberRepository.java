@@ -70,10 +70,16 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
       @Query(value = "SELECT gm FROM GroupMember gm "
                   + "LEFT JOIN FETCH gm.user u "
                   + "WHERE gm.userGroup.id = :groupId AND gm.status = :status "
-                  + "AND (CAST(:search AS string) IS NULL OR LOWER(u.fullName) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.email) LIKE LOWER(CAST(:search AS string)))", countQuery = "SELECT COUNT(gm) FROM GroupMember gm "
+                  + "AND (CAST(:search AS string) IS NULL OR "
+                  + "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string) OR "
+                  + "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string) OR "
+                  + "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string))", countQuery = "SELECT COUNT(gm) FROM GroupMember gm "
                               + "LEFT JOIN gm.user u "
                               + "WHERE gm.userGroup.id = :groupId AND gm.status = :status "
-                              + "AND (CAST(:search AS string) IS NULL OR LOWER(u.fullName) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.username) LIKE LOWER(CAST(:search AS string)) OR LOWER(u.email) LIKE LOWER(CAST(:search AS string)))")
+                              + "AND (CAST(:search AS string) IS NULL OR "
+                              + "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string) OR "
+                              + "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string) OR "
+                              + "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string))")
       Page<GroupMember> searchMembers(@Param("groupId") UUID groupId,
                   @Param("status") GroupMemberStatus status,
                   @Param("search") String search,

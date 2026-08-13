@@ -58,7 +58,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/v1/dashboard/",
             "/api/v1/integration/share/",
             "/api/org-units/options",
-            "/api/v1/org-units/options"
+            "/api/v1/org-units/options",
+            "/api/common/options/"
     );
 
     private static final Set<String> SKIP_PERMISSION_ORG_UNIT_PATHS = Set.of(
@@ -109,16 +110,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             return;
         }
 
-        // The JWT has already been signature-validated by JwtAuthFilter. Keep
-        // the middleware consistent with @PreAuthorize: system-admin
-        // authorities are global and must not depend on a second DB role
-        // lookup, which can be stale while the token is still valid.
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (isSystemAdmin(authentication)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         // Check permission
         if (!permissionRoleService.checkPermission(userId, resource, action)) {
             String requiredPermission = resource + ":" + action;
@@ -128,17 +119,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private boolean isSystemAdmin(Authentication authentication) {
-        if (authentication == null || authentication.getAuthorities() == null) {
-            return false;
-        }
-        return authentication.getAuthorities().stream()
-                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
-                .anyMatch(authority -> "ROLE_SYSTEM_ADMIN".equals(authority)
-                        || "ROLE_SUPER_ADMIN".equals(authority)
-                        || "SYSTEM_ADMIN".equals(authority));
     }
 
     private boolean shouldSkip(String path, String method) {

@@ -122,6 +122,10 @@ public class AuthController {
             TwoFactorLoginResponse response = totpAuthService.verifyTotp(request, httpRequest);
             User user = userRepository.findByIdWithRelations(response.getUser().getId()).orElse(null);
             if (user != null) {
+                // TOTP is the second and final authentication step, so this is
+                // the point at which the login must be recorded.
+                user.setLastLoginAt(LocalDateTime.now());
+                user = userRepository.save(user);
                 httpRequest.setAttribute("authenticatedUser", user);
                 httpRequest.setAttribute("authenticatedUserRole", response.getUser().getRole());
             }

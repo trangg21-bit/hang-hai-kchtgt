@@ -2,7 +2,6 @@ package com.hanghai.kchtg.user.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.User;
 import lombok.Data;
 
@@ -19,13 +18,11 @@ public class UserDetailResponse {
     private String email;
     private String fullName;
     private String phone;
-    private String role;
     private UUID orgUnitId;
     private String orgUnitName;
     private List<UUID> groupIds;
     private List<String> groupNames;
     private List<String> permissionCodes;
-    private List<String> permissionNames;
     private com.hanghai.kchtg.user.entity.UserStatus status;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
@@ -43,19 +40,12 @@ public class UserDetailResponse {
         response.email = user.getEmail();
         response.fullName = user.getFullName();
         response.phone = user.getPhone();
-        response.role = user.getPrimaryRoleCode();
         response.orgUnitId = user.getOrgUnit() == null ? null : user.getOrgUnit().getId();
         response.orgUnitName = response.orgUnitId == null || cache == null ? null : cache.getName(response.orgUnitId);
         if (response.orgUnitName == null && user.getOrgUnit() != null) response.orgUnitName = user.getOrgUnit().getName();
         response.groupIds = user.getGroups() == null ? List.of() : user.getGroups().stream().map(g -> g.getId()).toList();
         response.groupNames = user.getGroups() == null ? List.of() : user.getGroups().stream().map(g -> g.getName()).toList();
         response.permissionCodes = user.getAllPermissions().stream().sorted().toList();
-        response.permissionNames = user.getRoles().stream()
-                .flatMap(role -> role.getPermissions().stream())
-                .map(Permission::getName)
-                .distinct()
-                .sorted()
-                .toList();
         response.status = user.getStatus();
         response.lastLoginAt = user.getLastLoginAt();
         response.createdAt = user.getCreatedAt();

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
 
 /**
@@ -38,9 +39,16 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
     @Query("SELECT MAX(p.portCode) FROM Port p WHERE p.portCode LIKE 'CB-%' AND p.deletedAt IS NULL")
     Optional<String> findMaxPortCode();
 
-    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName) " +
+    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
            "FROM Port p WHERE p.deletedAt IS NULL ORDER BY p.portName ASC")
     List<PortOptionResponse> findAllOptions();
+
+    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
+           "FROM Port p WHERE p.deletedAt IS NULL AND p.orgUnitId IN :orgUnitIds ORDER BY p.portName ASC")
+    List<PortOptionResponse> findOptionsByOrgUnitIds(@Param("orgUnitIds") Collection<UUID> orgUnitIds);
+
+    @Query("SELECT p FROM Port p WHERE p.id = :id AND p.deletedAt IS NULL")
+    Optional<Port> findActiveById(@Param("id") UUID id);
 
     /**
      * All active (non-deleted) ports for the port directory cache.

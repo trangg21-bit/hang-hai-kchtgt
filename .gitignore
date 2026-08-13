@@ -27,6 +27,8 @@ test-results/
 .playwright-mcp/
 .ai-scratch/
 Python/
+.m2/
+.tmp/
 
 # Local AI Customizations (Workspace Rules)
 .agents/

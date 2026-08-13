@@ -6,6 +6,7 @@ import {
   radiusPill, actionPrimary, textSecondary, borderDefault,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { normalizeSearchText } from '../org-unit';
 
 export interface FilterField {
   key: string; type: 'search' | 'select' | 'dateRange' | 'date' | 'radio'; label: string;
@@ -96,8 +97,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
                   style={{ borderRadius: radiusPill, height: 40 }} />
               )}
               {field.type === 'select' && (
-                <Select placeholder={field.placeholder} allowClear showSearch
-                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                <Select placeholder="Tất cả" allowClear showSearch
+                  filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
                   value={values[field.key] || undefined}
                   onChange={(val) => handleFieldChange(field.key, val)}
                   options={field.options}
@@ -133,8 +134,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
               <div style={{ flex: '1 1 160px', minWidth: 140 }}>
                 <div style={labelStyle}>Trạng thái</div>
                 <Select
-                  placeholder="Chọn trạng thái"
+                  placeholder="Tất cả"
                   allowClear
+                  showSearch
+                  filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
                   value={statusValue}
                   onChange={(val) => onStatusChange && onStatusChange(val)}
                   options={statusOptions.map(o => ({ value: o.value, label: o.label }))}

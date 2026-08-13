@@ -9,7 +9,6 @@ import { useAuthStore } from './store/authStore';
 import AppLayout from './components/AppLayout';
 import { Spin } from 'antd';
 const UsersPage = lazy(() => import('./pages/UsersPage'));
-const RolesPage = lazy(() => import('./pages/RolesPage'));
 const PointObjectList = lazy(() => import('./pages/gis/PointObjectList'));
 const PointObjectForm = lazy(() => import('./pages/gis/PointObjectForm'));
 const LineObjectList = lazy(() => import('./pages/gis/LineObjectList'));
@@ -124,8 +123,7 @@ export default function App() {
               {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/users" element={<PermissionGuard permission="admin:manage"><UsersPage /></PermissionGuard>} />
-                <Route path="/roles" element={<PermissionGuard permission="role:manage"><RolesPage /></PermissionGuard>} />
+                <Route path="/users" element={<PermissionGuard permission="user:read"><UsersPage /></PermissionGuard>} />
 
                 {/* Organization — Đơn vị */}
                 <Route path="/organizations" element={<PermissionGuard permission="orgunit:read"><UnitList /></PermissionGuard>} />
@@ -134,25 +132,25 @@ export default function App() {
                 <Route path="/organizations/tree/:id" element={<PermissionGuard permission="orgunit:manage"><UnitTree /></PermissionGuard>} />
 
                 {/* Groups — Nhóm */}
-                <Route path="/groups" element={<PermissionGuard permission="group:manage"><GroupList /></PermissionGuard>} />
-                <Route path="/groups/create" element={<PermissionGuard permission="group:manage"><GroupForm /></PermissionGuard>} />
-                <Route path="/groups/:id/edit" element={<PermissionGuard permission="group:manage"><GroupForm /></PermissionGuard>} />
-                <Route path="/groups/:id/members" element={<PermissionGuard permission="group:manage"><GroupMembers /></PermissionGuard>} />
+                <Route path="/groups" element={<PermissionGuard permission="group:read"><GroupList /></PermissionGuard>} />
+                <Route path="/groups/create" element={<PermissionGuard permission="group:create"><GroupForm /></PermissionGuard>} />
+                <Route path="/groups/:id/edit" element={<PermissionGuard permission="group:edit"><GroupForm /></PermissionGuard>} />
+                <Route path="/groups/:id/members" element={<PermissionGuard permission="group:read"><GroupMembers /></PermissionGuard>} />
 
                 {/* GIS - Bản đồ */}
                 <Route path="/gis/points" element={<PermissionGuard permission="data:read"><PointObjectList /></PermissionGuard>} />
-                <Route path="/gis/points/create" element={<PermissionGuard permission="data:read"><PointObjectForm /></PermissionGuard>} />
-                <Route path="/gis/points/:id/edit" element={<PermissionGuard permission="data:read"><PointObjectForm /></PermissionGuard>} />
+                <Route path="/gis/points/create" element={<PermissionGuard permission="data:create"><PointObjectForm /></PermissionGuard>} />
+                <Route path="/gis/points/:id/edit" element={<PermissionGuard permission="data:update"><PointObjectForm /></PermissionGuard>} />
                 <Route path="/gis/points/:id" element={<PermissionGuard permission="data:read"><PointObjectForm /></PermissionGuard>} />
 
                 <Route path="/gis/lines" element={<PermissionGuard permission="data:read"><LineObjectList /></PermissionGuard>} />
-                <Route path="/gis/lines/create" element={<PermissionGuard permission="data:read"><LineObjectForm /></PermissionGuard>} />
-                <Route path="/gis/lines/:id/edit" element={<PermissionGuard permission="data:read"><LineObjectForm /></PermissionGuard>} />
+                <Route path="/gis/lines/create" element={<PermissionGuard permission="data:create"><LineObjectForm /></PermissionGuard>} />
+                <Route path="/gis/lines/:id/edit" element={<PermissionGuard permission="data:update"><LineObjectForm /></PermissionGuard>} />
                 <Route path="/gis/lines/:id" element={<PermissionGuard permission="data:read"><LineObjectForm /></PermissionGuard>} />
 
                 <Route path="/gis/polygons" element={<PermissionGuard permission="data:read"><PolygonObjectList /></PermissionGuard>} />
-                <Route path="/gis/polygons/create" element={<PermissionGuard permission="data:read"><PolygonObjectForm /></PermissionGuard>} />
-                <Route path="/gis/polygons/:id/edit" element={<PermissionGuard permission="data:read"><PolygonObjectForm /></PermissionGuard>} />
+                <Route path="/gis/polygons/create" element={<PermissionGuard permission="data:create"><PolygonObjectForm /></PermissionGuard>} />
+                <Route path="/gis/polygons/:id/edit" element={<PermissionGuard permission="data:update"><PolygonObjectForm /></PermissionGuard>} />
                 <Route path="/gis/polygons/:id" element={<PermissionGuard permission="data:read"><PolygonObjectForm /></PermissionGuard>} />
 
                 <Route path="/gis/layers" element={<PermissionGuard permission="map:manage"><MapLayerList /></PermissionGuard>} />
@@ -163,8 +161,8 @@ export default function App() {
 
                 {/* Connections — Liên thông & tích hợp dữ liệu */}
                 <Route path="/connections" element={<PermissionGuard permission="connection:read"><ConnectionList /></PermissionGuard>} />
-                <Route path="/connections/create" element={<PermissionGuard permission="connection:read"><ConnectionForm /></PermissionGuard>} />
-                <Route path="/connections/:id/edit" element={<PermissionGuard permission="connection:read"><ConnectionForm /></PermissionGuard>} />
+                <Route path="/connections/create" element={<PermissionGuard permission="connection:manage"><ConnectionForm /></PermissionGuard>} />
+                <Route path="/connections/:id/edit" element={<PermissionGuard permission="connection:manage"><ConnectionForm /></PermissionGuard>} />
                 <Route path="/connections/:id/health" element={<PermissionGuard permission="connection:read"><ConnectionHealth /></PermissionGuard>} />
 
                 {/* F-004: Quản lý kết nối liên thông chia sẻ dữ liệu */}

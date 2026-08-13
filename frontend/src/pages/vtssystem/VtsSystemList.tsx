@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select, TreeSelect } from 'antd';
+import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select } from 'antd';
 import {
   EditOutlined,
   DeleteOutlined,
@@ -14,6 +14,7 @@ import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemServic
 import type { VtsSystemResponse, ListParams, ApprovalRequest } from '../../types/vtsSystem';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
@@ -32,6 +33,7 @@ import {
 import { colors } from '../../theme';
 import dayjs from 'dayjs';
 import { getProvinceNameById } from '../../types/common';
+import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 
 function formatDate(value: string | undefined): string {
   return value ? dayjs(value).format('DD/MM/YYYY HH:mm') : '—';
@@ -65,43 +67,6 @@ const CONDITION_COLOR: Record<string, string> = {
 };
 
 const HISTORY_PAGE_SIZE = 20;
-
-type OrgUnitOption = {
-  label: string;
-  value: string;
-  parentId?: string;
-};
-
-type OrgUnitTreeOption = {
-  title: string;
-  value: string;
-  key: string;
-  children?: OrgUnitTreeOption[];
-};
-
-function buildOrgUnitTree(options: OrgUnitOption[]): OrgUnitTreeOption[] {
-  const nodes = new Map<string, OrgUnitTreeOption>();
-  options.forEach((option) => {
-    nodes.set(option.value, {
-      title: option.label,
-      value: option.value,
-      key: option.value,
-    });
-  });
-
-  const roots: OrgUnitTreeOption[] = [];
-  options.forEach((option) => {
-    const node = nodes.get(option.value);
-    if (!node) return;
-    const parent = option.parentId ? nodes.get(option.parentId) : undefined;
-    if (parent) {
-      (parent.children ||= []).push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-  return roots;
-}
 
 // ── History helpers ──────────────────────────────────────────────
 
@@ -302,9 +267,7 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
 
 export default function VtsSystemList() {
   const currentUser = useAuthStore((s) => s.user);
-  const userPermissions = currentUser?.permissions || [];
-  const isAdmin = userPermissions.includes('*');
-  const hasPerm = useCallback((permission: string) => isAdmin || userPermissions.includes(permission), [isAdmin, userPermissions]);
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -312,8 +275,7 @@ export default function VtsSystemList() {
   const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>();
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
-  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitOption[]>([]);
-  const orgUnitTreeOptions = useMemo(() => buildOrgUnitTree(orgUnitOptions), [orgUnitOptions]);
+  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
 
@@ -359,8 +321,9 @@ export default function VtsSystemList() {
           const code = o.code || o.maDonVi;
           const name = o.name || o.unitName || o.tenDonVi || 'Đơn vị';
           return {
-            label: code ? `${code} - ${name}` : name,
-            value: String(o.id),
+            id: String(o.id),
+            name,
+            code,
             parentId: o.parentId ? String(o.parentId) : undefined,
           };
         }));
@@ -676,7 +639,7 @@ export default function VtsSystemList() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)', marginTop: -8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Hệ thống VTS' }]}
         actions={
@@ -698,17 +661,13 @@ export default function VtsSystemList() {
           <>
             <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Đơn vị quản lý</div>
-              <TreeSelect
-                placeholder="Chọn đơn vị"
+              <OrgUnitTreeSelect
+                organizations={orgUnitOptions}
+                placeholder="Tất cả"
                 allowClear
-                showSearch
-                treeNodeFilterProp="title"
-                treeLine
-                treeDefaultExpandAll
                 listHeight={256}
                 value={filterValues.orgUnitId}
                 onChange={(value) => setFilterValues((prev) => ({ ...prev, orgUnitId: value }))}
-                treeData={orgUnitTreeOptions}
                 style={{ ...selectStyle, width: '100%' }}
               />
             </div>

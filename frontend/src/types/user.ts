@@ -7,8 +7,6 @@ export interface User {
   email: string;
   phone: string;
   avatar?: string;
-  roleId: string;
-  roleName: string;
   orgUnitId?: string;
   orgUnitName?: string;
   status: Status;
@@ -18,7 +16,6 @@ export interface User {
   groupIds?: string[];
   groupNames?: string[];
   permissionCodes?: string[];
-  permissionNames?: string[];
   createdBy?: string;
   createdByName?: string;
   updatedBy?: string;
@@ -34,7 +31,7 @@ export interface CreateUserPayload {
   email: string;
   phone: string;
   password: string;
-  role: string;
+  permissionCodes?: string[];
   orgUnitId?: string;
 }
 
@@ -42,13 +39,12 @@ export interface UpdateUserPayload {
   fullName?: string;
   email?: string;
   phone?: string;
-  role?: string;
+  permissionCodes?: string[];
   orgUnitId?: string;
   status?: Status;
 }
 
 export interface UserFilters {
   search?: string;
-  roleId?: string;
   status?: Status;
 }

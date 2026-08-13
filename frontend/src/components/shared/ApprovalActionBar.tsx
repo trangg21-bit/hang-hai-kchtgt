@@ -1,6 +1,7 @@
 import { Space, Button, Tooltip } from 'antd';
 import { useState } from 'react';
 import RejectionModal from './RejectionModal';
+import { hasPermissionFromList } from '../../store/permissionStore';
 
 export type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 
@@ -27,7 +28,7 @@ export default function ApprovalActionBar({
 }: ApprovalActionBarProps) {
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
 
-  const hasPermission = (perm: string): boolean => permissions.includes(perm) || permissions.includes('*') || permissions.includes('admin:manage');
+  const hasPermission = (perm: string): boolean => hasPermissionFromList(permissions, perm);
 
   const hasApprovePerm = (level: 'c1' | 'c2') =>
     hasPermission(`${entityPermissionPrefix}:approve:${level}`) ||

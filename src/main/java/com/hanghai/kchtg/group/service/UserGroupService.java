@@ -219,9 +219,9 @@ public class UserGroupService {
                 .toList();
 
         long activeCount = groupRepository.countByFiltersAndStatus(searchParam, groupTypeInt,
-                GroupStatus.ACTIVE.ordinal());
+                orgFilter, GroupStatus.ACTIVE.ordinal());
         long inactiveCount = groupRepository.countByFiltersAndStatus(searchParam, groupTypeInt,
-                GroupStatus.INACTIVE.ordinal());
+                orgFilter, GroupStatus.INACTIVE.ordinal());
 
         PaginatedGroupResponse result = new PaginatedGroupResponse();
         result.setItems(items);
@@ -456,7 +456,7 @@ public class UserGroupService {
                 Sort.by(Sort.Direction.ASC, "joinedAt"));
         findEntityById(groupId); // verify group exists
 
-        String searchParam = (search != null && !search.isBlank()) ? "%" + search + "%" : null;
+        String searchParam = (search != null && !search.isBlank()) ? "%" + search.trim() + "%" : null;
         return groupMemberRepository.searchMembers(groupId, GroupMemberStatus.ACTIVE, searchParam, pageable);
     }
 

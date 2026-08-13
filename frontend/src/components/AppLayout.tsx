@@ -38,20 +38,19 @@ const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
 export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
-  '/users': ['user:read', 'user:manage', 'admin:manage'],
-  '/organizations': ['orgunit:read', 'orgunit:manage', 'admin:manage'],
-  '/groups': ['group:read', 'group:manage', 'admin:manage'],
-  '/roles': ['role:manage', 'admin:manage'],
-  '/gis/points': ['data:read', 'map:manage'],
-  '/gis/lines': ['data:read', 'map:manage'],
-  '/gis/polygons': ['data:read', 'map:manage'],
+  '/users': 'user:read',
+  '/organizations': 'orgunit:read',
+  '/groups': 'group:read',
+  '/gis/points': 'data:read',
+  '/gis/lines': 'data:read',
+  '/gis/polygons': 'data:read',
   '/gis/layers': 'map:manage',
-  '/gis/map': ['data:read', 'map:manage'],
+  '/gis/map': 'data:read',
   '/gis/permits': 'map:manage',
-  '/beacon-lights': 'buoy:read',
-  '/buoys': 'buoy:read',
-  '/lighthouse-station': 'lighthousestation:read',
-  '/buoy-station': 'buoystation:read',
+  '/beacon-lights': 'data:read',
+  '/buoys': 'data:read',
+  '/lighthouse-station': 'data:read',
+  '/buoy-station': 'data:read',
   '/history': 'admin:view',
   '/port': 'port:read',
   '/berth': 'berth:read',
@@ -62,13 +61,13 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/asset/decrease': 'data:read',
   '/asset/inventory': 'data:read',
   '/asset/exploitation': 'data:read',
-  '/navigation-channel': ['navigationchannel:read', 'navigationchannel:create', 'navigationchannel:update', 'navigationchannel:delete', 'navigationchannel:approve:c1', 'navigationchannel:approve:c2', 'admin:manage'],
-  '/dike-revetment': ['dikerevetment:read', 'dikerevetment:create', 'dikerevetment:update', 'dikerevetment:delete', 'dikerevetment:approve:c1', 'dikerevetment:approve:c2', 'admin:manage'],
-  '/ship-repair-facility': ['shiprepairfacility:read', 'shiprepairfacility:create', 'shiprepairfacility:update', 'shiprepairfacility:delete', 'shiprepairfacility:approve:c1', 'shiprepairfacility:approve:c2', 'admin:manage'],
-  '/radar-station': ['radarstation:read', 'radarstation:create', 'radarstation:update', 'radarstation:delete', 'radarstation:approve:c1', 'radarstation:approve:c2', 'admin:manage'],
-  '/vts-system': ['vts:read', 'admin:manage'],
-  '/station/coastal': ['vts:read', 'radarstation:read', 'admin:manage'],
-  '/station/special': ['vts:read', 'radarstation:read', 'admin:manage'],
+  '/navigation-channel': 'navigationchannel:read',
+  '/dike-revetment': 'dikerevetment:read',
+  '/ship-repair-facility': 'shiprepair:read',
+  '/radar-station': 'radarstation:read',
+  '/vts-system': 'vts:read',
+  '/station/coastal': 'coastalstation:read',
+  '/station/special': 'specialstation:read',
   '/connections': 'connection:read',
   '/interconnect': 'connection:read',
   '/reports': 'report:read',
@@ -96,7 +95,6 @@ const pageTitles: Record<string, string> = {
   '/users': 'Quản lý người dùng',
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
-  '/roles': 'Phân quyền',
   '/gis/points': 'Quản lý danh mục đối tượng điểm',
   '/gis/lines': 'Quản lý danh mục đối tượng đường',
   '/gis/polygons': 'Quản lý danh mục đối tượng vùng',
@@ -207,7 +205,7 @@ export default function AppLayout() {
         setOpenKeys(['stations']);
       } else if (selectedKey.startsWith('/reports')) {
         setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
-      } else if (['/users', '/organizations', '/groups', '/roles', '/interconnect', '/logs'].includes(selectedKey)) {
+      } else if (['/users', '/organizations', '/groups', '/interconnect', '/logs'].includes(selectedKey)) {
         setOpenKeys(['system-admin']);
       }
     }
@@ -224,7 +222,6 @@ export default function AppLayout() {
         canAccessMenu('/users') ? { key: '/users', label: 'Quản lý người dùng' } : null,
         canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
         canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
-        canAccessMenu('/roles') ? { key: '/roles', label: 'Phân quyền' } : null,
         canAccessMenu('/interconnect') ? { key: '/interconnect', label: 'Quản lý kết nối liên thông' } : null,
         canAccessMenu('/logs') ? { key: '/logs', label: 'Quản lý log truy cập' } : null,
       ].filter(Boolean),

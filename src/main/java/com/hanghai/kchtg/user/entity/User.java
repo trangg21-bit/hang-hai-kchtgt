@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import jakarta.persistence.*;
@@ -118,37 +119,31 @@ public class User extends BaseEntity implements java.security.Principal {
     }
 
     /**
-     * Lấy tất cả permissions từ tất cả roles + user_permission_override.
+     * Lấy hợp nhất permission cấp trực tiếp cho user và permission từ các
+     * group đang hoạt động mà user đang tham gia.
      */
     public Set<String> getAllPermissions() {
         Set<String> perms = new HashSet<>();
-        for (Role role : roles) {
-            if (role.getPermissions() != null) {
-                perms.addAll(role.getPermissions().stream()
-                        .map(p -> p.getCode()).collect(Collectors.toSet()));
-            }
-        }
         if (permissionOverrides != null) {
             perms.addAll(permissionOverrides.stream()
-                    .filter(override -> override.getDeletedAt() == null)
-                    .map(o -> o.getPermissionCode())
+                    .filter(override -> override != null
+                            && override.getDeletedAt() == null
+                            && override.getPermissionCode() != null)
+                    .map(o -> o.getPermissionCode().trim().toLowerCase(java.util.Locale.ROOT))
+                    .filter(permission -> !permission.isBlank())
                     .collect(Collectors.toSet()));
         }
         if (groups != null) {
-            for (UserGroup group : groups) {
-                if (group.getPermissions() != null) {
-                    perms.addAll(group.getPermissions());
-                }
-                if (group.getRoles() != null) {
-                    for (Role groupRole : group.getRoles()) {
-                        if (groupRole.getPermissions() != null) {
-                            perms.addAll(groupRole.getPermissions().stream()
-                                    .map(Permission::getCode)
-                                    .collect(Collectors.toSet()));
-                        }
-                    }
-                }
-            }
+            groups.stream()
+                    .filter(group -> group != null
+                            && (group.getStatus() == null || group.getStatus() == GroupStatus.ACTIVE))
+                    .flatMap(group -> group.getPermissions() == null
+                            ? java.util.stream.Stream.empty()
+                            : group.getPermissions().stream())
+                    .filter(java.util.Objects::nonNull)
+                    .map(permission -> permission.trim().toLowerCase(java.util.Locale.ROOT))
+                    .filter(permission -> !permission.isBlank())
+                    .forEach(perms::add);
         }
         return perms;
     }

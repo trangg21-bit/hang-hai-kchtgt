@@ -197,6 +197,14 @@ Chi tiết kích thước và contract giao diện dùng chung được quy đ�
 [`docs/conventions/list-screen-ui-standard.md`](docs/conventions/list-screen-ui-standard.md).
 Developer/AI phải đọc tài liệu này trước khi tạo hoặc chỉnh sửa màn hình danh sách.
 
+Quy tắc bắt buộc cho bảng danh sách:
+
+- Bảng rỗng vẫn giữ chiều cao thân bảng theo `--list-table-scroll-y`; EmptyState không được làm thanh cuộn ngang nằm giữa bảng.
+- Thanh cuộn ngang phải nằm ở đáy thân bảng; sau khi lọc/reset, `DataTable` phải đưa `scrollLeft` về `0` để cột đầu tiên không bị che.
+- Cột thao tác luôn là cột cuối cùng và chỉ cột thao tác được cố định bên phải; không để cột dữ liệu hoặc tiêu đề lộ ra phía sau.
+- Nếu bộ cột thực tế ngắn hơn kích thước tối thiểu chung, dùng `scroll={{ x: 'max-content' }}` thay vì ép chiều rộng dư gây lệch cột.
+- Kiểm tra cả bốn trạng thái `loading`, `error`, `empty`, `data` trước khi hoàn tất màn hình.
+
 ### Bộ lọc đơn vị phân cấp (MANDATORY)
 
 - Mọi filter đơn vị phải dùng dropdown dạng cây (`TreeSelect`/`Cascader`) khi có `parentId`; không dùng `Select` phẳng.

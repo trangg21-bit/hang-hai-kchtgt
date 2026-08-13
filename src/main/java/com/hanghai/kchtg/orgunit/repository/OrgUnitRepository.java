@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,6 +46,14 @@ public interface OrgUnitRepository extends JpaRepository<OrgUnit, UUID> {
     @Query("SELECT u FROM OrgUnit u WHERE u.deletedAt IS NULL ORDER BY u.path ASC, u.sortOrder ASC")
     Page<OrgUnit> findAllActiveOrderByPath(Pageable pageable);
 
+    @Query("SELECT u FROM OrgUnit u WHERE u.id IN :ids AND u.deletedAt IS NULL "
+            + "ORDER BY u.path ASC, u.sortOrder ASC")
+    Page<OrgUnit> findAllActiveByIds(@Param("ids") Collection<UUID> ids, Pageable pageable);
+
+    @Query("SELECT u FROM OrgUnit u WHERE u.id IN :ids AND u.deletedAt IS NULL "
+            + "ORDER BY u.path ASC, u.sortOrder ASC")
+    List<OrgUnit> findAllActiveByIds(@Param("ids") Collection<UUID> ids);
+
     @Query("SELECT u FROM OrgUnit u WHERE "
             + "(LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%')) "
             + "OR LOWER(u.code) LIKE LOWER(CONCAT('%', :query, '%'))) "
@@ -56,6 +65,21 @@ public interface OrgUnitRepository extends JpaRepository<OrgUnit, UUID> {
             + "OR LOWER(u.code) LIKE LOWER(CONCAT('%', :query, '%'))) "
             + "AND u.deletedAt IS NULL")
     Page<OrgUnit> findByNameLikeOrCodeLike(@Param("query") String query, Pageable pageable);
+
+    @Query("SELECT u FROM OrgUnit u WHERE u.id IN :ids "
+            + "AND (LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%')) "
+            + "OR LOWER(u.code) LIKE LOWER(CONCAT('%', :query, '%'))) "
+            + "AND u.deletedAt IS NULL ORDER BY u.path ASC, u.sortOrder ASC")
+    Page<OrgUnit> findByNameLikeOrCodeLikeAndIds(@Param("query") String query,
+                                                  @Param("ids") Collection<UUID> ids,
+                                                  Pageable pageable);
+
+    @Query("SELECT u FROM OrgUnit u WHERE u.id IN :ids "
+            + "AND (LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%')) "
+            + "OR LOWER(u.code) LIKE LOWER(CONCAT('%', :query, '%'))) "
+            + "AND u.deletedAt IS NULL ORDER BY u.path ASC, u.sortOrder ASC")
+    List<OrgUnit> findByNameLikeOrCodeLikeAndIds(@Param("query") String query,
+                                                  @Param("ids") Collection<UUID> ids);
 
     @Query("SELECT u FROM OrgUnit u WHERE u.status = :status AND u.deletedAt IS NULL")
     List<OrgUnit> findByStatusAndDeletedAtIsNull(@Param("status") OrgUnitStatus status);
@@ -70,4 +94,13 @@ public interface OrgUnitRepository extends JpaRepository<OrgUnit, UUID> {
     Page<OrgUnit> findByFilters(@Param("status") OrgUnitStatus status,
                                 @Param("level") Integer level,
                                 Pageable pageable);
+
+    @Query("SELECT u FROM OrgUnit u WHERE u.id IN :ids "
+            + "AND (:status IS NULL OR u.status = :status) "
+            + "AND (:level IS NULL OR u.level = :level) "
+            + "AND u.deletedAt IS NULL ORDER BY u.path ASC, u.sortOrder ASC")
+    Page<OrgUnit> findByFiltersAndIds(@Param("status") OrgUnitStatus status,
+                                      @Param("level") Integer level,
+                                      @Param("ids") Collection<UUID> ids,
+                                      Pageable pageable);
 }

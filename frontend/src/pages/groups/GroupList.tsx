@@ -4,20 +4,21 @@ import { Typography, Modal, Form, Input, Spin, Button, Select, TreeSelect, Descr
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
-import { usePermissions } from '../../hooks/usePermissions';
+import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../../hooks/usePermissions';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../../components/list-view';
+import { ScreenHeader, DataTable } from '../../components/list-view';
+import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import { groupService } from '../../services/groupService';
 import type { Group, CreateGroupPayload, UpdateGroupPayload, GroupRole } from '../../services/groupService';
 import { organizationService } from '../../services/organizationService';
 import type { Role } from '../../types/role';
-import { actionPrimary, textSecondary, textTertiary, statusDraft, statusCritical, statusAttention, statusOperational, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm } from '../../tokens';
+import { actionPrimary, textSecondary, textTertiary, statusDraft, statusCritical, statusAttention, statusOperational, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm } from '../../tokens';
 import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
-import { rawPermissionTree } from '../../constants/permissions';
+import { normalizeSearchText } from '../../components/org-unit';
 
 const { confirm } = Modal;
 
@@ -29,9 +30,13 @@ export default function GroupList() {
   const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [filterStatusInput, setFilterStatusInput] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterGroupTypeInput, setFilterGroupTypeInput] = useState<string | undefined>();
   const [filterGroupType, setFilterGroupType] = useState<string | undefined>();
+  const [filterMyGroupsInput, setFilterMyGroupsInput] = useState(false);
   const [filterMyGroups, setFilterMyGroups] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -56,6 +61,7 @@ export default function GroupList() {
   const [permissionLoading, setPermissionLoading] = useState(false);
   const [permissionSaving, setPermissionSaving] = useState(false);
   const [orgTree, setOrgTree] = useState<any[]>([]);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true); setIsError(false);
@@ -192,21 +198,35 @@ export default function GroupList() {
   }, [permissionGroup, selectedPermissionKeys, fetchGroups]);
 
   const permissionTreeData = useMemo(() => {
-    const keyword = permissionSearch.trim().toLowerCase();
+    const keyword = normalizeSearchText(permissionSearch);
     if (!keyword) return rawPermissionTree;
     const filter = (nodes: typeof rawPermissionTree): typeof rawPermissionTree => nodes.flatMap((node) => {
       const children = filter(node.children || []);
-      const matches = node.title.toLowerCase().includes(keyword) || node.key.toLowerCase().includes(keyword);
+      const matches = normalizeSearchText(node.title).includes(keyword) || normalizeSearchText(node.key).includes(keyword);
       return matches || children.length ? [{ ...node, children }] : [];
     });
     return filter(rawPermissionTree);
   }, [rawPermissionTree, permissionSearch]);
 
-  const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setFilterStatus(values.status || undefined); setFilterGroupType(values.groupType || undefined); setFilterMyGroups(values.scope === 'myGroups'); setPage(1);
-  }, []);
+  const handleFilterSearch = useCallback(() => {
+    setSearch(searchInput.trim());
+    setFilterStatus(filterStatusInput);
+    setFilterGroupType(filterGroupTypeInput);
+    setFilterMyGroups(filterMyGroupsInput);
+    setPage(1);
+  }, [filterGroupTypeInput, filterMyGroupsInput, filterStatusInput, searchInput]);
 
-  const handleFilterReset = useCallback(() => { setSearch(''); setFilterStatus(undefined); setFilterGroupType(undefined); setFilterMyGroups(false); setPage(1); }, []);
+  const handleFilterReset = useCallback(() => {
+    setSearchInput('');
+    setSearch('');
+    setFilterStatusInput(undefined);
+    setFilterStatus(undefined);
+    setFilterGroupTypeInput(undefined);
+    setFilterGroupType(undefined);
+    setFilterMyGroupsInput(false);
+    setFilterMyGroups(false);
+    setPage(1);
+  }, []);
 
   const handleTabChange = useCallback((key: string) => {
     setFilterStatus(key === 'all' ? undefined : key); setPage(1);
@@ -216,8 +236,12 @@ export default function GroupList() {
 
   const rowActions = useCallback((record: Group) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean }[] = [];
-    actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
-    actions.push({ key: 'members', label: 'Thành viên', icon: <UserOutlined />, onClick: () => navigate(`/groups/${record.id}/members`) });
+    if (hasPerm('group:read')) {
+      actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
+    }
+    if (hasPerm('groupmember:manage')) {
+      actions.push({ key: 'members', label: 'Thành viên', icon: <UserOutlined />, onClick: () => navigate(`/groups/${record.id}/members`) });
+    }
     if (hasPerm('group:permission')) {
       actions.push({ key: 'permissions', label: 'Phân quyền', icon: <EditOutlined />, onClick: () => openPermissionModal(record) });
     }
@@ -237,7 +261,11 @@ export default function GroupList() {
       render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'nameCode', label: 'Mã – Tên nhóm', dataIndex: 'name', width: 280,
       render: (_text: string, record: Group) => (
-        <Typography.Text strong style={{ color: actionPrimary, cursor: 'pointer' }} onClick={() => handleViewDetail(record)}>
+        <Typography.Text
+          strong
+          style={{ color: hasPerm('group:read') ? actionPrimary : textSecondary, cursor: hasPerm('group:read') ? 'pointer' : 'default' }}
+          onClick={() => { if (hasPerm('group:read')) handleViewDetail(record); }}
+        >
           {record.code} – {record.name}
         </Typography.Text>
       ) },
@@ -269,27 +297,77 @@ export default function GroupList() {
       } },
     { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 170, align: 'center' as const,
       render: (text: string) => text ? dayjs(text).format('DD/MM/YYYY HH:mm') : '—' },
-  ], [page, pageSize, handleViewDetail]);
+  ], [page, pageSize, handleViewDetail, hasPerm]);
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách nhóm'} onRetry={fetchGroups} />;
-    if (dataSource.length === 0) {
-      if (search || filterStatus || filterMyGroups) return <EmptyState description="Không tìm thấy nhóm nào phù hợp" />;
-      return <EmptyState description="Chưa có nhóm nào" />;
-    }
-    return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} scroll={{ x: 1000 }} /><Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
+    const emptyDescription = search || filterStatus || filterGroupType || filterMyGroups
+      ? 'Không tìm thấy nhóm nào phù hợp'
+      : 'Chưa có nhóm nào';
+    return <>
+      <DataTable
+        columns={columns}
+        dataSource={dataSource}
+        rowKey="id"
+        rowActions={rowActions}
+        scroll={{ x: 'max-content' }}
+        emptyState={dataSource.length === 0 ? <EmptyState description={emptyDescription} /> : undefined}
+      />
+      {dataSource.length > 0 && (
+        <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
+      )}
+    </>;
   };
 
-  const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mô tả...' },
-    { key: 'scope', type: 'select' as const, label: 'My Groups', placeholder: 'Chọn phạm vi nhóm',
-      options: [{ value: 'all', label: 'Tất cả nhóm' }, { value: 'myGroups', label: 'My Groups (Nhóm tôi tham gia)' }] },
-    { key: 'groupType', type: 'select' as const, label: 'Loại nhóm', placeholder: 'Chọn loại',
-      options: [{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }] },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
-      options: [{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }] },
-  ], []);
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tìm kiếm</div>
+        <Input
+          placeholder="Tìm theo tên, mã nhóm, mô tả..."
+          allowClear
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          onPressEnter={handleFilterSearch}
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phạm vi nhóm</div>
+        <Select
+          placeholder="Tất cả"
+          allowClear
+          value={filterMyGroupsInput ? 'myGroups' : undefined}
+          onChange={(value) => setFilterMyGroupsInput(value === 'myGroups')}
+          options={[{ value: 'myGroups', label: 'Nhóm tôi tham gia' }]}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại nhóm</div>
+        <Select
+          placeholder="Tất cả"
+          allowClear
+          value={filterGroupTypeInput}
+          onChange={(value) => setFilterGroupTypeInput(value)}
+          options={[{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }]}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
+        <Select
+          placeholder="Tất cả"
+          allowClear
+          value={filterStatusInput}
+          onChange={(value) => setFilterStatusInput(value)}
+          options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+    </>
+  );
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
@@ -298,22 +376,26 @@ export default function GroupList() {
   }, [hasPerm, openCreateModal]);
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý nhóm' }]} actions={headerActions} />
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
-      <div style={{ ...cardStyle, marginBottom: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px 16px' }}>
-        <StatusTabs
-          tabs={[
-            { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
-            { key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' },
-            { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
-          ]}
-          onChange={handleTabChange}
-        />
-      </div>
-      <div style={{ ...cardStyle, padding: '8px 16px' }}>
+      <FilterTableLayout
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        onFilterApply={handleFilterSearch}
+        onFilterReset={handleFilterReset}
+        loading={isLoading}
+        error={isError}
+        onRetry={fetchGroups}
+        filterContent={filterContent}
+        statusTabs={[
+          { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
+          { key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' },
+          { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
+        ]}
+        onStatusTabChange={handleTabChange}
+      >
         {renderContent()}
-      </div>
+      </FilterTableLayout>
 
       {/* Modal Xem chi tiết */}
       <Modal
@@ -321,18 +403,20 @@ export default function GroupList() {
         open={!!detailGroup}
         onCancel={() => setDetailGroup(null)}
         footer={[
-          <Button
-            key="members"
-            icon={<UserOutlined />}
-            onClick={() => {
-              const groupId = detailGroup?.id;
-              setDetailGroup(null);
-              if (groupId) navigate(`/groups/${groupId}/members`);
-            }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}
-          >
-            Thành viên ({detailGroup?.memberCount || 0})
-          </Button>,
+          hasPerm('groupmember:manage') && (
+            <Button
+              key="members"
+              icon={<UserOutlined />}
+              onClick={() => {
+                const groupId = detailGroup?.id;
+                setDetailGroup(null);
+                if (groupId) navigate(`/groups/${groupId}/members`);
+              }}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}
+            >
+              Thành viên ({detailGroup?.memberCount || 0})
+            </Button>
+          ),
           hasPerm('group:edit') && (
             <Button
               key="edit"
@@ -447,10 +531,10 @@ export default function GroupList() {
                 checkable
                 defaultExpandAll
                 treeData={permissionTreeData}
-                checkedKeys={selectedPermissionKeys}
+                checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
                 onCheck={(checked) => {
                   const keys = Array.isArray(checked) ? checked : checked.checked;
-                  setSelectedPermissionKeys(keys.map(String));
+                  setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData));
                 }}
               />
             </div>
@@ -485,7 +569,7 @@ export default function GroupList() {
                 showSearch
                 treeDefaultExpandAll={false}
                 disabled={!!editingGroup}
-                filterTreeNode={(input, node: any) => (node?.title ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                filterTreeNode={(input, node: any) => normalizeSearchText(String(node?.title ?? '')).includes(normalizeSearchText(input))}
                 allowClear
                 style={{ borderRadius: radiusPill, height: 40 }}
               />

@@ -273,7 +273,7 @@ export default function LighthouseStationList() {
               style={{ width: 250 }}
             />
             <Select
-              placeholder="Lọc theo loại..."
+              placeholder="Tất cả"
               allowClear
               value={filterType}
               onChange={(val) => setFilterType(val)}

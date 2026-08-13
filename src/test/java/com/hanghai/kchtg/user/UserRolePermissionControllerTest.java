@@ -11,7 +11,7 @@ import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.controller.UserController;
 import com.hanghai.kchtg.user.dto.GrantUserPermissionRequest;
 import com.hanghai.kchtg.user.dto.UserPermissionOverrideResponse;
-import com.hanghai.kchtg.user.entity.Role;
+import com.hanghai.kchtg.user.dto.UserPageResponse;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.UserPermissionService;
@@ -27,11 +27,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
@@ -90,44 +89,18 @@ class UserRolePermissionControllerTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        Role role = new Role();
-        role.setCode("ROLE_USER");
-        role.setName("User");
-
         testUser = new User();
         testUser.setId(userId);
         testUser.setUsername("testuser");
         testUser.setEmail("test@domain.com");
-        testUser.setRoles(new java.util.HashSet<>(Set.of(role)));
     }
 
     @Test
-    void getUserRoles_shouldReturnRoleList() throws Exception {
-        when(userService.findById(userId)).thenReturn(testUser);
+    void listWithoutSort_shouldUseDefaultSortInsteadOfFailingOnNullSortField() throws Exception {
+        when(userService.findAllWithCounts(any(), any(), any()))
+                .thenReturn(new UserPageResponse(List.of(), 0, 20, 0, 0, java.util.Map.of()));
 
-        mockMvc.perform(get("/api/users/{id}/roles", userId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].code").value("ROLE_USER"));
-    }
-
-    @Test
-    void assignUserRole_shouldReturnUpdatedUser() throws Exception {
-        when(userService.update(eq(userId), any())).thenReturn(testUser);
-
-        mockMvc.perform(post("/api/users/{id}/roles", userId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("roleCode", "ROLE_ADMIN"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    void revokeUserRole_shouldReturnUpdatedUser() throws Exception {
-        when(userService.findById(userId)).thenReturn(testUser);
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        mockMvc.perform(delete("/api/users/{id}/roles/{roleId}", userId, "ROLE_ADMIN"))
+        mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -159,6 +132,21 @@ class UserRolePermissionControllerTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void replaceDirectPermissions_shouldReturnUpdatedList() throws Exception {
+        UserPermissionOverrideResponse resp = new UserPermissionOverrideResponse(
+                UUID.randomUUID(), userId, "document:read", null, LocalDateTime.now());
+        doNothing().when(userPermissionService).replaceDirectPermissions(eq(userId), anyList());
+        when(userPermissionService.list(userId)).thenReturn(List.of(resp));
+
+        mockMvc.perform(put("/api/users/{id}/permissions", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of("document:read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].permissionCode").value("document:read"));
     }
 
     @Test

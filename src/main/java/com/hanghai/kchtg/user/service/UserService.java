@@ -19,6 +19,7 @@ import com.hanghai.kchtg.user.entity.UserStatusLog;
 import com.hanghai.kchtg.user.exception.ValidationException;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.repository.UserListProjection;
 import com.hanghai.kchtg.user.repository.UserStatusLogRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityManager;
@@ -27,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -41,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.text.Normalizer;
 
 /**
  * Service quan ly tai khoan nguoi dung.
@@ -128,7 +131,7 @@ public class UserService {
      * Default 20 items/page, max 100.
      */
     @Transactional(readOnly = true)
-    public Page<UserResponse> findAll(String search, String roleCode, UserStatus status, Pageable pageable) {
+    public Page<UserResponse> findAll(String search, UserStatus status, Pageable pageable) {
         // Enforce max page size
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
@@ -148,8 +151,7 @@ public class UserService {
         // We always use searchUsers if we have search, roleCode, or status filters, or
         // we can use it universally!
         return userRepository.searchUsers(
-                (search != null && !search.trim().isEmpty()) ? search.trim() : null,
-                (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
+                toSearchLike(search),
                 status,
                 cappedPageable).map(u -> UserResponse.from(u, orgUnitCacheService));
     }
@@ -159,7 +161,7 @@ public class UserService {
      * response duy nhat.
      */
     @Transactional(readOnly = true)
-    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search, String roleCode,
+    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
             UserStatus status, Pageable pageable) {
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
@@ -176,13 +178,25 @@ public class UserService {
                 actualSize,
                 sort);
 
-        Page<UserListItemResponse> pageResult = userRepository.searchUserList(
-                (search != null && !search.trim().isEmpty()) ? search.trim() : null,
-                (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
+        String searchLike = toSearchLike(search);
+        List<UserListProjection> listItems = userRepository.searchUserList(
+                searchLike,
                 status,
-                cappedPageable).map(u -> UserListItemResponse.from(u, orgUnitCacheService));
+                cappedPageable);
 
-        java.util.Map<String, Long> counts = getStatusCounts();
+        // The status tabs must describe the same filtered result set as the
+        // table.  Using the global counts here makes a search for one user
+        // still show the totals of the whole user database.
+        java.util.Map<String, Long> counts = getStatusCounts(search);
+        long totalElements = status == null
+                ? counts.getOrDefault("total", 0L)
+                : counts.getOrDefault(status.name().toLowerCase(java.util.Locale.ROOT), 0L);
+        Page<UserListItemResponse> pageResult = new PageImpl<>(
+                listItems.stream()
+                        .map(u -> UserListItemResponse.from(u, orgUnitCacheService))
+                        .toList(),
+                cappedPageable,
+                totalElements);
 
         return new com.hanghai.kchtg.user.dto.UserPageResponse(
                 pageResult.getContent(),
@@ -197,7 +211,7 @@ public class UserService {
      * Thong ke so luong nguoi dung theo tung trang thai (1 single SQL query).
      */
     @Transactional(readOnly = true)
-    public java.util.Map<String, Long> getStatusCounts() {
+    public java.util.Map<String, Long> getStatusCounts(String search) {
         java.util.Map<String, Long> counts = new java.util.HashMap<>();
         counts.put("total", 0L);
         for (UserStatus s : UserStatus.values()) {
@@ -206,7 +220,7 @@ public class UserService {
             }
         }
 
-        List<Object[]> results = userRepository.countUsersByStatus();
+        List<Object[]> results = userRepository.countUsersByStatus(toSearchLike(search));
         long total = 0;
         for (Object[] row : results) {
             UserStatus s = (UserStatus) row[0];
@@ -219,6 +233,21 @@ public class UserService {
         }
         counts.put("total", total);
         return counts;
+    }
+
+    /**
+     * Chuẩn hóa từ khóa tìm kiếm để DB tìm được cả tiếng Việt có dấu và không
+     * dấu. Kết quả vẫn dùng LIKE chứa nên "Van A" khớp "Nguyễn Văn An".
+     */
+    private static String toSearchLike(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = Normalizer.normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('\u0111', 'd')
+                .replace('\u0110', 'd');
+        return "%" + normalized + "%";
     }
 
     /**
@@ -289,22 +318,6 @@ public class UserService {
         user.setEmail(email);
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
-        String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
-
-        if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null
-                    || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
-                throw new AccessDeniedException("Chỉ có System Admin mới có quyền tạo System Admin");
-            }
-        }
-
-        Role role = roleRepository.findByCode(roleCode)
-                .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + roleCode));
-        // Business rule: a user has one primary role; group roles are handled
-        // separately through the group-role assignment table.
-        user.getRoles().clear();
-        user.getRoles().add(role);
         user.setStatus(UserStatus.ACTIVE);
 
         // Set OrgUnit relationship
@@ -368,15 +381,7 @@ public class UserService {
             user.setPhone(request.getPhone());
         }
 
-        boolean roleChanged = false;
         boolean permissionsChanged = false;
-        if (request.getRole() != null) {
-            Role role = roleRepository.findByCode(request.getRole())
-                    .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
-            user.getRoles().clear();
-            user.getRoles().add(role);
-            roleChanged = true;
-        }
 
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
@@ -385,12 +390,12 @@ public class UserService {
             if (user.getOrgUnit() == null || !user.getOrgUnit().getId().equals(orgUnit.getId())) {
                 user.setOrgUnit(orgUnit);
                 // BR-275-12: Org hierarchy change -> invalidate token version & clear cache
-                roleChanged = true;
+                permissionsChanged = true;
                 permissionCacheService.invalidateAndIncrementVersion(user.getId());
             }
         }
 
-        if (roleChanged) {
+        if (permissionsChanged) {
             user.incrementPermissionVersion();
         }
 
@@ -398,7 +403,7 @@ public class UserService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             savePasswordHistory(saved.getId(), saved.getPassword());
         }
-        if (roleChanged || permissionsChanged) {
+        if (permissionsChanged) {
             permissionCacheService.invalidateCache(saved.getId());
         }
         log.info("Updated user: {} ({})", saved.getUsername(), saved.getId());
@@ -416,14 +421,6 @@ public class UserService {
     public void delete(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
-
-        if (user.getRoles().stream().anyMatch(r -> "ROLE_SYSTEM_ADMIN".equals(r.getCode()))) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null
-                    || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
-                throw new AccessDeniedException("Chỉ có System Admin mới có quyền xóa System Admin");
-            }
-        }
 
         // BR-003: Data-dependency check — query phanhen/bao cao FK references
         // If FK constraints exist in the DB, this will fail at constraint level.
@@ -639,14 +636,9 @@ public class UserService {
             user.setPhone(request.getPhone());
         }
 
-        // Admin can update role, orgUnit, groups
+        // Admin can update orgUnit and groups. Permission assignments are managed
+        // through UserPermissionService so every grant/revoke is audited.
         if (isAdmin) {
-            if (request.getRole() != null) {
-                Role role = roleRepository.findByCode(request.getRole())
-                        .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
-                user.getRoles().clear();
-                user.getRoles().add(role);
-            }
             if (request.getOrgUnitId() != null) {
                 OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                         .orElseThrow(() -> new IllegalArgumentException(
@@ -743,8 +735,9 @@ public class UserService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getAuthorities() != null) {
             return auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().contains("ADMIN") ||
-                            a.getAuthority().equals("ROLE_SYSTEM_ADMIN"));
+                    .anyMatch(a -> "admin:manage".equals(a.getAuthority())
+                            || "admin:*".equals(a.getAuthority())
+                            || "*".equals(a.getAuthority()));
         }
         return false;
     }

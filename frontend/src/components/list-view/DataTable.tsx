@@ -10,6 +10,16 @@ import {
 import { colors, layout } from '../../theme';
 
 const tableHeaderBg = colors.bodyBg;
+const ACTION_COLUMN_WIDTH = 60;
+
+const actionColumnCellStyle: React.CSSProperties = {
+  width: ACTION_COLUMN_WIDTH,
+  minWidth: ACTION_COLUMN_WIDTH,
+  maxWidth: ACTION_COLUMN_WIDTH,
+  paddingInline: 0,
+  textAlign: 'center',
+  verticalAlign: 'middle',
+};
 
 // Conservative per-row height (px) used to decide when a table with a numeric
 // scroll.y cap can auto-fit to its content without risking vertical overflow.
@@ -56,6 +66,12 @@ const DataTable: React.FC<DataTableProps> = ({
   columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, scroll, ...rest
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
+  // Preserve a content-sized table when the page explicitly requests
+  // `max-content`. For lists whose columns are narrower than the common
+  // minimum width, replacing it with a larger fixed width leaves an empty
+  // area after the last column. At the far-right scroll position that area
+  // makes the action column look detached from the table.
+  const resolvedScroll = scroll;
 
   useLayoutEffect(() => {
     const resetHorizontalScroll = () => {
@@ -93,7 +109,7 @@ const DataTable: React.FC<DataTableProps> = ({
         <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
           className="list-view-table"
           pagination={false}
-          scroll={scroll}
+          scroll={resolvedScroll}
           locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
           {...rest}>{children}</Table>
       </div>
@@ -171,22 +187,30 @@ const DataTable: React.FC<DataTableProps> = ({
   if (rowActions && columns && !columns.some((c) => c.key === 'actions')) {
     antdColumns?.push({
       key: 'actions',
-      title: <UnorderedListOutlined />,
-      width: 60,
+      title: (
+        <span style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <UnorderedListOutlined />
+        </span>
+      ),
+      width: ACTION_COLUMN_WIDTH,
       fixed: 'right' as const,
       align: 'center',
+      onHeaderCell: () => ({ style: actionColumnCellStyle }),
+      onCell: () => ({ style: actionColumnCellStyle }),
       render: (_: unknown, record: any) => {
         const items = rowActions(record).map((a) => ({
           key: a.key, icon: a.icon, label: a.label, danger: a.danger, disabled: a.disabled,
           onClick: a.onClick,
         }));
         return (
-          <Dropdown menu={{ items }} trigger={['click']}>
-            <Button icon={<MoreOutlined />}
-              onClick={(e) => e.stopPropagation()}
-              style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }}
-            />
-          </Dropdown>
+          <span style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <Dropdown menu={{ items }} trigger={['click']}>
+              <Button icon={<MoreOutlined />}
+                onClick={(e) => e.stopPropagation()}
+                style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }}
+              />
+            </Dropdown>
+          </span>
         );
       },
     });

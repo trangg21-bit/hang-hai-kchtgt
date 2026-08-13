@@ -3,6 +3,47 @@ import { useQuery } from '@tanstack/react-query';
 import { permissionService } from '../services/permissionService';
 import type { MenuTreeNode } from '../types/permission';
 
+/**
+ * Ant Design Tree warns when checkedKeys contains nodes that are not present
+ * in the current treeData (for example after filtering by permission name).
+ * Keep this logic shared by user, group and role permission screens.
+ */
+export function getPermissionTreeKeys(nodes: readonly MenuTreeNode[]): Set<string> {
+  const keys = new Set<string>();
+  const visit = (items: readonly MenuTreeNode[]) => {
+    items.forEach((node) => {
+      keys.add(String(node.key));
+      if (node.children?.length) visit(node.children);
+    });
+  };
+  visit(nodes);
+  return keys;
+}
+
+export function getVisiblePermissionKeys(
+  checkedKeys: readonly string[],
+  nodes: readonly MenuTreeNode[],
+): string[] {
+  const visibleKeys = getPermissionTreeKeys(nodes);
+  return checkedKeys.filter((key) => visibleKeys.has(String(key)));
+}
+
+/**
+ * Merge a Tree change made on a filtered tree into the complete selection.
+ * Permissions outside the filtered tree must not be lost when a user checks
+ * or unchecks a visible permission.
+ */
+export function mergePermissionKeys(
+  currentKeys: readonly string[],
+  nextVisibleKeys: readonly string[],
+  nodes: readonly MenuTreeNode[],
+): string[] {
+  const visibleKeys = getPermissionTreeKeys(nodes);
+  const merged = new Set(currentKeys.filter((key) => !visibleKeys.has(String(key))));
+  nextVisibleKeys.forEach((key) => merged.add(String(key)));
+  return [...merged];
+}
+
 const RESOURCE_LABELS: Record<string, string> = {
   port: 'Quản lý Cảng biển',
   berth: 'Quản lý Bến cảng',

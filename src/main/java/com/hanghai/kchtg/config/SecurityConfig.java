@@ -16,8 +16,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -163,11 +161,10 @@ public class SecurityConfig {
         return username -> {
             User user = userRepository.findByUsernameWithRelations(username)
                     .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-            String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER";
             return org.springframework.security.core.userdetails.User
                     .withUsername(user.getUsername())
                     .password(user.getPassword())
-                    .authorities(role)
+                    .authorities(user.getAllPermissions().toArray(String[]::new))
                     .accountLocked(
                             user.getStatus() == UserStatus.LOCKED)
                     .disabled(
@@ -176,8 +173,4 @@ public class SecurityConfig {
         };
     }
 
-    @Bean
-    public RoleHierarchy roleHierarchy() {
-        return RoleHierarchyImpl.fromHierarchy("ROLE_SUPER_ADMIN > ROLE_SYSTEM_ADMIN\nROLE_SYSTEM_ADMIN > ROLE_ADMIN\nROLE_ADMIN > ROLE_USER");
-    }
 }

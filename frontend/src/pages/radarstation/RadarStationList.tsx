@@ -26,7 +26,7 @@ import {
 import { radarStationCRUD } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
 import type { RadarStationResponse, ListParams } from '../../types/radarStation';
-import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import RadarStationForm from './RadarStationForm';
 
@@ -46,8 +46,7 @@ const CONDITION_STATUS_OPTIONS = [
 export default function RadarStationList() {
   const isInIframe = window.self !== window.top;
   const navigate = useNavigate();
-  const currentUser = useAuthStore((s) => s.user);
-  const userPermissions = currentUser?.permissions || [];
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>();
@@ -218,9 +217,9 @@ export default function RadarStationList() {
       key: 'action',
       width: 150,
       render: (_: unknown, record: RadarStationResponse) => {
-        const canRead = userPermissions.includes('radarstation:read');
-        const canUpdate = userPermissions.includes('radarstation:update');
-        const canDelete = userPermissions.includes('radarstation:delete');
+        const canRead = hasPerm('radarstation:read');
+        const canUpdate = hasPerm('radarstation:update');
+        const canDelete = hasPerm('radarstation:delete');
         const isProposed = record.approvalStatus === 'PROPOSED';
 
         return (
@@ -278,7 +277,7 @@ export default function RadarStationList() {
                 style={{ width: 200 }}
               />
               <Select
-                placeholder="Tình trạng"
+                placeholder="Tất cả"
                 options={CONDITION_STATUS_OPTIONS}
                 value={filterConditionStatus}
                 onChange={(val) => { setFilterConditionStatus(val); setPage(1); }}
@@ -286,7 +285,7 @@ export default function RadarStationList() {
                 style={{ width: 180 }}
               />
               <Select
-                placeholder="Trạng thái phê duyệt"
+                placeholder="Tất cả"
                 options={APPROVAL_STATUS_OPTIONS}
                 value={filterApprovalStatus}
                 onChange={(val) => { setFilterApprovalStatus(val); setPage(1); }}

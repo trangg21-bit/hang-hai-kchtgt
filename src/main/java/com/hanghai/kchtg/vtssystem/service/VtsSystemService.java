@@ -60,6 +60,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -76,6 +77,7 @@ public class VtsSystemService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final PortCacheService portCacheService;
+    private final PortRepository portRepository;
     private final InfrastructureAttachmentRepository attachmentRepository;
     private final VtsZoneRepository zoneRepository;
     private final UserRepository userRepository;
@@ -89,6 +91,7 @@ public class VtsSystemService {
             GisSpatialObjectService gisSpatialObjectService,
             OrgUnitCacheService orgUnitCacheService,
             PortCacheService portCacheService,
+            PortRepository portRepository,
             InfrastructureAttachmentRepository attachmentRepository,
             VtsZoneRepository zoneRepository,
             UserRepository userRepository,
@@ -98,6 +101,7 @@ public class VtsSystemService {
         this.gisSpatialObjectService = gisSpatialObjectService;
         this.orgUnitCacheService = orgUnitCacheService;
         this.portCacheService = portCacheService;
+        this.portRepository = portRepository;
         this.attachmentRepository = attachmentRepository;
         this.zoneRepository = zoneRepository;
         this.userRepository = userRepository;
@@ -209,6 +213,33 @@ public class VtsSystemService {
         if (request.getConditionStatus() == null) {
             throw new IllegalArgumentException("Tình trạng không được để trống");
         }
+        validateReferenceScope(resolveDataScope(), request.getOrgUnitId(), request.getOwningOrgId(),
+                request.getOperatingOrgId(), request.getPortId());
+    }
+
+    private void validateReferenceScope(DataScopeContext scope, UUID orgUnitId, UUID owningOrgId,
+            UUID operatingOrgId, UUID portId) {
+        if (scope.enabled()) {
+            validateAllowedOrgUnit(scope, orgUnitId, "Đơn vị quản lý");
+            validateAllowedOrgUnit(scope, owningOrgId, "Đơn vị chủ quản");
+            validateAllowedOrgUnit(scope, operatingOrgId, "Đơn vị vận hành");
+        }
+
+        if (portId == null) {
+            return;
+        }
+
+        var port = portRepository.findActiveById(portId)
+                .orElseThrow(() -> new IllegalArgumentException("Cảng biển không tồn tại hoặc đã bị xóa"));
+        if (scope.enabled() && (port.getOrgUnitId() == null || !scope.orgUnitIds().contains(port.getOrgUnitId()))) {
+            throw new IllegalArgumentException("Cảng biển không thuộc phạm vi đơn vị được phép sử dụng");
+        }
+    }
+
+    private void validateAllowedOrgUnit(DataScopeContext scope, UUID orgUnitId, String label) {
+        if (orgUnitId == null || !scope.orgUnitIds().contains(orgUnitId)) {
+            throw new IllegalArgumentException(label + " không thuộc phạm vi đơn vị được phép sử dụng");
+        }
     }
 
     public VtsSystemResponse getById(UUID id) {
@@ -253,16 +284,6 @@ public class VtsSystemService {
     public Page<VtsSystemResponse> findAll(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return repository.findAll(pageable).map(this::toLightResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public List<OrgUnitResponse> getScopedOrgUnitOptions() {
-        DataScopeContext scope = resolveDataScope();
-        List<OrgUnitResponse> all = orgUnitCacheService.getList();
-        if (!scope.enabled()) return all;
-        return all.stream()
-                .filter(unit -> scope.orgUnitIds().contains(unit.getId()))
-                .toList();
     }
 
     private static String normalizeSearchKeyword(String keyword) {
@@ -356,6 +377,11 @@ public class VtsSystemService {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
+        DataScopeContext scope = resolveDataScope();
+        if (scope.enabled()) {
+            validateAllowedOrgUnit(scope, entity.getOrgUnitId(), "Đơn vị quản lý");
+        }
+
         UUID effectiveUserId = userId != null ? userId : entity.getCreatedBy();
 
         if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
@@ -375,6 +401,12 @@ public class VtsSystemService {
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().equals(entity.getOrgUnitId())) {
             throw new IllegalArgumentException("Đơn vị quản lý không được phép thay đổi sau khi tạo");
         }
+
+        validateReferenceScope(scope,
+                entity.getOrgUnitId(),
+                request.getOwningOrgId() != null ? request.getOwningOrgId() : entity.getOwningOrgId(),
+                request.getOperatingOrgId() != null ? request.getOperatingOrgId() : entity.getOperatingOrgId(),
+                request.getPortId() != null ? request.getPortId() : entity.getPortId());
 
         ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
         Map<String, String> previousValues = new LinkedHashMap<>();
@@ -1142,9 +1174,9 @@ public class VtsSystemService {
             return new DataScopeContext(true, List.of());
         }
 
-        boolean nationwide = currentUser.getRoles().stream()
-                .map(role -> role.getCode())
-                .anyMatch(Set.of("ROLE_SYSTEM_ADMIN", "ROLE_ADMIN")::contains);
+        boolean nationwide = currentUser.getAllPermissions().contains("orgunit:scope_all")
+                || currentUser.getAllPermissions().contains("admin:all")
+                || currentUser.getAllPermissions().contains("*");
         if (nationwide) {
             return new DataScopeContext(false, List.of());
         }
