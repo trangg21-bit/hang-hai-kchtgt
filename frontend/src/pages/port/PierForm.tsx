@@ -85,9 +85,12 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish }, ref) =>
     if (!vals.pierName?.trim()) { toast.error('Tên cầu không được để trống'); return; }
     if (!vals.berthId) { toast.error('Bến cảng là bắt buộc'); return; }
     const validCoords = coordinateList.filter(c => c.lat != null && c.lng != null && !isNaN(Number(c.lat)) && !isNaN(Number(c.lng)));
-    if (saveAction !== 'DRAFT' && (coordinateList.length === 0 || validCoords.length === 0)) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS');
-      return;
+    if (vals.geometryType) {
+      if (!vals.mapSymbolId) { toast.error('Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng'); return; }
+      if (coordinateList.length === 0 || validCoords.length === 0) {
+        toast.error('Vui lòng thêm ít nhất một tọa độ GPS khi chọn loại đối tượng');
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -143,10 +146,10 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish }, ref) =>
       <Row gutter={16}><Col span={12}><Form.Item name="investmentAgreementDoc" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} style={inputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="waterAreaNeutralScope" {...labelProps('Phạm vi khu nước neo buộc tàu')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập phạm vi khu nước" maxLength={2000} style={inputStyle} /></Form.Item></Col></Row>
       </div>)},
       { key: 'location', label: 'Thông tin vị trí', children: (<div style={{ paddingTop: 16 }}>
-      <Row gutter={16}><Col span={12}><Form.Item name="geometryType" {...labelProps('Loại đối tượng')} required style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn biểu tượng" allowClear showSearch optionFilterProp="label" disabled={!isEdit && !watchedGeometryType} loading={loadingSymbols} style={selectStyle}>{symbols.map((sym) => (<Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}><Space>{sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}<span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span></Space></Select.Option>))}</Select></Form.Item></Col></Row>
+      <Row gutter={16}><Col span={12}><Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn biểu tượng" allowClear showSearch optionFilterProp="label" disabled={!isEdit && !watchedGeometryType} loading={loadingSymbols} style={selectStyle}>{symbols.map((sym) => (<Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}><Space>{sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}<span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span></Space></Select.Option>))}</Select></Form.Item></Col></Row>
       <Row gutter={16}><Col span={12}><Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} /></Form.Item></Col><Col span={12}><Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}><Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} /></Form.Item></Col></Row>
       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span><span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span><span style={{ color: '#ff4d4f', marginLeft: 4, fontSize: fontSizeMd }}>*</span></span>
+        <span><span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span></span>
         {coordinateList.length > 0 && <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>}
       </div>
       {coordinateList.length === 0 ? (

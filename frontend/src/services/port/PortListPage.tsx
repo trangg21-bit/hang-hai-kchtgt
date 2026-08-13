@@ -789,18 +789,21 @@ export default function PortListPage() {
       if (Number(infra.quantity) > 5) { toast.error('Số lượng công trình KCHT không quá 5'); return; }
     }
 
-    // Validate GPS coordinates (required for both draft and submit)
+    // Validate GPS coordinates (only required when Loại đối tượng is selected)
     const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
-    if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
-      toast.error('Tọa độ GPS là bắt buộc. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
-      return;
-    }
-    // Check for incomplete entries (has some DMS fields but not all)
-    for (let i = 0; i < gpsCoordList.length; i++) {
-      const c = gpsCoordList[i];
-      if (c.lat == null || c.lng == null || isNaN(c.lat) || isNaN(c.lng)) {
-        toast.error(`Tọa độ thứ ${i + 1} chưa nhập đầy đủ thông tin Độ/Phút/Giây.`);
+    if (values.geometryType) {
+      if (!values.mapSymbolId) { toast.error('Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng'); return; }
+      if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
+        toast.error('Tọa độ GPS là bắt buộc khi chọn loại đối tượng. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
         return;
+      }
+      // Check for incomplete entries (has some DMS fields but not all)
+      for (let i = 0; i < gpsCoordList.length; i++) {
+        const c = gpsCoordList[i];
+        if (c.lat == null || c.lng == null || isNaN(c.lat) || isNaN(c.lng)) {
+          toast.error(`Tọa độ thứ ${i + 1} chưa nhập đầy đủ thông tin Độ/Phút/Giây.`);
+          return;
+        }
       }
     }
 
@@ -938,6 +941,14 @@ export default function PortListPage() {
 
   const handleUpdateFinish = async (values: Record<string, unknown>) => {
     if (!selectedRecord) return;
+    const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
+    if (values.geometryType) {
+      if (!values.mapSymbolId) { toast.error('Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng'); return; }
+      if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
+        toast.error('Tọa độ GPS là bắt buộc khi chọn loại đối tượng. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const n = (v: unknown): number | undefined =>
@@ -1387,10 +1398,18 @@ export default function PortListPage() {
         fixed: 'left' as const,
         render: (v: string, record: CangBienResponse) => (
           <a
-            onClick={() => {
-              setSelectedRecord(record);
-              documentApi.listByEntity('port', record.id, { page: 1, size: 20 }).then(res => setDetailFiles(res.data || [])).catch(() => setDetailFiles([]));
-              setDetailModalVisible(true);
+            onClick={async () => {
+              try {
+                setIsLoading(true);
+                const data = await fetchCangBienById(record.id);
+                setSelectedRecord(data);
+                documentApi.listByEntity('port', record.id, { page: 1, size: 20 }).then(res => setDetailFiles(res.data || [])).catch(() => setDetailFiles([]));
+                setDetailModalVisible(true);
+              } catch {
+                toast.error('Không thể tải thông tin chi tiết cảng biển');
+              } finally {
+                setIsLoading(false);
+              }
             }}
             style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer' }}
           >
@@ -2058,7 +2077,6 @@ export default function PortListPage() {
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>
                           <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                          <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>
                         </span>
                         {gpsCoordList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
@@ -2419,9 +2437,11 @@ export default function PortListPage() {
       )}
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
-      {!isIframeModal && (
+      {(!isIframeModal || action === 'edit') && (
         <Drawer
           {...drawerProps}
+          size={isIframeModal ? '100%' : 1000}
+          mask={!isIframeModal}
           title={
             <span style={drawerTitleStyle}>
               {selectedRecord
@@ -2804,7 +2824,6 @@ export default function PortListPage() {
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>
                           <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                          <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>
                         </span>
                         {gpsCoordList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
@@ -2945,12 +2964,12 @@ export default function PortListPage() {
                 },
                 {
                   key: 'infrastructure',
-                  label: 'Kết cấu hạ tầng',
+                  label: 'Công trình KCHT',
                   children: (
                     <div style={{ paddingTop: 16 }}>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Kết cấu hạ tầng</span>
+                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
                         {infraList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>
                             Thêm công trình
@@ -3174,9 +3193,11 @@ export default function PortListPage() {
       )}
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      {!isIframeModal && (
+      {(!isIframeModal || action === 'detail') && (
         <Drawer
           {...drawerProps}
+          size={isIframeModal ? '100%' : 1000}
+          mask={!isIframeModal}
           title={
             selectedRecord
               ? <span style={drawerTitleStyle}>Xem chi tiết cảng biển - {selectedRecord.portName}</span>
@@ -3199,7 +3220,7 @@ export default function PortListPage() {
                 {
                   key: 'general', label: 'Thông tin chung',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
                       <div className="detail-grid">
                       {[
@@ -3258,7 +3279,7 @@ export default function PortListPage() {
                 {
                   key: 'gis', label: 'Thông tin vị trí',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div style={{ paddingTop: 3 }}>
                       <div className="detail-grid">
                       {[
                         ['Loại đối tượng', selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'],
@@ -3324,12 +3345,12 @@ export default function PortListPage() {
                 {
                   key: 'infra', label: 'Công trình KCHT',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
-                      <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
+                    <div style={{ paddingTop: 3 }}>
+                      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
                       </div>
                       {(!(selectedRecord as any).infrastructureList || (selectedRecord as any).infrastructureList.length === 0) ? (
-                        <span style={{ color: textTertiary }}>Không có công trình KCHT</span>
+                        <span style={{ color: textTertiary, fontSize: fontSizeMd, paddingLeft: 12 }}>Không có công trình KCHT</span>
                       ) : (
                         <Table className="list-view-table" dataSource={((selectedRecord as any).infrastructureList || []).map((i: any, idx: number) => ({ ...i, key: idx }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}>
                           <Table.Column title="STT" dataIndex="stt" key="stt" width={60} align="center"
@@ -3346,8 +3367,8 @@ export default function PortListPage() {
                 {
                   key: 'files', label: 'File đính kèm',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
-                      <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
+                    <div style={{ paddingTop: 3 }}>
+                      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
                       </div>
                       {detailFiles.length === 0 ? (

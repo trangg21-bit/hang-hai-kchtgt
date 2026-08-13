@@ -1,0 +1,46 @@
+{
+  "triage_id": "TRI-1786609663137-572a",
+  "created_at": 1786609663137,
+  "request_summary": "Bỏ validate bắt buộc (bỏ *) của \"Loại đối tượng\" và \"tọa độ GPS\" trong tab Thông tin vị trí form thêm mới/chỉnh sửa cảng biển, bến cảng, cầu cảng; nếu chọn Loại đối tượng thì bắt buộc điền Biểu tượng bản đồ và tọa độ GPS.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Danh sách cảng biển (/port), bến cảng (/berth), cầu cảng (/pier) → mở form thêm mới/chỉnh sửa → tab \"Thông tin vị trí\"",
+  "blast_radius": 3,
+  "done_oracle": "npx tsc --noEmit (trong frontend/) không lỗi; UAT: thêm/sửa không chọn Loại đối tượng thì lưu được mà không bị chặn tọa độ; khi chọn Loại đối tượng mà thiếu Biểu tượng bản đồ hoặc tọa độ GPS thì hiện toast chặn.",
+  "change_type": "business_rule",
+  "declared_write_scope": [
+    "frontend/src/pages/port/BerthForm.tsx",
+    "frontend/src/pages/port/PierForm.tsx",
+    "frontend/src/services/port/PortListPage.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "a118e02a00f18a7674acafa9db517ac3663a2f03",
+    "dirty": true,
+    "captured_at": 1786609663360
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}
