@@ -2,6 +2,7 @@ package com.hanghai.kchtg.vtssystem.config;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 
 @Component
+@Profile("local-h2")
 public class VtsSchemaFix implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(VtsSchemaFix.class);
     private final JdbcTemplate jdbcTemplate;

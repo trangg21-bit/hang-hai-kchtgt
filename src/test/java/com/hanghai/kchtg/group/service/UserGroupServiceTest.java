@@ -2,10 +2,8 @@ package com.hanghai.kchtg.group.service;
 
 import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
 import com.hanghai.kchtg.group.dto.CreateUserGroupRequest;
-import com.hanghai.kchtg.group.dto.GroupCopyRequest;
 import com.hanghai.kchtg.group.dto.UpdateUserGroupRequest;
 import com.hanghai.kchtg.group.entity.*;
-import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
@@ -37,9 +35,6 @@ class UserGroupServiceTest {
     private GroupMemberRepository groupMemberRepository;
 
     @Mock
-    private GroupHistoryRepository groupHistoryRepository;
-
-    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -65,7 +60,6 @@ class UserGroupServiceTest {
         group.setId(groupId);
         group.setName("Phòng Kế Hoạch");
         group.setCode("GRP_KEHOACH");
-        group.setGroupType(GroupType.DEPARTMENT);
         group.setStatus(GroupStatus.ACTIVE);
         group.setPermissions(new ArrayList<>());
 
@@ -81,7 +75,6 @@ class UserGroupServiceTest {
         CreateUserGroupRequest request = new CreateUserGroupRequest();
         request.setName("Phòng Kế Hoạch");
         request.setCode("GRP_KEHOACH");
-        request.setGroupType(GroupType.DEPARTMENT);
 
         when(groupRepository.existsByNameAndDeletedAtIsNull("Phòng Kế Hoạch")).thenReturn(false);
         when(groupRepository.existsByCodeAndDeletedAtIsNull("GRP_KEHOACH")).thenReturn(false);
@@ -97,7 +90,6 @@ class UserGroupServiceTest {
         assertEquals("GRP_KEHOACH", result.getCode());
         assertEquals("Phòng Kế Hoạch", result.getName());
         verify(groupRepository).save(any(UserGroup.class));
-        verify(groupHistoryRepository).save(any(GroupHistory.class));
     }
 
     @Test
@@ -155,7 +147,6 @@ class UserGroupServiceTest {
         assertDoesNotThrow(() -> userGroupService.delete(groupId, operatorId, "Admin"));
 
         verify(groupRepository).save(group);
-        verify(groupHistoryRepository).save(any(GroupHistory.class));
     }
 
     @Test
@@ -173,7 +164,6 @@ class UserGroupServiceTest {
 
         assertNotNull(result);
         verify(permissionCacheService).invalidateAndIncrementVersion(user.getId());
-        verify(groupHistoryRepository).save(any(GroupHistory.class));
     }
 
     @Test
@@ -197,29 +187,7 @@ class UserGroupServiceTest {
     }
 
     @Test
-    @DisplayName("copy_shouldCopyGroupAndMembers")
-    void copy_shouldCopyGroupAndMembers() {
-        GroupCopyRequest request = new GroupCopyRequest();
-        request.setName("Phòng Kế Hoạch - Copy");
-
-        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
-        when(groupRepository.save(any(UserGroup.class))).thenAnswer(inv -> {
-            UserGroup g = inv.getArgument(0);
-            if (g.getId() == null) g.setId(UUID.randomUUID());
-            return g;
-        });
-        when(groupMemberRepository.findByGroupIdWithUser(eq(groupId), eq(GroupMemberStatus.ACTIVE), any()))
-                .thenReturn(new org.springframework.data.domain.PageImpl<>(Collections.emptyList()));
-
-        UserGroup copyResult = userGroupService.copy(groupId, request, operatorId, "Admin");
-
-        assertNotNull(copyResult);
-        assertEquals("Phòng Kế Hoạch - Copy", copyResult.getName());
-        verify(groupHistoryRepository).save(any(GroupHistory.class));
-    }
-
-    @Test
-    @DisplayName("lockGroup_shouldToggleStatusFromActiveToInactiveAndLogHistory")
+    @DisplayName("lockGroup_shouldToggleStatusFromActiveToInactive")
     void lockGroup_shouldToggleStatusFromActiveToInactiveAndLogHistory() {
         group.setStatus(GroupStatus.ACTIVE);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
@@ -230,11 +198,10 @@ class UserGroupServiceTest {
         assertNotNull(result);
         assertEquals(GroupStatus.INACTIVE, result.getStatus());
         verify(groupRepository).save(group);
-        verify(groupHistoryRepository).save(any(GroupHistory.class));
     }
 
     @Test
-    @DisplayName("lockGroup_shouldToggleStatusFromInactiveToActiveAndLogHistory")
+    @DisplayName("lockGroup_shouldToggleStatusFromInactiveToActive")
     void lockGroup_shouldToggleStatusFromInactiveToActiveAndLogHistory() {
         group.setStatus(GroupStatus.INACTIVE);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
@@ -245,7 +212,5 @@ class UserGroupServiceTest {
         assertNotNull(result);
         assertEquals(GroupStatus.ACTIVE, result.getStatus());
         verify(groupRepository).save(group);
-        verify(groupHistoryRepository).save(any(GroupHistory.class));
     }
 }
-

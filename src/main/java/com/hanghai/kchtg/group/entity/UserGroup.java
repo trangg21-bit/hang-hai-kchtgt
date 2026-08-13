@@ -4,7 +4,7 @@ import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.user.entity.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,25 +31,20 @@ public class UserGroup extends BaseEntity {
 
     /** Ten hien thi cua nhom (bat buoc). */
     @NotBlank(message = "Tên nhóm không được để trống")
-    @Size(max = 100, message = "Tên nhóm tối đa 100 ký tự")
+    @Size(min = 2, max = 100, message = "Tên nhóm phải từ 2 đến 100 ký tự")
     @Column(nullable = false, length = 100)
     private String name;
 
     /** Ma dinh danh duy nhat cua nhom (bat buoc, unique). */
     @NotBlank(message = "Mã nhóm không được để trống")
-    @Size(max = 50, message = "Mã nhóm tối đa 50 ký tự")
+    @Size(min = 2, max = 30, message = "Mã nhóm phải từ 2 đến 30 ký tự")
+    @Pattern(regexp = "^[A-Z0-9_]{2,30}$", message = "Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
     /** Mo ta chi tiet ve nhom. */
-    @Column(length = 500)
+    @Column(length = 1000)
     private String description;
-
-    /** Loai nhom: department / project / custom (BR-012). */
-    @NotNull(message = "Loại nhóm không được để trống")
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "group_type", nullable = false)
-    private GroupType groupType = GroupType.CUSTOM;
 
     /** Danh sach ma quyen (permission keys) ma nhom nay so huu. */
     @ElementCollection(fetch = FetchType.EAGER)

@@ -286,12 +286,6 @@ public class DataSeeder implements CommandLineRunner {
             "Nhóm Đơn Vị Thi Công", "Nhóm Thanh Tra Hàng Hải", "Nhóm Hỗ Trợ Kỹ Thuật"
         };
 
-        String[] groupTypes = {
-            "department", "department", "department", "department", "department",
-            "project", "project", "project", "custom", "department",
-            "department", "custom", "project", "department", "custom"
-        };
-
         int seededCount = 0;
         for (int i = 0; i < 15; i++) {
             if (!groupRepo.existsByCode(codes[i])) {
@@ -299,7 +293,6 @@ public class DataSeeder implements CommandLineRunner {
                 g.setName(names[i]);
                 g.setCode(codes[i]);
                 g.setDescription("Mô tả nhóm " + names[i]);
-                g.setGroupType(GroupType.fromValue(groupTypes[i]));
                 g.setStatus(GroupStatus.ACTIVE);
                 g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
                 groupRepo.save(g);

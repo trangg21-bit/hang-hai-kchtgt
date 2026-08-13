@@ -53,6 +53,7 @@ export const userService = {
     pageSize?: number;
     search?: string;
     status?: string;
+    orgUnitId?: string;
     sortField?: string;
     sortOrder?: 'ascend' | 'descend' | null;
   }): Promise<PaginatedResponse<User>> {
@@ -60,6 +61,7 @@ export const userService = {
       params: {
         search: params.search?.trim() || undefined,
         status: params.status ? params.status.toUpperCase() : undefined,
+        orgUnitId: params.orgUnitId || undefined,
         page: params.page ? params.page - 1 : 0,
         size: params.pageSize || 20,
         sortField: params.sortField || undefined,

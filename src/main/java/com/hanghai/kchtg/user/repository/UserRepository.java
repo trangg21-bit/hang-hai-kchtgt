@@ -138,6 +138,18 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "GROUP BY u.status")
     List<Object[]> countUsersByStatus(@Param("search") String search);
 
+    @Query("SELECT u.status, COUNT(u) FROM User u " +
+           "WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:search AS string) OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
+           "AND u.deletedAt IS NULL " +
+           "AND (:orgUnitId IS NULL OR u.orgUnit.id = :orgUnitId) " +
+           "GROUP BY u.status")
+    List<Object[]> countUsersByStatusAndOrgUnit(@Param("search") String search,
+                                                @Param("orgUnitId") UUID orgUnitId);
+
     @Query("SELECT DISTINCT u FROM User u " +
            "WHERE (:search IS NULL OR :search = '' OR " +
            "  CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:search AS string) OR " +
@@ -162,5 +174,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<UserListProjection> searchUserList(
             @org.springframework.data.repository.query.Param("search") String search,
             @org.springframework.data.repository.query.Param("status") UserStatus status,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query(value = "SELECT u.id AS id, u.username AS username, u.email AS email, u.fullName AS fullName, " +
+           "u.orgUnit.id AS orgUnitId, u.status AS status, u.lastLoginAt AS lastLoginAt " +
+           "FROM User u " +
+           "WHERE (:search IS NULL OR :search = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:search AS string) OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
+           "AND u.deletedAt IS NULL " +
+           "AND (:status IS NULL OR u.status = :status) " +
+           "AND (:orgUnitId IS NULL OR u.orgUnit.id = :orgUnitId)")
+    List<UserListProjection> searchUserListByOrgUnit(
+            @Param("search") String search,
+            @Param("status") UserStatus status,
+            @Param("orgUnitId") UUID orgUnitId,
             org.springframework.data.domain.Pageable pageable);
 }

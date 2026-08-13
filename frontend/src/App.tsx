@@ -31,7 +31,6 @@ const UnitForm = lazy(() => import('./pages/organizations/UnitForm'));
 const UnitTree = lazy(() => import('./pages/organizations/UnitTree'));
 const GroupList = lazy(() => import('./pages/groups/GroupList'));
 const GroupForm = lazy(() => import('./pages/groups/GroupForm'));
-const GroupMembers = lazy(() => import('./pages/groups/GroupMembers'));
 const LogsPage = lazy(() => import('./pages/LogsPage'));
 const InterconnectPage = lazy(() => import('./pages/InterconnectPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
@@ -135,7 +134,6 @@ export default function App() {
                 <Route path="/groups" element={<PermissionGuard permission="group:read"><GroupList /></PermissionGuard>} />
                 <Route path="/groups/create" element={<PermissionGuard permission="group:create"><GroupForm /></PermissionGuard>} />
                 <Route path="/groups/:id/edit" element={<PermissionGuard permission="group:edit"><GroupForm /></PermissionGuard>} />
-                <Route path="/groups/:id/members" element={<PermissionGuard permission="group:read"><GroupMembers /></PermissionGuard>} />
 
                 {/* GIS - Bản đồ */}
                 <Route path="/gis/points" element={<PermissionGuard permission="data:read"><PointObjectList /></PermissionGuard>} />

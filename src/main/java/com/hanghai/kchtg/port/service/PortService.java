@@ -308,7 +308,14 @@ public class PortService {
             });
         }
 
-        return results.map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
+        // The list contract does not use child collections. Avoid lazy-loading
+        // infrastructure and attachments for every row (and the resulting N+1
+        // queries) when the list is rendered.
+        return results.map(e -> toResponse(
+                e,
+                userNamesMap.get(e.getCreatedBy()),
+                userNamesMap.get(e.getUpdatedBy()),
+                false));
     }
 
     @Transactional(readOnly = true)
@@ -622,10 +629,15 @@ public class PortService {
     // ── Internal helpers ─────────────────────────────────────────────────
 
     private PortResponse toResponse(Port entity) {
-        return toResponse(entity, null, null);
+        return toResponse(entity, null, null, true);
     }
 
     private PortResponse toResponse(Port entity, String preResolvedCreatorName, String preResolvedUpdaterName) {
+        return toResponse(entity, preResolvedCreatorName, preResolvedUpdaterName, true);
+    }
+
+    private PortResponse toResponse(Port entity, String preResolvedCreatorName, String preResolvedUpdaterName,
+                                    boolean includeChildCollections) {
         String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName 
                 : userResolverService.resolveName(entity.getCreatedBy());
         String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName 
@@ -745,15 +757,18 @@ public class PortService {
                 }
             });
         }
-        // Add infrastructure and attachments
-        if (entity.getInfrastructureList() != null) {
+        // Child collections are needed for detail/create/update responses, but
+        // not for the paged list response. Keeping them out of the list avoids
+        // lazy-loading one query per port and keeps list reads independent from
+        // attachment-table privileges.
+        if (includeChildCollections && entity.getInfrastructureList() != null) {
             builder.infrastructureList(entity.getInfrastructureList().stream().map(infra -> {
                 PortInfrastructureDto dto = new PortInfrastructureDto();
                 dto.setStt(infra.getStt()); dto.setInfraName(infra.getInfraName()); dto.setQuantity(infra.getQuantity());
                 return dto;
             }).collect(Collectors.toList()));
         }
-        if (entity.getAttachments() != null) {
+        if (includeChildCollections && entity.getAttachments() != null) {
             builder.attachments(entity.getAttachments().stream().map(att -> {
                 PortAttachmentDto dto = new PortAttachmentDto();
                 dto.setId(att.getId()); dto.setFileName(att.getFileName()); dto.setFilePath(att.getFilePath());

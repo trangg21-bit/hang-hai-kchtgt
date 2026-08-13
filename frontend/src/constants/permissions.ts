@@ -43,9 +43,12 @@ export const PERMISSIONS = {
     DELETE: 'group:delete',
     LOCK: 'group:lock',
     MANAGE: 'group:manage',
-    COPY: 'group:copy',
-    HISTORY: 'group:history',
     PERMISSION: 'group:permission',
+  },
+
+  /** Quản lý thành viên nhóm — tách khỏi quyền xem nhóm. */
+  GROUP_MEMBER: {
+    MANAGE: 'groupmember:manage',
   },
 
   /** Cảng biển (M-002) */
@@ -224,8 +227,6 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.GROUP.DELETE, title: 'Xóa Nhóm' },
       { key: PERMISSIONS.GROUP.LOCK, title: 'Khóa Nhóm' },
       { key: PERMISSIONS.GROUP.MANAGE, title: 'Quản lý Nhóm' },
-      { key: PERMISSIONS.GROUP.COPY, title: 'Copy Nhóm' },
-      { key: PERMISSIONS.GROUP.HISTORY, title: 'Lịch sử Nhóm' },
       { key: PERMISSIONS.GROUP.PERMISSION, title: 'Phân quyền Nhóm' },
       { key: PERMISSIONS.ROLE.MANAGE, title: 'Quản lý Vai trò' },
       { key: PERMISSIONS.ORGUNIT.READ, title: 'Xem Đơn vị' },

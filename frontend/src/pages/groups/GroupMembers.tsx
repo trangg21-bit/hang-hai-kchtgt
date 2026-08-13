@@ -12,9 +12,10 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
-import { spaceMd, spaceFormField, radiusPill, fontSizeMd, fontSizeLg, fontWeightBold, actionPrimary, textSecondary, borderDefault, cardStyle } from '../../tokens';
-import { colors } from '../../theme';
+import { spaceMd, spaceFormField, radiusPill, fontSizeMd, cardStyle, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
+import { ManagementDrawer } from '../../components/management';
 import { usePermissionStore } from '../../store/permissionStore';
+import { PERMISSIONS } from '../../constants/permissions';
 
 export default function GroupMembers() {
   const navigate = useNavigate();
@@ -90,8 +91,9 @@ export default function GroupMembers() {
   const handleAddMember = useCallback(async () => {
     try {
       const values = await form.validateFields();
-      await groupService.addMember(id!, { userId: values.userId });
-      toast.success('Đã thêm thành viên vào nhóm');
+      const userIds = Array.isArray(values.userId) ? values.userId : [values.userId];
+      await Promise.all(userIds.map((userId: string) => groupService.addMember(id!, { userId })));
+      toast.success(`Đã thêm ${userIds.length} thành viên vào nhóm`);
       setAddModalOpen(false); form.resetFields(); fetchMembers();
     } catch (err: any) {
       if (err?.errorFields) {
@@ -113,7 +115,7 @@ export default function GroupMembers() {
 
   // ---- Row actions ----
   const rowActions = useCallback((record: GroupMember) => (
-    hasPerm('groupmember:manage')
+    hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE)
       ? [{ key: 'remove', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleRemove(record), danger: true }]
       : []
   ), [hasPerm, handleRemove]);
@@ -149,7 +151,7 @@ export default function GroupMembers() {
   // ---- Header actions ----
   const headerActions = useMemo(() => [
     { key: 'back', label: 'Quay lại', variant: 'subtle' as const, icon: <ArrowLeftOutlined />, onClick: () => navigate('/groups') },
-    ...(hasPerm('groupmember:manage') ? [{ key: 'add', label: 'Thêm thành viên', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => setAddModalOpen(true) }] : []),
+    ...(hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? [{ key: 'add', label: 'Thêm thành viên', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => setAddModalOpen(true) }] : []),
   ], [hasPerm, navigate]);
 
   return (
@@ -160,30 +162,37 @@ export default function GroupMembers() {
         {renderContent()}
       </div>
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Thêm thành viên vào nhóm</span>}
-        open={addModalOpen} onCancel={() => { setAddModalOpen(false); form.resetFields(); }} destroyOnHidden width={500} mask={{ closable: false }}
-        footer={[
-          <Button key="cancel" onClick={() => { setAddModalOpen(false); form.resetFields(); }} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="ok" type="primary" onClick={handleAddMember} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Thêm</Button>,
-        ]}
+      <ManagementDrawer
+        title="Thêm thành viên vào nhóm"
+        open={addModalOpen}
+        onClose={() => { setAddModalOpen(false); form.resetFields(); }}
+        destroyOnHidden
+        mask={{ closable: false }}
+        footer={
+          <>
+            <Button onClick={() => { setAddModalOpen(false); form.resetFields(); }} style={outlineButtonStyle}>Hủy</Button>
+            <Button type="primary" onClick={handleAddMember} style={primaryButtonStyle}>Thêm</Button>
+          </>
+        }
       >
         <Spin spinning={false}>
           <Form form={form} layout="vertical" style={{ marginTop: spaceMd }}>
             <Form.Item name="userId" label="Chọn người dùng" required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn người dùng' }]}>
               <Select
+                mode="multiple"
                 showSearch
                 placeholder="Tìm và chọn người dùng..."
                 options={userOptions}
                 filterOption={false}
+                maxTagCount="responsive"
                 onSearch={handleUserSearch}
                 loading={isSearchingUser}
-                style={{ borderRadius: radiusPill, height: 40 }}
+                style={{ borderRadius: radiusPill, minHeight: 40 }}
               />
             </Form.Item>
           </Form>
         </Spin>
-      </Modal>
+      </ManagementDrawer>
     </div>
   );
 }

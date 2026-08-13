@@ -114,10 +114,6 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "Chỉnh sửa thông tin nhóm");
         seedPermission(permissionsByCode, "group", "delete", "Xóa nhóm",
                 "Xóa nhóm người dùng");
-        seedPermission(permissionsByCode, "group", "copy", "Sao chép nhóm",
-                "Sao chép nhóm người dùng");
-        seedPermission(permissionsByCode, "group", "history", "Xem lịch sử nhóm",
-                "Xem lịch sử thay đổi nhóm");
         seedPermission(permissionsByCode, "group", "permission", "Phân quyền nhóm",
                 "Gán vai trò cho nhóm và cấp quyền kế thừa cho thành viên");
         seedPermission(permissionsByCode, "groupmember", "manage", "Quản lý thành viên nhóm",
@@ -350,7 +346,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
                 "admin:view",
                 "document:read", "document:create", "document:update", "document:delete",
-                "group:create", "group:edit", "group:delete", "group:copy", "group:history", "group:permission", "groupmember:manage",
+                "group:create", "group:edit", "group:delete", "group:permission", "groupmember:manage",
                 "group:lock", "group:read",
                 "report:read", "connection:read", "data:read", "data:approve",
                 // M-003 read + approve actions
@@ -499,8 +495,6 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(newPerms, "group", "create", "Tạo nhóm", "Tạo nhóm người dùng mới");
         seedPermission(newPerms, "group", "edit", "Sửa nhóm", "Chỉnh sửa thông tin nhóm");
         seedPermission(newPerms, "group", "delete", "Xóa nhóm", "Xóa nhóm người dùng");
-        seedPermission(newPerms, "group", "copy", "Sao chép nhóm", "Sao chép nhóm người dùng");
-        seedPermission(newPerms, "group", "history", "Xem lịch sử nhóm", "Xem lịch sử thay đổi nhóm");
         seedPermission(newPerms, "group", "permission", "Phân quyền nhóm", "Gán vai trò cho nhóm và cấp quyền kế thừa cho thành viên");
         seedPermission(newPerms, "groupmember", "manage", "Quản lý thành viên nhóm", "Thêm, xóa thành viên khỏi nhóm");
         seedPermission(newPerms, "group", "lock", "Khóa/Mở khóa nhóm", "Khóa hoặc mở khóa nhóm người dùng");
@@ -610,7 +604,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermMap.put("ROLE_ADMIN", List.of(
             "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
             "admin:view", "document:read", "document:create", "document:update", "document:delete",
-            "group:create", "group:edit", "group:delete", "group:copy", "group:history", "group:permission", "groupmember:manage",
+            "group:create", "group:edit", "group:delete", "group:permission", "groupmember:manage",
             "group:lock", "group:read",
             "report:read", "connection:read", "data:read", "data:approve",
             "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",

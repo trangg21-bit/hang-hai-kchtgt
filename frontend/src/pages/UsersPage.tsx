@@ -45,7 +45,8 @@ export default function UsersPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
-  const [filterStatusInput, setFilterStatusInput] = useState<string | undefined>();
+  const [filterOrganizationInput, setFilterOrganizationInput] = useState<string | undefined>();
+  const [filterOrganizationId, setFilterOrganizationId] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
@@ -72,7 +73,6 @@ export default function UsersPage() {
   const detailUser = detailResponse?.data ?? null;
 
   useEffect(() => {
-    if (!modalOpen) return;
     let isMounted = true;
     (async () => {
       try {
@@ -84,13 +84,13 @@ export default function UsersPage() {
       }
     })();
     return () => { isMounted = false; };
-  }, [modalOpen]);
+  }, []);
 
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const { data, isLoading, isError, error, refetch } = useUsers({
     page, pageSize, search: search || undefined,
-    status: filterStatus, sortField, sortOrder,
+    status: filterStatus, orgUnitId: filterOrganizationId, sortField, sortOrder,
   });
 
   const statusCounts = (data as any)?.statusCounts;
@@ -194,31 +194,31 @@ export default function UsersPage() {
   const handleFilterApply = useCallback(() => {
     const nextSearch = searchInput.trim();
     const sameFilters = nextSearch === search
-      && filterStatusInput === filterStatus
+      && filterOrganizationInput === filterOrganizationId
       && page === 1;
 
     setSearch(nextSearch);
-    setFilterStatus(filterStatusInput);
+    setFilterOrganizationId(filterOrganizationInput);
     setPage(1);
 
     // Clicking Search again with unchanged filters still performs an
     // explicit request instead of waiting for the query cache to expire.
     if (sameFilters) void refetch();
-  }, [filterStatus, filterStatusInput, page, refetch, search, searchInput]);
+  }, [filterOrganizationInput, filterOrganizationId, page, refetch, search, searchInput]);
 
   const handleFilterReset = useCallback(() => {
-    const alreadyReset = !search && !filterStatus && page === 1;
+    const alreadyReset = !search && !filterStatus && !filterOrganizationId && page === 1;
     setSearchInput('');
     setSearch('');
-    setFilterStatusInput(undefined);
     setFilterStatus(undefined);
+    setFilterOrganizationInput(undefined);
+    setFilterOrganizationId(undefined);
     setPage(1);
     if (alreadyReset) void refetch();
   }, [filterStatus, page, refetch, search]);
 
   const handleTabChange = useCallback((key: string) => {
     const nextStatus = key === 'all' ? undefined : key;
-    setFilterStatusInput(nextStatus);
     setFilterStatus(nextStatus);
     setPage(1);
   }, []);
@@ -316,7 +316,7 @@ export default function UsersPage() {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách người dùng'} onRetry={() => refetch()} />;
     const tableData = data?.data || [];
-    const emptyDescription = search || filterStatus
+    const emptyDescription = search || filterStatus || filterOrganizationId
       ? 'Không tìm thấy người dùng nào phù hợp'
       : 'Chưa có người dùng nào';
     return <>
@@ -347,13 +347,17 @@ export default function UsersPage() {
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
-        <Select placeholder="Tất cả" allowClear
-          value={filterStatusInput || undefined}
-          onChange={(val) => setFilterStatusInput(val)}
-          options={[{ value: 'active', label: 'Hoạt động' }, { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }]}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Đơn vị</div>
+        <OrgUnitTreeSelect
+          organizations={organizations}
+          value={filterOrganizationInput}
+          onChange={(value) => setFilterOrganizationInput(value)}
+          placeholder="Tất cả đơn vị"
+          showSearch
+          allowClear
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
       </div>
     </>
   );

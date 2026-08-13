@@ -159,15 +159,15 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-002-11 — Chỉnh sửa nhóm thất bại do trùng tên:** Khi người dùng sửa tên nhóm B thành tên đã tồn tại của nhóm A và nhấn Lưu, hệ thống hiển thị lỗi "Tên nhóm đã tồn tại", thông tin không được cập nhật.
 
-**AC-002-12 — Gán chức năng cho nhóm:** Khi người dùng mở popup Phân quyền, tick chọn chức năng trên cây chức năng và nhấn Lưu, hệ thống cập nhật danh sách chức năng của nhóm, toàn bộ thành viên hiện tại có quyền sử dụng các chức năng được gán, và GroupHistory ghi nhận thay đổi. Nếu bỏ chọn tất cả chức năng, nhóm không còn chức năng nào được gán.
+**AC-002-12 — Gán chức năng cho nhóm:** Khi người dùng mở drawer Phân quyền, tick chọn chức năng trên cây chức năng và nhấn Lưu, hệ thống cập nhật danh sách chức năng của nhóm, toàn bộ thành viên hiện tại có quyền sử dụng các chức năng được gán. Nếu bỏ chọn tất cả chức năng, nhóm không còn chức năng nào được gán.
 
 **AC-002-13 — Thành viên mới tự động có quyền từ nhóm:** Khi người dùng thêm người dùng mới vào nhóm đã được gán chức năng, người dùng mới tự động thừa hưởng toàn bộ quyền sử dụng các chức năng đã gán cho nhóm.
 
-**AC-002-14 — Xem chi tiết nhóm:** Khi người dùng click "Xem chi tiết" trên một dòng nhóm, hệ thống mở popup với 2 tab: Thông tin nhóm (đầy đủ các trường), Danh sách thành viên (bảng phân trang). Lịch sử thay đổi được ghi nhận ở Backend nhưng chưa hiển thị lên UI trong giai đoạn này. Nếu nhóm không tồn tại, hiển thị lỗi.
+**AC-002-14 — Xem chi tiết nhóm:** Khi người dùng click "Xem chi tiết" trên một dòng nhóm, hệ thống mở drawer với 2 tab: Thông tin nhóm (đầy đủ các trường), Danh sách thành viên (bảng phân trang). Không có chức năng lịch sử nhóm. Nếu nhóm không tồn tại, hiển thị lỗi.
 
-**AC-002-15 — Khóa nhóm:** Khi người dùng click "Khóa nhóm người dùng" trên nhóm đang "Sử dụng" và xác nhận, hệ thống chuyển trạng thái nhóm sang "Không sử dụng", tạm ngưng toàn bộ quyền thừa hưởng từ nhóm của các thành viên, hiển thị toast "Đã khóa nhóm", ghi nhận vào lịch sử. Nếu nhóm đã ở trạng thái "Không sử dụng", nút hiển thị là "Mở khóa nhóm người dùng".
+**AC-002-15 — Khóa nhóm:** Khi người dùng click "Khóa nhóm người dùng" trên nhóm đang "Sử dụng" và xác nhận, hệ thống chuyển trạng thái nhóm sang "Không sử dụng", tạm ngưng toàn bộ quyền thừa hưởng từ nhóm của các thành viên, hiển thị toast "Đã khóa nhóm". Nếu nhóm đã ở trạng thái "Không sử dụng", nút hiển thị là "Mở khóa nhóm người dùng".
 
-**AC-002-16 — Mở khóa nhóm:** Khi người dùng click "Mở khóa nhóm người dùng" trên nhóm đang "Không sử dụng" và xác nhận, hệ thống chuyển trạng thái nhóm sang "Sử dụng", khôi phục toàn bộ quyền thừa hưởng từ nhóm cho các thành viên, hiển thị toast "Đã mở khóa nhóm", ghi nhận vào lịch sử.
+**AC-002-16 — Mở khóa nhóm:** Khi người dùng click "Mở khóa nhóm người dùng" trên nhóm đang "Không sử dụng" và xác nhận, hệ thống chuyển trạng thái nhóm sang "Sử dụng", khôi phục toàn bộ quyền thừa hưởng từ nhóm cho các thành viên, hiển thị toast "Đã mở khóa nhóm".
 
 ---
 
@@ -180,8 +180,6 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 **BR-002-02 — Người dùng có thể thuộc nhiều nhóm:** Một người dùng có thể là thành viên của nhiều nhóm cùng lúc. Không giới hạn số lượng nhóm mà một người dùng có thể tham gia.
 
 **BR-002-03 — Mã nhóm duy nhất:** Mã nhóm (code) phải là duy nhất trong toàn hệ thống. Định dạng: chữ hoa, số và gạch dưới, dài 2-30 ký tự.
-
-**BR-002-04 — Ghi nhận lịch sử thay đổi:** Mọi thay đổi trên nhóm (tạo, sửa, khóa/mở khóa, thêm/xóa thành viên, phân quyền) phải được ghi nhận vào bảng GroupHistory kèm thông tin người thực hiện, thời gian và nội dung thay đổi.
 
 **BR-002-05 — Thừa hưởng quyền từ chức năng của nhóm:** Người dùng có quyền quản trị có thể gán một hoặc nhiều chức năng cho nhóm. Toàn bộ thành viên trong nhóm được thừa hưởng quyền sử dụng các chức năng được gán.
 
@@ -231,20 +229,7 @@ Các trường thông tin:
 - <span style="color:red;font-weight:bold">**joinedBy:** BIGINT, FK → UserAccount — người thực hiện thêm thành viên</span>
 - <span style="color:red;font-weight:bold">**joinedAt:** TIMESTAMP — thời điểm tham gia nhóm</span>
 
-### 6.3. Bảng GroupHistory — Lịch sử thay đổi nhóm
-
-Đây là bảng audit, lưu toàn bộ thay đổi trên nhóm và thành viên.
-
-Các trường thông tin:
-
-- <span style="color:red;font-weight:bold">**id:** BIGINT, PK, tự tăng</span>
-- <span style="color:red;font-weight:bold">**groupId:** BIGINT, FK → UserGroup, NOT NULL — nhóm được thay đổi</span>
-- <span style="color:red;font-weight:bold">**action:** VARCHAR(30) — hành động: CREATE, UPDATE, LOCK, UNLOCK, ADD_MEMBER, REMOVE_MEMBER, UPDATE_PERMISSION</span>
-- <span style="color:red;font-weight:bold">**performedBy:** BIGINT, FK → UserAccount — người thực hiện</span>
-- <span style="color:red;font-weight:bold">**performedAt:** TIMESTAMP — thời điểm thực hiện</span>
-- <span style="color:red;font-weight:bold">**notes:** TEXT — ghi chú chi tiết thay đổi</span>
-
-### 6.4. Bảng GroupFunction — Phân quyền chức năng cho nhóm
+### 6.3. Bảng GroupFunction — Phân quyền chức năng cho nhóm
 
 Đây là bảng liên kết nhiều-nhiều, lưu các chức năng được gán cho nhóm.
 
@@ -274,13 +259,14 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
 | GET | `/api/v1/groups/{id}` | Chi tiết nhóm | JWT |
 | POST | `/api/v1/groups` | Tạo nhóm mới | `group:create` |
 | PUT | `/api/v1/groups/{id}` | Chỉnh sửa nhóm | `group:edit` |
+| GET | `/api/v1/groups/{id}/permissions` | Danh sách mã quyền của nhóm | `group:permission` |
+| PUT | `/api/v1/groups/{id}/permissions` | Cập nhật mã quyền của nhóm | `group:permission` |
 | PATCH | `/api/v1/groups/{id}/lock` | Khóa/Mở khóa nhóm | `group:lock` |
-| POST | `/api/v1/groups/{id}/members` | Thêm thành viên vào nhóm | `group:member:manage` |
-| DELETE | `/api/v1/groups/{groupId}/members/{userId}` | Xóa thành viên khỏi nhóm | `group:member:manage` |
-| GET | `/api/v1/groups/{id}/members` | Danh sách thành viên (phân trang) | `group:member:manage` |
-| GET | `/api/v1/groups/{id}/history` | Lịch sử thay đổi nhóm | `group:history` |
+| POST | `/api/v1/groups/{id}/members` | Thêm thành viên vào nhóm | `groupmember:manage` |
+| DELETE | `/api/v1/groups/{groupId}/members/{userId}` | Xóa thành viên khỏi nhóm | `groupmember:manage` |
+| GET | `/api/v1/groups/{id}/members` | Danh sách thành viên (phân trang) | `group:read` |
 
-> **Ghi chú:** Permission `group:permission` là quyền UI — kiểm soát hiển thị nút "Phân quyền nhóm người dùng" và popup phân quyền trên giao diện. Thao tác lưu chức năng thực tế được thực hiện qua `PUT /api/v1/groups/{id}` (yêu cầu `group:edit`).
+> **Ghi chú:** Permission `group:permission` kiểm soát cả việc mở popup và lưu danh sách mã quyền chức năng qua `PUT /api/v1/groups/{id}/permissions`. Danh sách quyền được lưu trực tiếp cho nhóm và được kế thừa bởi thành viên đang hoạt động.
 
 ---
 
@@ -296,7 +282,7 @@ Người dùng có quyền tạo nhóm điền form với các trường:
 - **Mô tả (tùy chọn):** Nhập mô tả mục đích của nhóm, tối đa 1000 ký tự.
 - **Trạng thái\* (bắt buộc):** Chọn "Sử dụng" hoặc "Không sử dụng". Mặc định là "Sử dụng".
 
-Hệ thống kiểm tra tên và mã chưa tồn tại trong hệ thống (BR-002-01, BR-002-03). Sau khi tạo thành công, ghi nhận thao tác vào GroupHistory (BR-002-04).
+Hệ thống kiểm tra tên và mã chưa tồn tại trong hệ thống (BR-002-01, BR-002-03). Sau khi tạo thành công, hiển thị toast xác nhận kết quả.
 
 ### 8.2. Thêm người dùng vào nhóm
 
@@ -304,17 +290,17 @@ Người dùng click "Thêm thành viên vào nhóm người dùng" từ danh s�
 
 ### 8.3. Phân quyền chức năng cho nhóm
 
-Người dùng click "Phân quyền nhóm người dùng" từ danh sách, hệ thống mở popup hiển thị sơ đồ cây chức năng. Người dùng tick chọn một hoặc nhiều chức năng cần gán cho nhóm. Khi lưu, hệ thống cập nhật danh sách chức năng của nhóm và ghi nhận vào GroupHistory (BR-002-04). Toàn bộ thành viên hiện tại và tương lai được thừa hưởng quyền sử dụng các chức năng đã gán cho nhóm (BR-002-05, BR-002-07).
+Người dùng click "Phân quyền nhóm người dùng" từ danh sách, hệ thống mở drawer hiển thị sơ đồ cây chức năng. Người dùng tick chọn một hoặc nhiều chức năng cần gán cho nhóm. Khi lưu, hệ thống cập nhật danh sách chức năng của nhóm. Toàn bộ thành viên hiện tại và tương lai được thừa hưởng quyền sử dụng các chức năng đã gán cho nhóm (BR-002-05, BR-002-07).
 
 ### 8.4. Chỉnh sửa thông tin nhóm
 
-Người dùng click "Sửa" trên một dòng nhóm trong danh sách. Hệ thống mở popup chỉnh sửa với form các trường: Tên nhóm (bắt buộc, 2-100 ký tự), Mô tả (tùy chọn, tối đa 1000 ký tự), Trạng thái (bắt buộc, "Sử dụng"/"Không sử dụng"). Trường Đơn vị và Mã nhóm hiển thị ở chế độ read-only — không cho phép thay đổi sau khi tạo. Hệ thống kiểm tra tên nhóm không trùng với nhóm khác (BR-002-01). Sau khi lưu, ghi nhận vào GroupHistory (BR-002-04).
+Người dùng click "Sửa" trên một dòng nhóm trong danh sách. Hệ thống mở drawer chỉnh sửa với form các trường: Tên nhóm (bắt buộc, 2-100 ký tự), Mô tả (tùy chọn, tối đa 1000 ký tự), Trạng thái (bắt buộc, "Sử dụng"/"Không sử dụng"). Trường Đơn vị và Mã nhóm hiển thị ở chế độ read-only — không cho phép thay đổi sau khi tạo. Hệ thống kiểm tra tên nhóm không trùng với nhóm khác (BR-002-01). Sau khi lưu, hiển thị toast xác nhận.
 
 ### 8.5. Khóa/Mở khóa nhóm
 
-Người dùng click "Khóa nhóm người dùng" trên nhóm đang "Sử dụng". Hệ thống hiển thị popup xác nhận kèm cảnh báo về hậu quả (toàn bộ thành viên bị tạm ngưng quyền thừa hưởng). Sau khi xác nhận, hệ thống chuyển trạng thái nhóm sang "Không sử dụng", tạm ngưng quyền thừa hưởng của toàn bộ thành viên (BR-002-08), ghi nhận vào GroupHistory.
+Người dùng click "Khóa nhóm người dùng" trên nhóm đang "Sử dụng". Hệ thống hiển thị popup xác nhận kèm cảnh báo về hậu quả (toàn bộ thành viên bị tạm ngưng quyền thừa hưởng). Sau khi xác nhận, hệ thống chuyển trạng thái nhóm sang "Không sử dụng", tạm ngưng quyền thừa hưởng của toàn bộ thành viên (BR-002-08).
 
-Ngược lại, khi nhóm đang "Không sử dụng", nút hiển thị là "Mở khóa nhóm người dùng". Người dùng click và xác nhận, hệ thống chuyển trạng thái sang "Sử dụng", khôi phục quyền thừa hưởng cho toàn bộ thành viên, ghi nhận vào GroupHistory.
+Ngược lại, khi nhóm đang "Không sử dụng", nút hiển thị là "Mở khóa nhóm người dùng". Người dùng click và xác nhận, hệ thống chuyển trạng thái sang "Sử dụng", khôi phục quyền thừa hưởng cho toàn bộ thành viên.
 
 ---
 
@@ -334,12 +320,11 @@ Ngược lại, khi nhóm đang "Không sử dụng", nút hiển thị là "M�
 ### 9.3. Bảo mật
 
 - Phân quyền được áp dụng trên tất cả các API liên quan đến tính năng
-- Mỗi endpoint được bảo vệ bởi permission tương ứng (`group:create`, `group:edit`, `group:lock`, `group:member:manage`, `group:history`)
+- Mỗi endpoint được bảo vệ bởi permission tương ứng (`group:create`, `group:edit`, `group:lock`, `groupmember:manage`)
 - Admin Cục có quyền xem full dữ liệu và thông tin kiểm toán (người tạo, người sửa, thời gian)
 
 ### 9.4. Độ tin cậy
 
-- Ghi GroupHistory là bất đồng bộ (async), không ảnh hưởng đến thời gian phản hồi của API chính
 - Khi khóa/mở khóa nhóm, toàn bộ thành viên được cập nhật trạng thái quyền đồng bộ
 
 ### 9.5. Trải nghiệm người dùng
@@ -351,7 +336,6 @@ Ngược lại, khi nhóm đang "Không sử dụng", nút hiển thị là "M�
 
 ### 9.6. Tuân thủ pháp lý
 
-- Lịch sử thay đổi nhóm (GroupHistory) được lưu trữ tối thiểu 2 năm để phục vụ kiểm toán
 
 ---
 
@@ -451,7 +435,7 @@ Màn hình chính sử dụng các component dùng chung toàn hệ thống từ
 | Sửa | `group:edit` | Mở popup chỉnh sửa thông tin nhóm |
 | Khóa nhóm người dùng | `group:lock` | Khóa nhóm đang "Sử dụng"; nút đổi thành "Mở khóa nhóm người dùng" khi nhóm đang "Không sử dụng" |
 | Phân quyền nhóm người dùng | `group:permission` | Mở popup cây chức năng để gán quyền |
-| Thêm thành viên vào nhóm người dùng | `group:member:manage` | Mở popup thêm người dùng vào nhóm |
+| Thêm thành viên vào nhóm người dùng | `groupmember:manage` | Mở popup thêm người dùng vào nhóm |
 
 5. **Pagination:** thanh điều hướng trang ở cuối bảng, hiển thị tổng số dòng và số trang.
 
@@ -516,7 +500,7 @@ Layout dạng tab:
 |---|---|---|---|---|---|---|
 | 1 | Ô tìm kiếm | — | Input text | ❌ | Tối đa 100 ký tự, tìm theo tên chức năng (contains) | Lọc danh sách chức năng hiển thị |
 | 2 | Sơ đồ cây chức năng | — | Tree (có Checkbox) | ❌ | Tích sẵn các chức năng đã gán trước đó. Nút cha có thể mở rộng/thu gọn; checkbox cha tick/bỏ tick toàn bộ con; hỗ trợ indeterminate. | Chức năng hiển thị dạng cây phân cấp. Dữ liệu lấy từ danh sách chức năng hệ thống. |
-| 3 | Nút Lưu | — | Button | — | — | Cập nhật danh sách chức năng của nhóm; toast "Đã cập nhật phân quyền"; ghi GroupHistory |
+| 3 | Nút Lưu | — | Button | — | — | Cập nhật danh sách chức năng của nhóm; toast "Đã cập nhật phân quyền" |
 | 4 | Nút Đóng | — | Button | — | — | Đóng popup, không lưu |
 
 ### 10.12. Các trạng thái giao diện
@@ -543,4 +527,4 @@ Khi màn hình nhỏ hơn 768px:
 - **Validation**: realtime (khi blur), error message hiển thị dưới field
 - **Submit button**: disabled khi form có lỗi, loading khi đang submit, toast notification khi thành công/thất bại
 - **Popup footer**: [Hủy] outlined + [Submit] primary, cả hai pill radius
-- **Quyền (permission-based)**: Xem chi tiết=`group:read`, Sửa=`group:edit`, Khóa/Mở khóa=`group:lock`, Phân quyền=`group:permission`, Thêm thành viên=`group:member:manage`, Xem lịch sử=`group:history`
+- **Quyền (permission-based)**: Xem chi tiết=`group:read`, Sửa=`group:edit`, Khóa/Mở khóa=`group:lock`, Phân quyền=`group:permission`, Thêm thành viên=`groupmember:manage`

@@ -354,7 +354,7 @@ export default function UnitList() {
           <EmptyState description="Không tìm thấy đơn vị nào phù hợp" />
         )}
         {!isLoading && !isError && treeRows.length > 0 && (
-          <div style={{ width: '100%', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceSm, background: surfaceCard }}>
+          <div style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceSm, background: surfaceCard }}>
             <div style={{ width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px` }}>
                 <div style={{ flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên đơn vị</div>

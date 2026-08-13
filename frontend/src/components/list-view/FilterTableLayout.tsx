@@ -100,14 +100,14 @@ export default function FilterTableLayout({
       </div>
 
       {/* ── Right: Main Content ── */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {/* StatusTabs */}
         <div style={{ ...cardStyle, marginBottom: 5, padding: '7px 16px', flexShrink: 0 }}>
           <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />
         </div>
 
         {/* DataTable card */}
-        <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <Spin spinning={loading ?? false} wrapperClassName="filter-table-spin">
             {error ? (
               <div style={{ textAlign: 'center', padding: 40 }}>

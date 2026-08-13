@@ -163,6 +163,12 @@ public class UserService {
     @Transactional(readOnly = true)
     public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
             UserStatus status, Pageable pageable) {
+        return findAllWithCounts(search, status, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
+            UserStatus status, UUID orgUnitId, Pageable pageable) {
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
             actualSize = MAX_PAGE_SIZE;
@@ -179,15 +185,14 @@ public class UserService {
                 sort);
 
         String searchLike = toSearchLike(search);
-        List<UserListProjection> listItems = userRepository.searchUserList(
-                searchLike,
-                status,
-                cappedPageable);
+        List<UserListProjection> listItems = orgUnitId == null
+                ? userRepository.searchUserList(searchLike, status, cappedPageable)
+                : userRepository.searchUserListByOrgUnit(searchLike, status, orgUnitId, cappedPageable);
 
         // The status tabs must describe the same filtered result set as the
         // table.  Using the global counts here makes a search for one user
         // still show the totals of the whole user database.
-        java.util.Map<String, Long> counts = getStatusCounts(search);
+        java.util.Map<String, Long> counts = getStatusCounts(search, orgUnitId);
         long totalElements = status == null
                 ? counts.getOrDefault("total", 0L)
                 : counts.getOrDefault(status.name().toLowerCase(java.util.Locale.ROOT), 0L);
@@ -212,6 +217,11 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> getStatusCounts(String search) {
+        return getStatusCounts(search, null);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getStatusCounts(String search, UUID orgUnitId) {
         java.util.Map<String, Long> counts = new java.util.HashMap<>();
         counts.put("total", 0L);
         for (UserStatus s : UserStatus.values()) {
@@ -220,7 +230,9 @@ public class UserService {
             }
         }
 
-        List<Object[]> results = userRepository.countUsersByStatus(toSearchLike(search));
+        List<Object[]> results = orgUnitId == null
+                ? userRepository.countUsersByStatus(toSearchLike(search))
+                : userRepository.countUsersByStatusAndOrgUnit(toSearchLike(search), orgUnitId);
         long total = 0;
         for (Object[] row : results) {
             UserStatus s = (UserStatus) row[0];

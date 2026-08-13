@@ -10,6 +10,7 @@ interface ListParams {
   pageSize?: number;
   search?: string;
   status?: string;
+  orgUnitId?: string;
   sortField?: string;
   sortOrder?: 'ascend' | 'descend' | null;
 }

@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.group.dto;
 
 import com.hanghai.kchtg.group.entity.GroupStatus;
-import com.hanghai.kchtg.group.entity.GroupType;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import lombok.Value;
 
@@ -23,7 +22,6 @@ public class GroupResponse {
     String code;
     String description;
     List<String> permissions;
-    GroupType groupType;
     GroupStatus status;
     UUID organizationId;
     String organizationName;
@@ -41,7 +39,6 @@ public class GroupResponse {
                 entity.getCode(),
                 entity.getDescription(),
                 entity.getPermissions(),
-                entity.getGroupType(),
                 entity.getStatus(),
                 entity.getOrganizationId(),
                 null, // organizationName — resolved by caller (service layer)

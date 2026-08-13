@@ -3,7 +3,7 @@ module-id: M-001
 module-name: Quản trị hệ thống
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-05
+last-updated: 2026-08-13
 ---
 
 # M-001: Quản trị hệ thống — Module Lean Spec
@@ -37,6 +37,6 @@ Quản trị toàn bộ hệ thống: tài khoản người dùng, phân quyền
 
 | Question | Answer |
 |---|---|
-| Q1: Creates new domain elements? | Yes — UserAccount, Role, UserGroup, GroupMember, GroupHistory, AccessLog, MapSymbol (across F-001, F-002, F-005, F-006) |
+| Q1: Creates new domain elements? | Yes — UserAccount, Role, UserGroup, GroupMember, AccessLog, MapSymbol (across F-001, F-002, F-005, F-006). F-002 does not expose group copy or group history. |
 | Q2: Affects system architecture? | Yes — RBAC, JWT, org-unit data scope, caching (OrgUnitCacheService) |
 | Q3: Approach clear? | Partially — F-001/F-006 are CRUD refinements; F-002 expansion and F-004/F-005 are new integrations |

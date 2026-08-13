@@ -1,0 +1,14 @@
+package com.hanghai.kchtg.group.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Value;
+
+import java.util.List;
+import java.util.UUID;
+
+@Value
+@AllArgsConstructor
+public class BatchAddGroupMembersResponse {
+    int addedCount;
+    List<UUID> userIds;
+}
