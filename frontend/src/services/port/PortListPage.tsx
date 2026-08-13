@@ -1065,8 +1065,9 @@ export default function PortListPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    const expected = deleteTarget.portName || '';
-    if (deleteConfirmText.trim() !== expected && deleteConfirmText.trim() !== 'XÓA') {
+    const expected = (deleteTarget.portName || '').trim().toLowerCase();
+    const input = deleteConfirmText.trim().toLowerCase();
+    if (input !== expected && input !== 'xóa') {
       toast.error('Vui lòng nhập đúng tên cảng hoặc gõ "XÓA" để xác nhận');
       return;
     }
@@ -1951,7 +1952,7 @@ export default function PortListPage() {
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
-                              styles={{ textarea: { borderRadius: radiusPill, overflow: 'hidden', padding: '4px 12px', resize: 'none' } }}
+                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none' } }}
                             />
                           </Form.Item>
                         </Col>
@@ -2719,7 +2720,7 @@ export default function PortListPage() {
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
-                              styles={{ textarea: { borderRadius: radiusPill, overflow: 'hidden', padding: '4px 12px', resize: 'none' } }}
+                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none' } }}
                             />
                           </Form.Item>
                         </Col>

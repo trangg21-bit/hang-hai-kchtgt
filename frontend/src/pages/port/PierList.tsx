@@ -249,7 +249,9 @@ export default function PierList() {
   const openDeleteModal = useCallback((record: Pier) => { setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true); }, []);
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    if (deleteConfirmText.trim() !== (deletingRecord.pierName || 'XÓA') && deleteConfirmText.trim() !== 'XÓA') { toast.error('Vui lòng nhập đúng tên cầu hoặc gõ "XÓA" để xác nhận'); return; }
+    const expectedText = (deletingRecord.pierName || 'XÓA').trim().toLowerCase();
+    const input = deleteConfirmText.trim().toLowerCase();
+    if (input !== expectedText && input !== 'xóa') { toast.error('Vui lòng nhập đúng tên cầu hoặc gõ "XÓA" để xác nhận'); return; }
     try { await pierCRUD.delete(deletingRecord.id); toast.success('Đã xóa cầu cảng'); setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); void fetchData(); void fetchCounts(orgUnit); }
     catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Xóa thất bại'); }
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, orgUnit]);

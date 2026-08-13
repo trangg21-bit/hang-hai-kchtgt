@@ -128,7 +128,7 @@ class PierControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<PierResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(pierService.findAll(0, 20, null, null, null, null, null, null)).thenReturn(page);
+        when(pierService.findAll(0, 20, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/piers")
                         .param("page", "0")
@@ -137,7 +137,7 @@ class PierControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].pierCode").value("CAU-001"));
 
-        verify(pierService).findAll(0, 20, null, null, null, null, null, null);
+        verify(pierService).findAll(0, 20, null, null, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/piers/{id} ────────────────────────────────────────
