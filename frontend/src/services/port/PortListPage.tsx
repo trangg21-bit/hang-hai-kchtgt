@@ -1952,7 +1952,7 @@ export default function PortListPage() {
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
-                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none' } }}
+                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
                             />
                           </Form.Item>
                         </Col>
@@ -2720,7 +2720,7 @@ export default function PortListPage() {
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
-                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none' } }}
+                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
                             />
                           </Form.Item>
                         </Col>
