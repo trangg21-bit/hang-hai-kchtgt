@@ -350,7 +350,7 @@ export default function PortListPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [activeStatusTab, setActiveStatusTab] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<CangBienResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -1397,7 +1397,7 @@ export default function PortListPage() {
         key: 'province',
         label: 'Địa điểm',
         dataIndex: 'province',
-        width: 140,
+        width: 150,
         render: (v: string | null) => v || '—',
       },
       {
@@ -1523,8 +1523,8 @@ export default function PortListPage() {
             error={isError}
             onRetry={fetchData}
             filterContent={<>
-              <div style={{ marginBottom: 12, marginTop: 16 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>
+              <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
                   Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
                 </div>
                 <Select placeholder="Chọn đơn vị" allowClear showSearch optionFilterProp="label"
@@ -1534,7 +1534,7 @@ export default function PortListPage() {
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tên cảng biển</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng biển</div>
                 <Input placeholder="Tìm theo tên cảng..." allowClear
                   value={filterValues.search || ''}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, search: e.target.value }))}
@@ -1542,7 +1542,7 @@ export default function PortListPage() {
                   style={{ borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Phân cấp</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp</div>
                 <Select placeholder="Chọn phân cấp" allowClear
                   value={filterValues.portClass || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, portClass: val }))}
@@ -1551,7 +1551,7 @@ export default function PortListPage() {
               </div>
               {filterCollapsed && (<>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Nhóm cảng biển</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Nhóm cảng biển</div>
                 <Select placeholder="Chọn nhóm" allowClear
                   value={filterValues.portGroup || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, portGroup: val }))}
@@ -1559,7 +1559,7 @@ export default function PortListPage() {
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Địa điểm</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
                 <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                   filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                   value={filterValues.province || undefined}
@@ -1568,7 +1568,7 @@ export default function PortListPage() {
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Từ ngày - Đến ngày</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Từ ngày - Đến ngày</div>
                 <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
                   placeholder={['Chọn từ ngày', 'Chọn đến ngày']} allowClear className="port-range-picker"
                   value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
@@ -1577,7 +1577,7 @@ export default function PortListPage() {
               </div>
               <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}`}</style>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
                 <Select placeholder="Tất cả" allowClear
                   value={filterValues.approvalStatus || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, approvalStatus: val }))}
@@ -1600,7 +1600,7 @@ export default function PortListPage() {
               setPage(1);
             }}
           >
-            <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
+            <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
             {isError ? null : !isLoading && dataSource.length === 0 ? (
               <DataTable dataSource={[]} rowKey="id"
                 emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{search || filterTinh || filterStatus ? 'Không tìm thấy cảng biển nào phù hợp' : 'Chưa có cảng biển nào'}</div></div>}
@@ -1610,7 +1610,7 @@ export default function PortListPage() {
                 dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = a[sortField] ?? ''; const bVal = b[sortField] ?? ''; const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
                 rowKey="id" rowActions={rowActions} loading={false}
                 onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-                scroll={{ x: 1400, y: 500 }}
+                scroll={{ x: 1400, y: 550 }}
               />
             ) : null}
             <Pagination total={total} current={page} pageSize={pageSize}
@@ -1677,7 +1677,7 @@ export default function PortListPage() {
             <Tabs activeKey={createTabKey} onChange={setCreateTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
               {
                 key: 'general', label: 'Thông tin chung',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
@@ -1810,7 +1810,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số bến cảng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1819,7 +1819,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số khu neo đậu, khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1830,7 +1830,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải công cộng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1839,7 +1839,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải chuyên dùng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1850,7 +1850,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng HH công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1859,7 +1859,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng HH chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1870,7 +1870,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1879,7 +1879,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đê, kè')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1890,7 +1890,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1899,7 +1899,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đèn biển, đăng, tiêu độc lập')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1910,7 +1910,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng bến phao')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1919,7 +1919,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu neo đậu')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1930,7 +1930,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1960,7 +1960,7 @@ export default function PortListPage() {
               },
               {
                 key: 'gis', label: 'Thông tin vị trí',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
@@ -2186,7 +2186,7 @@ export default function PortListPage() {
               },
               {
                 key: 'infra', label: 'Công trình KCHT',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
@@ -2295,7 +2295,7 @@ export default function PortListPage() {
               },
               {
                 key: 'files', label: 'File đính kèm',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
                       {/* File label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
@@ -2445,7 +2445,7 @@ export default function PortListPage() {
                   key: 'general',
                   label: 'Thông tin chung',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
@@ -2578,7 +2578,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số bến cảng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2587,7 +2587,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số khu neo đậu, khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2598,7 +2598,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải công cộng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2607,7 +2607,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải chuyên dùng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2618,7 +2618,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng HH công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2627,7 +2627,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng HH chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2638,7 +2638,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2647,7 +2647,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đê, kè')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2658,7 +2658,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2667,7 +2667,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đèn biển, đăng, tiêu độc lập')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2678,7 +2678,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng bến phao')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2687,7 +2687,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu neo đậu')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2698,7 +2698,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2731,7 +2731,7 @@ export default function PortListPage() {
                   key: 'gis',
                   label: 'Thông tin vị trí',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
@@ -2935,7 +2935,7 @@ export default function PortListPage() {
                   key: 'infrastructure',
                   label: 'Kết cấu hạ tầng',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Kết cấu hạ tầng</span>
@@ -3047,7 +3047,7 @@ export default function PortListPage() {
                   key: 'attachments',
                   label: 'File đính kèm',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       {/* File label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
@@ -3187,7 +3187,7 @@ export default function PortListPage() {
                 {
                   key: 'general', label: 'Thông tin chung',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
                       <div className="detail-grid">
                       {[
@@ -3246,7 +3246,7 @@ export default function PortListPage() {
                 {
                   key: 'gis', label: 'Thông tin vị trí',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <div className="detail-grid">
                       {[
                         ['Loại đối tượng', selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'],
@@ -3312,7 +3312,7 @@ export default function PortListPage() {
                 {
                   key: 'infra', label: 'Công trình KCHT',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
                       </div>
@@ -3334,7 +3334,7 @@ export default function PortListPage() {
                 {
                   key: 'files', label: 'File đính kèm',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
                       </div>

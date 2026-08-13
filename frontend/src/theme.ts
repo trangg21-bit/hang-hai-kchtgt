@@ -26,7 +26,7 @@ export const layout = {
   headerHeight: 64,
   footerHeight: 56,
   listTableMinWidth: 1400,
-  listTableScrollY: 'calc(100vh - 380px)',
+  listTableScrollY: 'calc(100vh - 350px)',
 };
 
 // ============================================================
@@ -413,6 +413,12 @@ export const globalCssVars = `
 }
 .sidebar-menu-scroll::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Bảng list-view: dành chỗ scrollbar dọc ổn định để header và body của cột ghim (fixed right)
+   luôn thẳng hàng — kể cả khi chưa đủ dữ liệu tạo thanh cuộn. */
+.list-view-table .ant-table-body {
+  scrollbar-gutter: stable;
 }
 
 /* --- Navigation zone (BLUE — đồng nhất) --- */

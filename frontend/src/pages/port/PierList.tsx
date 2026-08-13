@@ -236,7 +236,7 @@ export default function PierList() {
     setFilterProvince(undefined); setFilterOperationalStatus(undefined); setFilterApprovalStatus(undefined);
     setActiveTab('all'); setPage(1); setRefreshKey(k => k + 1);
   }, []);
-  const handleTabChange = useCallback((key: string) => { setActiveTab(key); setPage(1); }, []);
+  const handleTabChange = useCallback((key: string) => { setActiveTab(key); setFilterApprovalStatus(undefined); appliedFiltersRef.current.approvalStatus = undefined; setPage(1); }, []);
 
   const openDetailDrawer = useCallback(async (record: Pier) => {
     setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setDetailLoading(true);
@@ -287,55 +287,55 @@ export default function PierList() {
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, orgUnit]);
 
   const filterContent = (
-    <div>
-      <div style={{ marginBottom: spaceMd }}>
-        <span style={{ display: 'block', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Đơn vị quản lý</span>
+    <>
+      <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
         <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn đơn vị"
           value={orgUnit} onChange={v => setOrgUnit(v)}
           options={[{ value: '__all__', label: 'Tất cả' }, ...organizations.map(o => ({ value: o.id, label: o.name }))]}
           showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
       </div>
-      <div style={{ marginBottom: spaceMd }}>
-        <span style={{ display: 'block', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</span>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tìm kiếm</div>
         <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm mã hoặc tên cầu cảng"
           value={searchInput} onChange={e => setSearchInput(e.target.value)}
           onPressEnter={handleFilterApply}
           allowClear prefix={<SearchOutlined style={{ color: textTertiary }} />} />
       </div>
       {filterCollapsed && (<>
-        <div style={{ marginBottom: spaceMd }}>
-          <span style={{ display: 'block', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Thuộc cảng biển</span>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn cảng biển" allowClear
             value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); }}
             options={portOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
         </div>
-        <div style={{ marginBottom: spaceMd }}>
-          <span style={{ display: 'block', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Thuộc bến</span>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn bến cảng" allowClear
             value={filterBerthId} onChange={v => setFilterBerthId(v)}
             options={berthOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
         </div>
-        <div style={{ marginBottom: spaceMd }}>
-          <span style={{ display: 'block', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Địa điểm</span>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tỉnh/thành phố" allowClear showSearch
             value={filterProvince} onChange={v => setFilterProvince(v)}
             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
             options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} />
         </div>
-        <div style={{ marginBottom: spaceMd }}>
-          <span style={{ display: 'block', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tình trạng</span>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tình trạng" allowClear
             value={filterOperationalStatus} onChange={v => setFilterOperationalStatus(v)}
             options={[{ value: 'OPERATIONAL', label: 'Đang khai thác/Vận hành' }, { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/Vận hành' }, { value: 'SUSPENDED', label: 'Dừng khai thác/Vận hành' }]} />
         </div>
-        <div style={{ marginBottom: spaceMd }}>
-          <span style={{ display: 'block', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</span>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn trạng thái" allowClear
-            value={filterApprovalStatus} onChange={v => setFilterApprovalStatus(v)}
+            value={filterApprovalStatus} onChange={v => { setFilterApprovalStatus(v); setActiveTab('all'); }}
             options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Được phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]} />
         </div>
       </>)}
-    </div>
+    </>
   );
 
   const rowActions = useCallback((record: Pier) => {
@@ -389,7 +389,7 @@ export default function PierList() {
         onStatusTabChange={handleTabChange} onFilterApply={handleFilterApply} onFilterReset={handleFilterReset}
         filterCollapsed={filterCollapsed} onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         loading={isLoading} error={isError} onRetry={() => void fetchData()}>
-        <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
+        <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id" emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{filterSearch ? 'Không tìm thấy cầu cảng nào phù hợp' : 'Chưa có cầu cảng nào'}</div></div>} />
         ) : !isLoading && !isError && dataSource.length > 0 ? (

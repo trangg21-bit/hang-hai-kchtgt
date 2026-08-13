@@ -21,6 +21,10 @@ const actionColumnCellStyle: React.CSSProperties = {
   verticalAlign: 'middle',
 };
 
+// Conservative per-row height (px) used to decide when a table with a numeric
+// scroll.y cap can auto-fit to its content without risking vertical overflow.
+const AUTO_FIT_ROW_HEIGHT = 60;
+
 export interface DataTableColumn {
   key: string; label: string; sortable?: boolean; twoLine?: boolean;
   type?: 'text' | 'status' | 'action' | 'number' | 'date' | 'mono';
@@ -83,6 +87,21 @@ const DataTable: React.FC<DataTableProps> = ({
     const frameId = window.requestAnimationFrame(resetHorizontalScroll);
     return () => window.cancelAnimationFrame(frameId);
   }, [dataSource]);
+
+  // Auto-fit the table body to its content when the rows fit inside a numeric
+  // scroll.y cap, so the pagination (and any trailing content) sits directly
+  // under the last row instead of leaving a fixed-height gap. String caps
+  // (e.g. 'calc(100vh - …)') are kept as-is.
+  const requestedScrollY = scroll?.y ?? layout.listTableScrollY;
+  const autoFitMaxRows = typeof requestedScrollY === 'number'
+    ? Math.floor(requestedScrollY / AUTO_FIT_ROW_HEIGHT)
+    : 0;
+  const tableScroll = {
+    x: scroll?.x ?? layout.listTableMinWidth,
+    y: typeof requestedScrollY === 'number' && dataSource.length > 0 && dataSource.length <= autoFitMaxRows
+      ? undefined
+      : requestedScrollY,
+  };
 
   if (children) {
     return (
@@ -213,7 +232,7 @@ const DataTable: React.FC<DataTableProps> = ({
         pagination={false}
         locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
-        scroll={{ x: layout.listTableMinWidth, y: layout.listTableScrollY, ...resolvedScroll }}
+        scroll={tableScroll}
         {...rest} />
     </div>
   );

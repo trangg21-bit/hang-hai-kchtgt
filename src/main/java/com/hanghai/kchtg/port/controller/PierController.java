@@ -66,13 +66,15 @@ public class PierController {
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID berthId,
+            @RequestParam(required = false) UUID portId,
             @RequestParam(required = false) PierType pierType,
+            @RequestParam(required = false) String province,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing Piers: page={}, size={}, orgUnitId={}, search={}, berthId={}, pierType={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, berthId, pierType, status, approvalStatus);
+        log.info("Listing Piers: page={}, size={}, orgUnitId={}, search={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, berthId, portId, pierType, province, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
-                pierService.findAll(page, size, orgUnitId, search, berthId, pierType, status, approvalStatus)));
+                pierService.findAll(page, size, orgUnitId, search, berthId, portId, pierType, province, status, approvalStatus)));
     }
 
     @GetMapping("/code/{pierCode}")
