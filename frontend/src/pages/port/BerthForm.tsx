@@ -315,5 +315,5 @@ export default forwardRef(function BerthForm({ form, id, onFinish }: BerthFormPr
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
 
-  return (<Tabs {...(isEdit ? { defaultActiveKey: 'general' } : {})} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={tabItems} />);
+  return (<Tabs {...(isEdit ? { defaultActiveKey: 'general' } : {})} tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }} items={tabItems} />);
 });
