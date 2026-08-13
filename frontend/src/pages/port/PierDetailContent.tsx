@@ -4,7 +4,7 @@ import { Tabs, Table, Space, InputNumber } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault,
+  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold,
   spaceSm, spaceXs,
 } from '../../tokens';
@@ -66,7 +66,7 @@ export default function PierDetailContent({
   }
 
   return (
-    <Tabs defaultActiveKey="general" tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
+    <Tabs defaultActiveKey="general" tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
       items={[
         {
           key: 'general', label: 'Thông tin chung',
@@ -201,7 +201,7 @@ export default function PierDetailContent({
           key: 'files', label: 'File đính kèm',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
+              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
               {detailFiles.length === 0 ? (
