@@ -83,16 +83,16 @@ export default function BerthDetailContent({
               {systemOpen && (
                 <div className="detail-grid" style={{ marginTop: 4 }}>
                   {[
-                    ['Ngày tạo', r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '—'],
                     ['Người tạo', userMap.get(r.createdBy || '') || r.createdBy || '—'],
-                    ['Ngày cập nhật', r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày tạo', r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '—'],
                     ['Người cập nhật', userMap.get(r.updatedBy || '') || r.updatedBy || '—'],
-                    ['Ngày gửi phê duyệt', r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày cập nhật', r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : '—'],
                     ['Người gửi phê duyệt', userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'],
-                    ['Ngày duyệt Cảng vụ', r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày gửi phê duyệt', r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).toLocaleString('vi-VN') : '—'],
                     ['Người duyệt Cảng vụ', userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'],
-                    ['Ngày duyệt Cục', r.departmentApprovedAt ? new Date(r.departmentApprovedAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày duyệt Cảng vụ', r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).toLocaleString('vi-VN') : '—'],
                     ['Người duyệt Cục', userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'],
+                    ['Ngày duyệt Cục', r.departmentApprovedAt ? new Date(r.departmentApprovedAt).toLocaleString('vi-VN') : '—'],
                     ['Lý do từ chối', r.rejectionReason || '—'],
                   ].map(([label, value], i) => (
                     <div key={i} className="detail-row">
@@ -154,16 +154,16 @@ export default function BerthDetailContent({
                       <Table.Column title="STT" key="stt" width={60} align="center"
                         render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Vĩ độ (N)" key="lat"
+                      <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                         render={(_: any, rec: any) => {
                           const dms = ddToDms(rec.lat);
-                          return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Kinh độ (E)" key="lng"
+                      <Table.Column title="Kinh độ (E)" key="lng" align="center"
                         render={(_: any, rec: any) => {
                           const dms = ddToDms(rec.lng);
-                          return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                     </Table>

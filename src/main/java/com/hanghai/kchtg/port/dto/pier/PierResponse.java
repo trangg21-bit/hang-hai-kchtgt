@@ -75,4 +75,6 @@ public class PierResponse {
 
     // ── Spec Group G: GIS additional ──
     private String waterAreaNeutralScope;
+    private Integer coordinateSystem;
+    private String displayRule;
 }

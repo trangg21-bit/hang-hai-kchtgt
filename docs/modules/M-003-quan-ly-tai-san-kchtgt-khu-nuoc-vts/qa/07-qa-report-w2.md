@@ -1,200 +1,117 @@
----
-feature-id: M-003
-stage: validation
-agent: sdlc-qa
-verdict: Pass
-critical-ac-total: 4
-critical-ac-verified: 4
-last-updated: 2026-07-01
----
+# QA Report — Wave 2: Pier Management Page Verification
 
-# QA Report — Wave 2 Re-Validation
-**Module:** M-003 Khu nước & VTS
-**Wave:** 2 (re-validate after dev-wave-2 rework)
-**Date:** 2026-07-01
-**Java:** temurin-17 (pinned)
+**Task:** TRI-1786504532185-0148  
+**Date:** 2026-08-12  
+**Verifier:** engineering-verifier  
+**Stage:** Verification wave — 4 files changed (PierList, PierForm, PierDetailContent, App.tsx)
 
 ---
 
-## 1. Feature / Change Overview
+## Overall Result: **Changes-requested** ❌
 
-Dev-wave-2 rework addressed four findings from QA-wave-1:
-
-| Fix ID | Root Cause (wave-1) | Remedy Applied |
-|--------|---------------------|----------------|
-| FIX-1 | `Permission.action` `@Pattern` rejects `:` → ctx-load failure for LuongHangHai | Codes changed colon→`approvec1`/`approvec2` in seeder + all 5 controllers |
-| FIX-2 | CoSuaChua tests: `ClassCastException` on raw `getBody()` | `ApiResponse.getData()` unwrap added |
-| FIX-3 | TramRadar tests: same `ClassCastException` pattern | Same `getData()` fix |
-| FIX-4 | RBAC deny-path coverage absent | `M003RbacSecurityTest.java` added (~20 tests) |
+Token compliance (Check D) fails with 3 hardcoded-hex violations. All other checks pass.
 
 ---
 
-## 2. Test Scope
+## Check A: Build — PASS ✓
 
-### 2.1 Included
+```bash
+npx tsc --noEmit   # exit code 0, zero errors
+```
 
-| Domain | Test classes | Type |
-|--------|-------------|------|
-| luonghanghai | LuongHangHaiControllerTest, LuongHangHaiServiceTest, LuongHangHaiEntityTest | Controller / Service / Entity |
-| deke | DeKeControllerTest, DeKeServiceTest, DeKeEntityTest | Controller / Service / Entity |
-| cosuachua | CoSuaChuaDongTauControllerTest, CoSuaChuaDongTauServiceTest, CoSuaChuaDongTauEntityTest | Controller / Service / Entity |
-| tramradar | TramRadarControllerTest, TramRadarServiceTest, TramRadarEntityTest | Controller / Service / Entity |
-| vts | HeThongVTSControllerTest, HeThongVTSDataServiceTest, HeThongVTSEntityTest | Controller / Service / Entity |
-| m003 | M003RbacSecurityTest | RBAC allow + deny paths |
-
-### 2.2 Excluded
-
-- Frontend (BACKEND-ONLY QA per convention)
-- Playwright / browser flows
-- Performance / load testing
-
-### 2.3 Assumptions and Constraints
-
-- Tests execute against in-memory H2 / Mockito mocks; no external DB required
-- `auth.check` bean mocked in security tests via `@MockBean`
+**Evidence:** Command executed in `frontend/`, returned exit code 0 with no output.
 
 ---
 
-## 3. Requirement Coverage Matrix
+## Check B: Pattern Compliance — PASS ✓
 
-| Requirement / Fix | Test Condition | Coverage Status | Notes |
-|-------------------|---------------|-----------------|-------|
-| FIX-1: no colon in permission codes | `@PreAuthorize` strings match seeder codes (`approvec1`/`approvec2`) — verified by grep + compile | Covered — static + compiled | 0 residual colon-style codes found |
-| FIX-2: CoSuaChua ClassCast | `getData()` unwrap present in all CoSuaChua test assertions | Covered — executed | 18 controller tests pass |
-| FIX-3: TramRadar ClassCast | Same unwrap pattern | Covered — executed | 10 controller tests pass |
-| FIX-4: RBAC deny paths | `M003RbacSecurityTest` VIEWER→approve/c1 raises `AccessDeniedException` across all 5 domains | Covered — executed | 20 tests (10 allow + 10 deny) |
-| SF-001..004: no unprotected endpoints | All 5 controllers carry `@PreAuthorize` on write/approve/delete; no open endpoint found by grep | Covered — static analysis | 0 unprotected endpoints |
-
----
-
-## 4. Test Strategy
-
-### 4.1 Happy Path
-All CRUD + approve-c1/c2 paths exercised by controller/service tests.
-
-### 4.2 Negative Path
-Error-path cases: not-found (404), delete-non-approved constraint, test errors — all verified in controller tests (error-log lines visible in output confirm branches hit).
-
-### 4.3 Edge Cases
-Entity field validation tests cover boundary values across all 5 entity test classes.
-
-### 4.4 Permission / Role Cases
-`M003RbacSecurityTest`: SYSTEM_ADMIN (allow) + VIEWER (deny) × approve/c1 × 5 domains + delete × 5 domains = 20 tests. AccessDeniedException confirmed for deny path.
-
-### 4.5 Integration Cases
-Not applicable (mocked service layer; no external integrations under test).
-
-### 4.6 Data / State Transition Cases
-Approval workflow state transitions (DRAFT→PENDING→APPROVED) covered in service tests.
-
-### 4.7 Regression Scope
-Full re-run of all 16 M-003 test classes. No regressions introduced.
+| Requirement | Result | Evidence |
+|---|---|---|
+| PierList imports `FilterTableLayout` (not `FilterBar`) | ✓ PASS | `PierList.tsx:29` — `import FilterTableLayout from '../../components/list-view/FilterTableLayout';` No `FilterBar` import found anywhere in file. |
+| PierList uses `Drawer` for create/edit/detail (not `Modal`) | ✓ PASS | `PierList.tsx:4` imports `Drawer` from antd. Lines 219–221: state `createDrawerVisible`, `detailDrawerVisible`. Lines 677–694: Create/Edit `<Drawer>`. Lines 697–720: Detail `<Drawer>`. |
+| PierForm uses `forwardRef`, NO Modal wrapper | ✓ PASS | `PierForm.tsx:1` imports `forwardRef`. `PierForm.tsx:83`: `const PierForm = forwardRef<any, PierFormProps>(...)`. Grep for `Modal` import: no matches. |
+| PierDetailContent exists with named export | ✓ PASS | `PierDetailContent.tsx:33`: `export default function PierDetailContent({`. File exists at `frontend/src/pages/port/PierDetailContent.tsx` (191 lines). |
 
 ---
 
-## 5. Test Cases (summary)
+## Check C: Route Check — PASS ✓
 
-| ID | Scenario | Priority | Result |
-|----|----------|----------|--------|
-| TC-M003-W2-01 | LuongHangHai controller — CRUD + approve flows | Critical | Pass |
-| TC-M003-W2-02 | LuongHangHai service — business logic + state transitions | Critical | Pass |
-| TC-M003-W2-03 | DeKe controller — CRUD + approve c1/c2 | Critical | Pass |
-| TC-M003-W2-04 | CoSuaChua controller — ApiResponse.getData() unwrap | Critical | Pass |
-| TC-M003-W2-05 | TramRadar controller — ApiResponse.getData() unwrap | Critical | Pass |
-| TC-M003-W2-06 | M003 RBAC — SYSTEM_ADMIN allow × 5 domains (approve+delete) | Critical | Pass |
-| TC-M003-W2-07 | M003 RBAC — VIEWER deny × 5 domains (approve/c1) | Critical | Pass |
-| TC-M003-W2-08 | Permission code format — no colon in any @PreAuthorize across 5 controllers | Critical | Pass |
-| TC-M003-W2-09 | Seeder codes match controller codes (approvec1/approvec2) | Critical | Pass |
-| TC-M003-W2-10 | VTS controller + service + entity | High | Pass |
-| TC-M003-W2-11 | Entity tests — all 5 domains | Medium | Pass |
+| Requirement | Result | Evidence |
+|---|---|---|
+| `/pier` (lowercase) | ✓ PASS | `App.tsx:192` — `<Route path="/pier" element={<PermissionGuard permission="pier:read"><PierList /></PermissionGuard>} />` |
+| `/pier/create` | ✓ PASS | `App.tsx:193` — `<Route path="/pier/create" element={...} />` |
+| `/pier/:id/edit` | ✓ PASS | `App.tsx:194` — `<Route path="/pier/:id/edit" element={...} />` |
+| No `/Pier` (uppercase) | ✓ PASS | Grep for `/Pier` in `App.tsx`: zero matches. |
 
 ---
 
-## 6. Execution Results
+## Check D: Token Compliance — FAIL ❌
 
-| Test Class | Tests Run | Failures | Errors | Skipped | Evidence Type |
-|------------|-----------|----------|--------|---------|---------------|
-| LuongHangHaiControllerTest | 14 | 0 | 0 | 0 | Executed |
-| LuongHangHaiServiceTest | 26 | 0 | 0 | 0 | Executed |
-| LuongHangHaiEntityTest | 11 | 0 | 0 | 0 | Executed |
-| DeKeControllerTest | 12 | 0 | 0 | 0 | Executed |
-| DeKeServiceTest | 28 | 0 | 0 | 0 | Executed |
-| DeKeEntityTest | 10 | 0 | 0 | 0 | Executed |
-| CoSuaChuaDongTauControllerTest | 18 | 0 | 0 | 0 | Executed |
-| CoSuaChuaDongTauServiceTest | 26 | 0 | 0 | 0 | Executed |
-| CoSuaChuaDongTauEntityTest | 15 | 0 | 0 | 0 | Executed |
-| TramRadarControllerTest | 10 | 0 | 0 | 0 | Executed |
-| TramRadarServiceTest | 11 | 0 | 0 | 0 | Executed |
-| TramRadarEntityTest | 6 | 0 | 0 | 0 | Executed |
-| HeThongVTSControllerTest | 10 | 0 | 0 | 0 | Executed |
-| HeThongVTSDataServiceTest | 11 | 0 | 0 | 0 | Executed |
-| HeThongVTSEntityTest | 6 | 0 | 0 | 0 | Executed |
-| M003RbacSecurityTest | 20 | 0 | 0 | 0 | Executed |
-| **TOTAL** | **234** | **0** | **0** | **0** | |
+### Hardcoded hex colors (BLOCKING)
 
-**Maven output:** `[INFO] Tests run: 234, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`
+The theme specification (`theme.ts:728`) states:
+> "KHÔNG hard-code màu hex trực tiếp trong component (vd style={{color: '#1677ff'}})"
+>
+> `theme.ts:34`: primary color is `#1B84FF`, NOT `#1677ff`
 
----
+`#1677ff` is **NOT** a semantic token in `tokens.ts`. Three violations found:
 
-## 7. Defects Found
+| # | File | Line | Violation |
+|---|---|---|---|
+| 1 | `PierList.tsx` | 474 | `background: '#1677ff15', color: '#1677ff'` — pierCode badge inline style |
+| 2 | `PierDetailContent.tsx` | 66 | `background: '#1677ff15', color: '#1677ff'` — pierCode badge in detail grid |
+| 3 | `PierDetailContent.tsx` | 104 | `style={{ color: systemOpen ? '#1677ff' : colors.sidebarBg, ... }}` — system info toggle |
 
-None.
+**Fix:** Replace `#1677ff` with a semantic token (e.g. `actionPrimary` from `tokens.ts`, or `colors.primary` from `theme.ts` which equals `#1B84FF`). Replace `#1677ff15` with the corresponding token interpolated with transparency (e.g. `` `${actionPrimary}15` ``).
 
----
+### Form spacing (PASS ✓)
 
-## 8. NFR Observations
+`PierForm.tsx` uses `marginBottom: spaceFormField` consistently — 35 matches across all `Form.Item` elements. No hardcoded numeric spacing values (12, 14, 16, etc.) found on Form.Items.
 
-### 8.1 Security Behavior
-RBAC deny-path confirmed: VIEWER role raises `AccessDeniedException` on all approve/c1 endpoints across all 5 domains. Fail-closed behavior verified. Zero unprotected write endpoints.
+### Border radius (PASS ✓)
 
-### 8.2 Performance Concerns
-No performance regressions observed. Test suite completes in ~12 s.
+`PierForm.tsx` uses `borderRadius: radiusPill` on all Input/Select controls:
+- `PierForm.tsx:70` — `inputStyle: { borderRadius: radiusPill, ... }`
+- `PierForm.tsx:71` — `selectStyle: { borderRadius: radiusPill, ... }`
+- `PierForm.tsx:72` — `numberStyle: { borderRadius: radiusPill, ... }`
+- `PierForm.tsx:355,361` — DatePicker `borderRadius: radiusPill`
 
-### 8.3 Audit / Logging
-Error branches log at ERROR level (confirmed by test output log lines for CoSuaChua and TramRadar error scenarios).
-
-### 8.4 Reliability / Resilience
-No flaky tests observed across two consecutive runs.
-
-### 8.5 Usability Concerns
-Not applicable (backend-only).
+Minor note: `PierForm.tsx:320,371` use `borderRadius: 8` on `Input.TextArea`. While `8` is in the allowed scale (`radiusSm`), it should use the token rather than the literal number. Not blocking.
 
 ---
 
-## 9. Regression Impact Assessment
+## Check E: Service Usage — PASS ✓
 
-All 16 existing test classes re-ran and passed. No regressions from FIX-1/2/3/4 changes. Permission code rename (colon→approvec1/2) is consistent across seeder + all 5 controllers — no partial rename drift detected.
-
----
-
-## 10. Test Limitations / Gaps
-
-| Gap | Impact | Mitigation |
-|-----|--------|-----------|
-| No integration test against real DB (H2 mock only) | Medium | Service-layer test coverage is high; DB schema verified at compile time |
-| Performance / load tests absent | Low | No SLO requirement flagged for M-003 wave-2 |
-| Frontend not tested | Out of scope | Convention: BACKEND-ONLY QA |
+| Requirement | Result | Evidence |
+|---|---|---|
+| Imports `pierCRUD` from `../../services/portService` | ✓ PASS | `PierList.tsx:15` — `import { pierCRUD, pierApproval, berthCRUD, portCRUD, } from '../../services/portService';` |
+| Calls `pierCRUD` for CRUD operations | ✓ PASS | `PierList.tsx:318,319` — `pierCRUD.search()` for counts. `PierList.tsx:335` — `pierCRUD.search()` for main data. `PierList.tsx:378` — `pierCRUD.findById()`. `PierList.tsx:404` — `pierCRUD.delete()`. `PierList.tsx:431` — `pierCRUD.update()`. |
 
 ---
 
-## 11. Release Recommendation
+## Check F: No Regression — PASS ✓
 
-All four wave-1 findings remediated and verified by executed test evidence. 234 tests pass, 0 failures. RBAC deny-path confirmed. No unprotected endpoints. Recommend release.
+| Template file | Result | Path |
+|---|---|---|
+| PortListPage.tsx | ✓ EXISTS | `frontend/src/services/port/PortListPage.tsx` — `export default function PortListPage()` at line 326 |
+| PortFormContent.tsx | ✓ EXISTS | `frontend/src/services/port/PortFormContent.tsx` — `export default function PortFormContent({` at line 57 |
+| PortDetailContent.tsx | ✓ EXISTS | `frontend/src/services/port/PortDetailContent.tsx` — `export default function PortDetailContent({` at line 23 |
+| portService.ts | ✓ EXISTS | `frontend/src/services/portService.ts` — contains `pierCRUD` at line 203 |
+| AppLayout.tsx | ✓ EXISTS | `frontend/src/components/AppLayout.tsx` — contains `/pier` in `isListPage` array |
+
+All template/reference files present and unaltered. No other files in the port directory were modified.
 
 ---
 
-## 12. QA Verdict
+## Summary
 
-**Pass**
+| Check | Status |
+|---|---|
+| A — Build | ✅ PASS |
+| B — Pattern compliance | ✅ PASS |
+| C — Route check | ✅ PASS |
+| D — Token compliance | ❌ FAIL |
+| E — Service usage | ✅ PASS |
+| F — No regression | ✅ PASS |
 
----
-
-## QA → Handoff Summary
-
-**Verdict:** Pass
-**AC coverage:** 4/4 critical fixes verified (100%)
-**Evidence type split:** 234 executed / 0 analytical
-**Defects found:** 0
-**Top defect for reviewer attention:** None
-**NFR observations:** RBAC deny-path confirmed; fail-closed on all 5 domains; error-branch logging verified
-**Test gaps reviewer should note:** H2 mock only (no live DB integration); frontend out of scope per convention
+**Blockers:** 3 hardcoded `#1677ff` hex color instances (2 files). Replace with `actionPrimary` token.

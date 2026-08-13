@@ -191,9 +191,9 @@ export default function App() {
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
 
-                <Route path="/Pier" element={<PermissionGuard permission="pier:read"><PierList /></PermissionGuard>} />
-                <Route path="/Pier/create" element={<PermissionGuard permission="pier:create"><><PierList /><PierForm /></></PermissionGuard>} />
-                <Route path="/Pier/:id/edit" element={<PermissionGuard permission="pier:update"><><PierList /><PierForm /></></PermissionGuard>} />
+                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierList /></PermissionGuard>} />
+                <Route path="/pier/create" element={<PermissionGuard permission="pier:create"><><PierList /><PierForm /></></PermissionGuard>} />
+                <Route path="/pier/:id/edit" element={<PermissionGuard permission="pier:update"><><PierList /><PierForm /></></PermissionGuard>} />
 
                 <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortList /></PermissionGuard>} />
                 <Route path="/dry-port/create" element={<PermissionGuard permission="dryport:create"><><DryPortList /><DryPortForm /></></PermissionGuard>} />
