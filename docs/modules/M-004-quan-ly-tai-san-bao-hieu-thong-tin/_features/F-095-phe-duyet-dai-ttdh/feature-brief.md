@@ -1,76 +1,163 @@
 ---
 id: F-095
-name: "Phê duyệt Đài TTDH"
+name: Phê duyệt Đài TTDH
 slug: phe-duyet-dai-ttdh
 module-id: M-004
 status: proposed
 classification: local
-priority: medium
-created: "2026-07-07T03:32:57Z"
-last-updated: "2026-07-07T03:32:57Z"
+priority: high
+created: 2026-07-07T03:32:57Z
+last-updated: 2026-08-11
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Phê duyệt Đài TTDH
 
-# Feature: Phê duyệt Đài TTDH
+**Tài liệu:** BA Feature Brief | **Feature:** F-095 | **Mã chức năng:** PDKC-079 | **Ngày:** 2026-08-11
 
-## Description
+---
 
-Tính năng phê duyệt cho Đài Thông tin Duyên hải (VTS) thực hiện quy trình phê duyệt 2 cấp (two-level approval), bao gồm các thao tác: phê duyệt cấp 1 (Approved L1), phê duyệt cấp 2 (Approved L2 / Published) và từ chối (Rejected). Đài TTDH sau khi được tạo với trạng thái DRAFT sẽ được operator gửi phê duyệt. Approver cấp 1 xem xét và phê duyệt (chuyển sang APPROVED_L1) hoặc từ chối kèm lý do. Sau đó approver cấp 2 phê duyệt lần cuối (chuyển sang PUBLISHED) hoặc từ chối. Trạng thái phê duyệt được quản lý qua StationStatus (DRAFT, PENDING_APPROVAL, APPROVED_L1, APPROVED_L2, PUBLISHED, DELETED) và StationApprovalStatus (PENDING, APPROVED_L1, APPROVED_L2, REJECTED).
+## 1. Tổng quan
 
-## Business Intent
+### 1.1. Tính năng này làm gì?
 
-Đảm bảo mọi Đài TTDH được đưa vào vận hành chính thức đều trải qua quy trình kiểm tra và phê duyệt chặt chẽ 2 cấp, đáp ứng yêu cầu quản lý nhà nước về thông tin hàng hải. Cơ chế phê duyệt này đảm bảo tính chính xác, đầy đủ của dữ liệu trước khi công bố và ngăn chặn việc đưa thông tin chưa được kiểm duyệt vào hệ thống chính thức.
+Luồng phê duyệt 2 cấp cho Đài TTDH, tùy theo đơn vị của người tạo:
 
-## Flow Summary
+**Luồng A — Chuyên viên Chi cục/Cảng vụ tạo:**
+```
+Lưu tạm → Chờ duyệt CC → Chờ duyệt Cục → Đã phê duyệt
+                ↘ Từ chối CC       ↘ Từ chối Cục
+                   (sửa & gửi lại → Chờ duyệt CC)
+```
 
-Operator tạo/ cập nhật Đài TTDH (trạng thái DRAFT) → Operator gửi yêu cầu phê duyệt (chuyển sang PENDING_APPROVAL) → Approver L1 truy cập danh sách chờ duyệt → Xem chi tiết đài → Nếu đạt: phê duyệt L1 (gọi POST /{id}/approve với LevelEnum.L1, chuyển sang APPROVED_L1) → Approver L2 xem xét → Nếu đạt: phê duyệt L2 (gọi POST /{id}/approve với LevelEnum.L2, chuyển sang PUBLISHED) → Nếu không đạt ở bất kỳ bước nào: gọi POST /{id}/reject với lý do từ chối, chuyển sang REJECTED. Mỗi hành động phê duyệt/từ chối đều được ghi nhận vào lịch sử.
+**Luồng B — Chuyên viên Cục tạo:**
+```
+Lưu tạm → Chờ duyệt Cục → Đã phê duyệt
+                ↘ Từ chối Cục
+                   (sửa & gửi lại → Chờ duyệt Cục)
+```
 
-## Acceptance Criteria
+**Cấp 1 — Lãnh đạo Cảng vụ/Chi cục:** Duyệt/Từ chối bản ghi "Chờ duyệt cấp Cảng vụ/Chi cục" (chỉ áp dụng với bản ghi do Chi cục tạo).
+**Cấp 2 — Lãnh đạo Cục:** Duyệt/Từ chối bản ghi "Chờ duyệt cấp Cục". Lãnh đạo Cục cũng có quyền **phê duyệt trực tiếp** từ Lưu tạm (R14).
 
-- **AC-01**: Approver L1 phê duyệt Đài TTDH đang ở trạng thái PENDING_APPROVAL thành công, chuyển trạng thái sang APPROVED_L1.
-- **AC-02**: Approver L2 phê duyệt Đài TTDH đang ở trạng thái APPROVED_L1 thành công, chuyển trạng thái sang PUBLISHED.
-- **AC-03**: Khi từ chối phê duyệt ở bất kỳ cấp nào, hệ thống yêu cầu nhập lý do từ chối (rejectionReason) và chuyển trạng thái sang REJECTED.
-- **AC-04**: Phê duyệt L1 khi đài chưa ở trạng thái PENDING_APPROVAL hoặc phê duyệt L2 khi đài chưa ở APPROVED_L1 đều bị từ chối (HTTP 400).
+**Bắt buộc:** Cả duyệt và từ chối đều phải nhập **nội dung phê duyệt** (lý do).
 
-## In Scope
+**Từ chối không phải lịch sử** (R16). Khi gửi lại từ Từ chối: nếu user Chi cục → về Chờ duyệt CC; nếu user Cục → về Chờ duyệt Cục (bắt đầu lại từ đầu — R17).
 
-- Phê duyệt cấp 1 (L1) qua POST /{id}/approve
-- Phê duyệt cấp 2 (L2) qua POST /{id}/approve
-- Từ chối phê duyệt qua POST /{id}/reject
-- Kiểm tra trạng thái hiện tại trước khi phê duyệt/từ chối
-- Ghi nhận lịch sử phê duyệt
+**Lịch sử:** bản ghi "Lịch sử" không thể duyệt/từ chối (F-094).
 
-## Out of Scope
+### 1.2. Luồng chính
 
-- Gửi thông báo khi thay đổi trạng thái
-- Tích hợp quy trình phê duyệt qua email
-- Đồng bộ GIS M-007 (áp dụng cho beacon, không áp dụng cho stations)
+**Duyệt bản ghi do Chi cục tạo (Luồng A):**
 
-## Roles + Permissions
+**Duyệt Cấp 1 (Lãnh đạo Chi cục):** Chọn "Phê duyệt" → Nhập nội dung → Status: Chờ duyệt CC → Chờ duyệt Cục → HTTP 200.
+**Từ chối Cấp 1:** Chọn "Từ chối" → Nhập lý do (≥ 10 ký tự) → Status: Chờ duyệt CC → Từ chối CC → HTTP 200.
 
-| Role | Level | Notes |
-|------|-------|-------|
-| admin | Full CRUD + approval | Có thể phê duyệt cả L1 và L2 |
-| operator | CRUD + submit | Có thể tạo và gửi phê duyệt, không phê duyệt |
-| approver_L1 | Read + Approve L1 | Chỉ phê duyệt cấp 1 hoặc từ chối |
-| approver_L2 | Read + Approve L2 | Chỉ phê duyệt cấp 2 hoặc từ chối |
-| viewer | Read | Không có quyền phê duyệt |
+**Duyệt Cấp 2 (Lãnh đạo Cục):** Chọn "Phê duyệt" → Nhập nội dung → Status: Chờ duyệt Cục → Đã phê duyệt → HTTP 200.
+**Từ chối Cấp 2:** Chọn "Từ chối" → Nhập lý do → Status: Chờ duyệt Cục → Từ chối Cục → HTTP 200.
 
-## Entities
+**Duyệt bản ghi do Cục tạo (Luồng B — bỏ qua Cấp 1):**
 
-- **CoastalStationVTS**: Sử dụng StationStatus (DRAFT, PENDING_APPROVAL, APPROVED_L1, APPROVED_L2, PUBLISHED, DELETED) và StationApprovalStatus (PENDING, APPROVED_L1, APPROVED_L2, REJECTED).
-- **CoastalStationVTSApprovalRequest**: DTO chứa trường approved (LevelEnum) cho phê duyệt và rejectionReason cho từ chối.
+**Duyệt (Lãnh đạo Cục):** Chọn "Phê duyệt" → Nhập nội dung → Status: Chờ duyệt Cục → Đã phê duyệt → HTTP 200.
+**Từ chối:** Chọn "Từ chối" → Nhập lý do → Status: Chờ duyệt Cục → Từ chối Cục → HTTP 200.
 
-## Business Rules
+**Phê duyệt trực tiếp (Lãnh đạo Cục):** Từ Lưu tạm → nhập nội dung → Đã phê duyệt (R14).
 
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-010 | Phê duyệt L1 yêu cầu entity ở trạng thái PENDING_APPROVAL | CoastalStationVTS.status | Service implementation |
-| BR-011 | Phê duyệt L2 yêu cầu entity đã được phê duyệt L1 (APPROVED_L1) | CoastalStationVTS.status | Service implementation |
-| BR-012 | Từ chối (reject) yêu cầu lý do từ chối (rejectionReason) | CoastalStationVTS.rejectionReason | @RequestParam String rejectReason |
-| BR-015 | Trạng thái khởi tạo mặc định là DRAFT | CoastalStationVTS.status | @Builder.Default |
+---
 
-## Testing Strategy
+## 2. Ai dùng? Dùng như thế nào?
 
-(populated by qa stage)
+### 2.1. Cơ chế phân quyền
+
+Phê duyệt Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:approve` theo từng tài khoản người dùng.
+
+| Thao tác | Permission yêu cầu | Vai trò có permission |
+|----------|---|---|
+| Duyệt cấp 1 (Cảng vụ/Chi cục) | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Từ chối cấp 1 | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Duyệt cấp 2 (Cục) | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Từ chối cấp 2 | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER |
+| Phê duyệt trực tiếp (Cục) | `data:approve` | ROLE_SYSTEM_ADMIN, ROLE_ADMIN, ROLE_LEADER (R14) |
+
+- **SYSTEM_ADMIN:** bypass toàn bộ permission check.
+- **Admin Cục (ROLE_ADMIN):** xem full lịch sử phê duyệt, nội dung phê duyệt, audit fields.
+- **Self-approval prevention:** kiểm tra ở service layer (creatorId != approverId).
+
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
+
+---
+
+## 3. User Stories
+
+- **US-095-01:** Là Cảng vụ/Chi cục, tôi muốn duyệt hoặc từ chối đài đang Chờ duyệt cấp CC.
+- **US-095-02:** Là Cục, tôi muốn duyệt hoặc từ chối đài đang Chờ duyệt cấp Cục.
+- **US-095-03:** Là Cục, tôi muốn phê duyệt trực tiếp từ Lưu tạm (R14).
+- **US-095-04:** Là người duyệt, tôi muốn nhập nội dung/lý do khi duyệt hoặc từ chối.
+- **US-095-05:** Là Cán bộ, tôi muốn sửa và gửi lại sau khi bị từ chối (R15, R17).
+
+---
+
+## 4. Acceptance Criteria
+
+**AC-095-01 — Duyệt C1 thành công:** Chờ duyệt CC → nhập nội dung → Chờ duyệt Cục, ghi lịch sử APPROVE_L1.
+
+**AC-095-02 — Từ chối C1:** Chờ duyệt CC → nhập lý do ≥ 10 ký tự → Từ chối CC, ghi REJECT.
+
+**AC-095-03 — Duyệt C2 thành công:** Chờ duyệt Cục → nhập nội dung → Đã phê duyệt, ghi APPROVE_L2.
+
+**AC-095-04 — Phê duyệt trực tiếp:** Lưu tạm → nhập nội dung → Đã phê duyệt (chỉ Cục — R14).
+
+**AC-095-05 — Self-approval prevention:** Người gửi không thể duyệt chính bản ghi mình gửi.
+
+**AC-095-06 — Gửi lại từ Từ chối:** Sửa + gửi duyệt → luôn về Chờ duyệt CC (R17).
+
+**AC-095-07 — Từ chối duyệt Lịch sử:** Bản ghi trạng thái Lịch sử → không thể duyệt/từ chối, HTTP 400 "Đài TTDH ở trạng thái Lịch sử không thể phê duyệt".
+
+---
+
+## 5. Business Rules
+
+| ID | Rule | Source |
+|----|------|--------|
+| BR-095-01 | Duyệt/Từ chối phải nhập nội dung | Handoff 4.2 |
+| BR-095-02 | Từ chối: lý do ≥ 10 ký tự | |
+| BR-095-03 | Phê duyệt trực tiếp chỉ Cấp Cục | R14 |
+| BR-095-04 | Từ chối không phải lịch sử | R16 |
+| BR-095-07 | Lịch sử không thể duyệt/từ chối | F-094 |
+| BR-095-05 | Gửi lại từ Từ chối → về Chờ duyệt CC | R17 |
+| BR-095-06 | Self-approval prevention | |
+
+---
+
+## 6. Mô hình dữ liệu
+
+Status flow: Lưu tạm → Chờ duyệt CC → Chờ duyệt Cục → Đã phê duyệt (↘ Từ chối CC, Từ chối Cục).
+
+Các trường: approvalLevel, approvedBy, approvedDate, rejectionReason, approvalContent (nội dung phê duyệt).
+
+---
+
+## 7. API
+
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| POST | `/api/v1/stations/coastal/{id}/approve` | Duyệt (C1/C2/trực tiếp) |
+| POST | `/api/v1/stations/coastal/{id}/reject` | Từ chối |
+
+---
+
+## 8. Chi tiết
+
+Modal phê duyệt: textarea nhập nội dung (required), nút Duyệt (primary) / Từ chối (danger). Ghi lịch sử APPROVE_L1/APPROVE_L2/REJECT.
+
+---
+
+## 9. NFRs
+
+Performance < 500ms. Transaction atomic. Self-approval check. Audit log.
+
+---
+
+## 10. UI
+
+Modal phê duyệt: textarea "Nội dung phê duyệt" (required). Nút Duyệt (`statusOperational`) / Từ chối (`statusCritical`), `radiusPill`, `height: 40`. Nút "Phê duyệt trực tiếp" chỉ hiện cho Cục khi status = Lưu tạm.

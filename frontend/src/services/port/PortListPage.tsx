@@ -3228,10 +3228,10 @@ export default function PortListPage() {
                       {portSystemOpen && (
                         <div className="detail-grid" style={{ marginTop: 4 }}>
                           {[
-                            ['Ngày tạo', selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'],
                             ['Người tạo', selectedRecord.createdByName || selectedRecord.createdBy || '—'],
-                            ['Ngày cập nhật', selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'],
+                            ['Ngày tạo', selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'],
                             ['Người cập nhật', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
+                            ['Ngày cập nhật', selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'],
                           ].map(([label, value], i) => (
                             <div key={i} className="detail-row">
                               <span className="detail-label">{label}</span>
@@ -3290,16 +3290,16 @@ export default function PortListPage() {
                               <Table.Column title="STT" key="stt" width={60} align="center"
                                 render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
                                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                              <Table.Column title="Vĩ độ (N)" key="lat"
+                              <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                                 render={(_: any, record: any) => {
                                   const dms = ddToDms(record.lat);
-                                  return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                                 }}
                                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                              <Table.Column title="Kinh độ (E)" key="lng"
+                              <Table.Column title="Kinh độ (E)" key="lng" align="center"
                                 render={(_: any, record: any) => {
                                   const dms = ddToDms(record.lng);
-                                  return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                                 }}
                                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                             </Table>

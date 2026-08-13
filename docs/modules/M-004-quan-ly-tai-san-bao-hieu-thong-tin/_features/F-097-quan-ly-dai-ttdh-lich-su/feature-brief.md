@@ -1,71 +1,121 @@
 ---
 id: F-097
-name: "Quản lý Đài TTDH - Lịch sử"
+name: Quản lý Đài TTDH - Lịch sử
 slug: quan-ly-dai-ttdh-lich-su
 module-id: M-004
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-07T03:32:57Z"
-last-updated: "2026-07-07T03:32:57Z"
+created: 2026-07-07T03:32:57Z
+last-updated: 2026-08-11
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Quản lý Đài TTDH - Lịch sử
 
-# Feature: Quản lý Đài TTDH - Lịch sử
+**Tài liệu:** BA Feature Brief | **Feature:** F-097 | **Mã chức năng:** TCKC-031 | **Ngày:** 2026-08-11
 
-## Description
+---
 
-Tính năng cho phép người dùng tra cứu lịch sử thay đổi của một Đài Thông tin Duyên hải (VTS) cụ thể. Hệ thống ghi nhận mọi thao tác tác động đến bản ghi bao gồm: tạo mới (CREATE), cập nhật (UPDATE), xóa (SOFT_DELETE), phê duyệt L1 (APPROVE_L1), phê duyệt L2 (APPROVE_L2) và từ chối (REJECT). Mỗi bản ghi lịch sử chứa thông tin: action type, trường thay đổi (changedField), giá trị cũ (previousValue), giá trị mới (newValue), người thực hiện (changedBy), thời gian (changedAt) và dữ liệu diff dạng JSON cho các thay đổi phức tạp. API GET /api/v1/stations/coastal/{id}/history trả về danh sách các bản ghi lịch sử dạng CoastalStationVTSHistoryResponse.
+## 1. Tổng quan
 
-## Business Intent
+### 1.1. Tính năng này làm gì?
 
-Phục vụ công tác kiểm toán, truy xuất nguồn gốc và đối chiếu dữ liệu Đài TTDH theo yêu cầu quản lý nhà nước. Lịch sử thay đổi giúp xác định ai đã thực hiện thay đổi gì và khi nào, hỗ trợ điều tra khi có sai sót dữ liệu hoặc khiếu nại. Đây là yêu cầu bắt buộc của hệ thống quản lý tài sản công.
+Hiển thị lịch sử thay đổi của Đài TTDH dạng timeline. Mọi thao tác CREATE, UPDATE, DELETE, APPROVE_L1, APPROVE_L2, REJECT đều được ghi nhận với: ai thực hiện, hành động gì, trường nào thay đổi, giá trị cũ/mới, thời gian.
 
-## Flow Summary
+### 1.2. Luồng
 
-Người dùng truy cập màn hình chi tiết Đài TTDH → Chọn tab "Lịch sử thay đổi" → Hệ thống gọi API GET /api/v1/stations/coastal/{id}/history → Service truy vấn bảng lịch sử theo entityId, sắp xếp theo thời gian giảm dần → Trả về danh sách các bản ghi lịch sử dạng CoastalStationVTSHistoryResponse với các trường: actionType, changedField, previousValue, newValue, changedBy, changedAt, details → Người dùng xem được toàn bộ dòng thời gian thay đổi của đài.
+Chọn "Lịch sử" → GET /{id}/history → Timeline sắp xếp giảm dần → HTTP 200. Có filter theo loại hành động và thời gian.
 
-## Acceptance Criteria
+---
 
-- **AC-01**: Khi tra cứu lịch sử của Đài TTDH hợp lệ, hệ thống trả về HTTP 200 kèm danh sách các bản ghi lịch sử sắp xếp theo thời gian mới nhất.
-- **AC-02**: Danh sách lịch sử bao gồm đầy đủ các action type: CREATE, UPDATE, SOFT_DELETE, APPROVE_L1, APPROVE_L2, REJECT.
-- **AC-03**: Khi tra cứu lịch sử của ID không tồn tại, hệ thống trả về danh sách rỗng (HTTP 200) hoặc HTTP 404 tùy theo thiết kế.
-- **AC-04**: Các bản ghi lịch sử hiển thị chính xác changedField, previousValue, newValue cho mỗi lần cập nhật.
+## 2. Ai dùng? Dùng như thế nào?
 
-## In Scope
+### 2.1. Cơ chế phân quyền
 
-- Xem danh sách lịch sử thay đổi theo thời gian
-- Ghi nhận tất cả action types (CREATE, UPDATE, SOFT_DELETE, APPROVE_L1, APPROVE_L2, REJECT)
-- Hiển thị chi tiết trường thay đổi, giá trị cũ/mới
+Xem lịch sử dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:read` theo từng tài khoản người dùng.
 
-## Out of Scope
+| Vai trò | Permission | Ghi chú |
+|---|---|---|
+| ROLE_SYSTEM_ADMIN | *(bypass)* | Xem đầy đủ changedBy |
+| ROLE_ADMIN | `data:read` | Xem đầy đủ changedBy |
+| ROLE_LEADER | `data:read` | Xem lịch sử |
+| ROLE_SPECIALIST | `data:read` | Xem lịch sử |
+| ROLE_PORT_OPERATOR | `data:read` | Xem lịch sử |
+| ROLE_PUBLIC_USER | `data:read` | Xem lịch sử |
+| ROLE_INTEGRATION | `data:read` | Xem qua API |
 
-- Xóa lịch sử
-- Xuất báo cáo lịch sử ra file
-- So sánh giữa các phiên bản
+- Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN): xem đầy đủ changedBy.
 
-## Roles + Permissions
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
-| Role | Level | Notes |
-|------|-------|-------|
-| admin | Read | Có thể xem lịch sử |
-| operator | Read | Có thể xem lịch sử |
-| approver_L1 | Read | Có thể xem lịch sử |
-| approver_L2 | Read | Có thể xem lịch sử |
-| viewer | Read | Có thể xem lịch sử |
+---
 
-## Entities
+## 3. User Stories
 
-- **CoastalStationVTSHistoryResponse**: DTO phản hồi chứa các trường: actionType, changedField, previousValue, newValue, changedBy, changedAt, details.
-- **Station history**: Bảng lịch sử riêng cho station, quản lý qua service.getHistory(id) và HistoryService.
+- **US-097-01:** Là Cán bộ, tôi muốn xem toàn bộ lịch sử thay đổi của đài.
+- **US-097-02:** Là Kiểm toán, tôi muốn xem giá trị cũ/mới của mỗi lần cập nhật.
+- **US-097-03:** Là Admin, tôi muốn BE tự động ghi log mọi thao tác.
 
-## Business Rules
+### Mức Should
 
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-009 | Bản ghi soft-delete vẫn giữ lịch sử để truy xuất | CoastalStationVTS history | softDelete() không xóa lịch sử |
+- **US-097-04:** Là Kiểm toán, tôi muốn xem lịch sử DELETE khi bản ghi được chuyển từ Lưu tạm sang Lịch sử.
 
-## Testing Strategy
+---
 
-(populated by qa stage)
+## 4. Acceptance Criteria
+
+**AC-097-01 — Danh sách lịch sử:** GET /{id}/history → danh sách sắp xếp theo changedAt DESC.
+
+**AC-097-02 — Đầy đủ action types:** CREATE, UPDATE, DELETE (cho DRAFT→Lịch sử), APPROVE_L1, APPROVE_L2, REJECT.
+
+**AC-097-03 — UPDATE hiển thị diff:** changedField, previousValue, newValue.
+
+**AC-097-04 — APPROVE/REJECT hiển thị nội dung:** approvalContent hoặc rejectionReason.
+
+**AC-097-05 — Filter:** Theo action type, khoảng thời gian.
+
+**AC-097-06 — BE audit log:** Tự động ghi trong mọi service method.
+
+---
+
+## 5. Business Rules
+
+| ID | Rule |
+|----|------|
+| BR-097-01 | Mọi thao tác CRUD + APPROVE + REJECT đều ghi station_history |
+| BR-097-02 | UPDATE ghi changedField/previousValue/newValue |
+| BR-097-03 | Lịch sử immutable — không sửa, không xóa |
+| BR-097-04 | Sắp xếp changedAt DESC |
+
+---
+
+## 6. Mô hình dữ liệu
+
+Bảng station_history: id, entityId, actionType, changedField, previousValue, newValue, approvalLevel, rejectionReason, approvalContent, changedBy, changedAt, details (JSON).
+
+---
+
+## 7. API
+
+| Method | Endpoint |
+|---|---|
+| GET | `/api/v1/stations/coastal/{id}/history` |
+
+---
+
+## 8. Chi tiết
+
+Timeline dọc với dot màu: CREATE=`actionPrimary`, UPDATE=`textSecondary`, DELETE=`statusCritical` (ghi nhận DRAFT→Lịch sử), APPROVE=`statusOperational`, REJECT=`statusCritical`.
+
+---
+
+## 9. NFRs
+
+< 500ms, index entityId+changedAt, phân trang nếu > 50 bản ghi.
+
+---
+
+## 10. UI
+
+Drawer/Modal, Ant Design Timeline. Filter bar: select action type + date range. Mỗi mốc: `<badge actionType> bởi <changedBy> — <changedAt>`. UPDATE: bảng nhỏ | Trường | Cũ | Mới |.

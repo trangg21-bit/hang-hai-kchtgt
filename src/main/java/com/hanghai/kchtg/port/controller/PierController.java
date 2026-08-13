@@ -7,16 +7,22 @@ import com.hanghai.kchtg.port.dto.pier.UpdatePierRequest;
 import com.hanghai.kchtg.port.entity.PierType;
 import com.hanghai.kchtg.port.service.PierApprovalService;
 import com.hanghai.kchtg.port.service.PierService;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.service.BerthService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +34,7 @@ public class PierController {
 
     private final PierService pierService;
     private final PierApprovalService pierApprovalService;
+    private final BerthService berthService;
 
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'pier:create')")
@@ -118,5 +125,40 @@ public class PierController {
         log.info("Getting Pier history: id={}", id);
         Object history = pierApprovalService.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử cầu cảng thành công", history));
+    }
+
+    // ── Attachment endpoints ────────────────────────────────────────────
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@auth.check(authentication, 'pier:update')")
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files,
+            Authentication authentication) {
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
+        }
+        UUID userId = SecurityUtils.getCurrentUserId();
+        List<AttachmentDto> result = berthService.uploadAttachments("PIER", id, files, userId);
+        return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'pier:read')")
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+        List<AttachmentDto> result = berthService.listAttachments("PIER", id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @PreAuthorize("@auth.check(authentication, 'pier:update')")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId,
+            Authentication authentication) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        berthService.deleteAttachment("PIER", id, attId, userId);
+        return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 }

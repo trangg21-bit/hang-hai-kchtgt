@@ -97,4 +97,9 @@ public class CreatePierRequest {
     // ── Spec Group G: GIS additional ──
     @Size(max = 2000, message = "Phạm vi khu nước neo buộc tàu không vượt quá 2000 ký tự")
     private String waterAreaNeutralScope;                   // G4
+
+    private Integer coordinateSystem;
+    private String displayRule;
+
+    private String saveAction; // DRAFT, SUBMIT, SAVE_AND_APPROVE, APPROVED
 }

@@ -1,76 +1,154 @@
 ---
 id: F-093
-name: "Quản lý Đài TTDH - Cập nhật"
+name: Quản lý Đài TTDH - Cập nhật
 slug: quan-ly-dai-ttdh-cap-nhat
 module-id: M-004
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-07T03:32:57Z"
-last-updated: "2026-07-07T03:32:57Z"
+created: 2026-07-07T03:32:57Z
+last-updated: 2026-08-11
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Quản lý Đài TTDH - Cập nhật
 
-# Feature: Quản lý Đài TTDH - Cập nhật
+**Tài liệu:** BA Feature Brief
+**Feature:** F-093
+**Module:** M-004 — Quản lý tài sản Báo hiệu & Thông tin
+**Mã chức năng:** QLKC-078
+**Ngày cập nhật:** 2026-08-11
 
-## Description
+---
 
-Tính năng cho phép cán bộ nghiệp vụ (operator) cập nhật thông tin của một Đài Thông tin Duyên hải (VTS) đã tồn tại trong hệ thống. Người dùng có thể chỉnh sửa các trường thông tin như tên đài, dải tần số hoạt động (frequencyBand), công suất phát (transmitPower), loại thiết bị (equipmentType), địa chỉ trạm (locationAddress), người liên hệ (contactPerson), số điện thoại (contactPhone), tọa độ (latitude/longitude), mô tả và các thông tin khác. Lưu ý rằng mã đài (code) là trường bất biến không thể thay đổi sau khi tạo. Dữ liệu được kiểm tra tính hợp lệ trước khi cập nhật và lịch sử thay đổi được ghi nhận đầy đủ để phục vụ kiểm tra và truy xuất nguồn gốc.
+## 1. Tổng quan
 
-## Business Intent
+### 1.1. Tính năng này làm gì?
 
-Duy trì tính chính xác và cập nhật của dữ liệu Đài TTDH trong hệ thống quản lý tài sản báo hiệu và thông tin hàng hải. Khi các thông số kỹ thuật, nhân sự liên hệ hoặc vị trí địa lý của đài thay đổi, operator cần có khả năng cập nhật kịp thời để đảm bảo cơ sở dữ liệu luôn phản ánh đúng thực trạng hoạt động của các đài ven biển.
+Cho phép cập nhật thông tin Đài TTDH. Quyền cập nhật phụ thuộc trạng thái hiện tại và vai trò người dùng:
 
-## Flow Summary
+| Trạng thái | Được Sửa? | Ai sửa? | Nút hiển thị | Kết quả |
+|-----------|:---:|---------|------------|--------|
+| Lưu tạm | ✅ | Tất cả có quyền | Lưu tạm, Lưu và gửi, Lưu và phê duyệt (Cục) | Giữ Lưu tạm hoặc gửi duyệt |
+| Chờ duyệt cấp CC | ❌ | — | — | Khóa hoàn toàn (R11) |
+| Từ chối cấp CC | ✅ | Tất cả có quyền | Lưu và gửi, Lưu và phê duyệt (Cục) | Chuyển sang Chờ duyệt CC (R17) |
+| Chờ duyệt cấp Cục | ❌ | — | — | Khóa hoàn toàn (R11) |
+| Từ chối cấp Cục | ✅ | Tất cả có quyền | Lưu và gửi, Lưu và phê duyệt (Cục) | Chuyển sang Chờ duyệt CC (R17) |
+| Đã phê duyệt | ✅ | **Chỉ Cục** | Lưu và phê duyệt | Giữ nguyên Đã phê duyệt |
+| Lịch sử | ❌ | — | — | Read-only (F-094) |
 
-Người dùng operator truy cập màn hình chi tiết Đài TTDH → Chọn chức năng "Chỉnh sửa" → Hệ thống hiển thị form với dữ liệu hiện tại được điền sẵn → Người dùng sửa đổi các trường (ngoại trừ code) và nhấn "Lưu" → Hệ thống kiểm tra tính hợp lệ của dữ liệu mới → Nếu hợp lệ, hệ thống cập nhật bản ghi, ghi lại lịch sử thay đổi (UPDATE action với changedField, previousValue, newValue) và trả về HTTP 200 kèm đối tượng đã cập nhật → Nếu không hợp lệ, trả về lỗi chi tiết.
+**Ràng buộc đặc biệt:**
+- **Mã đài (code):** immutable — không thể sửa (R2).
+- **Đơn vị quản lý (unitId):** bị khóa khi sửa — không thể thay đổi (R5).
+- **Bản ghi Từ chối:** ẩn nút "Lưu tạm", chỉ có "Lưu và gửi phê duyệt" → chuyển thẳng sang Chờ duyệt CC.
+- **Bản ghi Đã phê duyệt:** Chỉ Cục được sửa, chỉ có nút "Lưu và phê duyệt" → giữ nguyên trạng thái Đã phê duyệt. Chuyên viên/Cán bộ không được sửa.
 
-## Acceptance Criteria
+### 1.2. Tại sao cần?
 
-- **AC-01**: Khi cập nhật thông tin hợp lệ, hệ thống cập nhật thành công bản ghi Đài TTDH, trả về HTTP 200 kèm dữ liệu mới và ghi nhận lịch sử thay đổi.
-- **AC-02**: Khi cố gắng thay đổi mã đài (code), hệ thống từ chối và giữ nguyên giá trị code cũ (trường bất biến theo BR-008).
-- **AC-03**: Khi nhập tọa độ ngoài phạm vi cho phép, hệ thống trả về lỗi validation và không cập nhật bản ghi.
-- **AC-04**: Khi cập nhật thành công, lịch sử thay đổi ghi nhận chính xác trường nào thay đổi, giá trị cũ và giá trị mới.
+Thông tin đài thay đổi theo thời gian (nâng cấp, thay đổi dịch vụ, điều chỉnh phân loại). Cần cập nhật kịp thời và có kiểm soát qua luồng phê duyệt.
 
-## In Scope
+### 1.3. Luồng chính
 
-- Cập nhật các trường thông tin kỹ thuật và hành chính của Đài TTDH
-- Kiểm tra validation dữ liệu đầu vào trước khi cập nhật
-- Ghi nhận lịch sử thay đổi (who, what field, old value, new value, when)
-- Giữ nguyên mã code (trường bất biến)
+Người dùng chọn "Sửa" từ dropdown → Modal hiển thị dữ liệu hiện tại → Chỉnh sửa (code, unitId bị disable) → Tùy trạng thái và vai trò hiển thị nút tương ứng → Validate → HTTP 200/400.
 
-## Out of Scope
+---
 
-- Thay đổi mã code (code là immutable field)
-- Quy trình phê duyệt lại sau khi cập nhật
-- Xóa đài (thuộc F-094)
+## 2. Ai dùng? Dùng như thế nào?
 
-## Roles + Permissions
+### 2.1. Cơ chế phân quyền
 
-| Role | Level | Notes |
-|------|-------|-------|
-| admin | CRUD | Full quyền, có thể cập nhật |
-| operator | CRUD | Có thể cập nhật đài TTDH |
-| approver_L1 | Read | Không có quyền cập nhật |
-| approver_L2 | Read | Không có quyền cập nhật |
-| viewer | Read | Không có quyền cập nhật |
+Cập nhật Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:update` theo từng tài khoản người dùng.
 
-## Entities
+| Vai trò | Permission | Quyền sửa |
+|---|---|---|
+| ROLE_SYSTEM_ADMIN | *(bypass)* | Mọi bản ghi, toàn quốc |
+| ROLE_ADMIN | `data:update` | Mọi bản ghi, toàn quốc |
+| ROLE_SPECIALIST | `data:update` | Bản ghi đơn vị mình |
+| ROLE_PORT_OPERATOR | `data:update` | Bản ghi đơn vị mình |
 
-- **CoastalStationVTS**: Đại diện cho Đài Thông tin Duyên hải VTS. Các trường có thể cập nhật: name, frequencyBand, transmitPower, equipmentType, locationAddress, contactPerson, contactPhone, latitude, longitude, description, unitId, isActive.
-- **CoastalStationVTSUpdateRequest**: DTO chứa các trường cho phép cập nhật, được kiểm tra @Valid trước khi xử lý.
+- **Cục (ROLE_ADMIN):** sửa được mọi bản ghi. Khi sửa Đã phê duyệt: chỉ có nút "Lưu và phê duyệt" → giữ nguyên trạng thái Đã phê duyệt.
+- **Chuyên viên/Cán bộ (ROLE_SPECIALIST, ROLE_PORT_OPERATOR):** sửa được Lưu tạm và Từ chối. **Không sửa được Đã phê duyệt.** Khi sửa Từ chối: ẩn Lưu tạm, chỉ có Lưu và gửi → Chờ duyệt CC.
+- Data scoping lọc theo `orgUnitId`. SYSTEM_ADMIN bypass.
+- Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN): xem thông tin người sửa, thời gian sửa.
 
-## Business Rules
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-008 | Mã code không thể thay đổi sau khi tạo (immutable) | CoastalStationVTS.code | Update request không bao gồm code |
-| BR-003 | Vĩ độ (latitude) phải trong khoảng -90.0 đến 90.0 | CoastalStationVTS.latitude | @DecimalMin("-90.0"), @DecimalMax("90.0") |
-| BR-004 | Kinh độ (longitude) phải trong khoảng -180.0 đến 180.0 | CoastalStationVTS.longitude | @DecimalMin("-180.0"), @DecimalMax("180.0") |
-| BR-007 | Mô tả (description) tối đa 1000 ký tự | CoastalStationVTS.description | @Size(max=1000) |
-| BR-009 | Không thể xóa vĩnh viễn — chỉ soft-delete | CoastalStationVTS | softDelete(), @SQLRestriction |
+---
 
-## Testing Strategy
+## 3. User Stories
 
-(populated by qa stage)
+- **US-093-01:** Là Cán bộ, tôi muốn sửa Đài TTDH ở trạng thái Lưu tạm.
+- **US-093-02:** Là Cán bộ, tôi muốn sửa Đài bị Từ chối và gửi duyệt lại (ẩn Lưu tạm, chỉ Lưu và gửi).
+- **US-093-03:** Là Cục, tôi muốn sửa Đài đã phê duyệt và lưu ngay không cần duyệt lại.
+- **US-093-04:** Là Cán bộ, tôi muốn Đơn vị quản lý bị khóa khi sửa (R5).
+- **US-093-05:** Là Cán bộ, tôi muốn thay đổi dịch vụ và tọa độ của đài.
+
+---
+
+## 4. Acceptance Criteria
+
+**AC-093-01 — Sửa thành công:** Sửa thông tin hợp lệ → cập nhật, ghi lịch sử UPDATE, HTTP 200.
+
+**AC-093-02 — Code immutable:** Code bị disable, không thể sửa.
+
+**AC-093-03 — UnitId bị khóa:** UnitId bị disable khi sửa (R5).
+
+**AC-093-04 — Cục sửa Đã phê duyệt:** Cục sửa bản ghi Đã phê duyệt → chỉ có nút "Lưu và phê duyệt" → bản ghi giữ nguyên trạng thái Đã phê duyệt, ghi lịch sử UPDATE. Chuyên viên/Cán bộ không được sửa.
+
+**AC-093-05 — Từ chối sửa Chờ duyệt:** Bản ghi Chờ duyệt (bất kỳ cấp) → từ chối sửa, HTTP 400 (R11).
+
+**AC-093-06 — Gửi lại từ Từ chối:** Sửa + gửi duyệt từ Từ chối → status về Chờ duyệt CC (R17).
+
+---
+
+## 5. Business Rules
+
+| ID | Rule | Source |
+|----|------|--------|
+| BR-093-01 | Chỉ sửa khi: Lưu tạm, Từ chối CC, Từ chối Cục (tất cả); Đã phê duyệt (chỉ Cục). Lịch sử: không thể sửa. | R7, F-094 |
+| BR-093-02 | Đơn vị quản lý bị khóa khi sửa | R5 |
+| BR-093-03 | Cục sửa Đã phê duyệt: chỉ nút "Lưu và phê duyệt" → giữ nguyên Đã phê duyệt | — |
+| BR-093-04 | Chờ duyệt bị khóa hoàn toàn | R11 |
+| BR-093-05 | Gửi duyệt lại từ Từ chối: ẩn Lưu tạm, chỉ Lưu và gửi → về Chờ duyệt CC | R17 |
+
+---
+
+## 6. Mô hình dữ liệu
+
+Các trường có thể sửa: name, stationLevel, provinceId, detailedLocation, operatingUnitId, coverageArea, servicesProvided, usageStatus, remarks, geometryType, mapSymbolId, coordinateSystem, displayRule, coordinates, attachments.
+
+Không thể sửa: code, unitId.
+
+Trường bị ẩn: frequencyBand, transmitPower, equipmentType.
+
+---
+
+## 7. API
+
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| PUT | `/api/v1/stations/coastal/{id}` | Cập nhật |
+
+---
+
+## 8. Chi tiết
+
+### 8.1. Form sửa
+
+Modal như F-092, dữ liệu điền sẵn. Code và unitId hiển thị disabled. Nút hiển thị theo trạng thái: Lưu tạm (Lưu tạm + Lưu và gửi + Lưu và phê duyệt nếu Cục), Từ chối (ẩn Lưu tạm, chỉ Lưu và gửi + Lưu và phê duyệt nếu Cục), Đã phê duyệt (chỉ Cục, chỉ Lưu và phê duyệt).
+
+### 8.2. Ghi lịch sử
+
+So sánh diff từng trường, ghi changedField/previousValue/newValue.
+
+---
+
+## 9. NFRs
+
+Performance < 500ms. Transaction atomic. Audit log. RBAC.
+
+---
+
+## 10. UI
+
+Như F-092. Code, unitId: Input disabled, màu `textTertiary`, nền xám nhạt. Cảnh báo khi sửa Đã phê duyệt: Alert màu `statusAttention`.

@@ -1,69 +1,141 @@
 ---
 id: F-096
-name: "Xem chi tiết Đài TTDH"
+name: Xem chi tiết Đài TTDH
 slug: xem-chi-tiet-dai-ttdh
 module-id: M-004
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-07T03:32:57Z"
-last-updated: "2026-07-07T03:32:57Z"
+created: 2026-07-07T03:32:57Z
+last-updated: 2026-08-11
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Xem chi tiết Đài TTDH
 
-# Feature: Xem chi tiết Đài TTDH
+**Tài liệu:** BA Feature Brief | **Feature:** F-096 | **Mã chức năng:** TCKC-031 | **Ngày:** 2026-08-11
 
-## Description
+---
 
-Tính năng cho phép người dùng xem chi tiết thông tin của một Đài Thông tin Duyên hải (VTS) theo định danh (ID). Hệ thống hiển thị đầy đủ các thông tin của đài bao gồm: mã đài, tên đài, dải tần số hoạt động, công suất phát, loại thiết bị, địa chỉ trạm, người liên hệ, số điện thoại, tọa độ (latitude/longitude), trạng thái, trạng thái phê duyệt, đơn vị quản lý và các thông tin khác. API GET /api/v1/stations/coastal/{id} trả về đối tượng CoastalStationVTSResponse đã được build thông qua service.buildResponse(). Nếu không tìm thấy bản ghi hoặc bản ghi đã bị soft-delete, hệ thống trả về HTTP 404.
+## 1. Tổng quan
 
-## Business Intent
+### 1.1. Tính năng này làm gì?
 
-Cung cấp giao diện tra cứu thông tin chi tiết của từng Đài TTDH phục vụ công tác quản lý, kiểm tra và báo cáo. Người dùng ở tất cả các vai trò (admin, operator, approver, viewer) đều cần truy cập thông tin đầy đủ của đài để thực hiện các nghiệp vụ liên quan như đánh giá phê duyệt, kiểm tra thông số kỹ thuật hoặc báo cáo thống kê.
+Hiển thị toàn bộ thông tin chi tiết của một Đài TTDH, bao gồm: thông tin chung, GIS (bảng tọa độ, loại đối tượng, biểu tượng), dịch vụ, file đính kèm, tình trạng, trạng thái phê duyệt. **Không hiển thị** các trường bị ẩn (tần số liên lạc, transmitPower, equipmentType).
 
-## Flow Summary
+### 1.2. Luồng
 
-Người dùng truy cập màn hình danh sách Đài TTDH → Chọn một đài để xem chi tiết → Hệ thống gọi API GET /api/v1/stations/coastal/{id} → Service tìm kiếm bản ghi theo id, kiểm tra bản ghi tồn tại và chưa bị soft-delete → Nếu tìm thấy, service build response DTO (CoastalStationVTSResponse) và trả về HTTP 200 kèm dữ liệu chi tiết → Nếu không tìm thấy hoặc đã bị xóa, trả về HTTP 404.
+Chọn "Xem chi tiết" → GET /{id} → Modal/Drawer hiển thị đầy đủ thông tin → HTTP 200. Không tìm thấy → HTTP 404.
 
-## Acceptance Criteria
+---
 
-- **AC-01**: Khi tra cứu theo ID hợp lệ của Đài TTDH đang hoạt động, hệ thống trả về HTTP 200 kèm đầy đủ thông tin chi tiết của đài.
-- **AC-02**: Khi tra cứu theo ID không tồn tại hoặc đã bị soft-delete, hệ thống trả về HTTP 404.
-- **AC-03**: Tất cả các vai trò (admin, operator, approver_L1, approver_L2, viewer) đều có thể xem chi tiết đài.
+## 2. Ai dùng? Dùng như thế nào?
 
-## In Scope
+### 2.1. Cơ chế phân quyền
 
-- Xem chi tiết Đài TTDH theo ID
-- Build response DTO với đầy đủ thông tin
-- Kiểm tra bản ghi tồn tại trước khi trả về
+Xem chi tiết Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:read` theo từng tài khoản người dùng.
 
-## Out of Scope
+| Vai trò | Permission | Ghi chú |
+|---|---|---|
+| ROLE_SYSTEM_ADMIN | *(bypass)* | Xem toàn bộ + audit fields |
+| ROLE_ADMIN | `data:read` | Xem + audit fields |
+| ROLE_LEADER | `data:read` | Xem thông tin chung |
+| ROLE_SPECIALIST | `data:read` | Xem thông tin chung |
+| ROLE_PORT_OPERATOR | `data:read` | Xem thông tin chung |
+| ROLE_PUBLIC_USER | `data:read` | Xem thông tin chung |
+| ROLE_INTEGRATION | `data:read` | Xem qua API |
+| ROLE_SECURITY_MONITOR | *(không có `data:*`)* | Không có quyền |
 
-- Xem lịch sử thay đổi của đài (thuộc F-097)
-- Xem danh sách tất cả đài (thuộc GET /api/v1/stations/coastal và /search)
+- **Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN):** xem thêm audit fields (người tạo, thời gian tạo, người sửa, thời gian sửa).
 
-## Roles + Permissions
+> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
 
-| Role | Level | Notes |
-|------|-------|-------|
-| admin | Read | Có thể xem chi tiết |
-| operator | Read | Có thể xem chi tiết |
-| approver_L1 | Read | Có thể xem chi tiết để phê duyệt |
-| approver_L2 | Read | Có thể xem chi tiết để phê duyệt |
-| viewer | Read | Có thể xem chi tiết |
+---
 
-## Entities
+## 3. User Stories
 
-- **CoastalStationVTS**: Đối tượng dữ liệu của Đài TTDH.
-- **CoastalStationVTSResponse**: DTO phản hồi chứa các trường thông tin chi tiết của đài, được build bởi service.buildResponse().
+- **US-096-01:** Là người dùng, tôi muốn xem toàn bộ thông tin Đài TTDH.
+- **US-096-02:** Là Lãnh đạo, tôi muốn xem Phân loại đài và trạng thái phê duyệt.
+- **US-096-03:** Là Admin Cục, tôi muốn xem thông tin kiểm toán.
 
-## Business Rules
+---
 
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-009 | Bản ghi đã soft-delete không hiển thị trong kết quả truy vấn | CoastalStationVTS | @SQLRestriction("deleted_at IS NULL") |
+## 4. Acceptance Criteria
 
-## Testing Strategy
+**AC-096-01 — Xem chi tiết:** GET /{id} → HTTP 200, đầy đủ thông tin (trừ trường ẩn).
 
-(populated by qa stage)
+**AC-096-02 — Badge trạng thái:** 7 trạng thái hiển thị badge màu: Lưu tạm (xám nhạt), Chờ duyệt CC (vàng), Từ chối CC (đỏ), Chờ duyệt Cục (vàng), Từ chối Cục (đỏ), Đã phê duyệt (xanh lá), Lịch sử (xám đậm).
+
+**AC-096-03 — Badge phân loại:** Loại I→V hiển thị dạng badge.
+
+**AC-096-04 — Dịch vụ:** Hiển thị danh sách dịch vụ đã chọn dạng tag.
+
+**AC-096-05 — Tọa độ:** Hiển thị bảng danh sách tọa độ.
+
+**AC-096-06 — File đính kèm:** Hiển thị danh sách file với link download.
+
+**AC-096-07 — Ẩn trường:** Không hiển thị frequencyBand, transmitPower, equipmentType.
+
+**AC-096-08 — Không tìm thấy:** HTTP 404 "Không tìm thấy Đài TTDH".
+
+---
+
+## 5. Business Rules
+
+| ID | Rule |
+|----|------|
+| BR-096-01 | Badge trạng thái màu: Lưu tạm=xám nhạt, Chờ duyệt=vàng, Từ chối=đỏ, Đã phê duyệt=xanh, Lịch sử=xám đậm (dark gray) |
+| BR-096-02 | Đơn vị quản lý/khai thác resolve tên qua OrgUnitCacheService |
+| BR-096-03 | Audit fields chỉ hiển thị cho Admin Cục |
+
+---
+
+## 6. Mô hình dữ liệu
+
+Đọc toàn bộ coastal_station_vts + JOIN coordinates + JOIN attachments. Không thay đổi schema.
+
+---
+
+## 7. API
+
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| GET | `/api/v1/stations/coastal/{id}` | Xem chi tiết |
+
+---
+
+## 8. Chi tiết
+
+### Bố cục:
+
+**Section 1 — Thông tin chung:** Mã đài, Tên đài, Phân loại (badge), Tình trạng (badge), Trạng thái (badge màu), Đơn vị quản lý, Đơn vị khai thác, Địa điểm, Vùng phủ sóng, Ghi chú.
+
+**Section 2 — Dịch vụ:** Danh sách tag các dịch vụ đã chọn.
+
+**Section 3 — GIS:** Loại đối tượng, Hệ quy chiếu, Quy tắc hiển thị, Biểu tượng. Bảng tọa độ (STT, Vĩ độ, Kinh độ).
+
+**Section 4 — File đính kèm:** Danh sách file (tên, dung lượng, ngày upload, link tải).
+
+**Section 5 — Phê duyệt:** Cấp phê duyệt, Người duyệt, Ngày duyệt, Lý do từ chối (nếu có), Nội dung phê duyệt.
+
+**Section 6 — Kiểm toán (chỉ Admin Cục):** Người tạo, Ngày tạo, Người sửa, Ngày sửa.
+
+---
+
+## 9. NFRs
+
+Performance < 200ms. Cache unit names. XSS-safe.
+
+---
+
+## 10. UI
+
+Drawer, width `drawerProps.size` (1000px). Dùng preset từ `tokens.ts`:
+- **Từng dòng thông tin:** `detailRowStyle` (flex, padding 10px 12px, borderBottom)
+- **Label:** `detailLabelColStyle` (width 200px, sidebarBg, bold, fontSizeMd)
+- **Value:** `detailValueStyle` (flex 1, textPrimary, fontSizeMd)
+- **Badge:** `badgeBaseStyle` cho tất cả badge. Màu: Lưu tạm/Chờ duyệt=`statusAttention`, Từ chối=`statusCritical`, Đã phê duyệt=`statusOperational`, Lịch sử=`textTertiary`
+- **Card section:** `cardStyle`
+- **Thời gian:** `metaStyle`
+- **Drawer header:** `drawerProps.styles.header` (padding 12px 24px, borderBottom)
+- **Required mark (*):** nằm bên phải label (theme.ts `requiredMarkPosition: 'right'`)

@@ -158,4 +158,10 @@ public class Pier extends BaseEntity {
 
     @Column(name = "water_area_neutral_scope", length = 2000)
     private String waterAreaNeutralScope;        // G4
+
+    @Column(name = "coordinate_system")
+    private Integer coordinateSystem;
+
+    @Column(name = "display_rule", length = 255)
+    private String displayRule;
 }
