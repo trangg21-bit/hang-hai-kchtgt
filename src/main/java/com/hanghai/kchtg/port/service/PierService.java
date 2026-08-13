@@ -429,6 +429,9 @@ public class PierService {
 
         if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
+        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ phê duyệt" để duyệt lại
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         Pier saved = pierRepository.save(entity);

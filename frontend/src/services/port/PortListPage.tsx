@@ -780,13 +780,12 @@ export default function PortListPage() {
     if (!portName) { toast.error('Tên cảng biển là bắt buộc ngay cả khi lưu tạm'); return; }
     if (portName.length > 255) { toast.error('Tên cảng tối đa 255 ký tự'); return; }
 
-    // BR-008-08: Validate công trình KCHT
+    // BR-008-08: Validate công trình KCHT (chỉ cần tên HOẶC số lượng là đủ)
     for (const infra of infraList) {
       const name = (infra.infraName || '').trim();
-      if (!name) { toast.error('Tên công trình KCHT không được để trống'); return; }
+      const qty = infra.quantity == null ? null : Number(infra.quantity);
       if (name.length > 500) { toast.error('Tên công trình KCHT không quá 500 ký tự'); return; }
-      if (infra.quantity == null || Number(infra.quantity) <= 0) { toast.error('Số lượng công trình KCHT phải lớn hơn 0'); return; }
-      if (Number(infra.quantity) > 5) { toast.error('Số lượng công trình KCHT không quá 5'); return; }
+      if (qty != null && qty > 5) { toast.error('Số lượng công trình KCHT không quá 5'); return; }
     }
 
     // Validate GPS coordinates (only required when Loại đối tượng is selected)
@@ -885,8 +884,8 @@ export default function PortListPage() {
         otherWaterAreas: (values.otherWaterAreas as string) || undefined,
         coordinateList,
         infrastructureList: infraList
-          .filter((inf) => inf.infraName?.trim())
-          .map((inf) => ({ stt: inf.stt, infraName: inf.infraName.trim(), quantity: Number(inf.quantity) })),
+          .filter((inf) => (inf.infraName || '').trim() || (inf.quantity != null && Number(inf.quantity) > 0))
+          .map((inf, idx) => ({ stt: idx + 1, infraName: (inf.infraName || '').trim(), quantity: inf.quantity != null && Number(inf.quantity) > 0 ? Number(inf.quantity) : 1 })),
         remarks: (values.remarks as string) || undefined,
         action: currentAction,
       };
@@ -996,8 +995,8 @@ export default function PortListPage() {
         otherWaterAreas: (values.otherWaterAreas as string) || null,
         coordinateList,
         infrastructureList: infraList
-          .filter((inf) => inf.infraName?.trim())
-          .map((inf) => ({ stt: inf.stt, infraName: inf.infraName.trim(), quantity: Number(inf.quantity) })),
+          .filter((inf) => (inf.infraName || '').trim() || (inf.quantity != null && Number(inf.quantity) > 0))
+          .map((inf, idx) => ({ stt: idx + 1, infraName: (inf.infraName || '').trim(), quantity: inf.quantity != null && Number(inf.quantity) > 0 ? Number(inf.quantity) : 1 })),
         remarks: (values.remarks as string) || undefined,
       };
       const res = await import('./api').then((m) => m.updateCangBien(payload));
@@ -1023,6 +1022,7 @@ export default function PortListPage() {
       closeUpdateModal();
       if (!isIframeModal) {
         fetchData();
+        fetchTabCounts();
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại');
@@ -1099,6 +1099,7 @@ export default function PortListPage() {
       setDeleteTarget(null);
       setDeleteConfirmText('');
       fetchData();
+      fetchTabCounts();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Xóa thất bại');
     }
@@ -2129,7 +2130,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={90} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2137,7 +2138,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2145,7 +2146,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
                                   <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2167,7 +2168,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={180} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2175,7 +2176,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2183,7 +2184,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
                                   <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2876,7 +2877,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={90} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2884,7 +2885,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2892,7 +2893,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
                                   <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2914,7 +2915,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={180} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2922,7 +2923,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2930,7 +2931,7 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
                                   <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -3517,34 +3518,35 @@ export default function PortListPage() {
 
       {/* Delete confirmation modal */}
       <Modal
-        title="Xác nhận xóa"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cảng biển</span>}
         open={!!deleteTarget}
         onCancel={() => {
           setDeleteTarget(null);
           setDeleteConfirmText('');
         }}
-        okText="Xóa"
-        okType="danger"
-        cancelText="Hủy"
-        onOk={handleDeleteConfirm}
+        footer={[
+          <Button key="cancel" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="delete" type="primary" danger onClick={handleDeleteConfirm}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
+        ]}
+        width={480}
       >
-        <div style={{ marginBottom: 16 }}>
-          <Typography.Text>
-            Vui lòng nhập <strong>tên cảng</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa cảng này.
-          </Typography.Text>
+        <div style={{ padding: '8px 0' }}>
+          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
+            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
+            Vui lòng nhập <strong>tên cảng</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
+          </p>
+          {deleteTarget && (
+            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
+              Cảng: <strong style={{ color: textPrimary }}>{deleteTarget.portName}</strong>
+            </p>
+          )}
+          <Input placeholder="Nhập tên cảng hoặc XÓA" value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleDeleteConfirm}
+            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            {deleteTarget?.portName}
-          </Typography.Text>
-        </div>
-        <Input
-          placeholder="Nhập tên cảng hoặc XÓA"
-          value={deleteConfirmText}
-          onChange={(e) => setDeleteConfirmText(e.target.value)}
-          onPressEnter={handleDeleteConfirm}
-          style={{ borderRadius: radiusPill, height: 40 }}
-        />
       </Modal>
     </>
   );
