@@ -310,18 +310,21 @@ public class VtsSystemService {
 
     public Page<VtsSystemResponse> findAllWithSearch(UUID orgUnitId, String keyword, ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus, Integer year, int page, int size) {
-        DataScopeContext scope = resolveDataScope();
+        DataScopeContext scope = resolveDataScopeForFilter(orgUnitId);
         String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
+        if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
+            return Page.empty(pageable);
+        }
         if (year == null) {
-            return repository.search(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
+            return repository.search(scope.enabled(), scope.orgUnitIds(), null, keywordLike,
                     conditionStatus, approvalStatus, pageable)
                     .map(this::toLightResponse);
         }
         LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
         LocalDateTime toDate = fromDate.plusYears(1);
         return repository
-                .searchByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
+                .searchByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), null, keywordLike,
                         conditionStatus, approvalStatus, fromDate, toDate, pageable)
                 .map(this::toLightResponse);
     }
@@ -339,7 +342,7 @@ public class VtsSystemService {
     public VtsSystemListResponse findAllWithSearchAndCounts(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus, ApprovalStatus approvalStatus, Integer year, int page, int size,
             boolean includeCounts) {
-        DataScopeContext scope = resolveDataScope();
+        DataScopeContext scope = resolveDataScopeForFilter(orgUnitId);
         String keywordLike = toKeywordLike(keyword);
         Page<VtsSystemListItemResponse> pageResult = findAllListItems(orgUnitId, keyword, conditionStatus, approvalStatus,
                 year, page, size, scope);
@@ -347,7 +350,7 @@ public class VtsSystemService {
                 .items(pageResult.getContent())
                 .total(pageResult.getTotalElements())
                 .statusCounts(includeCounts
-                        ? countByApprovalStatus(scope, orgUnitId, keywordLike, conditionStatus)
+                        ? countByApprovalStatus(scope, keywordLike, conditionStatus)
                         : Collections.emptyMap())
                 .build();
     }
@@ -361,14 +364,17 @@ public class VtsSystemService {
             DataScopeContext scope) {
         String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
+        if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
+            return Page.empty(pageable);
+        }
         if (year == null) {
-            return repository.searchList(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
+            return repository.searchList(scope.enabled(), scope.orgUnitIds(), null, keywordLike,
                     conditionStatus, approvalStatus, pageable)
                     .map(this::toListItemResponse);
         }
         LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
         LocalDateTime toDate = fromDate.plusYears(1);
-        return repository.searchListByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), orgUnitId,
+        return repository.searchListByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), null,
                 keywordLike, conditionStatus, approvalStatus, fromDate, toDate, pageable)
                 .map(this::toListItemResponse);
     }
@@ -766,14 +772,17 @@ public class VtsSystemService {
         String keywordLike = toKeywordLike(keyword);
         Pageable pageable = PageRequest.of(0, 100);
         Page<VtsSystem> pageResult;
-        DataScopeContext scope = resolveDataScope();
+        DataScopeContext scope = resolveDataScopeForFilter(orgUnitId);
+        if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
+            return List.of();
+        }
         if (year == null) {
-            pageResult = repository.search(scope.enabled(), scope.orgUnitIds(), orgUnitId, keywordLike,
+            pageResult = repository.search(scope.enabled(), scope.orgUnitIds(), null, keywordLike,
                     conditionStatus, approvalStatus, pageable);
         } else {
             LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
             LocalDateTime toDate = fromDate.plusYears(1);
-            pageResult = repository.searchByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), orgUnitId,
+            pageResult = repository.searchByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), null,
                     keywordLike, conditionStatus, approvalStatus, fromDate, toDate, pageable);
         }
         return pageResult.getContent().stream()
@@ -1136,18 +1145,21 @@ public class VtsSystemService {
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> countByApprovalStatus() {
-        return countByApprovalStatus(null, null, null);
+        return countByApprovalStatus(resolveDataScopeForFilter(null), null, null);
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, ConditionStatus conditionStatus) {
-        return countByApprovalStatus(resolveDataScope(), orgUnitId, keyword, conditionStatus);
+        return countByApprovalStatus(resolveDataScopeForFilter(orgUnitId), keyword, conditionStatus);
     }
 
-    private java.util.Map<String, Long> countByApprovalStatus(DataScopeContext scope, UUID orgUnitId, String keyword,
+    private java.util.Map<String, Long> countByApprovalStatus(DataScopeContext scope, String keyword,
             ConditionStatus conditionStatus) {
+        if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
+            return Collections.emptyMap();
+        }
         java.util.Map<String, Long> counts = new java.util.LinkedHashMap<>();
-        for (Object[] row : repository.countByApprovalStatus(scope.enabled(), scope.orgUnitIds(), orgUnitId,
+        for (Object[] row : repository.countByApprovalStatus(scope.enabled(), scope.orgUnitIds(), null,
                 keyword, conditionStatus)) {
             counts.put(((ApprovalStatus) row[0]).name(), (Long) row[1]);
         }
@@ -1185,6 +1197,33 @@ public class VtsSystemService {
             return new DataScopeContext(true, List.of());
         }
         return new DataScopeContext(true, resolveSubtreeIdsByParentId(currentUser.getOrgUnit().getId()));
+    }
+
+    /**
+     * Resolve the effective scope for a list filter. Selecting an organisation
+     * includes that organisation and all descendants, then intersects the
+     * result with the caller's own scope. This keeps list rows and status
+     * counts consistent with the hierarchy permission rule.
+     */
+    private DataScopeContext resolveDataScopeForFilter(UUID selectedOrgUnitId) {
+        DataScopeContext callerScope = resolveDataScope();
+        if (selectedOrgUnitId == null) {
+            return callerScope;
+        }
+
+        if (callerScope.enabled() && !callerScope.orgUnitIds().contains(selectedOrgUnitId)) {
+            return new DataScopeContext(true, List.of());
+        }
+
+        List<UUID> selectedSubtree = resolveSubtreeIdsByParentId(selectedOrgUnitId);
+        if (!callerScope.enabled()) {
+            return new DataScopeContext(true, selectedSubtree);
+        }
+
+        Set<UUID> callerOrgUnitIds = new LinkedHashSet<>(callerScope.orgUnitIds());
+        return new DataScopeContext(true, selectedSubtree.stream()
+                .filter(callerOrgUnitIds::contains)
+                .toList());
     }
 
     /**

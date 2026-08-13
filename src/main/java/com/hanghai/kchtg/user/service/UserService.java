@@ -5,6 +5,7 @@ import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.password.entity.PasswordHistory;
 import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
@@ -83,6 +84,7 @@ public class UserService {
     private final UserStatusLogRepository userStatusLogRepository;
     private final EntityManager entityManager;
     private final com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
 
     public UserService(UserRepository userRepository,
             RoleRepository roleRepository,
@@ -96,7 +98,23 @@ public class UserService {
             EntityManager entityManager) {
         this(userRepository, roleRepository, orgUnitRepository, groupRepository, passwordEncoder,
                 passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
-                userStatusLogRepository, entityManager, null);
+                userStatusLogRepository, entityManager, null, null);
+    }
+
+    public UserService(UserRepository userRepository,
+            RoleRepository roleRepository,
+            OrgUnitRepository orgUnitRepository,
+            GroupRepository groupRepository,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyValidator passwordPolicyValidator,
+            PermissionCacheService permissionCacheService,
+            PasswordHistoryRepository passwordHistoryRepository,
+            UserStatusLogRepository userStatusLogRepository,
+            EntityManager entityManager,
+            @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
+        this(userRepository, roleRepository, orgUnitRepository, groupRepository, passwordEncoder,
+                passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
+                userStatusLogRepository, entityManager, orgUnitCacheService, null);
     }
 
     @Autowired
@@ -110,7 +128,8 @@ public class UserService {
             PasswordHistoryRepository passwordHistoryRepository,
             UserStatusLogRepository userStatusLogRepository,
             EntityManager entityManager,
-            @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
+            @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService,
+            @org.springframework.lang.Nullable OrgUnitScopeService orgUnitScopeService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
@@ -122,6 +141,7 @@ public class UserService {
         this.userStatusLogRepository = userStatusLogRepository;
         this.entityManager = entityManager;
         this.orgUnitCacheService = orgUnitCacheService;
+        this.orgUnitScopeService = orgUnitScopeService;
     }
 
     // =========================================================================
@@ -185,14 +205,19 @@ public class UserService {
                 sort);
 
         String searchLike = toSearchLike(search);
-        List<UserListProjection> listItems = orgUnitId == null
+        List<UUID> organizationFilter = resolveOrganizationFilter(orgUnitId);
+        if (organizationFilter != null && organizationFilter.isEmpty()) {
+            return emptyUserPage(cappedPageable, getEmptyStatusCounts());
+        }
+
+        List<UserListProjection> listItems = organizationFilter == null
                 ? userRepository.searchUserList(searchLike, status, cappedPageable)
-                : userRepository.searchUserListByOrgUnit(searchLike, status, orgUnitId, cappedPageable);
+                : userRepository.searchUserListByOrgUnits(searchLike, status, organizationFilter, cappedPageable);
 
         // The status tabs must describe the same filtered result set as the
         // table.  Using the global counts here makes a search for one user
         // still show the totals of the whole user database.
-        java.util.Map<String, Long> counts = getStatusCounts(search, orgUnitId);
+        java.util.Map<String, Long> counts = getStatusCounts(search, organizationFilter);
         long totalElements = status == null
                 ? counts.getOrDefault("total", 0L)
                 : counts.getOrDefault(status.name().toLowerCase(java.util.Locale.ROOT), 0L);
@@ -217,11 +242,19 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> getStatusCounts(String search) {
-        return getStatusCounts(search, null);
+        return getStatusCounts(search, (UUID) null);
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> getStatusCounts(String search, UUID orgUnitId) {
+        return getStatusCounts(search, resolveOrganizationFilter(orgUnitId));
+    }
+
+    private java.util.Map<String, Long> getStatusCounts(String search, List<UUID> organizationFilter) {
+        if (organizationFilter != null && organizationFilter.isEmpty()) {
+            return getEmptyStatusCounts();
+        }
+
         java.util.Map<String, Long> counts = new java.util.HashMap<>();
         counts.put("total", 0L);
         for (UserStatus s : UserStatus.values()) {
@@ -230,9 +263,9 @@ public class UserService {
             }
         }
 
-        List<Object[]> results = orgUnitId == null
+        List<Object[]> results = organizationFilter == null
                 ? userRepository.countUsersByStatus(toSearchLike(search))
-                : userRepository.countUsersByStatusAndOrgUnit(toSearchLike(search), orgUnitId);
+                : userRepository.countUsersByStatusAndOrgUnits(toSearchLike(search), organizationFilter);
         long total = 0;
         for (Object[] row : results) {
             UserStatus s = (UserStatus) row[0];
@@ -245,6 +278,60 @@ public class UserService {
         }
         counts.put("total", total);
         return counts;
+    }
+
+    private java.util.Map<String, Long> getEmptyStatusCounts() {
+        java.util.Map<String, Long> counts = new java.util.HashMap<>();
+        counts.put("total", 0L);
+        for (UserStatus s : UserStatus.values()) {
+            if (s != UserStatus.DELETED) {
+                counts.put(s.name().toLowerCase(java.util.Locale.ROOT), 0L);
+            }
+        }
+        return counts;
+    }
+
+    private com.hanghai.kchtg.user.dto.UserPageResponse emptyUserPage(Pageable pageable,
+            java.util.Map<String, Long> counts) {
+        return new com.hanghai.kchtg.user.dto.UserPageResponse(
+                List.of(),
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                0,
+                0,
+                counts);
+    }
+
+    /**
+     * Resolve a selected unit as a hierarchical filter and enforce the
+     * authenticated user's own organisation scope.
+     *
+     * A null result means unrestricted access (Admin Cục). An empty result
+     * means the requested unit is outside the caller's scope or has no
+     * visible descendants, and must be returned as an empty page without
+     * executing an IN () query.
+     */
+    private List<UUID> resolveOrganizationFilter(UUID selectedOrgUnitId) {
+        if (orgUnitScopeService == null) {
+            return selectedOrgUnitId == null ? null : List.of(selectedOrgUnitId);
+        }
+
+        OrgUnitScopeService.Scope callerScope = orgUnitScopeService.currentUserScope();
+        if (selectedOrgUnitId == null) {
+            return callerScope.unrestricted() ? null : callerScope.orgUnitIds();
+        }
+
+        if (!callerScope.unrestricted() && !callerScope.orgUnitIds().contains(selectedOrgUnitId)) {
+            return List.of();
+        }
+
+        List<UUID> selectedTree = orgUnitScopeService.resolveSubtreeIds(selectedOrgUnitId);
+        if (callerScope.unrestricted()) {
+            return selectedTree;
+        }
+        return selectedTree.stream()
+                .filter(callerScope.orgUnitIds()::contains)
+                .toList();
     }
 
     /**

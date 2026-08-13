@@ -145,10 +145,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
            "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
            "AND u.deletedAt IS NULL " +
-           "AND (:orgUnitId IS NULL OR u.orgUnit.id = :orgUnitId) " +
+           "AND u.orgUnit.id IN :orgUnitIds " +
            "GROUP BY u.status")
-    List<Object[]> countUsersByStatusAndOrgUnit(@Param("search") String search,
-                                                @Param("orgUnitId") UUID orgUnitId);
+    List<Object[]> countUsersByStatusAndOrgUnits(@Param("search") String search,
+                                                 @Param("orgUnitIds") java.util.Collection<UUID> orgUnitIds);
 
     @Query("SELECT DISTINCT u FROM User u " +
            "WHERE (:search IS NULL OR :search = '' OR " +
@@ -185,10 +185,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
            "AND u.deletedAt IS NULL " +
            "AND (:status IS NULL OR u.status = :status) " +
-           "AND (:orgUnitId IS NULL OR u.orgUnit.id = :orgUnitId)")
-    List<UserListProjection> searchUserListByOrgUnit(
+           "AND u.orgUnit.id IN :orgUnitIds")
+    List<UserListProjection> searchUserListByOrgUnits(
             @Param("search") String search,
             @Param("status") UserStatus status,
-            @Param("orgUnitId") UUID orgUnitId,
+            @Param("orgUnitIds") java.util.Collection<UUID> orgUnitIds,
             org.springframework.data.domain.Pageable pageable);
 }

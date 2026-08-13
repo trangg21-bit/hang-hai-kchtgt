@@ -60,7 +60,7 @@ const Pagination: React.FC<PaginationProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+    <div className="list-view-pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
       padding: '8px 0', flexWrap: 'wrap', gap: spaceSm }}>
       <style>{`.page-size-select .ant-select-item-option { border-radius: ${radiusPill}px !important; margin: 2px 4px; }`}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
