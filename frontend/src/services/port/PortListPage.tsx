@@ -168,6 +168,9 @@ function parseWktCoords(wkt: string): Array<{ lat: number; lng: number }> {
 
 // ── List Page ───────────────────────────────────────────────────────
 
+// Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
+const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+
 export const translateFieldName = (fieldName: string): string => {
   const map: Record<string, string> = {
     // Port (Cảng biển)
@@ -328,7 +331,7 @@ export default function PortListPage() {
 
   // ── Permission ──────────────────────────────────────────────────
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const canSubmitForApproval = hasPerm?.('admin:manage') || hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2);
+  const canSubmitForApproval = hasPerm?.('admin:manage') || hasPerm?.('port:approve');
 
   // ── State ───────────────────────────────────────────────────────
   const [search, setSearch] = useState('');
@@ -491,7 +494,7 @@ export default function PortListPage() {
     const defaultOrg = defaultOrgUnitId.current;
     setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setSearch('');
-    setFilterOrgUnitId(defaultOrg || undefined);
+    setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg || undefined);
     setFilterTinh('');
     setFilterPortGroup(undefined);
     setFilterPortClass(undefined);
@@ -507,10 +510,12 @@ export default function PortListPage() {
     setUpdateModalVisible(false);
     setInfraList([]);
     setUploadFileList([]);
+    setGpsCoordList([]);
+    updateForm.resetFields();
     if (window.self !== window.top) {
       window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
     }
-  }, []);
+  }, [updateForm]);
 
   const closeDetailModal = useCallback(() => {
     setDetailModalVisible(false);
@@ -655,10 +660,10 @@ export default function PortListPage() {
               const profile = profileRes.data?.data ?? profileRes.data;
               const userOrgId = profile?.orgUnitId;
               const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = match ? userOrgId : data[0].id;
+              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
               defaultOrgUnitId.current = defaultId;
               setFilterValues(prev => ({ ...prev, orgUnitId: defaultId }));
-              setFilterOrgUnitId(defaultId);
+              setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
             } catch {
               defaultOrgUnitId.current = data[0].id;
               setFilterValues(prev => ({ ...prev, orgUnitId: data[0].id }));
@@ -759,7 +764,13 @@ export default function PortListPage() {
   const updateGeometryType = Form.useWatch('geometryType', updateForm) || 'POINT';
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu & quy tắc hiển thị
-  useEffect(() => { if (createGeometryType) createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [createGeometryType]);
+  useEffect(() => {
+    if (!createGeometryType) return;
+    createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    // Form thêm mới: điểm → 1 tọa độ, đường → 2 tọa độ, vùng → 3 tọa độ
+    const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
+    setGpsCoordList(Array.from({ length: count }, () => ({ lat: NaN, lng: NaN })));
+  }, [createGeometryType]);
   useEffect(() => { if (updateGeometryType && updateGeometryType !== 'POINT') updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [updateGeometryType]);
 
   const handleCreateFinish = async (values: Record<string, unknown>) => {
@@ -1308,7 +1319,7 @@ export default function PortListPage() {
         });
       }
       // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
-      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && (hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2))) {
+      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && hasPerm?.('port:approve')) {
         actions.push({
           key: 'approve',
           label: 'Phê duyệt',
@@ -1604,7 +1615,7 @@ export default function PortListPage() {
             <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
             {isError ? null : !isLoading && dataSource.length === 0 ? (
               <DataTable dataSource={[]} rowKey="id"
-                emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{search || filterTinh || filterStatus ? 'Không tìm thấy cảng biển nào phù hợp' : 'Chưa có cảng biển nào'}</div></div>}
+                emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy cảng biển nào phù hợp</div></div>}
               />
             ) : !isLoading && !isError && dataSource.length > 0 ? (
               <DataTable columns={columns}
@@ -1631,8 +1642,8 @@ export default function PortListPage() {
             </span>
           }
           open={createModalVisible}
-          onClose={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); }}
-          extra={<Button type="text" onClick={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); }} style={drawerCloseBtnStyle}>✕</Button>}
+          onClose={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
+          extra={<Button type="text" onClick={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
             <div style={drawerFooterStyle}>
               <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
@@ -1848,7 +1859,7 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalPublicChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH công cộng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
@@ -1857,7 +1868,7 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalDedicatedChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH chuyên dùng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
@@ -1868,7 +1879,7 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalBuoysBeacons"
-                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải')}
+                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
@@ -2616,7 +2627,7 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalPublicChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH công cộng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
@@ -2625,7 +2636,7 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalDedicatedChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH chuyên dùng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
@@ -2636,7 +2647,7 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalBuoysBeacons"
-                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải')}
+                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
@@ -3205,9 +3216,9 @@ export default function PortListPage() {
                         ['Tổng số khu neo đậu, khu chuyển tải', selectedRecord.totalAnchoragesTransshipment ?? '—'],
                         ['Tổng số tuyến luồng hàng hải công cộng', selectedRecord.totalPublicChannels ?? '—'],
                         ['Tổng số tuyến luồng hàng hải chuyên dùng', selectedRecord.totalDedicatedChannels ?? '—'],
-                        ['Tổng chiều dài luồng HH công cộng (km)', selectedRecord.totalPublicChannelLength != null ? selectedRecord.totalPublicChannelLength.toFixed(2) : '—'],
-                        ['Tổng chiều dài luồng HH chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? selectedRecord.totalDedicatedChannelLength.toFixed(2) : '—'],
-                        ['Tổng số phao tiêu, báo hiệu hàng hải', selectedRecord.totalBuoysBeacons ?? '—'],
+                        ['Tổng chiều dài luồng hàng hải công cộng (km)', selectedRecord.totalPublicChannelLength != null ? selectedRecord.totalPublicChannelLength.toFixed(2) : '—'],
+                        ['Tổng chiều dài luồng hàng hải chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? selectedRecord.totalDedicatedChannelLength.toFixed(2) : '—'],
+                        ['Tổng số phao tiêu, báo hiệu hàng hải trên luồng', selectedRecord.totalBuoysBeacons ?? '—'],
                         ['Tổng số đê, kè', selectedRecord.totalDikes ?? '—'],
                         ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? selectedRecord.totalDikeLength.toFixed(2) : '—'],
                         ['Tổng số đèn biển, đăng, tiêu độc lập', selectedRecord.totalLighthouses ?? '—'],

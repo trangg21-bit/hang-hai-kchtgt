@@ -777,7 +777,7 @@ export default function BerthList() {
         <style>{`.list-view-table .ant-table-cell { padding-block: 9.5px !important; }`}</style>
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id"
-            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{filterBerthName || filterBerthCode || filterProvince ? 'Không tìm thấy bến cảng nào phù hợp' : 'Chưa có bến cảng nào'}</div></div>}
+            emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy bến cảng nào phù hợp</div></div>}
           />
         ) : !isLoading && !isError && dataSource.length > 0 ? (
           <DataTable columns={columns}
@@ -797,6 +797,7 @@ export default function BerthList() {
         {...drawerProps}
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến cảng</span>}
         open={createDrawerVisible}
+        destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={

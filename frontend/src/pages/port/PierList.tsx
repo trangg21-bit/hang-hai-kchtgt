@@ -95,7 +95,6 @@ export default function PierList() {
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
   const [searchInput, setSearchInput] = useState('');
-  const [filterSearch, setFilterSearch] = useState('');
   const [filterBerthId, setFilterBerthId] = useState<string | undefined>();
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
   const [filterPierType, setFilterPierType] = useState<string | undefined>();
@@ -168,7 +167,7 @@ export default function PierList() {
   }, []);
 
   useEffect(() => {
-    (async () => { try { const r = await organizationService.list({ pageSize: 1000 }); const data = r.data || []; setOrganizations(data); if (data.length > 0) { try { const p = await api.get('/users/me'); const uOrgId = (p.data?.data ?? p.data)?.orgUnitId; const matchedOrgId = (uOrgId && data.find((o: any) => o.id === uOrgId)) ? uOrgId : data[0].id; setOrgUnit(matchedOrgId); defaultOrgUnitRef.current = matchedOrgId; appliedFiltersRef.current = { ...appliedFiltersRef.current, orgUnit: matchedOrgId }; setSearchInput(''); } catch { setOrgUnit(data[0].id); defaultOrgUnitRef.current = data[0].id; appliedFiltersRef.current = { ...appliedFiltersRef.current, orgUnit: data[0].id }; setSearchInput(''); } } } catch {} })();
+    (async () => { try { const r = await organizationService.list({ pageSize: 1000 }); const data = r.data || []; setOrganizations(data); if (data.length > 0) { try { const p = await api.get('/users/me'); const uOrgId = (p.data?.data ?? p.data)?.orgUnitId; const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__'; setOrgUnit(matchedOrgId); defaultOrgUnitRef.current = matchedOrgId; appliedFiltersRef.current = { ...appliedFiltersRef.current, orgUnit: matchedOrgId }; setSearchInput(''); } catch { setOrgUnit(data[0].id); defaultOrgUnitRef.current = data[0].id; appliedFiltersRef.current = { ...appliedFiltersRef.current, orgUnit: data[0].id }; setSearchInput(''); } } } catch {} })();
     (async () => { try { const r = await userService.list({ pageSize: 1000 }); const u = r.data || (r as any).content || []; const m = new Map<string, string>(); u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id)); setUserMap(m); } catch {} })();
     (async () => { try { const r = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' }); const s = r.data || (r as any).content || []; const m = new Map<string, string>(); const imgMap = new Map<string, string>(); s.forEach((x: any) => { m.set(x.id, x.name); if (x.image) imgMap.set(x.id, x.image); }); setSymbolMap(m); setSymbolImageMap(imgMap); } catch {} })();
     (async () => { try { const r = await portCRUD.findAll({ page: 1, size: 1000 }); (r.data || []).forEach((p: any) => portMap.set(p.id, p.portName)); } catch {} })();
@@ -225,13 +224,13 @@ export default function PierList() {
       orgUnit, search: searchInput, berthId: filterBerthId, portId: filterPortId, pierType: filterPierType,
       province: filterProvince, operationalStatus: filterOperationalStatus, approvalStatus: filterApprovalStatus,
     };
-    setFilterSearch(searchInput); setPage(1);
+    setPage(1);
     setRefreshKey(k => k + 1);
   }, [searchInput, orgUnit, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus, filterApprovalStatus]);
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
     appliedFiltersRef.current = { orgUnit: oid, search: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined };
-    setOrgUnit(oid); setSearchInput(''); setFilterSearch('');
+    setOrgUnit(oid); setSearchInput('');
     setFilterPortId(undefined); setFilterBerthId(undefined); setFilterPierType(undefined);
     setFilterProvince(undefined); setFilterOperationalStatus(undefined); setFilterApprovalStatus(undefined);
     setActiveTab('all'); setPage(1); setRefreshKey(k => k + 1);
@@ -358,9 +357,9 @@ export default function PierList() {
     { label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span> },
     { label: 'Mã cầu cảng', dataIndex: 'pierCode', key: 'pierCode', width: 220, fixed: 'left' as const, sortable: true,
-      render: (v: string) => <span style={{ whiteSpace: 'nowrap', display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: '#1677ff15', color: '#1677ff' }}>{v || '—'}</span> },
+      render: (v: string, record: Pier) => <span onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ whiteSpace: 'nowrap', display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: '#1677ff15', color: '#1677ff', cursor: 'pointer' }}>{v || '—'}</span> },
     { label: 'Tên cầu cảng', dataIndex: 'pierName', key: 'pierName', width: 200, fixed: 'left' as const, sortable: true,
-      render: (v: string) => <a style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer' }}>{v || '—'}</a> },
+      render: (v: string, record: Pier) => <a onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer' }}>{v || '—'}</a> },
     { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 170,
       render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || '—'}</span> },
     { label: 'Thuộc bến cảng', dataIndex: 'berthName', key: 'berthName', width: 170,
@@ -380,7 +379,7 @@ export default function PierList() {
         const bc = badge.color === 'green' ? statusOperational : badge.color === 'red' ? statusCritical : badge.color === 'orange' ? statusAttention : textTertiary;
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${bc}15`, color: bc }}>{badge.label}</span>;
       } },
-  ].map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined })), [page, pageSize, orgMap, berthOptions, portMap, sortField, sortOrder]);
+  ].map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined })), [page, pageSize, orgMap, berthOptions, portMap, sortField, sortOrder, openDetailDrawer]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
@@ -393,17 +392,16 @@ export default function PierList() {
         loading={isLoading} error={isError} onRetry={() => void fetchData()}>
         <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
         {isError ? null : !isLoading && dataSource.length === 0 ? (
-          <DataTable dataSource={[]} rowKey="id" emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{filterSearch ? 'Không tìm thấy cầu cảng nào phù hợp' : 'Chưa có cầu cảng nào'}</div></div>} />
+          <DataTable dataSource={[]} rowKey="id" emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy cầu cảng nào phù hợp</div></div>} />
         ) : !isLoading && !isError && dataSource.length > 0 ? (
           <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const av = a[sortField] ?? ''; const bv = b[sortField] ?? ''; const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
             rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-            onRow={(record: any) => ({ onClick: () => openDetailDrawer(record), style: { cursor: 'pointer' } })}
             scroll={{ x: 1900, y: 500 }} />
         ) : null}
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>
 
-      <Drawer {...drawerProps} title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible}
+      <Drawer {...drawerProps} title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         afterOpenChange={(open) => { if (!open) setEditPierId(undefined); }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
