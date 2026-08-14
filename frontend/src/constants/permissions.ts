@@ -236,8 +236,6 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.PORT.CREATE, title: 'Thêm Cảng biển' },
       { key: PERMISSIONS.PORT.UPDATE, title: 'Sửa Cảng biển' },
       { key: PERMISSIONS.PORT.DELETE, title: 'Xóa Cảng biển' },
-      { key: PERMISSIONS.PORT.APPROVE_C1, title: 'Duyệt Cảng biển C1' },
-      { key: PERMISSIONS.PORT.APPROVE_C2, title: 'Duyệt Cảng biển C2' },
       { key: PERMISSIONS.PORT.HISTORY, title: 'Lịch sử Cảng biển' },
       { key: PERMISSIONS.BERTH.READ, title: 'Xem Bến cảng' },
       { key: PERMISSIONS.BERTH.CREATE, title: 'Thêm Bến cảng' },
