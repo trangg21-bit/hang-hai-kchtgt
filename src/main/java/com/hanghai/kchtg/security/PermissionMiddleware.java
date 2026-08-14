@@ -98,6 +98,22 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             return;
         }
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            boolean isSuperAdmin = auth.getAuthorities().stream().anyMatch(a ->
+                    "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority()) ||
+                    "SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority()) ||
+                    "*".equals(a.getAuthority()) ||
+                    "admin:all".equalsIgnoreCase(a.getAuthority()) ||
+                    "admin:manage".equalsIgnoreCase(a.getAuthority()) ||
+                    "ROLE_ADMIN".equalsIgnoreCase(a.getAuthority())
+            );
+            if (isSuperAdmin) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+        }
+
         // Extract resource from path
         String resource = extractResource(path);
         // Map HTTP method to action
@@ -247,8 +263,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("buoy-station", "data"),
             entry("stations", "data"),
             entry("users", "user"),
-            entry("roles", "role"),
-            entry("permissions", "role"),
             entry("approvals", "approve"),
             entry("dashboard", "dashboard"),
             entry("backups", "admin"),
@@ -346,6 +360,9 @@ public class PermissionMiddleware extends OncePerRequestFilter {
                 )
         );
 
-        response.getWriter().write(objectMapper.writeValueAsString(errorBody));
+        java.io.PrintWriter writer = response.getWriter();
+        if (writer != null) {
+            writer.write(objectMapper.writeValueAsString(errorBody));
+        }
     }
 }

@@ -26,10 +26,10 @@
       "updated_by": "sdlc-ba"
     },
     "docs/modules/M-001-quan-tri-he-thong/_state.md": {
-      "content_hash": "sha256:321557dc078cce90d3833de8f83590a98cf10781f9e8650db8fd2c59c3845eca",
-      "last_modified": "2026-08-05T07:24:39Z",
-      "last_producer": "ai-kit/update_state(stage_rollback)",
-      "version": 1
+      "content_hash": "sha256:cd85dcb6670a48bc769a9a03b3ced4007788db94bf8673fa1de6a4b82f7a7a05",
+      "last_modified": "2026-08-14T06:27:26Z",
+      "last_producer": "ai-kit/update_state(refit_lane)",
+      "version": 7
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:1d089ed0b8f03f0b11f2504dac0eadad4035d75de8eb3d1af73cbf23fc43cc45",
@@ -38,13 +38,22 @@
       "version": 15
     },
     "docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md": {
-      "content_hash": "sha256:c82836b6671fce550d95ce37d50abff50d75a0708ab72bdf425a57febd6244f2",
-      "last_modified": "2026-08-05T08:21:25Z",
+      "content_hash": "sha256:b4f643957f7fd243b2a516a52b760e19c52fabdc89f394ef38c5d5a1179b34bf",
+      "last_modified": "2026-08-14T05:46:05Z",
       "last_producer": "ai-kit/state-update(auto-lock-qa)",
       "locked_fields": [
         "content_hash"
       ],
-      "version": 1
+      "version": 2
+    },
+    "docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:f4d95ee1f2528192381a8b7b70ec02c66db58a3dfa94a0ffe47f1d93d3d1c1f8",
+      "last_modified": "2026-08-14T06:31:53Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 3
     },
     "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/ba/00-lean-spec.md": {
       "last_modified": "2026-06-27T18:05:00Z",

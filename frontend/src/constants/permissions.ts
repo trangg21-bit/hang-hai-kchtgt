@@ -23,11 +23,6 @@ export const PERMISSIONS = {
     APPROVE: 'user:approve',
   },
 
-  /** Quản lý vai trò */
-  ROLE: {
-    MANAGE: 'role:manage',
-  },
-
   /** Quản lý đơn vị tổ chức */
   ORGUNIT: {
     READ: 'orgunit:read',

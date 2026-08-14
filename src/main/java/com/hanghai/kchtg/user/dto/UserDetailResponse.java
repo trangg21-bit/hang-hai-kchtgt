@@ -18,6 +18,10 @@ public class UserDetailResponse {
     private String email;
     private String fullName;
     private String phone;
+    private String address;
+    private String department;
+    private String position;
+    private String note;
     private UUID orgUnitId;
     private String orgUnitName;
     private List<UUID> groupIds;
@@ -40,6 +44,10 @@ public class UserDetailResponse {
         response.email = user.getEmail();
         response.fullName = user.getFullName();
         response.phone = user.getPhone();
+        response.address = user.getAddress();
+        response.department = user.getDepartment();
+        response.position = user.getPosition();
+        response.note = user.getNote();
         response.orgUnitId = user.getOrgUnit() == null ? null : user.getOrgUnit().getId();
         response.orgUnitName = response.orgUnitId == null || cache == null ? null : cache.getName(response.orgUnitId);
         if (response.orgUnitName == null && user.getOrgUnit() != null) response.orgUnitName = user.getOrgUnit().getName();

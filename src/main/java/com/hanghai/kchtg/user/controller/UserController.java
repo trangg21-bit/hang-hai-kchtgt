@@ -84,6 +84,7 @@ public class UserController {
     @PreAuthorize("@auth.check(authentication, 'user:read')")
     public ResponseEntity<ApiResponse<UserPageResponse>> list(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String fullName,
             @RequestParam(required = false) UserStatus status,
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(defaultValue = "0") int page,
@@ -102,7 +103,7 @@ public class UserController {
                 ? Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)
                 : Sort.by(direction, mappedSortField);
         Pageable pageable = PageRequest.of(Math.max(page, 0), actualSize, sort);
-        UserPageResponse result = userService.findAllWithCounts(search, status, orgUnitId, pageable);
+        UserPageResponse result = userService.findAllWithCounts(search, fullName, status, orgUnitId, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

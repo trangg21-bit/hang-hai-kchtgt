@@ -13,12 +13,10 @@ import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
 import com.hanghai.kchtg.user.dto.UserListItemResponse;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.entity.UserStatusLog;
 import com.hanghai.kchtg.user.exception.ValidationException;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.repository.UserListProjection;
 import com.hanghai.kchtg.user.repository.UserStatusLogRepository;
@@ -74,7 +72,6 @@ public class UserService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final GroupRepository groupRepository;
     private final PasswordEncoder passwordEncoder;
@@ -87,7 +84,6 @@ public class UserService {
     private final OrgUnitScopeService orgUnitScopeService;
 
     public UserService(UserRepository userRepository,
-            RoleRepository roleRepository,
             OrgUnitRepository orgUnitRepository,
             GroupRepository groupRepository,
             PasswordEncoder passwordEncoder,
@@ -96,13 +92,12 @@ public class UserService {
             PasswordHistoryRepository passwordHistoryRepository,
             UserStatusLogRepository userStatusLogRepository,
             EntityManager entityManager) {
-        this(userRepository, roleRepository, orgUnitRepository, groupRepository, passwordEncoder,
+        this(userRepository, orgUnitRepository, groupRepository, passwordEncoder,
                 passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
                 userStatusLogRepository, entityManager, null, null);
     }
 
     public UserService(UserRepository userRepository,
-            RoleRepository roleRepository,
             OrgUnitRepository orgUnitRepository,
             GroupRepository groupRepository,
             PasswordEncoder passwordEncoder,
@@ -112,14 +107,13 @@ public class UserService {
             UserStatusLogRepository userStatusLogRepository,
             EntityManager entityManager,
             @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
-        this(userRepository, roleRepository, orgUnitRepository, groupRepository, passwordEncoder,
+        this(userRepository, orgUnitRepository, groupRepository, passwordEncoder,
                 passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
                 userStatusLogRepository, entityManager, orgUnitCacheService, null);
     }
 
     @Autowired
     public UserService(UserRepository userRepository,
-            RoleRepository roleRepository,
             OrgUnitRepository orgUnitRepository,
             GroupRepository groupRepository,
             PasswordEncoder passwordEncoder,
@@ -131,7 +125,6 @@ public class UserService {
             @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService,
             @org.springframework.lang.Nullable OrgUnitScopeService orgUnitScopeService) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
         this.groupRepository = groupRepository;
         this.passwordEncoder = passwordEncoder;
@@ -168,10 +161,11 @@ public class UserService {
                 actualSize,
                 sort);
 
-        // We always use searchUsers if we have search, roleCode, or status filters, or
+        // We always use searchUsers if we have search or status filters, or
         // we can use it universally!
         return userRepository.searchUsers(
                 toSearchLike(search),
+                null,
                 status,
                 cappedPageable).map(u -> UserResponse.from(u, orgUnitCacheService));
     }
@@ -183,12 +177,18 @@ public class UserService {
     @Transactional(readOnly = true)
     public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
             UserStatus status, Pageable pageable) {
-        return findAllWithCounts(search, status, null, pageable);
+        return findAllWithCounts(search, null, status, null, pageable);
     }
 
     @Transactional(readOnly = true)
     public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
             UserStatus status, UUID orgUnitId, Pageable pageable) {
+        return findAllWithCounts(search, null, status, orgUnitId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
+            String fullName, UserStatus status, UUID orgUnitId, Pageable pageable) {
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
             actualSize = MAX_PAGE_SIZE;
@@ -205,19 +205,20 @@ public class UserService {
                 sort);
 
         String searchLike = toSearchLike(search);
+        String fullNameLike = toSearchLike(fullName);
         List<UUID> organizationFilter = resolveOrganizationFilter(orgUnitId);
         if (organizationFilter != null && organizationFilter.isEmpty()) {
             return emptyUserPage(cappedPageable, getEmptyStatusCounts());
         }
 
         List<UserListProjection> listItems = organizationFilter == null
-                ? userRepository.searchUserList(searchLike, status, cappedPageable)
-                : userRepository.searchUserListByOrgUnits(searchLike, status, organizationFilter, cappedPageable);
+                ? userRepository.searchUserList(searchLike, fullNameLike, status, cappedPageable)
+                : userRepository.searchUserListByOrgUnits(searchLike, fullNameLike, status, organizationFilter, cappedPageable);
 
         // The status tabs must describe the same filtered result set as the
         // table.  Using the global counts here makes a search for one user
         // still show the totals of the whole user database.
-        java.util.Map<String, Long> counts = getStatusCounts(search, organizationFilter);
+        java.util.Map<String, Long> counts = getStatusCounts(search, fullName, organizationFilter);
         long totalElements = status == null
                 ? counts.getOrDefault("total", 0L)
                 : counts.getOrDefault(status.name().toLowerCase(java.util.Locale.ROOT), 0L);
@@ -242,15 +243,16 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> getStatusCounts(String search) {
-        return getStatusCounts(search, (UUID) null);
+        return getStatusCounts(search, null);
     }
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> getStatusCounts(String search, UUID orgUnitId) {
-        return getStatusCounts(search, resolveOrganizationFilter(orgUnitId));
+        return getStatusCounts(search, null, resolveOrganizationFilter(orgUnitId));
     }
 
-    private java.util.Map<String, Long> getStatusCounts(String search, List<UUID> organizationFilter) {
+    private java.util.Map<String, Long> getStatusCounts(String search, String fullName,
+            List<UUID> organizationFilter) {
         if (organizationFilter != null && organizationFilter.isEmpty()) {
             return getEmptyStatusCounts();
         }
@@ -263,9 +265,11 @@ public class UserService {
             }
         }
 
+        String searchLike = toSearchLike(search);
+        String fullNameLike = toSearchLike(fullName);
         List<Object[]> results = organizationFilter == null
-                ? userRepository.countUsersByStatus(toSearchLike(search))
-                : userRepository.countUsersByStatusAndOrgUnits(toSearchLike(search), organizationFilter);
+                ? userRepository.countUsersByStatus(searchLike, fullNameLike)
+                : userRepository.countUsersByStatusAndOrgUnits(searchLike, fullNameLike, organizationFilter);
         long total = 0;
         for (Object[] row : results) {
             UserStatus s = (UserStatus) row[0];
@@ -417,7 +421,11 @@ public class UserService {
         user.setEmail(email);
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
-        user.setStatus(UserStatus.ACTIVE);
+        user.setStatus(request.getStatus());
+        user.setAddress(trimToNull(request.getAddress()));
+        user.setDepartment(trimToNull(request.getDepartment()));
+        user.setPosition(trimToNull(request.getPosition()));
+        user.setNote(trimToNull(request.getNote()));
 
         // Set OrgUnit relationship
         if (request.getOrgUnitId() != null) {
@@ -479,6 +487,10 @@ public class UserService {
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
+        if (request.getAddress() != null) user.setAddress(trimToNull(request.getAddress()));
+        if (request.getDepartment() != null) user.setDepartment(trimToNull(request.getDepartment()));
+        if (request.getPosition() != null) user.setPosition(trimToNull(request.getPosition()));
+        if (request.getNote() != null) user.setNote(trimToNull(request.getNote()));
 
         boolean permissionsChanged = false;
 
@@ -542,7 +554,7 @@ public class UserService {
     private void checkBusinessDataReferences(User user) {
         List<String> ignoredSystemTables = List.of(
                 "app_users", "password_history", "user_status_log",
-                "user_roles", "app_user_roles", "user_group_members",
+                "user_group_members",
                 "group_members", "pending_approvals", "password_expiration_log");
 
         // 1. Query information_schema for all FK tables AND exact column names
@@ -859,5 +871,15 @@ public class UserService {
             // Full policy for non-admin reset
             passwordPolicyValidator.validate(password);
         }
+    }
+
+    /**
+     * Trim giá trị chuỗi hồ sơ; chuỗi rỗng/blank sau trim được lưu NULL
+     * (BR-001-20).
+     */
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

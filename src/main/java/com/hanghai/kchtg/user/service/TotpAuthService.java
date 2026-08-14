@@ -225,7 +225,7 @@ public class TotpAuthService {
         userInfo.setUsername(user.getUsername());
         userInfo.setFullName(user.getFullName());
         userInfo.setEmail(user.getEmail());
-        userInfo.setRole(user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER");
+        userInfo.setRole(null);
         userInfo.setTotpEnabled(Boolean.TRUE.equals(user.getTotpEnabled()));
 
         TwoFactorLoginResponse response = new TwoFactorLoginResponse();

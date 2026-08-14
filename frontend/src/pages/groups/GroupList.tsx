@@ -15,7 +15,6 @@ import type { Group, GroupMember, CreateGroupPayload, UpdateGroupPayload } from 
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { userService } from '../../services/userService';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
-import type { Role } from '../../types/role';
 import { actionPrimary, textPrimary, textSecondary, statusDraft, statusCritical, statusOperational, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
 import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
@@ -35,6 +34,8 @@ export default function GroupList() {
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [codeInput, setCodeInput] = useState('');
+  const [code, setCode] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterOrganizationInput, setFilterOrganizationInput] = useState<string | undefined>();
   const [filterOrganizationId, setFilterOrganizationId] = useState<string | undefined>();
@@ -84,7 +85,7 @@ export default function GroupList() {
   const fetchGroups = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
-      const res = await groupService.list({ page, pageSize, search: search || undefined, status: filterStatus, organizationId: filterOrganizationId });
+      const res = await groupService.list({ page, pageSize, search: search || undefined, code: code || undefined, status: filterStatus, organizationId: filterOrganizationId });
       setDataSource(res.data); setTotal(res.total);
       
       // Update counts based on backend stats
@@ -92,7 +93,7 @@ export default function GroupList() {
       setCountInactive(res.inactiveCount);
     } catch (err: unknown) { setIsError(true); setError(err instanceof Error ? err : new Error('Không thể tải danh sách nhóm')); }
     finally { setIsLoading(false); }
-  }, [page, pageSize, search, filterStatus, filterOrganizationId]);
+  }, [page, pageSize, search, code, filterStatus, filterOrganizationId]);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
@@ -411,13 +412,16 @@ export default function GroupList() {
 
   const handleFilterSearch = useCallback(() => {
     setSearch(searchInput.trim());
+    setCode(codeInput.trim());
     setFilterOrganizationId(filterOrganizationInput);
     setPage(1);
-  }, [filterOrganizationInput, searchInput]);
+  }, [filterOrganizationInput, searchInput, codeInput]);
 
   const handleFilterReset = useCallback(() => {
     setSearchInput('');
     setSearch('');
+    setCodeInput('');
+    setCode('');
     setFilterStatus(undefined);
     setFilterOrganizationInput(undefined);
     setFilterOrganizationId(undefined);
@@ -496,7 +500,7 @@ export default function GroupList() {
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách nhóm'} onRetry={fetchGroups} />;
-    const emptyDescription = search || filterStatus || filterOrganizationId
+    const emptyDescription = search || code || filterStatus || filterOrganizationId
       ? 'Không tìm thấy nhóm nào phù hợp'
       : 'Chưa có nhóm nào';
     return <>
@@ -517,12 +521,23 @@ export default function GroupList() {
   const filterContent = (
     <>
       <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tìm kiếm</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên nhóm</div>
         <Input
-          placeholder="Tìm theo tên, mã nhóm, mô tả..."
+          placeholder="Tìm theo tên nhóm..."
           allowClear
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
+          onPressEnter={handleFilterSearch}
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhóm</div>
+        <Input
+          placeholder="Tìm theo mã nhóm..."
+          allowClear
+          value={codeInput}
+          onChange={(event) => setCodeInput(event.target.value)}
           onPressEnter={handleFilterSearch}
           style={{ borderRadius: radiusPill, height: 40 }}
         />

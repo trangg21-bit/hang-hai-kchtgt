@@ -257,7 +257,6 @@ public class JwtSessionController {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("sessionId", session.getSessionId());
         map.put("username", session.getUsername());
-        map.put("roleLevel", session.getRoleLevel());
         map.put("ipAddress", session.getIpAddress());
         map.put("userAgent", session.getUserAgent());
         map.put("deviceFingerprint", session.getDeviceFingerprint());

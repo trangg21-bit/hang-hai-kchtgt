@@ -6,10 +6,8 @@ import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +32,6 @@ public class M001DataSeeder implements CommandLineRunner {
     private final GroupMemberRepository groupMemberRepo;
     private final OrgUnitRepository orgUnitRepo;
     private final PasswordEncoder passwordEncoder;
-    private final RoleRepository roleRepo;
 
     @Override
     @Transactional
@@ -170,7 +167,7 @@ public class M001DataSeeder implements CommandLineRunner {
                 g.setCode(codes[i]);
                 g.setDescription("Mô tả nhóm " + names[i]);
                 g.setStatus(GroupStatus.ACTIVE);
-                g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
+                g.setPermissions(List.of("users:read", "users:create", "users:update"));
                 groupRepo.save(g);
                 seededCount++;
             }
@@ -189,14 +186,6 @@ public class M001DataSeeder implements CommandLineRunner {
         }
 
         log.info("📦 Seeding 15 App Users...");
-
-        // Find existing roles
-        Role adminRole = roleRepo.findByCode("ROLE_SYSTEM_ADMIN")
-                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SYSTEM_ADMIN"));
-        Role specialistRole = roleRepo.findByCode("ROLE_SPECIALIST")
-                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SPECIALIST"));
-        Role adminModuleRole = roleRepo.findByCode("ROLE_ADMIN")
-                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_ADMIN"));
 
         // Fetch seeded OrgUnits & UserGroups
         List<OrgUnit> units = orgUnitRepo.findAll();
@@ -228,15 +217,6 @@ public class M001DataSeeder implements CommandLineRunner {
             u.setFullName(fullNames[i]);
             u.setPhone("09123456" + (78 + i));
             u.setStatus(UserStatus.ACTIVE);
-
-            // Assign role
-            if (i == 0) {
-                u.getRoles().add(adminRole);
-            } else if (i < 3) {
-                u.getRoles().add(adminModuleRole);
-            } else {
-                u.getRoles().add(specialistRole);
-            }
 
             // Assign OrgUnit
             if (!units.isEmpty()) {

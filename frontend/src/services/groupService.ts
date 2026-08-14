@@ -105,7 +105,7 @@ export const groupService = {
    * Frontend applies pagination client-side.
    */
   async list(
-    params?: { page?: number; pageSize?: number; search?: string; status?: string; organizationId?: string; myGroups?: boolean }
+    params?: { page?: number; pageSize?: number; search?: string; code?: string; status?: string; organizationId?: string; myGroups?: boolean }
   ): Promise<PaginatedResponse<Group> & { activeCount: number; inactiveCount: number }> {
     try {
       // Build query string
@@ -113,6 +113,7 @@ export const groupService = {
       if (params?.page) qParams.append("page", String(params.page - 1)); // Frontend is 1-indexed, backend is 0-indexed
       if (params?.pageSize) qParams.append("size", String(params.pageSize));
       if (params?.search) qParams.append("search", params.search);
+      if (params?.code) qParams.append("code", params.code);
       if (params?.status) qParams.append("status", params.status);
       if (params?.organizationId) qParams.append("organizationId", params.organizationId);
       if (params?.myGroups) qParams.append("myGroups", "true");
@@ -374,14 +375,14 @@ export const groupService = {
     };
   },
 
-  /** GET /api/v1/groups/:id/permissions — các vai trò đang gán cho nhóm. */
+  /** GET /api/v1/groups/:id/permissions — các quyền trực tiếp của nhóm. */
   async getPermissions(groupId: string): Promise<string[]> {
     const resp = await api.get(`/v1/groups/${groupId}/permissions`);
     const rawData: any = extractData(resp);
     return Array.isArray(rawData) ? rawData.map(String) : [];
   },
 
-  /** PUT /api/v1/groups/:id/permissions — thay thế toàn bộ role của nhóm. */
+  /** PUT /api/v1/groups/:id/permissions — thay thế toàn bộ quyền trực tiếp của nhóm. */
   async updatePermissions(groupId: string, permissions: string[]): Promise<string[]> {
     const resp = await api.put(`/v1/groups/${groupId}/permissions`, { permissions });
     const rawData: any = extractData(resp);

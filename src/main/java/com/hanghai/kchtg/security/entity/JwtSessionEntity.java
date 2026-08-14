@@ -54,12 +54,6 @@ public class JwtSessionEntity extends BaseEntity {
     private String username;
 
     /**
-     * Cap do vai tro (1=USER, 2=ADMIN, 3=SUPER_ADMIN) - sao chep tu User.role.
-     */
-    @Column(name = "role_level", nullable = false)
-    private Integer roleLevel;
-
-    /**
      * SHA-512 hash cua refresh token (BR-274-03).
      * Ben ngoai: không bao giờ lu plain token.
      */

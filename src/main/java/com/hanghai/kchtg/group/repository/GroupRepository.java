@@ -70,11 +70,12 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
           + "WHERE g.deletedAt IS NULL "
           + "AND (:unrestricted = true OR g.organizationId IN :organizationIds) "
           + "AND (:search IS NULL OR :search = '' OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.description, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
+          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
+          + "AND (:code IS NULL OR :code = '' OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :code, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
           + "AND (:status IS NULL OR cast(g.status as integer) = :status)")
     Page<UserGroup> searchAndFilter(@Param("search") String search,
+                                    @Param("code") String code,
                                     @Param("status") Integer status,
                                     @Param("unrestricted") boolean unrestricted,
                                     @Param("organizationIds") List<UUID> organizationIds,
@@ -84,11 +85,12 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
           + "WHERE g.deletedAt IS NULL "
           + "AND (:unrestricted = true OR g.organizationId IN :organizationIds) "
           + "AND (:search IS NULL OR :search = '' OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.description, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
+          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
+          + "AND (:code IS NULL OR :code = '' OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :code, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
           + "AND cast(g.status as integer) = :status")
     long countByFiltersAndStatus(@Param("search") String search,
+                                 @Param("code") String code,
                                  @Param("unrestricted") boolean unrestricted,
                                  @Param("organizationIds") List<UUID> organizationIds,
                                  @Param("status") Integer status);
@@ -106,10 +108,11 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
           + "AND (:status IS NULL OR cast(g.status as integer) = :status) "
           + "AND (:unrestricted = true OR g.organizationId IN :organizationIds) "
           + "AND (:search IS NULL OR :search = '' OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) OR "
-          + "     cast(function('translate', LOWER(COALESCE(g.description, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string))")
+          + "     cast(function('translate', LOWER(COALESCE(g.name, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :search, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string)) "
+          + "AND (:code IS NULL OR :code = '' OR "
+          + "     cast(function('translate', LOWER(COALESCE(g.code, '')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string) LIKE cast(function('translate', LOWER(CONCAT('%', :code, '%')), 'àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd') as string))")
     Page<UserGroup> searchAndFilterMyGroups(@Param("search") String search,
+                                            @Param("code") String code,
                                             @Param("status") Integer status,
                                             @Param("userId") UUID userId,
                                             @Param("unrestricted") boolean unrestricted,

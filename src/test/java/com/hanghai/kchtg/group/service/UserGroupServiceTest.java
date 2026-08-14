@@ -8,7 +8,6 @@ import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,9 +35,6 @@ class UserGroupServiceTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private RoleRepository roleRepository;
 
     @Mock
     private PermissionCacheService permissionCacheService;

@@ -6,6 +6,10 @@ export interface User {
   fullName: string;
   email: string;
   phone: string;
+  address?: string;
+  department?: string;
+  position?: string;
+  note?: string;
   avatar?: string;
   orgUnitId?: string;
   orgUnitName?: string;
@@ -33,6 +37,11 @@ export interface CreateUserPayload {
   password: string;
   permissionCodes?: string[];
   orgUnitId?: string;
+  status: Status;
+  address?: string;
+  department?: string;
+  position?: string;
+  note?: string;
 }
 
 export interface UpdateUserPayload {
@@ -42,6 +51,10 @@ export interface UpdateUserPayload {
   permissionCodes?: string[];
   orgUnitId?: string;
   status?: Status;
+  address?: string;
+  department?: string;
+  position?: string;
+  note?: string;
 }
 
 export interface UserFilters {

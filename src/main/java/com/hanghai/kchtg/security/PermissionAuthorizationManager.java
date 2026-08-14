@@ -100,11 +100,31 @@ public class PermissionAuthorizationManager {
         if (authentication == null || !authentication.isAuthenticated()) {
             return Collections.emptySet();
         }
+
+        Set<String> authorityPermissions = authentication.getAuthorities() != null
+                ? authentication.getAuthorities().stream()
+                        .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                        .map(this::normalize)
+                        .collect(java.util.stream.Collectors.toSet())
+                : Collections.emptySet();
+
+        if (authorityPermissions.contains("*")
+                || authorityPermissions.contains("admin:all")
+                || authorityPermissions.contains("admin:manage")
+                ) {
+            Set<String> superAdminPerms = new java.util.HashSet<>(authorityPermissions);
+            superAdminPerms.add("*");
+            superAdminPerms.add("admin:all");
+            return superAdminPerms;
+        }
+
         User user = resolveUser(authentication.getPrincipal());
         if (user == null) {
-            return Collections.emptySet();
+            return authorityPermissions;
         }
-        return resolvePermissions(user);
+        Set<String> resolved = new java.util.HashSet<>(resolvePermissions(user));
+        resolved.addAll(authorityPermissions);
+        return resolved;
     }
 
     private User resolveUser(Object principal) {

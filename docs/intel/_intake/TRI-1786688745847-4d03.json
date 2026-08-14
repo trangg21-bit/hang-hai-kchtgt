@@ -1,0 +1,67 @@
+{
+  "triage_id": "TRI-1786688745847-4d03",
+  "created_at": 1786688745847,
+  "request_summary": "Ẩn 3 action (Reset mật khẩu, Quên mật khẩu, Xóa) khỏi menu thao tác màn hình quản lý người dùng, và thêm label 'Danh sách chức năng' phía trên cây quyền trong drawer Phân quyền.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/UsersPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/UsersPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": true,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C2: brownfield-extend of a released module — A32 reconcile-add path; never re-scaffold (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý người dùng (UsersPage) — dropdown thao tác từng dòng và drawer Phân quyền chức năng cho người dùng.",
+  "blast_radius": 1,
+  "done_oracle": "3 action Reset mật khẩu / Quên mật khẩu / Xóa không còn render trong dropdown thao tác; label 'Danh sách chức năng' hiển thị ngay trên cây quyền; npm run build thành công.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/UsersPage.tsx",
+      "line": 316,
+      "quote": "if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', label: 'Reset mật khẩu', icon: <KeyOutlined />, onClick: () => handleResetPassword(record) });",
+      "source_hash": "6460286c2af0b5598b28cfc4cd37afa93696792901cfe5358f061e9c597d4c0d",
+      "quote_hash": "161d7f9e9bb60fb4befdb297e7594fe5bdf73db181fa6d287c7aad267d695cff",
+      "note": "Dòng render action Reset mật khẩu cần ẩn"
+    },
+    {
+      "file": "frontend/src/pages/UsersPage.tsx",
+      "line": 596,
+      "quote": "<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>",
+      "source_hash": "6460286c2af0b5598b28cfc4cd37afa93696792901cfe5358f061e9c597d4c0d",
+      "quote_hash": "1adf3830a39e8702873a1e12d42237760c5967d5715cd5cfea272aacbcd07f4f",
+      "note": "Container cây quyền — chèn label 'Danh sách chức năng' ngay sau dòng này"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786681817152-44eb",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "623735cbac7576412c9b296ee5fc477eca0a2de0",
+    "dirty": true,
+    "captured_at": 1786688746002
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

@@ -8,7 +8,6 @@ import com.hanghai.kchtg.user.exception.SelfApprovalException;
 import com.hanghai.kchtg.user.exception.ValidationException;
 import com.hanghai.kchtg.user.repository.ApprovalNotificationRepository;
 import com.hanghai.kchtg.user.repository.PendingApprovalRepository;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -29,7 +28,7 @@ import java.util.UUID;
  * Approval is a single @Transactional method covering:
  * 1. Validate pending status
  * 2. Anti-self-approval guard
- * 3. Create UserAccount + UserRole
+ * 3. Create UserAccount
  * 4. Create ApprovalNotification
  * 5. Update/Delete PendingApproval
  * </p>
@@ -46,20 +45,17 @@ public class ApprovalService {
 
     private final PendingApprovalRepository pendingApprovalRepository;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final ApprovalNotificationRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyValidator passwordPolicyValidator;
 
     public ApprovalService(PendingApprovalRepository pendingApprovalRepository,
                            UserRepository userRepository,
-                           RoleRepository roleRepository,
                            ApprovalNotificationRepository notificationRepository,
                            PasswordEncoder passwordEncoder,
                            PasswordPolicyValidator passwordPolicyValidator) {
         this.pendingApprovalRepository = pendingApprovalRepository;
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.notificationRepository = notificationRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyValidator = passwordPolicyValidator;
@@ -124,7 +120,6 @@ public class ApprovalService {
         pa.setFullName(request.getFullName());
         pa.setPhone(request.getPhone());
         pa.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        pa.setRequestedRoleCode(request.getRequestedRoleCode());
         pa.setStatus("pending");
         pa.setApprovedAt(null);
         pa.setRejectionReason(null);
@@ -149,18 +144,17 @@ public class ApprovalService {
      * 1. Validate pending status
      * 2. Anti-self-approval guard
      * 3. Create UserAccount (status=ACTIVE)
-     * 4. Create UserRole (assign role)
+     * 4. Create the user without an implicit role assignment
      * 5. Create ApprovalNotification (USER + ADMIN)
      * 6. Update PendingApproval to approved + DELETE
      * </p>
      *
      * @param pendingId ID of the pending approval
      * @param approverId ID of the approving admin
-     * @param roleCode role code to assign (optional, uses requestedRoleCode if null)
      * @return Approval decision response
      */
     @Transactional
-    public PendingApprovalResponse approve(UUID pendingId, UUID approverId, String roleCode) {
+    public PendingApprovalResponse approve(UUID pendingId, UUID approverId) {
         PendingApproval pa = pendingApprovalRepository.findById(pendingId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yeu cau phê duyệt voi id: " + pendingId));
 
@@ -177,14 +171,6 @@ public class ApprovalService {
             throw new SelfApprovalException("Không thể phê duyệt cho chính mình");
         }
 
-        // Resolve role
-        String resolveRoleCode = roleCode != null ? roleCode : pa.getRequestedRoleCode();
-        Role role = null;
-        if (resolveRoleCode != null) {
-            role = roleRepository.findByCode(resolveRoleCode)
-                    .orElseThrow(() -> new ValidationException("Vai trò không tồn tại: " + resolveRoleCode));
-        }
-
         // Create UserAccount
         User newUser = new User();
         newUser.setUsername(pa.getUsername());
@@ -193,9 +179,6 @@ public class ApprovalService {
         newUser.setFullName(pa.getFullName());
         newUser.setPhone(pa.getPhone());
         newUser.setStatus(UserStatus.ACTIVE);
-        if (role != null) {
-            newUser.getRoles().add(role);
-        }
         User savedUser = userRepository.save(newUser);
 
         // Update PendingApproval
@@ -206,10 +189,10 @@ public class ApprovalService {
         pendingApprovalRepository.save(pa);
 
         // Create ApprovalNotification (USER + ADMIN)
-        sendApprovedNotification(pa, savedUser, role);
+        sendApprovedNotification(pa, savedUser);
 
-        log.info("Pending approval approved: {} -> user {} created (role={})",
-                pa.getUsername(), savedUser.getUsername(), resolveRoleCode);
+        log.info("Pending approval approved: {} -> user {} created",
+                pa.getUsername(), savedUser.getUsername());
 
         return PendingApprovalResponse.from(pa);
     }
@@ -285,7 +268,7 @@ public class ApprovalService {
         notificationRepository.save(adminNotification);
     }
 
-    private void sendApprovedNotification(PendingApproval pa, User user, Role role) {
+    private void sendApprovedNotification(PendingApproval pa, User user) {
         ApprovalNotification notification = new ApprovalNotification();
         notification.setPendingApproval(pa);
         notification.setRecipientType("USER");

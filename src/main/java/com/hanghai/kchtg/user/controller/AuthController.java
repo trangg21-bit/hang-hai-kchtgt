@@ -85,8 +85,8 @@ public class AuthController {
 
                 httpRequest.setAttribute("authenticatedUser", user);
 
-                String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER";
-                httpRequest.setAttribute("authenticatedUserRole", role);
+                String role = null;
+                httpRequest.setAttribute("authenticatedUserRole", null);
                 
                 String token = tokenService.createAccessToken(user);
 

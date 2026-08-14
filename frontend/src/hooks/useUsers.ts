@@ -9,6 +9,7 @@ interface ListParams {
   page?: number;
   pageSize?: number;
   search?: string;
+  fullName?: string;
   status?: string;
   orgUnitId?: string;
   sortField?: string;

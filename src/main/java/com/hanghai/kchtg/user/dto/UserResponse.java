@@ -25,6 +25,10 @@ public class UserResponse {
     private String email;
     private String fullName;
     private String phone;
+    private String address;
+    private String department;
+    private String position;
+    private String note;
     private UUID orgUnitId;
     private String orgUnitName;
     private List<UUID> groupIds;
@@ -73,6 +77,10 @@ public class UserResponse {
                 user.getEmail(),
                 user.getFullName(),
                 user.getPhone(),
+                user.getAddress(),
+                user.getDepartment(),
+                user.getPosition(),
+                user.getNote(),
                 oId,
                 oName,
                 gIds,

@@ -28,6 +28,10 @@ function mapUser(item: any): User {
     fullName: item.fullName ?? '',
     email: item.email ?? '',
     phone: item.phone ?? '',
+    address: item.address ?? undefined,
+    department: item.department ?? undefined,
+    position: item.position ?? undefined,
+    note: item.note ?? undefined,
     orgUnitId: item.orgUnitId ?? undefined,
     orgUnitName: item.orgUnitName ?? undefined,
     status: statusMap[statusKey] || 'active',
@@ -52,6 +56,7 @@ export const userService = {
     page?: number;
     pageSize?: number;
     search?: string;
+    fullName?: string;
     status?: string;
     orgUnitId?: string;
     sortField?: string;
@@ -60,6 +65,7 @@ export const userService = {
     const response = await api.get('/users', {
       params: {
         search: params.search?.trim() || undefined,
+        fullName: params.fullName?.trim() || undefined,
         status: params.status ? params.status.toUpperCase() : undefined,
         orgUnitId: params.orgUnitId || undefined,
         page: params.page ? params.page - 1 : 0,
@@ -93,7 +99,11 @@ export const userService = {
       password: payload.password,
       permissionCodes: payload.permissionCodes,
       orgUnitId: payload.orgUnitId,
-      status: 'ACTIVE',
+      status: payload.status?.toUpperCase(),
+      address: payload.address,
+      department: payload.department,
+      position: payload.position,
+      note: payload.note,
     });
     return { success: true, data: mapUser(extractData(response)) };
   },
@@ -106,6 +116,10 @@ export const userService = {
       permissionCodes: payload.permissionCodes,
       orgUnitId: payload.orgUnitId,
       status: payload.status ? payload.status.toUpperCase() : undefined,
+      address: payload.address,
+      department: payload.department,
+      position: payload.position,
+      note: payload.note,
     });
     return { success: true, data: mapUser(extractData(response)) };
   },
