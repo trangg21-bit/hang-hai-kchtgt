@@ -162,7 +162,7 @@ export default function PierDetailContent({
                   ['Loại đối tượng', { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
                   ['Biểu tượng bản đồ', (() => { const symId = r.mapSymbolId || r.bieuTuongId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{symName}</span>; })(),],
                   ['Hệ quy chiếu', (r as any).coordinateSystem === 1 ? 'WGS-84' : (r as any).coordinateSystem === 2 ? 'VN-2000' : '—'],
-                  ['Quy tắc hiển thị', (r as any).displayRule || '—'],
+                  ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
                     <span className="detail-label">{label}</span>

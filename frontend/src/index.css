@@ -39,57 +39,9 @@ body {
   height: 100%;
 }
 
-/* The table and its pager share the available height of the list card. The
-   table body must flex within that area; otherwise its viewport height is
-   calculated independently and pushes the pager below the card. */
-.filter-table-content {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-}
-
-.filter-table-content > .list-view-table-shell {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-}
-
-.filter-table-content > .list-view-table-shell > .list-view-table,
-.filter-table-content > .list-view-table-shell > .list-view-table .ant-table-container {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  height: 100%;
-}
-
-.filter-table-content > .list-view-table-shell > .list-view-table {
-  overflow: hidden;
-}
-
-.filter-table-content .list-view-table .ant-table-placeholder > td {
-  height: auto !important;
-}
-
-.filter-table-content > .list-view-pagination {
-  flex: 0 0 auto;
-}
-
-.list-view-table .ant-table-body {
-  height: var(--list-table-scroll-y) !important;
-  max-height: var(--list-table-scroll-y) !important;
-  /* Keep the vertical scrollbar gutter even for a one-row result. AntD's
-     fixed-right column uses this gutter when calculating its sticky offset. */
-  overflow-x: auto !important;
-  overflow-y: scroll !important;
-  scrollbar-gutter: stable;
-}
+/* Chiều cao thân bảng do DataTable đo động (scroll.y = shell − header):
+   nhiều bản ghi → mép dưới thẳng hàng panel filter + thanh cuộn TRONG bảng;
+   ít bản ghi → thân bảng co sát nội dung. (scrollbar-gutter: theme.ts) */
 
 /* Ant Design places the horizontal scrollbar on the table content wrapper.
    Keep it available when the list card itself is a flex container. */

@@ -1,7 +1,8 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import type { MenuProps } from 'antd';
 import {
   textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeMd, fontWeightBold,
   statusOperational, statusCritical, statusDraft, statusAttention,
@@ -21,9 +22,6 @@ const actionColumnCellStyle: React.CSSProperties = {
   verticalAlign: 'middle',
 };
 
-// Conservative per-row height (px) used to decide when a table with a numeric
-// scroll.y cap can auto-fit to its content without risking vertical overflow.
-const AUTO_FIT_ROW_HEIGHT = 60;
 
 // Stable, order-insensitive fingerprint of the rows currently shown. It lets the
 // scroll-reset effect tell a real data change (new page / filter / reload) apart
@@ -77,6 +75,27 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   pending: statusAttention,
 };
 
+// Auto-close the row action menu when the page or the table body scrolls.
+const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) => {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const closeOnScroll = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (t && typeof t.closest === 'function' && t.closest('.ant-dropdown')) return;
+      setOpen(false);
+    };
+    document.addEventListener('scroll', closeOnScroll, true);
+    return () => document.removeEventListener('scroll', closeOnScroll, true);
+  }, [open]);
+  return (
+    <Dropdown menu={{ items }} trigger={['click']} open={open} onOpenChange={setOpen}>
+      <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()}
+        style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }} />
+    </Dropdown>
+  );
+};
+
 const DataTable: React.FC<DataTableProps> = ({
   columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, scroll, ...rest
 }) => {
@@ -114,18 +133,52 @@ const DataTable: React.FC<DataTableProps> = ({
     return () => window.cancelAnimationFrame(frameId);
   }, [dataSource, rowKey]);
 
-  // Auto-fit the table body to its content when the rows fit inside a numeric
-  // scroll.y cap, so the pagination (and any trailing content) sits directly
-  // under the last row instead of leaving a fixed-height gap. String caps
-  // (e.g. 'calc(100vh - …)') are kept as-is.
   const requestedScrollY = scroll?.y ?? layout.listTableScrollY;
-  const autoFitMaxRows = typeof requestedScrollY === 'number'
-    ? Math.floor(requestedScrollY / AUTO_FIT_ROW_HEIGHT)
-    : 0;
+  const isNumericScrollY = typeof requestedScrollY === 'number';
+  // Đo chiều cao thực tế để quyết định chế độ thân bảng thay vì LUÔN lấp đầy:
+  //  - Nội dung cao hơn vùng trống (availH) → scroll.y = availH − header:
+  //    thân bảng lấp đầy, mép dưới thẳng hàng panel filter, cuộn TRONG bảng.
+  //  - Nội dung vừa vùng trống → scroll.y = undefined + shell co sát nội dung:
+  //    pagination nằm ngay dưới bảng, mép dưới KHÔNG thẳng hàng panel filter.
+  // Chỉ áp dụng khi scroll.y là số, có dữ liệu và shell nằm trong flex container.
+  const [fitMode, setFitMode] = useState<number | 'content' | null>(null);
+  useLayoutEffect(() => {
+    const el = tableShellRef.current;
+    if (!el || !el.parentElement) return;
+    const parent = el.parentElement;
+    if (!isNumericScrollY || dataSource.length === 0) return;
+    if (!getComputedStyle(parent).display.includes('flex')) return;
+    const measure = () => {
+      // Vùng trống cho bảng = chiều cao parent − tổng sibling (pagination; thẻ <style> = 0).
+      let availH = parent.clientHeight;
+      for (const sib of Array.from(parent.children)) {
+        if (sib !== el) availH -= (sib as HTMLElement).offsetHeight;
+      }
+      const header = el.querySelector<HTMLElement>('.ant-table-header')
+        || el.querySelector<HTMLElement>('.ant-table-thead');
+      const tbody = el.querySelector<HTMLElement>('.ant-table-tbody');
+      const headerH = header ? header.offsetHeight : 0;
+      // Chiều cao tự nhiên của nội dung = header + tbody. KHÔNG dùng
+      // body.scrollHeight: ở chế độ split (scroll.y đã đặt) body bị ép cao đúng
+      // scroll.y nên scrollHeight luôn ≥ scroll.y → đo sai khi ít bản ghi
+      // (làm bảng vẫn lấp đầy dù nội dung ngắn).
+      const contentH = headerH + (tbody ? tbody.offsetHeight : 0);
+      if (contentH > availH + 1) {
+        setFitMode(Math.max(80, availH - headerH));
+      } else {
+        setFitMode('content');
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
+  }, [dataSource.length, isNumericScrollY]);
   const tableScroll = {
     x: scroll?.x ?? layout.listTableMinWidth,
-    y: typeof requestedScrollY === 'number' && dataSource.length > 0 && dataSource.length <= autoFitMaxRows
-      ? undefined
+    y: isNumericScrollY && fitMode != null
+      ? (fitMode === 'content' ? undefined : fitMode)
       : requestedScrollY,
   };
 
@@ -230,12 +283,7 @@ const DataTable: React.FC<DataTableProps> = ({
         }));
         return (
           <span style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-            <Dropdown menu={{ items }} trigger={['click']}>
-              <Button icon={<MoreOutlined />}
-                onClick={(e) => e.stopPropagation()}
-                style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }}
-              />
-            </Dropdown>
+            <RowActionDropdown items={items} />
           </span>
         );
       },
@@ -252,7 +300,7 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   return (
-    <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0 }}>
+    <div ref={tableShellRef} style={{ width: '100%', minWidth: 0, flex: fitMode === 'content' ? '0 0 auto' : 1, minHeight: 0 }}>
       <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
         className="list-view-table"
         pagination={false}
