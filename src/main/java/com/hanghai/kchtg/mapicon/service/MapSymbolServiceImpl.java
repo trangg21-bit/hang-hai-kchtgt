@@ -6,6 +6,7 @@ import com.hanghai.kchtg.mapicon.dto.UpdateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
 import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class MapSymbolServiceImpl implements MapSymbolService {
 
     private final MapSymbolRepository repository;
+    private final UserResolverService userResolverService;
 
     @Override
     public Page<MapSymbolResponse> search(String search, MapSymbolStatus status, Pageable pageable) {
@@ -28,14 +30,30 @@ public class MapSymbolServiceImpl implements MapSymbolService {
                 trimmedSearch != null && trimmedSearch.isEmpty() ? null : trimmedSearch,
                 status,
                 pageable
-        ).map(MapSymbolResponse::from);
+        ).map(this::toResponse);
+    }
+
+    private MapSymbolResponse toResponse(MapSymbol symbol) {
+        return MapSymbolResponse.builder()
+                .id(symbol.getId())
+                .name(symbol.getName())
+                .description(symbol.getDescription())
+                .image(symbol.getImage())
+                .status(symbol.getStatus())
+                .createdBy(symbol.getCreatedBy())
+                .updatedBy(symbol.getUpdatedBy())
+                .createdByName(userResolverService.resolveName(symbol.getCreatedBy()))
+                .updatedByName(userResolverService.resolveName(symbol.getUpdatedBy()))
+                .createdAt(symbol.getCreatedAt())
+                .updatedAt(symbol.getUpdatedAt())
+                .build();
     }
 
     @Override
     public MapSymbolResponse findById(UUID id) {
         MapSymbol symbol = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ký hiệu không tồn tại: " + id));
-        return MapSymbolResponse.from(symbol);
+        return toResponse(symbol);
     }
 
     @Override
@@ -48,7 +66,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
                 .status(request.getStatus())
                 .createdBy(createdBy)
                 .build();
-        return MapSymbolResponse.from(repository.save(symbol));
+        return toResponse(repository.save(symbol));
     }
 
     @Override
@@ -60,7 +78,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
         symbol.setDescription(request.getDescription());
         symbol.setImage(request.getImage());
         symbol.setStatus(request.getStatus());
-        return MapSymbolResponse.from(repository.save(symbol));
+        return toResponse(repository.save(symbol));
     }
 
     @Override

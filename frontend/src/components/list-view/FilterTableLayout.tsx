@@ -17,17 +17,21 @@ export interface FilterTableLayoutProps {
   /** Filter fields rendered in the sidebar */
   filterContent: React.ReactNode;
   /** Status tabs config */
-  statusTabs: StatusTab[];
+  statusTabs?: StatusTab[];
   /** Called when a status tab is clicked */
-  onStatusTabChange: (key: string) => void;
+  onStatusTabChange?: (key: string) => void;
   /** Called when Tìm kiếm button is clicked */
   onFilterApply: () => void;
   /** Called when Reload button is clicked */
   onFilterReset: () => void;
   /** Whether advanced filters are expanded */
-  filterCollapsed: boolean;
+  filterCollapsed?: boolean;
   /** Toggle advanced filter visibility */
-  onToggleCollapse: () => void;
+  onToggleCollapse?: () => void;
+  /** Hide the filter-toggle button in the sidebar footer */
+  hideFilterToggle?: boolean;
+  /** Hide the StatusTabs row above the table */
+  hideStatusTabs?: boolean;
   /** Whether table is loading */
   loading?: boolean;
   /** Error state */
@@ -44,12 +48,14 @@ export interface FilterTableLayoutProps {
  */
 export default function FilterTableLayout({
   filterContent,
-  statusTabs,
-  onStatusTabChange,
+  statusTabs = [],
+  onStatusTabChange = () => {},
   onFilterApply,
   onFilterReset,
-  filterCollapsed,
-  onToggleCollapse,
+  filterCollapsed = false,
+  onToggleCollapse = () => {},
+  hideFilterToggle = false,
+  hideStatusTabs = false,
   loading,
   error,
   onRetry,
@@ -90,38 +96,50 @@ export default function FilterTableLayout({
           >
             Tìm kiếm
           </Button>
-          <Button
-            icon={<FilterOutlined />}
-            onClick={onToggleCollapse}
-            shape="circle"
-            style={{ color: filterCollapsed ? actionPrimary : textSecondary, borderColor: filterCollapsed ? actionPrimary : borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
-          />
+          {!hideFilterToggle && (
+            <Button
+              icon={<FilterOutlined />}
+              onClick={onToggleCollapse}
+              shape="circle"
+              style={{ color: filterCollapsed ? actionPrimary : textSecondary, borderColor: filterCollapsed ? actionPrimary : borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
+            />
+          )}
         </div>
       </div>
 
       {/* ── Right: Main Content ── */}
       <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {/* StatusTabs */}
-        <div style={{ ...cardStyle, marginBottom: 5, padding: '7px 16px', flexShrink: 0 }}>
-          <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />
-        </div>
+        {!hideStatusTabs && (
+          <div style={{ ...cardStyle, marginBottom: 5, padding: '7px 16px', flexShrink: 0 }}>
+            <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />
+          </div>
+        )}
 
         {/* DataTable card */}
         <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          <Spin spinning={loading ?? false} classNames={{ root: 'filter-table-spin' }}>
+          <Spin spinning={loading ?? false} classNames={{ root: 'filter-table-spin' }} style={{ height: '100%' }}>
             {error ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <p>Đã xảy ra lỗi khi tải danh sách.</p>
                 {onRetry && <Button onClick={onRetry}>Thử lại</Button>}
               </div>
             ) : (
-              <div className="filter-table-content">
+              <div className="filter-table-content" style={{ height: '100%' }}>
                 {children}
               </div>
             )}
           </Spin>
         </div>
       </div>
+
+      <style>
+        {`
+          .filter-table-spin { height: 100%; }
+          .filter-table-spin .ant-spin-container { height: 100%; }
+          .filter-table-content { height: 100%; }
+        `}
+      </style>
     </div>
   );
 }

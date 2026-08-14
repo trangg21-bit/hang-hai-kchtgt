@@ -112,7 +112,11 @@ export default function App() {
       >
         <AntApp>
           <BrowserRouter>
-            <Suspense fallback={<Spin /> }>
+            <Suspense fallback={
+              <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                <Spin size="large" />
+              </div>
+            }>
               <Routes>
               {/* Login — outside layout */}
               <Route path="/login" element={<LoginPage />} />
