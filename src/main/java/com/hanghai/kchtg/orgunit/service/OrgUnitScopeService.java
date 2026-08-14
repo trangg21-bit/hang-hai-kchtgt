@@ -56,7 +56,16 @@ public class OrgUnitScopeService {
         return Scope.restricted(resolveSubtreeIds(currentUser.getOrgUnit().getId()));
     }
 
-    private List<UUID> resolveSubtreeIds(UUID rootId) {
+    /**
+     * Resolve an organisation and all of its descendants from the cached
+     * organisation tree. Callers use this for hierarchical filters; access
+     * scope is enforced separately by intersecting the result with the
+     * authenticated user's scope.
+     */
+    public List<UUID> resolveSubtreeIds(UUID rootId) {
+        if (rootId == null) {
+            return List.of();
+        }
         Map<UUID, List<UUID>> childIdsByParent = orgUnitCacheService.getList().stream()
                 .filter(unit -> unit.getId() != null && unit.getParentId() != null)
                 .collect(Collectors.groupingBy(

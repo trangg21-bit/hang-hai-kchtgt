@@ -748,7 +748,7 @@ export default function GroupList() {
           {permissionTreeData.length === 0 && !permissionLoading ? (
             <Empty description="Không tìm thấy quyền phù hợp" />
           ) : (
-              <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 360px)', overflowY: 'auto' }}>
+              <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
               <Tree
                 checkable
                 defaultExpandAll

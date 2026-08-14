@@ -174,21 +174,22 @@ public class UserGroupService {
                 ? GroupStatus.fromValue(statusStr).ordinal()
                 : null;
 
-        // Data scope: Admin Cục sees all; regular users see only their org unit
+        // Data scope: Admin Cục sees all; regular users see their org unit tree.
         OrgUnitScopeService.Scope scope = currentUserScope();
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
             return emptyGroupPage(page, size, true);
         }
-        if (organizationIdFilter != null && !scope.allows(organizationIdFilter)) {
+        List<UUID> organizationIds = resolveOrganizationFilter(scope, organizationIdFilter);
+        if (organizationIds != null && organizationIds.isEmpty()) {
             return emptyGroupPage(page, size, true);
         }
-        boolean unrestricted = scope.unrestricted() && organizationIdFilter == null;
-        List<UUID> organizationIds = organizationIdFilter == null
+        boolean unrestricted = organizationIds == null;
+        List<UUID> queryOrganizationIds = unrestricted
                 ? organizationIdsForQuery(scope)
-                : List.of(organizationIdFilter);
+                : organizationIds;
 
         Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, statusInt,
-                unrestricted, organizationIds, pageable);
+                unrestricted, queryOrganizationIds, pageable);
 
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
@@ -198,9 +199,9 @@ public class UserGroupService {
                 .toList();
 
         long activeCount = groupRepository.countByFiltersAndStatus(searchParam,
-                unrestricted, organizationIds, GroupStatus.ACTIVE.ordinal());
+                unrestricted, queryOrganizationIds, GroupStatus.ACTIVE.ordinal());
         long inactiveCount = groupRepository.countByFiltersAndStatus(searchParam,
-                unrestricted, organizationIds, GroupStatus.INACTIVE.ordinal());
+                unrestricted, queryOrganizationIds, GroupStatus.INACTIVE.ordinal());
 
         PaginatedGroupResponse result = new PaginatedGroupResponse();
         result.setItems(items);
@@ -232,16 +233,17 @@ public class UserGroupService {
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
             return emptyGroupPage(page, size, false);
         }
-        if (organizationIdFilter != null && !scope.allows(organizationIdFilter)) {
+        List<UUID> organizationIds = resolveOrganizationFilter(scope, organizationIdFilter);
+        if (organizationIds != null && organizationIds.isEmpty()) {
             return emptyGroupPage(page, size, false);
         }
-        boolean unrestricted = scope.unrestricted() && organizationIdFilter == null;
-        List<UUID> organizationIds = organizationIdFilter == null
+        boolean unrestricted = organizationIds == null;
+        List<UUID> queryOrganizationIds = unrestricted
                 ? organizationIdsForQuery(scope)
-                : List.of(organizationIdFilter);
+                : organizationIds;
 
         Page<UserGroup> pageResult = groupRepository.searchAndFilterMyGroups(
-                searchParam, statusInt, userId, unrestricted, organizationIds, pageable);
+                searchParam, statusInt, userId, unrestricted, queryOrganizationIds, pageable);
 
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
@@ -611,6 +613,32 @@ public class UserGroupService {
 
     private List<UUID> organizationIdsForQuery(OrgUnitScopeService.Scope scope) {
         return scope.unrestricted() ? List.of(UNRESTRICTED_SCOPE_PLACEHOLDER) : scope.orgUnitIds();
+    }
+
+    /**
+     * Resolve the selected organisation as a subtree filter while preserving
+     * the caller's data scope. A null result means unrestricted access; an
+     * empty result means the selected organisation is outside the caller's
+     * permitted tree.
+     */
+    private List<UUID> resolveOrganizationFilter(OrgUnitScopeService.Scope scope,
+            UUID organizationIdFilter) {
+        if (organizationIdFilter == null) {
+            return scope.unrestricted() ? null : scope.orgUnitIds();
+        }
+        if (!scope.unrestricted() && !scope.allows(organizationIdFilter)) {
+            return List.of();
+        }
+
+        List<UUID> selectedTree = orgUnitScopeService == null
+                ? List.of(organizationIdFilter)
+                : orgUnitScopeService.resolveSubtreeIds(organizationIdFilter);
+        if (scope.unrestricted()) {
+            return selectedTree;
+        }
+        return selectedTree.stream()
+                .filter(scope.orgUnitIds()::contains)
+                .toList();
     }
 
     private void requireOrganizationInScope(UUID organizationId) {

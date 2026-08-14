@@ -43,6 +43,12 @@ body {
    nhiều bản ghi → mép dưới thẳng hàng panel filter + thanh cuộn TRONG bảng;
    ít bản ghi → thân bảng co sát nội dung. (scrollbar-gutter: theme.ts) */
 
+/* Ant Design places the horizontal scrollbar on the table content wrapper.
+   Keep it available when the list card itself is a flex container. */
+.list-view-table .ant-table-content {
+  overflow-x: auto !important;
+}
+
 /* Keep the empty state centered in the same full-height body as a populated
    list. AntD otherwise sizes the placeholder row only to its content and
    leaves a visible separator underneath it. */

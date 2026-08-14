@@ -746,7 +746,7 @@ export default function VtsSystemList() {
 
       {/* ── History drawer ────────────────────────────────────────── */}
       <Drawer
-        width={1000}
+        size={1000}
         placement="right"
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}

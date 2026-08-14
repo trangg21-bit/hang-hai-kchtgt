@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Alert, Empty, Tree } from 'antd';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
@@ -18,6 +18,7 @@ import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '.
 import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusMd, borderDefault, spaceFormField, spaceMd, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
+import ManagementDrawer from '../components/management/ManagementDrawer';
 const { confirm } = Modal;
 
 const STATUS_LABEL: Record<string, string> = {
@@ -539,42 +540,20 @@ export default function UsersPage() {
         </Spin>
       </Modal>
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-          Phân quyền trực tiếp{permissionUser ? `: ${permissionUser.fullName}` : ''}
-        </span>}
+      <ManagementDrawer
+        title={<>Phân quyền chức năng cho người dùng{permissionUser ? `: ${permissionUser.fullName}` : ''}</>}
         open={Boolean(permissionUser)}
-        onCancel={() => setPermissionUser(null)}
+        onClose={() => setPermissionUser(null)}
         destroyOnHidden
-        width={640}
-        mask={{ closable: false }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setPermissionUser(null)}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}
-          >
-            Đóng
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            loading={permissionSaving}
-            onClick={handlePermissionSave}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
-          >
-            Lưu
-          </Button>,
-        ]}
+        maskClosable={false}
+        footer={
+          <>
+            <Button onClick={() => setPermissionUser(null)} style={outlineButtonStyle}>Đóng</Button>
+            <Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button>
+          </>
+        }
       >
         <Spin spinning={permissionLoading || permissionCatalogLoading}>
-          <Alert
-            type="info"
-            showIcon
-            message="Quyền được gán trực tiếp cho người dùng"
-            description="Các quyền được chọn sẽ áp dụng riêng cho tài khoản này và không kế thừa từ vai trò hoặc nhóm."
-            style={{ marginTop: spaceMd, marginBottom: spaceMd, borderRadius: radiusMd }}
-          />
           <Input.Search
             allowClear
             value={permissionSearch}
@@ -585,7 +564,7 @@ export default function UsersPage() {
           {permissionTreeData.length === 0 && !permissionLoading ? (
             <Empty description="Không tìm thấy quyền phù hợp" />
           ) : (
-            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 360, overflowY: 'auto' }}>
+            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
               <Tree
                 checkable
                 defaultExpandAll
@@ -602,7 +581,7 @@ export default function UsersPage() {
             </div>
           )}
         </Spin>
-      </Modal>
+      </ManagementDrawer>
 
       <Drawer
         {...drawerProps}

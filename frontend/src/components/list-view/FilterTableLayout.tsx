@@ -108,14 +108,16 @@ export default function FilterTableLayout({
 
         {/* DataTable card */}
         <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          <Spin spinning={loading ?? false} wrapperClassName="filter-table-spin">
+          <Spin spinning={loading ?? false} classNames={{ root: 'filter-table-spin' }}>
             {error ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <p>Đã xảy ra lỗi khi tải danh sách.</p>
                 {onRetry && <Button onClick={onRetry}>Thử lại</Button>}
               </div>
             ) : (
-              children
+              <div className="filter-table-content">
+                {children}
+              </div>
             )}
           </Spin>
         </div>

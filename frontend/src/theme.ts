@@ -26,7 +26,9 @@ export const layout = {
   headerHeight: 64,
   footerHeight: 56,
   listTableMinWidth: 1400,
-  listTableScrollY: 'calc(100vh - 350px)',
+  // Reserve the status bar, table header and pagination so the pager never
+  // overlays the last visible row of a list table.
+  listTableScrollY: 'calc(100vh - 410px)',
 };
 
 // ============================================================

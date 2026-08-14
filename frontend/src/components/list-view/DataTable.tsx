@@ -184,7 +184,7 @@ const DataTable: React.FC<DataTableProps> = ({
 
   if (children) {
     return (
-      <div ref={tableShellRef} style={{ width: '100%', minWidth: 0 }}>
+      <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0 }}>
         <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
           className="list-view-table"
           pagination={false}
