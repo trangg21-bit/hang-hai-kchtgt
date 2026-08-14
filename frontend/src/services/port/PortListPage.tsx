@@ -788,8 +788,9 @@ export default function PortListPage() {
     // Validate GPS coordinates (only required when Loại đối tượng is selected)
     const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
     if (values.geometryType) {
-      if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
-        toast.error('Tọa độ GPS là bắt buộc khi chọn loại đối tượng. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
+      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
+      if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
+        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
         return;
       }
       // Check for incomplete entries (has some DMS fields but not all)
@@ -938,8 +939,9 @@ export default function PortListPage() {
     if (!selectedRecord) return;
     const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
     if (values.geometryType) {
-      if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
-        toast.error('Tọa độ GPS là bắt buộc khi chọn loại đối tượng. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
+      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
+      if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
+        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
         return;
       }
     }
@@ -1711,6 +1713,7 @@ export default function PortListPage() {
                     name="orgUnitId"
                     {...labelProps('Đơn vị quản lý')}
                     required
+                    rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -1779,6 +1782,7 @@ export default function PortListPage() {
                             name="province"
                             {...labelProps('Địa điểm (Tỉnh/Thành phố)')}
                             required
+                            rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -1808,6 +1812,7 @@ export default function PortListPage() {
                              name="portClass"
                             {...labelProps('Phân cấp cảng biển')}
                             required
+                            rules={[{ required: true, message: 'Phân cấp cảng biển là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select placeholder="Chọn phân cấp" allowClear style={selectStyle}
@@ -2484,6 +2489,7 @@ export default function PortListPage() {
                             name="orgUnitId"
                             {...labelProps('Đơn vị quản lý')}
                             required
+                            rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -2552,6 +2558,7 @@ export default function PortListPage() {
                             name="province"
                             {...labelProps('Địa điểm (Tỉnh/Thành phố)')}
                             required
+                            rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -2581,6 +2588,7 @@ export default function PortListPage() {
                             name="portClass"
                             {...labelProps('Phân cấp cảng biển')}
                             required
+                            rules={[{ required: true, message: 'Phân cấp cảng biển là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select placeholder="Chọn phân cấp" allowClear style={selectStyle}

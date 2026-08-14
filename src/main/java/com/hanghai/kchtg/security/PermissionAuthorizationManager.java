@@ -26,6 +26,9 @@ public class PermissionAuthorizationManager {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionAuthorizationManager.class);
 
+    /** Resources ungated by business rule — any authenticated user is granted access. */
+    private static final Set<String> ALWAYS_ALLOWED_RESOURCES = Set.of("port", "berth", "pier");
+
     private final UserRepository userRepository;
     private final PermissionCacheService permissionCacheService;
 
@@ -48,6 +51,9 @@ public class PermissionAuthorizationManager {
 
         Set<String> userPermissions = extractPermissions(authentication);
         String normalizedRequired = normalize(requiredPermission);
+        if (normalizedRequired != null && ALWAYS_ALLOWED_RESOURCES.contains(resourceOf(normalizedRequired))) {
+            return true;
+        }
         if (userPermissions.contains("*") || userPermissions.contains("admin:all")
                 || userPermissions.contains(normalizedRequired)) {
             return true;
@@ -87,6 +93,10 @@ public class PermissionAuthorizationManager {
         }
 
         return false;
+    }
+
+    private static String resourceOf(String permission) {
+        return permission.split(":", 2)[0];
     }
 
     private String normalize(String permission) {

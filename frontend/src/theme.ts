@@ -423,6 +423,15 @@ export const globalCssVars = `
   scrollbar-gutter: stable;
 }
 
+/* Gắn icon sort ngay sau title của cột (antd mặc định đẩy icon ra mép phải,
+   tạo khoảng trống lớn khi cột thừa chiều rộng). */
+.list-view-table .ant-table-thead .ant-table-column-sorters {
+  justify-content: flex-start;
+}
+.list-view-table .ant-table-thead .ant-table-column-title {
+  flex: 0 0 auto;
+}
+
 /* --- Navigation zone (BLUE — đồng nhất) --- */
 .sidebar-footer,
 .ant-layout-sider,

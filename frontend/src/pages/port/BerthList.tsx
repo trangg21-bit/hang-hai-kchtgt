@@ -111,10 +111,10 @@ const translateField = (fn: string) => FIELD_LABELS[fn] || fn;
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Nháp' },
   DRAFT: { color: statusDraft, label: 'Nháp' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Được phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Được phê duyệt' },
+  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục' },
+  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
 };
@@ -513,7 +513,7 @@ export default function BerthList() {
   // F-018: Bộ lọc cơ bản (luôn hiển thị) + Nâng cao (toggle)
   const filterContent = (
     <>
-      {/* ── Cơ bản: ĐVQL + Tên cảng biển + Tình trạng ──────────── */}
+      {/* ── Cơ bản: ĐVQL + Thuộc cảng biển + Tình trạng ──────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
         <Select placeholder="Chọn đơn vị" showSearch optionFilterProp="label"
@@ -530,6 +530,13 @@ export default function BerthList() {
       </div>
       */}
       <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+        <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
+          value={filterPortId} onChange={(v) => { setFilterPortId(v); setPage(1); }}
+          options={portOptions.map(o => ({ label: o.label, value: o.value }))}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
         <Select placeholder="Chọn tình trạng" allowClear value={filterOperationalStatus}
           onChange={(v) => { setFilterOperationalStatus(v); setPage(1); }}
@@ -543,13 +550,6 @@ export default function BerthList() {
 
       {/* ── Nâng cao: toggle 8 trường ──────────────────────────── */}
       {filterCollapsed && (<>
-      <div style={{ marginBottom: 12, marginTop: 4 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-        <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
-          value={filterPortId} onChange={(v) => { setFilterPortId(v); setPage(1); }}
-          options={portOptions.map(o => ({ label: o.label, value: o.value }))}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
       {/* TODO: Đổi thành dropdown khi có API danh sách luồng hàng hải
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
@@ -703,17 +703,17 @@ export default function BerthList() {
     ] : [];
 
     const tailColumns: any[] = [
-      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 150, sortable: true, sortOrder,
+      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 140, sortable: true, sortOrder,
         render: (v: string | null) => {
           const m: Record<string, { color: string; label: string }> = {
-            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
-            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
-            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
+            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác' },
+            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác' },
+            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác' },
           };
           const s = m[v || ''] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
         } },
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 170, sortable: true, sortOrder,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 140, sortable: true, sortOrder,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
