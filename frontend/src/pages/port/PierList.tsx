@@ -407,7 +407,7 @@ export default function PierList() {
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={<div style={drawerFooterStyle}>{editPierId ? <Button htmlType="button" type="primary" onClick={() => pierFormRef.current?.submit('UPDATE')} style={primaryButtonStyle}>Cập nhật</Button> : <><Button htmlType="button" onClick={() => pierFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => pierFormRef.current?.submit('SUBMIT')} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => pierFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button></>}</div>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
-        <Form form={createForm} layout="vertical" initialValues={{ coordinateSystem: 1 }}>
+        <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>
           <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(orgUnit); }} />
         </Form>

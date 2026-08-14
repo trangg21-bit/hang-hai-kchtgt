@@ -167,7 +167,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', APPROVED_LEVEL1:'Chờ Cảng vụ duyệt', APPROVED_LEVEL2:'Chờ Cục duyệt', APPROVED:'Đã duyệt', REJECTED:'Từ chối' }; return m[val.toUpperCase()] || val; }
-  if (fn === 'operationalStatus') { const m: Record<string,string> = { DANG_KHAI_THAC:'Đang khai thác', CHUA_KHAI_THAC:'Chưa khai thác', DUNG_KHAI_THAC:'Dừng khai thác' }; return m[val.toUpperCase()] || val; }
+  if (fn === 'operationalStatus') { const m: Record<string,string> = { DANG_KHAI_THAC:'Đang khai thác/Vận hành', CHUA_KHAI_THAC:'Chưa khai thác/Vận hành', DUNG_KHAI_THAC:'Dừng khai thác/Vận hành' }; return m[val.toUpperCase()] || val; }
   if (fn === 'structureType') { const m: Record<string,string> = { '1':'Bến liền bờ', '2':'Bến phao', '3':'Bến nổi' }; return m[val] || val; }
   if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val)-1] || val;
   if (fn === 'portId') return val.substring(0,8)+'…';
@@ -572,6 +572,7 @@ export default function BerthList() {
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       */}
+      {/* Ẩn filter Loại kết cấu theo yêu cầu
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu</div>
         <Select placeholder="Chọn loại" allowClear value={filterStructureType}
@@ -579,6 +580,7 @@ export default function BerthList() {
           options={STRUCTURE_TYPE_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
+      */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
         <Input placeholder="Tìm theo công năng..." allowClear value={filterOperationalFunction}
@@ -704,9 +706,9 @@ export default function BerthList() {
       { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 150, sortable: true, sortOrder,
         render: (v: string | null) => {
           const m: Record<string, { color: string; label: string }> = {
-            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác' },
-            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác' },
-            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác' },
+            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
+            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
+            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
           };
           const s = m[v || ''] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
