@@ -193,10 +193,13 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
         if (auth != null && auth.isAuthenticated()
                 && !"anonymousUser".equals(auth.getName())) {
-            boolean isAdminRole = auth.getAuthorities().stream()
-                    .anyMatch(a -> "ROLE_SYSTEM_ADMIN".equals(a.getAuthority()) || "ROLE_ADMIN".equals(a.getAuthority()));
+            boolean hasAdminPermission = auth.getAuthorities().stream()
+                    .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                    .anyMatch(authority -> "*".equals(authority)
+                            || "admin:all".equalsIgnoreCase(authority)
+                            || "admin:manage".equalsIgnoreCase(authority));
 
-            if (isAdminRole) {
+            if (hasAdminPermission) {
                 if (auth.getPrincipal() instanceof User) {
                     user = (User) auth.getPrincipal();
                 } else {
@@ -207,8 +210,11 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         } else {
             User reqUser = (User) request.getAttribute("authenticatedUser");
             if (reqUser != null) {
-                String role = (String) request.getAttribute("authenticatedUserRole");
-                if ("ROLE_SYSTEM_ADMIN".equals(role) || "ROLE_ADMIN".equals(role)) {
+                boolean hasAdminPermission = reqUser.getAllPermissions().stream()
+                        .anyMatch(permission -> "*".equals(permission)
+                                || "admin:all".equalsIgnoreCase(permission)
+                                || "admin:manage".equalsIgnoreCase(permission));
+                if (hasAdminPermission) {
                     user = reqUser;
                 }
             }

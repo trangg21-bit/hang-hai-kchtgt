@@ -4,8 +4,8 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.annotation.DataScope;
 import com.hanghai.kchtg.security.aspect.DataScopeAspect;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserPermissionOverride;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -80,20 +80,15 @@ class DataScopeAspectTest {
         OrgUnit org = new OrgUnit();
         org.setId(userOrgId);
 
-        Role userRole = new Role();
-        userRole.setCode("ROLE_INTEGRATION");
-
         testUser = new User();
         testUser.setUsername("testuser");
         testUser.setOrgUnit(org);
-        testUser.setRoles(Set.of(userRole));
-
-        Role adminRole = new Role();
-        adminRole.setCode("ROLE_SYSTEM_ADMIN");
 
         adminUser = new User();
         adminUser.setUsername("admin");
-        adminUser.setRoles(Set.of(adminRole));
+        UserPermissionOverride adminPermission = new UserPermissionOverride();
+        adminPermission.setPermissionCode("admin:all");
+        adminUser.setPermissionOverrides(List.of(adminPermission));
 
         // Manually construct aspect to ensure correct mock injection
         aspect = new DataScopeAspect(userRepository, orgUnitCacheService, entityManager);

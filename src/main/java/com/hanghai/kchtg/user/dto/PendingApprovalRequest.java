@@ -36,6 +36,4 @@ public class PendingApprovalRequest {
     @Size(min = 8, max = 255, message = "Mật khẩu từ 8 đến 255 ký tự")
     private String password;
 
-    @Size(max = 50, message = "Mã vai trò tối đa 50 ký tự")
-    private String requestedRoleCode;
 }

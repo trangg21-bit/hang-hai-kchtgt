@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, MailOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { usePermissionStore } from '../store/permissionStore';
@@ -15,7 +15,7 @@ import { organizationService, type Organization } from '../services/organization
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
-import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusMd, borderDefault, spaceFormField, spaceMd, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
+import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceXs, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
 import ManagementDrawer from '../components/management/ManagementDrawer';
@@ -45,6 +45,8 @@ const labelProps = (text: string) => ({ label: <span style={{ color: colors.side
 export default function UsersPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [fullNameInput, setFullNameInput] = useState('');
+  const [fullName, setFullName] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterOrganizationInput, setFilterOrganizationInput] = useState<string | undefined>();
   const [filterOrganizationId, setFilterOrganizationId] = useState<string | undefined>();
@@ -90,11 +92,11 @@ export default function UsersPage() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const { data, isLoading, isError, error, refetch } = useUsers({
-    page, pageSize, search: search || undefined,
+    page, pageSize, search: search || undefined, fullName: fullName || undefined,
     status: filterStatus, orgUnitId: filterOrganizationId, sortField, sortOrder,
   });
 
-  const statusCounts = (data as any)?.statusCounts;
+  const statusCounts = data?.statusCounts;
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -108,7 +110,7 @@ export default function UsersPage() {
 
   const openEditModal = useCallback((user: User) => {
     setEditingUser(user);
-    form.setFieldsValue({ fullName: user.fullName, email: user.email, phone: user.phone, orgUnitId: user.orgUnitId, status: user.status });
+    form.setFieldsValue({ fullName: user.fullName, email: user.email, phone: user.phone, orgUnitId: user.orgUnitId, status: user.status, address: user.address, department: user.department, position: user.position, note: user.note });
     setModalOpen(true);
   }, [form]);
 
@@ -122,17 +124,24 @@ export default function UsersPage() {
           email: values.email?.trim(), 
           phone: values.phone?.trim(), 
           orgUnitId: values.orgUnitId || undefined, 
-          status: values.status 
+          status: values.status,
+          address: values.address?.trim() || undefined,
+          department: values.department?.trim() || undefined,
+          position: values.position?.trim() || undefined,
+          note: values.note?.trim() || undefined,
         };
         await updateUser.mutateAsync({ id: editingUser.id, payload });
       } else {
         const payload: CreateUserPayload = { 
-          username: values.username?.trim(), 
           fullName: values.fullName?.trim(), 
           email: values.email?.trim(), 
           phone: values.phone?.trim(), 
-          password: values.password, 
-          orgUnitId: values.orgUnitId || undefined 
+          orgUnitId: values.orgUnitId || undefined,
+          status: values.status,
+          address: values.address?.trim() || undefined,
+          department: values.department?.trim() || undefined,
+          position: values.position?.trim() || undefined,
+          note: values.note?.trim() || undefined,
         };
         await createUser.mutateAsync(payload);
       }
@@ -194,29 +203,34 @@ export default function UsersPage() {
 
   const handleFilterApply = useCallback(() => {
     const nextSearch = searchInput.trim();
+    const nextFullName = fullNameInput.trim();
     const sameFilters = nextSearch === search
+      && nextFullName === fullName
       && filterOrganizationInput === filterOrganizationId
       && page === 1;
 
     setSearch(nextSearch);
+    setFullName(nextFullName);
     setFilterOrganizationId(filterOrganizationInput);
     setPage(1);
 
     // Clicking Search again with unchanged filters still performs an
     // explicit request instead of waiting for the query cache to expire.
     if (sameFilters) void refetch();
-  }, [filterOrganizationInput, filterOrganizationId, page, refetch, search, searchInput]);
+  }, [filterOrganizationInput, filterOrganizationId, fullName, fullNameInput, page, refetch, search, searchInput]);
 
   const handleFilterReset = useCallback(() => {
-    const alreadyReset = !search && !filterStatus && !filterOrganizationId && page === 1;
+    const alreadyReset = !search && !fullName && !filterStatus && !filterOrganizationId && page === 1;
     setSearchInput('');
     setSearch('');
+    setFullNameInput('');
+    setFullName('');
     setFilterStatus(undefined);
     setFilterOrganizationInput(undefined);
     setFilterOrganizationId(undefined);
     setPage(1);
     if (alreadyReset) void refetch();
-  }, [filterStatus, page, refetch, search]);
+  }, [filterStatus, fullName, page, refetch, search]);
 
   const handleTabChange = useCallback((key: string) => {
     const nextStatus = key === 'all' ? undefined : key;
@@ -297,16 +311,15 @@ export default function UsersPage() {
     } else {
       if (hasPerm('user.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
       if (hasPerm('user.lock')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
-      if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', label: 'Reset mật khẩu', icon: <KeyOutlined />, onClick: () => handleResetPassword(record) });
-      if (hasPerm('user.reset_password')) actions.push({ key: 'forgot-password', label: 'Quên mật khẩu', icon: <MailOutlined />, onClick: () => handleForgotPassword(record) });
-      if (hasPerm('user.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+      // Intentionally hidden per TRI-1786688745847-4d03: reset-password, forgot-password, delete row actions.
+      // Handlers/modals/hooks (handleResetPassword, handleForgotPassword, handleDelete) remain intact.
     }
     return actions;
   }, [hasPerm, openPermissionModal, openEditModal, handleToggleLock, handleResetPassword, handleForgotPassword, handleDelete, handleApprove, handleReject]);
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'nameCode', label: 'Tên đăng nhập – Họ và tên', dataIndex: 'fullName', width: 300, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (_text: string, record: User) => <Typography.Text strong>{record.username} – {record.fullName}</Typography.Text> },
+    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 260, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
     { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null },
     { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <Typography.Text type="secondary">Chưa đăng nhập</Typography.Text> },
@@ -317,7 +330,7 @@ export default function UsersPage() {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách người dùng'} onRetry={() => refetch()} />;
     const tableData = data?.data || [];
-    const emptyDescription = search || filterStatus || filterOrganizationId
+    const emptyDescription = search || fullName || filterStatus || filterOrganizationId
       ? 'Không tìm thấy người dùng nào phù hợp'
       : 'Chưa có người dùng nào';
     return <>
@@ -341,10 +354,18 @@ export default function UsersPage() {
   const filterContent = (
     <>
       <div style={{ marginBottom: 12, marginTop: 16 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
-        <Input placeholder="Tìm theo tên, email, username..." allowClear
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Email</div>
+        <Input placeholder="Tìm theo email" allowClear
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40 }} />
+      </div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Họ tên</div>
+        <Input placeholder="Tìm theo họ tên" allowClear
+          value={fullNameInput}
+          onChange={(e) => setFullNameInput(e.target.value)}
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
@@ -395,59 +416,88 @@ export default function UsersPage() {
         {renderContent()}
       </FilterTableLayout>
 
-      <Drawer
-        {...drawerProps}
+      <ManagementDrawer
+        size={760}
         title={<span style={drawerTitleStyle}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
+          <>
             <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
             <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>
-          </div>
+          </>
         }
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }}
+          <Form form={form} layout="vertical" style={{ marginTop: spaceMd }}
             labelCol={{ style: { padding: 0, marginBottom: 4 } }}
+            initialValues={{ status: 'active' }}
           >
-            {!editingUser && (<>
-              <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 3, message: 'Tối thiểu 3 ký tự' }, { max: 100, message: 'Tối đa 100 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}><Input placeholder="vd: nguyenvana" autoComplete="username" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-              <Form.Item name="password" {...labelProps('Mật khẩu')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { max: 255, message: 'Tối đa 255 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#^_\-]).+$/, message: 'Phải có chữ hoa, chữ thường, số và ký tự đặc biệt' }]}><Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            </>)}
-            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { max: 200, message: 'Tối đa 200 ký tự' }]}><Input placeholder="Nguyễn Văn A" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            <Row gutter={16}>
-              <Col xs={24} md={12}><Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}><Input placeholder="email@example.com" autoComplete="email" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-              <Col xs={24} md={12}><Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}><Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-            </Row>
-            <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: spaceFormField }} rules={!editingUser ? [{ required: true, message: 'Vui lòng chọn đơn vị trực thuộc' }] : undefined}>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng chọn đơn vị' }]}>
               <OrgUnitTreeSelect
                 organizations={organizations}
-                placeholder="Chọn đơn vị trực thuộc"
+                placeholder="Chọn đơn vị"
                 allowClear
+                style={selectStyle}
               />
             </Form.Item>
-            {editingUser && (
-              <Form.Item
-                name="status"
-                {...labelProps('Trạng thái')}
-                style={{ marginBottom: spaceFormField }}
-                rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
-              >
-                <Select
-                  placeholder="Chọn trạng thái"
-                  options={[
-                    { value: 'active', label: 'Hoạt động' },
-                    { value: 'inactive', label: 'Không hoạt động' },
-                  ]}
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </Form.Item>
-            )}
+            <Row gutter={formRowGutter}>
+              <Col xs={24} md={12}>
+                <Form.Item name="email" {...labelProps('Email')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}>
+                  <Input placeholder="email@example.com" autoComplete="email" style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="fullName" {...labelProps('Họ và tên')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { max: 200, message: 'Tối đa 200 ký tự' }]}>
+                  <Input placeholder="Nguyễn Văn A" style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={formRowGutter}>
+              <Col xs={24} md={12}>
+                <Form.Item name="phone" {...labelProps('Số điện thoại')} style={formFieldStyle} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}>
+                  <Input placeholder="0901234567" style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="address" {...labelProps('Địa chỉ')} style={formFieldStyle} rules={[{ max: 255, message: 'Địa chỉ tối đa 255 ký tự' }]}>
+                  <Input placeholder="Nhập địa chỉ" style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={formRowGutter}>
+              <Col xs={24} md={12}>
+                <Form.Item name="department" {...labelProps('Phòng ban')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập phòng ban' }, { max: 100, message: 'Phòng ban tối đa 100 ký tự' }]}>
+                  <Input placeholder="Ví dụ: Phòng Quản lý cảng" style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="position" {...labelProps('Chức vụ')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập chức vụ' }, { max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
+                  <Input placeholder="Ví dụ: Chuyên viên" style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              name="status"
+              {...labelProps('Trạng thái')}
+              style={formFieldStyle}
+              rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+            >
+              <Select
+                placeholder="Chọn trạng thái"
+                options={[
+                  { value: 'active', label: 'Hoạt động' },
+                  { value: 'inactive', label: 'Không hoạt động' },
+                ]}
+                style={selectStyle}
+              />
+            </Form.Item>
+            <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle} rules={[{ max: 500, message: 'Ghi chú tối đa 500 ký tự' }]}> 
+              <Input.TextArea placeholder="Nhập ghi chú" rows={3} style={{ borderRadius: radiusTextArea }} />
+            </Form.Item>
           </Form>
         </Spin>
-      </Drawer>
+      </ManagementDrawer>
 
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Đặt lại mật khẩu</span>}
@@ -565,6 +615,7 @@ export default function UsersPage() {
             <Empty description="Không tìm thấy quyền phù hợp" />
           ) : (
             <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Danh sách chức năng</div>
               <Tree
                 checkable
                 defaultExpandAll
@@ -598,11 +649,14 @@ export default function UsersPage() {
         {detailLoading ? <Spin /> : detailUser && (
           <div style={{ paddingTop: spaceMd }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-              {[
-                ['Tên đăng nhập', detailUser.username],
+              {[ 
                 ['Họ và tên', detailUser.fullName],
                 ['Email', detailUser.email],
                 ['Số điện thoại', detailUser.phone || '—'],
+                ['Địa chỉ', detailUser.address || '—'],
+                ['Phòng ban', detailUser.department || '—'],
+                ['Chức vụ', detailUser.position || '—'],
+                ['Ghi chú', detailUser.note || '—'],
                 ['Nhóm nghiệp vụ', detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'],
                 ['Đơn vị trực thuộc', detailUser.orgUnitName || '—'],
                 ['Trạng thái', <span className={`status-badge ${getStatusBadgeClass(detailUser.status)}`}>{STATUS_LABEL[detailUser.status] || detailUser.status}</span>],

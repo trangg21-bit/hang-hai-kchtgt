@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.user.dto;
 
+import com.hanghai.kchtg.user.entity.UserStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,11 +20,14 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CreateUserRequest {
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
+    /**
+     * Tùy chọn khi tạo từ màn hình quản trị; nếu bỏ trống, hệ thống dùng email
+     * làm username để duy trì tương thích với luồng đăng nhập hiện tại.
+     */
     @Size(min = 3, max = 100, message = "Tên đăng nhập phải từ 3 đến 100 ký tự")
     private String username;
 
-    @NotBlank(message = "Mật khẩu không được để trống")
+    /** Nếu bỏ trống, hệ thống dùng mật khẩu khởi tạo mặc định ở service. */
     @Size(min = 6, max = 100, message = "Mật khẩu phải từ 6 đến 100 ký tự")
     private String password;
 
@@ -37,6 +41,22 @@ public class CreateUserRequest {
 
     @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")
     private String phone;
+
+    /** Trạng thái khởi tạo tài khoản - bắt buộc (BR-001-19, AC-001-12/16). */
+    @NotNull(message = "Vui lòng chọn trạng thái")
+    private UserStatus status;
+
+    @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
+    private String address;
+
+    @Size(max = 100, message = "Phòng ban tối đa 100 ký tự")
+    private String department;
+
+    @Size(max = 100, message = "Chức vụ tối đa 100 ký tự")
+    private String position;
+
+    @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
+    private String note;
 
     /**
      * Các permission cấp trực tiếp cho tài khoản (không bắt buộc).

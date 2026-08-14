@@ -18,7 +18,7 @@ import java.util.UUID;
  */
 public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> {
 
-      /** Lấy ID thành viên active để làm mới cache quyền khi role nhóm thay đổi. */
+      /** Lấy ID thành viên active để làm mới cache khi quyền nhóm thay đổi. */
       @Query("SELECT gm.user.id FROM GroupMember gm "
                   + "WHERE gm.userGroup.id = :groupId AND gm.status = :status")
       List<UUID> findUserIdsByUserGroupIdAndStatus(@Param("groupId") UUID groupId,

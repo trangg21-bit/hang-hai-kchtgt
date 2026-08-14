@@ -2,8 +2,6 @@ package com.hanghai.kchtg.security;
 
 import com.hanghai.kchtg.security.service.TokenClaimsBuilder;
 import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.PermissionRepository;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -25,14 +23,9 @@ public class JwtUtil {
 
     private final JwtProperties jwtProperties;
     private final SecretKey signingKey;
-    private final RoleRepository roleRepository;
-    private final PermissionRepository permissionRepository;
 
-    public JwtUtil(JwtProperties jwtProperties, RoleRepository roleRepository,
-            PermissionRepository permissionRepository) {
+    public JwtUtil(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        this.roleRepository = roleRepository;
-        this.permissionRepository = permissionRepository;
         byte[] keyBytes = Base64.getUrlDecoder().decode(jwtProperties.getSecret());
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
@@ -222,28 +215,6 @@ public class JwtUtil {
         Claims claims = validateToken(token);
         Object type = claims.get("type");
         return "refresh".equals(type);
-    }
-
-    /**
-     * Map Spring Security role de numeric level cho RBAC.
-     * <ul>
-     * <li>SUPER_ADMIN -> 4</li>
-     * <li>ADMIN -> 3</li>
-     * <li>SUPPORT -> 2</li>
-     * <li>other -> 1</li>
-     * </ul>
-     */
-    private int resolveRoleLevel(String role) {
-        if (role == null)
-            return 1;
-        String upper = role.toUpperCase();
-        if (upper.startsWith("SUPER_ADMIN"))
-            return 4;
-        if (upper.startsWith("ADMIN"))
-            return 3;
-        if (upper.startsWith("SUPPORT"))
-            return 2;
-        return 1;
     }
 
     /**

@@ -48,9 +48,19 @@ export function normalizePermissionKey(key: string): string {
  * quyền group được Backend đưa vào JWT/profile. Không coi admin:manage là
  * toàn quyền; chỉ admin:all hoặc * mới được bypass.
  */
+/**
+ * Resources ungated by business rule — any authenticated user is granted access
+ * regardless of the granted permission list (seaport / berth / pier management).
+ */
+const ALWAYS_ALLOWED_RESOURCES = new Set(['port', 'berth', 'pier']);
+
 export function hasPermissionFromList(grantedPermissions: string[] | undefined, key: string): boolean {
   const normalizedKey = normalizePermissionKey(key);
   if (!normalizedKey) return false;
+
+  if (ALWAYS_ALLOWED_RESOURCES.has(normalizedKey.split(':', 2)[0])) {
+    return true;
+  }
 
   const permissions = new Set(
     (grantedPermissions || [])

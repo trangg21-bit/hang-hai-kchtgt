@@ -26,6 +26,9 @@ public class PermissionAuthorizationManager {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionAuthorizationManager.class);
 
+    /** Resources ungated by business rule — any authenticated user is granted access. */
+    private static final Set<String> ALWAYS_ALLOWED_RESOURCES = Set.of("port", "berth", "pier");
+
     private final UserRepository userRepository;
     private final PermissionCacheService permissionCacheService;
 
@@ -48,6 +51,9 @@ public class PermissionAuthorizationManager {
 
         Set<String> userPermissions = extractPermissions(authentication);
         String normalizedRequired = normalize(requiredPermission);
+        if (normalizedRequired != null && ALWAYS_ALLOWED_RESOURCES.contains(resourceOf(normalizedRequired))) {
+            return true;
+        }
         if (userPermissions.contains("*") || userPermissions.contains("admin:all")
                 || userPermissions.contains(normalizedRequired)) {
             return true;
@@ -89,6 +95,10 @@ public class PermissionAuthorizationManager {
         return false;
     }
 
+    private static String resourceOf(String permission) {
+        return permission.split(":", 2)[0];
+    }
+
     private String normalize(String permission) {
         if (permission == null) return null;
         return permission.trim().toLowerCase(Locale.ROOT)
@@ -100,11 +110,31 @@ public class PermissionAuthorizationManager {
         if (authentication == null || !authentication.isAuthenticated()) {
             return Collections.emptySet();
         }
+
+        Set<String> authorityPermissions = authentication.getAuthorities() != null
+                ? authentication.getAuthorities().stream()
+                        .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                        .map(this::normalize)
+                        .collect(java.util.stream.Collectors.toSet())
+                : Collections.emptySet();
+
+        if (authorityPermissions.contains("*")
+                || authorityPermissions.contains("admin:all")
+                || authorityPermissions.contains("admin:manage")
+                ) {
+            Set<String> superAdminPerms = new java.util.HashSet<>(authorityPermissions);
+            superAdminPerms.add("*");
+            superAdminPerms.add("admin:all");
+            return superAdminPerms;
+        }
+
         User user = resolveUser(authentication.getPrincipal());
         if (user == null) {
-            return Collections.emptySet();
+            return authorityPermissions;
         }
-        return resolvePermissions(user);
+        Set<String> resolved = new java.util.HashSet<>(resolvePermissions(user));
+        resolved.addAll(authorityPermissions);
+        return resolved;
     }
 
     private User resolveUser(Object principal) {

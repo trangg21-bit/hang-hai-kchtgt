@@ -8,14 +8,17 @@ import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.repository.UserStatusLogRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,7 +38,6 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     @Mock private UserRepository userRepository;
-    @Mock private RoleRepository roleRepository;
     @Mock private OrgUnitRepository orgUnitRepository;
     @Mock private GroupRepository groupRepository;
     @Mock private PasswordEncoder passwordEncoder;
@@ -56,7 +58,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(
-                userRepository, roleRepository, orgUnitRepository, groupRepository,
+                userRepository, orgUnitRepository, groupRepository,
                 passwordEncoder, passwordPolicyValidator, permissionCacheService,
                 passwordHistoryRepository, userStatusLogRepository, entityManager, orgUnitCacheService);
 
@@ -144,6 +146,54 @@ class UserServiceTest {
         // Then
         assertNotNull(result);
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void create_shouldPersistRequestStatusInsteadOfHardcodedActive() {
+        // Given: the create form chose status INACTIVE (BR-001-19 / AC-001-12)
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("statususer");
+        request.setPassword("SecurePass1");
+        request.setEmail("statususer@test.com");
+        request.setFullName("Status User");
+        request.setStatus(UserStatus.INACTIVE);
+
+        when(userRepository.existsByUsername("statususer")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("statususer@test.com")).thenReturn(false);
+        doNothing().when(passwordPolicyValidator).validate("SecurePass1");
+        when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        });
+
+        // When
+        User result = userService.create(request);
+
+        // Then: the persisted entity carries the form-chosen status, not a hardcoded ACTIVE
+        ArgumentCaptor<User> savedCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(savedCaptor.capture());
+        assertEquals(UserStatus.INACTIVE, savedCaptor.getValue().getStatus());
+        assertEquals(UserStatus.INACTIVE, result.getStatus());
+    }
+
+    @Test
+    void createUserRequest_shouldRejectNullStatusByBeanValidation() {
+        // Given: request without status (BR-001-19 / AC-001-16)
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("nostatus");
+        request.setPassword("SecurePass1");
+        request.setEmail("nostatus@test.com");
+        // status intentionally left null
+
+        // When/Then: @NotNull on status rejects with the required message
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            Set<ConstraintViolation<CreateUserRequest>> violations = factory.getValidator().validate(request);
+            assertTrue(violations.stream().anyMatch(v ->
+                    "status".equals(v.getPropertyPath().toString())
+                            && "Vui lòng chọn trạng thái".equals(v.getMessage())));
+        }
     }
 
     @Test

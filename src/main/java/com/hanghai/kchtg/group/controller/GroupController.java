@@ -59,6 +59,7 @@ public class GroupController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID organizationId,
             @RequestParam(required = false, defaultValue = "false") Boolean myGroups,
@@ -70,11 +71,11 @@ public class GroupController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.error("Yeu cau xac thuc"));
             }
-            PaginatedGroupResponse result = service.findMyGroups(currentUserId, search, status, organizationId, page, size);
+            PaginatedGroupResponse result = service.findMyGroups(currentUserId, search, code, status, organizationId, page, size);
             return ResponseEntity.ok(ApiResponse.success(result));
         }
 
-        PaginatedGroupResponse result = service.list(search, status, organizationId, page, size);
+        PaginatedGroupResponse result = service.list(search, code, status, organizationId, page, size);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -248,14 +249,14 @@ public class GroupController {
 
     // ── Group Permission (F-002 UC-012) ─────────────────────────────
 
-    /** Lấy các role đã gán cho nhóm để hiển thị trong modal phân quyền. */
+    /** Lấy các quyền trực tiếp đã gán cho nhóm để hiển thị trong modal phân quyền. */
     @GetMapping("/{id}/permissions")
     @PreAuthorize("@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<String>>> listGroupPermissions(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.findGroupPermissions(id)));
     }
 
-    /** Thay thế danh sách role của nhóm và làm mới quyền kế thừa của thành viên. */
+    /** Thay thế danh sách quyền trực tiếp của nhóm và làm mới cache thành viên. */
     @PutMapping("/{id}/permissions")
     @PreAuthorize("@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<String>>> updateGroupPermissions(

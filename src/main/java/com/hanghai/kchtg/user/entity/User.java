@@ -75,21 +75,40 @@ public class User extends BaseEntity implements java.security.Principal {
     private String phone;
 
     /**
+     * Địa chỉ liên hệ (nullable).
+     */
+    @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
+    @Column(length = 255)
+    private String address;
+
+    /**
+     * Phòng ban (nullable).
+     */
+    @Size(max = 100, message = "Phòng ban tối đa 100 ký tự")
+    @Column(length = 100)
+    private String department;
+
+    /**
+     * Chức vụ (nullable).
+     */
+    @Size(max = 100, message = "Chức vụ tối đa 100 ký tự")
+    @Column(length = 100)
+    private String position;
+
+    /**
+     * Ghi chú (nullable).
+     */
+    @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
+    @Column(length = 500)
+    private String note;
+
+    /**
      * Đơn vị tổ chức mà người dùng trực thuộc.
      * Many-to-One relationship with lazy loading.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "org_unit_id")
     private OrgUnit orgUnit;
-
-    /**
-     * Vai trò của người dùng (M-to-N relationship via user_roles join table).
-     * Mỗi user chỉ có 1 role chính theo business rule.
-     */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @org.hibernate.annotations.BatchSize(size = 100)
-    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -103,21 +122,6 @@ public class User extends BaseEntity implements java.security.Principal {
     public void setPhone(String phone) { this.phone = phone; }
     public OrgUnit getOrgUnit() { return orgUnit; }
     public void setOrgUnit(OrgUnit orgUnit) { this.orgUnit = orgUnit; }
-    public Set<Role> getRoles() { return roles; }
-    public void setRoles(Set<Role> roles) { this.roles = roles; }
-
-
-    /**
-     * Lấy mã của role chính (role đầu tiên trong set).
-     * Chỉ có 1 role theo business rule.
-     */
-    public String getPrimaryRoleCode() {
-        return roles.stream()
-                .map(r -> r.getCode())
-                .findFirst()
-                .orElse(null);
-    }
-
     /**
      * Lấy hợp nhất permission cấp trực tiếp cho user và permission từ các
      * group đang hoạt động mà user đang tham gia.
@@ -154,24 +158,6 @@ public class User extends BaseEntity implements java.security.Principal {
     }
 
     /**
-     * @deprecated Use {@link #getPrimaryRoleCode()} or {@link #getRoles()} instead.
-     *             Kept for backward compatibility with existing services.
-     */
-    @Deprecated(forRemoval = true)
-    public String getRole() {
-        return getPrimaryRoleCode();
-    }
-
-    /**
-     * @deprecated Use {@link #setRoles(Set)} instead.
-     *             Kept for backward compatibility with existing services.
-     */
-    @Deprecated(forRemoval = true)
-    public void setRole(String role) {
-        // No-op: roles are now managed via the roles Set
-    }
-
-    /**
      * Danh sách nhóm người dùng mà người dùng thuộc về.
      * Many-to-Many relationship mapped through join table.
      */
@@ -181,7 +167,7 @@ public class User extends BaseEntity implements java.security.Principal {
     private List<UserGroup> groups = new ArrayList<>();
 
 
-    /** Quyền cấp trực tiếp ngoài quyền kế thừa từ Role/Group. */
+    /** Quyền cấp trực tiếp cho người dùng ngoài quyền kế thừa từ Group. */
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserPermissionOverride> permissionOverrides = new ArrayList<>();
 

@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.group.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import com.hanghai.kchtg.user.entity.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -11,9 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -52,16 +49,6 @@ public class UserGroup extends BaseEntity {
     @Column(name = "permission", nullable = false)
     private List<String> permissions = new ArrayList<>();
 
-    /**
-     * Các vai trò được gán cho nhóm. Thành viên nhóm thừa hưởng permissions
-     * từ toàn bộ vai trò này (F-002 BR-015 đến BR-017).
-     */
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "group_roles",
-            joinColumns = @JoinColumn(name = "user_group_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
-
     /** Đơn vị quản lý của nhóm (FK to OrgUnit). */
     @Column(name = "organization_id")
     private UUID organizationId;
@@ -72,5 +59,4 @@ public class UserGroup extends BaseEntity {
     private GroupStatus status = GroupStatus.ACTIVE;
 
     public List<String> getPermissions() { return permissions; }
-    public Set<Role> getRoles() { return roles; }
 }

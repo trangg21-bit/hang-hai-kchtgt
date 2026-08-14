@@ -68,15 +68,11 @@ public class JwtSessionService {
         // 2. Compute SHA-512 hash of (refreshToken + salt)
         String hash = sha512Hex(refreshTokenValue + ":" + salt);
 
-        // 3. Determine role level
-        int roleLevel = resolveRoleLevel(user.getPrimaryRoleCode());
-
-        // 4. Build and persist session
+        // 3. Build and persist session
         JwtSessionEntity session = new JwtSessionEntity();
         session.setUser(user);
         session.setUserId(userIdStr);
         session.setUsername(user.getUsername());
-        session.setRoleLevel(roleLevel);
         session.setRefreshTokenHash(hash);
         session.setRefreshTokenSalt(salt);
         session.setSessionId(sessionId);
@@ -305,17 +301,6 @@ public class JwtSessionService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
-    }
-
-    /**
-     * Map Spring Security role to numeric level.
-     */
-    private int resolveRoleLevel(String role) {
-        if (role == null) return 1;
-        String upper = role.toUpperCase();
-        if (upper.startsWith("SUPER_ADMIN")) return 3;
-        if (upper.startsWith("ADMIN"))       return 2;
-        return 1;
     }
 
     /**

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer } from 'antd';
+import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer, Row, Col } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
@@ -43,6 +43,7 @@ import {
   radiusPill,
   borderDefault,
   spaceFormField,
+  spaceLg,
   spaceMd,
   spaceSm,
   spaceXs,
@@ -527,49 +528,71 @@ export default function LegalDocumentList() {
             />
           )}
           <Form form={form} layout="vertical" disabled={editingItem?.validityStatus === 'EXPIRED'} style={{ marginTop: 16 }}>
-            <Form.Item name="documentNumber" label="Số hiệu văn bản" rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Số hiệu văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="documentName" label="Tên văn bản" rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Nhập tiêu đề văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="documentType" label="Loại văn bản" rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Select placeholder="Chọn loại văn bản..." style={{ borderRadius: radiusPill, height: 40 }}>
-                <Select.Option value="LAW">Luật</Select.Option>
-                <Select.Option value="DECREE">Nghị định</Select.Option>
-                <Select.Option value="CIRCULAR">Thông tư</Select.Option>
-                <Select.Option value="DECISION">Quyết định</Select.Option>
-              </Select>
-            </Form.Item>
-            <Form.Item name="issuingAuthority" label="Cơ quan ban hành" rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Cơ quan ban hành..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="signer" label="Người ký" style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Người ký (nếu có)..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="expirationDate" label="Ngày hết hiệu lực" style={{ marginBottom: spaceFormField }}>
-              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="applicationArea" label="Phạm vi áp dụng" style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Phạm vi áp dụng..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="description" label="Mô tả" style={{ marginBottom: spaceFormField }}>
-              <Input.TextArea placeholder="Mô tả..." rows={3} style={{ borderRadius: radiusSm }} />
-            </Form.Item>
-            <Form.Item label="Tệp đính kèm" style={{ marginBottom: spaceFormField }}>
-              <Dragger name="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            <Row gutter={[spaceLg, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item name="documentNumber" label="Số hiệu văn bản" rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Số hiệu văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="documentName" label="Tên văn bản" rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Nhập tiêu đề văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="documentType" label="Loại văn bản" rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Select placeholder="Chọn loại văn bản..." style={{ borderRadius: radiusPill, height: 40 }}>
+                    <Select.Option value="LAW">Luật</Select.Option>
+                    <Select.Option value="DECREE">Nghị định</Select.Option>
+                    <Select.Option value="CIRCULAR">Thông tư</Select.Option>
+                    <Select.Option value="DECISION">Quyết định</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="issuingAuthority" label="Cơ quan ban hành" rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Cơ quan ban hành..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="signer" label="Người ký" style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Người ký (nếu có)..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="expirationDate" label="Ngày hết hiệu lực" style={{ marginBottom: spaceFormField }}>
+                  <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item name="applicationArea" label="Phạm vi áp dụng" style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Phạm vi áp dụng..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item name="description" label="Mô tả" style={{ marginBottom: spaceFormField }}>
+                  <Input.TextArea placeholder="Mô tả..." rows={3} style={{ borderRadius: radiusSm }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item label="Tệp đính kèm" style={{ marginBottom: spaceFormField }}>
+                  <Dragger name="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 beforeUpload={(file) => {
                   if (file.size > 10 * 1024 * 1024) { toast.error('Kích thước mỗi tệp không được vượt quá 10MB'); return Upload.LIST_IGNORE; }
                   return true;
@@ -592,12 +615,14 @@ export default function LegalDocumentList() {
                     toast.success(`Đã tải lên: ${(file as File).name}`);
                   } catch (err: any) { onError?.(err); toast.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`); }
                 }}
-              >
-                <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây</p>
-                <p className="ant-upload-hint">Hỗ trợ PDF, Word, ảnh. Tối đa 10MB/tệp.</p>
-              </Dragger>
-            </Form.Item>
+                  >
+                    <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                    <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây</p>
+                    <p className="ant-upload-hint">Hỗ trợ PDF, Word, ảnh. Tối đa 10MB/tệp.</p>
+                  </Dragger>
+                </Form.Item>
+              </Col>
+            </Row>
           </Form>
         </Spin>
       </Drawer>

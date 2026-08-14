@@ -9,6 +9,7 @@ import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.controller.UserController;
+import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.GrantUserPermissionRequest;
 import com.hanghai.kchtg.user.dto.UserPermissionOverrideResponse;
 import com.hanghai.kchtg.user.dto.UserPageResponse;
@@ -33,6 +34,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -97,12 +100,40 @@ class UserRolePermissionControllerTest {
 
     @Test
     void listWithoutSort_shouldUseDefaultSortInsteadOfFailingOnNullSortField() throws Exception {
-        when(userService.findAllWithCounts(any(), any(), any()))
+        // Controller calls the 5-arg overload: (search, fullName, status, orgUnitId, pageable)
+        when(userService.findAllWithCounts(any(), any(), any(), any(), any()))
                 .thenReturn(new UserPageResponse(List.of(), 0, 20, 0, 0, java.util.Map.of()));
 
         mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath("$.success").value(true))
+                // Stub must actually feed the response (dead 3-arg stub left data null before)
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.pageNumber").value(0));
+    }
+
+    @Test
+    void createUser_withoutStatus_shouldReturn400AndNotReachService() throws Exception {
+        // BR-001-19 / AC-001-16: status is required (@NotNull) — @Valid on
+        // UserController.create rejects before any write.
+        String body = """
+                {
+                  "username": "nostatususer",
+                  "password": "SecurePass1",
+                  "email": "nostatus@test.com",
+                  "fullName": "No Status User",
+                  "orgUnitId": "00000000-0000-0000-0000-000000000001"
+                }
+                """;
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.status").value("Vui lòng chọn trạng thái"));
+
+        verify(userService, never()).create(any(CreateUserRequest.class));
     }
 
     @Test

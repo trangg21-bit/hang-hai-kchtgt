@@ -1,0 +1,91 @@
+{
+  "triage_id": "TRI-1786681817152-44eb",
+  "created_at": 1786681817152,
+  "request_summary": "Tách bộ lọc tìm kiếm ở màn hình Quản lý nhóm người dùng (F-002) thành 2 ô input: tìm theo tên nhóm và tìm theo mã nhóm.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/groups/GroupList.tsx",
+      "frontend/src/services/groupService.ts",
+      "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+      "src/main/java/com/hanghai/kchtg/group/repository/GroupRepository.java",
+      "src/main/java/com/hanghai/kchtg/group/service/UserGroupService.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/groups/GroupList.tsx",
+      "frontend/src/services/groupService.ts",
+      "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+      "src/main/java/com/hanghai/kchtg/group/repository/GroupRepository.java",
+      "src/main/java/com/hanghai/kchtg/group/service/UserGroupService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý nhóm người dùng (GroupList) — bộ lọc Tìm kiếm bên trái, hiện có 1 ô tìm chung theo tên/mã nhóm/mô tả.",
+  "blast_radius": 5,
+  "done_oracle": "Bộ lọc hiển thị 2 ô input riêng: Tên nhóm (khớp cột name, không dấu vẫn khớp) và Mã nhóm (khớp cột code); kết hợp đúng với bộ lọc trạng thái + đơn vị; số đếm trạng thái phản ánh đúng bộ lọc kết hợp; mvn clean compile + npm run build thành công.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile",
+      "cwd": ".",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "business_rule",
+  "declared_write_scope": [
+    "frontend/src/pages/groups/GroupList.tsx",
+    "frontend/src/services/groupService.ts",
+    "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+    "src/main/java/com/hanghai/kchtg/group/repository/GroupRepository.java",
+    "src/main/java/com/hanghai/kchtg/group/service/UserGroupService.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/group/controller/GroupController.java",
+      "line": 61,
+      "quote": "@RequestParam(required = false) String search,",
+      "source_hash": "eba170648ee408f3203da90be760c14e88b7bddbfc38eb09a760550b73feb3cb",
+      "quote_hash": "21d12fcc2331d7edf6e014da940017b95cc3ebf92438302f11b578466cb78cd8",
+      "note": "Tham số search hiện tại của GET /api/groups — cần thêm tham số code riêng cho mã nhóm"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/group/service/UserGroupService.java",
+      "line": 172,
+      "quote": "String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;",
+      "source_hash": "82c4582eb8415c29408a4fc1464505dfc1020f39025b2a0f1b48a75b7b8c1a70",
+      "quote_hash": "a03f42f1aee42ae64152880f72bc5003617c3f587a1866a9a8671d7d8f37861e",
+      "note": "Nơi chuẩn hóa từ khóa trước khi đưa vào repository — phải thread thêm tham số mã nhóm"
+    },
+    {
+      "file": "frontend/src/pages/groups/GroupList.tsx",
+      "line": 522,
+      "quote": "placeholder=\"Tìm theo tên, mã nhóm, mô tả...\"",
+      "source_hash": "d7ae5977ce90b44c6009941d4dc133ce4d5fcfa83afa62b1b8351a069733e57e",
+      "quote_hash": "2d57c214f032354162f2ee7fa23cbf5578da846e87d516e213182e3a39ee9245",
+      "note": "Ô input tìm kiếm duy nhất hiện tại — tách thành 2 ô tên nhóm và mã nhóm"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "623735cbac7576412c9b296ee5fc477eca0a2de0",
+    "dirty": true,
+    "captured_at": 1786681817267
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

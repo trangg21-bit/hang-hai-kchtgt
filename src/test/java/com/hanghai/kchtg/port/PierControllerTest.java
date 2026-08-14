@@ -59,6 +59,9 @@ class PierControllerTest {
     @MockBean
     private PierApprovalService pierApprovalService;
 
+    @MockBean
+    private com.hanghai.kchtg.port.service.BerthService berthService;
+
     // Security / infrastructure stubs required by @WebMvcTest context
     @MockBean
     private AccessLogRepository accessLogRepository;

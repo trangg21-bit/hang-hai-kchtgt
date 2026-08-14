@@ -24,7 +24,6 @@ public class PendingApprovalResponse {
     private String fullName;
     private String phone;
     private String status;
-    private String requestedRoleCode;
     private LocalDateTime createdAt;
 
     /**
@@ -38,7 +37,6 @@ public class PendingApprovalResponse {
         resp.setFullName(pa.getFullName());
         resp.setPhone(pa.getPhone());
         resp.setStatus(pa.getStatus());
-        resp.setRequestedRoleCode(pa.getRequestedRoleCode());
         resp.setCreatedAt(pa.getCreatedAt());
         return resp;
     }

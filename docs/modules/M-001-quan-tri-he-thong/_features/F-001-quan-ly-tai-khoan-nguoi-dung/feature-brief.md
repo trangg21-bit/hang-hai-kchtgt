@@ -7,9 +7,17 @@ status: proposed
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-05T00:00:00Z
+last-updated: 2026-08-14T04:56:43Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/user/controller/UserController.java
+  - src/main/java/com/hanghai/kchtg/user/service/UserService.java
+  - src/main/java/com/hanghai/kchtg/user/repository/UserRepository.java
+  - frontend/src/hooks/useUsers.ts
+  - frontend/src/pages/UsersPage.tsx
+  - frontend/src/services/userService.ts
+  - frontend/src/hooks/useUsers.test.ts
 ---
 # Đặc tả nghiệp vụ: Quản lý tài khoản người dùng
 
@@ -36,7 +44,7 @@ Hệ thống cần cơ chế quản lý tài khoản người dùng an toàn và
 Có 2 luồng tạo tài khoản:
 
 **Luồng 1 — Admin tạo tài khoản trực tiếp (kích hoạt ngay):**
-Admin truy cập vào module Quản lý tài khoản từ sidebar chính → chọn thao tác tạo mới → hệ thống xác thực quyền và kiểm tra tính hợp lệ của dữ liệu đầu vào (email unique, mật khẩu mạnh) → tài khoản được tạo ở trạng thái **kích hoạt (active) ngay lập tức, không cần qua bước phê duyệt** → ghi nhận log audit → hiển thị thông báo thành công.
+Admin truy cập vào module Quản lý tài khoản từ sidebar chính → chọn thao tác tạo mới → hệ thống xác thực quyền và kiểm tra tính hợp lệ của dữ liệu đầu vào (email unique, mật khẩu mạnh, trạng thái bắt buộc) → tài khoản được tạo ở trạng thái **theo lựa chọn trên form tạo mới** (Hoạt động hoặc Không hoạt động — không còn mặc định cứng ACTIVE, xem AC-001-12/BR-001-19), không cần qua bước phê duyệt → ghi nhận log audit → hiển thị thông báo thành công.
 
 **Luồng 2 — Người dùng tự đăng ký (cần phê duyệt):**
 Người dùng tự đăng ký tài khoản qua form công khai (F-271) → hệ thống tạo bản ghi chờ phê duyệt (PendingApproval) → Admin hoặc Admin-Operation xem danh sách đăng ký chờ → phê duyệt (tạo User + gán vai trò + gửi thông báo) hoặc từ chối (kèm lý do). Sau khi được phê duyệt, tài khoản được kích hoạt và người dùng có thể đăng nhập.
@@ -78,7 +86,7 @@ Dưới đây là các câu chuyện người dùng, sắp xếp theo mức đ�
 
 ### Mức Must (bắt buộc có)
 
-- **US-001-01:** Là **Admin**, tôi muốn tạo tài khoản người dùng mới với đầy đủ thông tin (tên, email, mật khẩu, vai trò, đơn vị) để quản lý người dùng mới vào hệ thống. Tài khoản được tạo ở trạng thái active ngay lập tức, không cần phê duyệt.
+- **US-001-01:** Là **Admin**, tôi muốn tạo tài khoản người dùng mới với đầy đủ thông tin (tên đăng nhập, mật khẩu, đơn vị, email, họ tên, SĐT, địa chỉ, phòng ban, chức vụ, trạng thái, ghi chú) để quản lý người dùng mới vào hệ thống. Tài khoản được tạo với trạng thái tôi chọn trên form (mặc định Hoạt động), không cần phê duyệt.
 - **US-001-02:** Là **Admin**, tôi muốn chỉnh sửa thông tin tài khoản (tên, email, vai trò, đơn vị) của người dùng để cập nhật thông tin.
 - **US-001-03:** Là **Admin**, tôi muốn khóa tài khoản người dùng để vô hiệu hóa tài khoản không còn sử dụng. Hệ thống không có chức năng xóa tài khoản.
 - **US-001-04:** Là **Admin**, tôi muốn mở khóa tài khoản người dùng để khôi phục truy cập khi cần.
@@ -93,6 +101,7 @@ Dưới đây là các câu chuyện người dùng, sắp xếp theo mức đ�
 - **US-001-10:** Là **Lãnh đạo**, tôi muốn phê duyệt tài khoản tự đăng ký từ người dùng bên ngoài (F-271).
 - **US-001-11:** Là **Cá nhân**, tôi muốn xem và chỉnh sửa thông tin cá nhân của chính mình.
 - **US-001-12:** Là **Admin/Cán bộ/Lãnh đạo**, tôi muốn xem chi tiết tài khoản người dùng (thông tin + phân quyền hiện tại) ở chế độ read-only.
+- **US-001-13:** Là **Admin/Cán bộ**, tôi muốn nhập và cập nhật 4 trường hồ sơ (Địa chỉ, Phòng ban, Chức vụ, Ghi chú) khi tạo/sửa tài khoản để hồ sơ người dùng đầy đủ hơn.
 
 ### Mức Could (có thể có sau)
 
@@ -104,7 +113,7 @@ Dưới đây là các câu chuyện người dùng, sắp xếp theo mức đ�
 
 Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm được, kèm theo cách xử lý khi có lỗi hoặc dữ liệu không như mong đợi.
 
-**AC-001-01 — Tạo tài khoản thành công:** Admin nhập đầy đủ thông tin hợp lệ (tên, email chưa tồn tại, mật khẩu mạnh, vai trò, đơn vị) và nhấn Tạo. Hệ thống tạo tài khoản với trạng thái **ACTIVE**, hash mật khẩu, gán vai trò, trả về toast "Tạo tài khoản thành công". Nếu email đã tồn tại → hiển thị lỗi "Email đã tồn tại". Nếu mật khẩu không đáp ứng yêu cầu → hiển thị lỗi validation mật khẩu.
+**AC-001-01 — Tạo tài khoản thành công:** Admin nhập đầy đủ thông tin hợp lệ (username, password, đơn vị, email chưa tồn tại, họ tên, phòng ban, chức vụ, trạng thái — các trường bắt buộc) và nhấn Tạo. Hệ thống tạo tài khoản với trạng thái **đúng lựa chọn trên form** (không hardcode ACTIVE), hash mật khẩu, trả về toast "Tạo tài khoản thành công". Nếu email đã tồn tại → hiển thị lỗi "Email đã tồn tại". Nếu mật khẩu không đáp ứng yêu cầu → hiển thị lỗi validation mật khẩu. Nếu thiếu trạng thái → hiển thị lỗi "Vui lòng chọn trạng thái".
 
 **AC-001-02 — Chỉnh sửa tài khoản thành công:** Admin hoặc Cán bộ chọn tài khoản, sửa thông tin (tên, email, vai trò, đơn vị) hợp lệ và nhấn Lưu. Hệ thống cập nhật thông tin, ghi log, toast "Cập nhật thành công". Nếu email mới trùng với người dùng khác → lỗi "Email đã tồn tại".
 
@@ -116,7 +125,7 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-001-06 — Reset mật khẩu thành công:** Admin chọn tài khoản, nhập mật khẩu mới đáp ứng policy (≥8 ký tự, chữ hoa + chữ thường + số, khác 3 mật khẩu gần nhất), nhấn Reset. Hệ thống hash mật khẩu mới, invalidate token cũ của user, toast "Đặt lại mật khẩu thành công". Nếu mật khẩu trùng 1 trong 3 mật khẩu gần nhất → lỗi.
 
-**AC-001-07 — Tìm kiếm và lọc danh sách người dùng:** Người dùng nhập từ khóa (tên/email) và chọn bộ lọc (vai trò, trạng thái). Hệ thống trả về kết quả đúng với phân trang (mặc định 20 dòng/trang, tối đa 100), tổng số record hiển thị chính xác. Kết quả rỗng → hiển thị empty state.
+**AC-001-07 — Tìm kiếm và lọc danh sách người dùng (2 ô tìm kiếm):** Thanh lọc có 2 ô tìm kiếm riêng biệt: ô **email / tên đăng nhập** (`search`) và ô **họ tên** (`fullName`, tìm không dấu vẫn khớp tên có dấu — gõ "van a" khớp "Nguyễn Văn An"). Hai ô kết hợp với nhau (AND) và với bộ lọc trạng thái và đơn vị; số đếm trên các tab trạng thái phản ánh đúng bộ lọc kết hợp hiện tại. Hệ thống trả về kết quả đúng với phân trang (mặc định 20 dòng/trang, tối đa 100), tổng số record hiển thị chính xác. Kết quả rỗng → hiển thị empty state. Ô tìm kiếm chỉ chứa khoảng trắng → được coi như không có bộ lọc tương ứng.
 
 **AC-001-08 — Phân quyền RBAC chính xác:** Cán bộ cố gắng thay đổi vai trò của người dùng khác → 403 Forbidden. Cá nhân cố sửa thông tin người dùng khác → 403 Forbidden. Chỉ Admin được phân quyền cho vai trò khác. User không thể tự thay đổi vai trò của chính mình.
 
@@ -126,11 +135,19 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-001-11 — Token reset mật khẩu hết hạn:** Người dùng yêu cầu reset mật khẩu, đợi hơn 1 giờ rồi click link reset trong email → hệ thống hiển thị lỗi "Link đặt lại mật khẩu đã hết hạn", yêu cầu gửi link mới.
 
-**AC-001-12 — Tạo tài khoản có trạng thái mặc định ACTIVE:** Admin tạo tài khoản mới → trạng thái mặc định là `ACTIVE`, không qua bất kỳ bước phê duyệt nào. User có thể đăng nhập ngay sau khi tạo. Nếu có lỗi hệ thống khi tạo → rollback toàn bộ transaction, toast "Tạo tài khoản thất bại".
+**AC-001-12 — Trạng thái tạo mới lấy từ form (không hardcode ACTIVE):** Admin tạo tài khoản mới → trạng thái được lấy từ lựa chọn trên form (`status` trong `CreateUserRequest`), không còn mặc định cứng ACTIVE ở backend (`UserService.create()` phải dùng `user.setStatus(request.getStatus())` thay cho `user.setStatus(UserStatus.ACTIVE)`) và ở frontend (bỏ `status: 'ACTIVE'` cứng trong `userService.ts` khi gọi POST). Không qua bất kỳ bước phê duyệt nào. Nếu thiếu trạng thái → lỗi validation "Vui lòng chọn trạng thái". Nếu có lỗi hệ thống khi tạo → rollback toàn bộ transaction, toast "Tạo tài khoản thất bại".
 
 **AC-001-13 — Không có chức năng xóa tài khoản:** Hệ thống không cung cấp chức năng xóa tài khoản. Để vô hiệu hóa tài khoản không còn sử dụng, Admin thực hiện khóa tài khoản (AC-001-03).
 
-**AC-001-14 — Xem chi tiết tài khoản:** Người dùng click vào tên hoặc chọn "Xem chi tiết" từ dropdown hành động. Hệ thống hiển thị popup read-only với: (1) thông tin tài khoản (username, fullName, email, phone, status, đơn vị, ngày tạo, lastLogin), (2) phân quyền hiện tại (danh sách Role kèm Permissions + danh sách Group kèm Permissions). Các trường audit (người tạo, thời gian tạo, người sửa, thời gian sửa) chỉ hiển thị với Admin Cục. Nếu tài khoản không có role/group nào → hiển thị "Chưa được phân quyền".
+**AC-001-14 — Xem chi tiết tài khoản:** Người dùng click vào tên hoặc chọn "Xem chi tiết" từ dropdown hành động. Hệ thống hiển thị popup read-only với: (1) thông tin tài khoản (username, fullName, email, phone, **address, department, position, note** — giá trị null hiển thị "—", status, đơn vị, ngày tạo, lastLogin), (2) phân quyền hiện tại (danh sách Role kèm Permissions + danh sách Group kèm Permissions). Các trường audit (người tạo, thời gian tạo, người sửa, thời gian sửa) chỉ hiển thị với Admin Cục. Nếu tài khoản không có role/group nào → hiển thị "Chưa được phân quyền".
+
+**AC-001-15 — Thứ tự trường form tạo mới:** Admin mở form "Thêm mới người dùng" → các trường hiển thị theo đúng thứ tự: 1) Tên đăng nhập*, 2) Mật khẩu*, 3) Đơn vị trực thuộc*, 4) Email*, 5) Họ và tên*, 6) Số điện thoại, 7) Địa chỉ, 8) Phòng ban*, 9) Chức vụ*, 10) Trạng thái*, 11) Ghi chú. Trường nào sai thứ tự → xem là lỗi UI. (done_oracle TRI-1786681457834-5887)
+
+**AC-001-16 — Form sửa hiển thị 4 trường mới + Trạng thái:** Admin mở form "Sửa người dùng" → form hiển thị đầy đủ address, department, position, note (pre-populate dữ liệu hiện tại) + Select Trạng thái. Lưu thành công → giá trị 4 trường được cập nhật, toast "Cập nhật tài khoản thành công".
+
+**AC-001-17 — Drawer chi tiết hiển thị 4 trường mới:** Người dùng mở drawer "Chi tiết tài khoản" → nhóm Thông tin tài khoản hiển thị thêm các dòng Địa chỉ, Phòng ban, Chức vụ, Ghi chú (giá trị null → "—") bên cạnh Trạng thái và các trường hiện có.
+
+**AC-001-18 — Migration Flyway 4 cột nullable:** Chạy Flyway trên DB mới hoặc DB đã có dữ liệu → migration `V20260814120000__add_user_profile_columns.sql` được áp dụng, bảng `app_users` có 4 cột mới `address`, `department`, `position`, `note` đều NULL-able; dữ liệu cũ giữ nguyên (cột mới nhận NULL), không lỗi khi khởi động.
 
 ---
 
@@ -150,7 +167,7 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 ### 5.2. Quy tắc về trạng thái
 
-**BR-001-05 — Admin tạo tài khoản = ACTIVE ngay:** Khi Admin (hoặc vai trò có quyền tạo user) tạo tài khoản mới, trạng thái mặc định là `ACTIVE`. **Không có bước phê duyệt trung gian, không cần Lãnh đạo duyệt.**
+**BR-001-05 — Tạo tài khoản không cần phê duyệt, trạng thái theo lựa chọn từ form:** Khi Admin (hoặc vai trò có quyền tạo user) tạo tài khoản mới, trạng thái được lấy từ lựa chọn trên form (BR-001-19), **không còn mặc định cứng ACTIVE**. **Không có bước phê duyệt trung gian, không cần Lãnh đạo duyệt.**
 
 **BR-001-06 — Tài khoản bị khóa không được đăng nhập:** Khi status = `blocked`, user không thể đăng nhập. Hệ thống trả về thông báo "Tài khoản đã bị khóa".
 
@@ -184,6 +201,16 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 **BR-001-18 — Token reset hết hạn 1 giờ:** Token đặt lại mật khẩu có hiệu lực trong 1 giờ kể từ khi được tạo. Sau khi hết hạn, link không thể sử dụng và phải yêu cầu token mới.
 
+### 5.6. Quy tắc về hồ sơ người dùng (scope expansion TRI-1786681457834-5887)
+
+**BR-001-19 — Trạng thái tạo mới lấy từ form:** `CreateUserRequest` bổ sung trường `status` (bắt buộc, `@NotNull`); `UserService.create()` thực hiện `user.setStatus(request.getStatus())` — xóa lệnh `user.setStatus(UserStatus.ACTIVE)` (UserService.java:431) và xóa `status: 'ACTIVE'` cứng khi POST ở frontend (userService.ts:98). Nếu `status` null → lỗi validation "Vui lòng chọn trạng thái".
+
+**BR-001-20 — 4 trường hồ sơ nullable:** `address`, `department`, `position`, `note` là cột NULL-able trong bảng `app_users`; giá trị rỗng được trim và lưu NULL; `UserResponse`/`UserDetailResponse` trả về 4 trường này (null khi chưa có giá trị).
+
+**BR-001-21 — Migration Flyway bắt buộc:** Mọi thay đổi schema phải đi qua script `src/main/resources/db/migration/V20260814120000__add_user_profile_columns.sql`; không dùng `ddl-auto`. Migration chỉ thêm cột, không xóa/sửa cột hiện có.
+
+**BR-001-22 — Đặt tên trường:** Tên cột DB/tham số API bằng tiếng Anh chuẩn (`address`, `department`, `position`, `note`); nhãn UI bằng tiếng Việt có dấu (Địa chỉ, Phòng ban, Chức vụ, Ghi chú).
+
 ---
 
 ## 6. Mô hình dữ liệu
@@ -213,8 +240,14 @@ Tính năng này tạo ra/sửa đổi các bảng dữ liệu sau trong cơ s�
 - **createdAt:** TIMESTAMP, thời điểm tạo bản ghi
 - **updatedAt:** TIMESTAMP, thời điểm cập nhật cuối
 - **lastLoginAt:** TIMESTAMP NULL, thời điểm đăng nhập cuối
+- <span style="color:red;font-weight:bold">**address:** VARCHAR(255) NULL, địa chỉ (trường mới — migration V20260814120000)</span>
+- <span style="color:red;font-weight:bold">**department:** VARCHAR(100) NULL, phòng ban (trường mới)</span>
+- <span style="color:red;font-weight:bold">**position:** VARCHAR(100) NULL, chức vụ (trường mới)</span>
+- <span style="color:red;font-weight:bold">**note:** VARCHAR(500) NULL, ghi chú (trường mới)</span>
 
 > **Ghi chú:** Bảng UserAccount **không có trường `deletedAt`** vì hệ thống không hỗ trợ xóa tài khoản. Tài khoản không còn sử dụng được khóa (status = `blocked`) thay vì xóa.
+
+> **Migration (TRI-1786681457834-5887):** `src/main/resources/db/migration/V20260814120000__add_user_profile_columns.sql` — thêm 4 cột NULL-able nêu trên vào bảng `app_users` (tên bảng thực tế trong `User.java` `@Table(name = "app_users")`). Tất cả cột mới đều nullable nên không ảnh hưởng dữ liệu cũ (các dòng hiện có nhận NULL).
 
 ### 6.2. Bảng UserStatusLog — Nhật ký thay đổi trạng thái
 
@@ -260,7 +293,9 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
 |---|---|---|---|
 | GET | `/api/v1/users` | Danh sách người dùng (phân trang, lọc, tìm kiếm) | JWT |
 | GET | `/api/v1/users/{id}` | Chi tiết người dùng | JWT |
-| POST | `/api/v1/users` | Tạo người dùng mới (trạng thái ACTIVE) | Admin, Admin-Operation |
+| POST | `/api/v1/users` | Tạo người dùng mới (trạng thái theo lựa chọn trên form — không hardcode ACTIVE) | Admin, Admin-Operation |
+
+> **Delta (TRI-1786681457834-5887):** `CreateUserRequest` bổ sung `status` (bắt buộc) + `address`, `department`, `position`, `note`; `UpdateUserRequest` bổ sung 4 trường trên (đã có sẵn `status`); `UserResponse`/`UserDetailResponse` trả về 4 trường trên. Controller hiện hỗ trợ cả `/api/users` và `/api/v1/users` (`UserController.java:44`).
 | PUT | `/api/v1/users/{id}` | Chỉnh sửa thông tin người dùng | Admin, Cán bộ |
 | PUT | `/api/v1/users/{id}/lock` | Khóa/mở khóa tài khoản | Admin, Cán bộ |
 | POST | `/api/v1/users/{id}/reset-password` | Reset mật khẩu (admin) | Admin |
@@ -291,26 +326,30 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
 | # | Người dùng | Hệ thống |
 |---|---|---|
 | 1 | Admin mở modal "Tạo tài khoản" từ nút "Thêm mới" trên màn hình danh sách | Hiển thị form tạo mới với các trường trống |
-| 2 | Nhập thông tin: username, fullName, email, phone, password, roleId, orgUnitId | — |
+| 2 | Nhập thông tin theo thứ tự form: username, password, orgUnitId, email, fullName, phone, address, department, position, status, note | — |
 | 3 | Nhấn nút "Lưu" | Validate dữ liệu đầu vào: email unique (BR-001-01), password ≥8 ký tự + chữ hoa + chữ thường + số (BR-001-02), các trường bắt buộc phải có giá trị |
 | 4 | — | Nếu email đã tồn tại: hiển thị lỗi "Email đã tồn tại" dưới trường email, dừng xử lý |
 | 5 | — | Nếu mật khẩu yếu: hiển thị lỗi validation dưới trường password, dừng xử lý |
 | 6 | — | Nếu thiếu trường bắt buộc: hiển thị lỗi "Vui lòng nhập {tên trường}" dưới trường tương ứng |
-| 7 | — | Nếu hợp lệ: tạo UserAccount với `status = ACTIVE`, hash password bằng bcrypt/argon2, gán UserRole, ghi AccessLog |
-| 8 | — | **Không có bước phê duyệt, không cần Lãnh đạo duyệt** — tài khoản được active ngay |
+| 7 | — | Nếu hợp lệ: tạo UserAccount với `status` = giá trị chọn trên form (BR-001-19), hash password bằng bcrypt/argon2, gán UserRole, ghi AccessLog |
+| 8 | — | **Không có bước phê duyệt, không cần Lãnh đạo duyệt** — tài khoản có trạng thái đã chọn trên form |
 | 9 | Xem toast thông báo | Hiển thị toast "Tạo tài khoản thành công", đóng modal, refresh danh sách |
 
 **Các trường trong form tạo mới:**
 
 | STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Ghi chú |
 |---|---|---|---|---|---|
-| 1 | Tên đăng nhập | username | Input text | ✅ | 3-50 ký tự, chỉ chữ thường + số + gạch dưới. Không sửa được sau khi tạo |
-| 2 | Họ và tên | fullName | Input text | ✅ | 2-100 ký tự |
-| 3 | Email | email | Input email | ✅ | Định dạng email hợp lệ; unique trong hệ thống (BR-001-01) |
-| 4 | Số điện thoại | phone | Input text | ❌ | 10-11 chữ số nếu nhập |
-| 5 | Mật khẩu | password | Input.Password | ✅ | ≥8 ký tự, chữ hoa + chữ thường + số (BR-001-02); có strength meter realtime. Admin đặt mật khẩu ban đầu cho người dùng |
-| 6 | Vai trò | roleId | Select dropdown | ✅ | Danh sách vai trò từ API `/api/v1/roles` |
-| 7 | Đơn vị | orgUnitId | Select (searchable) | ✅ | Danh sách đơn vị từ API `/api/v1/organizations` |
+| 1 | Tên đăng nhập | username | Input text | ✅ | 3-100 ký tự, chỉ chữ thường + số + gạch dưới. Không sửa được sau khi tạo |
+| 2 | Mật khẩu | password | Input.Password | ✅ | ≥8 ký tự, chữ hoa + chữ thường + số + ký tự đặc biệt (BR-001-02); có strength meter realtime. Admin đặt mật khẩu ban đầu cho người dùng |
+| 3 | Đơn vị trực thuộc | orgUnitId | TreeSelect dạng cây | ✅ | Dựng cây từ id/name/code/parentId; giữ value là orgUnitId |
+| 4 | Email | email | Input email | ✅ | Định dạng email hợp lệ; unique trong hệ thống (BR-001-01) |
+| 5 | Họ và tên | fullName | Input text | ✅ | 2-200 ký tự |
+| 6 | Số điện thoại | phone | Input text | ❌ | 10-11 chữ số nếu nhập |
+| 7 | Địa chỉ | address | Input text | ❌ | Tối đa 255 ký tự; DB nullable |
+| 8 | Phòng ban | department | Input text | ✅ | Tối đa 100 ký tự; DB nullable nhưng bắt buộc nhập trên form tạo (done_oracle) |
+| 9 | Chức vụ | position | Input text | ✅ | Tối đa 100 ký tự; DB nullable nhưng bắt buộc nhập trên form tạo (done_oracle) |
+| 10 | Trạng thái | status | Select | ✅ | Hoạt động (active) / Không hoạt động (inactive); giá trị chọn được gửi lên và lưu (BR-001-19) |
+| 11 | Ghi chú | note | TextArea | ❌ | Tối đa 500 ký tự; DB nullable |
 
 > **Về mật khẩu mặc định:** Hệ thống **không tự sinh mật khẩu mặc định**. Admin bắt buộc phải nhập mật khẩu ban đầu cho người dùng khi tạo tài khoản. Admin có trách nhiệm thông báo mật khẩu này cho người dùng qua kênh an toàn (email, tin nhắn nội bộ). Người dùng có thể đổi mật khẩu sau khi đăng nhập.
 
@@ -321,7 +360,7 @@ Admin/Cán bộ/Lãnh đạo có thể xem chi tiết thông tin tài khoản v�
 | # | Người dùng | Hệ thống |
 |---|---|---|
 | 1 | Click vào tên người dùng (hoặc chọn "Xem chi tiết" từ dropdown hành động) trên danh sách | Mở popup/modal "Chi tiết tài khoản" |
-| 2 | — | Hiển thị thông tin tài khoản (read-only): username, fullName, email, phone, trạng thái (badge), đơn vị, ngày tạo, đăng nhập cuối |
+| 2 | — | Hiển thị thông tin tài khoản (read-only): username, fullName, email, phone, **address, department, position, note** (null → "—"), trạng thái (badge), đơn vị, ngày tạo, đăng nhập cuối |
 | 3 | — | Hiển thị **phân quyền hiện tại** của tài khoản: danh sách vai trò (Role) đang được gán + danh sách nhóm (Group) đang tham gia. Mỗi role/group hiển thị kèm danh sách quyền (Permissions) |
 | 4 | — | Các trường `người tạo`, `thời gian tạo`, `người sửa cuối`, `thời gian sửa cuối` chỉ hiển thị với tài khoản Admin Cục (xem 2.2) |
 | 5 | Xem thông tin, nhấn "Đóng" | Đóng popup, quay lại danh sách |
@@ -330,7 +369,7 @@ Admin/Cán bộ/Lãnh đạo có thể xem chi tiết thông tin tài khoản v�
 
 | Nhóm thông tin | Các trường |
 |---|---|
-| Thông tin tài khoản | Tên đăng nhập, Họ và tên, Email, Số điện thoại, Trạng thái (badge), Đơn vị, Ngày tạo, Đăng nhập cuối |
+| Thông tin tài khoản | Tên đăng nhập, Họ và tên, Email, Số điện thoại, **Địa chỉ, Phòng ban, Chức vụ, Ghi chú** (null → "—"), Trạng thái (badge), Đơn vị, Ngày tạo, Đăng nhập cuối |
 | Phân quyền | Danh sách Vai trò (Role) — mỗi role kèm danh sách Permissions; Danh sách Nhóm (Group) — mỗi nhóm kèm danh sách Permissions |
 | Audit (chỉ Admin Cục) | Người tạo, Thời gian tạo, Người sửa cuối, Thời gian sửa cuối |
 
@@ -339,7 +378,7 @@ Admin/Cán bộ/Lãnh đạo có thể xem chi tiết thông tin tài khoản v�
 | # | Người dùng | Hệ thống |
 |---|---|---|
 | 1 | Admin/Cán bộ chọn tài khoản từ danh sách, nhấn "Sửa" | Mở modal chỉnh sửa, pre-populate dữ liệu hiện tại của user. Username: readonly (không cho sửa) |
-| 2 | Sửa các trường: fullName, email, phone, roleId (chỉ Admin được sửa), orgUnitId | — |
+| 2 | Sửa các trường: fullName, email, phone, orgUnitId, address, department, position, note, status (username readonly; 4 trường mới hiển thị như trường thường) | — |
 | 3 | Nhấn "Lưu" | Validate email unique nếu có thay đổi (BR-001-01) |
 | 4 | — | Nếu email trùng với user khác: hiển thị lỗi "Email đã tồn tại", dừng xử lý |
 | 5 | — | Nếu hợp lệ: cập nhật thông tin, ghi AccessLog |
@@ -567,7 +606,7 @@ Màn hình chính sử dụng các component dùng chung toàn hệ thống từ
 
 1. **ScreenHeader:** hiển thị đường dẫn breadcrumb "Quản trị hệ thống > Quản lý tài khoản người dùng". Nút hành động: "Thêm mới" (chỉ hiện với Admin).
 
-2. **FilterBar:** thanh lọc nằm ngang phía trên bảng, gồm: ô tìm kiếm text (tìm theo tên hoặc email), Select vai trò, Select trạng thái (active / blocked), nút Tìm kiếm, nút Reload.
+2. **FilterBar:** thanh lọc nằm ngang phía trên bảng, gồm: ô tìm kiếm **email / tên đăng nhập** (`search`), ô tìm kiếm **họ tên** (`fullName` — tìm không dấu vẫn khớp tên có dấu), Select vai trò, Select trạng thái (active / blocked), nút Tìm kiếm, nút Reload.
 
 3. **StatusTabs:** 4 tab nằm ngang: Tất cả, Hoạt động, Đã khóa, Chờ phê duyệt. Mỗi tab hiển thị số lượng bản ghi trong nhóm đó. Tab đang chọn có đường gạch chân màu `actionPrimary`.
 
@@ -591,13 +630,17 @@ Màn hình chính sử dụng các component dùng chung toàn hệ thống từ
 
 | STT | Tên trường | Field Name | Loại ĐK | Bắt buộc | Edit | Default | Mô tả |
 |---|---|---|---|---|---|---|---|
-| 1 | Tên đăng nhập | username | Input text | ✅ (tạo) / ❌ (sửa) | ❌ (readonly khi sửa) | — | 3-50 ký tự, chỉ chữ thường + số + gạch dưới |
-| 2 | Họ và tên | fullName | Input text | ✅ | ✅ | — | 2-100 ký tự |
-| 3 | Email | email | Input email | ✅ | ✅ | — | Định dạng email; unique (BR-001-01) |
-| 4 | Số điện thoại | phone | Input text | ❌ | ✅ | — | 10-11 chữ số nếu nhập |
-| 5 | Mật khẩu | password | Input.Password | ✅ (tạo) / ❌ (sửa) | ❌ (chỉ khi tạo) | — | ≥8 ký tự, chữ hoa + thường + số (BR-001-02) |
-| 6 | Vai trò | roleId | Select dropdown | ✅ | ✅ | — | Danh sách từ API `/roles` |
-| 7 | Đơn vị | orgUnitId | Select (searchable) | ✅ | ✅ | — | Danh sách từ API `/organizations` |
+| 1 | Tên đăng nhập | username | Input text | ✅ (tạo) / ❌ (sửa) | ❌ (readonly khi sửa) | — | 3-100 ký tự, chỉ chữ thường + số + gạch dưới |
+| 2 | Mật khẩu | password | Input.Password | ✅ (tạo) / ❌ (sửa) | ❌ (chỉ khi tạo) | — | ≥8 ký tự, chữ hoa + thường + số + ký tự đặc biệt (BR-001-02) |
+| 3 | Đơn vị trực thuộc | orgUnitId | TreeSelect dạng cây | ✅ | ✅ | — | Dựng cây từ id/name/code/parentId; giữ value là orgUnitId |
+| 4 | Email | email | Input email | ✅ | ✅ | — | Định dạng email; unique (BR-001-01) |
+| 5 | Họ và tên | fullName | Input text | ✅ | ✅ | — | 2-200 ký tự |
+| 6 | Số điện thoại | phone | Input text | ❌ | ✅ | — | 10-11 chữ số nếu nhập |
+| 7 | Địa chỉ | address | Input text | ❌ | ✅ | — | Tối đa 255 ký tự; DB nullable |
+| 8 | Phòng ban | department | Input text | ✅ | ✅ | — | Tối đa 100 ký tự; DB nullable nhưng bắt buộc trên form tạo (done_oracle) |
+| 9 | Chức vụ | position | Input text | ✅ | ✅ | — | Tối đa 100 ký tự; DB nullable nhưng bắt buộc trên form tạo (done_oracle) |
+| 10 | Trạng thái | status | Select | ✅ (tạo + sửa) | ✅ | ACTIVE ("Hoạt động") | Hoạt động (active) / Không hoạt động (inactive); giá trị chọn được gửi lên và lưu (BR-001-19) |
+| 11 | Ghi chú | note | TextArea | ❌ | ✅ | — | Tối đa 500 ký tự; DB nullable |
 
 **Modal footer:** [Hủy] outlined + [Lưu] primary, cả hai pill radius. Nút Lưu disabled khi form có lỗi; loading khi đang submit.
 
@@ -639,10 +682,14 @@ Mở khi click vào tên người dùng trên danh sách, hoặc chọn "Xem chi
 | 2 | Họ và tên | fullName |
 | 3 | Email | email |
 | 4 | Số điện thoại | phone (nếu không có → "—") |
-| 5 | Trạng thái | Badge: `active`=xanh lá, `blocked`=đỏ |
-| 6 | Đơn vị | orgUnitName |
-| 7 | Ngày tạo | createdAt (DD/MM/YYYY HH:mm) |
-| 8 | Đăng nhập cuối | lastLoginAt (DD/MM/YYYY HH:mm); nếu null → "Chưa đăng nhập" |
+| 5 | Địa chỉ | address (nếu không có → "—") |
+| 6 | Phòng ban | department (nếu không có → "—") |
+| 7 | Chức vụ | position (nếu không có → "—") |
+| 8 | Ghi chú | note (nếu không có → "—") |
+| 9 | Trạng thái | Badge: `active`=xanh lá, `inactive`=xám, `locked`=đỏ |
+| 10 | Đơn vị | orgUnitName |
+| 11 | Ngày tạo | createdAt (DD/MM/YYYY HH:mm) |
+| 12 | Đăng nhập cuối | lastLoginAt (DD/MM/YYYY HH:mm); nếu null → "Chưa đăng nhập" |
 
 **Nhóm 2 — Phân quyền hiện tại:**
 

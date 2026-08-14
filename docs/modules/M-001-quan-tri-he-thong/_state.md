@@ -7,7 +7,7 @@ current-stage: closed
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-08-05T08:21:42Z
+last-updated: 2026-08-14T06:31:59Z
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -21,44 +21,24 @@ completed-stages:
   engineering-business-analyst:
     verdict: Pass
     artifact: docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md
-    completed-at: 2026-08-05
-  engineering-security-architect:
+    completed-at: 2026-08-14
+  engineering-frontend-developer-wave-1:
     verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md
-    completed-at: 2026-08-05
-  engineering-tech-lead:
+    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-hide-actions-permission-label.md
+    completed-at: 2026-08-14
+  engineering-qa-engineer-wave-2:
     verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/design/00-design-plan.md
-    completed-at: 2026-08-05
-  engineering-implementor:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-dev-w1-f002-scope-expansion-backend.md
-    completed-at: 2026-08-05
-  engineering-implementation:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-f002-scope-expansion-frontend.md
-    completed-at: 2026-08-05
-  engineering-code-review:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md
-    completed-at: 2026-08-05
-  qa:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md
-    completed-at: 2026-08-05
-  reviewer:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md
-    completed-at: 2026-08-05
-stages-queue:
-  - closed
+    artifact: docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md
+    completed-at: 2026-08-14
+stages-queue: []
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count:
-  engineering-business-analyst: 1
+  engineering-business-analyst: 3
+  engineering-solution-designer: 1
 locked-fields: []
 version: 4
 finalizers: []
@@ -66,8 +46,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-reopened-at: 2026-08-05T07:24:39Z
-reopened-reason: "F-002 scope expansion: align code with updated BA feature-brief (4 gaps: /v1 prefix, PATCH /lock, organizationId, Admin Cục data scope, group:lock+group:read permissions)"
+reopened-at: 2026-08-14T06:27:15Z
+reopened-reason: 'TRI-1786688745847-4d03: implementation — hide 3 row actions (reset-password/forgot-password/delete) + add "Danh sách chức năng" label above permission tree'
+triage-id: TRI-1786688745847-4d03
 released: true
 ---
 # Pipeline State: Quản trị hệ thống (M-001)
@@ -90,15 +71,9 @@ none
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
 | 1 | intake | intake | Ready for feature pipeline | — | 2026-06-28 |
-| 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md | 2026-08-05 |
-| 3 | engineering-security-architect | engineering-security-architect | Pass | docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md | 2026-08-05 |
-| 4 | engineering-tech-lead | engineering-tech-lead | Pass | docs/modules/M-001-quan-tri-he-thong/design/00-design-plan.md | 2026-08-05 |
-| 5 | engineering-implementor | engineering-implementor | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-dev-w1-f002-scope-expansion-backend.md | 2026-08-05 |
-| 6 | engineering-implementation | engineering-implementation | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-f002-scope-expansion-frontend.md | 2026-08-05 |
-| 7 | engineering-code-review | engineering-code-review | Pass | docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md | 2026-08-05 |
-| 8 | qa | qa | Pass | docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md | 2026-08-05 |
-| 9 | reviewer | reviewer | Pass | docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md | 2026-08-05 |
-| 10 | closed | closed | — | — | — |
+| 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md | 2026-08-14 |
+| 3 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-hide-actions-permission-label.md | 2026-08-14 |
+| 4 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md | 2026-08-14 |
 
 ## Current Stage
 
@@ -106,4 +81,4 @@ none
 
 ## Next Action
 
-Released — production sign-off granted (`released: true`).
+Released — sign-off recorded (`released: true`).
