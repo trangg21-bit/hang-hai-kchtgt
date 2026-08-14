@@ -20,11 +20,14 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CreateUserRequest {
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
+    /**
+     * Tùy chọn khi tạo từ màn hình quản trị; nếu bỏ trống, hệ thống dùng email
+     * làm username để duy trì tương thích với luồng đăng nhập hiện tại.
+     */
     @Size(min = 3, max = 100, message = "Tên đăng nhập phải từ 3 đến 100 ký tự")
     private String username;
 
-    @NotBlank(message = "Mật khẩu không được để trống")
+    /** Nếu bỏ trống, hệ thống dùng mật khẩu khởi tạo mặc định ở service. */
     @Size(min = 6, max = 100, message = "Mật khẩu phải từ 6 đến 100 ký tự")
     private String password;
 

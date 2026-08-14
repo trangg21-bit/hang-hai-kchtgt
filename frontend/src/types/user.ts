@@ -1,5 +1,12 @@
 import type { Status } from './common';
 
+export type UserStatus =
+  | Status
+  | 'pending_verification'
+  | 'pending_approval'
+  | 'PENDING_VERIFICATION'
+  | 'PENDING_APPROVAL';
+
 export interface User {
   id: string;
   username: string;
@@ -13,7 +20,7 @@ export interface User {
   avatar?: string;
   orgUnitId?: string;
   orgUnitName?: string;
-  status: Status;
+  status: UserStatus;
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -30,14 +37,14 @@ export interface User {
 }
 
 export interface CreateUserPayload {
-  username: string;
+  username?: string;
   fullName: string;
   email: string;
   phone: string;
-  password: string;
+  password?: string;
   permissionCodes?: string[];
   orgUnitId?: string;
-  status: Status;
+  status: UserStatus;
   address?: string;
   department?: string;
   position?: string;
@@ -50,7 +57,7 @@ export interface UpdateUserPayload {
   phone?: string;
   permissionCodes?: string[];
   orgUnitId?: string;
-  status?: Status;
+  status?: UserStatus;
   address?: string;
   department?: string;
   position?: string;
@@ -59,5 +66,5 @@ export interface UpdateUserPayload {
 
 export interface UserFilters {
   search?: string;
-  status?: Status;
+  status?: UserStatus;
 }

@@ -70,6 +70,7 @@ public class UserService {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
+    private static final String DEFAULT_INITIAL_PASSWORD = "Asdqwe@123";
 
     private final UserRepository userRepository;
     private final OrgUnitRepository orgUnitRepository;
@@ -403,21 +404,30 @@ public class UserService {
      * @throws ValidationException      neu mat khau khong dap ung chinh sach
      */
     public User create(CreateUserRequest request) {
-        // BR-001: Check email unique
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
-        }
         String email = normalizeEmail(request.getEmail());
+        String username = trimToNull(request.getUsername());
+        if (username == null) {
+            username = email;
+        }
+        String initialPassword = trimToNull(request.getPassword());
+        if (initialPassword == null) {
+            initialPassword = DEFAULT_INITIAL_PASSWORD;
+        }
+
+        // BR-001: Check email unique
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + username);
+        }
         if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(email)) {
             throw new IllegalArgumentException("Email đã tồn tại: " + email);
         }
 
         // BR-002: Validate password policy
-        passwordPolicyValidator.validate(request.getPassword());
+        passwordPolicyValidator.validate(initialPassword);
 
         User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(initialPassword));
         user.setEmail(email);
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());

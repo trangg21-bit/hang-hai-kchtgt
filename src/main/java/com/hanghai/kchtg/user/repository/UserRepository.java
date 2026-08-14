@@ -109,8 +109,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u.status, COUNT(u) FROM User u " +
            "WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED " +
            "AND (:search IS NULL OR :search = '' OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
            "AND (:fullName IS NULL OR :fullName = '' OR " +
            "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
            "AND u.deletedAt IS NULL " +
@@ -121,8 +120,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u.status, COUNT(u) FROM User u " +
            "WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED " +
            "AND (:search IS NULL OR :search = '' OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
            "AND (:fullName IS NULL OR :fullName = '' OR " +
            "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
            "AND u.deletedAt IS NULL " +
@@ -134,8 +132,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT DISTINCT u FROM User u " +
            "WHERE (:search IS NULL OR :search = '' OR " +
-           "  CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
-           "  CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
+           "  CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
            "AND (:fullName IS NULL OR :fullName = '' OR " +
            "  CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
            "AND u.deletedAt IS NULL " +
@@ -150,8 +147,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "u.orgUnit.id AS orgUnitId, u.status AS status, u.lastLoginAt AS lastLoginAt " +
            "FROM User u " +
            "WHERE (:search IS NULL OR :search = '' OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
            "AND (:fullName IS NULL OR :fullName = '' OR " +
            "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
            "AND u.deletedAt IS NULL " +
@@ -166,8 +162,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "u.orgUnit.id AS orgUnitId, u.status AS status, u.lastLoginAt AS lastLoginAt " +
            "FROM User u " +
            "WHERE (:search IS NULL OR :search = '' OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string) OR " +
-           "CAST(function('immutable_unaccent', LOWER(u.username)) AS string) LIKE CAST(:search AS string)) " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
            "AND (:fullName IS NULL OR :fullName = '' OR " +
            "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
            "AND u.deletedAt IS NULL " +

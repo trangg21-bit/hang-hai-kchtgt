@@ -223,7 +223,6 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.GROUP.LOCK, title: 'Khóa Nhóm' },
       { key: PERMISSIONS.GROUP.MANAGE, title: 'Quản lý Nhóm' },
       { key: PERMISSIONS.GROUP.PERMISSION, title: 'Phân quyền Nhóm' },
-      { key: PERMISSIONS.ROLE.MANAGE, title: 'Quản lý Vai trò' },
       { key: PERMISSIONS.ORGUNIT.READ, title: 'Xem Đơn vị' },
       { key: PERMISSIONS.ORGUNIT.MANAGE, title: 'Quản lý Đơn vị' },
       { key: PERMISSIONS.ORGUNIT.APPROVE, title: 'Duyệt Đơn vị' },
