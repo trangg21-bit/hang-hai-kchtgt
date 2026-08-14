@@ -25,6 +25,41 @@ export interface BerthDetailContentProps {
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
+// Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
+// fallback sang latitude/longitude (backend chỉ parse được cho POINT).
+const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
+  const wkt = record?.coordinates;
+  const out: Array<{ lat: number; lng: number }> = [];
+  if (wkt && typeof wkt === 'string' && wkt.trim()) {
+    try {
+      if (wkt.startsWith('LINESTRING(')) {
+        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
+        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
+        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
+        if (m) {
+          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
+          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
+          pts.forEach(p => { out.push(p); });
+        }
+      }
+      if (out.length === 0) {
+        const mm = wkt.match(/MULTIPOINT\s*\(([^)]+(?:\),[^)]+)*)/);
+        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0) {
+        const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
+      }
+    } catch { /* ignore */ }
+  }
+  if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
+    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+  }
+  return out;
+};
+
 export default function BerthDetailContent({
   selectedRecord,
   orgMap,
@@ -68,7 +103,7 @@ export default function BerthDetailContent({
                   ['Năng lực quy hoạch', r.plannedThroughput != null ? `${r.plannedThroughput} tấn/năm` : '—'],
                   ['Sản lượng gần nhất', r.latestCargoVolume != null ? `${r.latestCargoVolume} tấn/năm` : '—'],
                   ['Cỡ tàu tối đa (DWT)', r.maxVesselSize != null ? r.maxVesselSize : '—'],
-                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:'#1BAF7A',label:'Đang khai thác'}, NOT_YET_OPERATIONAL:{color:'#FA8C16',label:'Chưa khai thác'}, SUSPENDED:{color:'#F5222D',label:'Dừng khai thác'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
+                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:'#1BAF7A',label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:'#FA8C16',label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:'#F5222D',label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
                   ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${approvalStyleMap[r.approvalStatus].color}15`, color: approvalStyleMap[r.approvalStatus].color }}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
@@ -133,7 +168,7 @@ export default function BerthDetailContent({
                   ['Loại đối tượng', { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
                   ['Biểu tượng bản đồ', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{symName}</span>; })(),],
                   ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
-                  ['Quy tắc hiển thị', r.displayRule || '—'],
+                  ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
                     <span className="detail-label">{label}</span>
@@ -144,10 +179,7 @@ export default function BerthDetailContent({
               <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                 <span style={detailLabelStyle}>Tọa độ GPS</span>
                 {(() => {
-                  const pts: Array<{ lat: number; lng: number }> = [];
-                  if ((r as any).latitude != null && (r as any).longitude != null) {
-                    pts.push({ lat: (r as any).latitude, lng: (r as any).longitude });
-                  }
+                  const pts = parseGisCoordinates(r);
                   if (pts.length === 0) return <div style={{ color: textTertiary, fontSize: fontSizeMd, marginTop: spaceXs }}>Không có tọa độ</div>;
                   return (
                     <Table className="list-view-table" dataSource={pts.map((p, i) => ({ ...p, key: i }))} pagination={false} size="middle" bordered style={{ marginTop: spaceXs }}>

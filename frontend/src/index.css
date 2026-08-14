@@ -39,14 +39,9 @@ body {
   height: 100%;
 }
 
-.list-view-table .ant-table-body {
-  height: var(--list-table-scroll-y) !important;
-  max-height: var(--list-table-scroll-y) !important;
-  /* Keep the vertical scrollbar gutter even for a one-row result. AntD's
-     fixed-right column uses this gutter when calculating its sticky offset. */
-  overflow-y: scroll !important;
-  scrollbar-gutter: stable;
-}
+/* Chiều cao thân bảng do DataTable đo động (scroll.y = shell − header):
+   nhiều bản ghi → mép dưới thẳng hàng panel filter + thanh cuộn TRONG bảng;
+   ít bản ghi → thân bảng co sát nội dung. (scrollbar-gutter: theme.ts) */
 
 /* Keep the empty state centered in the same full-height body as a populated
    list. AntD otherwise sizes the placeholder row only to its content and

@@ -81,7 +81,7 @@ export default function PortDetailContent({
                   ['Loại đối tượng', selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'],
                   ['Biểu tượng bản đồ', selectedRecord.mapSymbolId ? (symbols.find((s) => s.id === selectedRecord.mapSymbolId)?.name || selectedRecord.mapSymbolId) : '—'],
                   ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'],
-                  ['Quy tắc hiển thị', 'Độ, phút, giây (DMS)'],
+                  ['Quy tắc hiển thị', (selectedRecord.geometryType || selectedRecord.coordinates) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
                     <span className="detail-label">{label}</span>

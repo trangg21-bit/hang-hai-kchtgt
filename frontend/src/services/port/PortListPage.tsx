@@ -550,7 +550,7 @@ export default function PortListPage() {
               province: data.province || undefined,
               orgUnitId: data.orgUnitId || undefined,
               portGroup: data.portGroup != null ? data.portGroup : undefined,
-              geometryType: data.geometryType || 'POINT',
+              geometryType: data.geometryType || undefined,
               mapSymbolId: data.mapSymbolId || undefined,
               detailedLocation: data.detailedLocation || undefined,
               portClass: data.portClass != null ? data.portClass : undefined,
@@ -572,7 +572,7 @@ export default function PortListPage() {
               quantityKhuChuyenTai: data.transshipmentCount != null ? data.transshipmentCount : undefined,
               cacKhuNuocKhac: data.otherWaterAreas || undefined,
               coordinateSystem: data.coordinateSystem != null ? data.coordinateSystem : undefined,
-              displayRule: 'Độ, phút, giây (DMS)',
+              displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
               waterAreaScope: data.waterAreaScope || undefined,
               remarks: data.remarks || undefined,
             });
@@ -761,7 +761,7 @@ export default function PortListPage() {
 
   // Form watches
   const createGeometryType = Form.useWatch('geometryType', createForm);
-  const updateGeometryType = Form.useWatch('geometryType', updateForm) || 'POINT';
+  const updateGeometryType = Form.useWatch('geometryType', updateForm);
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu & quy tắc hiển thị
   useEffect(() => {
@@ -771,14 +771,11 @@ export default function PortListPage() {
     const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
     setGpsCoordList(Array.from({ length: count }, () => ({ lat: NaN, lng: NaN })));
   }, [createGeometryType]);
-  useEffect(() => { if (updateGeometryType && updateGeometryType !== 'POINT') updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [updateGeometryType]);
+  useEffect(() => { if (updateGeometryType) updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [updateGeometryType]);
 
   const handleCreateFinish = async (values: Record<string, unknown>) => {
     const portCode = String(values.portCode || '').trim();
     const portName = String(values.portName).trim();
-    if (!portCode) { toast.error('Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.'); return; }
-    if (!portName) { toast.error('Tên cảng biển là bắt buộc ngay cả khi lưu tạm'); return; }
-    if (portName.length > 255) { toast.error('Tên cảng tối đa 255 ký tự'); return; }
 
     // BR-008-08: Validate công trình KCHT (chỉ cần tên HOẶC số lượng là đủ)
     for (const infra of infraList) {
@@ -791,7 +788,6 @@ export default function PortListPage() {
     // Validate GPS coordinates (only required when Loại đối tượng is selected)
     const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
     if (values.geometryType) {
-      if (!values.mapSymbolId) { toast.error('Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng'); return; }
       if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
         toast.error('Tọa độ GPS là bắt buộc khi chọn loại đối tượng. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
         return;
@@ -809,9 +805,11 @@ export default function PortListPage() {
     // Validate required fields for submit
     const currentAction = actionTypeRef.current;
     if (currentAction === 'submit' || currentAction === 'approve') {
-      if (!values.orgUnitId) { toast.error('Đơn vị quản lý là bắt buộc khi gửi phê duyệt'); return; }
-      if (!values.province) { toast.error('Tỉnh/Thành phố là bắt buộc khi gửi phê duyệt'); return; }
-      if (values.portClass == null || values.portClass === '') { toast.error('Phân cấp cảng biển là bắt buộc khi gửi phê duyệt'); return; }
+      const fieldErrors: Array<{ name: Array<string | number>; errors: string[] }> = [];
+      if (!values.orgUnitId) fieldErrors.push({ name: ['orgUnitId'], errors: ['Đơn vị quản lý là bắt buộc khi gửi phê duyệt'] });
+      if (!values.province) fieldErrors.push({ name: ['province'], errors: ['Tỉnh/Thành phố là bắt buộc khi gửi phê duyệt'] });
+      if (values.portClass == null || values.portClass === '') fieldErrors.push({ name: ['portClass'], errors: ['Phân cấp cảng biển là bắt buộc khi gửi phê duyệt'] });
+      if (fieldErrors.length) { createForm.setFields(fieldErrors); return; }
     }
 
     setSubmitting(true);
@@ -932,17 +930,14 @@ export default function PortListPage() {
     }
   };
 
-  const handleFormFailed = (errorInfo: any) => {
-    errorInfo.errorFields.forEach((field: any) => {
-      toast.error(`${field.errors.join(', ')}`);
-    });
+  const handleFormFailed = () => {
+    // Lỗi validation được hiển thị trực tiếp viền đỏ + message dưới từng trường (AntD), không popup toast
   };
 
   const handleUpdateFinish = async (values: Record<string, unknown>) => {
     if (!selectedRecord) return;
     const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
     if (values.geometryType) {
-      if (!values.mapSymbolId) { toast.error('Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng'); return; }
       if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
         toast.error('Tọa độ GPS là bắt buộc khi chọn loại đối tượng. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
         return;
@@ -1273,14 +1268,14 @@ export default function PortListPage() {
                 otherWaterAreas: data.otherWaterAreas || undefined,
                 remarks: data.remarks || undefined,
                 gisLocation: data.coordinates ? {
-                  geometryType: data.geometryType || 'POINT',
+                  geometryType: data.geometryType || undefined,
                   coordinates: data.coordinates,
                   mapSymbolId: data.mapSymbolId,
                 } : undefined,
-                geometryType: data.geometryType || 'POINT',
+                geometryType: data.geometryType || undefined,
                 mapSymbolId: data.mapSymbolId,
                 coordinateSystem: data.coordinateSystem,
-                displayRule: 'Độ, phút, giây (DMS)',
+                displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
               });
               // Load infrastructure & attachments for edit
               setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
@@ -1754,6 +1749,7 @@ export default function PortListPage() {
                             required
                             style={{ marginBottom: spaceFormField }}
                             tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa"
+                            rules={[{ required: true, message: 'Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.' }]}
                           >
                             <Input
                               disabled
@@ -2016,9 +2012,10 @@ export default function PortListPage() {
                              name="mapSymbolId"
                             {...labelProps('Biểu tượng bản đồ')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={createGeometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}
                           >
                             <Select
-                              placeholder="Chọn biểu tượng hiển thị"
+                              placeholder="Chọn biểu tượng bản đồ"
                               allowClear
                               showSearch
                               optionFilterProp="label"
@@ -2055,6 +2052,7 @@ export default function PortListPage() {
                              name="coordinateSystem"
                             {...labelProps('Hệ quy chiếu')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={createGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}
                           >
                             <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle}
                               options={[
@@ -2069,15 +2067,16 @@ export default function PortListPage() {
                              name="displayRule"
                             {...labelProps('Quy tắc hiển thị')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={createGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}
                           >
-                            <Input placeholder="VD: Hiển thị mặc định" maxLength={255} disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
+                            <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
                           </Form.Item>
                         </Col>
                       </Row>
                       {/* GPS Coordinates (DMS) */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
+                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{createGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
                         </span>
                         {gpsCoordList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
@@ -2523,6 +2522,7 @@ export default function PortListPage() {
                             required
                             style={{ marginBottom: spaceFormField }}
                             tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa"
+                            rules={[{ required: true, message: 'Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.' }]}
                           >
                             <Input
                               disabled
@@ -2768,7 +2768,7 @@ export default function PortListPage() {
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                            <Select style={selectStyle} options={[
+                            <Select placeholder="Chọn loại đối tượng" style={selectStyle} options={[
                               { value: 'POINT', label: 'Đối tượng điểm' },
                               { value: 'LINE', label: 'Đối tượng đường' },
                               { value: 'POLYGON', label: 'Đối tượng vùng' },
@@ -2776,9 +2776,9 @@ export default function PortListPage() {
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng bản đồ')} style={{ marginBottom: spaceFormField }}>
+                          <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng bản đồ')} style={{ marginBottom: spaceFormField }} rules={updateGeometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}>
                             <Select
-                              placeholder="Chọn biểu tượng"
+                              placeholder="Chọn biểu tượng bản đồ"
                               allowClear
                               showSearch
                               optionFilterProp="label"
@@ -2809,22 +2809,22 @@ export default function PortListPage() {
                       </Row>
                       <Row gutter={16}>
                         <Col span={12}>
-                          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
-                            <Select style={selectStyle} disabled options={[
+                          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }} rules={updateGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}>
+                            <Select placeholder="Chọn hệ quy chiếu" style={selectStyle} disabled options={[
                               { value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' },
                             ]} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
-                            <Input placeholder="VD: display_rule_1" disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
+                          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }} rules={updateGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}>
+                            <Input placeholder="Chọn quy tắc hiển thị" disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
                           </Form.Item>
                         </Col>
                       </Row>
                       {/* GPS Coordinates (DMS) */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
+                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{updateGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
                         </span>
                         {gpsCoordList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
@@ -3286,7 +3286,7 @@ export default function PortListPage() {
                         ['Loại đối tượng', selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'],
                         ['Biểu tượng bản đồ', (() => { const sym = symbols.find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolId || '—'; })(),],
                         ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'],
-                        ['Quy tắc hiển thị', 'Độ, phút, giây (DMS)'],
+                        ['Quy tắc hiển thị', (selectedRecord.geometryType || (selectedRecord as any).coordinates) ? 'Độ, phút, giây (DMS)' : '—'],
                       ].map(([label, value], i) => (
                         <div key={i} className="detail-row">
                           <span className="detail-label">{label}</span>

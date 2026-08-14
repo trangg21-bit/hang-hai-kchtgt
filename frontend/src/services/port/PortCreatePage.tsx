@@ -323,7 +323,7 @@ export default function PortCreatePage() {
         waterAreaScope: values.waterAreaScope || undefined,
         ...indicators,
         otherWaterAreas: values.otherWaterAreas || undefined,
-        geometryType: values.geometryType || 'POINT',
+        geometryType: values.geometryType || undefined,
         mapSymbolId: values.mapSymbolId || undefined,
         spatialId: values.spatialId || undefined,
         coordinateSystem: values.coordinateSystem !== undefined && values.coordinateSystem !== null ? Number(values.coordinateSystem) : undefined,
@@ -421,7 +421,6 @@ export default function PortCreatePage() {
           form={form}
           layout="vertical"
           initialValues={{
-            geometryType: 'POINT',
             coordinateSystem: 1,
           }}
           scrollToFirstError
