@@ -259,6 +259,8 @@ export default function DryPortList() {
   const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sortField, setSortField] = useState('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
 
   const [dataSource, setDataSource] = useState<DryPort[]>([]);
   const [total, setTotal] = useState(0);
@@ -822,7 +824,7 @@ export default function DryPortList() {
       render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span> },
     { key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
       render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-    { key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 250, sortable: true,
+    { key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 250, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
       render: (_: unknown, record: DryPort) => (
         <div>
           <a onClick={() => openDetailModal(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{record.dryPortName || '—'}</a>
@@ -836,11 +838,10 @@ export default function DryPortList() {
       label: 'Ngày cập nhật',
       dataIndex: 'updatedAt',
       width: 160,
-      align: 'center' as const,
       sortable: true,
-      sortOrder: 'descend' as const,
+      sortOrder: sortField === 'updatedAt' ? sortOrder : undefined,
       render: (v: string | null | undefined) => (
-        <span style={{ fontSize: fontSizeMd, color: textPrimary, display: 'block', textAlign: 'center', width: '100%' }}>
+        <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
           {formatDate(v)}
         </span>
       ),
@@ -850,7 +851,7 @@ export default function DryPortList() {
         const s = APPROVAL_STYLE_MAP[status || ''] || { color: textTertiary, label: status || '—' };
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
       }},
-  ], [page, pageSize]);
+  ], [page, pageSize, sortField, sortOrder]);
 
   const rowActions = useCallback((record: DryPort) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
@@ -864,8 +865,8 @@ export default function DryPortList() {
       actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => openRejectModal(record), danger: true });
     }
-    // Xóa: tất cả trạng thái (kể cả PENDING) — giống cảng biển
-    if (hasPerm('dryport:delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => openDeleteModal(record), danger: true });
+    // Xóa: chỉ trạng thái DRAFT/NHAP (giống cảng biển)
+    if (hasPerm('dryport:delete') && isDraft) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => openDeleteModal(record), danger: true });
     actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => { const eid = record.id; setHistoryModalOpen(true); setHistoryRecords([]); setHistoryLoading(true); setHistoryExpanded({}); setHistorySearch(''); historySearchRef.current = ''; setHistoryDateFrom(dayjs().subtract(7, 'day').format('YYYY-MM-DD HH:mm')); setHistoryDateTo(dayjs().format('YYYY-MM-DD HH:mm')); setHistoryEntityName(record.dryPortName || ''); setHistoryEntityId(eid); setHistoryMode('current'); setHistoryEntityNames({}); setHistoryEntityFilter(''); dryPortHistory.getHistory(eid, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setHistoryLoading(false)); } });
     return actions;
   }, [hasPerm, openDetailModal, openSubmitModal, openApproveModal, openRejectModal, openDeleteModal]);
@@ -1228,7 +1229,8 @@ export default function DryPortList() {
             emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{search || activeTab !== 'all' ? 'Không tìm thấy cảng cạn nào phù hợp' : 'Chưa có cảng cạn nào'}</div></div>}
           />
         ) : (
-          <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 900 }} />
+          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = a[sortField] ?? ''; const bVal = b[sortField] ?? ''; const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 900 }}
+            onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }} />
         )}
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>

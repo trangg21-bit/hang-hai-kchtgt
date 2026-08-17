@@ -395,6 +395,9 @@ public class BerthService {
     public void softDelete(UUID id) {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
+            throw new IllegalArgumentException("Chỉ được xóa bến cảng ở trạng thái Nháp");
+        }
         long pierCount = pierRepository.countByBerthIdAndDeletedAtIsNull(id);
         if (pierCount > 0) {
             throw new IllegalStateException("Không thể xóa: bến cảng đang có " + pierCount + " cầu cảng liên kết");
