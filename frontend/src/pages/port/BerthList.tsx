@@ -111,10 +111,10 @@ const translateField = (fn: string) => FIELD_LABELS[fn] || fn;
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Nháp' },
   DRAFT: { color: statusDraft, label: 'Nháp' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục' },
-  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã duyệt' },
+  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
 };
@@ -129,7 +129,7 @@ const TAB_STATUS_LIST = [
   { key: 'DRAFT', label: 'Nháp', color: statusDraft },
   { key: 'APPROVED_LEVEL1', label: 'Chờ Cảng vụ duyệt', color: actionPrimary },
   { key: 'APPROVED_LEVEL2', label: 'Chờ Cục duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Được phê duyệt', color: statusOperational },
+  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 
@@ -166,7 +166,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', APPROVED_LEVEL1:'Chờ Cảng vụ duyệt', APPROVED_LEVEL2:'Chờ Cục duyệt', APPROVED:'Đã duyệt', REJECTED:'Từ chối' }; return m[val.toUpperCase()] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', APPROVED_LEVEL1:'Chờ Cảng vụ duyệt', APPROVED_LEVEL2:'Chờ Cục duyệt', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối' }; return m[val.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { DANG_KHAI_THAC:'Đang khai thác/Vận hành', CHUA_KHAI_THAC:'Chưa khai thác/Vận hành', DUNG_KHAI_THAC:'Dừng khai thác/Vận hành' }; return m[val.toUpperCase()] || val; }
   if (fn === 'structureType') { const m: Record<string,string> = { '1':'Bến liền bờ', '2':'Bến phao', '3':'Bến nổi' }; return m[val] || val; }
   if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val)-1] || val;
@@ -639,7 +639,7 @@ export default function BerthList() {
       if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
       if (['DRAFT','NHAP'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       if (hasPerm('berth:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
-      if (hasPerm('berth:delete') && ['DRAFT','TU_CHOI','REJECTED','TAM_NGUNG','SUSPENDED'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
+      if (hasPerm('berth:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -703,17 +703,17 @@ export default function BerthList() {
     ] : [];
 
     const tailColumns: any[] = [
-      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 140, sortable: true, sortOrder,
+      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 200, sortable: true, sortOrder,
         render: (v: string | null) => {
           const m: Record<string, { color: string; label: string }> = {
-            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác' },
-            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác' },
-            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác' },
+            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
+            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
+            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
           };
           const s = m[v || ''] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
         } },
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 140, sortable: true, sortOrder,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 150, sortable: true, sortOrder,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
@@ -760,7 +760,7 @@ export default function BerthList() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Bến cảng' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến cảng' }]}
         actions={headerActions}
       />
 

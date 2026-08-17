@@ -55,11 +55,13 @@ export const portCRUD = {
     page?: number;
     size?: number;
     orgUnitId?: string;
+    approvalStatus?: string;
   }): Promise<PaginatedResponse<Port>> {
     const sp = buildSearchParams({
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
       orgUnitId: params?.orgUnitId,
+      approvalStatus: params?.approvalStatus,
     });
     const res = await api.get(`/v1/ports?${sp}`);
     const pageData = res.data.data;
@@ -81,7 +83,7 @@ export const portCRUD = {
     province?: string;
     portGroup?: number;
     portClassification?: number;
-    managingUnitId?: string;
+    orgUnitId?: string;
     status?: string;
     approvalStatus?: string;
     operationalStatus?: string;
@@ -95,7 +97,7 @@ export const portCRUD = {
       province: params?.province,
       portGroup: params?.portGroup,
       portClassification: params?.portClassification,
-      managingUnitId: params?.managingUnitId,
+      orgUnitId: params?.orgUnitId,
       status: params?.status,
       approvalStatus: params?.approvalStatus,
       operationalStatus: params?.operationalStatus,
@@ -310,6 +312,7 @@ export const dryPortCRUD = {
     page?: number;
     size?: number;
     orgUnitId?: string;
+    provinceId?: number;
     search?: string;
     status?: string;
     approvalStatus?: string;
@@ -318,6 +321,7 @@ export const dryPortCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
       orgUnitId: params?.orgUnitId,
+      provinceId: params?.provinceId,
       search: params?.search,
       status: params?.status,
       approvalStatus: params?.approvalStatus,

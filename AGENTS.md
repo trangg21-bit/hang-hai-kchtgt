@@ -183,7 +183,7 @@ PMO Lead
 
 ### List Screen Pattern
 
-Mọi màn hình danh sách (quản lý người dùng, vai trò, đơn vị, v.v.) **PHẢI** dùng 5 components share từ `frontend/src/components/list-view/`:
+Mọi màn hình danh sách (quản lý người dùng, nhóm người dùng, đơn vị, v.v.) **PHẢI** dùng 5 components share từ `frontend/src/components/list-view/`:
 
 | Component      | Vai trò                                                  |
 | -------------- | -------------------------------------------------------- |
@@ -265,34 +265,32 @@ Toàn bộ cấu trúc tài liệu đặc tả nghiệp vụ (feature-brief.md) 
 
 | File                             | Vai trò                                      | Agent nào phải đọc        |
 | -------------------------------- | -------------------------------------------- | ------------------------- |
-| `docs/feature-brief-template.md` | Template 10-section cho mọi feature-brief.md | **BA** (business analyst) |
+| `docs/feature-brief-template.md` | Template 7-section cho mọi feature-brief.md | **BA** (business analyst) |
 
-### Cấu trúc 10 section bắt buộc
+### Cấu trúc 7 section bắt buộc
 
-Mọi file `feature-brief.md` **PHẢI** tuân thủ đúng cấu trúc 10 section, đúng thứ tự, đúng tiêu đề:
+Mọi file `feature-brief.md` **PHẢI** tuân thủ đúng cấu trúc 7 section, đúng thứ tự, đúng tiêu đề (theo `docs/feature-brief-template.md`):
 
 | #   | Section                                 | Nội dung                                                                             |
 | --- | --------------------------------------- | ------------------------------------------------------------------------------------ |
-| 1   | Tổng quan                               | 1.1 Tính năng này làm gì / 1.2 Tại sao cần / 1.3 Luồng hoạt động chính               |
-| 2   | Ai dùng? Dùng như thế nào?              | Bảng phân quyền RBAC 7 role + logic Admin Cục đặc biệt                               |
-| 3   | User Stories                            | Must / Should / Could, định dạng US-{XXX}-XX                                         |
-| 4   | Yêu cầu chức năng (Acceptance Criteria) | AC-{XXX}-XX, mỗi AC kèm xử lý khi lỗi                                                |
-| 5   | Quy tắc nghiệp vụ (Business Rules)      | BR-{XXX}-XX, định dạng bảng: ID / Rule / Applies-to / Source                         |
-| 6   | Mô hình dữ liệu                         | Bảng DB, 🔴 đỏ = trường mới, ~~gạch ngang~~ = trường cần loại bỏ                     |
-| 7   | API Endpoints                           | Bảng Method / Endpoint / Mô tả / Phân quyền                                          |
-| 8   | Chi tiết nghiệp vụ từng phần            | Triển khai chi tiết từng phần (bỏ nếu không áp dụng)                                 |
-| 9   | Yêu cầu phi chức năng                   | Hiệu năng / Mở rộng / Bảo mật / Độ tin cậy / UX / Pháp lý                            |
-| 10  | Yêu cầu giao diện người dùng            | Token theme + bảng cột chi tiết (STT/Tên trường/Loại ĐK/Edit/Bắt buộc/Default/Mô tả) |
+| 1   | Mô tả ngắn                              | 3–5 dòng: chức năng này làm gì, ai dùng                                              |
+| 2   | Trường dữ liệu                          | Bảng: # / Trường / Bắt buộc / Kiểu-ràng buộc / Ghi chú                               |
+| 3   | Trạng thái và phê duyệt                 | Theo tài liệu nền (mục 3.7); chức năng có bước phê duyệt thì mô tả đầy đủ quy trình  |
+| 4   | Quy tắc và phân quyền riêng             | Chỉ ghi quy tắc **chưa có** trong tài liệu nền; phân quyền dạng `<resource>:<action>` + bảng vai trò × thao tác + **Admin Cục** |
+| 5   | Điểm khác biệt so với mẫu chung         | Bảng 8 dòng bắt buộc điền đủ, không bỏ trống                                         |
+| 6   | Phần kỹ thuật — đường dẫn gọi dữ liệu   | Bảng Method / Đường dẫn / Mô tả / Quyền — **đề xuất của BA, SA chốt**                |
+| 7   | Phần kỹ thuật — cấu trúc bảng           | 🔴 = trường mới, ~~gạch ngang~~ = trường cần loại bỏ — **đề xuất, SA chốt**           |
 
 ### Quy tắc bắt buộc
 
-1. **KHÔNG đảo thứ tự** 10 section — thứ tự cố định như trên
-2. **KHÔNG bỏ section** — nếu section không áp dụng, ghi rõ "Không áp dụng" kèm lý do
+1. **KHÔNG đảo thứ tự** 7 section — thứ tự cố định như trên
+2. **KHÔNG bỏ section** — section không áp dụng thì ghi "không"/"không áp dụng" kèm lý do; mục 3–5 không được để trống
 3. **KHÔNG thay đổi tiêu đề section** — tiêu đề cố định như template
-4. **KHÔNG tự bịa định dạng ID** — AC/BR/US luôn theo format `{PREFIX}-{XXX}-{XX}`
-5. **KHÔNG bỏ logic Admin Cục** (section 2.2) — mọi feature phải khai báo phân quyền đặc biệt này
-6. **KHÔNG hardcode màu/spacing/font-size** trong section 10 — dùng token từ `theme.ts` và `tokens.ts`
-7. **Trước khi viết bất kỳ feature-brief.md nào**, BA PHẢI đọc `docs/feature-brief-template.md` để nắm cấu trúc chuẩn
+4. **KHÔNG bỏ logic Admin Cục** (mục 4) — mọi feature phải khai báo phân quyền đặc biệt này
+5. **Mục 6–7 là đề xuất của BA** — người thiết kế kỹ thuật (SA) chốt; khi review **không bắt lỗi** phần này
+6. **KHÔNG hardcode màu/spacing/font-size** — giao diện theo convention chung (`docs/conventions/` + `theme.ts` + `tokens.ts`), không mô tả lại trừ khi khác mẫu (khai báo ở mục 5, dòng 8)
+7. **Trước khi viết bất kỳ feature-brief.md nào**, BA PHẢI đọc `docs/feature-brief-template.md` + tài liệu nền của module để biết phần CHUNG (không lặp lại) và phần RIÊNG
+8. **Muốn thay đổi quy định chung → sửa tài liệu nền TRƯỚC**, rồi mới sửa feature-brief — không để feature-brief mâu thuẫn với tài liệu nền
 
 ### BỎ khỏi template
 
@@ -305,12 +303,13 @@ Mọi file `feature-brief.md` **PHẢI** tuân thủ đúng cấu trúc 10 secti
 PMO Lead
   ├── Đọc AGENTS.md (file này)
   └── Dispatch BA → PHẢI chép các constraints sau vào prompt:
-        "Trước khi viết feature-brief.md, đọc docs/feature-brief-template.md làm template chuẩn.
-         Tuân thủ đúng 10 section, đúng thứ tự, đúng tiêu đề.
-         Format AC: AC-{XXX}-XX, BR: BR-{XXX}-XX, US: US-{XXX}-XX.
-         KHÔNG bỏ section 2.2 (logic Admin Cục).
-         Section 6: dùng 🔴 đỏ cho trường mới, ~~gạch ngang~~ cho trường cần loại bỏ.
-         Section 10: dùng token từ theme.ts + tokens.ts, không hardcode giá trị.
+        "Trước khi viết feature-brief.md, đọc docs/feature-brief-template.md làm template chuẩn
+         + tài liệu nền của module (phần CHUNG — không lặp lại trong brief).
+         Tuân thủ đúng 7 section, đúng thứ tự, đúng tiêu đề.
+         Mục 3–5 không được để trống — không có gì thì ghi 'không'.
+         Mục 4: khai báo Admin Cục + phân quyền dạng <resource>:<action> + bảng vai trò × thao tác.
+         Mục 6–7: là đề xuất của BA — SA chốt, không bắt lỗi khi review.
+         KHÔNG hardcode màu/spacing trong mô tả giao diện — theo convention chung.
          BỎ: Kịch bản kiểm thử, Môi trường kỹ thuật."
 ```
 
@@ -326,30 +325,40 @@ Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/\*\*.
 Khi phát triển module/chức năng mới có yêu cầu phân quyền, Dev **BẮT BUỘC** đăng ký permission trong file:
 
 ```
-src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java
+src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java
 ```
+
+### Mô hình phân quyền (thực tế hệ thống)
+
+- Phân quyền **động theo nhóm người dùng và từng tài khoản**: quản trị viên tích chọn (checkbox) các quyền trên cây quyền cho một nhóm (màn hình Phân quyền nhóm F-002) hoặc gán trực tiếp cho một tài khoản (màn Quản lý tài khoản đã có UI gán quyền trực tiếp — `UsersPage.tsx`, API `/users/{id}/permissions`).
+- **Nhóm người dùng là động** — có thể thêm mới, sửa, xóa, đổi quyền bất kỳ lúc nào.
+- **Quyền của một tài khoản = quyền gán riêng + quyền của các nhóm tài khoản đang thuộc** — `User.getAllPermissions()` đã đúng mô hình này (không tính vai trò; quyền đặc biệt `group:manage`, `admin:all`, `orgunit:scope_all` chỉ gán trực tiếp, nhóm không thừa kế được).
+- Máy chủ kiểm tra **từng thao tác** theo quyền `<resource>:<action>` (`PermissionMiddleware` + `@PreAuthorize`) — không có quyền → **403 Forbidden**.
+- Tài khoản quản trị hệ thống (ROLE_SYSTEM_ADMIN) vượt qua mọi kiểm tra quyền.
+- Tài khoản **Admin Cục** — mọi feature phải khai báo phân quyền Admin Cục (xem mục Feature Brief Template Convention); Admin Cục được xem thêm các thông tin nhạy cảm mà tài khoản khác không thấy (người tạo, người sửa cuối, thời gian tạo/cập nhật).
 
 ### Quy trình bắt buộc
 
-1. **Thêm `seedPermission()`** cho từng permission của module mới trong cả 2 method: `run()` và `upsertMissingPermissions()`. Format: `<resource>:<action>` (vd: `navigationchannel:create`).
+1. **Thêm `seedPermission(definitions, resource, action)`** cho từng permission của module mới trong `run()` của `PermissionSeeder.java`. Format: `<resource>:<action>` (vd: `navigationchannel:create`).
 
-2. **Gán permission vào role** — thêm permission code vào danh sách `rolePermissionMap` của từng role phù hợp trong method `run()` và `rolePermMap` trong `upsertMissingPermissions()`.
+2. **Không còn bước gán vào role** — permission mới sau khi seed sẽ tự xuất hiện trong cây quyền để gán cho nhóm/tài khoản.
 
-3. **Kiểm tra `upsertMissingPermissions()`** — method này chạy mỗi lần khởi động, tự động thêm permission mới (đã seed) vào role đã tồn tại. Chỉ hoạt động nếu Dev đã thêm `seedPermission()`.
+3. **Kiểm tra `run()` (PermissionSeeder)** — chạy mỗi lần khởi động: với mỗi permission đã seed, nếu chưa có trong DB (`findByCode`) thì tự động insert. Chỉ hoạt động nếu Dev đã thêm `seedPermission()`.
 
 ### Hậu quả nếu bỏ qua
 
-- Permission không tồn tại trong DB → `@PreAuthorize` trên controller không khớp → **403 Forbidden** với mọi user kể cả Admin
-- Cây phân quyền trong popup Phân quyền nhóm (F-002) sẽ không hiển thị chức năng mới
+- Permission không tồn tại trong DB → `@PreAuthorize` trên controller không khớp → **403 Forbidden** với mọi user (trừ ROLE_SYSTEM_ADMIN / ROLE_SUPER_ADMIN — 2 quyền này vượt qua mọi kiểm tra)
+- Cây phân quyền trong popup Phân quyền nhóm (F-002) sẽ không hiển thị chức năng mới → không ai tích chọn được quyền cho nhóm/tài khoản
 
 ### Agent workflow
 
 ```
 PMO Lead
   └── Dispatch Dev làm module mới → PHẢI chép constraint sau vào prompt:
-        "Sau khi tạo controller với @PreAuthorize, vào RolePermissionSeeder.java
-         thêm seedPermission() cho từng permission mới trong cả run() và
-         upsertMissingPermissions(), rồi gán vào đúng role."
+        "Sau khi tạo controller với @PreAuthorize, vào PermissionSeeder.java
+         thêm seedPermission(definitions, resource, action) cho từng permission mới
+         trong run(). Lưu ý: phân quyền thực tế là động qua nhóm/tài khoản —
+         không còn bước gán role."
 ```
 
 ## AI Checklist for Reports & Gaps (BẮT BUỘC TUÂN THỦ)
@@ -384,7 +393,7 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
    | ----------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
    | **BA Lean Spec**  | `docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md`                        | Use Cases, Business Rules, Domain Model, Trạng thái, Quy trình phê duyệt, Validation rules chi tiết                                                    | **Luôn luôn** — đây là nguồn sự thật duy nhất cho logic nghiệp vụ |
    | **Module Brief**  | `docs/modules/M-{xxx}-{slug}/module-brief.md`                           | Tổng quan module, danh sách features, status, dependencies                                                                                             | Khi cần hiểu scope tổng thể của module                            |
-   | **Feature Brief** | `docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md` | Flow chi tiết, Acceptance Criteria, DTO fields, REST endpoint, Business Rules, Roles & Permissions, Entities, Validation rules cho từng feature cụ thể | **Luôn luôn** — khi code một feature cụ thể                       |
+   | **Feature Brief** | `docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md` | Mô tả ngắn, Trường dữ liệu, Trạng thái và phê duyệt, Quy tắc và phân quyền riêng (dạng resource:action), Điểm khác biệt (8 dòng), Phần kỹ thuật (đường dẫn gọi dữ liệu + cấu trúc bảng) | **Luôn luôn** — khi code một feature cụ thể                       |
 
    **Workflow bắt buộc khi bắt đầu code một module/feature:**
 
@@ -393,14 +402,14 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
    Bước 2: Đọc docs/modules/M-{xxx}-{slug}/ba/00-lean-spec.md
            → Nắm Use Cases, Business Rules, Domain Model, Trạng thái, Validation
    Bước 3: Đọc docs/modules/M-{xxx}-{slug}/_features/F-{xxx}-{slug}/feature-brief.md
-           → Nắm Flow, Acceptance Criteria, DTO fields, REST endpoint, Roles
+           → Nắm Mô tả ngắn, Trường dữ liệu, Trạng thái và phê duyệt, Quy tắc và phân quyền riêng, Điểm khác biệt, Phần kỹ thuật
    Bước 4: Đối chiếu từng điểm trước khi viết code:
            ✅ Tên Entity/bảng có khớp tài liệu?
            ✅ Các trường DTO (required/optional, kiểu dữ liệu, validation) có khớp?
            ✅ Trạng thái mặc định khi tạo mới có đúng? (VD: PROPOSED)
            ✅ Quy trình phê duyệt (mấy cấp, chuyển trạng thái) có đúng?
-           ✅ Business Rules (BR-xxx) có được implement đầy đủ?
-           ✅ Roles & Permissions có khớp?
+           ✅ Business Rules (BR-xxx) trong lean-spec có được implement đầy đủ?
+           ✅ Phân quyền riêng (dạng resource:action) có khớp?
            ✅ REST endpoint path và method có đúng?
    Bước 5: Nếu phát hiện BẤT KỲ sai lệch nào giữa code và tài liệu
            → DỪNG LẠI, báo cáo chi tiết cho người dùng, KHÔNG tự ý giả định

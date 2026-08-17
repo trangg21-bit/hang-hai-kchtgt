@@ -50,6 +50,16 @@ function formatDate(dateStr: string | null): string {
   } catch { return dateStr; }
 }
 
+// Badge hiển thị giống chuẩn bến cảng: span pill + semantic token
+function renderStatusBadge(b: { color: string; label: string }) {
+  let c = textTertiary;
+  if (b.color === 'green') c = statusOperational;
+  else if (b.color === 'red') c = statusCritical;
+  else if (b.color === 'orange') c = statusAttention;
+  else if (b.color === 'blue') c = actionPrimary;
+  return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>;
+}
+
 function formatNumber(val: number | null | undefined): string {
   if (val == null || Number.isNaN(val)) return '—';
   return val.toLocaleString('vi-VN');
@@ -710,12 +720,7 @@ function renderGeneralTab(
             <Typography.Text style={labelStyle}>Trạng thái hoạt động</Typography.Text>
             <div>
               {data.operationalStatus ? (
-                <Tag
-                  color={trangThaiHoatDongBadge(data.operationalStatus).color}
-                  style={{ borderRadius: radiusPill, padding: '2px 12px', fontSize: fontSizeMd }}
-                >
-                  {trangThaiHoatDongBadge(data.operationalStatus).label}
-                </Tag>
+                renderStatusBadge(trangThaiHoatDongBadge(data.operationalStatus))
               ) : (
                 <Typography.Text style={{ color: textTertiary }}>—</Typography.Text>
               )}
@@ -725,12 +730,7 @@ function renderGeneralTab(
             <Typography.Text style={labelStyle}>Trạng thái phê duyệt</Typography.Text>
             <div>
               {data.approvalStatus ? (
-                <Tag
-                  color={trangThaiPheDuyetBadge(data.approvalStatus).color}
-                  style={{ borderRadius: radiusPill, padding: '2px 12px', fontSize: fontSizeMd }}
-                >
-                  {trangThaiPheDuyetBadge(data.approvalStatus).label}
-                </Tag>
+                renderStatusBadge(trangThaiPheDuyetBadge(data.approvalStatus))
               ) : (
                 <Typography.Text style={{ color: textTertiary }}>—</Typography.Text>
               )}

@@ -28,6 +28,7 @@ import {
   BuildOutlined,
   AimOutlined,
   HomeOutlined,
+  TruckOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -277,7 +278,7 @@ export default function AppLayout() {
             } : null,
           ].filter(Boolean),
         } : null,
-        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <HomeOutlined /> } : null,
+        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <TruckOutlined /> } : null,
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
     },
