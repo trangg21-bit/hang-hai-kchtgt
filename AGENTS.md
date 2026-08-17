@@ -335,6 +335,7 @@ src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java
 - **Quyền của một tài khoản = quyền gán riêng + quyền của các nhóm tài khoản đang thuộc** — `User.getAllPermissions()` đã đúng mô hình này (không tính vai trò; quyền đặc biệt `group:manage`, `admin:all`, `orgunit:scope_all` chỉ gán trực tiếp, nhóm không thừa kế được).
 - Máy chủ kiểm tra **từng thao tác** theo quyền `<resource>:<action>` (`PermissionMiddleware` + `@PreAuthorize`) — không có quyền → **403 Forbidden**.
 - Tài khoản quản trị hệ thống (ROLE_SYSTEM_ADMIN) vượt qua mọi kiểm tra quyền.
+- Tài khoản **Admin Cục** — mọi feature phải khai báo phân quyền Admin Cục (xem mục Feature Brief Template Convention); Admin Cục được xem thêm các thông tin nhạy cảm mà tài khoản khác không thấy (người tạo, người sửa cuối, thời gian tạo/cập nhật).
 
 ### Quy trình bắt buộc
 
