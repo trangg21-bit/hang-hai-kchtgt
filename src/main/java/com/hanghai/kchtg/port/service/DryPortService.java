@@ -377,6 +377,9 @@ public class DryPortService {
     public void softDelete(UUID id) {
         DryPort entity = dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
+            throw new IllegalArgumentException("Chỉ được xóa cảng cạn ở trạng thái Nháp");
+        }
         DryPort snapshot = captureSnapshot(entity);
         entity.softDelete(SecurityUtils.getCurrentUserId());
         DryPort saved = dryPortRepository.save(entity);

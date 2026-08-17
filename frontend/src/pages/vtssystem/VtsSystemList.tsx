@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select } from 'antd';
+import { Typography, Modal, Input, Drawer, Button, DatePicker, Space, Select, Radio, Tag } from 'antd';
 import {
   EditOutlined,
   DeleteOutlined,
@@ -9,6 +9,7 @@ import {
   CloseOutlined,
   HistoryOutlined,
   ExclamationCircleOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import type { VtsSystemResponse, ListParams, ApprovalRequest } from '../../types/vtsSystem';
@@ -29,6 +30,7 @@ import {
   radiusSm, radiusPill, spaceFormField, spaceMd, spaceSm, spaceLg,
   statusOperational, statusDraft, statusCritical, statusAttention,
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
+  borderDefault,
 } from '../../tokens';
 import { colors } from '../../theme';
 import dayjs from 'dayjs';
@@ -67,6 +69,9 @@ const CONDITION_COLOR: Record<string, string> = {
 };
 
 const HISTORY_PAGE_SIZE = 20;
+
+// Thứ tự hiển thị field trong lịch sử theo đúng thứ tự form tạo mới VTS (VtsSystemForm.tsx)
+const HISTORY_FIELD_ORDER = ['orgUnitId', 'owningOrgId', 'operatingOrgId', 'portId', 'code', 'systemName', 'province', 'provinceId', 'address', 'operationStartDate', 'scope', 'maritimeNotice', 'conditionStatus', 'responsibilityLevel', 'source', 'partner', 'note'];
 
 // ── History helpers ──────────────────────────────────────────────
 
@@ -304,6 +309,19 @@ export default function VtsSystemList() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
+
+  // Số nhóm bản ghi lịch sử (gom theo giây + người cập nhật — giống logic timeline Cảng biển)
+  const historyGroupCount = useMemo(() => {
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...historyRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    let count = 0, prevKey = '';
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const key = `${ts ? toSec(ts) : 0}-${historyActor(r)}`;
+      if (key !== prevKey) { count += 1; prevKey = key; }
+    }
+    return count;
+  }, [historyRecords]);
 
   // Count tabs
   const [countProposed, setCountProposed] = useState<number>(0);
@@ -574,7 +592,7 @@ export default function VtsSystemList() {
 
   const fmtTime = (ts: string) => {
     const d = dayjs(ts);
-    return `${d.format('HH:mm:ss')} - ${d.isSame(dayjs(), 'day') ? 'Hôm nay' : d.format('DD/MM/YYYY')}`;
+    return `${d.format('HH:mm')} ${d.format('DD/MM/YYYY')}`;
   };
 
   const renderHistoryTimeline = (records: any[]) => {
@@ -598,38 +616,72 @@ export default function VtsSystemList() {
     );
     return (
       <div>{groups.map((g, gi) => {
-        const action = getActionLabel(g.items);
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item));
-        const actionAccent = getHistoryActionAccent(g.items, action);
+        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
+          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        });
         const unitName = g.items[0]?.orgUnitName || g.items[0]?.unitName || '—';
-        const informationTitle = action.label === 'Tạo mới' ? 'Thông tin tạo mới:' : 'Thông tin thay đổi:';
+        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+        const formatHistoryValue = (fn: string, raw: string | null) => {
+          if (raw === null || raw === '(null)' || raw === '') return null;
+          const t = raw.trim();
+          if (t.startsWith('[') && t.endsWith(']')) {
+            if (t === '[]') return 'Không có';
+            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+            return `${parts.length} công trình hạ tầng`;
+          }
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            const n = Number(t);
+            return Number.isInteger(n) ? String(n) : t;
+          }
+          return historyFieldValue(fn, raw);
+        };
+        if (changes.length === 0) return null;
         return (
-        <div key={gi} style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 0.38fr) minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceMd : 0 }}>
-          <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-            <Typography.Text style={{ display: 'block', fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5 }}>
-              {g.ts ? fmtTime(g.ts) : '—'}
-            </Typography.Text>
-            <Typography.Text style={{ display: 'block', marginTop: spaceXs, fontSize: fontSizeMd, color: textSecondary, lineHeight: 1.5 }}>
-              Người cập nhật: {g.actor || '—'}
-            </Typography.Text>
-            <Typography.Text style={{ display: 'block', fontSize: fontSizeMd, color: textSecondary, lineHeight: 1.5 }}>
-              Đơn vị: {unitName}
-            </Typography.Text>
-          </div>
-          <div style={{ minWidth: 0, background: surfacePage, borderLeft: `${spaceXs}px solid ${actionAccent}`, borderRadius: radiusSm, padding: spaceMd }}>
-            <Typography.Text style={{ display: 'block', color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold, marginBottom: spaceXs }}>
-              {informationTitle}
-            </Typography.Text>
-            {changes.length > 0 ? <div>{changes.map((change, ri: number) => {
+        <div key={gi} style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 0.38fr) minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+                <Typography.Text style={{ display: 'block', fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5 }}>
+                  {g.ts ? fmtTime(g.ts) : '—'}
+                </Typography.Text>
+                <span style={{ flexShrink: 0 }}>
+                  {isCreate && <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational }}>Thêm mới</span>}
+                  {!isCreate && <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>Chỉnh sửa</span>}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
+                <Typography.Text style={{ display: 'block', fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightBold, lineHeight: 1.5 }}>
+                  Người cập nhật: {g.actor || '—'}
+                </Typography.Text>
+                <Typography.Text style={{ display: 'block', fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightBold, lineHeight: 1.5 }}>
+                  Đơn vị: {unitName}
+                </Typography.Text>
+              </div>
+            </div>
+            <div style={{ position: 'relative', minWidth: 0, background: surfacePage, borderRadius: radiusSm, padding: spaceMd, paddingLeft: spaceLg, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spaceXs, background: `linear-gradient(180deg, ${actionPrimary} 0%, ${actionPrimary}40 100%)` }} />
+              <Typography.Text style={{ display: 'block', color: textPrimary, fontSize: fontSizeMd + 1, fontWeight: fontWeightBold, marginBottom: spaceXs }}>
+                {informationTitle}
+              </Typography.Text>
+              {changes.length > 0 ? <div>{changes.map((change, ri: number) => {
                 const fn = change.field;
-                const ov = change.oldValue !== null ? historyFieldValue(fn, change.oldValue) : null;
-                const nv = change.newValue !== null ? historyFieldValue(fn, change.newValue) : null;
-                return (<div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.15fr) minmax(90px, 0.85fr) 24px minmax(120px, 1.35fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
-                  <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                  <span title={ov ?? '—'} style={{ minWidth: 0, color: textSecondary, overflowWrap: 'anywhere' }}>{ov ?? '—'}</span>
-                  <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
-                  <span title={nv ?? '—'} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{nv ?? '—'}</span>
-                </div>);
+                const ov = formatHistoryValue(fn, change.oldValue);
+                const nv = formatHistoryValue(fn, change.newValue);
+                return isCreate ? (
+                  <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) minmax(160px, 2fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
+                    <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                    <span title={nv ?? '—'} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{nv ?? '—'}</span>
+                  </div>
+                ) : (
+                  <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.15fr) minmax(90px, 0.85fr) 24px minmax(120px, 1.35fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
+                    <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                    <span title={ov ?? '—'} style={{ minWidth: 0, color: textSecondary, overflowWrap: 'anywhere' }}>{ov ?? '—'}</span>
+                    <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
+                    <span title={nv ?? '—'} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{nv ?? '—'}</span>
+                  </div>
+                );
               })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
           </div>
         </div>
@@ -746,29 +798,49 @@ export default function VtsSystemList() {
 
       {/* ── History drawer ────────────────────────────────────────── */}
       <Drawer
-        size={1000}
+        size={880}
         placement="right"
         open={historyModalOpen}
         onClose={() => setHistoryModalOpen(false)}
         closable={false}
         extra={<Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={() => setHistoryModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
-        styles={{ body: { display: 'flex', flexDirection: 'column', height: '100%' }, header: { flexShrink: 0 } }}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+        }}
         title={
-          <span style={drawerTitleStyle}>
-            {selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.systemName}` : 'Lịch sử thay đổi'}
-          </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Space size={spaceSm} style={{ alignItems: 'center' }}>
+              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+              <span style={drawerTitleStyle}>
+                {selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.systemName}` : 'Lịch sử thay đổi'}
+              </span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+            </Space>
+          </div>
         }
       >
+        <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
         <div style={{ flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceSm, alignItems: 'center' }}>
-            <Input.Search placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
+          {!loadingHistory && (
+          <div style={{ display: 'none' }}>
+            <Radio.Group value="current" size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}>
+              <Radio.Button value="current" style={{ flex: 1, minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRadius: 0, border: 'none', background: 'transparent', fontSize: fontSizeMd, padding: `0 ${spaceMd}px`, borderBottom: `2px solid ${actionPrimary}`, fontWeight: fontWeightBold, color: actionPrimary }}>Bản ghi hiện tại <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyGroupCount}</Tag></Radio.Button>
+              {/* ALL_TAB_HIDDEN — cần backend getAllHistory cho VTS để bật tab này */}
+            </Radio.Group>
+          </div>
+          )}
+          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+            <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
               onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
-            <DatePicker placeholder="Từ ngày" value={historyDateFrom ? dayjs(historyDateFrom) : null}
+            <DatePicker placeholder="Từ ngày" popupClassName="history-dt-popup" value={historyDateFrom ? dayjs(historyDateFrom) : null}
               onChange={d => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" value={historyDateTo ? dayjs(historyDateTo) : null}
+            <DatePicker placeholder="Đến ngày" popupClassName="history-dt-popup" value={historyDateTo ? dayjs(historyDateTo) : null}
               onChange={d => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+            <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
