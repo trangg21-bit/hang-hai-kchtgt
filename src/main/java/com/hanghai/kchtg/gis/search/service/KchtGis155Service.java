@@ -507,7 +507,7 @@ public class KchtGis155Service {
 
                 case DRY_PORT:
                     List<DryPort> cangCans = dryPortRepository.searchDryPorts(
-                            orgUnitId, searchLower, OperationalStatus.OPERATIONAL, ApprovalStatus.APPROVED,
+                            orgUnitId, null, searchLower, OperationalStatus.OPERATIONAL, ApprovalStatus.APPROVED,
                             PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> ccSpatialMap = new HashMap<>();
                     if (!cangCans.isEmpty()) {
