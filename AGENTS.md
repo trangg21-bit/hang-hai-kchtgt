@@ -325,24 +325,24 @@ Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/\*\*.
 Khi phát triển module/chức năng mới có yêu cầu phân quyền, Dev **BẮT BUỘC** đăng ký permission trong file:
 
 ```
-src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java
+src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java
 ```
 
 ### Mô hình phân quyền (thực tế hệ thống)
 
-- Phân quyền **động theo nhóm người dùng và từng tài khoản**: quản trị viên tích chọn (checkbox) các quyền trên cây quyền cho một nhóm (màn hình Phân quyền nhóm F-002) hoặc gán trực tiếp cho một tài khoản. ⚠️ UI gán quyền cho **từng tài khoản chưa có** — backend đã có API (`/v1/users/{id}/permissions`), dev phải dựng màn hình nếu feature yêu cầu.
+- Phân quyền **động theo nhóm người dùng và từng tài khoản**: quản trị viên tích chọn (checkbox) các quyền trên cây quyền cho một nhóm (màn hình Phân quyền nhóm F-002) hoặc gán trực tiếp cho một tài khoản (màn Quản lý tài khoản đã có UI gán quyền trực tiếp — `UsersPage.tsx`, API `/users/{id}/permissions`).
 - **Nhóm người dùng là động** — có thể thêm mới, sửa, xóa, đổi quyền bất kỳ lúc nào.
-- **Quyền của một tài khoản = quyền gán riêng + quyền của các nhóm tài khoản đang thuộc.** ⚠️ Code hiện tại (`User.getAllPermissions()`) vẫn cộng thêm quyền của role — đang chờ sửa cho khớp mô hình này (bỏ trường vai trò, thay bằng Chức vị + Đơn vị).
+- **Quyền của một tài khoản = quyền gán riêng + quyền của các nhóm tài khoản đang thuộc** — `User.getAllPermissions()` đã đúng mô hình này (không tính vai trò; quyền đặc biệt `group:manage`, `admin:all`, `orgunit:scope_all` chỉ gán trực tiếp, nhóm không thừa kế được).
 - Máy chủ kiểm tra **từng thao tác** theo quyền `<resource>:<action>` (`PermissionMiddleware` + `@PreAuthorize`) — không có quyền → **403 Forbidden**.
 - Tài khoản quản trị hệ thống (ROLE_SYSTEM_ADMIN) vượt qua mọi kiểm tra quyền.
 
 ### Quy trình bắt buộc
 
-1. **Thêm `seedPermission()`** cho từng permission của module mới trong cả 2 method: `run()` và `upsertMissingPermissions()`. Format: `<resource>:<action>` (vd: `navigationchannel:create`).
+1. **Thêm `seedPermission(definitions, resource, action)`** cho từng permission của module mới trong `run()` của `PermissionSeeder.java`. Format: `<resource>:<action>` (vd: `navigationchannel:create`).
 
-2. **Gán vào bộ quyền mặc định (role) nếu cần** — thêm permission code vào danh sách `rolePermissionMap` của role phù hợp trong method `run()` và `rolePermMap` trong `upsertMissingPermissions()`. Lưu ý: các vai trò seed chỉ là **bộ quyền khởi tạo** cho tài khoản mới; phân quyền thực tế là **động** qua nhóm/tài khoản (xem mô hình ở trên).
+2. **Không còn bước gán vào role** — permission mới sau khi seed sẽ tự xuất hiện trong cây quyền để gán cho nhóm/tài khoản.
 
-3. **Kiểm tra `upsertMissingPermissions()`** — method này chạy mỗi lần khởi động, tự động thêm permission mới (đã seed) vào role đã tồn tại (bộ quyền mặc định). Chỉ hoạt động nếu Dev đã thêm `seedPermission()`.
+3. **Kiểm tra `run()` (PermissionSeeder)** — chạy mỗi lần khởi động: với mỗi permission đã seed, nếu chưa có trong DB (`findByCode`) thì tự động insert. Chỉ hoạt động nếu Dev đã thêm `seedPermission()`.
 
 ### Hậu quả nếu bỏ qua
 
@@ -354,10 +354,10 @@ src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java
 ```
 PMO Lead
   └── Dispatch Dev làm module mới → PHẢI chép constraint sau vào prompt:
-        "Sau khi tạo controller với @PreAuthorize, vào RolePermissionSeeder.java
-         thêm seedPermission() cho từng permission mới trong cả run() và
-         upsertMissingPermissions(), rồi gán vào bộ quyền mặc định (role) nếu cần.
-         Lưu ý: phân quyền thực tế là động qua nhóm/tài khoản."
+        "Sau khi tạo controller với @PreAuthorize, vào PermissionSeeder.java
+         thêm seedPermission(definitions, resource, action) cho từng permission mới
+         trong run(). Lưu ý: phân quyền thực tế là động qua nhóm/tài khoản —
+         không còn bước gán role."
 ```
 
 ## AI Checklist for Reports & Gaps (BẮT BUỘC TUÂN THỦ)
