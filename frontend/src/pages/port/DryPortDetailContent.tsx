@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tabs, Table, Space, InputNumber, Tag } from 'antd';
+import { Tabs, Table, Space, InputNumber } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../theme';
@@ -23,7 +23,6 @@ export interface DryPortDetailContentProps {
 }
 
 const COORD_SYS_LABELS: Record<number, string> = { 1: 'WGS-84', 2: 'VN-2000' };
-const DISPLAY_RULE_LABELS: Record<number, string> = { 1: 'Mặc định', 2: 'Zoom ≥ 10', 3: 'Zoom ≥ 12' };
 
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
 // fallback sang latitude/longitude (giống BerthDetailContent / PortDetailContent).
@@ -87,7 +86,7 @@ export default function DryPortDetailContent({
               <div style={{ paddingTop: 3 }}>
                 <div className="detail-grid">
                   {[
-                    ['Mã cảng cạn', r.dryPortCode || '—'],
+                    ['Mã cảng cạn', <span key="dryPortCode" style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: '#1677ff15', color: '#1677ff' }}>{r.dryPortCode || '—'}</span>],
                     ['Tên cảng cạn', r.dryPortName || '—'],
                     ['Đơn vị quản lý', (r as any).orgUnitName || orgMap.get(r.orgUnitId || '')?.split(' - ').pop() || r.orgUnitId || '—'],
                     ['Đơn vị khai thác', r.operatingUnit || '—'],
@@ -110,9 +109,9 @@ export default function DryPortDetailContent({
                       const b = (r as any).operationalStatus && opMap[(r as any).operationalStatus]
                         ? opMap[(r as any).operationalStatus]
                         : (r.portStatus === 1 ? opMap.OPERATIONAL : opMap.NOT_YET_OPERATIONAL);
-                      return <Tag color={b.color}>{b.label}</Tag>;
+                      return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>{b.label}</span>;
                     })()],
-                    ['Trạng thái', <Tag color={approvalStyleMap[r.approvalStatus || '']?.color || 'default'}>{approvalLabel}</Tag>],
+                    ['Trạng thái', (() => { const b = approvalStyleMap[r.approvalStatus || '']; return b ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>{b.label}</span> : approvalLabel; })(),],
                   ].map(([label, value], i) => (
                     <div key={i} className="detail-row">
                       <span className="detail-label">{label}</span>

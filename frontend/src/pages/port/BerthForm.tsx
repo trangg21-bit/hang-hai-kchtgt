@@ -104,7 +104,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish }: BerthFormPr
     setLoadingPorts(true);
     try {
       const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
-      if (orgUnitId) params.managingUnitId = orgUnitId;
+      if (orgUnitId) params.orgUnitId = orgUnitId;
       const r = await portCRUD.search(params);
       const ports = (r.data || []).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
       setPortOptions(ports);

@@ -447,6 +447,9 @@ public class PierService {
     public void softDelete(UUID id) {
         Pier entity = pierRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + id));
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
+            throw new IllegalArgumentException("Chỉ được xóa cầu cảng ở trạng thái Nháp");
+        }
 
         if (entity.getDeletedAt() != null) {
             throw new IllegalStateException("Cầu cảng đã bị xóa trước đó");
