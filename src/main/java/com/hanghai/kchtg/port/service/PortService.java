@@ -285,8 +285,20 @@ public class PortService {
 
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
+        LocalDateTime updatedFromDt = null;
+        if (updatedFrom != null && !updatedFrom.trim().isEmpty()) {
+            try {
+                updatedFromDt = LocalDateTime.parse(updatedFrom.replace(" ", "T"));
+            } catch (Exception e) { /* ignore */ }
+        }
+        LocalDateTime updatedToDt = null;
+        if (updatedTo != null && !updatedTo.trim().isEmpty()) {
+            try {
+                updatedToDt = LocalDateTime.parse(updatedTo.replace(" ", "T"));
+            } catch (Exception e) { /* ignore */ }
+        }
         Page<Port> results = portRepository.searchPorts(
-                orgUnitId, portCode, portName, province, statusEnum, approvalEnum, portGroup, portClass, updatedFrom, updatedTo, search, pageable);
+                orgUnitId, portCode, portName, province, statusEnum, approvalEnum, portGroup, portClass, updatedFromDt, updatedToDt, search, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         results.getContent().forEach(e -> {

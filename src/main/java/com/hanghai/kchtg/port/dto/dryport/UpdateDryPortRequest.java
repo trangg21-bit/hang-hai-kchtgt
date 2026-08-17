@@ -42,6 +42,7 @@ public class UpdateDryPortRequest {
     private BigDecimal teuCapacity;
     private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
     private UUID mapSymbolId;
+    private GisGeometryType geometryType;
     private String coordinates;
 
     // ── Extended fields (V113 — from F-026 feature brief) ──────────────

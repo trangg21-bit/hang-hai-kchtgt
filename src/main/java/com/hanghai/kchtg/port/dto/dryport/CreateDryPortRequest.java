@@ -9,6 +9,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,6 +46,7 @@ public class CreateDryPortRequest {
     private BigDecimal teuCapacity;
     private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
     private UUID mapSymbolId;
+    private GisGeometryType geometryType;
     private String coordinates;
 
     // ── Extended fields (V113 — from F-026 feature brief) ──────────────
