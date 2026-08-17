@@ -389,6 +389,7 @@ export interface DryPort {
   coordinateSystem?: number;
   displayRule?: number;
   mapSymbolId?: string;
+  geometryType?: string;
   spatialId?: string;
   coordinates?: string;
   latitude?: number;
@@ -430,6 +431,7 @@ export interface CreateDryPortRequest {
   coordinateSystem?: number;
   displayRule?: number;
   mapSymbolId?: string;
+  geometryType?: string;
   latitude?: number;
   longitude?: number;
   coordinates?: string;
@@ -463,6 +465,7 @@ export interface UpdateDryPortRequest {
   coordinateSystem?: number;
   displayRule?: number;
   mapSymbolId?: string | null;
+  geometryType?: string;
   latitude?: number;
   longitude?: number;
   coordinates?: string;

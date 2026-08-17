@@ -1394,6 +1394,8 @@ export default function PortListPage() {
         dataIndex: 'portName',
         width: 190,
         fixed: 'left' as const,
+        sortable: true,
+        sortOrder: sortField === 'portName' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => (
           <a
             onClick={async () => {
@@ -1442,7 +1444,7 @@ export default function PortListPage() {
         dataIndex: 'updatedAt',
         width: 160,
         sortable: true,
-        sortOrder,
+        sortOrder: sortField === 'updatedAt' ? sortOrder : null,
         render: (v: string | null) => (
           <span>{formatDate(v)}</span>
         ),
@@ -1490,7 +1492,7 @@ export default function PortListPage() {
         },
       },
     ],
-    [page, pageSize, getPortGroupLabel, sortOrder],
+    [page, pageSize, getPortGroupLabel, sortField, sortOrder],
   );
 
   // ── Form field style ─────────────────────────────────────────────

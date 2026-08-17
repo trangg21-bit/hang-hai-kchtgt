@@ -161,8 +161,8 @@ public class DryPortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = GisGeometryType.POINT;
-            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     saved.getDryPortName(),
@@ -323,8 +323,8 @@ public class DryPortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = GisGeometryType.POINT;
-            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(),
                     saved.getDryPortName(),
@@ -485,5 +485,11 @@ public class DryPortService {
     @Transactional
     public void deleteAttachment(UUID id, UUID attId) {
         log.info("Deleted attachment {} for DryPort id={}", attId, id);
+    }
+
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_PORT;
+        if (geomType == GisGeometryType.LINE) return GisSpatialObjectType.LINE_OTHER;
+        return GisSpatialObjectType.POLYGON_OTHER;
     }
 }
