@@ -531,6 +531,9 @@ public class PortService {
     public void softDelete(UUID id) {
         Port entity = portRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
+            throw new IllegalArgumentException("Chỉ được xóa cảng biển ở trạng thái Nháp");
+        }
 
         // Guard: cannot soft-delete if children exist
         long berthCount = countBerthByPortId(id);

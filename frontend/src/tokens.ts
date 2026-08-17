@@ -464,6 +464,126 @@ export const timelineTimeStyle: React.CSSProperties = {
   marginBottom: spaceXs,
 };
 
+// --- 5.9b Lịch sử kiểu card (gom nhóm — chuẩn Hệ thống VTS / Cảng biển) ---
+
+/** Badge trạng thái bản ghi (Thêm mới / Chỉnh sửa): pill theo màu truyền vào.
+ *  Dùng: historyBadgeStyle(statusOperational) → "Thêm mới", historyBadgeStyle(actionPrimary) → "Chỉnh sửa" */
+export const historyBadgeStyle = (color: string): React.CSSProperties => ({
+  display: 'inline-flex',
+  padding: `2px ${spaceSm}px`,
+  borderRadius: radiusPill,
+  fontSize: fontSizeMd,
+  fontWeight: fontWeightMedium,
+  background: `${color}15`,
+  color,
+});
+
+/** Khung 1 nhóm bản ghi: cột trái (thời gian + người + đơn vị) | cột phải (card thông tin) */
+export const historyGroupGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(190px, 0.38fr) minmax(0, 1fr)',
+  gap: spaceLg,
+  alignItems: 'start',
+  marginBottom: spaceSm,
+};
+
+/** Thời gian nhóm bản ghi (16:11 17/08/2026): to, đậm */
+export const historyTimeStyle: React.CSSProperties = {
+  fontSize: fontSizeLg,
+  color: textPrimary,
+  fontWeight: fontWeightBold,
+  lineHeight: 1.5,
+};
+
+/** Dòng meta trong cột trái (Người cập nhật: … / Đơn vị: …): đậm, cùng hàng với nhãn */
+export const historyMetaRowStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: fontSizeMd,
+  color: textSecondary,
+  fontWeight: fontWeightBold,
+  lineHeight: 1.5,
+};
+
+/** Card thông tin thay đổi: nền surfacePage, chừa khoảng trái cho thanh accent */
+export const historyInfoCardStyle: React.CSSProperties = {
+  position: 'relative',
+  minWidth: 0,
+  background: surfacePage,
+  borderRadius: radiusSm,
+  padding: spaceMd,
+  paddingLeft: spaceLg,
+  overflow: 'hidden',
+};
+
+/** Thanh dọc gradient bên trái card: đậm → nhạt theo màu truyền vào */
+export const historyAccentBarStyle = (color: string): React.CSSProperties => ({
+  position: 'absolute',
+  left: 0,
+  top: 0,
+  bottom: 0,
+  width: spaceXs,
+  background: `linear-gradient(180deg, ${color} 0%, ${color}40 100%)`,
+});
+
+/** Tiêu đề card: "Thông tin thêm mới:" / "Thông tin thay đổi:" */
+export const historyInfoTitleStyle: React.CSSProperties = {
+  display: 'block',
+  color: textPrimary,
+  fontSize: fontSizeMd + 1,
+  fontWeight: fontWeightBold,
+  marginBottom: spaceXs,
+};
+
+/** Dòng thay đổi (chỉnh sửa): field | giá trị cũ | → | giá trị mới */
+export const historyChangeRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(120px, 1.15fr) minmax(90px, 0.85fr) 24px minmax(120px, 1.35fr)',
+  gap: spaceSm,
+  alignItems: 'start',
+  paddingTop: spaceXs,
+  fontSize: fontSizeMd,
+  lineHeight: 1.5,
+};
+
+/** Dòng thay đổi (thêm mới): field | giá trị mới */
+export const historyCreateRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(150px, 1fr) minmax(160px, 2fr)',
+  gap: spaceSm,
+  alignItems: 'start',
+  paddingTop: spaceXs,
+  fontSize: fontSizeMd,
+  lineHeight: 1.5,
+};
+
+/** Tên field trong dòng thay đổi */
+export const historyFieldLabelStyle: React.CSSProperties = {
+  minWidth: 0,
+  fontWeight: fontWeightMedium,
+  color: textPrimary,
+  overflowWrap: 'anywhere',
+};
+
+/** Giá trị cũ: màu nhạt */
+export const historyOldValueStyle: React.CSSProperties = {
+  minWidth: 0,
+  color: textSecondary,
+  overflowWrap: 'anywhere',
+};
+
+/** Giá trị mới: nhấn mạnh (medium, textPrimary) */
+export const historyNewValueStyle: React.CSSProperties = {
+  minWidth: 0,
+  color: textPrimary,
+  fontWeight: fontWeightMedium,
+  overflowWrap: 'anywhere',
+};
+
+/** Mũi tên chuyển đổi cũ → mới */
+export const historyArrowStyle: React.CSSProperties = {
+  color: textTertiary,
+  textAlign: 'center',
+};
 
 // --- 5.10 Multi-select ---
 
