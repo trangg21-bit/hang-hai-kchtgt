@@ -1,13 +1,15 @@
 import React from 'react';
-import { Descriptions, Table, Tag, InputNumber, Space, Tabs } from 'antd';
+import { Descriptions, Table, InputNumber, Space, Tabs } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault,
+  statusOperational, statusAttention, statusCritical, actionPrimary,
   fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold,
   spaceSm, spaceMd, spaceXs,
   surfaceCard, surfacePage,
 } from '../../tokens';
+import { fmtNum } from '../../utils/numFmt';
 
 export interface PortDetailContentProps {
   selectedRecord: any;
@@ -45,17 +47,17 @@ export default function PortDetailContent({
                   ['Địa điểm (Tỉnh/Thành phố)', selectedRecord.province || '—'],
                   ['Địa điểm chi tiết', selectedRecord.detailedLocation || '—'],
                   ['Phân cấp cảng biển', selectedRecord.portClass != null ? (selectedRecord.portClass === 5 ? 'Cấp đặc biệt' : `Cấp ${selectedRecord.portClass}`) : '—'],
-                  ['Trạng thái phê duyệt', selectedRecord.approvalStatus ? <Tag color={trangThaiPheDuyetBadge(selectedRecord.approvalStatus).color}>{trangThaiPheDuyetBadge(selectedRecord.approvalStatus).label}</Tag> : '—'],
+                  ['Trạng thái phê duyệt', selectedRecord.approvalStatus ? (() => { const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus); let c = textTertiary; if (b.color === 'green') c = statusOperational; else if (b.color === 'red') c = statusCritical; else if (b.color === 'orange') c = statusAttention; else if (b.color === 'blue') c = actionPrimary; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>; })() : '—'],
                   ['Phạm vi vùng nước cảng biển', selectedRecord.waterAreaScope || '—'],
                   ['Tổng số bến cảng', selectedRecord.totalBerths ?? '—'],
                   ['Tổng số khu neo đậu, khu chuyển tải', selectedRecord.totalAnchoragesTransshipment ?? '—'],
                   ['Tổng số tuyến luồng hàng hải công cộng', selectedRecord.totalPublicChannels ?? '—'],
                   ['Tổng số tuyến luồng hàng hải chuyên dùng', selectedRecord.totalDedicatedChannels ?? '—'],
-                  ['Tổng chiều dài luồng hàng hải công cộng (km)', selectedRecord.totalPublicChannelLength != null ? selectedRecord.totalPublicChannelLength.toFixed(2) : '—'],
-                  ['Tổng chiều dài luồng hàng hải chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? selectedRecord.totalDedicatedChannelLength.toFixed(2) : '—'],
+                  ['Tổng chiều dài luồng hàng hải công cộng (km)', selectedRecord.totalPublicChannelLength != null ? fmtNum(selectedRecord.totalPublicChannelLength) : '—'],
+                  ['Tổng chiều dài luồng hàng hải chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? fmtNum(selectedRecord.totalDedicatedChannelLength) : '—'],
                   ['Tổng số phao tiêu, báo hiệu hàng hải trên luồng', selectedRecord.totalBuoysBeacons ?? '—'],
                   ['Tổng số đê, kè', selectedRecord.totalDikes ?? '—'],
-                  ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? selectedRecord.totalDikeLength.toFixed(2) : '—'],
+                  ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? fmtNum(selectedRecord.totalDikeLength) : '—'],
                   ['Tổng số đèn biển, đăng, tiêu độc lập', selectedRecord.totalLighthouses ?? '—'],
                   ['Số lượng bến phao', selectedRecord.buoyBerthCount ?? '—'],
                   ['Số lượng khu neo đậu', selectedRecord.anchorageCount ?? '—'],

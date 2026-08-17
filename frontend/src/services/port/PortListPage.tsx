@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { PERMISSIONS } from '../../constants/permissions';
+import { fmtNum, fmtInputNumber } from '../../utils/numFmt';
 import {
   Alert,
   Button,
@@ -295,7 +296,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PROPOSED:'Đề xuất', PENDING:'Chờ duyệt', CHO_PHE_DUYET:'Chờ phê duyệt', PENDING_APPROVAL:'Chờ phê duyệt', APPROVED:'Đã duyệt', DA_PHE_DUYET:'Đã phê duyệt', REJECTED:'Từ chối', TU_CHOI:'Từ chối' }; return m[val] || m[val?.toUpperCase()] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PROPOSED:'Đề xuất', PENDING:'Chờ duyệt', CHO_PHE_DUYET:'Chờ phê duyệt', PENDING_APPROVAL:'Chờ phê duyệt', APPROVED:'Đã phê duyệt', DA_PHE_DUYET:'Đã phê duyệt', REJECTED:'Từ chối', TU_CHOI:'Từ chối' }; return m[val] || m[val?.toUpperCase()] || val; }
   if (fn === 'operationalStatus') {
     const m: Record<string,string> = { OPERATIONAL:'Đang hoạt động', SUSPENDED:'Tạm ngừng',
       HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác', CHUA_KHAI_THAC:'Chưa khai thác', DUNG_KHAI_THAC:'Dừng khai thác' };
@@ -700,8 +701,8 @@ export default function PortListPage() {
           CHO_PHE_DUYET: 'Chờ phê duyệt',
           PENDING: 'Chờ phê duyệt',
           PENDING_APPROVAL: 'Chờ phê duyệt',
-          DUOC_PHE_DUYET: 'Được phê duyệt',
-          APPROVED: 'Được phê duyệt',
+          DUOC_PHE_DUYET: 'Đã phê duyệt',
+          APPROVED: 'Đã phê duyệt',
           TU_CHOI: 'Từ chối',
           REJECTED: 'Từ chối',
         };
@@ -1530,7 +1531,7 @@ export default function PortListPage() {
       {!isIframeModal && (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
           <ScreenHeader
-            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cảng biển' }]}
+            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cảng biển' }]}
             actions={[
               hasPerm?.('Port:create')
                 ? {
@@ -1612,7 +1613,7 @@ export default function PortListPage() {
                 <Select placeholder="Tất cả" allowClear
                   value={filterValues.approvalStatus || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, approvalStatus: val }))}
-                  options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Được phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
+                  options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               </>)}
@@ -1621,7 +1622,7 @@ export default function PortListPage() {
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
               { key: 'DRAFT', label: 'Nháp', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
               { key: 'PENDING', label: 'Chờ phê duyệt', count: tabCounts['PENDING'] ?? 0, color: statusAttention, active: activeStatusTab === 'PENDING' },
-              { key: 'APPROVED', label: 'Được phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
+              { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
               { key: 'REJECTED', label: 'Từ chối', count: tabCounts['REJECTED'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED' },
             ]}
             onStatusTabChange={(key) => {
@@ -1885,7 +1886,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1894,7 +1895,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1925,7 +1926,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2151,7 +2152,7 @@ export default function PortListPage() {
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                     onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
@@ -2189,7 +2190,7 @@ export default function PortListPage() {
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                     onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
@@ -2661,7 +2662,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2670,7 +2671,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2701,7 +2702,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2902,7 +2903,7 @@ export default function PortListPage() {
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                     onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
@@ -2940,7 +2941,7 @@ export default function PortListPage() {
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
                                     onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
@@ -3248,11 +3249,11 @@ export default function PortListPage() {
                         ['Tổng số khu neo đậu, khu chuyển tải', selectedRecord.totalAnchoragesTransshipment ?? '—'],
                         ['Tổng số tuyến luồng hàng hải công cộng', selectedRecord.totalPublicChannels ?? '—'],
                         ['Tổng số tuyến luồng hàng hải chuyên dùng', selectedRecord.totalDedicatedChannels ?? '—'],
-                        ['Tổng chiều dài luồng hàng hải công cộng (km)', selectedRecord.totalPublicChannelLength != null ? selectedRecord.totalPublicChannelLength.toFixed(2) : '—'],
-                        ['Tổng chiều dài luồng hàng hải chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? selectedRecord.totalDedicatedChannelLength.toFixed(2) : '—'],
+                        ['Tổng chiều dài luồng hàng hải công cộng (km)', selectedRecord.totalPublicChannelLength != null ? fmtNum(selectedRecord.totalPublicChannelLength) : '—'],
+                        ['Tổng chiều dài luồng hàng hải chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? fmtNum(selectedRecord.totalDedicatedChannelLength) : '—'],
                         ['Tổng số phao tiêu, báo hiệu hàng hải trên luồng', selectedRecord.totalBuoysBeacons ?? '—'],
                         ['Tổng số đê, kè', selectedRecord.totalDikes ?? '—'],
-                        ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? selectedRecord.totalDikeLength.toFixed(2) : '—'],
+                        ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? fmtNum(selectedRecord.totalDikeLength) : '—'],
                         ['Tổng số đèn biển, đăng, tiêu độc lập', selectedRecord.totalLighthouses ?? '—'],
                         ['Số lượng bến phao', selectedRecord.buoyBerthCount ?? '—'],
                         ['Số lượng khu neo đậu', selectedRecord.anchorageCount ?? '—'],

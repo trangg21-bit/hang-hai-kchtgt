@@ -310,6 +310,7 @@ export const dryPortCRUD = {
     page?: number;
     size?: number;
     orgUnitId?: string;
+    provinceId?: number;
     search?: string;
     status?: string;
     approvalStatus?: string;
@@ -318,6 +319,7 @@ export const dryPortCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
       orgUnitId: params?.orgUnitId,
+      provinceId: params?.provinceId,
       search: params?.search,
       status: params?.status,
       approvalStatus: params?.approvalStatus,
