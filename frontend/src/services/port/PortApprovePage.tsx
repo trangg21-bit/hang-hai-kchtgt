@@ -5,6 +5,7 @@ import { borderDefault } from '../../tokens';
 import { fetchCangBienById, approveCangBien, rejectCangBien } from './api';
 import { trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
+import { fmtNum } from '../../utils/numFmt';
 import toast from '../../components/ToastNotification';
 
 type TabType = 'approve' | 'reject';
@@ -124,12 +125,12 @@ export default function PortApprovePage() {
             <Col span={12}>
               <Typography.Text strong>Diện tích (m²):</Typography.Text>
               <br />
-              <Typography.Text>{data.area != null ? data.area.toFixed(2) : '—'}</Typography.Text>
+              <Typography.Text>{data.area != null ? fmtNum(data.area) : '—'}</Typography.Text>
             </Col>
             <Col span={12}>
               <Typography.Text strong>Khả năng tiếp nhận:</Typography.Text>
               <br />
-              <Typography.Text>{data.khaNangTiepNhan != null ? data.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
+              <Typography.Text>{data.khaNangTiepNhan != null ? fmtNum(data.khaNangTiepNhan) : '—'}</Typography.Text>
             </Col>
             <Col span={12}>
               <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>

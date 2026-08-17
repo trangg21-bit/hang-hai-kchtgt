@@ -878,7 +878,7 @@ export default function PierListPage() {
       {!isIframeModal && (
         <>
           <ScreenHeader
-            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cầu cảng' }]}
+            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cầu cảng' }]}
             actions={[
               {
                 key: 'create',
