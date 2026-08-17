@@ -23,11 +23,6 @@ export const PERMISSIONS = {
     APPROVE: 'user:approve',
   },
 
-  /** Quản lý vai trò */
-  ROLE: {
-    MANAGE: 'role:manage',
-  },
-
   /** Quản lý đơn vị tổ chức */
   ORGUNIT: {
     READ: 'orgunit:read',
@@ -43,9 +38,12 @@ export const PERMISSIONS = {
     DELETE: 'group:delete',
     LOCK: 'group:lock',
     MANAGE: 'group:manage',
-    COPY: 'group:copy',
-    HISTORY: 'group:history',
     PERMISSION: 'group:permission',
+  },
+
+  /** Quản lý thành viên nhóm — tách khỏi quyền xem nhóm. */
+  GROUP_MEMBER: {
+    MANAGE: 'groupmember:manage',
   },
 
   /** Cảng biển (M-002) */
@@ -224,10 +222,7 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.GROUP.DELETE, title: 'Xóa Nhóm' },
       { key: PERMISSIONS.GROUP.LOCK, title: 'Khóa Nhóm' },
       { key: PERMISSIONS.GROUP.MANAGE, title: 'Quản lý Nhóm' },
-      { key: PERMISSIONS.GROUP.COPY, title: 'Copy Nhóm' },
-      { key: PERMISSIONS.GROUP.HISTORY, title: 'Lịch sử Nhóm' },
       { key: PERMISSIONS.GROUP.PERMISSION, title: 'Phân quyền Nhóm' },
-      { key: PERMISSIONS.ROLE.MANAGE, title: 'Quản lý Vai trò' },
       { key: PERMISSIONS.ORGUNIT.READ, title: 'Xem Đơn vị' },
       { key: PERMISSIONS.ORGUNIT.MANAGE, title: 'Quản lý Đơn vị' },
       { key: PERMISSIONS.ORGUNIT.APPROVE, title: 'Duyệt Đơn vị' },
@@ -241,8 +236,6 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.PORT.CREATE, title: 'Thêm Cảng biển' },
       { key: PERMISSIONS.PORT.UPDATE, title: 'Sửa Cảng biển' },
       { key: PERMISSIONS.PORT.DELETE, title: 'Xóa Cảng biển' },
-      { key: PERMISSIONS.PORT.APPROVE_C1, title: 'Duyệt Cảng biển C1' },
-      { key: PERMISSIONS.PORT.APPROVE_C2, title: 'Duyệt Cảng biển C2' },
       { key: PERMISSIONS.PORT.HISTORY, title: 'Lịch sử Cảng biển' },
       { key: PERMISSIONS.BERTH.READ, title: 'Xem Bến cảng' },
       { key: PERMISSIONS.BERTH.CREATE, title: 'Thêm Bến cảng' },

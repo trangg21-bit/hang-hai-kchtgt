@@ -9,9 +9,10 @@ import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.controller.UserController;
+import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.GrantUserPermissionRequest;
 import com.hanghai.kchtg.user.dto.UserPermissionOverrideResponse;
-import com.hanghai.kchtg.user.entity.Role;
+import com.hanghai.kchtg.user.dto.UserPageResponse;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.UserPermissionService;
@@ -27,13 +28,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -90,46 +92,48 @@ class UserRolePermissionControllerTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        Role role = new Role();
-        role.setCode("ROLE_USER");
-        role.setName("User");
-
         testUser = new User();
         testUser.setId(userId);
         testUser.setUsername("testuser");
         testUser.setEmail("test@domain.com");
-        testUser.setRoles(new java.util.HashSet<>(Set.of(role)));
     }
 
     @Test
-    void getUserRoles_shouldReturnRoleList() throws Exception {
-        when(userService.findById(userId)).thenReturn(testUser);
+    void listWithoutSort_shouldUseDefaultSortInsteadOfFailingOnNullSortField() throws Exception {
+        // Controller calls the 5-arg overload: (search, fullName, status, orgUnitId, pageable)
+        when(userService.findAllWithCounts(any(), any(), any(), any(), any()))
+                .thenReturn(new UserPageResponse(List.of(), 0, 20, 0, 0, java.util.Map.of()));
 
-        mockMvc.perform(get("/api/users/{id}/roles", userId))
+        mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].code").value("ROLE_USER"));
+                // Stub must actually feed the response (dead 3-arg stub left data null before)
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.pageNumber").value(0));
     }
 
     @Test
-    void assignUserRole_shouldReturnUpdatedUser() throws Exception {
-        when(userService.update(eq(userId), any())).thenReturn(testUser);
+    void createUser_withoutStatus_shouldReturn400AndNotReachService() throws Exception {
+        // BR-001-19 / AC-001-16: status is required (@NotNull) — @Valid on
+        // UserController.create rejects before any write.
+        String body = """
+                {
+                  "username": "nostatususer",
+                  "password": "SecurePass1",
+                  "email": "nostatus@test.com",
+                  "fullName": "No Status User",
+                  "orgUnitId": "00000000-0000-0000-0000-000000000001"
+                }
+                """;
 
-        mockMvc.perform(post("/api/users/{id}/roles", userId)
+        mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("roleCode", "ROLE_ADMIN"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.status").value("Vui lòng chọn trạng thái"));
 
-    @Test
-    void revokeUserRole_shouldReturnUpdatedUser() throws Exception {
-        when(userService.findById(userId)).thenReturn(testUser);
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
-
-        mockMvc.perform(delete("/api/users/{id}/roles/{roleId}", userId, "ROLE_ADMIN"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+        verify(userService, never()).create(any(CreateUserRequest.class));
     }
 
     @Test
@@ -159,6 +163,21 @@ class UserRolePermissionControllerTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void replaceDirectPermissions_shouldReturnUpdatedList() throws Exception {
+        UserPermissionOverrideResponse resp = new UserPermissionOverrideResponse(
+                UUID.randomUUID(), userId, "document:read", null, LocalDateTime.now());
+        doNothing().when(userPermissionService).replaceDirectPermissions(eq(userId), anyList());
+        when(userPermissionService.list(userId)).thenReturn(List.of(resp));
+
+        mockMvc.perform(put("/api/users/{id}/permissions", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(List.of("document:read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].permissionCode").value("document:read"));
     }
 
     @Test

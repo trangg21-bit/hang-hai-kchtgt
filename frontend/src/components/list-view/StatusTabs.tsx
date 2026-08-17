@@ -17,7 +17,11 @@ const StatusTabs: React.FC<StatusTabsProps> = ({ tabs, onChange }) => (
     display: 'flex', gap: spaceLg, justifyContent: 'center', flexWrap: 'wrap',
   }}>
     {tabs.map((tab) => (
-      <button key={tab.key} onClick={() => onChange(tab.key)}
+      <button
+        key={tab.key}
+        type="button"
+        aria-pressed={tab.active}
+        onClick={() => onChange(tab.key)}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
           border: 'none', background: 'none', cursor: 'pointer',

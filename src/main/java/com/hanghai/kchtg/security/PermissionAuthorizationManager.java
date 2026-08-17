@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -24,6 +25,9 @@ import java.util.UUID;
 public class PermissionAuthorizationManager {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionAuthorizationManager.class);
+
+    /** Resources ungated by business rule — any authenticated user is granted access. */
+    private static final Set<String> ALWAYS_ALLOWED_RESOURCES = Set.of("port", "berth", "pier");
 
     private final UserRepository userRepository;
     private final PermissionCacheService permissionCacheService;
@@ -45,26 +49,34 @@ public class PermissionAuthorizationManager {
             return false;
         }
 
-        // Grant full access to system administrators
-        boolean isSystemAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")
-                        || a.getAuthority().equals("ROLE_SUPER_ADMIN")
-                        || a.getAuthority().equals("SYSTEM_ADMIN"));
-        if (isSystemAdmin) {
-            return true;
-        }
-
         Set<String> userPermissions = extractPermissions(authentication);
-        if (userPermissions.contains(requiredPermission)) {
+        String normalizedRequired = normalize(requiredPermission);
+        if (normalizedRequired != null && ALWAYS_ALLOWED_RESOURCES.contains(resourceOf(normalizedRequired))) {
+            return true;
+        }
+        if (userPermissions.contains("*") || userPermissions.contains("admin:all")
+                || userPermissions.contains(normalizedRequired)) {
             return true;
         }
 
-        if (requiredPermission != null) {
-            String normNoColon = requiredPermission.replace(":approve:", ":approve");
+        if (normalizedRequired != null) {
+            String[] parts = normalizedRequired.split(":", 2);
+            String resource = parts.length == 2 ? parts[0] : null;
+            String action = parts.length == 2 ? parts[1] : null;
+            if (resource != null && (userPermissions.contains(resource + ":manage")
+                    || userPermissions.contains(resource + ":*"))) {
+                return true;
+            }
+            if (resource != null && Set.of(ACTION_CREATE, ACTION_UPDATE, ACTION_DELETE).contains(action)
+                    && userPermissions.contains(resource + ":write")) {
+                return true;
+            }
+
+            String normNoColon = normalizedRequired.replace(":approve:", ":approve");
             if (userPermissions.contains(normNoColon)) {
                 return true;
             }
-            String normColon = requiredPermission.replace(":approvec1", ":approve:c1").replace(":approvec2", ":approve:c2");
+            String normColon = normalizedRequired.replace(":approvec1", ":approve:c1").replace(":approvec2", ":approve:c2");
             if (userPermissions.contains(normColon)) {
                 return true;
             }
@@ -72,8 +84,8 @@ public class PermissionAuthorizationManager {
 
         // Aliases for approve actions: resource:approve matches resource:approvec1 or resource:approvec2
         String approveSuffix = ":" + ACTION_APPROVE;
-        if (requiredPermission != null && requiredPermission.endsWith(approveSuffix)) {
-            String prefix = requiredPermission.substring(0, requiredPermission.length() - approveSuffix.length());
+        if (normalizedRequired != null && normalizedRequired.endsWith(approveSuffix)) {
+            String prefix = normalizedRequired.substring(0, normalizedRequired.length() - approveSuffix.length());
             if (userPermissions.contains(PermissionConstants.build(prefix, ACTION_APPROVE_C1)) 
                     || userPermissions.contains(PermissionConstants.build(prefix, ACTION_APPROVE_C2))) {
                 return true;
@@ -83,15 +95,46 @@ public class PermissionAuthorizationManager {
         return false;
     }
 
+    private static String resourceOf(String permission) {
+        return permission.split(":", 2)[0];
+    }
+
+    private String normalize(String permission) {
+        if (permission == null) return null;
+        return permission.trim().toLowerCase(Locale.ROOT)
+                .replace(":approve:c1", ":approvec1")
+                .replace(":approve:c2", ":approvec2");
+    }
+
     public Set<String> extractPermissions(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return Collections.emptySet();
         }
+
+        Set<String> authorityPermissions = authentication.getAuthorities() != null
+                ? authentication.getAuthorities().stream()
+                        .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                        .map(this::normalize)
+                        .collect(java.util.stream.Collectors.toSet())
+                : Collections.emptySet();
+
+        if (authorityPermissions.contains("*")
+                || authorityPermissions.contains("admin:all")
+                || authorityPermissions.contains("admin:manage")
+                ) {
+            Set<String> superAdminPerms = new java.util.HashSet<>(authorityPermissions);
+            superAdminPerms.add("*");
+            superAdminPerms.add("admin:all");
+            return superAdminPerms;
+        }
+
         User user = resolveUser(authentication.getPrincipal());
         if (user == null) {
-            return Collections.emptySet();
+            return authorityPermissions;
         }
-        return resolvePermissions(user);
+        Set<String> resolved = new java.util.HashSet<>(resolvePermissions(user));
+        resolved.addAll(authorityPermissions);
+        return resolved;
     }
 
     private User resolveUser(Object principal) {
@@ -120,7 +163,9 @@ public class PermissionAuthorizationManager {
             }
         }
 
-        Set<String> permissions = user.getAllPermissions();
+        Set<String> permissions = user.getAllPermissions().stream()
+                .map(this::normalize)
+                .collect(java.util.stream.Collectors.toSet());
 
         if (userId != null && !permissions.isEmpty()) {
             try {

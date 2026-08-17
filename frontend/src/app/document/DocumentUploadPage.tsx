@@ -42,7 +42,7 @@ export default function DocumentUploadPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const entityLabel = (() => {
-    const found = GIAYTO_ENTITY_TYPES.find((t) => t.value === entityType);
+    const found = DOCUMENT_ENTITY_TYPES.find((t) => t.value === entityType);
     return found ? found.label : 'Unknown';
   })();
 

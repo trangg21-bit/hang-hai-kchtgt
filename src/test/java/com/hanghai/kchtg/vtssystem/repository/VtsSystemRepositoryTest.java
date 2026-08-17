@@ -6,6 +6,7 @@ import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
@@ -21,7 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * query behavior, and Flyway migration effects on the actual database schema.
  */
 @DataJpaTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class VtsSystemRepositoryTest {
 
     @Autowired
@@ -47,18 +49,13 @@ class VtsSystemRepositoryTest {
     @Test
     void testUniqueCodeConstraint() {
         VtsSystem first = createVtsSystem("VTS-UNIQUE");
-        entityManager.persistAndFlush(first);
+        repository.saveAndFlush(first);
 
         VtsSystem duplicate = createVtsSystem("VTS-UNIQUE");
-        duplicate.setId(UUID.randomUUID());
 
-        try {
-            entityManager.persistAndFlush(duplicate);
-            fail("Should have thrown exception for duplicate code");
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // Expected — unique constraint violated
-            assertTrue(e.getMessage().contains("unique") || e.getMessage().contains("unique_constraint") || e.getMessage().contains("VtsSystem_code_key") || e.getMessage().contains("uk_vts_code"));
-        }
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> {
+            repository.saveAndFlush(duplicate);
+        });
     }
 
     @Test
@@ -127,13 +124,13 @@ class VtsSystemRepositoryTest {
         repository.save(createVtsSystemWithCodeAndName("VTS-HANOI", "VTS Hà Nội"));
         entityManager.flush();
 
-        List<VtsSystem> results = repository.searchFiltered(UUID.randomUUID(), "HAIPHONG");
+        List<VtsSystem> results = repository.searchFiltered(null, "%haiphong%");
         assertEquals(1, results.size());
         assertEquals("VTS-HAIPHONG", results.get(0).getCode());
 
-        results = repository.searchFiltered(UUID.randomUUID(), "hải phòng");
+        results = repository.searchFiltered(null, "%hai phong%");
         assertEquals(1, results.size());
-        assertEquals("VTS-HAIPHONG", results.get(0).getSystemName());
+        assertEquals("VTS Hải Phòng", results.get(0).getSystemName());
     }
 
     @Test
@@ -142,12 +139,12 @@ class VtsSystemRepositoryTest {
         UUID orgId = vts.getOrgUnitId();
         entityManager.flush();
 
-        List<VtsSystem> results = repository.searchFiltered(orgId, "VTS-ORG");
+        List<VtsSystem> results = repository.searchFiltered(orgId, "%vts-org%");
         assertEquals(1, results.size());
         assertEquals(vts.getId(), results.get(0).getId());
 
         // Different org unit should exclude
-        List<VtsSystem> excluded = repository.searchFiltered(UUID.randomUUID(), "VTS-ORG");
+        List<VtsSystem> excluded = repository.searchFiltered(UUID.randomUUID(), "%vts-org%");
         assertEquals(0, excluded.size());
     }
 
@@ -155,21 +152,16 @@ class VtsSystemRepositoryTest {
     void testCountByApprovalStatus() {
         repository.save(createVtsSystem("VTS-A1"));
         repository.save(createVtsSystem("VTS-A2"));
-        UUID orgUnitId1 = repository.findById(repository.findByApprovalStatusAndIsDeletedFalse(null).get(0).getId()).get().getOrgUnitId();
-        UUID orgUnitId2 = repository.findById(repository.findByApprovalStatusAndIsDeletedFalse(null).get(1).getId()).get().getOrgUnitId();
         entityManager.flush();
 
         List<Object[]> counts = repository.countByApprovalStatus(
                 false, List.of(), null, null, null);
 
-        assertTrue(counts.size() >= 2);
-        // Should have entries for both statuses
+        assertNotNull(counts);
         long proposedCount = 0;
         for (Object[] row : counts) {
-            if (row[0] instanceof ApprovalStatus) {
-                if (((ApprovalStatus) row[0]) == ApprovalStatus.PROPOSED) {
-                    proposedCount = (Long) row[1];
-                }
+            if (row[0] instanceof ApprovalStatus && ((ApprovalStatus) row[0]) == ApprovalStatus.PROPOSED) {
+                proposedCount = ((Number) row[1]).longValue();
             }
         }
         assertEquals(2, proposedCount);
@@ -183,7 +175,7 @@ class VtsSystemRepositoryTest {
         Optional<VtsSystem> found = repository.findById(saved.getId());
         assertTrue(found.isPresent());
         assertEquals("VTS-FIND", found.get().getCode());
-        assertEquals("VTS Find", found.get().getSystemName());
+        assertEquals("VTS VTS-FIND", found.get().getSystemName());
     }
 
     @Test

@@ -83,27 +83,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 log.debug("Dev mock token accepted for: {}", request.getRequestURI());
                 User devUser = userRepository.findByUsername("admin").orElse(null);
                 Object principal = devUser != null ? devUser : "admin";
+                List<SimpleGrantedAuthority> devAuthorities = devUser == null
+                        ? List.of()
+                        : devUser.getAllPermissions().stream().map(SimpleGrantedAuthority::new).toList();
                 SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(principal, null, List.of(
-                        new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"),
-                        new SimpleGrantedAuthority("ROLE_ADMIN"),
-                        new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN")
-                    )));
+                    new UsernamePasswordAuthenticationToken(principal, null, devAuthorities));
                 filterChain.doFilter(request, response);
                 return;
             }
 
             try {
                 String username = jwtUtil.extractUsername(token);
-                String role = jwtUtil.extractRole(token);
                 boolean totpEnabled = jwtUtil.isTotpEnabled(token);
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    List<SimpleGrantedAuthority> authorities = role != null
-                            ? List.of(new SimpleGrantedAuthority(role))
-                            : List.of();
-
                     User user = userRepository.findByUsernameWithRelations(username).orElse(null);
+                    List<SimpleGrantedAuthority> authorities = user == null
+                            ? List.of()
+                            : user.getAllPermissions().stream().map(SimpleGrantedAuthority::new).toList();
 
                     // Instant permission revocation: reject tokens whose permission
                     // snapshot is older than the user's current version. When an admin
@@ -127,7 +124,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             new WebAuthenticationDetailsSource().buildDetails(request));
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("JWT authenticated: user={}, role={}, totpEnabled={}", username, role, totpEnabled);
+                    log.debug("JWT authenticated: user={}, directPermissions={}, totpEnabled={}", username,
+                            authorities.size(), totpEnabled);
 
                     // Wave 2 (T-005, T-007): Check account lockout on every request
                     if (!isAccountLocked(username)) {

@@ -1,5 +1,4 @@
 import type { User } from '../types/user';
-import type { Role } from '../types/role';
 import type { Permission } from '../types/permission';
 
 // ============================================================
@@ -10,9 +9,6 @@ export const ALL_PERMISSIONS: Permission[] = [
   { key: 'user:read', name: 'Xem danh sách người dùng', group: 'user_management', description: 'Xem danh sách và thông tin người dùng' },
   { key: 'user:manage', name: 'Quản lý người dùng', group: 'user_management', description: 'Tạo, sửa, xóa, khóa/mở khóa người dùng' },
   { key: 'user:approve', name: 'Phê duyệt người dùng', group: 'user_management', description: 'Phê duyệt tài khoản người dùng mới' },
-
-  // Role Management
-  { key: 'role:manage', name: 'Quản lý vai trò & phân quyền', group: 'role_management', description: 'Tạo, sửa, xóa, gán vai trò và phân quyền' },
 
   // Admin Account Management
   { key: 'admin:manage', name: 'Quản lý tài khoản quản trị', group: 'admin_management', description: 'Xem, tạo, sửa, xóa tài khoản quản trị viên và cấu hình hệ thống' },
@@ -48,52 +44,6 @@ export const ALL_PERMISSIONS: Permission[] = [
 ];
 
 // ============================================================
-// ROLES
-// ============================================================
-export const MOCK_ROLES: Role[] = [
-  {
-    id: 'role-001',
-    name: 'Quản trị viên (Super Admin)',
-    code: 'super_admin',
-    description: 'Toàn quyền quản trị hệ thống',
-    permissions: ALL_PERMISSIONS.map(p => p.key),
-    userCount: 2,
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-06-01T00:00:00Z',
-  },
-  {
-    id: 'role-002',
-    name: 'Quản trị viên (Admin)',
-    code: 'admin',
-    description: 'Quản lý người dùng và xem vai trò',
-    permissions: ['user:read', 'user:manage', 'role:manage'],
-    userCount: 5,
-    createdAt: '2025-01-15T00:00:00Z',
-    updatedAt: '2025-05-20T00:00:00Z',
-  },
-  {
-    id: 'role-003',
-    name: 'Quản lý người dùng',
-    code: 'user_manager',
-    description: 'Quản lý tài khoản người dùng',
-    permissions: ['user:read', 'user:manage'],
-    userCount: 12,
-    createdAt: '2025-02-01T00:00:00Z',
-    updatedAt: '2025-04-10T00:00:00Z',
-  },
-  {
-    id: 'role-004',
-    name: 'Người xem (Viewer)',
-    code: 'viewer',
-    description: 'Chỉ xem thông tin',
-    permissions: ['user:read', 'role:manage'],
-    userCount: 8,
-    createdAt: '2025-03-01T00:00:00Z',
-    updatedAt: '2025-03-01T00:00:00Z',
-  },
-];
-
-// ============================================================
 // USERS
 // ============================================================
 export const MOCK_USERS: User[] = [
@@ -103,8 +53,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Nguyễn Văn An',
     email: 'admin@hh.gov.vn',
     phone: '0901234567',
-    roleId: 'ROLE_SYSTEM_ADMIN',
-    roleName: 'Quản trị hệ thống',
     status: 'active',
     lastLoginAt: '2026-06-17T08:30:00Z',
     createdAt: '2025-01-01T00:00:00Z',
@@ -116,8 +64,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Lê Anh Tuấn',
     email: 'tuanla@hh.gov.vn',
     phone: '0902345678',
-    roleId: 'ROLE_ADMIN',
-    roleName: 'Quản trị đơn vị',
     status: 'active',
     lastLoginAt: '2026-06-17T09:15:00Z',
     createdAt: '2025-02-10T00:00:00Z',
@@ -129,8 +75,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Nguyễn Thị Hương',
     email: 'huongnt@hh.gov.vn',
     phone: '0903456789',
-    roleId: 'ROLE_SPECIALIST',
-    roleName: 'Chuyên viên',
     status: 'active',
     lastLoginAt: '2026-06-16T16:45:00Z',
     createdAt: '2025-03-15T00:00:00Z',
@@ -142,8 +86,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Phạm Đức Minh',
     email: 'minhpd@hh.gov.vn',
     phone: '0904567890',
-    roleId: 'ROLE_SPECIALIST',
-    roleName: 'Chuyên viên',
     status: 'locked',
     lastLoginAt: '2026-05-01T10:00:00Z',
     createdAt: '2025-04-01T00:00:00Z',
@@ -155,8 +97,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Nguyễn Thùy Linh',
     email: 'linhnt@hh.gov.vn',
     phone: '0905678901',
-    roleId: 'ROLE_LEADER',
-    roleName: 'Lãnh đạo',
     status: 'inactive',
     lastLoginAt: '2026-01-15T08:00:00Z',
     createdAt: '2025-05-20T00:00:00Z',
@@ -168,8 +108,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Trần Quốc Cường',
     email: 'cuongtq@hh.gov.vn',
     phone: '0906789012',
-    roleId: 'ROLE_LEADER',
-    roleName: 'Lãnh đạo',
     status: 'active',
     lastLoginAt: '2026-06-16T14:20:00Z',
     createdAt: '2025-06-10T00:00:00Z',
@@ -181,8 +119,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Bùi Văn Anh',
     email: 'anhbv@hh.gov.vn',
     phone: '0907890123',
-    roleId: 'ROLE_ADMIN',
-    roleName: 'Quản trị đơn vị',
     status: 'active',
     lastLoginAt: '2026-06-17T07:50:00Z',
     createdAt: '2025-07-05T00:00:00Z',
@@ -194,8 +130,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Trần Thị Mai',
     email: 'maitt@hh.gov.vn',
     phone: '0908901234',
-    roleId: 'ROLE_SPECIALIST',
-    roleName: 'Chuyên viên',
     status: 'locked',
     lastLoginAt: '2026-04-20T11:30:00Z',
     createdAt: '2025-08-15T00:00:00Z',
@@ -207,8 +141,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Vũ Hoàng Quân',
     email: 'quanvh@hh.gov.vn',
     phone: '0909012345',
-    roleId: 'ROLE_LEADER',
-    roleName: 'Lãnh đạo',
     status: 'active',
     lastLoginAt: '2026-06-10T09:00:00Z',
     createdAt: '2025-09-20T00:00:00Z',
@@ -220,8 +152,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Đỗ Thanh Phương',
     email: 'phuongdt@hh.gov.vn',
     phone: '0910123456',
-    roleId: 'ROLE_SPECIALIST',
-    roleName: 'Chuyên viên',
     status: 'inactive',
     lastLoginAt: '2025-12-01T08:00:00Z',
     createdAt: '2025-10-01T00:00:00Z',
@@ -233,8 +163,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Nguyễn Hồng Sơn',
     email: 'sonnh@hh.gov.vn',
     phone: '0911234567',
-    roleId: 'ROLE_ADMIN',
-    roleName: 'Quản trị đơn vị',
     status: 'active',
     lastLoginAt: '2026-06-16T17:00:00Z',
     createdAt: '2025-11-10T00:00:00Z',
@@ -246,8 +174,6 @@ export const MOCK_USERS: User[] = [
     fullName: 'Phạm Ngọc Hoài',
     email: 'hoaipn@hh.gov.vn',
     phone: '0912345678',
-    roleId: 'ROLE_SPECIALIST',
-    roleName: 'Chuyên viên',
     status: 'active',
     lastLoginAt: '2026-06-17T10:30:00Z',
     createdAt: '2026-01-05T00:00:00Z',
@@ -262,7 +188,7 @@ export const CURRENT_USER: User = MOCK_USERS[0];
 // GROUPS
 // ============================================================
 export const MOCK_GROUPS = [
-  { id: 'grp-001', name: 'Nhóm Quản trị viên', code: 'GRP_ADMINS', description: 'Nhóm dành cho quản trị viên hệ thống', permissions: ['user:manage', 'role:manage', 'admin:manage', 'group:manage', 'orgunit:manage', 'log:manage'], memberCount: 3, status: 'active' as const, createdAt: '2025-01-10T00:00:00Z', updatedAt: '2026-06-01T00:00:00Z' },
+  { id: 'grp-001', name: 'Nhóm Quản trị viên', code: 'GRP_ADMINS', description: 'Nhóm dành cho quản trị viên hệ thống', permissions: ['user:manage', 'admin:manage', 'group:manage', 'orgunit:manage', 'log:manage'], memberCount: 3, status: 'active' as const, createdAt: '2025-01-10T00:00:00Z', updatedAt: '2026-06-01T00:00:00Z' },
   { id: 'grp-002', name: 'Nhóm Lãnh đạo', code: 'GRP_LEADERS', description: 'Nhóm dành cho lãnh đạo các phòng ban', permissions: ['user:read', 'data:read', 'report:read'], memberCount: 5, status: 'active' as const, createdAt: '2025-02-15T00:00:00Z', updatedAt: '2026-05-20T00:00:00Z' },
   { id: 'grp-003', name: 'Nhóm Chuyên viên GIS', code: 'GRP_GIS', description: 'Nhóm chuyên viên quản lý dữ liệu GIS và bản đồ', permissions: ['data:read', 'data:create', 'data:update', 'map:manage'], memberCount: 8, status: 'active' as const, createdAt: '2025-03-01T00:00:00Z', updatedAt: '2026-06-10T00:00:00Z' },
   { id: 'grp-004', name: 'Nhóm Báo hiệu hàng hải', code: 'GRP_BEACON', description: 'Nhóm quản lý đèn biển và phao tiêu', permissions: ['data:read', 'data:create', 'data:update'], memberCount: 6, status: 'active' as const, createdAt: '2025-03-15T00:00:00Z', updatedAt: '2026-04-20T00:00:00Z' },

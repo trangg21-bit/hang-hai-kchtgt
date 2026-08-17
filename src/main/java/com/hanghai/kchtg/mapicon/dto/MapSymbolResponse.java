@@ -17,6 +17,9 @@ public class MapSymbolResponse {
     private String image;
     private MapSymbolStatus status;
     private UUID createdBy;
+    private UUID updatedBy;
+    private String createdByName;
+    private String updatedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

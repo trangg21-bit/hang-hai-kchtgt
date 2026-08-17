@@ -84,7 +84,7 @@ export default function PortUpdatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<CangBienResponse | null>(null);
 
-  const updateGeometryType = Form.useWatch('geometryType', form) || 'POINT';
+  const updateGeometryType = Form.useWatch('geometryType', form);
 
   // GPS sub-table
   const [coordinates, setCoordinates] = useState<CoordinateRow[]>([]);
@@ -116,9 +116,9 @@ export default function PortUpdatePage() {
           area: data.area != null ? data.area : undefined,
           maxVesselCapacity: data.maxVesselCapacity != null ? data.maxVesselCapacity : undefined,
           operationalStatus: data.operationalStatus || undefined,
-          geometryType: data.geometryType || 'POINT',
+          geometryType: data.geometryType || undefined,
           gisLocation: {
-            geometryType: data.geometryType || 'POINT',
+            geometryType: data.geometryType || undefined,
             coordinates: data.coordinates || '',
             mapSymbolId: data.mapSymbolId,
           },

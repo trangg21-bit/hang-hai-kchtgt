@@ -1,26 +1,28 @@
-﻿import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Button, Modal, Form, Input, Select, Upload, Row, Col, Typography, Tooltip } from 'antd';
+﻿import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { Button, Modal, Form, Input, Select, Upload, Row, Col, Typography, Alert, Drawer, Tabs } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol, CreateSymbolPayload, UpdateSymbolPayload } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
+import { ScreenHeader, FilterTableLayout, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import {
-  statusOperational, statusDraft, actionPrimary, textSecondary, textPrimary, textTertiary,
-  fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  cardStyle, radiusPill, radiusSm, borderDefault, spaceFormField, spaceMd, spaceSm,
+  statusOperational, statusDraft, statusCritical, textSecondary, textPrimary, textTertiary,
+  fontSizeMd, fontWeightBold,
+  radiusSm, radiusMd, radiusPill, borderDefault, surfaceCard, surfacePage, spaceMd, spaceSm, spaceXs, spaceLg, spaceFormField,
+  badgeBaseStyle, primaryButtonStyle, outlineButtonStyle, formFieldStyle, inputStyle, selectStyle, formRowGutter,
+  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
+  requiredMarkStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  active: { color: 'green', label: 'Sử dụng' },
-  inactive: { color: 'default', label: 'Không sử dụng' },
+  active: { color: statusOperational, label: 'Sử dụng' },
+  inactive: { color: statusDraft, label: 'Không sử dụng' },
 };
 
 const STATUS_OPTIONS = [
@@ -92,36 +94,27 @@ const UploadImageInput: React.FC<UploadImageInputProps> = ({ value, onChange }) 
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div
-          style={{
-            width: 60,
-            height: 60,
-            border: `1px solid ${borderDefault}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: colors.bodyBg,
-            overflow: 'hidden',
-            borderRadius: radiusSm,
-          }}
-        >
-          {value ? (
-            <img src={value} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          ) : (
-            <span style={{ color: textTertiary, fontSize: fontSizeMd }}>Trống</span>
-          )}
+      {!value ? (
+        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có hình ảnh.</span>
+          <Upload accept="image/png, image/jpeg" beforeUpload={handleUpload} showUploadList={false}>
+            <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn hình ảnh</Button>
+          </Upload>
         </div>
-        <Upload
-          accept="image/png, image/jpeg"
-          beforeUpload={handleUpload}
-          showUploadList={false}
-        >
-          <Button icon={<UploadOutlined />}>Chọn hình ảnh</Button>
-        </Upload>
-      </div>
+      ) : (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', width: 96, height: 96, background: surfacePage, border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceXs, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: spaceSm }}>
+            <img src={value} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          </div>
+          <div>
+            <Upload accept="image/png, image/jpeg" beforeUpload={handleUpload} showUploadList={false}>
+              <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Đổi hình ảnh</Button>
+            </Upload>
+          </div>
+        </div>
+      )}
       {error && (
-        <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: 4 }}>{error}</div>
+        <div style={{ color: statusCritical, fontSize: fontSizeMd, marginTop: spaceXs }}>{error}</div>
       )}
     </div>
   );
@@ -142,10 +135,13 @@ export default function SymbolList() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [systemOpen, setSystemOpen] = useState(false);
   const [editingSymbol, setEditingSymbol] = useState<Symbol | null>(null);
   const [previewSymbol, setPreviewSymbol] = useState<Symbol | null>(null);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Symbol | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const fetchSymbols = useCallback(async () => {
     setIsLoading(true);
@@ -224,30 +220,33 @@ export default function SymbolList() {
   }, [editingSymbol, form, fetchSymbols]);
 
   const handleDelete = useCallback((symbol: Symbol) => {
-    Modal.confirm({
-      title: 'Xác nhận xóa biểu tượng',
-      icon: <ExclamationCircleOutlined />,
-      content: `Bạn có chắc chắn muốn xóa biểu tượng "${symbol.name}"?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk: async () => {
-        try {
-          await symbolService.delete(symbol.id);
-          toast.success('Đã xóa biểu tượng');
-          fetchSymbols();
-        } catch (err: unknown) {
-          toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
-        }
-      },
-    });
-  }, [fetchSymbols]);
-
-  const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(values.search || '');
-    setFilterStatus(values.status || undefined);
-    setPage(1);
+    setDeleteTarget(symbol);
+    setDeleteConfirmText('');
   }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    const expected = (deleteTarget.name || '').trim().toLowerCase();
+    const input = deleteConfirmText.trim().toLowerCase();
+    if (input !== expected && input !== 'xóa') {
+      toast.error('Vui lòng nhập đúng tên biểu tượng hoặc gõ "XÓA" để xác nhận');
+      return;
+    }
+    try {
+      await symbolService.delete(deleteTarget.id);
+      toast.success('Đã xóa biểu tượng');
+      setDeleteTarget(null);
+      setDeleteConfirmText('');
+      fetchSymbols();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    }
+  }, [deleteTarget, deleteConfirmText, fetchSymbols]);
+
+  const handleFilterApply = useCallback(() => {
+    setPage(1);
+    void fetchSymbols();
+  }, [fetchSymbols]);
 
   const handleFilterReset = useCallback(() => {
     setSearch('');
@@ -259,6 +258,15 @@ export default function SymbolList() {
     setPage(p);
     setPageSize(ps);
   }, []);
+
+  const rowActions = useCallback((record: Symbol) => {
+    const actions = [
+      { key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => openPreviewModal(record) },
+    ];
+    if (hasPerm('symbol.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm('symbol.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => handleDelete(record) });
+    return actions;
+  }, [hasPerm, openPreviewModal, openEditModal, handleDelete]);
 
   const columns = useMemo(() => [
     {
@@ -281,42 +289,17 @@ export default function SymbolList() {
         ),
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 180,
       render: (status: string) => {
-        const s = STATUS_MAP[status] || { color: 'default', label: status };
-        const statusColor = s.color === 'green' ? statusOperational : textTertiary;
+        const s = STATUS_MAP[status] || { color: textTertiary, label: status };
         return (
-          <span style={{
-            display: 'inline-flex', padding: '2px 8px', borderRadius: radiusPill,
-            fontSize: fontSizeMd, fontWeight: fontWeightMedium,
-            background: `${statusColor}15`, color: statusColor,
-          }}>
+          <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, background: surfacePage, color: s.color }}>
             {s.label}
           </span>
         );
       },
     },
-    {
-      key: 'actions', label: 'Thao tác', width: 180, align: 'center' as const,
-      render: (_: unknown, record: Symbol) => (
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-          <Tooltip title="Xem chi tiết">
-            <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openPreviewModal(record)} />
-          </Tooltip>
-          {hasPerm('symbol.edit') && (
-            <Tooltip title="Sửa">
-              <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
-            </Tooltip>
-          )}
-          {hasPerm('symbol.delete') && (
-            <Tooltip title="Xóa">
-              <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} />
-            </Tooltip>
-          )}
-        </div>
-      ),
-    },
-  ], [page, pageSize, hasPerm, openEditModal, openPreviewModal, handleDelete]);
+  ], [page, pageSize]);
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
@@ -329,10 +312,36 @@ export default function SymbolList() {
     return actions;
   }, [hasPerm, openCreateModal]);
 
-  const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên biểu tượng...' },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái', options: STATUS_OPTIONS },
-  ], []);
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Tên biểu tượng
+        </div>
+        <Input
+          placeholder="Tìm theo tên biểu tượng..."
+          allowClear
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Trạng thái
+        </div>
+        <Select
+          placeholder="Chọn trạng thái"
+          allowClear
+          value={filterStatus || undefined}
+          onChange={(val) => setFilterStatus(val || undefined)}
+          options={STATUS_OPTIONS}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+    </>
+  );
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;
@@ -343,102 +352,199 @@ export default function SymbolList() {
       return <EmptyState description="Chưa có biểu tượng nào" />;
     }
     return (
-      <div style={{ overflowX: 'auto' }}>
-        <DataTable columns={columns} dataSource={dataSource} rowKey="id" scroll={{ x: 800 }} />
-        <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} fill scroll={{ x: 800, y: 550 }} />
+        <div style={{ paddingBottom: 6 /* căn mép dưới bảng thẳng hàng mép trên khối nút filter */ }}>
+          <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
+        </div>
       </div>
     );
   };
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý biểu tượng trên bản đồ' }]}
         actions={headerActions}
       />
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
-      <div style={{ ...cardStyle, padding: '8px 16px' }}>{renderContent()}</div>
+      <FilterTableLayout
+        onFilterApply={handleFilterApply}
+        onFilterReset={handleFilterReset}
+        loading={isLoading}
+        error={isError}
+        onRetry={fetchSymbols}
+        filterContent={filterContent}
+        hideFilterToggle
+        hideStatusTabs
+      >
+        {renderContent()}
+      </FilterTableLayout>
 
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-          {editingSymbol ? 'Cập nhật thông tin biểu tượng trên bản đồ' : 'Thêm mới thông tin biểu tượng trên bản đồ'}
-        </span>}
-        open={formOpen} onOk={handleSave} onCancel={() => setFormOpen(false)}
-        confirmLoading={submitting} width={600} destroyOnClose
-        footer={[
-          <Button key="cancel" onClick={() => setFormOpen(false)}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="ok" type="primary" onClick={handleSave} loading={submitting}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
-            {editingSymbol ? 'Cập nhật' : 'Thêm mới'}</Button>,
-        ]}>
-        <Form form={form} layout="vertical" initialValues={{ status: 'active' }} style={{ marginTop: 16 }}
-          labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
-          <Form.Item name="name" {...labelProps('Tên biểu tượng')} style={{ marginBottom: spaceFormField }}
-            rules={[{ required: true, message: 'Vui lòng nhập tên biểu tượng' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
-            <Input placeholder="Tên biểu tượng" style={{ borderRadius: radiusPill, height: 40 }} />
-          </Form.Item>
-          <Form.Item name="image" {...labelProps('Hình ảnh')} style={{ marginBottom: spaceFormField }}
-            rules={[{ required: true, message: 'Hình ảnh không được để trống' }]}>
-            <UploadImageInput />
-          </Form.Item>
-          <Row gutter={16}>
+      <Drawer
+        {...drawerProps}
+        title={
+          <span style={drawerTitleStyle}>
+            {editingSymbol ? 'Cập nhật thông tin biểu tượng trên bản đồ' : 'Thêm mới thông tin biểu tượng trên bản đồ'}
+          </span>
+        }
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        extra={<Button type="text" onClick={() => setFormOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button onClick={() => setFormOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+            <Button type="primary" onClick={handleSave} loading={submitting} style={primaryButtonStyle}>
+              {editingSymbol ? 'Cập nhật' : 'Thêm mới'}
+            </Button>
+          </div>
+        }
+      >
+        <style>{requiredMarkStyle}</style>
+        <Form form={form} layout="vertical" initialValues={{ status: 'active' }} style={{ paddingTop: 16 }}
+          labelCol={{ style: { padding: 0, marginBottom: spaceXs } }}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
-              <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }}>
-                <Select options={STATUS_OPTIONS} style={{ borderRadius: radiusPill, height: 40 }} />
+              <Form.Item name="name" {...labelProps('Tên biểu tượng')} style={formFieldStyle}
+                rules={[{ required: true, message: 'Vui lòng nhập tên biểu tượng' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
+                <Input placeholder="Tên biểu tượng" style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}
-                rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]}>
-                <Input.TextArea placeholder="Ghi chú" rows={2} maxLength={500} style={{ borderRadius: radiusSm }} />
+              <Form.Item name="status" {...labelProps('Trạng thái')} style={formFieldStyle}>
+                <Select options={STATUS_OPTIONS} style={selectStyle} />
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="description" {...labelProps('Ghi chú')} style={formFieldStyle}
+            rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]}>
+            <Input.TextArea placeholder="Ghi chú" rows={2} maxLength={500} style={{ borderRadius: radiusSm }} />
+          </Form.Item>
+          <Form.Item name="image" {...labelProps('Hình ảnh')} style={formFieldStyle}
+            rules={[{ required: true, message: 'Hình ảnh không được để trống' }]}>
+            <UploadImageInput />
+          </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
+
+      <Drawer
+        {...drawerProps}
+        size={1000}
+        title={<span style={drawerTitleStyle}>Chi tiết biểu tượng trên bản đồ{previewSymbol ? ' - ' + previewSymbol.name : ''}</span>}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        extra={<Button type="text" onClick={() => setPreviewOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {previewSymbol && (() => {
+          const s = STATUS_MAP[previewSymbol.status] || { color: textTertiary, label: previewSymbol.status };
+          return (
+            <Tabs
+              defaultActiveKey="general"
+              tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
+              items={[
+                {
+                  key: 'general', label: 'Thông tin chung',
+                  children: (
+                    <div style={{ paddingTop: 3 }}>
+                      <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-row--full { grid-column: 1 / -1; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: spaceLg }}>
+                        <div
+                          style={{
+                            width: 96,
+                            height: 96,
+                            background: surfacePage,
+                            border: `1px solid ${borderDefault}`,
+                            borderRadius: radiusMd,
+                            padding: spaceXs,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {previewSymbol.image ? (
+                            <img src={previewSymbol.image} alt={previewSymbol.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                          ) : (
+                            <span style={{ color: textTertiary, fontSize: fontSizeMd }}>Trống</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="detail-grid">
+                        {[
+                          ['Tên biểu tượng', previewSymbol.name],
+                          ['Trạng thái', (
+                            <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, background: surfacePage, color: s.color }}>
+                              {s.label}
+                            </span>
+                          )],
+                        ].map(([label, value], i) => (
+                          <div key={i} className="detail-row">
+                            <span className="detail-label">{label}</span>
+                            <span className="detail-value">{value}</span>
+                          </div>
+                        ))}
+                        <div className="detail-row detail-row--full">
+                          <span className="detail-label">Ghi chú</span>
+                          <span className="detail-value">{previewSymbol.description || '—'}</span>
+                        </div>
+                      </div>
+                      <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
+                        <span style={{ color: systemOpen ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
+                      </div>
+                      {systemOpen && (
+                        <div className="detail-grid" style={{ marginTop: 4 }}>
+                          {[
+                            ['Người tạo', previewSymbol.createdByName || previewSymbol.createdBy || '—'],
+                            ['Ngày tạo', previewSymbol.createdAt ? new Date(previewSymbol.createdAt).toLocaleString('vi-VN') : '—'],
+                            ['Người cập nhật', previewSymbol.updatedByName || previewSymbol.updatedBy || '—'],
+                            ['Ngày cập nhật', previewSymbol.updatedAt ? new Date(previewSymbol.updatedAt).toLocaleString('vi-VN') : '—'],
+                          ].map(([label, value], i) => (
+                            <div key={i} className="detail-row">
+                              <span className="detail-label">{label}</span>
+                              <span className="detail-value">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          );
+        })()}
+      </Drawer>
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết biểu tượng trên bản đồ</span>}
-        open={previewOpen} onCancel={() => setPreviewOpen(false)} width={600} destroyOnClose
+        title={<span style={drawerTitleStyle}>Xác nhận xóa biểu tượng</span>}
+        open={!!deleteTarget}
+        onCancel={() => { setDeleteTarget(null); setDeleteConfirmText(''); }}
         footer={[
-          <Button key="close" type="primary" onClick={() => setPreviewOpen(false)}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Đóng</Button>,
-        ]}>
-        {previewSymbol && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ textAlign: 'center', marginBottom: spaceMd, ...cardStyle }}>
-              {previewSymbol.image && (
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: spaceMd }}>
-                  <img src={previewSymbol.image} alt={previewSymbol.name} style={{ maxHeight: 128, objectFit: 'contain' }} />
-                </div>
-              )}
-              <Typography.Title level={4} style={{ margin: 0 }}>{previewSymbol.name}</Typography.Title>
-              <div style={{ marginTop: 8 }}>
-                {(() => {
-                  const s = STATUS_MAP[previewSymbol.status] || { color: 'default', label: previewSymbol.status };
-                  const statusColor = s.color === 'green' ? statusOperational : textTertiary;
-                  return (
-                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusColor}15`, color: statusColor }}>
-                      {s.label}
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-            {previewSymbol.description && (
-              <div style={{ marginBottom: spaceMd }}>
-                <Typography.Text strong style={{ fontSize: fontSizeMd, color: textSecondary }}>Ghi chú:</Typography.Text>
-                <Typography.Paragraph style={{ margin: '4px 0 0' }}>{previewSymbol.description}</Typography.Paragraph>
-              </div>
-            )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spaceSm, fontSize: fontSizeMd }}>
-              <div><span style={{ color: textSecondary }}>Tạo bởi: </span><span>{previewSymbol.createdBy}</span></div>
-              <div><span style={{ color: textSecondary }}>Tạo lúc: </span><span>{previewSymbol.createdAt ? dayjs(previewSymbol.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
-              <div><span style={{ color: textSecondary }}>Cập nhật lúc: </span><span>{previewSymbol.updatedAt ? dayjs(previewSymbol.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</span></div>
-            </div>
-          </div>
-        )}
+          <Button key="cancel" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }} style={outlineButtonStyle}>Hủy</Button>,
+          <Button key="delete" type="primary" danger onClick={handleDeleteConfirm}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
+        ]}
+        width={480}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
+            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
+            Vui lòng nhập <strong>tên biểu tượng</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
+          </p>
+          {deleteTarget && (
+            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
+              Biểu tượng: <strong style={{ color: textPrimary }}>{deleteTarget.name}</strong>
+            </p>
+          )}
+          <Input placeholder="Nhập tên biểu tượng hoặc XÓA" value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleDeleteConfirm}
+            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
+        </div>
       </Modal>
     </div>
   );

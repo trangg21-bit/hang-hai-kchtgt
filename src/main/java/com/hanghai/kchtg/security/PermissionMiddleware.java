@@ -58,7 +58,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/v1/dashboard/",
             "/api/v1/integration/share/",
             "/api/org-units/options",
-            "/api/v1/org-units/options"
+            "/api/v1/org-units/options",
+            "/api/common/options/"
     );
 
     private static final Set<String> SKIP_PERMISSION_ORG_UNIT_PATHS = Set.of(
@@ -97,6 +98,22 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             return;
         }
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            boolean isSuperAdmin = auth.getAuthorities().stream().anyMatch(a ->
+                    "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority()) ||
+                    "SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority()) ||
+                    "*".equals(a.getAuthority()) ||
+                    "admin:all".equalsIgnoreCase(a.getAuthority()) ||
+                    "admin:manage".equalsIgnoreCase(a.getAuthority()) ||
+                    "ROLE_ADMIN".equalsIgnoreCase(a.getAuthority())
+            );
+            if (isSuperAdmin) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+        }
+
         // Extract resource from path
         String resource = extractResource(path);
         // Map HTTP method to action
@@ -105,16 +122,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         // Resolve authenticated user
         UUID userId = resolveUserId();
         if (userId == null) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // The JWT has already been signature-validated by JwtAuthFilter. Keep
-        // the middleware consistent with @PreAuthorize: system-admin
-        // authorities are global and must not depend on a second DB role
-        // lookup, which can be stale while the token is still valid.
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (isSystemAdmin(authentication)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -128,17 +135,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private boolean isSystemAdmin(Authentication authentication) {
-        if (authentication == null || authentication.getAuthorities() == null) {
-            return false;
-        }
-        return authentication.getAuthorities().stream()
-                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
-                .anyMatch(authority -> "ROLE_SYSTEM_ADMIN".equals(authority)
-                        || "ROLE_SUPER_ADMIN".equals(authority)
-                        || "SYSTEM_ADMIN".equals(authority));
     }
 
     private boolean shouldSkip(String path, String method) {
@@ -267,8 +263,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("buoy-station", "data"),
             entry("stations", "data"),
             entry("users", "user"),
-            entry("roles", "role"),
-            entry("permissions", "role"),
             entry("approvals", "approve"),
             entry("dashboard", "dashboard"),
             entry("backups", "admin"),
@@ -366,6 +360,9 @@ public class PermissionMiddleware extends OncePerRequestFilter {
                 )
         );
 
-        response.getWriter().write(objectMapper.writeValueAsString(errorBody));
+        java.io.PrintWriter writer = response.getWriter();
+        if (writer != null) {
+            writer.write(objectMapper.writeValueAsString(errorBody));
+        }
     }
 }

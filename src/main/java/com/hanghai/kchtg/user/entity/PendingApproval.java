@@ -46,9 +46,6 @@ public class PendingApproval extends BaseEntity {
     @Column(name = "password_hash", length = 255, nullable = false)
     private String passwordHash;
 
-    @Column(name = "requested_role_code", length = 50)
-    private String requestedRoleCode;
-
     @Column(name = "status", length = 20, nullable = false)
     private String status; // pending | approved | rejected
 

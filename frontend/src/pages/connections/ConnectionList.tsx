@@ -231,14 +231,14 @@ export default function ConnectionList() {
                 prefix={<SearchOutlined />}
                 onSearch={handleSearch}
               />
-              <Select placeholder="Loại" allowClear style={{ width: 140 }} value={filterType} onChange={(val) => { setFilterType(val); setPage(1); }} options={[
+              <Select placeholder="Tất cả" allowClear style={{ width: 140 }} value={filterType} onChange={(val) => { setFilterType(val); setPage(1); }} options={[
                 { value: 'rest', label: 'REST' },
                 { value: 'soap', label: 'SOAP' },
                 { value: 'grpc', label: 'gRPC' },
                 { value: 'file', label: 'FTP' },
                 { value: 'mq', label: 'MQ' },
               ]} />
-              <Select placeholder="Trạng thái" allowClear style={{ width: 160 }} value={filterStatus} onChange={(val) => { setFilterStatus(val); setPage(1); }} options={[
+              <Select placeholder="Tất cả" allowClear style={{ width: 160 }} value={filterStatus} onChange={(val) => { setFilterStatus(val); setPage(1); }} options={[
                 { value: 'healthy', label: 'Khỏe mạnh' },
                 { value: 'degraded', label: 'Suy giảm' },
                 { value: 'down', label: 'Ngừng hoạt động' },

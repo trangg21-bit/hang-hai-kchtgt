@@ -62,7 +62,20 @@ public interface LegalDocumentRepository extends JpaRepository<LegalDocument, UU
             DocumentType loai, ValidityStatus tinhTrang, LocalDate issueDateStart, LocalDate issueDateEnd,
             LocalDate effectiveDateStart, LocalDate effectiveDateEnd, Pageable pageable);
 
-    /** Count active documents grouped by validity status. */
-    @Query("SELECT v.validityStatus, COUNT(v) FROM LegalDocument v WHERE v.deletedAt IS NULL GROUP BY v.validityStatus")
-    List<Object[]> countByValidityStatus();
+    /** Count statuses using the active search filters, without restricting to one status. */
+    @Query("SELECT v.validityStatus, COUNT(v) FROM LegalDocument v WHERE v.deletedAt IS NULL AND " +
+            "(cast(:keyword as string) IS NULL OR LOWER(v.documentName) LIKE :keyword) AND " +
+            "(cast(:documentNumber as string) IS NULL OR LOWER(v.documentNumber) LIKE :documentNumber) AND " +
+            "(cast(:coQuan as string) IS NULL OR LOWER(v.issuingAuthority) LIKE :coQuan) AND " +
+            "(cast(:applicationArea as string) IS NULL OR LOWER(v.applicationArea) LIKE :applicationArea) AND " +
+            "(:loai IS NULL OR v.documentType = :loai) AND " +
+            "(cast(:issueDateStart as date) IS NULL OR v.issueDate >= :issueDateStart) AND " +
+            "(cast(:issueDateEnd as date) IS NULL OR v.issueDate <= :issueDateEnd) AND " +
+            "(cast(:effectiveDateStart as date) IS NULL OR v.effectiveDate >= :effectiveDateStart) AND " +
+            "(cast(:effectiveDateEnd as date) IS NULL OR v.effectiveDate <= :effectiveDateEnd) " +
+            "GROUP BY v.validityStatus")
+    List<Object[]> countByValidityStatusFiltered(
+            String keyword, String documentNumber, String coQuan, String applicationArea,
+            DocumentType loai, LocalDate issueDateStart, LocalDate issueDateEnd,
+            LocalDate effectiveDateStart, LocalDate effectiveDateEnd);
 }

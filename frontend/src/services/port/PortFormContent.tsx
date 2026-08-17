@@ -171,19 +171,19 @@ export default function PortFormContent({
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="totalPublicChannelLength" {...labelProps('Tổng chiều dài luồng HH công cộng (km)')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="totalPublicChannelLength" {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')} style={{ marginBottom: spaceFormField }}>
                 <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="totalDedicatedChannelLength" {...labelProps('Tổng chiều dài luồng HH chuyên dùng (km)')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="totalDedicatedChannelLength" {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')} style={{ marginBottom: spaceFormField }}>
                 <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="totalBuoysBeacons" {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="totalBuoysBeacons" {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')} style={{ marginBottom: spaceFormField }}>
                 <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>

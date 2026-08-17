@@ -3,7 +3,7 @@ import { Tabs, Table, Space, InputNumber, Collapse } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault,
+  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold,
   spaceSm, spaceMd, spaceXs,
 } from '../../tokens';
@@ -25,6 +25,41 @@ export interface BerthDetailContentProps {
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
+// Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
+// fallback sang latitude/longitude (backend chỉ parse được cho POINT).
+const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
+  const wkt = record?.coordinates;
+  const out: Array<{ lat: number; lng: number }> = [];
+  if (wkt && typeof wkt === 'string' && wkt.trim()) {
+    try {
+      if (wkt.startsWith('LINESTRING(')) {
+        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
+        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
+        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
+        if (m) {
+          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
+          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
+          pts.forEach(p => { out.push(p); });
+        }
+      }
+      if (out.length === 0) {
+        const mm = wkt.match(/MULTIPOINT\s*\(([^)]+(?:\),[^)]+)*)/);
+        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      }
+      if (out.length === 0) {
+        const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
+      }
+    } catch { /* ignore */ }
+  }
+  if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
+    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+  }
+  return out;
+};
+
 export default function BerthDetailContent({
   selectedRecord,
   orgMap,
@@ -40,7 +75,7 @@ export default function BerthDetailContent({
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
   return (
-    <Tabs defaultActiveKey="general" tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
+    <Tabs defaultActiveKey="general" tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
       items={[
         {
           key: 'general', label: 'Thông tin chung',
@@ -68,7 +103,7 @@ export default function BerthDetailContent({
                   ['Năng lực quy hoạch', r.plannedThroughput != null ? `${r.plannedThroughput} tấn/năm` : '—'],
                   ['Sản lượng gần nhất', r.latestCargoVolume != null ? `${r.latestCargoVolume} tấn/năm` : '—'],
                   ['Cỡ tàu tối đa (DWT)', r.maxVesselSize != null ? r.maxVesselSize : '—'],
-                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:'#1BAF7A',label:'Đang khai thác'}, NOT_YET_OPERATIONAL:{color:'#FA8C16',label:'Chưa khai thác'}, SUSPENDED:{color:'#F5222D',label:'Dừng khai thác'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
+                  ['Tình trạng', (() => { const s = r.operationalStatus; const m: Record<string,{color:string;label:string}> = { OPERATIONAL:{color:'#1BAF7A',label:'Đang khai thác/Vận hành'}, NOT_YET_OPERATIONAL:{color:'#FA8C16',label:'Chưa khai thác/Vận hành'}, SUSPENDED:{color:'#F5222D',label:'Dừng khai thác/Vận hành'} }; const b = s && m[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
                   ['Trạng thái', r.approvalStatus && approvalStyleMap[r.approvalStatus] ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${approvalStyleMap[r.approvalStatus].color}15`, color: approvalStyleMap[r.approvalStatus].color }}>{approvalStyleMap[r.approvalStatus].label}</span> : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
@@ -83,16 +118,16 @@ export default function BerthDetailContent({
               {systemOpen && (
                 <div className="detail-grid" style={{ marginTop: 4 }}>
                   {[
-                    ['Ngày tạo', r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '—'],
                     ['Người tạo', userMap.get(r.createdBy || '') || r.createdBy || '—'],
-                    ['Ngày cập nhật', r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày tạo', r.createdAt ? new Date(r.createdAt).toLocaleString('vi-VN') : '—'],
                     ['Người cập nhật', userMap.get(r.updatedBy || '') || r.updatedBy || '—'],
-                    ['Ngày gửi phê duyệt', r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày cập nhật', r.updatedAt ? new Date(r.updatedAt).toLocaleString('vi-VN') : '—'],
                     ['Người gửi phê duyệt', userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy || '—'],
-                    ['Ngày duyệt Cảng vụ', r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày gửi phê duyệt', r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).toLocaleString('vi-VN') : '—'],
                     ['Người duyệt Cảng vụ', userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy || '—'],
-                    ['Ngày duyệt Cục', r.departmentApprovedAt ? new Date(r.departmentApprovedAt).toLocaleString('vi-VN') : '—'],
+                    ['Ngày duyệt Cảng vụ', r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).toLocaleString('vi-VN') : '—'],
                     ['Người duyệt Cục', userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy || '—'],
+                    ['Ngày duyệt Cục', r.departmentApprovedAt ? new Date(r.departmentApprovedAt).toLocaleString('vi-VN') : '—'],
                     ['Lý do từ chối', r.rejectionReason || '—'],
                   ].map(([label, value], i) => (
                     <div key={i} className="detail-row">
@@ -133,7 +168,7 @@ export default function BerthDetailContent({
                   ['Loại đối tượng', { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
                   ['Biểu tượng bản đồ', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{symName}</span>; })(),],
                   ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
-                  ['Quy tắc hiển thị', r.displayRule || '—'],
+                  ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
                     <span className="detail-label">{label}</span>
@@ -144,26 +179,23 @@ export default function BerthDetailContent({
               <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                 <span style={detailLabelStyle}>Tọa độ GPS</span>
                 {(() => {
-                  const pts: Array<{ lat: number; lng: number }> = [];
-                  if ((r as any).latitude != null && (r as any).longitude != null) {
-                    pts.push({ lat: (r as any).latitude, lng: (r as any).longitude });
-                  }
+                  const pts = parseGisCoordinates(r);
                   if (pts.length === 0) return <div style={{ color: textTertiary, fontSize: fontSizeMd, marginTop: spaceXs }}>Không có tọa độ</div>;
                   return (
                     <Table className="list-view-table" dataSource={pts.map((p, i) => ({ ...p, key: i }))} pagination={false} size="middle" bordered style={{ marginTop: spaceXs }}>
                       <Table.Column title="STT" key="stt" width={60} align="center"
                         render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Vĩ độ (N)" key="lat"
+                      <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                         render={(_: any, rec: any) => {
                           const dms = ddToDms(rec.lat);
-                          return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Kinh độ (E)" key="lng"
+                      <Table.Column title="Kinh độ (E)" key="lng" align="center"
                         render={(_: any, rec: any) => {
                           const dms = ddToDms(rec.lng);
-                          return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                     </Table>
@@ -177,7 +209,7 @@ export default function BerthDetailContent({
           key: 'files', label: 'File đính kèm',
           children: (
             <div style={{ paddingTop: 3 }}>
-              <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
+              <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
               {detailFiles.length === 0 ? (

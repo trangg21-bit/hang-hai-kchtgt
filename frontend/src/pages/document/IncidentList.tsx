@@ -1,24 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  DatePicker,
-  message,
-  Popconfirm,
-  Tooltip,
-  Select,
-} from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, DatePicker, Form, Input, Modal, Select } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import {
   fetchIncidentList,
   createSuCo,
@@ -26,49 +9,128 @@ import {
   deleteSuCo,
 } from '../../services/document/api';
 import type { SuCoResponse, SuCoCreateRequest } from '../../services/document/types';
-import dayjs from 'dayjs';
+import { usePermissionStore } from '../../store/permissionStore';
+import EmptyState from '../../components/EmptyState';
+import ManagementDrawer from '../../components/management/ManagementDrawer';
+import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
+import Pagination from '../../components/list-view/Pagination';
+import type { DataTableColumn } from '../../components/list-view/DataTable';
+import toast from '../../components/ToastNotification';
 import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg } from '../../tokens';
+import {
+  actionPrimary,
+  fontSizeMd,
+  fontWeightBold,
+  fontWeightMedium,
+  inputStyle,
+  outlineButtonStyle,
+  primaryButtonStyle,
+  radiusPill,
+  radiusTextArea,
+  selectStyle,
+  spaceFormField,
+  spaceMd,
+  spaceSm,
+  spaceXs,
+  statusAttention,
+  statusDraft,
+  statusOperational,
+  textPrimary,
+  textSecondary,
+} from '../../tokens';
+
+const PROCESSING_STATUS_MAP: Record<string, string> = {
+  TIEP_NHAN: 'Tiếp nhận',
+  DANG_XU_LY: 'Đang xử lý',
+  DA_XU_LY: 'Đã xử lý',
+  DA_DONG: 'Đã đóng',
+};
+
+const SEVERITY_MAP: Record<string, string> = {
+  NHE: 'Nhẹ',
+  TRUNG_BINH: 'Trung bình',
+  NGHIEM_TRONG: 'Nghiêm trọng',
+  CUC_NGIEM_TRONG: 'Cực kỳ nghiêm trọng',
+};
+
+const STATUS_COLOR_MAP: Record<string, string> = {
+  TIEP_NHAN: statusAttention,
+  DANG_XU_LY: actionPrimary,
+  DA_XU_LY: statusOperational,
+  DA_DONG: statusDraft,
+};
+
+const labelProps = (label: string) => ({
+  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{label}</span>,
+});
+
+function formatDate(value?: string) {
+  return value ? dayjs(value).format('DD/MM/YYYY HH:mm') : '—';
+}
+
+function statusBadge(value?: string) {
+  const color = STATUS_COLOR_MAP[value || ''] || textSecondary;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: spaceXs,
+      padding: `${spaceXs}px ${spaceSm}px`, borderRadius: radiusPill,
+      background: `${color}15`, color, fontWeight: fontWeightMedium,
+    }}>
+      {PROCESSING_STATUS_MAP[value || ''] || value || '—'}
+    </span>
+  );
+}
 
 export default function IncidentList() {
+  const hasPerm = usePermissionStore((state) => state.hasPermission);
   const [dataSource, setDataSource] = useState<SuCoResponse[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-
-  // Filter states
-  const [filterViTri, setFilterViTri] = useState('');
-
-  // Form states
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
+  const [location, setLocation] = useState('');
+  const [locationInput, setLocationInput] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SuCoResponse | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
+
+  const errorText = (error: unknown, fallback: string) => {
+    if (error instanceof Error) return error.message;
+    if (typeof error === 'object' && error !== null && 'message' in error) return String((error as { message?: unknown }).message || fallback);
+    return fallback;
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchIncidentList({
+      const response = await fetchIncidentList({
         page: page - 1,
         size: pageSize,
-        viTri: filterViTri ? filterViTri.trim() : undefined,
+        viTri: location.trim() || undefined,
       });
-      setDataSource(res.content || []);
-      setTotal(res.totalElements || 0);
-    } catch (err: any) {
-      message.error(err.message || 'Không thể tải danh sách hồ sơ sự cố');
+      setDataSource(response.content || []);
+      setTotal(response.totalElements || 0);
+      setIsError(false);
+    } catch (error: unknown) {
+      setIsError(true);
+      toast.error(errorText(error, 'Không thể tải danh sách hồ sơ sự cố'));
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filterViTri]);
+  }, [location, page, pageSize]);
 
   useEffect(() => {
-    loadData();
+    // Data loading synchronizes the screen with the remote list endpoint.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
   }, [loadData]);
 
-  const handleOpenModal = (record?: SuCoResponse) => {
+  const openDrawer = useCallback((record?: SuCoResponse) => {
+    setEditingItem(record || null);
     if (record) {
-      setEditingItem(record);
       form.setFieldsValue({
         thoiGianPhatHien: record.thoiGianPhatHien ? dayjs(record.thoiGianPhatHien) : null,
         viTri: record.viTri,
@@ -78,246 +140,166 @@ export default function IncidentList() {
         moTa: record.moTa,
       });
     } else {
-      setEditingItem(null);
       form.resetFields();
     }
-    setIsModalOpen(true);
-  };
+    setDrawerOpen(true);
+  }, [form]);
 
-  const handleCancel = () => {
-    setIsModalOpen(false);
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    setEditingItem(null);
     form.resetFields();
-  };
+  }, [form]);
 
-  const handleSubmit = async () => {
+  const submitForm = useCallback(async () => {
     try {
       const values = await form.validateFields();
+      setSubmitting(true);
       const payload: SuCoCreateRequest = {
         ...values,
         thoiGianPhatHien: values.thoiGianPhatHien ? values.thoiGianPhatHien.toISOString() : undefined,
+        viTri: String(values.viTri || '').trim(),
+        nguoiBaoCao: String(values.nguoiBaoCao || '').trim(),
+        moTa: values.moTa ? String(values.moTa).trim() : undefined,
       };
-
       if (editingItem) {
         await updateSuCo(editingItem.id, payload);
-        message.success('Cập nhật hồ sơ sự cố thành công!');
+        toast.success('Cập nhật hồ sơ sự cố thành công');
       } else {
         await createSuCo(payload);
-        message.success('Tạo mới hồ sơ sự cố thành công!');
+        toast.success('Đã tạo hồ sơ sự cố thành công');
       }
-
-      setIsModalOpen(false);
-      form.resetFields();
-      loadData();
-    } catch (err: any) {
-      message.error(err.message || 'Có lỗi xảy ra khi lưu sự cố');
+      closeDrawer();
+      await loadData();
+    } catch (error: unknown) {
+      if (!(typeof error === 'object' && error !== null && 'errorFields' in error)) toast.error(errorText(error, 'Có lỗi xảy ra khi lưu sự cố'));
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }, [closeDrawer, editingItem, form, loadData]);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteSuCo(id);
-      message.success('Xóa hồ sơ sự cố thành công!');
-      loadData();
-    } catch (err: any) {
-      message.error(err.message || 'Lỗi khi xóa sự cố');
-    }
-  };
+  const confirmDelete = useCallback((record: SuCoResponse) => {
+    Modal.confirm({
+      title: 'Xóa hồ sơ sự cố',
+      content: 'Bạn có chắc chắn muốn xóa hồ sơ sự cố này?',
+      okText: 'Xóa',
+      cancelText: 'Hủy',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteSuCo(record.id);
+          toast.success('Xóa hồ sơ sự cố thành công');
+          await loadData();
+        } catch (error: unknown) {
+          toast.error(errorText(error, 'Lỗi khi xóa sự cố'));
+        }
+      },
+    });
+  }, [loadData]);
 
-  const columns = [
-    {
-      title: 'Thời gian phát hiện',
-      dataIndex: 'thoiGianPhatHien',
-      key: 'thoiGianPhatHien',
-      render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY HH:mm') : '',
-    },
-    {
-      title: 'Vị trí/Địa điểm xảy ra',
-      dataIndex: 'viTri',
-      key: 'viTri',
-    },
-    {
-      title: 'Mức độ nghiêm trọng',
-      dataIndex: 'mucDoNghiemTrong',
-      key: 'mucDoNghiemTrong',
-      render: (val: string) => {
-        if (val === 'NHE') return 'Nhẹ';
-        if (val === 'TRUNG_BINH') return 'Trung bình';
-        if (val === 'NGHIEM_TRONG') return 'Nghiêm trọng';
-        if (val === 'CUC_NGIEM_TRONG') return 'Cực kỳ nghiêm trọng';
-        return val || '';
-      }
-    },
-    {
-      title: 'Tình trạng xử lý',
-      dataIndex: 'tinhTrangXuLy',
-      key: 'tinhTrangXuLy',
-      render: (val: string) => {
-        if (val === 'TIEP_NHAN') return 'Tiếp nhận';
-        if (val === 'DANG_XU_LY') return 'Đang xử lý';
-        if (val === 'DA_XU_LY') return 'Đã xử lý';
-        if (val === 'DA_DONG') return 'Đã đóng';
-        return val || '';
-      }
-    },
-    {
-      title: 'Người báo cáo',
-      dataIndex: 'nguoiBaoCao',
-      key: 'nguoiBaoCao',
-    },
-    {
-      title: 'Mô tả',
-      dataIndex: 'moTa',
-      key: 'moTa',
-      ellipsis: true,
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      render: (_: any, record: SuCoResponse) => (
-        <Space size="middle">
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenModal(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Bạn có chắc chắn muốn xóa sự cố này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
-          >
-            <Tooltip title="Xóa">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+  const columns = useMemo<DataTableColumn[]>(() => [
+    { key: 'stt', label: 'STT', width: 64, align: 'center', fixed: 'left', render: (_value, _record, index) => (page - 1) * pageSize + (index || 0) + 1 },
+    { key: 'thoiGianPhatHien', label: 'Thời gian phát hiện', dataIndex: 'thoiGianPhatHien', width: 160, sortable: true, render: formatDate },
+    { key: 'viTri', label: 'Vị trí/Địa điểm', dataIndex: 'viTri', width: 240, sortable: true },
+    { key: 'mucDoNghiemTrong', label: 'Mức độ', dataIndex: 'mucDoNghiemTrong', width: 160, sortable: true, render: (value) => SEVERITY_MAP[value] || value || '—' },
+    { key: 'tinhTrangXuLy', label: 'Tình trạng xử lý', dataIndex: 'tinhTrangXuLy', width: 160, sortable: true, render: statusBadge },
+    { key: 'nguoiBaoCao', label: 'Người báo cáo', dataIndex: 'nguoiBaoCao', width: 160 },
+    { key: 'moTa', label: 'Mô tả', dataIndex: 'moTa', width: 280 },
+  ], [page, pageSize]);
+
+  const rowActions = useCallback((record: SuCoResponse) => {
+    const actions: { key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
+    if (hasPerm('document:read')) actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => openDrawer(record) });
+    if (hasPerm('incident:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openDrawer(record) });
+    if (hasPerm('incident:delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => confirmDelete(record) });
+    return actions;
+  }, [confirmDelete, hasPerm, openDrawer]);
+
+  const statusTabs = useMemo(() => [{
+    key: 'all', label: 'Tất cả', count: total, color: textSecondary, active: true,
+  }], [total]);
+
+  const filterContent = (
+    <>
+      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Tìm kiếm</div>
+        <Input
+          placeholder="Tìm theo vị trí sự cố..."
+          allowClear
+          value={locationInput}
+          onChange={(event) => setLocationInput(event.target.value)}
+          onPressEnter={() => { setLocation(locationInput.trim()); setPage(1); }}
+          style={{ ...inputStyle, width: '100%' }}
+        />
+      </div>
+      {!filterCollapsed && <div style={{ color: textSecondary, fontSize: fontSizeMd, marginTop: spaceSm }}>Có thể lọc thêm theo mức độ trong màn chi tiết sự cố.</div>}
+    </>
+  );
+
+  const headerActions = hasPerm('incident:create') ? [{
+    key: 'create', label: 'Ghi nhận sự cố', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => openDrawer(),
+  }] : [];
 
   return (
-    <Card
-      title="Danh sách hồ sơ sự cố hàng hải"
-      extra={
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadData} />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-          >
-            Ghi nhận sự cố
-          </Button>
-        </Space>
-      }
-    >
-      <div style={{ marginBottom: 16 }}>
-        <Space wrap>
-          <Input
-            placeholder="Tìm theo vị trí sự cố..."
-            value={filterViTri}
-            onChange={(e) => {
-              setFilterViTri(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 300 }}
-          />
-          <Button
-            onClick={() => {
-              setFilterViTri('');
-              setPage(1);
-            }}
-          >
-            Xóa bộ lọc
-          </Button>
-        </Space>
-      </div>
-
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="id"
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+      <ScreenHeader breadcrumb={[{ label: 'Văn bản & Sự cố' }, { label: 'Sự cố hàng hải' }]} actions={headerActions} />
+      <FilterTableLayout
+        filterContent={filterContent}
+        statusTabs={statusTabs}
+        onStatusTabChange={() => undefined}
+        onFilterApply={() => { setLocation(locationInput.trim()); setPage(1); }}
+        onFilterReset={() => { setLocation(''); setLocationInput(''); setPage(1); }}
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed((value) => !value)}
         loading={loading}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          onChange: (p, s) => {
-            setPage(p);
-            setPageSize(s);
-          },
-          showSizeChanger: true,
-          showTotal: (totalCount) => `Tổng ${totalCount} sự cố`,
-          locale: { items_per_page: '/ trang' },
-        }}
-      />
-
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa hồ sơ sự cố' : 'Ghi nhận hồ sơ sự cố mới'}</span>}
-        open={isModalOpen}
-        onOk={handleSubmit}
-        onCancel={handleCancel}
-        okText="Lưu"
-        cancelText="Hủy"
+        error={isError}
+        onRetry={loadData}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="viTri"
-            label="Vị trí/Địa điểm xảy ra"
-            rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}
-          >
-            <Input placeholder="Tọa độ hoặc lý trình luồng hàng hải..." />
-          </Form.Item>
+        <DataTable
+          columns={columns}
+          dataSource={dataSource}
+          rowKey="id"
+          rowActions={rowActions}
+          loading={loading}
+          scroll={{ x: 'max-content' }}
+          emptyState={<EmptyState description={location ? 'Không tìm thấy hồ sơ sự cố phù hợp' : 'Chưa có hồ sơ sự cố'} />}
+        />
+        {dataSource.length > 0 && <Pagination total={total} current={page} pageSize={pageSize} onChange={(nextPage, nextPageSize) => { setPage(nextPage); setPageSize(nextPageSize); }} />}
+      </FilterTableLayout>
 
-          <Form.Item
-            name="thoiGianPhatHien"
-            label="Thời gian phát hiện"
-            rules={[{ required: true, message: 'Vui lòng chọn thời gian phát hiện' }]}
-          >
-            <DatePicker showTime style={{ width: '100%' }} />
+      <ManagementDrawer
+        title={editingItem ? 'Chỉnh sửa hồ sơ sự cố' : 'Ghi nhận hồ sơ sự cố mới'}
+        open={drawerOpen}
+        onClose={closeDrawer}
+        size={720}
+        footer={
+          <>
+            <Button onClick={closeDrawer} style={outlineButtonStyle}>Hủy</Button>
+            <Button type="primary" loading={submitting} onClick={submitForm} style={primaryButtonStyle}>Lưu</Button>
+          </>
+        }
+      >
+        <Form form={form} layout="vertical" style={{ color: textPrimary }}>
+          <Form.Item name="viTri" {...labelProps('Vị trí/Địa điểm xảy ra')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}>
+            <Input placeholder="Tọa độ hoặc lý trình luồng hàng hải..." style={inputStyle} />
           </Form.Item>
-
-          <Form.Item
-            name="mucDoNghiemTrong"
-            label="Mức độ nghiêm trọng"
-            rules={[{ required: true, message: 'Vui lòng chọn mức độ nghiêm trọng' }]}
-          >
-            <Select placeholder="Chọn mức độ nghiêm trọng...">
-              <Select.Option value="NHE">Nhẹ</Select.Option>
-              <Select.Option value="TRUNG_BINH">Trung bình</Select.Option>
-              <Select.Option value="NGHIEM_TRONG">Nghiêm trọng</Select.Option>
-              <Select.Option value="CUC_NGIEM_TRONG">Cực kỳ nghiêm trọng</Select.Option>
-            </Select>
+          <Form.Item name="thoiGianPhatHien" {...labelProps('Thời gian phát hiện')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn thời gian phát hiện' }]}>
+            <DatePicker showTime style={{ ...selectStyle, width: '100%' }} />
           </Form.Item>
-
-          <Form.Item
-            name="tinhTrangXuLy"
-            label="Tình trạng xử lý"
-            rules={[{ required: true, message: 'Vui lòng chọn tình trạng xử lý' }]}
-          >
-            <Select placeholder="Chọn tình trạng xử lý...">
-              <Select.Option value="TIEP_NHAN">Tiếp nhận</Select.Option>
-              <Select.Option value="DANG_XU_LY">Đang xử lý</Select.Option>
-              <Select.Option value="DA_XU_LY">Đã xử lý</Select.Option>
-              <Select.Option value="DA_DONG">Đã đóng</Select.Option>
-            </Select>
+          <Form.Item name="mucDoNghiemTrong" {...labelProps('Mức độ nghiêm trọng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn mức độ nghiêm trọng' }]}>
+            <Select options={Object.entries(SEVERITY_MAP).map(([value, label]) => ({ value, label }))} placeholder="Chọn mức độ nghiêm trọng..." style={{ ...selectStyle, width: '100%' }} />
           </Form.Item>
-
-          <Form.Item
-            name="nguoiBaoCao"
-            label="Người báo cáo"
-            rules={[{ required: true, message: 'Vui lòng nhập người báo cáo' }]}
-          >
-            <Input placeholder="Nhập họ và tên người báo cáo..." />
+          <Form.Item name="tinhTrangXuLy" {...labelProps('Tình trạng xử lý')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn tình trạng xử lý' }]}>
+            <Select options={Object.entries(PROCESSING_STATUS_MAP).map(([value, label]) => ({ value, label }))} placeholder="Chọn tình trạng xử lý..." style={{ ...selectStyle, width: '100%' }} />
           </Form.Item>
-
-          <Form.Item name="moTa" label="Mô tả chi tiết">
-            <Input.TextArea placeholder="Mô tả diễn biến chi tiết sự việc..." rows={4} />
+          <Form.Item name="nguoiBaoCao" {...labelProps('Người báo cáo')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập người báo cáo' }]}>
+            <Input placeholder="Nhập họ và tên người báo cáo..." style={inputStyle} />
+          </Form.Item>
+          <Form.Item name="moTa" {...labelProps('Mô tả chi tiết')} style={{ marginBottom: spaceFormField }}>
+            <Input.TextArea placeholder="Mô tả diễn biến chi tiết sự việc..." rows={5} style={{ borderRadius: radiusTextArea }} />
           </Form.Item>
         </Form>
-      </Modal>
-    </Card>
+      </ManagementDrawer>
+    </div>
   );
 }

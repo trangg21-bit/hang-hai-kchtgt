@@ -14,10 +14,17 @@ import type {
 } from '../types/vtsSystem';
 
 const VTS_BASE_PATH = '/v1/vts-system';
+const COMMON_OPTIONS_BASE_PATH = '/common/options';
 
 export const vtsSystemCRUD = {
   async getScopedOrgUnitOptions(): Promise<Array<{ id: string; name: string; code?: string; path?: string; parentId?: string }>> {
-    const res = await api.get(`${VTS_BASE_PATH}/org-unit-options`);
+    const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/org-units`);
+    const data = res.data?.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getScopedPortOptions(): Promise<Array<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }>> {
+    const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/ports`);
     const data = res.data?.data;
     return Array.isArray(data) ? data : [];
   },

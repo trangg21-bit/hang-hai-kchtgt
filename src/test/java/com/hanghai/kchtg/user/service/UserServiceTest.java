@@ -6,21 +6,22 @@ import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.repository.UserStatusLogRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -37,7 +38,6 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     @Mock private UserRepository userRepository;
-    @Mock private RoleRepository roleRepository;
     @Mock private OrgUnitRepository orgUnitRepository;
     @Mock private GroupRepository groupRepository;
     @Mock private PasswordEncoder passwordEncoder;
@@ -52,39 +52,26 @@ class UserServiceTest {
 
     private UserService userService;
 
-    private Role systemAdminRole;
-    private Role userRole;
     private User systemAdminUser;
     private User regularUser;
 
     @BeforeEach
     void setUp() {
         userService = new UserService(
-                userRepository, roleRepository, orgUnitRepository, groupRepository,
+                userRepository, orgUnitRepository, groupRepository,
                 passwordEncoder, passwordPolicyValidator, permissionCacheService,
                 passwordHistoryRepository, userStatusLogRepository, entityManager, orgUnitCacheService);
 
-
-        // Setup roles
-        systemAdminRole = new Role();
-        systemAdminRole.setCode("ROLE_SYSTEM_ADMIN");
-        systemAdminRole.setName("System Admin");
-
-        userRole = new Role();
-        userRole.setCode("ROLE_USER");
-        userRole.setName("User");
 
         // Setup users
         systemAdminUser = new User();
         systemAdminUser.setId(UUID.randomUUID());
         systemAdminUser.setUsername("sysadmin");
-        systemAdminUser.setRoles(new HashSet<>(Set.of(systemAdminRole)));
 
         regularUser = new User();
         regularUser.setId(UUID.randomUUID());
         regularUser.setUsername("regular");
         regularUser.setStatus(UserStatus.ACTIVE);
-        regularUser.setRoles(new HashSet<>(Set.of(userRole)));
 
         jakarta.persistence.Query mockQuery = mock(jakarta.persistence.Query.class);
         lenient().when(mockQuery.getResultList()).thenReturn(Collections.emptyList());
@@ -103,46 +90,19 @@ class UserServiceTest {
     // =========================================================================
 
     @Test
-    void create_shouldDenyWhenNonSystemAdminCreatesSystemAdmin() {
-        // Given: current user is admin but NOT system-admin
-        mockCurrentUserAuthorities("ROLE_ADMIN");
+    void create_shouldAllowAdminToCreateUserWithDirectPermissions() {
+        mockCurrentUserAuthorities("admin:manage");
 
         CreateUserRequest request = new CreateUserRequest();
         request.setUsername("newadmin");
         request.setPassword("SecurePass1");
         request.setEmail("newadmin@test.com");
         request.setFullName("New Admin");
-        request.setRole("ROLE_SYSTEM_ADMIN");
+        request.setPermissionCodes(List.of("user:read"));
 
         when(userRepository.existsByUsername("newadmin")).thenReturn(false);
         when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("newadmin@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
-
-        // When/Then: should throw AccessDeniedException
-        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
-                () -> userService.create(request));
-        assertTrue(ex.getMessage().contains("System Admin"));
-
-        // Verify: user was never saved
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void create_shouldAllowWhenSystemAdminCreatesSystemAdmin() {
-        // Given: current user IS system-admin
-        mockCurrentUserAuthorities("ROLE_SYSTEM_ADMIN");
-
-        CreateUserRequest request = new CreateUserRequest();
-        request.setUsername("newadmin");
-        request.setPassword("SecurePass1");
-        request.setEmail("newadmin@test.com");
-        request.setFullName("New Admin");
-        request.setRole("ROLE_SYSTEM_ADMIN");
-
-        when(userRepository.existsByUsername("newadmin")).thenReturn(false);
-        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("newadmin@test.com")).thenReturn(false);
-        doNothing().when(passwordPolicyValidator).validate("SecurePass1");
-        when(roleRepository.findByCode("ROLE_SYSTEM_ADMIN")).thenReturn(Optional.of(systemAdminRole));
         when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> {
             User u = inv.getArgument(0);
@@ -161,19 +121,18 @@ class UserServiceTest {
     @Test
     void create_shouldAllowAdminToCreateRegularUser() {
         // Given: current user is regular admin (not system-admin)
-        mockCurrentUserAuthorities("ROLE_ADMIN");
+        mockCurrentUserAuthorities("admin:manage");
 
         CreateUserRequest request = new CreateUserRequest();
         request.setUsername("regularuser");
         request.setPassword("SecurePass1");
         request.setEmail("regular@test.com");
         request.setFullName("Regular User");
-        request.setRole("ROLE_USER");
+        request.setPermissionCodes(List.of("user:read"));
 
         when(userRepository.existsByUsername("regularuser")).thenReturn(false);
         when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("regular@test.com")).thenReturn(false);
         doNothing().when(passwordPolicyValidator).validate("SecurePass1");
-        when(roleRepository.findByCode("ROLE_USER")).thenReturn(Optional.of(userRole));
         when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> {
             User u = inv.getArgument(0);
@@ -187,6 +146,54 @@ class UserServiceTest {
         // Then
         assertNotNull(result);
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void create_shouldPersistRequestStatusInsteadOfHardcodedActive() {
+        // Given: the create form chose status INACTIVE (BR-001-19 / AC-001-12)
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("statususer");
+        request.setPassword("SecurePass1");
+        request.setEmail("statususer@test.com");
+        request.setFullName("Status User");
+        request.setStatus(UserStatus.INACTIVE);
+
+        when(userRepository.existsByUsername("statususer")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull("statususer@test.com")).thenReturn(false);
+        doNothing().when(passwordPolicyValidator).validate("SecurePass1");
+        when(passwordEncoder.encode("SecurePass1")).thenReturn("hashed");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        });
+
+        // When
+        User result = userService.create(request);
+
+        // Then: the persisted entity carries the form-chosen status, not a hardcoded ACTIVE
+        ArgumentCaptor<User> savedCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(savedCaptor.capture());
+        assertEquals(UserStatus.INACTIVE, savedCaptor.getValue().getStatus());
+        assertEquals(UserStatus.INACTIVE, result.getStatus());
+    }
+
+    @Test
+    void createUserRequest_shouldRejectNullStatusByBeanValidation() {
+        // Given: request without status (BR-001-19 / AC-001-16)
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("nostatus");
+        request.setPassword("SecurePass1");
+        request.setEmail("nostatus@test.com");
+        // status intentionally left null
+
+        // When/Then: @NotNull on status rejects with the required message
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            Set<ConstraintViolation<CreateUserRequest>> violations = factory.getValidator().validate(request);
+            assertTrue(violations.stream().anyMatch(v ->
+                    "status".equals(v.getPropertyPath().toString())
+                            && "Vui lòng chọn trạng thái".equals(v.getMessage())));
+        }
     }
 
     @Test
@@ -255,26 +262,8 @@ class UserServiceTest {
     // =========================================================================
 
     @Test
-    void delete_shouldDenyWhenNonSystemAdminDeletesSystemAdmin() {
-        // Given: current user is admin but NOT system-admin
-        mockCurrentUserAuthorities("ROLE_ADMIN");
-
-        // Target user IS system-admin
-        when(userRepository.findById(systemAdminUser.getId())).thenReturn(Optional.of(systemAdminUser));
-
-        // When/Then: should throw AccessDeniedException
-        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
-                () -> userService.delete(systemAdminUser.getId()));
-        assertTrue(ex.getMessage().contains("System Admin"));
-
-        // Verify: softDelete was never called
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
     void delete_shouldAllowWhenSystemAdminDeletesSystemAdmin() {
-        // Given: current user IS system-admin
-        mockCurrentUserAuthorities("ROLE_SYSTEM_ADMIN");
+        mockCurrentUserAuthorities("admin:manage");
 
         // Target user is also system-admin
         when(userRepository.findById(systemAdminUser.getId())).thenReturn(Optional.of(systemAdminUser));
@@ -290,7 +279,7 @@ class UserServiceTest {
     @Test
     void delete_shouldAllowAdminToDeleteRegularUser() {
         // Given: current user is regular admin (not system-admin)
-        mockCurrentUserAuthorities("ROLE_ADMIN");
+        mockCurrentUserAuthorities("admin:manage");
 
         // Target user is a regular user (not system-admin)
         when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));

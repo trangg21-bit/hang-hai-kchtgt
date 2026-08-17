@@ -25,9 +25,9 @@ export const BECBANG_APPROVAL_STATUS_MAP = APPROVAL_STATUS_MAP;
 // ── Berth-specific status types (5-value approval) ──────────────────
 export type BerthActivityStatus = 'NOT_YET_OPERATIONAL' | 'OPERATIONAL' | 'SUSPENDED';
 export const BERTH_ACTIVITY_STATUS_MAP: Record<BerthActivityStatus, {color:string;label:string}> = {
-  NOT_YET_OPERATIONAL: {color:'orange',label:'Chưa khai thác'},
-  OPERATIONAL: {color:'green',label:'Đang khai thác'},
-  SUSPENDED: {color:'red',label:'Dừng khai thác'},
+  NOT_YET_OPERATIONAL: {color:'orange',label:'Chưa khai thác/Vận hành'},
+  OPERATIONAL: {color:'green',label:'Đang khai thác/Vận hành'},
+  SUSPENDED: {color:'red',label:'Dừng khai thác/Vận hành'},
 };
 export type BerthApprovalStatus = 'NHAP'|'CHO_PHE_DUYET'|'CHO_PD_CAP_CUC'|'DA_PHE_DUYET'|'TU_CHOI';
 export const BERTH_APPROVAL_STATUS_MAP: Record<BerthApprovalStatus,{color:string;label:string}> = {
@@ -389,6 +389,7 @@ export interface DryPort {
   coordinateSystem?: number;
   displayRule?: number;
   mapSymbolId?: string;
+  geometryType?: string;
   spatialId?: string;
   coordinates?: string;
   latitude?: number;
@@ -430,6 +431,7 @@ export interface CreateDryPortRequest {
   coordinateSystem?: number;
   displayRule?: number;
   mapSymbolId?: string;
+  geometryType?: string;
   latitude?: number;
   longitude?: number;
   coordinates?: string;
@@ -463,6 +465,7 @@ export interface UpdateDryPortRequest {
   coordinateSystem?: number;
   displayRule?: number;
   mapSymbolId?: string | null;
+  geometryType?: string;
   latitude?: number;
   longitude?: number;
   coordinates?: string;

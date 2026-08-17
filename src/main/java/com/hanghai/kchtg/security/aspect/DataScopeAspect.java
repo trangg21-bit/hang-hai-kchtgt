@@ -4,7 +4,6 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.annotation.DataScope;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -50,10 +49,7 @@ public class DataScopeAspect {
     /**
      * Vai trò có quyền tra cứu toàn quốc (không bị cưỡng chế bộ lọc đơn vị).
      */
-    private static final Set<String> NATIONWIDE_ROLES = Set.of(
-            "ROLE_SYSTEM_ADMIN",
-            "ROLE_ADMIN"
-    );
+    private static final String NATIONWIDE_PERMISSION = "orgunit:scope_all";
 
     @Around("@annotation(dataScope)")
     public Object enforceDataScope(ProceedingJoinPoint joinPoint, DataScope dataScope) throws Throwable {
@@ -69,9 +65,9 @@ public class DataScopeAspect {
         }
 
         // Kiểm tra xem user có mang vai trò tra cứu toàn quốc hay không
-        boolean isNationwide = currentUser.getRoles().stream()
-                .map(Role::getCode)
-                .anyMatch(NATIONWIDE_ROLES::contains);
+        boolean isNationwide = currentUser.getAllPermissions().contains(NATIONWIDE_PERMISSION)
+                || currentUser.getAllPermissions().contains("admin:all")
+                || currentUser.getAllPermissions().contains("*");
 
         if (isNationwide) {
             // User có quyền xem toàn quốc -> Giữ nguyên bộ lọc tùy chọn

@@ -25,11 +25,15 @@ public class UserResponse {
     private String email;
     private String fullName;
     private String phone;
-    private String role;
+    private String address;
+    private String department;
+    private String position;
+    private String note;
     private UUID orgUnitId;
     private String orgUnitName;
     private List<UUID> groupIds;
     private List<String> groupNames;
+    private List<String> permissionCodes;
     private UserStatus status;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
@@ -73,11 +77,15 @@ public class UserResponse {
                 user.getEmail(),
                 user.getFullName(),
                 user.getPhone(),
-                user.getPrimaryRoleCode(),
+                user.getAddress(),
+                user.getDepartment(),
+                user.getPosition(),
+                user.getNote(),
                 oId,
                 oName,
                 gIds,
                 gNames,
+                user.getAllPermissions().stream().sorted().toList(),
                 user.getStatus(),
                 user.getLastLoginAt(),
                 user.getCreatedAt(),
@@ -85,4 +93,3 @@ public class UserResponse {
         );
     }
 }
-

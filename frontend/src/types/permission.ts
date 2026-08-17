@@ -16,6 +16,7 @@ export interface PermissionGroup {
 export interface PermissionTreeNode {
   key: string;
   title: string;
+  disableCheckbox?: boolean;
   children?: PermissionTreeNode[];
 }
 

@@ -45,6 +45,15 @@ Các giá trị nằm trong `frontend/src/theme.ts`:
 - `DataTable` tự dùng các giá trị này khi màn hình không truyền `scroll` riêng.
 - CSS dùng biến `--list-table-scroll-y`; không lặp lại biểu thức `calc(100vh - ...)` trong page.
 
+## Bảng rỗng và thanh cuộn ngang
+
+- Bảng phải giữ nguyên chiều cao vùng dữ liệu khi `dataSource` rỗng; không để EmptyState làm co thân bảng.
+- Thanh cuộn ngang phải nằm ở đáy thân bảng, cùng vị trí với trạng thái có dữ liệu.
+- `DataTable` dùng cơ chế dùng chung để reset `scrollLeft` về `0` sau khi đổi bộ lọc hoặc tải lại danh sách; không tự điều khiển vị trí cuộn trong từng page.
+- Cột thao tác là cột cuối cùng và chỉ cột này được cố định bên phải; không đặt thêm cột dữ liệu sau cột thao tác.
+- Nếu tổng chiều rộng cột thực tế nhỏ hơn chiều rộng tối thiểu chung, page có thể truyền `scroll={{ x: 'max-content' }}` để tránh vùng trống và tránh làm lệch cột đầu tiên.
+- Khi kiểm tra trạng thái empty, phải xác nhận đồng thời: cột đầu tiên hiển thị từ mép trái, cột thao tác ở cuối, EmptyState nằm trong thân bảng và thanh cuộn ở đáy.
+
 ## Checklist trước khi hoàn tất
 
 - [ ] Đã đọc `AGENTS.md`, `frontend/src/theme.ts` và tài liệu này.
@@ -53,6 +62,9 @@ Các giá trị nằm trong `frontend/src/theme.ts`:
 - [ ] Bảng dùng kích thước mặc định của `DataTable`.
 - [ ] Có đủ trạng thái loading, error, empty và data.
 - [ ] Cột có `width`, `ellipsis` và sort dùng đúng cơ chế của `DataTable`.
+- [ ] Trạng thái empty giữ nguyên chiều cao bảng và thanh cuộn ngang nằm ở đáy.
+- [ ] Sau khi lọc/reset, bảng bắt đầu từ scroll ngang `0`; cột đầu tiên không bị cuộn khuất.
+- [ ] Cột thao tác là cột cuối cùng, không có nội dung/cột nào lộ ra phía sau.
 - [ ] Không có CSS override riêng cho `.list-view-table` hoặc `.ant-table-body` trong page.
 - [ ] Đã chạy `npm run build`.
 

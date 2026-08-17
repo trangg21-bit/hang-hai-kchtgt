@@ -202,10 +202,10 @@ export default function CoastalStationList() {
 
   const rowActions = useCallback((record: CoastalStationVTSResponse) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean; }[] = [];
-    if (hasPerm('station:edit')) {
+    if (hasPerm('coastalstation:update')) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
     }
-    if (hasPerm('station:delete')) {
+    if (hasPerm('coastalstation:delete')) {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => confirmDelete(record), danger: true });
     }
     return actions;
@@ -233,7 +233,7 @@ export default function CoastalStationList() {
         <ScreenHeader
           breadcrumb={[{ label: 'Quản lý nhà trạm' }, { label: 'Đài duyên hải VTS' }]}
           actions={[
-            ...(hasPerm('station:create') ? [{
+            ...(hasPerm('coastalstation:create') ? [{
               key: 'create',
               label: 'Thêm đài duyên hải',
               variant: 'primary' as const,

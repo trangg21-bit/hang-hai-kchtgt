@@ -1,7 +1,8 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Table, Empty, Dropdown, Button, Tooltip } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import type { MenuProps } from 'antd';
 import {
   textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeMd, fontWeightBold,
   statusOperational, statusCritical, statusDraft, statusAttention,
@@ -10,6 +11,32 @@ import {
 import { colors, layout } from '../../theme';
 
 const tableHeaderBg = colors.bodyBg;
+const ACTION_COLUMN_WIDTH = 60;
+
+const actionColumnCellStyle: React.CSSProperties = {
+  width: ACTION_COLUMN_WIDTH,
+  minWidth: ACTION_COLUMN_WIDTH,
+  maxWidth: ACTION_COLUMN_WIDTH,
+  paddingInline: 0,
+  textAlign: 'center',
+  verticalAlign: 'middle',
+};
+
+
+// Stable, order-insensitive fingerprint of the rows currently shown. It lets the
+// scroll-reset effect tell a real data change (new page / filter / reload) apart
+// from a client-side re-sort, so sorting no longer snaps the horizontal scroll
+// back to the first column while the user is scrolled right.
+function computeRowSetSignature(dataSource: any[], rowKey: string | ((record: any) => string)): string {
+  return dataSource
+    .map((record) => {
+      if (typeof rowKey === 'function') return String(rowKey(record));
+      const v = record?.[rowKey];
+      return v != null ? String(v) : '';
+    })
+    .sort()
+    .join('|');
+}
 
 export interface DataTableColumn {
   key: string; label: string; sortable?: boolean; twoLine?: boolean;
@@ -29,6 +56,9 @@ export interface DataTableProps {
   rowKey: string | ((record: any) => string);
   loading?: boolean;
   emptyState?: React.ReactNode;
+  /** Khi true (và scroll.y là số): thân bảng LUÔN lấp đầy chiều cao khả dụng,
+      scrollbar ngang nằm sát mép dưới bảng, kể cả khi ít bản ghi. */
+  fill?: boolean;
   rowActions?: (record: any) => {
     key: string; label: string; icon?: React.ReactNode;
     onClick: () => void; danger?: boolean; disabled?: boolean;
@@ -48,12 +78,50 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   pending: statusAttention,
 };
 
+// Auto-close the row action menu when the page or the table body scrolls.
+const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) => {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const closeOnScroll = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (t && typeof t.closest === 'function' && t.closest('.ant-dropdown')) return;
+      setOpen(false);
+    };
+    document.addEventListener('scroll', closeOnScroll, true);
+    return () => document.removeEventListener('scroll', closeOnScroll, true);
+  }, [open]);
+  return (
+    <Dropdown menu={{ items }} trigger={['click']} open={open} onOpenChange={setOpen}>
+      <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()}
+        style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }} />
+    </Dropdown>
+  );
+};
+
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, scroll, ...rest
+  columns, dataSource, rowKey, loading, emptyState, fill, onSort, rowActions, children, scroll, ...rest
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
+  const dataSignatureRef = useRef<string | null>(null);
+  // Preserve a content-sized table when the page explicitly requests
+  // `max-content`. For lists whose columns are narrower than the common
+  // minimum width, replacing it with a larger fixed width leaves an empty
+  // area after the last column. At the far-right scroll position that area
+  // makes the action column look detached from the table.
+  const resolvedScroll = scroll;
 
   useLayoutEffect(() => {
+    // A client-side re-sort produces a brand-new `dataSource` array with the SAME
+    // rows in a different order. Reset the horizontal scroll only when the set of
+    // rows actually changes (filter / pagination / reload) — otherwise clicking a
+    // sortable header while scrolled right would snap back to the first column.
+    const signature = computeRowSetSignature(dataSource, rowKey);
+    if (dataSignatureRef.current !== null && signature === dataSignatureRef.current) {
+      return; // same rows, just re-ordered — keep the current scroll position
+    }
+    dataSignatureRef.current = signature;
+
     const resetHorizontalScroll = () => {
       tableShellRef.current?.querySelectorAll<HTMLElement>(
         '.ant-table-header, .ant-table-body, .ant-table-content, .ant-table-sticky-scroll',
@@ -66,15 +134,66 @@ const DataTable: React.FC<DataTableProps> = ({
     resetHorizontalScroll();
     const frameId = window.requestAnimationFrame(resetHorizontalScroll);
     return () => window.cancelAnimationFrame(frameId);
-  }, [dataSource]);
+  }, [dataSource, rowKey]);
+
+  const requestedScrollY = scroll?.y ?? layout.listTableScrollY;
+  const isNumericScrollY = typeof requestedScrollY === 'number';
+  // Đo chiều cao thực tế để quyết định chế độ thân bảng thay vì LUÔN lấp đầy:
+  //  - Nội dung cao hơn vùng trống (availH) → scroll.y = availH − header:
+  //    thân bảng lấp đầy, mép dưới thẳng hàng panel filter, cuộn TRONG bảng.
+  //  - Nội dung vừa vùng trống → scroll.y = undefined + shell co sát nội dung:
+  //    pagination nằm ngay dưới bảng, mép dưới KHÔNG thẳng hàng panel filter.
+  // Chỉ áp dụng khi scroll.y là số, có dữ liệu và shell nằm trong flex container.
+  const [fitMode, setFitMode] = useState<number | 'content' | null>(null);
+  useLayoutEffect(() => {
+    const el = tableShellRef.current;
+    if (!el || !el.parentElement) return;
+    const parent = el.parentElement;
+    if (!isNumericScrollY || dataSource.length === 0) return;
+    if (!getComputedStyle(parent).display.includes('flex')) return;
+    const measure = () => {
+      // Vùng trống cho bảng = chiều cao parent − tổng sibling (pagination; thẻ <style> = 0).
+      let availH = parent.clientHeight;
+      for (const sib of Array.from(parent.children)) {
+        if (sib !== el) availH -= (sib as HTMLElement).offsetHeight;
+      }
+      const header = el.querySelector<HTMLElement>('.ant-table-header')
+        || el.querySelector<HTMLElement>('.ant-table-thead');
+      const tbody = el.querySelector<HTMLElement>('.ant-table-tbody');
+      const headerH = header ? header.offsetHeight : 0;
+      // Chiều cao tự nhiên của nội dung = header + tbody. KHÔNG dùng
+      // body.scrollHeight: ở chế độ split (scroll.y đã đặt) body bị ép cao đúng
+      // scroll.y nên scrollHeight luôn ≥ scroll.y → đo sai khi ít bản ghi
+      // (làm bảng vẫn lấp đầy dù nội dung ngắn).
+      const contentH = headerH + (tbody ? tbody.offsetHeight : 0);
+      // `fill`: luôn lấp đầy vùng trống (scrollbar ngang nằm sát mép dưới bảng),
+      // không bao giờ rơi về chế độ 'content' dù nội dung ít bản ghi.
+      if (fill || contentH > availH + 1) {
+        setFitMode(Math.max(80, availH - headerH));
+      } else {
+        setFitMode('content');
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
+  }, [dataSource.length, isNumericScrollY, fill]);
+  const tableScroll = {
+    x: scroll?.x ?? layout.listTableMinWidth,
+    y: isNumericScrollY && fitMode != null
+      ? (fitMode === 'content' ? undefined : fitMode)
+      : requestedScrollY,
+  };
 
   if (children) {
     return (
-      <div ref={tableShellRef} style={{ width: '100%', minWidth: 0 }}>
+      <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0 }}>
         <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
           className="list-view-table"
           pagination={false}
-          scroll={scroll}
+          scroll={resolvedScroll}
           locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
           {...rest}>{children}</Table>
       </div>
@@ -152,22 +271,25 @@ const DataTable: React.FC<DataTableProps> = ({
   if (rowActions && columns && !columns.some((c) => c.key === 'actions')) {
     antdColumns?.push({
       key: 'actions',
-      title: <UnorderedListOutlined />,
-      width: 60,
+      title: (
+        <span style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <UnorderedListOutlined />
+        </span>
+      ),
+      width: ACTION_COLUMN_WIDTH,
       fixed: 'right' as const,
       align: 'center',
+      onHeaderCell: () => ({ style: actionColumnCellStyle }),
+      onCell: () => ({ style: actionColumnCellStyle }),
       render: (_: unknown, record: any) => {
         const items = rowActions(record).map((a) => ({
           key: a.key, icon: a.icon, label: a.label, danger: a.danger, disabled: a.disabled,
           onClick: a.onClick,
         }));
         return (
-          <Dropdown menu={{ items }} trigger={['click']}>
-            <Button icon={<MoreOutlined />}
-              onClick={(e) => e.stopPropagation()}
-              style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 28, width: 28, fontSize: fontSizeMd }}
-            />
-          </Dropdown>
+          <span style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            <RowActionDropdown items={items} />
+          </span>
         );
       },
     });
@@ -183,13 +305,13 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   return (
-    <div ref={tableShellRef} style={{ width: '100%', minWidth: 0 }}>
+    <div ref={tableShellRef} style={{ width: '100%', minWidth: 0, flex: fitMode === 'content' ? '0 0 auto' : 1, minHeight: 0 }}>
       <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
         className="list-view-table"
         pagination={false}
         locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
-        scroll={{ x: layout.listTableMinWidth, y: layout.listTableScrollY, ...scroll }}
+        scroll={tableScroll}
         {...rest} />
     </div>
   );

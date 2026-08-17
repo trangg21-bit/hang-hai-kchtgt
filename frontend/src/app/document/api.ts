@@ -34,7 +34,7 @@ export const documentApi = {
    * @param file        File instance
    * @param userId      user ID from auth session
    */
-  async upload(entityType: GiayToEntityType, entityId: string, file: File, userId: string) {
+  async upload(entityType: DocumentEntityType, entityId: string, file: File, userId: string) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('userId', userId);

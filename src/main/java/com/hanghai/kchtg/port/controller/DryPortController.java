@@ -70,12 +70,13 @@ public class DryPortController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing DryPorts: page={}, size={}, orgUnitId={}, search={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, status, approvalStatus);
-        Page<DryPortResponse> result = dryPortService.findAll(page, size, orgUnitId, search, status, approvalStatus);
+        log.info("Listing DryPorts: page={}, size={}, orgUnitId={}, provinceId={}, search={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, provinceId, search, status, approvalStatus);
+        Page<DryPortResponse> result = dryPortService.findAll(page, size, orgUnitId, provinceId, search, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng cạn thành công", result));
     }
 
@@ -97,6 +98,16 @@ public class DryPortController {
         log.info("Soft-deleting DryPort: id={}", id);
         dryPortService.softDelete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa cảng cạn thành công", null));
+    }
+
+    // ── Soft-delete restore (giống cảng biển) ──────────────────
+
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("@auth.check(authentication, 'dryport:delete')")
+    public ResponseEntity<ApiResponse<DryPortResponse>> restore(@PathVariable UUID id) {
+        log.info("Restoring DryPort id={}", id);
+        DryPortResponse response = dryPortService.restore(id);
+        return ResponseEntity.ok(ApiResponse.success("Khôi phục cảng cạn thành công", response));
     }
 
     // ── Submit (from list page F-083) ──────────────────────────

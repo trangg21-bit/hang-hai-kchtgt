@@ -5,6 +5,7 @@ import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.password.entity.PasswordHistory;
 import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
@@ -12,13 +13,12 @@ import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
 import com.hanghai.kchtg.user.dto.UserListItemResponse;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.entity.UserStatusLog;
 import com.hanghai.kchtg.user.exception.ValidationException;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.repository.UserListProjection;
 import com.hanghai.kchtg.user.repository.UserStatusLogRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityManager;
@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -41,6 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.text.Normalizer;
 
 /**
  * Service quan ly tai khoan nguoi dung.
@@ -68,9 +70,9 @@ public class UserService {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
+    private static final String DEFAULT_INITIAL_PASSWORD = "Asdqwe@123";
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final GroupRepository groupRepository;
     private final PasswordEncoder passwordEncoder;
@@ -80,9 +82,9 @@ public class UserService {
     private final UserStatusLogRepository userStatusLogRepository;
     private final EntityManager entityManager;
     private final com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
 
     public UserService(UserRepository userRepository,
-            RoleRepository roleRepository,
             OrgUnitRepository orgUnitRepository,
             GroupRepository groupRepository,
             PasswordEncoder passwordEncoder,
@@ -91,14 +93,12 @@ public class UserService {
             PasswordHistoryRepository passwordHistoryRepository,
             UserStatusLogRepository userStatusLogRepository,
             EntityManager entityManager) {
-        this(userRepository, roleRepository, orgUnitRepository, groupRepository, passwordEncoder,
+        this(userRepository, orgUnitRepository, groupRepository, passwordEncoder,
                 passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
-                userStatusLogRepository, entityManager, null);
+                userStatusLogRepository, entityManager, null, null);
     }
 
-    @Autowired
     public UserService(UserRepository userRepository,
-            RoleRepository roleRepository,
             OrgUnitRepository orgUnitRepository,
             GroupRepository groupRepository,
             PasswordEncoder passwordEncoder,
@@ -108,8 +108,24 @@ public class UserService {
             UserStatusLogRepository userStatusLogRepository,
             EntityManager entityManager,
             @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
+        this(userRepository, orgUnitRepository, groupRepository, passwordEncoder,
+                passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
+                userStatusLogRepository, entityManager, orgUnitCacheService, null);
+    }
+
+    @Autowired
+    public UserService(UserRepository userRepository,
+            OrgUnitRepository orgUnitRepository,
+            GroupRepository groupRepository,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyValidator passwordPolicyValidator,
+            PermissionCacheService permissionCacheService,
+            PasswordHistoryRepository passwordHistoryRepository,
+            UserStatusLogRepository userStatusLogRepository,
+            EntityManager entityManager,
+            @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService,
+            @org.springframework.lang.Nullable OrgUnitScopeService orgUnitScopeService) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
         this.groupRepository = groupRepository;
         this.passwordEncoder = passwordEncoder;
@@ -119,6 +135,7 @@ public class UserService {
         this.userStatusLogRepository = userStatusLogRepository;
         this.entityManager = entityManager;
         this.orgUnitCacheService = orgUnitCacheService;
+        this.orgUnitScopeService = orgUnitScopeService;
     }
 
     // =========================================================================
@@ -128,7 +145,7 @@ public class UserService {
      * Default 20 items/page, max 100.
      */
     @Transactional(readOnly = true)
-    public Page<UserResponse> findAll(String search, String roleCode, UserStatus status, Pageable pageable) {
+    public Page<UserResponse> findAll(String search, UserStatus status, Pageable pageable) {
         // Enforce max page size
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
@@ -145,11 +162,11 @@ public class UserService {
                 actualSize,
                 sort);
 
-        // We always use searchUsers if we have search, roleCode, or status filters, or
+        // We always use searchUsers if we have search or status filters, or
         // we can use it universally!
         return userRepository.searchUsers(
-                (search != null && !search.trim().isEmpty()) ? search.trim() : null,
-                (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
+                toSearchLike(search),
+                null,
                 status,
                 cappedPageable).map(u -> UserResponse.from(u, orgUnitCacheService));
     }
@@ -159,8 +176,20 @@ public class UserService {
      * response duy nhat.
      */
     @Transactional(readOnly = true)
-    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search, String roleCode,
+    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
             UserStatus status, Pageable pageable) {
+        return findAllWithCounts(search, null, status, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
+            UserStatus status, UUID orgUnitId, Pageable pageable) {
+        return findAllWithCounts(search, null, status, orgUnitId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public com.hanghai.kchtg.user.dto.UserPageResponse findAllWithCounts(String search,
+            String fullName, UserStatus status, UUID orgUnitId, Pageable pageable) {
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
             actualSize = MAX_PAGE_SIZE;
@@ -176,13 +205,30 @@ public class UserService {
                 actualSize,
                 sort);
 
-        Page<UserListItemResponse> pageResult = userRepository.searchUserList(
-                (search != null && !search.trim().isEmpty()) ? search.trim() : null,
-                (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
-                status,
-                cappedPageable).map(u -> UserListItemResponse.from(u, orgUnitCacheService));
+        String searchLike = toSearchLike(search);
+        String fullNameLike = toSearchLike(fullName);
+        List<UUID> organizationFilter = resolveOrganizationFilter(orgUnitId);
+        if (organizationFilter != null && organizationFilter.isEmpty()) {
+            return emptyUserPage(cappedPageable, getEmptyStatusCounts());
+        }
 
-        java.util.Map<String, Long> counts = getStatusCounts();
+        List<UserListProjection> listItems = organizationFilter == null
+                ? userRepository.searchUserList(searchLike, fullNameLike, status, cappedPageable)
+                : userRepository.searchUserListByOrgUnits(searchLike, fullNameLike, status, organizationFilter, cappedPageable);
+
+        // The status tabs must describe the same filtered result set as the
+        // table.  Using the global counts here makes a search for one user
+        // still show the totals of the whole user database.
+        java.util.Map<String, Long> counts = getStatusCounts(search, fullName, organizationFilter);
+        long totalElements = status == null
+                ? counts.getOrDefault("total", 0L)
+                : counts.getOrDefault(status.name().toLowerCase(java.util.Locale.ROOT), 0L);
+        Page<UserListItemResponse> pageResult = new PageImpl<>(
+                listItems.stream()
+                        .map(u -> UserListItemResponse.from(u, orgUnitCacheService))
+                        .toList(),
+                cappedPageable,
+                totalElements);
 
         return new com.hanghai.kchtg.user.dto.UserPageResponse(
                 pageResult.getContent(),
@@ -197,7 +243,21 @@ public class UserService {
      * Thong ke so luong nguoi dung theo tung trang thai (1 single SQL query).
      */
     @Transactional(readOnly = true)
-    public java.util.Map<String, Long> getStatusCounts() {
+    public java.util.Map<String, Long> getStatusCounts(String search) {
+        return getStatusCounts(search, null);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getStatusCounts(String search, UUID orgUnitId) {
+        return getStatusCounts(search, null, resolveOrganizationFilter(orgUnitId));
+    }
+
+    private java.util.Map<String, Long> getStatusCounts(String search, String fullName,
+            List<UUID> organizationFilter) {
+        if (organizationFilter != null && organizationFilter.isEmpty()) {
+            return getEmptyStatusCounts();
+        }
+
         java.util.Map<String, Long> counts = new java.util.HashMap<>();
         counts.put("total", 0L);
         for (UserStatus s : UserStatus.values()) {
@@ -206,7 +266,11 @@ public class UserService {
             }
         }
 
-        List<Object[]> results = userRepository.countUsersByStatus();
+        String searchLike = toSearchLike(search);
+        String fullNameLike = toSearchLike(fullName);
+        List<Object[]> results = organizationFilter == null
+                ? userRepository.countUsersByStatus(searchLike, fullNameLike)
+                : userRepository.countUsersByStatusAndOrgUnits(searchLike, fullNameLike, organizationFilter);
         long total = 0;
         for (Object[] row : results) {
             UserStatus s = (UserStatus) row[0];
@@ -219,6 +283,75 @@ public class UserService {
         }
         counts.put("total", total);
         return counts;
+    }
+
+    private java.util.Map<String, Long> getEmptyStatusCounts() {
+        java.util.Map<String, Long> counts = new java.util.HashMap<>();
+        counts.put("total", 0L);
+        for (UserStatus s : UserStatus.values()) {
+            if (s != UserStatus.DELETED) {
+                counts.put(s.name().toLowerCase(java.util.Locale.ROOT), 0L);
+            }
+        }
+        return counts;
+    }
+
+    private com.hanghai.kchtg.user.dto.UserPageResponse emptyUserPage(Pageable pageable,
+            java.util.Map<String, Long> counts) {
+        return new com.hanghai.kchtg.user.dto.UserPageResponse(
+                List.of(),
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                0,
+                0,
+                counts);
+    }
+
+    /**
+     * Resolve a selected unit as a hierarchical filter and enforce the
+     * authenticated user's own organisation scope.
+     *
+     * A null result means unrestricted access (Admin Cục). An empty result
+     * means the requested unit is outside the caller's scope or has no
+     * visible descendants, and must be returned as an empty page without
+     * executing an IN () query.
+     */
+    private List<UUID> resolveOrganizationFilter(UUID selectedOrgUnitId) {
+        if (orgUnitScopeService == null) {
+            return selectedOrgUnitId == null ? null : List.of(selectedOrgUnitId);
+        }
+
+        OrgUnitScopeService.Scope callerScope = orgUnitScopeService.currentUserScope();
+        if (selectedOrgUnitId == null) {
+            return callerScope.unrestricted() ? null : callerScope.orgUnitIds();
+        }
+
+        if (!callerScope.unrestricted() && !callerScope.orgUnitIds().contains(selectedOrgUnitId)) {
+            return List.of();
+        }
+
+        List<UUID> selectedTree = orgUnitScopeService.resolveSubtreeIds(selectedOrgUnitId);
+        if (callerScope.unrestricted()) {
+            return selectedTree;
+        }
+        return selectedTree.stream()
+                .filter(callerScope.orgUnitIds()::contains)
+                .toList();
+    }
+
+    /**
+     * Chuẩn hóa từ khóa tìm kiếm để DB tìm được cả tiếng Việt có dấu và không
+     * dấu. Kết quả vẫn dùng LIKE chứa nên "Van A" khớp "Nguyễn Văn An".
+     */
+    private static String toSearchLike(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = Normalizer.normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('\u0111', 'd')
+                .replace('\u0110', 'd');
+        return "%" + normalized + "%";
     }
 
     /**
@@ -271,41 +404,38 @@ public class UserService {
      * @throws ValidationException      neu mat khau khong dap ung chinh sach
      */
     public User create(CreateUserRequest request) {
-        // BR-001: Check email unique
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
-        }
         String email = normalizeEmail(request.getEmail());
+        String username = trimToNull(request.getUsername());
+        if (username == null) {
+            username = email;
+        }
+        String initialPassword = trimToNull(request.getPassword());
+        if (initialPassword == null) {
+            initialPassword = DEFAULT_INITIAL_PASSWORD;
+        }
+
+        // BR-001: Check email unique
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + username);
+        }
         if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(email)) {
             throw new IllegalArgumentException("Email đã tồn tại: " + email);
         }
 
         // BR-002: Validate password policy
-        passwordPolicyValidator.validate(request.getPassword());
+        passwordPolicyValidator.validate(initialPassword);
 
         User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(initialPassword));
         user.setEmail(email);
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
-        String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
-
-        if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null
-                    || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
-                throw new AccessDeniedException("Chỉ có System Admin mới có quyền tạo System Admin");
-            }
-        }
-
-        Role role = roleRepository.findByCode(roleCode)
-                .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + roleCode));
-        // Business rule: a user has one primary role; group roles are handled
-        // separately through the group-role assignment table.
-        user.getRoles().clear();
-        user.getRoles().add(role);
-        user.setStatus(UserStatus.ACTIVE);
+        user.setStatus(request.getStatus());
+        user.setAddress(trimToNull(request.getAddress()));
+        user.setDepartment(trimToNull(request.getDepartment()));
+        user.setPosition(trimToNull(request.getPosition()));
+        user.setNote(trimToNull(request.getNote()));
 
         // Set OrgUnit relationship
         if (request.getOrgUnitId() != null) {
@@ -367,16 +497,12 @@ public class UserService {
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
+        if (request.getAddress() != null) user.setAddress(trimToNull(request.getAddress()));
+        if (request.getDepartment() != null) user.setDepartment(trimToNull(request.getDepartment()));
+        if (request.getPosition() != null) user.setPosition(trimToNull(request.getPosition()));
+        if (request.getNote() != null) user.setNote(trimToNull(request.getNote()));
 
-        boolean roleChanged = false;
         boolean permissionsChanged = false;
-        if (request.getRole() != null) {
-            Role role = roleRepository.findByCode(request.getRole())
-                    .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
-            user.getRoles().clear();
-            user.getRoles().add(role);
-            roleChanged = true;
-        }
 
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
@@ -385,12 +511,12 @@ public class UserService {
             if (user.getOrgUnit() == null || !user.getOrgUnit().getId().equals(orgUnit.getId())) {
                 user.setOrgUnit(orgUnit);
                 // BR-275-12: Org hierarchy change -> invalidate token version & clear cache
-                roleChanged = true;
+                permissionsChanged = true;
                 permissionCacheService.invalidateAndIncrementVersion(user.getId());
             }
         }
 
-        if (roleChanged) {
+        if (permissionsChanged) {
             user.incrementPermissionVersion();
         }
 
@@ -398,7 +524,7 @@ public class UserService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             savePasswordHistory(saved.getId(), saved.getPassword());
         }
-        if (roleChanged || permissionsChanged) {
+        if (permissionsChanged) {
             permissionCacheService.invalidateCache(saved.getId());
         }
         log.info("Updated user: {} ({})", saved.getUsername(), saved.getId());
@@ -416,14 +542,6 @@ public class UserService {
     public void delete(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
-
-        if (user.getRoles().stream().anyMatch(r -> "ROLE_SYSTEM_ADMIN".equals(r.getCode()))) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null
-                    || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
-                throw new AccessDeniedException("Chỉ có System Admin mới có quyền xóa System Admin");
-            }
-        }
 
         // BR-003: Data-dependency check — query phanhen/bao cao FK references
         // If FK constraints exist in the DB, this will fail at constraint level.
@@ -446,7 +564,7 @@ public class UserService {
     private void checkBusinessDataReferences(User user) {
         List<String> ignoredSystemTables = List.of(
                 "app_users", "password_history", "user_status_log",
-                "user_roles", "app_user_roles", "user_group_members",
+                "user_group_members",
                 "group_members", "pending_approvals", "password_expiration_log");
 
         // 1. Query information_schema for all FK tables AND exact column names
@@ -639,14 +757,9 @@ public class UserService {
             user.setPhone(request.getPhone());
         }
 
-        // Admin can update role, orgUnit, groups
+        // Admin can update orgUnit and groups. Permission assignments are managed
+        // through UserPermissionService so every grant/revoke is audited.
         if (isAdmin) {
-            if (request.getRole() != null) {
-                Role role = roleRepository.findByCode(request.getRole())
-                        .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
-                user.getRoles().clear();
-                user.getRoles().add(role);
-            }
             if (request.getOrgUnitId() != null) {
                 OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                         .orElseThrow(() -> new IllegalArgumentException(
@@ -743,8 +856,9 @@ public class UserService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getAuthorities() != null) {
             return auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().contains("ADMIN") ||
-                            a.getAuthority().equals("ROLE_SYSTEM_ADMIN"));
+                    .anyMatch(a -> "admin:manage".equals(a.getAuthority())
+                            || "admin:*".equals(a.getAuthority())
+                            || "*".equals(a.getAuthority()));
         }
         return false;
     }
@@ -767,5 +881,15 @@ public class UserService {
             // Full policy for non-admin reset
             passwordPolicyValidator.validate(password);
         }
+    }
+
+    /**
+     * Trim giá trị chuỗi hồ sơ; chuỗi rỗng/blank sau trim được lưu NULL
+     * (BR-001-20).
+     */
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

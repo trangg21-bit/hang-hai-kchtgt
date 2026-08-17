@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer } from 'antd';
+import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer, Row, Col } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
@@ -23,9 +23,7 @@ import type {
 } from '../../services/document/types';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
-import ErrorState from '../../components/ErrorState';
 import {
   ScreenHeader,
   FilterTableLayout,
@@ -45,8 +43,12 @@ import {
   radiusPill,
   borderDefault,
   spaceFormField,
+  spaceLg,
   spaceMd,
+  spaceSm,
+  spaceXs,
   statusOperational,
+  statusAttention,
   statusDraft,
   radiusSm,
   drawerProps,
@@ -55,6 +57,7 @@ import {
   drawerFooterStyle,
   primaryButtonStyle,
   outlineButtonStyle,
+  selectStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 
@@ -87,7 +90,7 @@ const HISTORY_ACTION_MAP: Record<string, string> = {
 const VALIDITY_STATUS_COLOR: Record<string, string> = {
   DRAFT: textSecondary,
   EFFECTIVE: statusOperational,
-  EXPIRING_SOON: '#faad14',
+  EXPIRING_SOON: statusAttention,
   EXPIRED: statusDraft,
 };
 
@@ -106,12 +109,19 @@ export default function LegalDocumentList() {
   const [pageSize, setPageSize] = useState(20);
 
   const [keyword, setKeyword] = useState('');
+  const [keywordInput, setKeywordInput] = useState('');
   const [documentType, setDocumentType] = useState<string | undefined>(undefined);
+  const [documentTypeInput, setDocumentTypeInput] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<string | undefined>(undefined);
+  const [statusInput, setStatusInput] = useState<string | undefined>(undefined);
   const [issuingAuthority, setIssuingAuthority] = useState('');
+  const [issuingAuthorityInput, setIssuingAuthorityInput] = useState('');
   const [applicationArea, setApplicationArea] = useState('');
+  const [applicationAreaInput, setApplicationAreaInput] = useState('');
   const [issueDateStart, setIssueDateStart] = useState<string | null>(null);
   const [issueDateEnd, setIssueDateEnd] = useState<string | null>(null);
+  const [issueDateStartInput, setIssueDateStartInput] = useState<string | null>(null);
+  const [issueDateEndInput, setIssueDateEndInput] = useState<string | null>(null);
 
   const [dataSource, setDataSource] = useState<LegalDocumentResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -297,40 +307,44 @@ export default function LegalDocumentList() {
     }
   }, []);
 
-  const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setKeyword(values.keyword?.trim() || '');
-    setIssuingAuthority(values.issuingAuthority?.trim() || '');
-    setDocumentType(values.type || undefined);
-    setStatus(values.status || undefined);
-    setApplicationArea(values.applicationArea?.trim() || '');
-    if (values.issueDateRange) {
-      setIssueDateStart(values.issueDateRange[0]?.format('YYYY-MM-DD') || null);
-      setIssueDateEnd(values.issueDateRange[1]?.format('YYYY-MM-DD') || null);
-    } else {
-      setIssueDateStart(null);
-      setIssueDateEnd(null);
-    }
+  const handleFilterSearch = useCallback(() => {
+    setKeyword(keywordInput.trim());
+    setIssuingAuthority(issuingAuthorityInput.trim());
+    setDocumentType(documentTypeInput);
+    setStatus(statusInput);
+    setApplicationArea(applicationAreaInput.trim());
+    setIssueDateStart(issueDateStartInput);
+    setIssueDateEnd(issueDateEndInput);
     setPage(1);
-  }, []);
+  }, [applicationAreaInput, documentTypeInput, issueDateEndInput, issueDateStartInput, issuingAuthorityInput, keywordInput, statusInput]);
 
   const handleFilterReset = useCallback(() => {
     setKeyword('');
+    setKeywordInput('');
     setIssuingAuthority('');
+    setIssuingAuthorityInput('');
     setDocumentType(undefined);
+    setDocumentTypeInput(undefined);
     setStatus(undefined);
+    setStatusInput(undefined);
     setApplicationArea('');
+    setApplicationAreaInput('');
     setIssueDateStart(null);
     setIssueDateEnd(null);
+    setIssueDateStartInput(null);
+    setIssueDateEndInput(null);
     setPage(1);
   }, []);
 
   const handleTabChange = useCallback((key: string) => {
-    setStatus(key === 'all' ? undefined : key);
+    const nextStatus = key === 'all' ? undefined : key;
+    setStatus(nextStatus);
+    setStatusInput(nextStatus);
     setPage(1);
   }, []);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, align: 'center' as const,
+    { key: 'stt', label: 'STT', width: 60, align: 'center' as const, fixed: 'left' as const,
       render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1 },
     { key: 'documentNumber', label: 'Số hiệu văn bản', dataIndex: 'documentNumber', width: 160, sortable: true },
     { key: 'documentName', label: 'Tên văn bản pháp lý', dataIndex: 'documentName', width: 280, sortable: true,
@@ -348,8 +362,8 @@ export default function LegalDocumentList() {
         const color = VALIDITY_STATUS_COLOR[val] || textSecondary;
         const label = VALIDITY_STATUS_MAP[val] || val || '';
         return <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
-          borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+          display: 'inline-flex', alignItems: 'center', gap: spaceXs, padding: `${spaceXs}px ${spaceSm}px`,
+          border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium,
           background: `${color}15`, color,
         }}>{label}</span>;
       }},
@@ -377,85 +391,88 @@ export default function LegalDocumentList() {
     { key: 'all', label: 'Tất cả', count: countAll, color: textSecondary, active: !status },
     { key: 'DRAFT', label: 'Lưu tạm', count: countDraft, color: textSecondary, active: status === 'DRAFT' },
     { key: 'EFFECTIVE', label: 'Còn hiệu lực', count: countEffective, color: statusOperational, active: status === 'EFFECTIVE' },
-    { key: 'EXPIRING_SOON', label: 'Sắp hết hiệu lực', count: countExpiring, color: '#faad14', active: status === 'EXPIRING_SOON' },
+    { key: 'EXPIRING_SOON', label: 'Sắp hết hiệu lực', count: countExpiring, color: statusAttention, active: status === 'EXPIRING_SOON' },
     { key: 'EXPIRED', label: 'Đã hết hiệu lực', count: countExpired, color: statusDraft, active: status === 'EXPIRED' },
   ], [status, countAll, countDraft, countEffective, countExpiring, countExpired]);
 
   const filterContent = (
     <>
-      <div style={{ marginBottom: 12, marginTop: 16 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
+      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Tìm kiếm</div>
         <Input placeholder="Tìm theo tên văn bản..." allowClear
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          value={keywordInput}
+          onChange={(e) => setKeywordInput(e.target.value)}
           onPressEnter={handleFilterSearch}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Cơ quan</div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Cơ quan</div>
         <Input placeholder="Cơ quan ban hành..." allowClear
-          value={issuingAuthority}
-          onChange={(e) => setIssuingAuthority(e.target.value)}
+          value={issuingAuthorityInput}
+          onChange={(e) => setIssuingAuthorityInput(e.target.value)}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Phạm vi</div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Phạm vi</div>
         <Input placeholder="Phạm vi áp dụng..." allowClear
-          value={applicationArea}
-          onChange={(e) => setApplicationArea(e.target.value)}
+          value={applicationAreaInput}
+          onChange={(e) => setApplicationAreaInput(e.target.value)}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Loại văn bản</div>
-        <Select placeholder="Chọn loại" allowClear
-          value={documentType}
-          onChange={setDocumentType}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Loại văn bản</div>
+        <Select placeholder="Tất cả" allowClear
+          value={documentTypeInput}
+          onChange={setDocumentTypeInput}
+          style={{ ...selectStyle, width: '100%' }}>
           <Select.Option value="LAW">Luật</Select.Option>
           <Select.Option value="DECREE">Nghị định</Select.Option>
           <Select.Option value="CIRCULAR">Thông tư</Select.Option>
           <Select.Option value="DECISION">Quyết định</Select.Option>
         </Select>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
-        <Select placeholder="Chọn trạng thái" allowClear
-          value={status}
-          onChange={setStatus}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Trạng thái</div>
+        <Select placeholder="Tất cả" allowClear
+          value={statusInput}
+          onChange={setStatusInput}
+          style={{ ...selectStyle, width: '100%' }}>
           <Select.Option value="DRAFT">Lưu tạm</Select.Option>
           <Select.Option value="EFFECTIVE">Còn hiệu lực</Select.Option>
           <Select.Option value="EXPIRING_SOON">Sắp hết hiệu lực</Select.Option>
           <Select.Option value="EXPIRED">Đã hết hiệu lực</Select.Option>
         </Select>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Ngày ban hành</div>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Ngày ban hành</div>
         <DatePicker.RangePicker
-          value={issueDateStart && issueDateEnd ? [dayjs(issueDateStart), dayjs(issueDateEnd)] : null}
+          value={issueDateStartInput && issueDateEndInput ? [dayjs(issueDateStartInput), dayjs(issueDateEndInput)] : null}
           onChange={(dates) => {
-            setIssueDateStart(dates ? dates[0]?.format('YYYY-MM-DD') || null : null);
-            setIssueDateEnd(dates ? dates[1]?.format('YYYY-MM-DD') || null : null);
+            setIssueDateStartInput(dates ? dates[0]?.format('YYYY-MM-DD') || null : null);
+            setIssueDateEndInput(dates ? dates[1]?.format('YYYY-MM-DD') || null : null);
           }}
-          style={{ width: '100%', borderRadius: radiusPill }}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </div>
     </>
   );
 
   const renderContent = () => {
-    if (loading) return <LoadingSkeleton rows={8} />;
-    if (isError) return <ErrorState message={errorMessage} onRetry={loadData} />;
-    if (dataSource.length === 0) {
-      if (keyword || issuingAuthority || documentType || status || applicationArea || issueDateStart || issueDateEnd) {
-        return <EmptyState description="Không tìm thấy văn bản pháp lý nào phù hợp" />;
-      }
-      return <EmptyState description="Chưa có văn bản pháp lý nào" />;
-    }
     return <>
-      <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
-      <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 1500, y: 500 }} />
-      <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+      <DataTable
+        columns={columns}
+        dataSource={dataSource}
+        rowKey="id"
+        rowActions={rowActions}
+        loading={false}
+        scroll={{ x: 'max-content' }}
+        emptyState={<EmptyState description={keyword || issuingAuthority || documentType || status || applicationArea || issueDateStart || issueDateEnd
+          ? 'Không tìm thấy văn bản pháp lý nào phù hợp'
+          : 'Chưa có văn bản pháp lý nào'} />}
+      />
+      {dataSource.length > 0 && (
+        <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+      )}
     </>;
   };
 
@@ -469,11 +486,11 @@ export default function LegalDocumentList() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader breadcrumb={[{ label: 'Văn bản pháp lý' }]} actions={headerActions} />
+      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Văn bản pháp lý' }]} actions={headerActions} />
       <FilterTableLayout
         filterCollapsed={filterCollapsed}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
-        onFilterApply={() => { handleFilterSearch({ keyword, issuingAuthority, type: documentType, status, applicationArea, issueDateRange: issueDateStart && issueDateEnd ? [dayjs(issueDateStart), dayjs(issueDateEnd)] : null }); }}
+        onFilterApply={handleFilterSearch}
         onFilterReset={handleFilterReset}
         loading={loading}
         error={isError}
@@ -511,49 +528,71 @@ export default function LegalDocumentList() {
             />
           )}
           <Form form={form} layout="vertical" disabled={editingItem?.validityStatus === 'EXPIRED'} style={{ marginTop: 16 }}>
-            <Form.Item name="documentNumber" label="Số hiệu văn bản" rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Số hiệu văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="documentName" label="Tên văn bản" rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Nhập tiêu đề văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="documentType" label="Loại văn bản" rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Select placeholder="Chọn loại văn bản..." style={{ borderRadius: radiusPill, height: 40 }}>
-                <Select.Option value="LAW">Luật</Select.Option>
-                <Select.Option value="DECREE">Nghị định</Select.Option>
-                <Select.Option value="CIRCULAR">Thông tư</Select.Option>
-                <Select.Option value="DECISION">Quyết định</Select.Option>
-              </Select>
-            </Form.Item>
-            <Form.Item name="issuingAuthority" label="Cơ quan ban hành" rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Cơ quan ban hành..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="signer" label="Người ký" style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Người ký (nếu có)..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}
-              style={{ marginBottom: spaceFormField }}>
-              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="expirationDate" label="Ngày hết hiệu lực" style={{ marginBottom: spaceFormField }}>
-              <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="applicationArea" label="Phạm vi áp dụng" style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Phạm vi áp dụng..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="description" label="Mô tả" style={{ marginBottom: spaceFormField }}>
-              <Input.TextArea placeholder="Mô tả..." rows={3} style={{ borderRadius: radiusSm }} />
-            </Form.Item>
-            <Form.Item label="Tệp đính kèm" style={{ marginBottom: spaceFormField }}>
-              <Dragger name="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            <Row gutter={[spaceLg, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item name="documentNumber" label="Số hiệu văn bản" rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Số hiệu văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="documentName" label="Tên văn bản" rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Nhập tiêu đề văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="documentType" label="Loại văn bản" rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Select placeholder="Chọn loại văn bản..." style={{ borderRadius: radiusPill, height: 40 }}>
+                    <Select.Option value="LAW">Luật</Select.Option>
+                    <Select.Option value="DECREE">Nghị định</Select.Option>
+                    <Select.Option value="CIRCULAR">Thông tư</Select.Option>
+                    <Select.Option value="DECISION">Quyết định</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="issuingAuthority" label="Cơ quan ban hành" rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Cơ quan ban hành..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="signer" label="Người ký" style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Người ký (nếu có)..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}
+                  style={{ marginBottom: spaceFormField }}>
+                  <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="expirationDate" label="Ngày hết hiệu lực" style={{ marginBottom: spaceFormField }}>
+                  <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item name="applicationArea" label="Phạm vi áp dụng" style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Phạm vi áp dụng..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item name="description" label="Mô tả" style={{ marginBottom: spaceFormField }}>
+                  <Input.TextArea placeholder="Mô tả..." rows={3} style={{ borderRadius: radiusSm }} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item label="Tệp đính kèm" style={{ marginBottom: spaceFormField }}>
+                  <Dragger name="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 beforeUpload={(file) => {
                   if (file.size > 10 * 1024 * 1024) { toast.error('Kích thước mỗi tệp không được vượt quá 10MB'); return Upload.LIST_IGNORE; }
                   return true;
@@ -576,12 +615,14 @@ export default function LegalDocumentList() {
                     toast.success(`Đã tải lên: ${(file as File).name}`);
                   } catch (err: any) { onError?.(err); toast.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`); }
                 }}
-              >
-                <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây</p>
-                <p className="ant-upload-hint">Hỗ trợ PDF, Word, ảnh. Tối đa 10MB/tệp.</p>
-              </Dragger>
-            </Form.Item>
+                  >
+                    <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                    <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây</p>
+                    <p className="ant-upload-hint">Hỗ trợ PDF, Word, ảnh. Tối đa 10MB/tệp.</p>
+                  </Dragger>
+                </Form.Item>
+              </Col>
+            </Row>
           </Form>
         </Spin>
       </Drawer>

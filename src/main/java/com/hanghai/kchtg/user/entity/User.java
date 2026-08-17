@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import jakarta.persistence.*;
@@ -74,21 +75,40 @@ public class User extends BaseEntity implements java.security.Principal {
     private String phone;
 
     /**
+     * Địa chỉ liên hệ (nullable).
+     */
+    @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự")
+    @Column(length = 255)
+    private String address;
+
+    /**
+     * Phòng ban (nullable).
+     */
+    @Size(max = 100, message = "Phòng ban tối đa 100 ký tự")
+    @Column(length = 100)
+    private String department;
+
+    /**
+     * Chức vụ (nullable).
+     */
+    @Size(max = 100, message = "Chức vụ tối đa 100 ký tự")
+    @Column(length = 100)
+    private String position;
+
+    /**
+     * Ghi chú (nullable).
+     */
+    @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
+    @Column(length = 500)
+    private String note;
+
+    /**
      * Đơn vị tổ chức mà người dùng trực thuộc.
      * Many-to-One relationship with lazy loading.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "org_unit_id")
     private OrgUnit orgUnit;
-
-    /**
-     * Vai trò của người dùng (M-to-N relationship via user_roles join table).
-     * Mỗi user chỉ có 1 role chính theo business rule.
-     */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @org.hibernate.annotations.BatchSize(size = 100)
-    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -102,73 +122,39 @@ public class User extends BaseEntity implements java.security.Principal {
     public void setPhone(String phone) { this.phone = phone; }
     public OrgUnit getOrgUnit() { return orgUnit; }
     public void setOrgUnit(OrgUnit orgUnit) { this.orgUnit = orgUnit; }
-    public Set<Role> getRoles() { return roles; }
-    public void setRoles(Set<Role> roles) { this.roles = roles; }
-
-
     /**
-     * Lấy mã của role chính (role đầu tiên trong set).
-     * Chỉ có 1 role theo business rule.
-     */
-    public String getPrimaryRoleCode() {
-        return roles.stream()
-                .map(r -> r.getCode())
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
-     * Lấy tất cả permissions từ tất cả roles + user_permission_override.
+     * Lấy hợp nhất permission cấp trực tiếp cho user và permission từ các
+     * group đang hoạt động mà user đang tham gia.
      */
     public Set<String> getAllPermissions() {
         Set<String> perms = new HashSet<>();
-        for (Role role : roles) {
-            if (role.getPermissions() != null) {
-                perms.addAll(role.getPermissions().stream()
-                        .map(p -> p.getCode()).collect(Collectors.toSet()));
-            }
-        }
         if (permissionOverrides != null) {
             perms.addAll(permissionOverrides.stream()
-                    .filter(override -> override.getDeletedAt() == null)
-                    .map(o -> o.getPermissionCode())
+                    .filter(override -> override != null
+                            && override.getDeletedAt() == null
+                            && override.getPermissionCode() != null)
+                    .map(o -> o.getPermissionCode().trim().toLowerCase(java.util.Locale.ROOT))
+                    .filter(permission -> !permission.isBlank())
                     .collect(Collectors.toSet()));
         }
         if (groups != null) {
-            for (UserGroup group : groups) {
-                if (group.getPermissions() != null) {
-                    perms.addAll(group.getPermissions());
-                }
-                if (group.getRoles() != null) {
-                    for (Role groupRole : group.getRoles()) {
-                        if (groupRole.getPermissions() != null) {
-                            perms.addAll(groupRole.getPermissions().stream()
-                                    .map(Permission::getCode)
-                                    .collect(Collectors.toSet()));
-                        }
-                    }
-                }
-            }
+            groups.stream()
+                    .filter(group -> group != null
+                            && (group.getStatus() == null || group.getStatus() == GroupStatus.ACTIVE))
+                    .flatMap(group -> group.getPermissions() == null
+                            ? java.util.stream.Stream.empty()
+                            : group.getPermissions().stream())
+                    .filter(java.util.Objects::nonNull)
+                    .map(permission -> permission.trim().toLowerCase(java.util.Locale.ROOT))
+                    .filter(permission -> !permission.isBlank())
+                    // Group inheritance must never provide a global bypass or
+                    // an organisation-scope bypass. Those permissions may only
+                    // be granted directly by the system administrator.
+                    .filter(permission -> !Set.of("group:manage", "admin:all", "orgunit:scope_all", "*")
+                            .contains(permission))
+                    .forEach(perms::add);
         }
         return perms;
-    }
-
-    /**
-     * @deprecated Use {@link #getPrimaryRoleCode()} or {@link #getRoles()} instead.
-     *             Kept for backward compatibility with existing services.
-     */
-    @Deprecated(forRemoval = true)
-    public String getRole() {
-        return getPrimaryRoleCode();
-    }
-
-    /**
-     * @deprecated Use {@link #setRoles(Set)} instead.
-     *             Kept for backward compatibility with existing services.
-     */
-    @Deprecated(forRemoval = true)
-    public void setRole(String role) {
-        // No-op: roles are now managed via the roles Set
     }
 
     /**
@@ -181,7 +167,7 @@ public class User extends BaseEntity implements java.security.Principal {
     private List<UserGroup> groups = new ArrayList<>();
 
 
-    /** Quyền cấp trực tiếp ngoài quyền kế thừa từ Role/Group. */
+    /** Quyền cấp trực tiếp cho người dùng ngoài quyền kế thừa từ Group. */
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserPermissionOverride> permissionOverrides = new ArrayList<>();
 

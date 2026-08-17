@@ -1,0 +1,99 @@
+{
+  "triage_id": "TRI-1786681457834-5887",
+  "created_at": 1786681457834,
+  "request_summary": "Sửa màn hình Thêm mới/Sửa/Chi tiết người dùng: giữ username+mật khẩu ở đầu form, thêm 4 trường mới (Địa chỉ, Phòng ban, Chức vụ, Ghi chú) và thêm trường Trạng thái cho form tạo mới, theo đúng thứ tự yêu cầu.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/UsersPage.tsx",
+      "frontend/src/services/userService.ts",
+      "frontend/src/types/user.ts",
+      "src/main/java/com/hanghai/kchtg/user/dto/CreateUserRequest.java",
+      "src/main/java/com/hanghai/kchtg/user/dto/UpdateUserRequest.java",
+      "src/main/java/com/hanghai/kchtg/user/dto/UserDetailResponse.java",
+      "src/main/java/com/hanghai/kchtg/user/dto/UserResponse.java",
+      "src/main/java/com/hanghai/kchtg/user/entity/User.java",
+      "src/main/java/com/hanghai/kchtg/user/service/UserService.java",
+      "src/main/resources/db/migration/V20260814120000__add_user_profile_columns.sql"
+    ],
+    "impact_files": [
+      "frontend/src/pages/UsersPage.tsx",
+      "frontend/src/services/userService.ts",
+      "frontend/src/types/user.ts",
+      "src/main/java/com/hanghai/kchtg/user/dto/CreateUserRequest.java",
+      "src/main/java/com/hanghai/kchtg/user/dto/UpdateUserRequest.java",
+      "src/main/java/com/hanghai/kchtg/user/dto/UserDetailResponse.java",
+      "src/main/java/com/hanghai/kchtg/user/dto/UserResponse.java",
+      "src/main/java/com/hanghai/kchtg/user/entity/User.java",
+      "src/main/java/com/hanghai/kchtg/user/service/UserService.java",
+      "src/main/resources/db/migration/V20260814120000__add_user_profile_columns.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260814120000__add_user_profile_columns.sql"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260814120000__add_user_profile_columns.sql — floors at C3 regardless of size (10 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý người dùng (UsersPage) — Drawer Thêm mới/Sửa người dùng và Drawer Chi tiết tài khoản; backend endpoint POST/PUT/GET /api/users.",
+  "blast_radius": 10,
+  "done_oracle": "Form Thêm mới hiển thị đúng thứ tự: Tên đăng nhập*, Mật khẩu*, Đơn vị*, Email*, Họ và tên*, SĐT, Địa chỉ, Phòng ban*, Chức vụ*, Trạng thái*, Ghi chú. Form Sửa và Drawer Chi tiết cũng hiển thị 4 trường mới + Trạng thái. Backend lưu đúng 4 cột mới (address, department, position, note) qua Flyway; trạng thái tạo mới theo lựa chọn thay vì mặc định ACTIVE. mvn clean compile + npm run build thành công.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile",
+      "cwd": ".",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "scope_expansion",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/user/service/UserService.java",
+      "line": 420,
+      "quote": "user.setStatus(UserStatus.ACTIVE);",
+      "source_hash": "5e11fd752bffc6361ad050cb5fa88945327c4a5eaa250184aa6341dbe7a47a6a",
+      "quote_hash": "bb464ea2928eb578773e84f48c0d1f34ce7a75099abb90e5baded9f5ba82f77a",
+      "note": "create() đang hardcode trạng thái ACTIVE — phải đổi để nhận trạng thái từ form"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/user/entity/User.java",
+      "line": 75,
+      "quote": "private String phone;",
+      "source_hash": "32f08816268078f3a7f43ce53e40d2f11e57626d7f04e29d665dec79aafdf771",
+      "quote_hash": "47f9130ac3aadb6d99f0741e922e68558f48418cb8769f81de29692cc2ca8889",
+      "note": "Vị trí các trường profile trong entity — thêm address/department/position/note sau đây"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/user/dto/UpdateUserRequest.java",
+      "line": 42,
+      "quote": "private UserStatus status;",
+      "source_hash": "7b5eedc7c6f2c90242a97e7bdfc63e1ad00e4eccb8501f03fc18258524f2642a",
+      "quote_hash": "a7d0886662e6c16c2490187abeafde185e62d423bd700fdb2aad8da3f2a34ba7",
+      "note": "UpdateUserRequest đã có status — thêm 4 trường mới bên cạnh"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "623735cbac7576412c9b296ee5fc477eca0a2de0",
+    "dirty": true,
+    "captured_at": 1786681457987
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

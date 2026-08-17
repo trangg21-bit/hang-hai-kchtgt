@@ -12,7 +12,7 @@ interface PermissionState {
 /**
  * Normalize legacy dot-notation keys to standard backend permission keys {resource}:{action}.
  */
-function normalizePermissionKey(key: string): string {
+export function normalizePermissionKey(key: string): string {
   if (!key) return '';
   const lower = key.toLowerCase();
 
@@ -36,36 +36,67 @@ function normalizePermissionKey(key: string): string {
   // more readable nested form used by some screens as an alias.
   return lower
     .replace('.', ':')
+    .replace('user:edit', 'user:update')
+    .replace('user:lock', 'user:update')
+    .replace('user:reset_password', 'user:update')
     .replace(':approve:c1', ':approvec1')
     .replace(':approve:c2', ':approvec2');
+}
+
+/**
+ * Quyền hiệu lực trên giao diện là hợp nhất quyền trực tiếp của user và
+ * quyền group được Backend đưa vào JWT/profile. Không coi admin:manage là
+ * toàn quyền; chỉ admin:all hoặc * mới được bypass.
+ */
+/**
+ * Resources ungated by business rule — any authenticated user is granted access
+ * regardless of the granted permission list (seaport / berth / pier management).
+ */
+const ALWAYS_ALLOWED_RESOURCES = new Set(['port', 'berth', 'pier']);
+
+export function hasPermissionFromList(grantedPermissions: string[] | undefined, key: string): boolean {
+  const normalizedKey = normalizePermissionKey(key);
+  if (!normalizedKey) return false;
+
+  if (ALWAYS_ALLOWED_RESOURCES.has(normalizedKey.split(':', 2)[0])) {
+    return true;
+  }
+
+  const permissions = new Set(
+    (grantedPermissions || [])
+      .map((permission) => normalizePermissionKey(permission.trim()))
+      .filter(Boolean),
+  );
+
+  if (permissions.has('*') || permissions.has('admin:all') || permissions.has(normalizedKey)) {
+    return true;
+  }
+
+  const [resource, action] = normalizedKey.split(':', 2);
+  if (!resource) return false;
+
+  if (permissions.has(`${resource}:manage`) || permissions.has(`${resource}:*`)) {
+    return true;
+  }
+
+  if (['create', 'update', 'delete'].includes(action || '') && permissions.has(`${resource}:write`)) {
+    return true;
+  }
+
+  if (action === 'approve' && (
+    permissions.has(`${resource}:approvec1`) || permissions.has(`${resource}:approvec2`)
+  )) {
+    return true;
+  }
+
+  return false;
 }
 
 export const usePermissionStore = create<PermissionState>((set) => ({
   permissions: [],
 
   hasPermission: (key: string) => {
-    const rawPerms = useAuthStore.getState().user?.permissions || [];
-    const perms = rawPerms.map((p) => p.toLowerCase());
-
-    // Admin override
-    if (perms.includes('admin:manage') || perms.includes('*')) {
-      return true;
-    }
-
-    const normalizedKey = normalizePermissionKey(key);
-    if (perms.includes(normalizedKey)) {
-      return true;
-    }
-
-    // Support wildcard matching: {resource}:manage or {resource}:* grants any action on resource
-    const [resource] = normalizedKey.split(':');
-    if (resource) {
-      if (perms.includes(`${resource}:manage`) || perms.includes(`${resource}:*`)) {
-        return true;
-      }
-    }
-
-    return false;
+    return hasPermissionFromList(useAuthStore.getState().user?.permissions, key);
   },
 
   hasAnyPermission: (keys: string[]) => {

@@ -23,7 +23,6 @@ public class UserListItemResponse {
     private String fullName;
     private UUID orgUnitId;
     private String orgUnitName;
-    private String role;
     private UserStatus status;
     private LocalDateTime lastLoginAt;
 
@@ -33,6 +32,6 @@ public class UserListItemResponse {
                 : cache.getName(item.getOrgUnitId());
         return new UserListItemResponse(
                 item.getId(), item.getUsername(), item.getEmail(), item.getFullName(),
-                item.getOrgUnitId(), orgUnitName, item.getRoleCode(), item.getStatus(), item.getLastLoginAt());
+                item.getOrgUnitId(), orgUnitName, item.getStatus(), item.getLastLoginAt());
     }
 }

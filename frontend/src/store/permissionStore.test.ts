@@ -30,9 +30,20 @@ describe('permissionStore Unit Tests', () => {
     usePermissionStore.setState({ permissions: [] });
   });
 
-  it('should return true when user has admin:manage override', () => {
+  it('should not treat admin:manage as global access', () => {
     useAuthStore.setState({
       user: { id: '1', username: 'admin', permissions: ['admin:manage'] } as any,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('admin:manage')).toBe(true);
+    expect(store.hasPermission('user:read')).toBe(false);
+    expect(store.hasPermission('anything:do')).toBe(false);
+  });
+
+  it('should return true when user has admin:all direct permission', () => {
+    useAuthStore.setState({
+      user: { id: '1', username: 'admin', permissions: ['admin:all'] } as any,
     });
 
     const store = usePermissionStore.getState();

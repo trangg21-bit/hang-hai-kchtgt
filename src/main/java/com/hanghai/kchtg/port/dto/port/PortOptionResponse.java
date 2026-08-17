@@ -17,4 +17,5 @@ public class PortOptionResponse {
     private UUID id;
     private String portCode;
     private String portName;
+    private UUID orgUnitId;
 }

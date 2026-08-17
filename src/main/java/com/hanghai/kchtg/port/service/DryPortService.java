@@ -8,6 +8,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.dto.dryport.CreateDryPortRequest;
 import com.hanghai.kchtg.port.dto.dryport.DryPortResponse;
 import com.hanghai.kchtg.port.dto.dryport.UpdateDryPortRequest;
@@ -62,6 +63,7 @@ public class DryPortService {
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     // ── GENERATE CODE ───────────────────────────────────────────
 
@@ -161,8 +163,8 @@ public class DryPortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = GisGeometryType.POINT;
-            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     saved.getDryPortName(),
@@ -205,17 +207,17 @@ public class DryPortService {
 
     @Transactional(readOnly = true)
     public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
-    public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId,
+    public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
                                              String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
-        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, search, statusEnum, approvalEnum, pageable);
+        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, provinceId, search, statusEnum, approvalEnum, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         pageResult.getContent().forEach(e -> {
@@ -323,8 +325,8 @@ public class DryPortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = GisGeometryType.POINT;
-            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(),
                     saved.getDryPortName(),
@@ -386,6 +388,40 @@ public class DryPortService {
         log.info("Soft-deleted DryPort [{}] code={}", entity.getId(), entity.getDryPortCode());
     }
 
+    // ── SOFT-DELETE RESTORE (giống cảng biển) ──────────────────
+
+    /**
+     * Khôi phục cảng cạn đã xóa mềm.
+     * Chỉ restore nếu deletedAt không null và trong vòng 90 ngày.
+     * Sử dụng native query để bypass @SQLRestriction.
+     */
+    @Transactional
+    public DryPortResponse restore(UUID id) {
+        // Tìm cảng cạn đã xóa (native query bypasses @SQLRestriction)
+        Object[] deletedInfo = dryPortRepository.findDeletedDryPortById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn đã xóa với id: " + id));
+
+        LocalDateTime deletedAt = (LocalDateTime) deletedInfo[1];
+
+        // Kiểm tra 90 ngày
+        if (deletedAt.isBefore(LocalDateTime.now().minusDays(90))) {
+            throw new IllegalArgumentException("Cảng cạn đã bị xóa quá 90 ngày (từ " + deletedAt + "), không thể khôi phục");
+        }
+
+        // Thực hiện restore
+        int updated = dryPortRepository.restoreDryPortById(id);
+        if (updated == 0) {
+            throw new IllegalStateException("Không thể khôi phục cảng cạn: không tìm thấy bản ghi đã xóa");
+        }
+
+        // Tải lại entity đã khôi phục (now deleted_at = NULL, @SQLRestriction matches)
+        DryPort restored = dryPortRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không thể tải cảng cạn sau khi khôi phục"));
+
+        log.info("Restored DryPort [{}] code={}", restored.getId(), restored.getDryPortCode());
+        return toResponse(restored);
+    }
+
     // ── VALIDATION ──────────────────────────────────────────────
 
     private void validateMandatoryFields(UUID orgUnitId, String name, Integer provinceId,
@@ -436,6 +472,7 @@ public class DryPortService {
         DryPortResponse.DryPortResponseBuilder builder = DryPortResponse.builder()
                 .id(e.getId()).dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
                 .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
+                .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 // General info
                 .operatingUnit(e.getOperatingUnit()).region(e.getRegion())
                 .detailedLocation(e.getDetailedLocation()).transportCorridor(e.getTransportCorridor())
@@ -485,5 +522,11 @@ public class DryPortService {
     @Transactional
     public void deleteAttachment(UUID id, UUID attId) {
         log.info("Deleted attachment {} for DryPort id={}", attId, id);
+    }
+
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_PORT;
+        if (geomType == GisGeometryType.LINE) return GisSpatialObjectType.LINE_OTHER;
+        return GisSpatialObjectType.POLYGON_OTHER;
     }
 }

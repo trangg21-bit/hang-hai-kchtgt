@@ -24,7 +24,7 @@ import {
 import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { organizationService } from '../../services/organizationService';
 import type { DikeRevetmentResponse, ListParams, DikeRevetmentType } from '../../types/dikeRevetment';
-import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DikeRevetmentForm from './DikeRevetmentForm';
 
@@ -52,8 +52,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function DikeRevetmentList() {
-  const currentUser = useAuthStore((s) => s.user);
-  const userPermissions = currentUser?.permissions || [];
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterType, setFilterType] = useState<DikeRevetmentType | undefined>();
@@ -234,9 +233,9 @@ export default function DikeRevetmentList() {
       key: 'action',
       width: 150,
       render: (_: unknown, record: DikeRevetmentResponse) => {
-        const canRead = userPermissions.includes('dikerevetment:read');
-        const canUpdate = userPermissions.includes('dikerevetment:update');
-        const canDelete = userPermissions.includes('dikerevetment:delete');
+        const canRead = hasPerm('dikerevetment:read');
+        const canUpdate = hasPerm('dikerevetment:update');
+        const canDelete = hasPerm('dikerevetment:delete');
         const isApproved = record.approvalStatus === 'APPROVED';
 
         return (
@@ -294,7 +293,7 @@ export default function DikeRevetmentList() {
                 style={{ width: 200 }}
               />
               <Select
-                placeholder="Loại đê"
+                placeholder="Tất cả"
                 options={DIKE_REVETMENT_TYPE_OPTIONS}
                 value={filterType}
                 onChange={(val) => { setFilterType(val); setPage(1); }}
@@ -302,7 +301,7 @@ export default function DikeRevetmentList() {
                 style={{ width: 150 }}
               />
               <Select
-                placeholder="Tình trạng"
+                placeholder="Tất cả"
                 options={STATUS_OPTIONS}
                 value={filterStatusVal}
                 onChange={(val) => { setFilterStatusVal(val); setPage(1); }}
@@ -310,7 +309,7 @@ export default function DikeRevetmentList() {
                 style={{ width: 150 }}
               />
               <Select
-                placeholder="Trạng thái phê duyệt"
+                placeholder="Tất cả"
                 options={APPROVAL_STATUS_OPTIONS}
                 value={filterApprovalStatus}
                 onChange={(val) => { setFilterApprovalStatus(val); setPage(1); }}

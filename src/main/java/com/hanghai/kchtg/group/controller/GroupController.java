@@ -2,7 +2,6 @@ package com.hanghai.kchtg.group.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.group.dto.*;
-import com.hanghai.kchtg.group.entity.GroupHistory;
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.service.UserGroupService;
@@ -22,7 +21,7 @@ import java.util.UUID;
  * REST controller cho CRUD quan ly nhom nguoi dung.
  * <p>
  * M-001 F-002: Full RBAC enforcement, pagination, search, filter,
- * member management, copy group, history endpoints.
+ * member management and permission endpoints.
  * </p>
  * <p>
  * Base path: {@code /api/groups}
@@ -50,15 +49,19 @@ public class GroupController {
      * - page (default 0)
      * - size (default 20)
      * - search (optional, filters by name LIKE)
-     * - groupType (optional: department/project/custom)
+     * - organizationId (optional: restrict to one unit inside current scope)
+     * - status (optional: active/inactive)
      * - myGroups (optional: true = only groups user belongs to, Ca nhan)
      */
     @GetMapping
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<PaginatedGroupResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String groupType,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID organizationId,
             @RequestParam(required = false, defaultValue = "false") Boolean myGroups,
             Authentication authentication) {
 
@@ -68,11 +71,11 @@ public class GroupController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.error("Yeu cau xac thuc"));
             }
-            PaginatedGroupResponse result = service.findMyGroups(currentUserId, search, groupType, page, size);
+            PaginatedGroupResponse result = service.findMyGroups(currentUserId, search, code, status, organizationId, page, size);
             return ResponseEntity.ok(ApiResponse.success(result));
         }
 
-        PaginatedGroupResponse result = service.list(search, groupType, null, page, size);
+        PaginatedGroupResponse result = service.list(search, code, status, organizationId, page, size);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -81,18 +84,15 @@ public class GroupController {
      * Role: All authenticated users
      */
     @GetMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<UserGroupResponse>> get(@PathVariable UUID id) {
         UserGroupResponse group = service.findById(id);
-        // Re-resolve org name via cache to ensure non-null in direct GET response
-        String orgName = orgUnitCacheService.getName(group.getOrganizationId());
-        UserGroupResponse enriched = UserGroupResponse.from(
-                service.findEntityById(id), group.getMemberCount(), orgName);
-        return ResponseEntity.ok(ApiResponse.success(enriched));
+        return ResponseEntity.ok(ApiResponse.success(group));
     }
 
     /**
      * POST /api/groups — Tao moi nhom. Tra ve 201 Created.
-     * Role: Admin only (BR-012: groupType required)
+     * Role: Admin only.
      */
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'group:create')")
@@ -184,6 +184,26 @@ public class GroupController {
                 .body(ApiResponse.success("Đã thêm thành viên", GroupMemberResponse.from(member)));
     }
 
+    /** POST /api/groups/{id}/members/batch — thêm tối đa 100 thành viên nguyên tử. */
+    @PostMapping("/{id}/members/batch")
+    @PreAuthorize("@auth.check(authentication, 'groupmember:manage')")
+    public ResponseEntity<ApiResponse<BatchAddGroupMembersResponse>> addMembers(
+            @PathVariable UUID id,
+            @Valid @RequestBody BatchAddGroupMembersRequest request,
+            Authentication authentication) {
+        UUID operatorId = extractUserId(authentication);
+        String operatorName = extractUserName(authentication);
+
+        if (operatorId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Yêu cầu xác thực"));
+        }
+
+        BatchAddGroupMembersResponse result = service.addMembers(id, request, operatorId, operatorName);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Đã thêm thành viên", result));
+    }
+
     /**
      * DELETE /api/groups/{groupId}/members/{userId} — Xoa thanh vien.
      * Role: Admin, Can bo
@@ -211,6 +231,7 @@ public class GroupController {
      * Role: Admin, Lanh dao, Can bo, Ca nhan
      */
     @GetMapping("/{id}/members")
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<PaginatedGroupMemberResponse>> listMembers(
             @PathVariable UUID id,
             @RequestParam(required = false) String search,
@@ -228,19 +249,19 @@ public class GroupController {
 
     // ── Group Permission (F-002 UC-012) ─────────────────────────────
 
-    /** Lấy các role đã gán cho nhóm để hiển thị trong modal phân quyền. */
+    /** Lấy các quyền trực tiếp đã gán cho nhóm để hiển thị trong modal phân quyền. */
     @GetMapping("/{id}/permissions")
     @PreAuthorize("@auth.check(authentication, 'group:permission')")
-    public ResponseEntity<ApiResponse<List<GroupRoleResponse>>> listGroupRoles(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(service.findGroupRoles(id)));
+    public ResponseEntity<ApiResponse<List<String>>> listGroupPermissions(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(service.findGroupPermissions(id)));
     }
 
-    /** Thay thế danh sách role của nhóm và làm mới quyền kế thừa của thành viên. */
+    /** Thay thế danh sách quyền trực tiếp của nhóm và làm mới cache thành viên. */
     @PutMapping("/{id}/permissions")
     @PreAuthorize("@auth.check(authentication, 'group:permission')")
-    public ResponseEntity<ApiResponse<List<GroupRoleResponse>>> updateGroupRoles(
+    public ResponseEntity<ApiResponse<List<String>>> updateGroupPermissions(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateGroupRolesRequest request,
+            @Valid @RequestBody UpdateGroupPermissionsRequest request,
             Authentication authentication) {
         UUID operatorId = extractUserId(authentication);
         String operatorName = extractUserName(authentication);
@@ -248,8 +269,8 @@ public class GroupController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Yêu cầu xác thực"));
         }
-        List<GroupRoleResponse> roles = service.updateGroupRoles(id, request, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật phân quyền cho nhóm", roles));
+        List<String> permissions = service.updateGroupPermissions(id, request, operatorId, operatorName);
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật phân quyền cho nhóm", permissions));
     }
 
     // ── Lock / Unlock (F-002 AC-002-15, AC-002-16) ─────────────────
@@ -278,74 +299,6 @@ public class GroupController {
                 : "Đã khóa nhóm";
         return ResponseEntity.ok(ApiResponse.success(message,
                 UserGroupResponse.from(updated, 0L, orgUnitCacheService.getName(updated.getOrganizationId()))));
-    }
-
-    // ── Copy Group (BR-014) ────────────────────────────────────────
-
-    /**
-     * POST /api/groups/{id}/copy — Sao cop nhom.
-     * Role: Admin only
-     */
-    @PostMapping("/{id}/copy")
-    @PreAuthorize("@auth.check(authentication, 'group:copy')")
-    public ResponseEntity<ApiResponse<UserGroupResponse>> copy(
-            @PathVariable UUID id,
-            @Valid @RequestBody GroupCopyRequest request,
-            Authentication authentication) {
-        UUID operatorId = extractUserId(authentication);
-        String operatorName = extractUserName(authentication);
-
-        if (operatorId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Yeu cau xac thuc"));
-        }
-
-        UserGroupResponse response = UserGroupResponse.from(service.copy(id, request, operatorId, operatorName),
-                0L); // will be populated with actual count by client or separate call
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Sao chép thành công", response));
-    }
-
-    // ── History (BR-015) ───────────────────────────────────────────
-
-    /**
-     * GET /api/groups/{id}/history — Lich su thay doi nhom.
-     * Role: Admin
-     */
-    @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'group:history')")
-    public ResponseEntity<ApiResponse<List<GroupHistory>>> getHistory(@PathVariable UUID id) {
-        List<GroupHistory> history = service.findHistory(id);
-        return ResponseEntity.ok(ApiResponse.success(history));
-    }
-
-    /**
-     * GET /api/groups/{id}/history/paginated — Lich su thay doi (phan trang).
-     * Role: Admin
-     */
-    @GetMapping("/{id}/history/paginated")
-    @PreAuthorize("@auth.check(authentication, 'group:history')")
-    public ResponseEntity<ApiResponse<PaginatedGroupResponse>> getHistoryPaginated(
-            @PathVariable UUID id,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<GroupHistory> pageResult = service.findHistoryPaginated(id, page, size);
-
-        List<GroupResponse> items = pageResult.getContent().stream()
-                .map(h -> {
-                    UserGroup group = service.findEntityById(h.getUserGroupId());
-                    return GroupResponse.from(group);
-                })
-                .toList();
-
-        PaginatedGroupResponse result = new PaginatedGroupResponse();
-        result.setItems(items);
-        result.setTotal(pageResult.getTotalElements());
-        result.setPage(pageResult.getNumber());
-        result.setPageSize(pageResult.getSize());
-        result.setTotalPages(pageResult.getTotalPages());
-        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────

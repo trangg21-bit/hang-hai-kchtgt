@@ -36,13 +36,13 @@ const clearPortOptionsCache = () => {
 // ── Port CRUD ───────────────────────────────────────────────────
 
 export const portCRUD = {
-  async getOptions(): Promise<{ id: string; portCode?: string; portName?: string }[]> {
+  async getOptions(): Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> {
     const getWin = () => (window.top || window) as any;
     if (getWin().__portOptionsCache) {
       return getWin().__portOptionsCache;
     }
     try {
-      const res = await api.get('/v1/ports/options');
+      const res = await api.get('/common/options/ports');
       const list = res.data.data || [];
       getWin().__portOptionsCache = list;
       return list;
@@ -250,22 +250,24 @@ export const pierCRUD = {
   },
 
   async search(params?: {
-    pierCode?: string;
-    pierName?: string;
+    search?: string;
     berthId?: string;
-    loaiCau?: string;
-    operationalStatus?: string;
+    portId?: string;
+    pierType?: string;
+    province?: string;
+    status?: string;
     orgUnitId?: string;
     approvalStatus?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Pier>> {
     const sp = buildSearchParams({
-      pierCode: params?.pierCode,
-      pierName: params?.pierName,
+      search: params?.search,
       berthId: params?.berthId,
-      loaiCau: params?.loaiCau,
-      operationalStatus: params?.operationalStatus,
+      portId: params?.portId,
+      pierType: params?.pierType,
+      province: params?.province,
+      status: params?.status,
       orgUnitId: params?.orgUnitId,
       approvalStatus: params?.approvalStatus,
       page: params?.page !== undefined ? params.page - 1 : undefined,
@@ -308,6 +310,7 @@ export const dryPortCRUD = {
     page?: number;
     size?: number;
     orgUnitId?: string;
+    provinceId?: number;
     search?: string;
     status?: string;
     approvalStatus?: string;
@@ -316,6 +319,7 @@ export const dryPortCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
       orgUnitId: params?.orgUnitId,
+      provinceId: params?.provinceId,
       search: params?.search,
       status: params?.status,
       approvalStatus: params?.approvalStatus,

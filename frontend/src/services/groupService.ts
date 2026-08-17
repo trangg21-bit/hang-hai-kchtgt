@@ -37,12 +37,13 @@ export interface Group {
   name: string;
   code?: string;
   description?: string;
-  groupType?: string;
   permissions?: string[];
   memberCount?: number;
   status: "active" | "inactive";
   organizationId?: string;
   organizationName?: string;
+  createdByName?: string;
+  updatedByName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -60,20 +61,10 @@ export interface GroupMember {
   createdAt: string;
 }
 
-export interface GroupRole {
-  id: string;
-  name: string;
-  code: string;
-  description?: string;
-  level?: number;
-  hierarchyDepth?: number;
-}
-
 export interface CreateGroupPayload {
   name: string;
   code?: string;
   description?: string;
-  groupType?: string;
   permissions?: string[];
   status?: "active" | "inactive";
   memberIds?: string[];
@@ -83,7 +74,6 @@ export interface CreateGroupPayload {
 export interface UpdateGroupPayload {
   name?: string;
   description?: string;
-  groupType?: string;
   permissions?: string[];
   status?: "active" | "inactive";
 }
@@ -115,7 +105,7 @@ export const groupService = {
    * Frontend applies pagination client-side.
    */
   async list(
-    params?: { page?: number; pageSize?: number; search?: string; status?: string; groupType?: string; myGroups?: boolean }
+    params?: { page?: number; pageSize?: number; search?: string; code?: string; status?: string; organizationId?: string; myGroups?: boolean }
   ): Promise<PaginatedResponse<Group> & { activeCount: number; inactiveCount: number }> {
     try {
       // Build query string
@@ -123,8 +113,9 @@ export const groupService = {
       if (params?.page) qParams.append("page", String(params.page - 1)); // Frontend is 1-indexed, backend is 0-indexed
       if (params?.pageSize) qParams.append("size", String(params.pageSize));
       if (params?.search) qParams.append("search", params.search);
+      if (params?.code) qParams.append("code", params.code);
       if (params?.status) qParams.append("status", params.status);
-      if (params?.groupType) qParams.append("groupType", params.groupType);
+      if (params?.organizationId) qParams.append("organizationId", params.organizationId);
       if (params?.myGroups) qParams.append("myGroups", "true");
 
       const resp = await api.get(`/v1/groups?${qParams.toString()}`);
@@ -139,12 +130,13 @@ export const groupService = {
           name: item.name ?? "",
           code: item.code,
           description: item.description,
-          groupType: item.groupType?.toLowerCase(),
           permissions: item.permissions,
           memberCount: item.memberCount ?? 0,
           status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
           organizationId: item.organizationId,
           organizationName: item.organizationName,
+          createdByName: item.createdByName,
+          updatedByName: item.updatedByName,
           createdAt: item.createdAt
             ? new Date(item.createdAt).toISOString()
             : "",
@@ -180,12 +172,13 @@ export const groupService = {
         name: item.name ?? "",
         code: item.code,
         description: item.description,
-        groupType: item.groupType?.toLowerCase(),
         permissions: item.permissions,
         memberCount: undefined,
         status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
         organizationId: item.organizationId,
         organizationName: item.organizationName,
+        createdByName: item.createdByName,
+        updatedByName: item.updatedByName,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
           : "",
@@ -205,9 +198,8 @@ export const groupService = {
     try {
       const resp = await api.post("/v1/groups", {
         name: payload.name,
-        code: payload.code ?? payload.name.substring(0, 10).replace(/\\s+/g, "_").toLowerCase(),
+        code: payload.code,
         description: payload.description,
-        groupType: payload.groupType,
         permissions: payload.permissions,
         status: (payload.status ?? "active").toUpperCase(),
         organizationId: payload.organizationId,
@@ -219,7 +211,6 @@ export const groupService = {
         name: item.name ?? payload.name,
         code: item.code,
         description: item.description,
-        groupType: item.groupType?.toLowerCase() ?? payload.groupType,
         permissions: item.permissions,
         memberCount: 0,
         status: "active",
@@ -240,10 +231,7 @@ export const groupService = {
     try {
       const resp = await api.put(`/v1/groups/${id}`, {
         name: payload.name,
-        code: payload.code,
         description: payload.description,
-        groupType: payload.groupType,
-        permissions: payload.permissions,
         status: payload.status?.toUpperCase(),
       });
       const item: any = extractData(resp);
@@ -253,7 +241,6 @@ export const groupService = {
         name: item.name ?? payload.name ?? "",
         code: item.code,
         description: item.description ?? payload.description,
-        groupType: item.groupType?.toLowerCase() ?? payload.groupType,
         permissions: item.permissions ?? payload.permissions,
         memberCount: undefined,
         status:
@@ -345,6 +332,19 @@ export const groupService = {
     }
   },
 
+  /** POST /api/groups/:id/members/batch — thêm tối đa 100 thành viên nguyên tử. */
+  async addMembers(groupId: string, userIds: string[]): Promise<{ addedCount: number; userIds: string[] }> {
+    if (userIds.length < 1 || userIds.length > 100) {
+      throw new Error('Mỗi lần chỉ được thêm từ 1 đến 100 người dùng');
+    }
+    const resp = await api.post(`/v1/groups/${groupId}/members/batch`, { userIds });
+    const data: any = extractData(resp);
+    return {
+      addedCount: data?.addedCount ?? userIds.length,
+      userIds: Array.isArray(data?.userIds) ? data.userIds : userIds,
+    };
+  },
+
   /**
    * DELETE /api/groups/:id/members/:userId
    */
@@ -365,7 +365,6 @@ export const groupService = {
       name: item.name ?? '',
       code: item.code,
       description: item.description,
-      groupType: item.groupType?.toLowerCase(),
       permissions: item.permissions,
       memberCount: item.memberCount,
       status: (item.status?.toLowerCase() as Group['status']) ?? 'active',
@@ -376,33 +375,17 @@ export const groupService = {
     };
   },
 
-  /** GET /api/v1/groups/:id/permissions — các vai trò đang gán cho nhóm. */
-  async getPermissions(groupId: string): Promise<GroupRole[]> {
+  /** GET /api/v1/groups/:id/permissions — các quyền trực tiếp của nhóm. */
+  async getPermissions(groupId: string): Promise<string[]> {
     const resp = await api.get(`/v1/groups/${groupId}/permissions`);
     const rawData: any = extractData(resp);
-    const items: any[] = Array.isArray(rawData) ? rawData : [];
-    return items.map((item) => ({
-      id: String(item.id ?? ''),
-      name: item.name ?? '',
-      code: item.code ?? '',
-      description: item.description,
-      level: item.level,
-      hierarchyDepth: item.hierarchyDepth,
-    }));
+    return Array.isArray(rawData) ? rawData.map(String) : [];
   },
 
-  /** PUT /api/v1/groups/:id/permissions — thay thế toàn bộ role của nhóm. */
-  async updatePermissions(groupId: string, roleIds: string[]): Promise<GroupRole[]> {
-    const resp = await api.put(`/v1/groups/${groupId}/permissions`, { roleIds });
+  /** PUT /api/v1/groups/:id/permissions — thay thế toàn bộ quyền trực tiếp của nhóm. */
+  async updatePermissions(groupId: string, permissions: string[]): Promise<string[]> {
+    const resp = await api.put(`/v1/groups/${groupId}/permissions`, { permissions });
     const rawData: any = extractData(resp);
-    const items: any[] = Array.isArray(rawData) ? rawData : [];
-    return items.map((item) => ({
-      id: String(item.id ?? ''),
-      name: item.name ?? '',
-      code: item.code ?? '',
-      description: item.description,
-      level: item.level,
-      hierarchyDepth: item.hierarchyDepth,
-    }));
+    return Array.isArray(rawData) ? rawData.map(String) : [];
   },
 };

@@ -274,7 +274,9 @@ public class LegalDocumentService {
         recordSearch(keyword, issuingAuthority, applicationArea, type, status, result.getTotalElements());
 
         Map<String, Long> counts = new java.util.LinkedHashMap<>();
-        for (Object[] row : legalDocumentRepository.countByValidityStatus()) {
+        for (Object[] row : legalDocumentRepository.countByValidityStatusFiltered(
+                keywordLike, documentNumberLike, issuingAuthorityPattern, applicationAreaPattern,
+                typeEnum, issueDateStart, issueDateEnd, effectiveDateStart, effectiveDateEnd)) {
             counts.put(((ValidityStatus) row[0]).name(), (Long) row[1]);
         }
 

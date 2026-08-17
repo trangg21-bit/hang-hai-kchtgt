@@ -1,13 +1,15 @@
 import React from 'react';
-import { Descriptions, Table, Tag, InputNumber, Space, Tabs } from 'antd';
+import { Descriptions, Table, InputNumber, Space, Tabs } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault,
+  statusOperational, statusAttention, statusCritical, actionPrimary,
   fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold,
   spaceSm, spaceMd, spaceXs,
   surfaceCard, surfacePage,
 } from '../../tokens';
+import { fmtNum } from '../../utils/numFmt';
 
 export interface PortDetailContentProps {
   selectedRecord: any;
@@ -45,17 +47,17 @@ export default function PortDetailContent({
                   ['Địa điểm (Tỉnh/Thành phố)', selectedRecord.province || '—'],
                   ['Địa điểm chi tiết', selectedRecord.detailedLocation || '—'],
                   ['Phân cấp cảng biển', selectedRecord.portClass != null ? (selectedRecord.portClass === 5 ? 'Cấp đặc biệt' : `Cấp ${selectedRecord.portClass}`) : '—'],
-                  ['Trạng thái phê duyệt', selectedRecord.approvalStatus ? <Tag color={trangThaiPheDuyetBadge(selectedRecord.approvalStatus).color}>{trangThaiPheDuyetBadge(selectedRecord.approvalStatus).label}</Tag> : '—'],
+                  ['Trạng thái phê duyệt', selectedRecord.approvalStatus ? (() => { const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus); let c = textTertiary; if (b.color === 'green') c = statusOperational; else if (b.color === 'red') c = statusCritical; else if (b.color === 'orange') c = statusAttention; else if (b.color === 'blue') c = actionPrimary; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>; })() : '—'],
                   ['Phạm vi vùng nước cảng biển', selectedRecord.waterAreaScope || '—'],
                   ['Tổng số bến cảng', selectedRecord.totalBerths ?? '—'],
                   ['Tổng số khu neo đậu, khu chuyển tải', selectedRecord.totalAnchoragesTransshipment ?? '—'],
                   ['Tổng số tuyến luồng hàng hải công cộng', selectedRecord.totalPublicChannels ?? '—'],
                   ['Tổng số tuyến luồng hàng hải chuyên dùng', selectedRecord.totalDedicatedChannels ?? '—'],
-                  ['Tổng chiều dài luồng HH công cộng (km)', selectedRecord.totalPublicChannelLength != null ? selectedRecord.totalPublicChannelLength.toFixed(2) : '—'],
-                  ['Tổng chiều dài luồng HH chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? selectedRecord.totalDedicatedChannelLength.toFixed(2) : '—'],
-                  ['Tổng số phao tiêu, báo hiệu hàng hải', selectedRecord.totalBuoysBeacons ?? '—'],
+                  ['Tổng chiều dài luồng hàng hải công cộng (km)', selectedRecord.totalPublicChannelLength != null ? fmtNum(selectedRecord.totalPublicChannelLength) : '—'],
+                  ['Tổng chiều dài luồng hàng hải chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? fmtNum(selectedRecord.totalDedicatedChannelLength) : '—'],
+                  ['Tổng số phao tiêu, báo hiệu hàng hải trên luồng', selectedRecord.totalBuoysBeacons ?? '—'],
                   ['Tổng số đê, kè', selectedRecord.totalDikes ?? '—'],
-                  ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? selectedRecord.totalDikeLength.toFixed(2) : '—'],
+                  ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? fmtNum(selectedRecord.totalDikeLength) : '—'],
                   ['Tổng số đèn biển, đăng, tiêu độc lập', selectedRecord.totalLighthouses ?? '—'],
                   ['Số lượng bến phao', selectedRecord.buoyBerthCount ?? '—'],
                   ['Số lượng khu neo đậu', selectedRecord.anchorageCount ?? '—'],
@@ -81,7 +83,7 @@ export default function PortDetailContent({
                   ['Loại đối tượng', selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'],
                   ['Biểu tượng bản đồ', selectedRecord.mapSymbolId ? (symbols.find((s) => s.id === selectedRecord.mapSymbolId)?.name || selectedRecord.mapSymbolId) : '—'],
                   ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'],
-                  ['Quy tắc hiển thị', 'Độ, phút, giây (DMS)'],
+                  ['Quy tắc hiển thị', (selectedRecord.geometryType || selectedRecord.coordinates) ? 'Độ, phút, giây (DMS)' : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">
                     <span className="detail-label">{label}</span>
@@ -117,16 +119,16 @@ export default function PortDetailContent({
                       <Table.Column title="STT" key="stt" width={60} align="center"
                         render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Vĩ độ (N)" key="lat"
+                      <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                         render={(_: any, record: any) => {
                           const dms = ddToDms(record.lat);
-                          return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      <Table.Column title="Kinh độ (E)" key="lng"
+                      <Table.Column title="Kinh độ (E)" key="lng" align="center"
                         render={(_: any, record: any) => {
                           const dms = ddToDms(record.lng);
-                          return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                          return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                     </Table>
@@ -180,7 +182,7 @@ export default function PortDetailContent({
                 {[
                   ['Người tạo', selectedRecord.createdByName || selectedRecord.createdBy || '—'],
                   ['Ngày tạo', selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'],
-                  ['Cập nhật bởi', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
+                  ['Người cập nhật', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
                   ['Ngày cập nhật', selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'],
                 ].map(([label, value], i) => (
                   <div key={i} className="detail-row">

@@ -73,6 +73,18 @@ public class OrganizationService {
                 .map(OrgUnitResponse::from);
     }
 
+    @Transactional(readOnly = true)
+    public Page<OrgUnitResponse> findAll(Pageable pageable, OrgUnitScopeService.Scope scope) {
+        if (scope.unrestricted()) {
+            return findAll(pageable);
+        }
+        if (scope.orgUnitIds().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return orgUnitRepo.findAllActiveByIds(scope.orgUnitIds(), pageable)
+                .map(OrgUnitResponse::from);
+    }
+
     /**
      * Flat list of all active units (no pagination).
      */
@@ -81,19 +93,41 @@ public class OrganizationService {
         return orgUnitCacheService.getList();
     }
 
+    @Transactional(readOnly = true)
+    public List<OrgUnitResponse> findAll(OrgUnitScopeService.Scope scope) {
+        if (scope.unrestricted()) {
+            return findAll();
+        }
+        return orgUnitCacheService.getList().stream()
+                .filter(unit -> scope.allows(unit.getId()))
+                .toList();
+    }
+
     /**
      * Full hierarchical tree starting from root nodes, built using path-based
      * ordering.
      */
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> buildTree() {
-        List<OrgUnit> all = orgUnitRepo.findAllActiveOrderByPath();
+        return buildTree(OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrgUnitResponse> buildTree(OrgUnitScopeService.Scope scope) {
+        List<OrgUnit> all = scope.unrestricted()
+                ? orgUnitRepo.findAllActiveOrderByPath()
+                : scope.orgUnitIds().isEmpty()
+                        ? List.of()
+                        : orgUnitRepo.findAllActiveByIds(scope.orgUnitIds());
+        java.util.Set<UUID> visibleIds = all.stream()
+                .map(OrgUnit::getId)
+                .collect(Collectors.toSet());
         Map<UUID, List<OrgUnit>> childrenMap = all.stream()
-                .filter(u -> u.getParentId() != null)
+                .filter(u -> u.getParentId() != null && visibleIds.contains(u.getParentId()))
                 .collect(Collectors.groupingBy(OrgUnit::getParentId));
 
         return all.stream()
-                .filter(u -> u.getParentId() == null)
+                .filter(u -> u.getParentId() == null || !visibleIds.contains(u.getParentId()))
                 .map(root -> buildTree(root, childrenMap))
                 .collect(Collectors.toList());
     }
@@ -114,11 +148,20 @@ public class OrganizationService {
      */
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> findSubTree(UUID unitId) {
+        return findSubTree(unitId, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrgUnitResponse> findSubTree(UUID unitId, OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, unitId);
         if (!orgUnitRepo.existsById(unitId)) {
             throw new EntityNotFoundException("Đơn vị không tồn tại: " + unitId);
         }
         List<OrgUnit> subtree = materializedPathService.getSubtree(unitId);
-        return subtree.stream().map(OrgUnitResponse::from).collect(Collectors.toList());
+        return subtree.stream()
+                .filter(unit -> scope.allows(unit.getId()))
+                .map(OrgUnitResponse::from)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -126,7 +169,14 @@ public class OrganizationService {
      */
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> findByParentId(UUID parentId) {
+        return findByParentId(parentId, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrgUnitResponse> findByParentId(UUID parentId, OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, parentId);
         return orgUnitRepo.findByParentId(parentId).stream()
+                .filter(unit -> scope.allows(unit.getId()))
                 .map(OrgUnitResponse::from)
                 .collect(Collectors.toList());
     }
@@ -136,6 +186,12 @@ public class OrganizationService {
      */
     @Transactional(readOnly = true)
     public OrgUnitResponse findById(UUID id) {
+        return findById(id, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(readOnly = true)
+    public OrgUnitResponse findById(UUID id, OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, id);
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
         return OrgUnitResponse.from(unit);
@@ -159,6 +215,19 @@ public class OrganizationService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<OrgUnitResponse> searchUnits(String query, OrgUnitScopeService.Scope scope) {
+        if (scope.unrestricted()) {
+            return searchUnits(query);
+        }
+        if (scope.orgUnitIds().isEmpty()) {
+            return List.of();
+        }
+        return orgUnitRepo.findByNameLikeOrCodeLikeAndIds(query, scope.orgUnitIds()).stream()
+                .map(OrgUnitResponse::from)
+                .collect(Collectors.toList());
+    }
+
     /**
      * Filter units by status, and/or level.
      */
@@ -166,6 +235,19 @@ public class OrganizationService {
     public Page<OrgUnitResponse> filterUnits(OrgUnitStatus status,
             Integer level, Pageable pageable) {
         return orgUnitRepo.findByFilters(status, level, pageable)
+                .map(OrgUnitResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrgUnitResponse> filterUnits(OrgUnitStatus status, Integer level,
+            Pageable pageable, OrgUnitScopeService.Scope scope) {
+        if (scope.unrestricted()) {
+            return filterUnits(status, level, pageable);
+        }
+        if (scope.orgUnitIds().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return orgUnitRepo.findByFiltersAndIds(status, level, scope.orgUnitIds(), pageable)
                 .map(OrgUnitResponse::from);
     }
 
@@ -183,6 +265,12 @@ public class OrganizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse create(CreateOrgUnitRequest request, UUID operatorId, String operatorName) {
+        return create(request, operatorId, operatorName, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrgUnitResponse create(CreateOrgUnitRequest request, UUID operatorId, String operatorName,
+            OrgUnitScopeService.Scope scope) {
         // Auto-generate code if not provided
         String code = request.getCode();
         if (code == null || code.isBlank()) {
@@ -197,9 +285,13 @@ public class OrganizationService {
         // Validate parent exists if specified
         OrgUnit parent = null;
         if (request.getParentId() != null) {
+            requireAllowed(scope, request.getParentId());
             parent = orgUnitRepo.findById(request.getParentId())
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Đơn vị cha không tồn tại: " + request.getParentId()));
+        } else if (!scope.unrestricted()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Bạn chỉ được tạo đơn vị bên trong phạm vi đơn vị của tài khoản");
         }
         validateParentEligibility(parent);
 
@@ -247,6 +339,13 @@ public class OrganizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse update(UUID id, UpdateOrgUnitRequest request, UUID operatorId, String operatorName) {
+        return update(id, request, operatorId, operatorName, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrgUnitResponse update(UUID id, UpdateOrgUnitRequest request, UUID operatorId, String operatorName,
+            OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, id);
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
@@ -263,12 +362,17 @@ public class OrganizationService {
             UUID newParentId = request.getParentId();
 
             if (newParentId.equals(new UUID(0L, 0L))) {
+                if (!scope.unrestricted()) {
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            "Bạn không thể chuyển đơn vị ra ngoài phạm vi được phân quyền");
+                }
                 // Nil UUID: clear parent (move to root)
                 if (unit.getParentId() != null) {
                     materializedPathService.cascadePathRebuild(id, null);
                     unit.setParentId(null);
                 }
             } else {
+                requireAllowed(scope, newParentId);
                 // Self-parent check
                 if (newParentId.equals(id)) {
                     throw new IllegalArgumentException("Đơn vị không thể là cha của chính nó");
@@ -364,6 +468,13 @@ public class OrganizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void delete(UUID id, UUID operatorId, String operatorName) {
+        delete(id, operatorId, operatorName, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void delete(UUID id, UUID operatorId, String operatorName,
+            OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, id);
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
@@ -393,6 +504,13 @@ public class OrganizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse submitForApproval(UUID id, UUID operatorId, String operatorName) {
+        return submitForApproval(id, operatorId, operatorName, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrgUnitResponse submitForApproval(UUID id, UUID operatorId, String operatorName,
+            OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, id);
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
@@ -417,6 +535,13 @@ public class OrganizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse approve(UUID id, UUID approverId, String approverName, String comments) {
+        return approve(id, approverId, approverName, comments, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrgUnitResponse approve(UUID id, UUID approverId, String approverName, String comments,
+            OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, id);
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
@@ -444,6 +569,13 @@ public class OrganizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse reject(UUID id, UUID approverId, String approverName, String comments) {
+        return reject(id, approverId, approverName, comments, OrgUnitScopeService.Scope.allScope());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrgUnitResponse reject(UUID id, UUID approverId, String approverName, String comments,
+            OrgUnitScopeService.Scope scope) {
+        requireAllowed(scope, id);
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
@@ -468,6 +600,13 @@ public class OrganizationService {
     // ═══════════════════════════════════════════════════════════════════
     // ── Private helpers ──────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════════
+
+    private void requireAllowed(OrgUnitScopeService.Scope scope, UUID unitId) {
+        if (scope != null && !scope.allows(unitId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Bạn không có quyền truy cập hoặc thay đổi đơn vị ngoài phạm vi được phân quyền");
+        }
+    }
 
     private void saveHistory(OrgUnit unit, String action, String details,
             UUID performedBy, String performedByName) {

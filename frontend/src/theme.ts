@@ -26,7 +26,9 @@ export const layout = {
   headerHeight: 64,
   footerHeight: 56,
   listTableMinWidth: 1400,
-  listTableScrollY: 'calc(100vh - 380px)',
+  // Reserve the status bar, table header and pagination so the pager never
+  // overlays the last visible row of a list table.
+  listTableScrollY: 'calc(100vh - 410px)',
 };
 
 // ============================================================
@@ -415,6 +417,21 @@ export const globalCssVars = `
   background: transparent;
 }
 
+/* Bảng list-view: dành chỗ scrollbar dọc ổn định để header và body của cột ghim (fixed right)
+   luôn thẳng hàng — kể cả khi chưa đủ dữ liệu tạo thanh cuộn. */
+.list-view-table .ant-table-body {
+  scrollbar-gutter: stable;
+}
+
+/* Gắn icon sort ngay sau title của cột (antd mặc định đẩy icon ra mép phải,
+   tạo khoảng trống lớn khi cột thừa chiều rộng). */
+.list-view-table .ant-table-thead .ant-table-column-sorters {
+  justify-content: flex-start;
+}
+.list-view-table .ant-table-thead .ant-table-column-title {
+  flex: 0 0 auto;
+}
+
 /* --- Navigation zone (BLUE — đồng nhất) --- */
 .sidebar-footer,
 .ant-layout-sider,
@@ -716,9 +733,9 @@ body, .ant-layout {
   background: var(--bg-body);
 }
 
-/* ---------- TextArea — tight corners, never pill/round ---------- */
+/* ---------- TextArea — bo góc chặt (4px) làm mặc định; từng form có thể override bằng token radiusPill ---------- */
 textarea.ant-input {
-  border-radius: 4px !important;
+  border-radius: 4px;
 }
 
 /* ---------- Required mark (*) bên phải label ---------- */

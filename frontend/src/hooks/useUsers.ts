@@ -9,8 +9,9 @@ interface ListParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  roleId?: string;
+  fullName?: string;
   status?: string;
+  orgUnitId?: string;
   sortField?: string;
   sortOrder?: 'ascend' | 'descend' | null;
 }
@@ -22,14 +23,6 @@ export function useUsers(params: ListParams) {
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-  });
-}
-
-export function useUserStatusCounts() {
-  return useQuery<Record<string, number>>({
-    queryKey: ['users', 'status-counts'],
-    queryFn: () => userService.getStatusCounts(),
-    staleTime: 30_000,
   });
 }
 

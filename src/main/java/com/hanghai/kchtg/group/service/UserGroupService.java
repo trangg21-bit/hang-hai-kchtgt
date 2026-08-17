@@ -3,14 +3,13 @@ package com.hanghai.kchtg.group.service;
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.group.dto.*;
 import com.hanghai.kchtg.group.entity.*;
-import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.RoleRepository;
+import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -19,8 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,9 +32,6 @@ import java.util.*;
  * - BR-009: Cannot delete group with members
  * - BR-010: User can belong to multiple groups
  * - BR-011: Only Admin can delete groups
- * - BR-012: GroupType enum validation (department/project/custom)
- * - BR-014: Copy group with all members
- * - BR-015: All mutations logged to GroupHistory
  * </p>
  */
 @Service
@@ -46,64 +41,64 @@ public class UserGroupService {
     private static final Logger log = LoggerFactory.getLogger(UserGroupService.class);
 
     private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final UUID UNRESTRICTED_SCOPE_PLACEHOLDER = new UUID(0L, 0L);
+    private static final Set<String> NON_INHERITABLE_PERMISSIONS = Set.of(
+            "group:manage", "admin:all", "orgunit:scope_all", "*");
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
-    private final GroupHistoryRepository groupHistoryRepository;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
     private final PermissionCacheService permissionCacheService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
 
     public UserGroupService(GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
-            GroupHistoryRepository groupHistoryRepository,
             UserRepository userRepository,
-            RoleRepository roleRepository,
+            PermissionRepository permissionRepository,
             PermissionCacheService permissionCacheService,
-            OrgUnitCacheService orgUnitCacheService) {
+            OrgUnitCacheService orgUnitCacheService,
+            OrgUnitScopeService orgUnitScopeService) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
-        this.groupHistoryRepository = groupHistoryRepository;
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
         this.permissionCacheService = permissionCacheService;
         this.orgUnitCacheService = orgUnitCacheService;
+        this.orgUnitScopeService = orgUnitScopeService;
     }
 
     // ── CRUD ────────────────────────────────────────────────────────
 
     /**
-     * Tao moi nhom (BR-008: unique name/code, BR-012: groupType validation).
+     * Tao moi nhom (BR-008: unique name/code validation).
      */
     public UserGroup create(CreateUserGroupRequest request, UUID operatorId, String operatorName) {
+        requireOrganizationInScope(request.getOrganizationId());
+        String name = request.getName().trim();
+        String code = request.getCode().trim();
+        String description = request.getDescription() == null ? null : request.getDescription().trim();
+
         // BR-008: Check unique name
-        if (groupRepository.existsByNameAndDeletedAtIsNull(request.getName())) {
-            throw new IllegalArgumentException("Tên nhóm đã tồn tại: " + request.getName());
+        if (groupRepository.existsByNameAndDeletedAtIsNull(name)) {
+            throw new IllegalArgumentException("Tên nhóm đã tồn tại: " + name);
         }
 
         // BR-008: Check unique code
-        if (groupRepository.existsByCodeAndDeletedAtIsNull(request.getCode())) {
-            throw new IllegalArgumentException("Mã nhóm đã tồn tại: " + request.getCode());
+        if (groupRepository.existsByCodeAndDeletedAtIsNull(code)) {
+            throw new IllegalArgumentException("Mã nhóm đã tồn tại: " + code);
         }
 
-        // BR-012: Validate groupType is handled by Jackson, just default if null
-        GroupType groupType = request.getGroupType() != null ? request.getGroupType() : GroupType.CUSTOM;
-
         UserGroup group = new UserGroup();
-        group.setName(request.getName());
-        group.setCode(request.getCode());
-        group.setDescription(request.getDescription());
-        group.setGroupType(groupType);
+        group.setName(name);
+        group.setCode(code);
+        group.setDescription(description);
         group.setOrganizationId(request.getOrganizationId());
         group.setStatus(request.getStatus() != null ? request.getStatus() : GroupStatus.ACTIVE);
         group.setPermissions(new java.util.ArrayList<>());
 
         UserGroup saved = groupRepository.save(group);
-
-        // BR-015: Log history
-        saveHistory(saved.getId(), saved.getName(), saved.getCode(), "CREATED",
-                "Đã tạo nhóm mới", operatorId, operatorName);
 
         log.info("Created group: {} ({}) by {}", saved.getCode(), saved.getId(), operatorName);
         return saved;
@@ -114,49 +109,25 @@ public class UserGroupService {
      */
     public UserGroup update(UUID id, UpdateUserGroupRequest request, UUID operatorId, String operatorName) {
         UserGroup group = findEntityById(id);
-        StringBuilder details = new StringBuilder();
 
-        if (request.getName() != null && !request.getName().equals(group.getName())) {
+        String name = request.getName() == null ? null : request.getName().trim();
+        if (name != null && !name.equals(group.getName())) {
             // BR-008: Re-check unique name on update (exclude current group)
-            if (groupRepository.existsByNameAndIdNotAndDeletedAtIsNull(request.getName(), id)) {
-                throw new IllegalArgumentException("Tên nhóm đã tồn tại: " + request.getName());
+            if (groupRepository.existsByNameAndIdNotAndDeletedAtIsNull(name, id)) {
+                throw new IllegalArgumentException("Tên nhóm đã tồn tại: " + name);
             }
-            details.append("Tên: ").append(group.getName()).append(" -> ").append(request.getName()).append("; ");
-            group.setName(request.getName());
+            group.setName(name);
         }
 
         if (request.getDescription() != null && !request.getDescription().equals(group.getDescription())) {
-            details.append("Mô tả đã cập nhật; ");
-            group.setDescription(request.getDescription());
-        }
-
-        if (request.getGroupType() != null && request.getGroupType() != group.getGroupType()) {
-            details.append("Loại nhóm: ").append(group.getGroupType()).append(" -> ").append(request.getGroupType())
-                    .append("; ");
-            group.setGroupType(request.getGroupType());
+            group.setDescription(request.getDescription().trim());
         }
 
         if (request.getStatus() != null && request.getStatus() != group.getStatus()) {
-            details.append("Trạng thái: ").append(group.getStatus()).append(" -> ").append(request.getStatus())
-                    .append("; ");
             group.setStatus(request.getStatus());
         }
 
-        if (request.getPermissions() != null) {
-            details.append("Phân quyền chức năng đã cập nhật; ");
-            group.setPermissions(new ArrayList<>(request.getPermissions()));
-            for (UUID memberUserId : groupMemberRepository.findUserIdsByUserGroupIdAndStatus(id,
-                    GroupMemberStatus.ACTIVE)) {
-                permissionCacheService.invalidateAndIncrementVersion(memberUserId);
-            }
-        }
-
         UserGroup saved = groupRepository.save(group);
-
-        if (details.length() > 0) {
-            saveHistory(saved.getId(), saved.getName(), saved.getCode(), "UPDATED",
-                    details.toString(), operatorId, operatorName);
-        }
 
         log.info("Updated group: {} ({}) by {}", saved.getCode(), saved.getId(), operatorName);
         return saved;
@@ -177,10 +148,6 @@ public class UserGroupService {
                     "Không thể xóa nhóm còn " + activeMemberCount + " thành viên");
         }
 
-        // BR-015: Log history before delete
-        saveHistory(group.getId(), group.getName(), group.getCode(), "DELETED",
-                "Đã xóa nhóm '" + group.getName() + "'", operatorId, operatorName);
-
         group.softDelete(operatorId);
         groupRepository.save(group);
         log.info("Soft-deleted group: {} ({}) by {}", group.getCode(), group.getId(), operatorName);
@@ -192,24 +159,33 @@ public class UserGroupService {
      * Liet ke nhom (phan trang, search, filter) — AC-010, AC-011.
      */
     @Transactional(readOnly = true)
-    public PaginatedGroupResponse list(String search, String groupTypeStr, String statusStr,
+    public PaginatedGroupResponse list(String search, String code, String statusStr, UUID organizationIdFilter,
             int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
         String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;
-        Integer groupTypeInt = (groupTypeStr != null && !groupTypeStr.isBlank())
-                ? GroupType.fromValue(groupTypeStr).ordinal()
-                : null;
+        String codeParam = (code != null && !code.isBlank()) ? code.trim() : null;
         Integer statusInt = (statusStr != null && !statusStr.isBlank())
                 ? GroupStatus.fromValue(statusStr).ordinal()
                 : null;
 
-        // Data scope: Admin Cục sees all; regular users see only their org unit
-        UUID orgFilter = resolveOrganizationFilter();
+        // Data scope: Admin Cục sees all; regular users see their org unit tree.
+        OrgUnitScopeService.Scope scope = currentUserScope();
+        if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
+            return emptyGroupPage(page, size, true);
+        }
+        List<UUID> organizationIds = resolveOrganizationFilter(scope, organizationIdFilter);
+        if (organizationIds != null && organizationIds.isEmpty()) {
+            return emptyGroupPage(page, size, true);
+        }
+        boolean unrestricted = organizationIds == null;
+        List<UUID> queryOrganizationIds = unrestricted
+                ? organizationIdsForQuery(scope)
+                : organizationIds;
 
-        Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, groupTypeInt, statusInt, orgFilter,
-                pageable);
+        Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, codeParam, statusInt,
+                unrestricted, queryOrganizationIds, pageable);
 
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
@@ -218,10 +194,10 @@ public class UserGroupService {
                 .map(this::toGroupResponse)
                 .toList();
 
-        long activeCount = groupRepository.countByFiltersAndStatus(searchParam, groupTypeInt,
-                GroupStatus.ACTIVE.ordinal());
-        long inactiveCount = groupRepository.countByFiltersAndStatus(searchParam, groupTypeInt,
-                GroupStatus.INACTIVE.ordinal());
+        long activeCount = groupRepository.countByFiltersAndStatus(searchParam, codeParam,
+                unrestricted, queryOrganizationIds, GroupStatus.ACTIVE.ordinal());
+        long inactiveCount = groupRepository.countByFiltersAndStatus(searchParam, codeParam,
+                unrestricted, queryOrganizationIds, GroupStatus.INACTIVE.ordinal());
 
         PaginatedGroupResponse result = new PaginatedGroupResponse();
         result.setItems(items);
@@ -238,21 +214,33 @@ public class UserGroupService {
      * Only returns groups where the current user is a member.
      */
     @Transactional(readOnly = true)
-    public PaginatedGroupResponse findMyGroups(UUID userId, String search, String groupTypeStr,
+    public PaginatedGroupResponse findMyGroups(UUID userId, String search, String code, String statusStr, UUID organizationIdFilter,
             int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
         String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;
-        Integer groupTypeInt = (groupTypeStr != null && !groupTypeStr.isBlank())
-                ? GroupType.fromValue(groupTypeStr).ordinal()
+        String codeParam = (code != null && !code.isBlank()) ? code.trim() : null;
+        Integer statusInt = (statusStr != null && !statusStr.isBlank())
+                ? GroupStatus.fromValue(statusStr).ordinal()
                 : null;
 
         // Data scope for my groups too — pushed to DB query
-        UUID orgFilter = resolveOrganizationFilter();
+        OrgUnitScopeService.Scope scope = currentUserScope();
+        if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
+            return emptyGroupPage(page, size, false);
+        }
+        List<UUID> organizationIds = resolveOrganizationFilter(scope, organizationIdFilter);
+        if (organizationIds != null && organizationIds.isEmpty()) {
+            return emptyGroupPage(page, size, false);
+        }
+        boolean unrestricted = organizationIds == null;
+        List<UUID> queryOrganizationIds = unrestricted
+                ? organizationIdsForQuery(scope)
+                : organizationIds;
 
         Page<UserGroup> pageResult = groupRepository.searchAndFilterMyGroups(
-                searchParam, groupTypeInt, userId, orgFilter, pageable);
+                searchParam, codeParam, statusInt, userId, unrestricted, queryOrganizationIds, pageable);
 
         List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
@@ -277,36 +265,42 @@ public class UserGroupService {
         UserGroup entity = groupRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
 
+        if (!currentUserScope().allows(entity.getOrganizationId())) {
+            throw new AccessDeniedException("Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
+        }
+
         long memberCount = groupMemberRepository
                 .countByUserGroupIdAndStatus(id, GroupMemberStatus.ACTIVE);
 
-        return UserGroupResponse.from(entity, memberCount, orgUnitCacheService.getName(entity.getOrganizationId()));
+        return UserGroupResponse.from(entity, memberCount, orgUnitCacheService.getName(entity.getOrganizationId()),
+                resolveUserDisplayName(entity.getCreatedBy()),
+                resolveUserDisplayName(entity.getUpdatedBy()));
     }
 
     // ── Lock / Unlock (F-002 AC-002-15, AC-002-16) ──────────────────
 
     /**
-     * Khóa/Mở khóa nhóm — chuyển đổi ACTIVE ↔ INACTIVE và ghi lịch sử.
+     * Khóa/Mở khóa nhóm — chuyển đổi ACTIVE ↔ INACTIVE.
      */
     public UserGroup lockGroup(UUID id, UUID operatorId, String operatorName) {
         UserGroup group = findEntityById(id);
+        List<UUID> memberUserIds = groupMemberRepository
+                .findUserIdsByUserGroupIdAndStatus(id, GroupMemberStatus.ACTIVE);
 
-        String action;
-        String note;
         if (group.getStatus() == GroupStatus.ACTIVE) {
             group.setStatus(GroupStatus.INACTIVE);
-            action = "LOCK";
-            note = "Đã khóa nhóm";
         } else {
             group.setStatus(GroupStatus.ACTIVE);
-            action = "UNLOCK";
-            note = "Đã mở khóa nhóm";
         }
 
         UserGroup saved = groupRepository.save(group);
-        saveHistory(saved.getId(), saved.getName(), saved.getCode(), action, note, operatorId, operatorName);
 
-        log.info("{} group: {} ({}) by {}", action, saved.getCode(), saved.getId(), operatorName);
+        // Group status is part of the effective permission calculation. Refresh every
+        // active member so a locked group stops contributing inherited permissions
+        // immediately, and an unlocked group can contribute them again.
+        memberUserIds.forEach(permissionCacheService::invalidateAndIncrementVersion);
+
+        log.info("Toggled group status: {} ({}) by {}", saved.getCode(), saved.getId(), operatorName);
         return saved;
     }
 
@@ -314,47 +308,67 @@ public class UserGroupService {
      * Lay entity theo id (for internal use).
      */
     @Transactional(readOnly = true)
-    public UserGroup findEntityById(UUID id) {
-        return groupRepository.findById(id)
+    private UserGroup findEntityByIdScoped(UUID id) {
+        UserGroup group = groupRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Group not found: " + id));
+        if (!currentUserScope().allows(group.getOrganizationId())) {
+            throw new AccessDeniedException("Group is outside the permitted organisation scope");
+        }
+        return group;
+    }
+
+    @Transactional(readOnly = true)
+    public UserGroup findEntityById(UUID id) { return findEntityByIdScoped(id); }
+    /*
+        UserGroup group = groupRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
     }
 
-    // ── Group Permission (F-002 BR-015 đến BR-017) ──────────────────
+    // ── Group Permission ────────────────────────────────────────────
 
-    /** Lấy danh sách role hiện đang được gán cho nhóm. */
+    /** Lấy danh sách quyền trực tiếp hiện đang được gán cho nhóm. */
+    /*
+        if (!currentUserScope().allows(group.getOrganizationId())) {
+            throw new AccessDeniedException("Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
+        }
+        return group;
+    }
+
+    */
+
     @Transactional(readOnly = true)
-    public List<GroupRoleResponse> findGroupRoles(UUID groupId) {
+    public List<String> findGroupPermissions(UUID groupId) {
         UserGroup group = findEntityById(groupId);
-        return group.getRoles().stream()
-                .filter(role -> role.getStatus() == com.hanghai.kchtg.user.entity.RoleStatus.ACTIVE)
-                .map(GroupRoleResponse::from)
+        return normalizedPermissions(group.getPermissions()).stream()
+                .filter(permission -> !NON_INHERITABLE_PERMISSIONS.contains(permission))
                 .toList();
     }
 
-    /**
-     * Thay thế toàn bộ danh sách role của nhóm. Thành viên active được tăng
-     * permission version và xóa cache để JWT/quyền mới có hiệu lực ngay.
-     */
-    public List<GroupRoleResponse> updateGroupRoles(UUID groupId,
-            UpdateGroupRolesRequest request, UUID operatorId, String operatorName) {
+    public List<String> updateGroupPermissions(UUID groupId,
+            UpdateGroupPermissionsRequest request, UUID operatorId, String operatorName) {
         UserGroup group = findEntityById(groupId);
-        Set<UUID> requestedIds = request.getRoleIds() == null
-                ? Set.of()
-                : request.getRoleIds().stream().filter(java.util.Objects::nonNull)
-                        .collect(java.util.stream.Collectors.toSet());
+        List<String> requested = normalizedPermissions(request.getPermissions());
 
-        List<Role> roles = requestedIds.isEmpty() ? List.of() : roleRepository.findAllById(requestedIds);
-        Set<UUID> foundIds = roles.stream().map(Role::getId).collect(java.util.stream.Collectors.toSet());
-        if (foundIds.size() != requestedIds.size()) {
-            Set<UUID> missing = new HashSet<>(requestedIds);
-            missing.removeAll(foundIds);
-            throw new IllegalArgumentException("Vai trò không tồn tại hoặc đã bị vô hiệu: " + missing);
-        }
-        if (roles.stream().anyMatch(role -> role.getStatus() != com.hanghai.kchtg.user.entity.RoleStatus.ACTIVE)) {
-            throw new IllegalArgumentException("Chỉ được gán vai trò đang hoạt động");
+        List<String> forbiddenCodes = requested.stream()
+                .filter(NON_INHERITABLE_PERMISSIONS::contains)
+                .toList();
+        if (!forbiddenCodes.isEmpty()) {
+            throw new IllegalArgumentException("Không thể gán quyền đặc biệt cho nhóm: "
+                    + String.join(", ", forbiddenCodes));
         }
 
-        group.setRoles(new HashSet<>(roles));
+        Set<String> knownCodes = permissionRepository.findByCodeIn(requested).stream()
+                .map(permission -> permission.getCode().toLowerCase(Locale.ROOT))
+                .collect(java.util.stream.Collectors.toSet());
+        if (knownCodes.size() != requested.size()) {
+            List<String> unknownCodes = requested.stream()
+                    .filter(code -> !knownCodes.contains(code))
+                    .toList();
+            throw new IllegalArgumentException("Danh sách quyền chứa mã không tồn tại: "
+                    + String.join(", ", unknownCodes));
+        }
+
+        group.setPermissions(new ArrayList<>(requested));
         groupRepository.save(group);
 
         for (UUID userId : groupMemberRepository.findUserIdsByUserGroupIdAndStatus(
@@ -362,13 +376,20 @@ public class UserGroupService {
             permissionCacheService.invalidateAndIncrementVersion(userId);
         }
 
-        String roleSummary = roles.isEmpty()
-                ? "Đã bỏ toàn bộ vai trò khỏi nhóm"
-                : "Đã gán " + roles.size() + " vai trò: "
-                        + roles.stream().map(Role::getCode).sorted().collect(java.util.stream.Collectors.joining(", "));
-        saveHistory(groupId, group.getName(), group.getCode(), "PERMISSIONS_UPDATED",
-                roleSummary, operatorId, operatorName);
-        return roles.stream().map(GroupRoleResponse::from).toList();
+        return requested;
+    }
+
+    private List<String> normalizedPermissions(List<String> permissions) {
+        if (permissions == null) {
+            return List.of();
+        }
+        return permissions.stream()
+                .filter(Objects::nonNull)
+                .map(value -> value.trim().toLowerCase(Locale.ROOT))
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     // ── Member management ───────────────────────────────────────────
@@ -410,13 +431,54 @@ public class UserGroupService {
         attachGroupToUser(user, group);
         permissionCacheService.invalidateAndIncrementVersion(user.getId());
 
-        // BR-015: Log history
-        saveHistory(groupId, group.getName(), group.getCode(), "MEMBER_ADDED",
-                "Đã thêm user " + request.getUserId() + " (" + user.getUsername() + ")",
-                operatorId, operatorName);
-
         log.info("Added member {} to group {} by {}", request.getUserId(), group.getCode(), operatorName);
         return saved;
+    }
+
+    /**
+     * Thêm nhiều thành viên trong một transaction. Toàn bộ dữ liệu được kiểm tra
+     * trước khi ghi để tránh trạng thái thêm một phần.
+     */
+    public BatchAddGroupMembersResponse addMembers(UUID groupId, BatchAddGroupMembersRequest request,
+            UUID operatorId, String operatorName) {
+        UserGroup group = findEntityById(groupId);
+        List<UUID> userIds = request.getUserIds() == null ? List.of() : request.getUserIds();
+
+        if (userIds.isEmpty() || userIds.size() > 100) {
+            throw new IllegalArgumentException("Mỗi lần chỉ được thêm từ 1 đến 100 người dùng");
+        }
+        if (new HashSet<>(userIds).size() != userIds.size()) {
+            throw new IllegalArgumentException("Danh sách người dùng không được trùng lặp");
+        }
+
+        List<User> users = userIds.stream().map(this::getUserById).toList();
+        if (users.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Danh sách chứa người dùng không tồn tại");
+        }
+
+        List<GroupMember> existingMembers = userIds.stream()
+                .map(userId -> groupMemberRepository.findByUserIdAndUserGroupId(userId, groupId).orElse(null))
+                .toList();
+        if (existingMembers.stream().anyMatch(member -> member != null && member.getStatus() == GroupMemberStatus.ACTIVE)) {
+            throw new IllegalArgumentException("Một hoặc nhiều người dùng đã thuộc nhóm này");
+        }
+
+        for (int i = 0; i < userIds.size(); i++) {
+            GroupMember existingMember = existingMembers.get(i);
+            if (existingMember != null) {
+                existingMember.setStatus(GroupMemberStatus.ACTIVE);
+                existingMember.setAddedBy(operatorId);
+                existingMember.setJoinedAt(java.time.LocalDateTime.now());
+                groupMemberRepository.save(existingMember);
+            } else {
+                groupMemberRepository.save(GroupMember.create(users.get(i), group, operatorId));
+            }
+            attachGroupToUser(users.get(i), group);
+            permissionCacheService.invalidateAndIncrementVersion(users.get(i).getId());
+        }
+
+        log.info("Added {} members to group {} by {}", userIds.size(), group.getCode(), operatorName);
+        return new BatchAddGroupMembersResponse(userIds.size(), userIds);
     }
 
     /**
@@ -433,17 +495,12 @@ public class UserGroupService {
                     "Không tìm thấy thành viên có id=" + userId + " trong nhóm " + group.getCode());
         }
 
-        // BR-015: Log history
         com.hanghai.kchtg.user.entity.User targetUser = getUserById(userId);
-        String userRef = targetUser != null ? targetUser.getUsername() : userId.toString();
         if (targetUser != null) {
             targetUser.getGroups().removeIf(userGroup -> group.getId().equals(userGroup.getId()));
             userRepository.save(targetUser);
             permissionCacheService.invalidateAndIncrementVersion(targetUser.getId());
         }
-        saveHistory(groupId, group.getName(), group.getCode(), "MEMBER_REMOVED",
-                "Đã xóa user " + userRef + " khỏi nhóm", operatorId, operatorName);
-
         log.info("Removed member {} from group {} by {}", userId, group.getCode(), operatorName);
     }
 
@@ -456,78 +513,8 @@ public class UserGroupService {
                 Sort.by(Sort.Direction.ASC, "joinedAt"));
         findEntityById(groupId); // verify group exists
 
-        String searchParam = (search != null && !search.isBlank()) ? "%" + search + "%" : null;
+        String searchParam = (search != null && !search.isBlank()) ? "%" + search.trim() + "%" : null;
         return groupMemberRepository.searchMembers(groupId, GroupMemberStatus.ACTIVE, searchParam, pageable);
-    }
-
-    // ── Copy group (BR-014) ────────────────────────────────────────
-
-    /**
-     * Sao cop nhom (BR-014): clone group + all members, atomic transaction.
-     */
-    public UserGroup copy(UUID sourceGroupId, GroupCopyRequest request, UUID operatorId, String operatorName) {
-        UserGroup source = findEntityById(sourceGroupId);
-
-        // Create new group (clone)
-        UserGroup copy = new UserGroup();
-        copy.setName(request.getName() != null ? request.getName()
-                : source.getName() + " (Sao cop)");
-        copy.setCode(source.getCode() + "-COPY-" + UUID.randomUUID().toString().substring(0, 6));
-        copy.setDescription(request.getDescription() != null ? request.getDescription()
-                : source.getDescription());
-        copy.setGroupType(source.getGroupType());
-        copy.setStatus(GroupStatus.ACTIVE);
-        copy.setPermissions(new java.util.ArrayList<>(source.getPermissions()));
-
-        UserGroup savedCopy = groupRepository.save(copy);
-
-        // Clone all active members with joinedBy = currentAdmin (BR-014)
-        List<GroupMember> sourceMembers = groupMemberRepository
-                .findByGroupIdWithUser(sourceGroupId, GroupMemberStatus.ACTIVE,
-                        PageRequest.of(0, Integer.MAX_VALUE))
-                .getContent();
-
-        for (GroupMember srcMember : sourceMembers) {
-            GroupMember newMember = new GroupMember();
-            newMember.setUser(srcMember.getUser());
-            newMember.setUserGroup(savedCopy);
-            newMember.setAddedBy(operatorId);
-            newMember.setJoinedAt(java.time.LocalDateTime.now());
-            newMember.setStatus(GroupMemberStatus.ACTIVE);
-            groupMemberRepository.save(newMember);
-            attachGroupToUser(srcMember.getUser(), savedCopy);
-            permissionCacheService.invalidateAndIncrementVersion(srcMember.getUser().getId());
-        }
-
-        // BR-015: Log history
-        saveHistory(source.getId(), source.getName(), source.getCode(), "COPIED",
-                "Đã sao chép thành nhóm '" + savedCopy.getName() + "' (code: " + savedCopy.getCode() + ")",
-                operatorId, operatorName);
-
-        log.info("Copied group {} -> {} by {}", source.getCode(), savedCopy.getCode(), operatorName);
-        return savedCopy;
-    }
-
-    // ── History (BR-015) ───────────────────────────────────────────
-
-    /**
-     * Lay lich su thay doi cua nhom (sorted by performedAt DESC).
-     */
-    @Transactional(readOnly = true)
-    public List<GroupHistory> findHistory(UUID groupId) {
-        findEntityById(groupId); // verify group exists
-        return groupHistoryRepository.findByUserGroupIdOrderByPerformedAtDesc(groupId);
-    }
-
-    /**
-     * Lay lich su thay doi cua nhom (phan trang).
-     */
-    @Transactional(readOnly = true)
-    public Page<GroupHistory> findHistoryPaginated(UUID groupId, int page, int size) {
-        findEntityById(groupId);
-        Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
-                Sort.by(Sort.Direction.DESC, "performedAt"));
-        return groupHistoryRepository.findByUserGroupIdOrderByPerformedAtDesc(groupId, pageable);
     }
 
     // ── Private helpers ─────────────────────────────────────────────
@@ -539,7 +526,6 @@ public class UserGroupService {
                 response.getCode(),
                 response.getDescription(),
                 null, // permissions not available from UserGroupResponse
-                response.getGroupType(),
                 response.getStatus(),
                 response.getOrganizationId(),
                 response.getOrganizationName(),
@@ -549,45 +535,83 @@ public class UserGroupService {
     }
 
     /**
+     * Resolve the audit user from real user data for the group detail response.
+     */
+    private String resolveUserDisplayName(UUID userId) {
+        if (userId == null) {
+            return null;
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return null;
+        }
+
+        String fullName = user.getFullName();
+        if (fullName != null && !fullName.isBlank()) {
+            return fullName.trim();
+        }
+        return user.getUsername();
+    }
+
+    /**
      * Resolve the organizationId filter for data scope.
      * Returns null for Admin Cục (sees all); returns the current user's orgUnit.id
      * for others.
      */
-    private UUID resolveOrganizationFilter() {
-        User currentUser = getCurrentUser();
-        if (currentUser == null)
-            return null;
+    private OrgUnitScopeService.Scope currentUserScope() {
+        return orgUnitScopeService == null
+                ? OrgUnitScopeService.Scope.allScope()
+                : orgUnitScopeService.currentUserScope();
+    }
 
-        // Admin Cục (ROLE_SYSTEM_ADMIN) sees all
-        String primaryRole = currentUser.getPrimaryRoleCode();
-        if ("ROLE_SYSTEM_ADMIN".equals(primaryRole)) {
-            return null;
-        }
-
-        // Regular users — filter by their org unit
-        if (currentUser.getOrgUnit() != null) {
-            return currentUser.getOrgUnit().getId();
-        }
-        return null;
+    private List<UUID> organizationIdsForQuery(OrgUnitScopeService.Scope scope) {
+        return scope.unrestricted() ? List.of(UNRESTRICTED_SCOPE_PLACEHOLDER) : scope.orgUnitIds();
     }
 
     /**
-     * Get the current authenticated user from SecurityContext.
+     * Resolve the selected organisation as a subtree filter while preserving
+     * the caller's data scope. A null result means unrestricted access; an
+     * empty result means the selected organisation is outside the caller's
+     * permitted tree.
      */
-    private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof User) {
-            return (User) auth.getPrincipal();
+    private List<UUID> resolveOrganizationFilter(OrgUnitScopeService.Scope scope,
+            UUID organizationIdFilter) {
+        if (organizationIdFilter == null) {
+            return scope.unrestricted() ? null : scope.orgUnitIds();
         }
-        return null;
+        if (!scope.unrestricted() && !scope.allows(organizationIdFilter)) {
+            return List.of();
+        }
+
+        List<UUID> selectedTree = orgUnitScopeService == null
+                ? List.of(organizationIdFilter)
+                : orgUnitScopeService.resolveSubtreeIds(organizationIdFilter);
+        if (scope.unrestricted()) {
+            return selectedTree;
+        }
+        return selectedTree.stream()
+                .filter(scope.orgUnitIds()::contains)
+                .toList();
     }
 
-    private void saveHistory(UUID userGroupId, String name, String code,
-            String action, String notes, UUID changedBy, String changedByName) {
-        GroupHistory history = GroupHistory.create(userGroupId, action, notes, changedBy, changedByName);
-        history.setGroupName(name);
-        history.setGroupCode(code);
-        groupHistoryRepository.save(history);
+    private void requireOrganizationInScope(UUID organizationId) {
+        if (!currentUserScope().allows(organizationId)) {
+            throw new AccessDeniedException("Báº¡n khÃ´ng cÃ³ quyá»n táº¡o hoáº·c thay Ä‘á»•i nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
+        }
+    }
+
+    private PaginatedGroupResponse emptyGroupPage(int page, int size, boolean includeStatusCounts) {
+        PaginatedGroupResponse result = new PaginatedGroupResponse();
+        result.setItems(List.of());
+        result.setTotal(0);
+        result.setPage(Math.max(page, 0));
+        result.setPageSize(size > 0 ? size : DEFAULT_PAGE_SIZE);
+        if (includeStatusCounts) {
+            result.setActiveCount(0);
+            result.setInactiveCount(0);
+        }
+        return result;
     }
 
     /**

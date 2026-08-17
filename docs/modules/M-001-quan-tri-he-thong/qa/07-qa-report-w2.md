@@ -1,145 +1,50 @@
----
-feature-id: F-002
-stage: validation
-agent: engineering-qa-engineer
-verdict: Pass
-critical-ac-total: 6
-critical-ac-verified: 6
-last-updated: 2026-08-05
----
+# QA Report — Wave 2 (Validation) — F-001 Quản lý người dùng — TRI-1786688745847-4d03
 
-# QA Report — F-002 Scope Expansion Validation (Wave 2)
+- **Triage:** TRI-1786688745847-4d03 (implementation, C2 brownfield-extend; escalated from TRI-1786681817152-44eb)
+- **Module / Feature:** M-001 Quản trị hệ thống / F-001 Quản lý tài khoản người dùng
+- **Stage:** Engineering QA — wave-2 validation of the two UI edits against the triage done_oracle
+- **Date executed:** 2026-08-14
+- **Scope:** (a) hide 3 row actions (Reset mật khẩu / Quên mật khẩu / Xóa) from the row-actions dropdown; (b) render the "Danh sách chức năng" label as the first child of the bordered permission-tree container. Single edit-target file: `frontend/src/pages/UsersPage.tsx`. This report supersedes the prior wave-2 content at this path (written for TRI-1786681457834-5887) — see `docs/intel/_intake/TRI-1786688745847-4d03.json` and module state for both triages.
+- **Method:** direct code read-back with file:line evidence + DoD build. No source modified by QA; no server started.
 
-## 1. Feature/Change Overview
+## 1. DoD verification — REAL command output
 
-Validating 8 scope-expansion changes for F-002 (Quản lý nhóm người dùng) on module M-001:
+| Command | Dir | Exit | Output (real) |
+|---|---|---|---|
+| `npm run build` | `frontend/` | 0 | `vite v8.1.5 building client environment for production...` → `✓ 4033 modules transformed` → `dist/` emitted incl. `dist/assets/UsersPage-fzvqayKj.js 25.45 kB` (current source with both edits) → `✓ built in 818ms`. Only advisory: `(!) Some chunks are larger than 500 kB after minification` (pre-existing, non-blocking). Re-run after this report was written: same result, `✓ built in ~800ms`, exit 0 |
 
-| # | Change | Status |
-|---|--------|--------|
-| 1 | API base path `/api/v1/groups` | PASS |
-| 2 | New PATCH `/{id}/lock` endpoint | PASS |
-| 3 | Roles endpoint renamed `/{id}/permissions` | PASS |
-| 4 | `organizationId` field in UserGroup entity + DTOs | PASS |
-| 5 | `organizationName` via OrgUnitCacheService | PASS |
-| 6 | Admin Cục data scope filter | PASS |
-| 7 | `group:lock` + `group:read` permissions seeded | PASS |
-| 8 | Frontend: TreeSelect org, code read-only edit, lock button | PASS |
+## 2. Check (a) — 3 row actions no longer rendered — **PASS**
 
-## 2. Test Scope
+**Oracle:** "3 action Reset mật khẩu / Quên mật khẩu / Xóa không còn render trong dropdown thao tác" (triage done_oracle); handlers/hooks stay intact.
 
-**Included:** AC-002-01 (create with org), AC-002-08 (data scope), AC-002-10 (edit read-only), AC-002-15 (lock), AC-002-16 (unlock), permission existence, API path audit, frontend UI audit.
+**Evidence:**
+- `UsersPage.tsx:295-321` — `rowActions` callback builds the dropdown; the only `actions.push(...)` calls are: `view` (user:read, :298-299), `permissions` (user:manage, :301-302), `approve`/`reject` (PENDING_APPROVAL only, :305-307), `edit` (user.edit, :309), `lock`/unlock (user.lock, :310). **No push exists for reset-password, forgot-password, or delete.**
+- `UsersPage.tsx:316-317` — the intentional-hide marker: `// Intentionally hidden per TRI-1786688745847-4d03: reset-password, forgot-password, delete row actions.` / `// Handlers/modals/hooks (handleResetPassword, handleForgotPassword, handleDelete) remain intact.`
+- Grep for `reset-password|forgot-password|'delete'` across the file: the strings appear ONLY in the hide comment (:316), handler definitions, the reset-password modal wiring (:483, :500), and the rowActions dependency array (:320) — never in an `actions.push`. The old seam line (formerly `UsersPage.tsx:316` per triage seam_claims — `if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', ... })`) is **gone**; that line number is now the comment.
+- Handlers/hooks intact (per dispatch expectation):
+  - Hooks: `UsersPage.tsx:103` `const deleteUser = useDeleteUser();`, `:104` `const resetPassword = useResetPassword();`, `:105` `const forgotPassword = useForgotPassword();`
+  - Handlers: `:160` `handleDelete`, `:169` `handleResetPassword`, `:174` `handleResetPasswordSubmit`, `:195` `handleForgotPassword`
+  - `:320` dependency array still references `handleResetPassword, handleForgotPassword, handleDelete` (defined and in scope; compiled green).
 
-**Excluded:** Non-scope-expansion ACs (ACK-002-02 through AC-002-07, AC-002-09, AC-002-11 through AC-002-14) — not in the scope-expansion brief.
+**Pass/fail criteria (oracle):** PASS iff no reset-password/forgot-password/delete entry is pushed into the row-actions array and the handlers/hooks remain defined. Observed: PASS.
 
-## 3. Requirement Coverage Matrix
+## 3. Check (b) — "Danh sách chức năng" label above the permission Tree — **PASS**
 
-| AC-ID | Description | Coverage | Evidence |
-|-------|-------------|----------|----------|
-| AC-002-01 | Create group with organizationId → success | PASS | `CreateUserGroupRequest.java:39` — `@NotNull UUID organizationId`. `UserGroupService.java:105` — `group.setOrganizationId(request.getOrganizationId())`. `GroupController.java:97` — POST with `group:create`. |
-| AC-002-08 | Data scope — Admin Cục sees all, regular user sees own org | PASS | `UserGroupService.java:548-561` — `resolveOrganizationFilter()` returns null for ROLE_SYSTEM_ADMIN, `getOrgUnit().getId()` otherwise. `GroupRepository.java:79` — `WHERE (:organizationId IS NULL OR g.organizationId = :organizationId)`. |
-| AC-002-10 | Edit group — code + organizationId read-only | PASS | `UpdateUserGroupRequest.java` — no `code` field; `organizationId` with comment "chấp nhận nhưng bỏ qua". `UserGroupService.update()` — updates only name/description/groupType/status. Frontend: `GroupList.tsx` — `disabled={!!editingGroup}` on both TreeSelect (organizationId) and Input (code). |
-| AC-002-15 | Lock group (PATCH /lock ACTIVE→INACTIVE) | PASS | `GroupController.java:251-272` — `@PatchMapping("/{id}/lock")` with `@PreAuthorize("group:lock")`. `UserGroupService.java:287-306` — `lockGroup()` toggles ACTIVE→INACTIVE, saves LOCK history, returns "Đã khóa nhóm". Frontend: lock button with `hasPerm('group:lock')`, confirmation popup. |
-| AC-002-16 | Unlock group (PATCH /lock INACTIVE→ACTIVE) | PASS | Same endpoint; `lockGroup()` toggles INACTIVE→ACTIVE, saves UNLOCK history, returns "Đã mở khóa nhóm". Frontend: button label toggles to "Mở khóa nhóm". |
-| (perm) | `group:lock` + `group:read` in permissions table | PASS | `RolePermissionSeeder.java` — both seeded in `run()` (lines ~115-119) and `upsertMissingPermissions()` (lines ~470-473). Assigned to ROLE_ADMIN, ROLE_LEADER; `group:read` also to ROLE_SPECIALIST, ROLE_PORT_OPERATOR, ROLE_PUBLIC_USER. |
-| (api) | All endpoints under `/api/v1/groups` | PASS | `GroupController.java:32` — `@RequestMapping("/api/v1/groups")`. All 9 endpoints inherit this base path. |
-| (fe) | Frontend TreeSelect, code read-only, lock button | PASS | `GroupList.tsx` — TreeSelect with org tree data, `disabled={!!editingGroup}`. Code Input `disabled={!!editingGroup}`. `hasPerm('group:lock')` check on lock action. `groupService.ts` — `lock()` calls PATCH `/v1/groups/${groupId}/lock`. `getPermissions()` calls GET `/v1/groups/${groupId}/permissions`. |
+**Oracle:** "label 'Danh sách chức năng' hiển thị ngay trên cây quyền" with tokens `colors.sidebarBg` / `fontWeightBold` / `fontSizeMd` / `spaceMd`, as the first child of the bordered div (triage seam_claims: insert right after the container line, formerly `:596`).
 
-## 4. Test Strategy
+**Evidence:**
+- `UsersPage.tsx:595` — the bordered container: `<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>` (matches the seam_claims container verbatim; it has moved from :596 to :595 because the label was inserted).
+- `UsersPage.tsx:596` — **first child** of that div: `<div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Danh sách chức năng</div>` — exactly the four required tokens.
+- `UsersPage.tsx:599` — `<Tree checkable defaultExpandAll ... />` renders immediately after the label → label sits directly above the permission tree.
+- Tokens in scope: `UsersPage.tsx:18` imports `fontWeightBold, fontSizeMd, radiusMd, borderDefault, spaceFormField, spaceMd, ...` from `'../tokens'`; `colors.sidebarBg` is used at :596 (and consistently elsewhere: :43, :359, :367, :375, :481).
 
-**Analytical verification** (white-box code inspection) — no live server required for this scope-expansion validation wave because:
-- All changes are structural (API paths, DTO fields, permission seeding, UI component props)
-- AC assertions are provable from static code analysis
-- Frontend typecheck (`tsc --noEmit`) and backend compile (`mvn compile`) both pass with zero errors
+**Pass/fail criteria (oracle):** PASS iff the label is the first child of the bordered div, positioned immediately above the Tree, and styled with the four named tokens. Observed: PASS.
 
-**Executed evidence:**
-- Backend unit tests: `mvn test -Dtest=UserGroupServiceTest` → **BUILD SUCCESS (exit 0, 15165ms)**, 7/7 tests passed
-- Frontend typecheck: `npx tsc --noEmit` → **exit 0, zero errors**
+## 4. Coverage limits
 
-## 5. Test Cases
+- Static read-back only: the dropdown rendering and label position were verified at source level; no browser probe executed (backend not started; frontend not served).
+- `npm test` / `pnpm exec tsc --noEmit` were not part of this triage's DoD (DoD = `npm run build`, executed, exit 0). The build does compile the edited file, so no syntax/type-level breakage in the edited paths.
 
-| # | AC-ID | Case | Layer | Expected | Actual |
-|---|-------|------|-------|----------|--------|
-| T-1 | AC-002-01 | Create with `organizationId` not null | Backend | Accept `organizationId` in DTO, persist to entity | PASS — `CreateUserGroupRequest.organizationId` is `@NotNull UUID`; service maps it to entity |
-| T-2 | AC-002-01 | Create without `organizationId` | Backend | Reject with validation error | PASS — `@NotNull` triggers 400 |
-| T-3 | AC-002-08 | Admin Cục sees all groups | Backend | `resolveOrganizationFilter()` returns null | PASS — `UserGroupService.java:554` |
-| T-4 | AC-002-08 | Regular user sees own org groups | Backend | Filter by `currentUser.getOrgUnit().getId()` | PASS — `UserGroupService.java:558` |
-| T-5 | AC-002-08 | Query uses org filter | Backend | `WHERE (:organizationId IS NULL OR g.organizationId = :organizationId)` | PASS — `GroupRepository.java:79` |
-| T-6 | AC-002-10 | Edit — code field absent from DTO | Backend | `UpdateUserGroupRequest` has no `code` field | PASS — confirmed, only name/description/groupType/status |
-| T-7 | AC-002-10 | Edit — orgId accepted but ignored | Backend | Service does not set `organizationId` on update | PASS — `UserGroupService.update()` has no `setOrganizationId` path |
-| T-8 | AC-002-10 | Frontend — code input disabled in edit | Frontend | `disabled={!!editingGroup}` | PASS — `GroupList.tsx` code Input |
-| T-9 | AC-002-10 | Frontend — org TreeSelect disabled in edit | Frontend | `disabled={!!editingGroup}` | PASS — `GroupList.tsx` TreeSelect |
-| T-10 | AC-002-15 | PATCH /lock on ACTIVE → INACTIVE | Backend | Status becomes INACTIVE, history records LOCK | PASS — `lockGroup()` toggles ACTIVE→INACTIVE |
-| T-11 | AC-002-15 | Message: "Đã khóa nhóm" | Backend | Controller returns correct message | PASS — `GroupController.java:270` |
-| T-12 | AC-002-15 | Frontend — lock button for active group | Frontend | Label "Khóa nhóm" with LockOutlined icon | PASS — `GroupList.tsx:221` |
-| T-13 | AC-002-16 | PATCH /lock on INACTIVE → ACTIVE | Backend | Status becomes ACTIVE, history records UNLOCK | PASS — `lockGroup()` toggles INACTIVE→ACTIVE |
-| T-14 | AC-002-16 | Message: "Đã mở khóa nhóm" | Backend | Controller returns correct message | PASS — `GroupController.java:270` |
-| T-15 | AC-002-16 | Frontend — unlock button for inactive group | Frontend | Label "Mở khóa nhóm" with UnlockOutlined icon | PASS — `GroupList.tsx:221` |
+## 5. Conclusion
 
-## 6. Execution Results
-
-### Backend Unit Tests (Executed)
-
-```
-mvn test -Dtest=UserGroupServiceTest -q
-Result: BUILD SUCCESS (exit 0, 15165ms)
-Tests run: 7, Passed: 7, Failed: 0
-```
-
-| Test | Result |
-|------|--------|
-| create_shouldCreateGroupWhenNameAndCodeUnique | PASS |
-| create_shouldThrowWhenNameExists | PASS |
-| create_shouldThrowWhenCodeExists | PASS |
-| delete_shouldThrowWhenGroupHasActiveMembers | PASS |
-| delete_shouldAllowDeleteWhenGroupHasNoMembers | PASS |
-| addMember_shouldAddMemberAndInvalidateCache | PASS |
-| copy_shouldCopyGroupAndMembers | PASS |
-
-### Frontend Typecheck (Executed)
-
-```
-npx tsc --noEmit (workdir: frontend)
-Result: exit 0, zero errors
-```
-
-### Frontend Vitest (Executed)
-
-```
-npx vitest run --passWithNoTests
-Result: 2 passed, 38 pre-existing failures (Playwright version mismatch, missing @testing-library/react)
-```
-
-The 38 failures are **pre-existing** (none related to F-002). The `e2e/group-management.spec.ts` is a Playwright E2E spec that fails due to `@playwright/test` version conflict — not a scope-expansion regression.
-
-## 7. Defects Found
-
-**None.** Zero defects in scope-expansion changes. All 8 changes verified as correctly implemented.
-
-## 8. NFR Observations
-
-| NFR | Observation |
-|-----|-------------|
-| Performance | `OrgUnitCacheService` used for name resolution avoids N+1 queries — appropriate for list endpoints |
-| Security | `@PreAuthorize` on lock endpoint (`group:lock`), data scope enforced via `resolveOrganizationFilter()` |
-| Maintainability | `organizationId` ignored on update (no mutation path) — secure by design |
-| Test Coverage | Existing unit tests cover create/delete/addMember/copy but NOT lock/unlock or data scope — coverage gap to address in future |
-
-## 9. Regression Impact Assessment
-
-**Low risk.** Changes are additive (new fields, new endpoints, new permissions). No existing API surface was removed — only the base path changed from `/api/groups` to `/api/v1/groups` and the roles endpoint renamed from `/{id}/roles` to `/{id}/permissions`, both matched in frontend `groupService.ts`.
-
-The existing `e2e/group-management.spec.ts` would need updating for API path changes but is already non-functional due to Playwright version mismatch (pre-existing condition).
-
-## 10. Test Limitations / Gaps
-
-1. **No live-fire acceptance tests for F-002** — `test/acceptance/` has no F-002 files. The acceptance authoring (Wave 1) should produce these.
-2. **Unit test gap** — no tests for `lockGroup()`, `resolveOrganizationFilter()`, or `organizationId` flow in `create()`.
-3. **Data scope verification is analytical only** — actual runtime behavior against the database with different user roles was not tested (requires running server + authenticated requests).
-
-## 11. Release Recommendation
-
-**Approve** — all 6 acceptance criteria pass analytical verification. The 8 scope-expansion changes are correctly implemented with zero defects found. Frontend typecheck and backend compilation both pass cleanly.
-
-## 12. QA Verdict
-
-**Pass** — confidence: high. All 6 scope-expansion ACs verified by static code inspection with corroborating executed evidence (backend unit test pass, frontend typecheck pass). Zero blockers.
+Both oracle checks PASS with file:line evidence; `npm run build` (frontend/) executed with real output and exit 0 (built in 818ms; post-write re-run also exit 0). No source file was modified during this validation — the only write is this report.

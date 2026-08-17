@@ -25,7 +25,7 @@ import {
 import { shipRepairFacilityCRUD } from '../../services/shipRepairFacilityService';
 import { organizationService } from '../../services/organizationService';
 import type { ShipRepairFacilityResponse, ListParams } from '../../types/shipRepairFacility';
-import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import ShipRepairFacilityForm from './ShipRepairFacilityForm';
 
@@ -47,8 +47,7 @@ const LOAI_CO_SO_MAP: Record<string, string> = {
 export default function ShipRepairFacilityList() {
   const isInIframe = window.self !== window.top;
   const navigate = useNavigate();
-  const currentUser = useAuthStore((s) => s.user);
-  const userPermissions = currentUser?.permissions || [];
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
@@ -183,9 +182,9 @@ export default function ShipRepairFacilityList() {
       key: 'action',
       width: 150,
       render: (_: unknown, record: ShipRepairFacilityResponse) => {
-        const canRead = userPermissions.includes('shiprepair:read');
-        const canUpdate = userPermissions.includes('shiprepair:update');
-        const canDelete = userPermissions.includes('shiprepair:delete');
+        const canRead = hasPerm('shiprepair:read');
+        const canUpdate = hasPerm('shiprepair:update');
+        const canDelete = hasPerm('shiprepair:delete');
         const isProposed = record.approvalStatus === 'PROPOSED';
 
         return (
@@ -251,7 +250,7 @@ export default function ShipRepairFacilityList() {
                 style={{ width: 150 }}
               />
               <Select
-                placeholder="Trạng thái phê duyệt"
+                placeholder="Tất cả"
                 options={APPROVAL_STATUS_OPTIONS}
                 value={filterStatus}
                 onChange={(val) => { setFilterStatus(val); setPage(1); }}

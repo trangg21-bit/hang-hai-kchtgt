@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Descriptions, Row, Col, Drawer, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, MailOutlined } from '@ant-design/icons';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree } from 'antd';
+import { PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
-import { useRolesSimple } from '../hooks/useRoles';
 import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
@@ -13,9 +12,13 @@ import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService, type Organization } from '../services/organizationService';
-import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle } from '../tokens';
+import { userService } from '../services/userService';
+import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
+import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
+import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceXs, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
+import ManagementDrawer from '../components/management/ManagementDrawer';
 const { confirm } = Modal;
 
 const STATUS_LABEL: Record<string, string> = {
@@ -37,23 +40,16 @@ function getStatusBadgeClass(status: string): string {
   }
 }
 
-function getRoleTagClass(roleId: string): string {
-  switch (roleId) {
-    case 'ROLE_SYSTEM_ADMIN': return 'role-tag--admin';
-    case 'ROLE_ADMIN': return 'role-tag--org-admin';
-    case 'ROLE_MANAGER': return 'role-tag--manager';
-    case 'ROLE_VIEWER': return 'role-tag--viewer';
-    default: return 'role-tag--user';
-  }
-}
-
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function UsersPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [filterRoleId, setFilterRoleId] = useState<string | undefined>();
+  const [fullNameInput, setFullNameInput] = useState('');
+  const [fullName, setFullName] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterOrganizationInput, setFilterOrganizationInput] = useState<string | undefined>();
+  const [filterOrganizationId, setFilterOrganizationId] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
@@ -69,16 +65,17 @@ export default function UsersPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSearch(searchInput.trim()), 350);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
+  const { tree: rawPermissionTree, isLoading: permissionCatalogLoading } = usePermissions();
+  const [permissionUser, setPermissionUser] = useState<User | null>(null);
+  const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
+  const [permissionSearch, setPermissionSearch] = useState('');
+  const [permissionLoading, setPermissionLoading] = useState(false);
+  const [permissionSaving, setPermissionSaving] = useState(false);
 
   const { data: detailResponse, isLoading: detailLoading } = useUser(detailUserId ?? undefined);
   const detailUser = detailResponse?.data ?? null;
 
   useEffect(() => {
-    if (!modalOpen) return;
     let isMounted = true;
     (async () => {
       try {
@@ -90,17 +87,16 @@ export default function UsersPage() {
       }
     })();
     return () => { isMounted = false; };
-  }, [modalOpen]);
+  }, []);
 
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const { data, isLoading, isError, error, refetch } = useUsers({
-    page, pageSize, search: search || undefined,
-    roleId: filterRoleId, status: filterStatus, sortField, sortOrder,
+    page, pageSize, search: search || undefined, fullName: fullName || undefined,
+    status: filterStatus, orgUnitId: filterOrganizationId, sortField, sortOrder,
   });
 
-  const { data: rolesData } = useRolesSimple();
-  const statusCounts = (data as any)?.statusCounts;
+  const statusCounts = data?.statusCounts;
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -114,7 +110,7 @@ export default function UsersPage() {
 
   const openEditModal = useCallback((user: User) => {
     setEditingUser(user);
-    form.setFieldsValue({ fullName: user.fullName, email: user.email, phone: user.phone, roleId: user.roleId, orgUnitId: user.orgUnitId, status: user.status });
+    form.setFieldsValue({ fullName: user.fullName, email: user.email, phone: user.phone, orgUnitId: user.orgUnitId, status: user.status, address: user.address, department: user.department, position: user.position, note: user.note });
     setModalOpen(true);
   }, [form]);
 
@@ -127,20 +123,25 @@ export default function UsersPage() {
           fullName: values.fullName?.trim(), 
           email: values.email?.trim(), 
           phone: values.phone?.trim(), 
-          role: values.roleId, 
           orgUnitId: values.orgUnitId || undefined, 
-          status: values.status 
+          status: values.status,
+          address: values.address?.trim() || undefined,
+          department: values.department?.trim() || undefined,
+          position: values.position?.trim() || undefined,
+          note: values.note?.trim() || undefined,
         };
         await updateUser.mutateAsync({ id: editingUser.id, payload });
       } else {
         const payload: CreateUserPayload = { 
-          username: values.username?.trim(), 
           fullName: values.fullName?.trim(), 
           email: values.email?.trim(), 
           phone: values.phone?.trim(), 
-          password: values.password, 
-          role: values.roleId, 
-          orgUnitId: values.orgUnitId || undefined 
+          orgUnitId: values.orgUnitId || undefined,
+          status: values.status,
+          address: values.address?.trim() || undefined,
+          department: values.department?.trim() || undefined,
+          position: values.position?.trim() || undefined,
+          note: values.note?.trim() || undefined,
         };
         await createUser.mutateAsync(payload);
       }
@@ -200,11 +201,42 @@ export default function UsersPage() {
     });
   }, [forgotPassword]);
 
-  const handleFilterApply = useCallback(() => { setPage(1); }, []);
+  const handleFilterApply = useCallback(() => {
+    const nextSearch = searchInput.trim();
+    const nextFullName = fullNameInput.trim();
+    const sameFilters = nextSearch === search
+      && nextFullName === fullName
+      && filterOrganizationInput === filterOrganizationId
+      && page === 1;
 
-  const handleFilterReset = useCallback(() => { setSearchInput(''); setSearch(''); setFilterRoleId(undefined); setFilterStatus(undefined); setPage(1); }, []);
+    setSearch(nextSearch);
+    setFullName(nextFullName);
+    setFilterOrganizationId(filterOrganizationInput);
+    setPage(1);
 
-  const handleTabChange = useCallback((key: string) => { setFilterStatus(key === 'all' ? undefined : key); setPage(1); }, []);
+    // Clicking Search again with unchanged filters still performs an
+    // explicit request instead of waiting for the query cache to expire.
+    if (sameFilters) void refetch();
+  }, [filterOrganizationInput, filterOrganizationId, fullName, fullNameInput, page, refetch, search, searchInput]);
+
+  const handleFilterReset = useCallback(() => {
+    const alreadyReset = !search && !fullName && !filterStatus && !filterOrganizationId && page === 1;
+    setSearchInput('');
+    setSearch('');
+    setFullNameInput('');
+    setFullName('');
+    setFilterStatus(undefined);
+    setFilterOrganizationInput(undefined);
+    setFilterOrganizationId(undefined);
+    setPage(1);
+    if (alreadyReset) void refetch();
+  }, [filterStatus, fullName, page, refetch, search]);
+
+  const handleTabChange = useCallback((key: string) => {
+    const nextStatus = key === 'all' ? undefined : key;
+    setFilterStatus(nextStatus);
+    setPage(1);
+  }, []);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); }, []);
 
@@ -218,46 +250,77 @@ export default function UsersPage() {
     confirm({ title: 'Từ chối tài khoản', icon: <ExclamationCircleOutlined />, content: `Bạn có chắc chắn muốn từ chối tài khoản "${user.fullName}"?`, okText: 'Từ chối', okType: 'danger', cancelText: 'Hủy', onOk: () => changeStatusUser.mutateAsync({ id: user.id, status: 'INACTIVE' }) });
   }, [changeStatusUser]);
 
+  const openPermissionModal = useCallback(async (user: User) => {
+    setPermissionUser(user);
+    setPermissionSearch('');
+    setPermissionLoading(true);
+    try {
+      const grants = await userService.getUserPermissions(user.id);
+      setSelectedPermissionKeys(grants.map((grant) => typeof grant === 'string' ? grant : grant.permissionCode).filter(Boolean));
+    } catch (err: any) {
+      setSelectedPermissionKeys(user.permissionCodes || []);
+      toast.error(err.response?.data?.message || err.message || 'Không thể tải quyền trực tiếp của người dùng');
+    } finally {
+      setPermissionLoading(false);
+    }
+  }, []);
+
+  const handlePermissionSave = useCallback(async () => {
+    if (!permissionUser) return;
+    setPermissionSaving(true);
+    try {
+      await userService.replaceDirectPermissions(permissionUser.id, selectedPermissionKeys);
+      toast.success('Đã cập nhật quyền trực tiếp cho người dùng');
+      setPermissionUser(null);
+      await refetch();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Cập nhật quyền trực tiếp thất bại');
+    } finally {
+      setPermissionSaving(false);
+    }
+  }, [permissionUser, selectedPermissionKeys, refetch]);
+
+  const permissionTreeData = useMemo(() => {
+    const keyword = normalizeSearchText(permissionSearch);
+    if (!keyword) return rawPermissionTree;
+    const filter = (nodes: typeof rawPermissionTree): typeof rawPermissionTree => nodes.flatMap((node) => {
+      const children = filter(node.children || []);
+      const matches = normalizeSearchText(node.title).includes(keyword) || normalizeSearchText(node.key).includes(keyword);
+      return matches || children.length ? [{ ...node, children }] : [];
+    });
+    return filter(rawPermissionTree);
+  }, [rawPermissionTree, permissionSearch]);
+
   const rowActions = useCallback((record: User) => {
     const actions: {
       key: string; label: string; icon?: ReactNode;
       onClick: () => void; danger?: boolean;
     }[] = [];
 
-    if (hasPerm('user.view')) {
+    if (hasPerm('user:read')) {
       actions.push({ key: 'view', label: 'Xem chi tiết tài khoản', icon: <EyeOutlined />, onClick: () => setDetailUserId(record.id) });
     }
 
+    if (hasPerm('user:manage')) {
+      actions.push({ key: 'permissions', label: 'Phân quyền', icon: <KeyOutlined />, onClick: () => openPermissionModal(record) });
+    }
+
     if (record.status === 'PENDING_APPROVAL') {
-      if (hasPerm('user.approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
-      if (hasPerm('user.approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
+      if (hasPerm('user:approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
+      if (hasPerm('user:approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
     } else {
       if (hasPerm('user.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
       if (hasPerm('user.lock')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
-      if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', label: 'Reset mật khẩu', icon: <KeyOutlined />, onClick: () => handleResetPassword(record) });
-      if (hasPerm('user.reset_password')) actions.push({ key: 'forgot-password', label: 'Quên mật khẩu', icon: <MailOutlined />, onClick: () => handleForgotPassword(record) });
-      if (hasPerm('user.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+      // Intentionally hidden per TRI-1786688745847-4d03: reset-password, forgot-password, delete row actions.
+      // Handlers/modals/hooks (handleResetPassword, handleForgotPassword, handleDelete) remain intact.
     }
     return actions;
-  }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleForgotPassword, handleDelete, handleApprove, handleReject]);
+  }, [hasPerm, openPermissionModal, openEditModal, handleToggleLock, handleResetPassword, handleForgotPassword, handleDelete, handleApprove, handleReject]);
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'nameCode', label: 'Tên đăng nhập – Họ và tên', dataIndex: 'fullName', width: 300, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (_text: string, record: User) => <Typography.Text strong>{record.username} – {record.fullName}</Typography.Text> },
+    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 260, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
     { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null },
-    { key: 'roleName', label: 'Vai trò', dataIndex: 'roleName', width: 180, sortable: true, align: 'center' as const, sortOrder: sortField === 'roleName' ? sortOrder : null, render: (text: string, record: User) => {
-      const variant = getRoleTagClass(record.roleId);
-      if (variant !== 'role-tag--user') {
-        return <span className={`role-tag ${variant}`}>{text}</span>;
-      }
-      return (
-        <span style={{
-          display: 'inline-flex', fontSize: fontSizeMd, fontWeight: fontWeightMedium,
-          padding: '2px 10px', borderRadius: 8,
-          background: `${dataSea1}15`, color: dataSea1,
-        }}>{text}</span>
-      );
-    } },
     { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <Typography.Text type="secondary">Chưa đăng nhập</Typography.Text> },
     { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, sortable: true, align: 'center' as const, sortOrder: sortField === 'status' ? sortOrder : null, render: (status: string) => { return (<span className={`status-badge ${getStatusBadgeClass(status)}`}>{STATUS_LABEL[status] || status}</span>); } },
@@ -267,39 +330,56 @@ export default function UsersPage() {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách người dùng'} onRetry={() => refetch()} />;
     const tableData = data?.data || [];
-    if (tableData.length === 0) {
-      if (search || filterRoleId || filterStatus) return <EmptyState description="Không tìm thấy người dùng nào phù hợp" />;
-      return <EmptyState description="Chưa có người dùng nào" />;
-    }
-    return <><style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={false} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></>;
+    const emptyDescription = search || fullName || filterStatus || filterOrganizationId
+      ? 'Không tìm thấy người dùng nào phù hợp'
+      : 'Chưa có người dùng nào';
+    return <>
+      <DataTable
+        columns={columns}
+        dataSource={tableData}
+        rowKey="id"
+        rowActions={rowActions}
+        loading={false}
+        onSort={handleSort}
+        scroll={{ x: 'max-content' }}
+        emptyState={tableData.length === 0 ? <EmptyState description={emptyDescription} /> : undefined}
+      />
+      {tableData.length > 0 && (
+        <Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} />
+      )}
+    </>;
   };
 
 
   const filterContent = (
     <>
       <div style={{ marginBottom: 12, marginTop: 16 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
-        <Input placeholder="Tìm theo tên, email, username..." allowClear
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Email</div>
+        <Input placeholder="Tìm theo email" allowClear
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Vai trò</div>
-        <Select placeholder="Chọn vai trò" allowClear
-          value={filterRoleId}
-          onChange={(val) => setFilterRoleId(val)}
-          options={rolesData?.map((r: any) => ({ value: r.code, label: r.name })) || []}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Họ tên</div>
+        <Input placeholder="Tìm theo họ tên" allowClear
+          value={fullNameInput}
+          onChange={(e) => setFullNameInput(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
-        <Select placeholder="Chọn trạng thái" allowClear
-          value={filterStatus}
-          onChange={(val) => setFilterStatus(val)}
-          options={[{ value: 'active', label: 'Hoạt động' }, { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }]}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Đơn vị</div>
+        <OrgUnitTreeSelect
+          organizations={organizations}
+          value={filterOrganizationInput}
+          onChange={(value) => setFilterOrganizationInput(value)}
+          placeholder="Tất cả đơn vị"
+          showSearch
+          allowClear
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
       </div>
     </>
   );
@@ -336,54 +416,88 @@ export default function UsersPage() {
         {renderContent()}
       </FilterTableLayout>
 
-      <Drawer
-        {...drawerProps}
+      <ManagementDrawer
+        size={760}
         title={<span style={drawerTitleStyle}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
+          <>
             <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
             <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>
-          </div>
+          </>
         }
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }}
+          <Form form={form} layout="vertical" style={{ marginTop: spaceMd }}
             labelCol={{ style: { padding: 0, marginBottom: 4 } }}
+            initialValues={{ status: 'active' }}
           >
-            {!editingUser && (<>
-              <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 3, message: 'Tối thiểu 3 ký tự' }, { max: 100, message: 'Tối đa 100 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}><Input placeholder="vd: nguyenvana" autoComplete="username" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-              <Form.Item name="password" {...labelProps('Mật khẩu')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { max: 255, message: 'Tối đa 255 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#^_\-]).+$/, message: 'Phải có chữ hoa, chữ thường, số và ký tự đặc biệt' }]}><Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            </>)}
-            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { max: 200, message: 'Tối đa 200 ký tự' }]}><Input placeholder="Nguyễn Văn A" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            <Row gutter={16}>
-              <Col xs={24} md={12}><Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}><Input placeholder="email@example.com" autoComplete="email" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-              <Col xs={24} md={12}><Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}><Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng chọn đơn vị' }]}>
+              <OrgUnitTreeSelect
+                organizations={organizations}
+                placeholder="Chọn đơn vị"
+                allowClear
+                style={selectStyle}
+              />
+            </Form.Item>
+            <Row gutter={formRowGutter}>
+              <Col xs={24} md={12}>
+                <Form.Item name="email" {...labelProps('Email')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}>
+                  <Input placeholder="email@example.com" autoComplete="email" style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="fullName" {...labelProps('Họ và tên')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { max: 200, message: 'Tối đa 200 ký tự' }]}>
+                  <Input placeholder="Nguyễn Văn A" style={inputStyle} />
+                </Form.Item>
+              </Col>
             </Row>
-            <Form.Item name="roleId" {...labelProps('Vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}><Select placeholder="Chọn vai trò" options={rolesData?.map((r: any) => ({ value: r.code, label: r.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn đơn vị trực thuộc" allowClear showSearch filterOption={(input: string, option: any) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())} options={organizations.map((org) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            {editingUser && (
-              <Form.Item
-                name="status"
-                {...labelProps('Trạng thái')}
-                style={{ marginBottom: spaceFormField }}
-                rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
-              >
-                <Select
-                  placeholder="Chọn trạng thái"
-                  options={[
-                    { value: 'active', label: 'Hoạt động' },
-                    { value: 'inactive', label: 'Không hoạt động' },
-                  ]}
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </Form.Item>
-            )}
+            <Row gutter={formRowGutter}>
+              <Col xs={24} md={12}>
+                <Form.Item name="phone" {...labelProps('Số điện thoại')} style={formFieldStyle} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}>
+                  <Input placeholder="0901234567" style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="address" {...labelProps('Địa chỉ')} style={formFieldStyle} rules={[{ max: 255, message: 'Địa chỉ tối đa 255 ký tự' }]}>
+                  <Input placeholder="Nhập địa chỉ" style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={formRowGutter}>
+              <Col xs={24} md={12}>
+                <Form.Item name="department" {...labelProps('Phòng ban')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập phòng ban' }, { max: 100, message: 'Phòng ban tối đa 100 ký tự' }]}>
+                  <Input placeholder="Ví dụ: Phòng Quản lý cảng" style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="position" {...labelProps('Chức vụ')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập chức vụ' }, { max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
+                  <Input placeholder="Ví dụ: Chuyên viên" style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              name="status"
+              {...labelProps('Trạng thái')}
+              style={formFieldStyle}
+              rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+            >
+              <Select
+                placeholder="Chọn trạng thái"
+                options={[
+                  { value: 'active', label: 'Hoạt động' },
+                  { value: 'inactive', label: 'Không hoạt động' },
+                ]}
+                style={selectStyle}
+              />
+            </Form.Item>
+            <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle} rules={[{ max: 500, message: 'Ghi chú tối đa 500 ký tự' }]}> 
+              <Input.TextArea placeholder="Nhập ghi chú" rows={3} style={{ borderRadius: radiusTextArea }} />
+            </Form.Item>
           </Form>
         </Spin>
-      </Drawer>
+      </ManagementDrawer>
 
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Đặt lại mật khẩu</span>}
@@ -476,6 +590,50 @@ export default function UsersPage() {
         </Spin>
       </Modal>
 
+      <ManagementDrawer
+        title={<>Phân quyền chức năng cho người dùng{permissionUser ? `: ${permissionUser.fullName}` : ''}</>}
+        open={Boolean(permissionUser)}
+        onClose={() => setPermissionUser(null)}
+        destroyOnHidden
+        maskClosable={false}
+        footer={
+          <>
+            <Button onClick={() => setPermissionUser(null)} style={outlineButtonStyle}>Đóng</Button>
+            <Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button>
+          </>
+        }
+      >
+        <Spin spinning={permissionLoading || permissionCatalogLoading}>
+          <Input.Search
+            allowClear
+            value={permissionSearch}
+            onChange={(event) => setPermissionSearch(event.target.value)}
+            placeholder="Tìm theo tên hoặc mã quyền..."
+            style={{ margin: `${spaceMd}px 0` }}
+          />
+          {permissionTreeData.length === 0 && !permissionLoading ? (
+            <Empty description="Không tìm thấy quyền phù hợp" />
+          ) : (
+            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Danh sách chức năng</div>
+              <Tree
+                checkable
+                defaultExpandAll
+                treeData={permissionTreeData}
+                checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
+                onCheck={(checked) => {
+                  const keys = Array.isArray(checked) ? checked : checked.checked;
+                  setSelectedPermissionKeys(
+                    mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
+                      .filter((key) => !key.startsWith('group_')),
+                  );
+                }}
+              />
+            </div>
+          )}
+        </Spin>
+      </ManagementDrawer>
+
       <Drawer
         {...drawerProps}
         title={<span style={drawerTitleStyle}>Chi tiết tài khoản</span>}
@@ -489,24 +647,32 @@ export default function UsersPage() {
         }
       >
         {detailLoading ? <Spin /> : detailUser && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="Tên đăng nhập">{detailUser.username}</Descriptions.Item>
-            <Descriptions.Item label="Họ và tên">{detailUser.fullName}</Descriptions.Item>
-            <Descriptions.Item label="Email">{detailUser.email}</Descriptions.Item>
-            <Descriptions.Item label="Số điện thoại">{detailUser.phone || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Vai trò">{detailUser.roleName}</Descriptions.Item>
-            <Descriptions.Item label="Nhóm quyền">{detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Quyền hiệu lực">
-              {detailUser.permissionCodes?.length ? <>{detailUser.permissionCodes.map((permission) => <Tag key={permission}>{permission}</Tag>)}</> : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Đơn vị trực thuộc">{detailUser.orgUnitName || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">{STATUS_LABEL[detailUser.status] || detailUser.status}</Descriptions.Item>
-            <Descriptions.Item label="Đăng nhập gần nhất">{detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ngày tạo">{detailUser.createdAt ? dayjs(detailUser.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Người tạo">{detailUser.createdByName || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ngày cập nhật">{detailUser.updatedAt ? dayjs(detailUser.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Người cập nhật">{detailUser.updatedByName || '—'}</Descriptions.Item>
-          </Descriptions>
+          <div style={{ paddingTop: spaceMd }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+              {[ 
+                ['Họ và tên', detailUser.fullName],
+                ['Email', detailUser.email],
+                ['Số điện thoại', detailUser.phone || '—'],
+                ['Địa chỉ', detailUser.address || '—'],
+                ['Phòng ban', detailUser.department || '—'],
+                ['Chức vụ', detailUser.position || '—'],
+                ['Ghi chú', detailUser.note || '—'],
+                ['Nhóm nghiệp vụ', detailUser.groupNames?.length ? detailUser.groupNames.join(', ') : '—'],
+                ['Đơn vị trực thuộc', detailUser.orgUnitName || '—'],
+                ['Trạng thái', <span className={`status-badge ${getStatusBadgeClass(detailUser.status)}`}>{STATUS_LABEL[detailUser.status] || detailUser.status}</span>],
+                ['Đăng nhập gần nhất', detailUser.lastLoginAt ? dayjs(detailUser.lastLoginAt).format('DD/MM/YYYY HH:mm') : '—'],
+                ['Ngày tạo', detailUser.createdAt ? dayjs(detailUser.createdAt).format('DD/MM/YYYY HH:mm') : '—'],
+                ['Người tạo', detailUser.createdByName || '—'],
+                ['Ngày cập nhật', detailUser.updatedAt ? dayjs(detailUser.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
+                ['Người cập nhật', detailUser.updatedByName || '—'],
+              ].map(([label, value], index) => (
+                <div key={index} style={detailRowStyle}>
+                  <span style={detailLabelColStyle}>{label}:</span>
+                  <span style={{ ...detailValueStyle, color: value === '—' ? textSecondary : textPrimary }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </Drawer>
     </div>

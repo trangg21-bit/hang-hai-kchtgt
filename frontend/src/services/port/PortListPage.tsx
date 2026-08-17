@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { PERMISSIONS } from '../../constants/permissions';
+import { fmtNum, fmtInputNumber } from '../../utils/numFmt';
 import {
   Alert,
   Button,
@@ -168,6 +169,9 @@ function parseWktCoords(wkt: string): Array<{ lat: number; lng: number }> {
 
 // ── List Page ───────────────────────────────────────────────────────
 
+// Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
+const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+
 export const translateFieldName = (fieldName: string): string => {
   const map: Record<string, string> = {
     // Port (Cảng biển)
@@ -292,7 +296,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PROPOSED:'Đề xuất', PENDING:'Chờ duyệt', CHO_PHE_DUYET:'Chờ phê duyệt', PENDING_APPROVAL:'Chờ phê duyệt', APPROVED:'Đã duyệt', DA_PHE_DUYET:'Đã phê duyệt', REJECTED:'Từ chối', TU_CHOI:'Từ chối' }; return m[val] || m[val?.toUpperCase()] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PROPOSED:'Đề xuất', PENDING:'Chờ duyệt', CHO_PHE_DUYET:'Chờ phê duyệt', PENDING_APPROVAL:'Chờ phê duyệt', APPROVED:'Đã phê duyệt', DA_PHE_DUYET:'Đã phê duyệt', REJECTED:'Từ chối', TU_CHOI:'Từ chối' }; return m[val] || m[val?.toUpperCase()] || val; }
   if (fn === 'operationalStatus') {
     const m: Record<string,string> = { OPERATIONAL:'Đang hoạt động', SUSPENDED:'Tạm ngừng',
       HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác', CHUA_KHAI_THAC:'Chưa khai thác', DUNG_KHAI_THAC:'Dừng khai thác' };
@@ -328,7 +332,7 @@ export default function PortListPage() {
 
   // ── Permission ──────────────────────────────────────────────────
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const canSubmitForApproval = hasPerm?.('admin:manage') || hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2);
+  const canSubmitForApproval = hasPerm?.('admin:manage') || hasPerm?.('port:approve');
 
   // ── State ───────────────────────────────────────────────────────
   const [search, setSearch] = useState('');
@@ -350,7 +354,7 @@ export default function PortListPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [activeStatusTab, setActiveStatusTab] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<CangBienResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -491,7 +495,7 @@ export default function PortListPage() {
     const defaultOrg = defaultOrgUnitId.current;
     setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setSearch('');
-    setFilterOrgUnitId(defaultOrg || undefined);
+    setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg || undefined);
     setFilterTinh('');
     setFilterPortGroup(undefined);
     setFilterPortClass(undefined);
@@ -507,10 +511,12 @@ export default function PortListPage() {
     setUpdateModalVisible(false);
     setInfraList([]);
     setUploadFileList([]);
+    setGpsCoordList([]);
+    updateForm.resetFields();
     if (window.self !== window.top) {
       window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
     }
-  }, []);
+  }, [updateForm]);
 
   const closeDetailModal = useCallback(() => {
     setDetailModalVisible(false);
@@ -545,7 +551,7 @@ export default function PortListPage() {
               province: data.province || undefined,
               orgUnitId: data.orgUnitId || undefined,
               portGroup: data.portGroup != null ? data.portGroup : undefined,
-              geometryType: data.geometryType || 'POINT',
+              geometryType: data.geometryType || undefined,
               mapSymbolId: data.mapSymbolId || undefined,
               detailedLocation: data.detailedLocation || undefined,
               portClass: data.portClass != null ? data.portClass : undefined,
@@ -567,7 +573,7 @@ export default function PortListPage() {
               quantityKhuChuyenTai: data.transshipmentCount != null ? data.transshipmentCount : undefined,
               cacKhuNuocKhac: data.otherWaterAreas || undefined,
               coordinateSystem: data.coordinateSystem != null ? data.coordinateSystem : undefined,
-              displayRule: 'Độ, phút, giây (DMS)',
+              displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
               waterAreaScope: data.waterAreaScope || undefined,
               remarks: data.remarks || undefined,
             });
@@ -655,10 +661,10 @@ export default function PortListPage() {
               const profile = profileRes.data?.data ?? profileRes.data;
               const userOrgId = profile?.orgUnitId;
               const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = match ? userOrgId : data[0].id;
+              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
               defaultOrgUnitId.current = defaultId;
               setFilterValues(prev => ({ ...prev, orgUnitId: defaultId }));
-              setFilterOrgUnitId(defaultId);
+              setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
             } catch {
               defaultOrgUnitId.current = data[0].id;
               setFilterValues(prev => ({ ...prev, orgUnitId: data[0].id }));
@@ -695,8 +701,8 @@ export default function PortListPage() {
           CHO_PHE_DUYET: 'Chờ phê duyệt',
           PENDING: 'Chờ phê duyệt',
           PENDING_APPROVAL: 'Chờ phê duyệt',
-          DUOC_PHE_DUYET: 'Được phê duyệt',
-          APPROVED: 'Được phê duyệt',
+          DUOC_PHE_DUYET: 'Đã phê duyệt',
+          APPROVED: 'Đã phê duyệt',
           TU_CHOI: 'Từ chối',
           REJECTED: 'Từ chối',
         };
@@ -756,49 +762,56 @@ export default function PortListPage() {
 
   // Form watches
   const createGeometryType = Form.useWatch('geometryType', createForm);
-  const updateGeometryType = Form.useWatch('geometryType', updateForm) || 'POINT';
+  const updateGeometryType = Form.useWatch('geometryType', updateForm);
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu & quy tắc hiển thị
-  useEffect(() => { if (createGeometryType) createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [createGeometryType]);
-  useEffect(() => { if (updateGeometryType && updateGeometryType !== 'POINT') updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [updateGeometryType]);
+  useEffect(() => {
+    if (!createGeometryType) return;
+    createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    // Form thêm mới: điểm → 1 tọa độ, đường → 2 tọa độ, vùng → 3 tọa độ
+    const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
+    setGpsCoordList(Array.from({ length: count }, () => ({ lat: NaN, lng: NaN })));
+  }, [createGeometryType]);
+  useEffect(() => { if (updateGeometryType) updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [updateGeometryType]);
 
   const handleCreateFinish = async (values: Record<string, unknown>) => {
     const portCode = String(values.portCode || '').trim();
     const portName = String(values.portName).trim();
-    if (!portCode) { toast.error('Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.'); return; }
-    if (!portName) { toast.error('Tên cảng biển là bắt buộc ngay cả khi lưu tạm'); return; }
-    if (portName.length > 255) { toast.error('Tên cảng tối đa 255 ký tự'); return; }
 
-    // BR-008-08: Validate công trình KCHT
+    // BR-008-08: Validate công trình KCHT (chỉ cần tên HOẶC số lượng là đủ)
     for (const infra of infraList) {
       const name = (infra.infraName || '').trim();
-      if (!name) { toast.error('Tên công trình KCHT không được để trống'); return; }
+      const qty = infra.quantity == null ? null : Number(infra.quantity);
       if (name.length > 500) { toast.error('Tên công trình KCHT không quá 500 ký tự'); return; }
-      if (infra.quantity == null || Number(infra.quantity) <= 0) { toast.error('Số lượng công trình KCHT phải lớn hơn 0'); return; }
-      if (Number(infra.quantity) > 5) { toast.error('Số lượng công trình KCHT không quá 5'); return; }
+      if (qty != null && qty > 5) { toast.error('Số lượng công trình KCHT không quá 5'); return; }
     }
 
-    // Validate GPS coordinates (required for both draft and submit)
+    // Validate GPS coordinates (only required when Loại đối tượng is selected)
     const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
-    if (gpsCoordList.length === 0 || gpsComplete.length === 0) {
-      toast.error('Tọa độ GPS là bắt buộc. Vui lòng thêm ít nhất một tọa độ và nhập đầy đủ thông tin.');
-      return;
-    }
-    // Check for incomplete entries (has some DMS fields but not all)
-    for (let i = 0; i < gpsCoordList.length; i++) {
-      const c = gpsCoordList[i];
-      if (c.lat == null || c.lng == null || isNaN(c.lat) || isNaN(c.lng)) {
-        toast.error(`Tọa độ thứ ${i + 1} chưa nhập đầy đủ thông tin Độ/Phút/Giây.`);
+    if (values.geometryType) {
+      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
+      if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
+        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
         return;
+      }
+      // Check for incomplete entries (has some DMS fields but not all)
+      for (let i = 0; i < gpsCoordList.length; i++) {
+        const c = gpsCoordList[i];
+        if (c.lat == null || c.lng == null || isNaN(c.lat) || isNaN(c.lng)) {
+          toast.error(`Tọa độ thứ ${i + 1} chưa nhập đầy đủ thông tin Độ/Phút/Giây.`);
+          return;
+        }
       }
     }
 
     // Validate required fields for submit
     const currentAction = actionTypeRef.current;
     if (currentAction === 'submit' || currentAction === 'approve') {
-      if (!values.orgUnitId) { toast.error('Đơn vị quản lý là bắt buộc khi gửi phê duyệt'); return; }
-      if (!values.province) { toast.error('Tỉnh/Thành phố là bắt buộc khi gửi phê duyệt'); return; }
-      if (values.portClass == null || values.portClass === '') { toast.error('Phân cấp cảng biển là bắt buộc khi gửi phê duyệt'); return; }
+      const fieldErrors: Array<{ name: Array<string | number>; errors: string[] }> = [];
+      if (!values.orgUnitId) fieldErrors.push({ name: ['orgUnitId'], errors: ['Đơn vị quản lý là bắt buộc khi gửi phê duyệt'] });
+      if (!values.province) fieldErrors.push({ name: ['province'], errors: ['Tỉnh/Thành phố là bắt buộc khi gửi phê duyệt'] });
+      if (values.portClass == null || values.portClass === '') fieldErrors.push({ name: ['portClass'], errors: ['Phân cấp cảng biển là bắt buộc khi gửi phê duyệt'] });
+      if (fieldErrors.length) { createForm.setFields(fieldErrors); return; }
     }
 
     setSubmitting(true);
@@ -871,8 +884,8 @@ export default function PortListPage() {
         otherWaterAreas: (values.otherWaterAreas as string) || undefined,
         coordinateList,
         infrastructureList: infraList
-          .filter((inf) => inf.infraName?.trim())
-          .map((inf) => ({ stt: inf.stt, infraName: inf.infraName.trim(), quantity: Number(inf.quantity) })),
+          .filter((inf) => (inf.infraName || '').trim() || (inf.quantity != null && Number(inf.quantity) > 0))
+          .map((inf, idx) => ({ stt: idx + 1, infraName: (inf.infraName || '').trim(), quantity: inf.quantity != null && Number(inf.quantity) > 0 ? Number(inf.quantity) : 1 })),
         remarks: (values.remarks as string) || undefined,
         action: currentAction,
       };
@@ -919,14 +932,20 @@ export default function PortListPage() {
     }
   };
 
-  const handleFormFailed = (errorInfo: any) => {
-    errorInfo.errorFields.forEach((field: any) => {
-      toast.error(`${field.errors.join(', ')}`);
-    });
+  const handleFormFailed = () => {
+    // Lỗi validation được hiển thị trực tiếp viền đỏ + message dưới từng trường (AntD), không popup toast
   };
 
   const handleUpdateFinish = async (values: Record<string, unknown>) => {
     if (!selectedRecord) return;
+    const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
+    if (values.geometryType) {
+      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
+      if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
+        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const n = (v: unknown): number | undefined =>
@@ -974,8 +993,8 @@ export default function PortListPage() {
         otherWaterAreas: (values.otherWaterAreas as string) || null,
         coordinateList,
         infrastructureList: infraList
-          .filter((inf) => inf.infraName?.trim())
-          .map((inf) => ({ stt: inf.stt, infraName: inf.infraName.trim(), quantity: Number(inf.quantity) })),
+          .filter((inf) => (inf.infraName || '').trim() || (inf.quantity != null && Number(inf.quantity) > 0))
+          .map((inf, idx) => ({ stt: idx + 1, infraName: (inf.infraName || '').trim(), quantity: inf.quantity != null && Number(inf.quantity) > 0 ? Number(inf.quantity) : 1 })),
         remarks: (values.remarks as string) || undefined,
       };
       const res = await import('./api').then((m) => m.updateCangBien(payload));
@@ -1001,6 +1020,7 @@ export default function PortListPage() {
       closeUpdateModal();
       if (!isIframeModal) {
         fetchData();
+        fetchTabCounts();
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại');
@@ -1065,8 +1085,9 @@ export default function PortListPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    const expected = deleteTarget.portName || '';
-    if (deleteConfirmText.trim() !== expected && deleteConfirmText.trim() !== 'XÓA') {
+    const expected = (deleteTarget.portName || '').trim().toLowerCase();
+    const input = deleteConfirmText.trim().toLowerCase();
+    if (input !== expected && input !== 'xóa') {
       toast.error('Vui lòng nhập đúng tên cảng hoặc gõ "XÓA" để xác nhận');
       return;
     }
@@ -1076,6 +1097,7 @@ export default function PortListPage() {
       setDeleteTarget(null);
       setDeleteConfirmText('');
       fetchData();
+      fetchTabCounts();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Xóa thất bại');
     }
@@ -1249,14 +1271,14 @@ export default function PortListPage() {
                 otherWaterAreas: data.otherWaterAreas || undefined,
                 remarks: data.remarks || undefined,
                 gisLocation: data.coordinates ? {
-                  geometryType: data.geometryType || 'POINT',
+                  geometryType: data.geometryType || undefined,
                   coordinates: data.coordinates,
                   mapSymbolId: data.mapSymbolId,
                 } : undefined,
-                geometryType: data.geometryType || 'POINT',
+                geometryType: data.geometryType || undefined,
                 mapSymbolId: data.mapSymbolId,
                 coordinateSystem: data.coordinateSystem,
-                displayRule: 'Độ, phút, giây (DMS)',
+                displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
               });
               // Load infrastructure & attachments for edit
               setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
@@ -1307,7 +1329,7 @@ export default function PortListPage() {
         });
       }
       // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
-      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && (hasPerm?.(PERMISSIONS.PORT.APPROVE_C1) || hasPerm?.(PERMISSIONS.PORT.APPROVE_C2))) {
+      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && hasPerm?.('port:approve')) {
         actions.push({
           key: 'approve',
           label: 'Phê duyệt',
@@ -1373,12 +1395,22 @@ export default function PortListPage() {
         dataIndex: 'portName',
         width: 190,
         fixed: 'left' as const,
+        sortable: true,
+        sortOrder: sortField === 'portName' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => (
           <a
-            onClick={() => {
-              setSelectedRecord(record);
-              documentApi.listByEntity('port', record.id, { page: 1, size: 20 }).then(res => setDetailFiles(res.data || [])).catch(() => setDetailFiles([]));
-              setDetailModalVisible(true);
+            onClick={async () => {
+              try {
+                setIsLoading(true);
+                const data = await fetchCangBienById(record.id);
+                setSelectedRecord(data);
+                documentApi.listByEntity('port', record.id, { page: 1, size: 20 }).then(res => setDetailFiles(res.data || [])).catch(() => setDetailFiles([]));
+                setDetailModalVisible(true);
+              } catch {
+                toast.error('Không thể tải thông tin chi tiết cảng biển');
+              } finally {
+                setIsLoading(false);
+              }
             }}
             style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer' }}
           >
@@ -1397,7 +1429,7 @@ export default function PortListPage() {
         key: 'province',
         label: 'Địa điểm',
         dataIndex: 'province',
-        width: 140,
+        width: 150,
         render: (v: string | null) => v || '—',
       },
       {
@@ -1413,7 +1445,7 @@ export default function PortListPage() {
         dataIndex: 'updatedAt',
         width: 160,
         sortable: true,
-        sortOrder,
+        sortOrder: sortField === 'updatedAt' ? sortOrder : null,
         render: (v: string | null) => (
           <span>{formatDate(v)}</span>
         ),
@@ -1461,7 +1493,7 @@ export default function PortListPage() {
         },
       },
     ],
-    [page, pageSize, getPortGroupLabel, sortOrder],
+    [page, pageSize, getPortGroupLabel, sortField, sortOrder],
   );
 
   // ── Form field style ─────────────────────────────────────────────
@@ -1499,7 +1531,7 @@ export default function PortListPage() {
       {!isIframeModal && (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
           <ScreenHeader
-            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cảng biển' }]}
+            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cảng biển' }]}
             actions={[
               hasPerm?.('Port:create')
                 ? {
@@ -1523,8 +1555,8 @@ export default function PortListPage() {
             error={isError}
             onRetry={fetchData}
             filterContent={<>
-              <div style={{ marginBottom: 12, marginTop: 16 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>
+              <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
                   Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
                 </div>
                 <Select placeholder="Chọn đơn vị" allowClear showSearch optionFilterProp="label"
@@ -1534,7 +1566,7 @@ export default function PortListPage() {
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tên cảng biển</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng biển</div>
                 <Input placeholder="Tìm theo tên cảng..." allowClear
                   value={filterValues.search || ''}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, search: e.target.value }))}
@@ -1542,7 +1574,7 @@ export default function PortListPage() {
                   style={{ borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Phân cấp</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp</div>
                 <Select placeholder="Chọn phân cấp" allowClear
                   value={filterValues.portClass || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, portClass: val }))}
@@ -1551,7 +1583,7 @@ export default function PortListPage() {
               </div>
               {filterCollapsed && (<>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Nhóm cảng biển</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Nhóm cảng biển</div>
                 <Select placeholder="Chọn nhóm" allowClear
                   value={filterValues.portGroup || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, portGroup: val }))}
@@ -1559,7 +1591,7 @@ export default function PortListPage() {
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Địa điểm</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
                 <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                   filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                   value={filterValues.province || undefined}
@@ -1568,7 +1600,7 @@ export default function PortListPage() {
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Từ ngày - Đến ngày</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Từ ngày - Đến ngày</div>
                 <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
                   placeholder={['Chọn từ ngày', 'Chọn đến ngày']} allowClear className="port-range-picker"
                   value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
@@ -1577,11 +1609,11 @@ export default function PortListPage() {
               </div>
               <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}`}</style>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
                 <Select placeholder="Tất cả" allowClear
                   value={filterValues.approvalStatus || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, approvalStatus: val }))}
-                  options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Được phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
+                  options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               </>)}
@@ -1590,7 +1622,7 @@ export default function PortListPage() {
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
               { key: 'DRAFT', label: 'Nháp', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
               { key: 'PENDING', label: 'Chờ phê duyệt', count: tabCounts['PENDING'] ?? 0, color: statusAttention, active: activeStatusTab === 'PENDING' },
-              { key: 'APPROVED', label: 'Được phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
+              { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
               { key: 'REJECTED', label: 'Từ chối', count: tabCounts['REJECTED'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED' },
             ]}
             onStatusTabChange={(key) => {
@@ -1600,17 +1632,17 @@ export default function PortListPage() {
               setPage(1);
             }}
           >
-            <style>{`.list-view-table .ant-table-cell { padding-block: 9px !important; }`}</style>
+            <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
             {isError ? null : !isLoading && dataSource.length === 0 ? (
               <DataTable dataSource={[]} rowKey="id"
-                emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{search || filterTinh || filterStatus ? 'Không tìm thấy cảng biển nào phù hợp' : 'Chưa có cảng biển nào'}</div></div>}
+                emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy cảng biển nào phù hợp</div></div>}
               />
             ) : !isLoading && !isError && dataSource.length > 0 ? (
               <DataTable columns={columns}
                 dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = a[sortField] ?? ''; const bVal = b[sortField] ?? ''; const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
                 rowKey="id" rowActions={rowActions} loading={false}
                 onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-                scroll={{ x: 1400, y: 500 }}
+                scroll={{ x: 1400, y: 550 }}
               />
             ) : null}
             <Pagination total={total} current={page} pageSize={pageSize}
@@ -1630,8 +1662,8 @@ export default function PortListPage() {
             </span>
           }
           open={createModalVisible}
-          onClose={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); }}
-          extra={<Button type="text" onClick={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); }} style={drawerCloseBtnStyle}>✕</Button>}
+          onClose={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
+          extra={<Button type="text" onClick={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
             <div style={drawerFooterStyle}>
               <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
@@ -1674,16 +1706,17 @@ export default function PortListPage() {
             onFinishFailed={handleFormFailed}
             initialValues={{ approvalStatus: 'APPROVED' }}
           >
-            <Tabs activeKey={createTabKey} onChange={setCreateTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0 }} items={[
+            <Tabs activeKey={createTabKey} onChange={setCreateTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }} items={[
               {
                 key: 'general', label: 'Thông tin chung',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
                     name="orgUnitId"
                     {...labelProps('Đơn vị quản lý')}
                     required
+                    rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -1722,6 +1755,7 @@ export default function PortListPage() {
                             required
                             style={{ marginBottom: spaceFormField }}
                             tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa"
+                            rules={[{ required: true, message: 'Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.' }]}
                           >
                             <Input
                               disabled
@@ -1751,6 +1785,7 @@ export default function PortListPage() {
                             name="province"
                             {...labelProps('Địa điểm (Tỉnh/Thành phố)')}
                             required
+                            rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -1780,6 +1815,7 @@ export default function PortListPage() {
                              name="portClass"
                             {...labelProps('Phân cấp cảng biển')}
                             required
+                            rules={[{ required: true, message: 'Phân cấp cảng biển là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select placeholder="Chọn phân cấp" allowClear style={selectStyle}
@@ -1810,7 +1846,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số bến cảng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1819,7 +1855,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số khu neo đậu, khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1830,7 +1866,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải công cộng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1839,7 +1875,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải chuyên dùng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1847,19 +1883,19 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalPublicChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH công cộng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
                           <Form.Item
                             name="totalDedicatedChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH chuyên dùng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1867,10 +1903,10 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalBuoysBeacons"
-                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải')}
+                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1879,7 +1915,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đê, kè')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1890,7 +1926,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1899,7 +1935,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đèn biển, đăng, tiêu độc lập')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1910,7 +1946,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng bến phao')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1919,7 +1955,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu neo đậu')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1930,7 +1966,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -1951,7 +1987,7 @@ export default function PortListPage() {
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
-                              styles={{ textarea: { borderRadius: radiusPill, overflow: 'hidden', padding: '4px 12px', resize: 'none' } }}
+                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
                             />
                           </Form.Item>
                         </Col>
@@ -1960,7 +1996,7 @@ export default function PortListPage() {
               },
               {
                 key: 'gis', label: 'Thông tin vị trí',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
@@ -1984,9 +2020,10 @@ export default function PortListPage() {
                              name="mapSymbolId"
                             {...labelProps('Biểu tượng bản đồ')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={createGeometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}
                           >
                             <Select
-                              placeholder="Chọn biểu tượng hiển thị"
+                              placeholder="Chọn biểu tượng bản đồ"
                               allowClear
                               showSearch
                               optionFilterProp="label"
@@ -2023,6 +2060,7 @@ export default function PortListPage() {
                              name="coordinateSystem"
                             {...labelProps('Hệ quy chiếu')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={createGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}
                           >
                             <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle}
                               options={[
@@ -2037,16 +2075,16 @@ export default function PortListPage() {
                              name="displayRule"
                             {...labelProps('Quy tắc hiển thị')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={createGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}
                           >
-                            <Input placeholder="VD: Hiển thị mặc định" maxLength={255} disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
+                            <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
                           </Form.Item>
                         </Col>
                       </Row>
                       {/* GPS Coordinates (DMS) */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                          <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>
+                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{createGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
                         </span>
                         {gpsCoordList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
@@ -2099,7 +2137,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={90} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2107,15 +2145,15 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2137,7 +2175,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={180} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2145,15 +2183,15 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2186,7 +2224,7 @@ export default function PortListPage() {
               },
               {
                 key: 'infra', label: 'Công trình KCHT',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
@@ -2295,7 +2333,7 @@ export default function PortListPage() {
               },
               {
                 key: 'files', label: 'File đính kèm',
-                children: (<div style={{ paddingTop: 3 }}>
+                children: (<div style={{ paddingTop: 16 }}>
                       {/* File label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
@@ -2407,9 +2445,11 @@ export default function PortListPage() {
       )}
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
-      {!isIframeModal && (
+      {(!isIframeModal || action === 'edit') && (
         <Drawer
           {...drawerProps}
+          size={isIframeModal ? '100%' : 1000}
+          mask={!isIframeModal}
           title={
             <span style={drawerTitleStyle}>
               {selectedRecord
@@ -2439,19 +2479,20 @@ export default function PortListPage() {
           >
             <Tabs
               defaultActiveKey="general"
-              tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
+              tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
               items={[
                 {
                   key: 'general',
                   label: 'Thông tin chung',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
                             name="orgUnitId"
                             {...labelProps('Đơn vị quản lý')}
                             required
+                            rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -2490,6 +2531,7 @@ export default function PortListPage() {
                             required
                             style={{ marginBottom: spaceFormField }}
                             tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa"
+                            rules={[{ required: true, message: 'Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.' }]}
                           >
                             <Input
                               disabled
@@ -2519,6 +2561,7 @@ export default function PortListPage() {
                             name="province"
                             {...labelProps('Địa điểm (Tỉnh/Thành phố)')}
                             required
+                            rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
@@ -2548,6 +2591,7 @@ export default function PortListPage() {
                             name="portClass"
                             {...labelProps('Phân cấp cảng biển')}
                             required
+                            rules={[{ required: true, message: 'Phân cấp cảng biển là bắt buộc' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select placeholder="Chọn phân cấp" allowClear style={selectStyle}
@@ -2578,7 +2622,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số bến cảng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2587,7 +2631,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số khu neo đậu, khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2598,7 +2642,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải công cộng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2607,7 +2651,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số tuyến luồng hàng hải chuyên dùng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2615,19 +2659,19 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalPublicChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH công cộng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
                           <Form.Item
                             name="totalDedicatedChannelLength"
-                            {...labelProps('Tổng chiều dài luồng HH chuyên dùng (km)')}
+                            {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2635,10 +2679,10 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="totalBuoysBeacons"
-                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải')}
+                            {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2647,7 +2691,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đê, kè')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2658,7 +2702,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={20} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2667,7 +2711,7 @@ export default function PortListPage() {
                             {...labelProps('Tổng số đèn biển, đăng, tiêu độc lập')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2678,7 +2722,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng bến phao')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2687,7 +2731,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu neo đậu')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2698,7 +2742,7 @@ export default function PortListPage() {
                             {...labelProps('Số lượng khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber min={0} max={5} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -2719,7 +2763,7 @@ export default function PortListPage() {
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
-                              styles={{ textarea: { borderRadius: radiusPill, overflow: 'hidden', padding: '4px 12px', resize: 'none' } }}
+                              styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
                             />
                           </Form.Item>
                         </Col>
@@ -2731,11 +2775,11 @@ export default function PortListPage() {
                   key: 'gis',
                   label: 'Thông tin vị trí',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                            <Select style={selectStyle} options={[
+                            <Select placeholder="Chọn loại đối tượng" style={selectStyle} options={[
                               { value: 'POINT', label: 'Đối tượng điểm' },
                               { value: 'LINE', label: 'Đối tượng đường' },
                               { value: 'POLYGON', label: 'Đối tượng vùng' },
@@ -2743,9 +2787,9 @@ export default function PortListPage() {
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng bản đồ')} style={{ marginBottom: spaceFormField }}>
+                          <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng bản đồ')} style={{ marginBottom: spaceFormField }} rules={updateGeometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}>
                             <Select
-                              placeholder="Chọn biểu tượng"
+                              placeholder="Chọn biểu tượng bản đồ"
                               allowClear
                               showSearch
                               optionFilterProp="label"
@@ -2776,23 +2820,22 @@ export default function PortListPage() {
                       </Row>
                       <Row gutter={16}>
                         <Col span={12}>
-                          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
-                            <Select style={selectStyle} disabled options={[
+                          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }} rules={updateGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}>
+                            <Select placeholder="Chọn hệ quy chiếu" style={selectStyle} disabled options={[
                               { value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' },
                             ]} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
-                            <Input placeholder="VD: display_rule_1" disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
+                          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }} rules={updateGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}>
+                            <Input placeholder="Chọn quy tắc hiển thị" disabled style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
                           </Form.Item>
                         </Col>
                       </Row>
                       {/* GPS Coordinates (DMS) */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-                          <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>
+                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{updateGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
                         </span>
                         {gpsCoordList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
@@ -2845,7 +2888,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={90} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2853,15 +2896,15 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2883,7 +2926,7 @@ export default function PortListPage() {
                               return (
                                 <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
                                   <InputNumber value={dms.d} min={0} max={180} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2891,15 +2934,15 @@ export default function PortListPage() {
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>°</span>
                                   <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
                                     style={{ flex: 1 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
                                     background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
                                     fontSize: fontSizeSm, color: textTertiary,
                                   }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
+                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                    onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
                                     style={{ flex: 1.2 }} controls={false} />
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', padding: '0 6px',
@@ -2933,12 +2976,12 @@ export default function PortListPage() {
                 },
                 {
                   key: 'infrastructure',
-                  label: 'Kết cấu hạ tầng',
+                  label: 'Công trình KCHT',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Kết cấu hạ tầng</span>
+                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
                         {infraList.length > 0 && (
                           <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>
                             Thêm công trình
@@ -3047,7 +3090,7 @@ export default function PortListPage() {
                   key: 'attachments',
                   label: 'File đính kèm',
                   children: (
-                    <div style={{ paddingTop: 3 }}>
+                    <div style={{ paddingTop: 16 }}>
                       {/* File label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
@@ -3162,9 +3205,11 @@ export default function PortListPage() {
       )}
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      {!isIframeModal && (
+      {(!isIframeModal || action === 'detail') && (
         <Drawer
           {...drawerProps}
+          size={isIframeModal ? '100%' : 1000}
+          mask={!isIframeModal}
           title={
             selectedRecord
               ? <span style={drawerTitleStyle}>Xem chi tiết cảng biển - {selectedRecord.portName}</span>
@@ -3182,7 +3227,7 @@ export default function PortListPage() {
           {selectedRecord && (
             <Tabs
               defaultActiveKey="general"
-              tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
+              tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
               items={[
                 {
                   key: 'general', label: 'Thông tin chung',
@@ -3204,11 +3249,11 @@ export default function PortListPage() {
                         ['Tổng số khu neo đậu, khu chuyển tải', selectedRecord.totalAnchoragesTransshipment ?? '—'],
                         ['Tổng số tuyến luồng hàng hải công cộng', selectedRecord.totalPublicChannels ?? '—'],
                         ['Tổng số tuyến luồng hàng hải chuyên dùng', selectedRecord.totalDedicatedChannels ?? '—'],
-                        ['Tổng chiều dài luồng HH công cộng (km)', selectedRecord.totalPublicChannelLength != null ? selectedRecord.totalPublicChannelLength.toFixed(2) : '—'],
-                        ['Tổng chiều dài luồng HH chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? selectedRecord.totalDedicatedChannelLength.toFixed(2) : '—'],
-                        ['Tổng số phao tiêu, báo hiệu hàng hải', selectedRecord.totalBuoysBeacons ?? '—'],
+                        ['Tổng chiều dài luồng hàng hải công cộng (km)', selectedRecord.totalPublicChannelLength != null ? fmtNum(selectedRecord.totalPublicChannelLength) : '—'],
+                        ['Tổng chiều dài luồng hàng hải chuyên dùng (km)', selectedRecord.totalDedicatedChannelLength != null ? fmtNum(selectedRecord.totalDedicatedChannelLength) : '—'],
+                        ['Tổng số phao tiêu, báo hiệu hàng hải trên luồng', selectedRecord.totalBuoysBeacons ?? '—'],
                         ['Tổng số đê, kè', selectedRecord.totalDikes ?? '—'],
-                        ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? selectedRecord.totalDikeLength.toFixed(2) : '—'],
+                        ['Tổng chiều dài hệ thống đê, kè (km)', selectedRecord.totalDikeLength != null ? fmtNum(selectedRecord.totalDikeLength) : '—'],
                         ['Tổng số đèn biển, đăng, tiêu độc lập', selectedRecord.totalLighthouses ?? '—'],
                         ['Số lượng bến phao', selectedRecord.buoyBerthCount ?? '—'],
                         ['Số lượng khu neo đậu', selectedRecord.anchorageCount ?? '—'],
@@ -3228,10 +3273,10 @@ export default function PortListPage() {
                       {portSystemOpen && (
                         <div className="detail-grid" style={{ marginTop: 4 }}>
                           {[
-                            ['Ngày tạo', selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'],
                             ['Người tạo', selectedRecord.createdByName || selectedRecord.createdBy || '—'],
-                            ['Ngày cập nhật', selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'],
+                            ['Ngày tạo', selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'],
                             ['Người cập nhật', selectedRecord.updatedByName || selectedRecord.updatedBy || '—'],
+                            ['Ngày cập nhật', selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'],
                           ].map(([label, value], i) => (
                             <div key={i} className="detail-row">
                               <span className="detail-label">{label}</span>
@@ -3252,7 +3297,7 @@ export default function PortListPage() {
                         ['Loại đối tượng', selectedRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : selectedRecord.geometryType === 'LINE' ? 'Đối tượng đường' : selectedRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'],
                         ['Biểu tượng bản đồ', (() => { const sym = symbols.find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolId || '—'; })(),],
                         ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : '—'],
-                        ['Quy tắc hiển thị', 'Độ, phút, giây (DMS)'],
+                        ['Quy tắc hiển thị', (selectedRecord.geometryType || (selectedRecord as any).coordinates) ? 'Độ, phút, giây (DMS)' : '—'],
                       ].map(([label, value], i) => (
                         <div key={i} className="detail-row">
                           <span className="detail-label">{label}</span>
@@ -3290,16 +3335,16 @@ export default function PortListPage() {
                               <Table.Column title="STT" key="stt" width={60} align="center"
                                 render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
                                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                              <Table.Column title="Vĩ độ (N)" key="lat"
+                              <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                                 render={(_: any, record: any) => {
                                   const dms = ddToDms(record.lat);
-                                  return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                                 }}
                                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                              <Table.Column title="Kinh độ (E)" key="lng"
+                              <Table.Column title="Kinh độ (E)" key="lng" align="center"
                                 render={(_: any, record: any) => {
                                   const dms = ddToDms(record.lng);
-                                  return <Space.Compact size="small"><InputNumber value={dms.d} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ width: 50 }} /><span style={{ padding: '0 4px', color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ width: 60 }} /><span style={{ padding: '0 4px', color: textTertiary }}>"</span></Space.Compact>;
+                                  return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                                 }}
                                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                             </Table>
@@ -3313,11 +3358,11 @@ export default function PortListPage() {
                   key: 'infra', label: 'Công trình KCHT',
                   children: (
                     <div style={{ paddingTop: 3 }}>
-                      <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
+                      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT</span>
                       </div>
                       {(!(selectedRecord as any).infrastructureList || (selectedRecord as any).infrastructureList.length === 0) ? (
-                        <span style={{ color: textTertiary }}>Không có công trình KCHT</span>
+                        <span style={{ color: textTertiary, fontSize: fontSizeMd, paddingLeft: 12 }}>Không có công trình KCHT</span>
                       ) : (
                         <Table className="list-view-table" dataSource={((selectedRecord as any).infrastructureList || []).map((i: any, idx: number) => ({ ...i, key: idx }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}>
                           <Table.Column title="STT" dataIndex="stt" key="stt" width={60} align="center"
@@ -3335,7 +3380,7 @@ export default function PortListPage() {
                   key: 'files', label: 'File đính kèm',
                   children: (
                     <div style={{ paddingTop: 3 }}>
-                      <div style={{ marginBottom: spaceSm, padding: '0 12px' }}>
+                      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
                       </div>
                       {detailFiles.length === 0 ? (
@@ -3484,34 +3529,35 @@ export default function PortListPage() {
 
       {/* Delete confirmation modal */}
       <Modal
-        title="Xác nhận xóa"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cảng biển</span>}
         open={!!deleteTarget}
         onCancel={() => {
           setDeleteTarget(null);
           setDeleteConfirmText('');
         }}
-        okText="Xóa"
-        okType="danger"
-        cancelText="Hủy"
-        onOk={handleDeleteConfirm}
+        footer={[
+          <Button key="cancel" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="delete" type="primary" danger onClick={handleDeleteConfirm}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
+        ]}
+        width={480}
       >
-        <div style={{ marginBottom: 16 }}>
-          <Typography.Text>
-            Vui lòng nhập <strong>tên cảng</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa cảng này.
-          </Typography.Text>
+        <div style={{ padding: '8px 0' }}>
+          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon icon={<ExclamationCircleOutlined />}
+            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
+            Vui lòng nhập <strong>tên cảng</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
+          </p>
+          {deleteTarget && (
+            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
+              Cảng: <strong style={{ color: textPrimary }}>{deleteTarget.portName}</strong>
+            </p>
+          )}
+          <Input placeholder="Nhập tên cảng hoặc XÓA" value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleDeleteConfirm}
+            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            {deleteTarget?.portName}
-          </Typography.Text>
-        </div>
-        <Input
-          placeholder="Nhập tên cảng hoặc XÓA"
-          value={deleteConfirmText}
-          onChange={(e) => setDeleteConfirmText(e.target.value)}
-          onPressEnter={handleDeleteConfirm}
-          style={{ borderRadius: radiusPill, height: 40 }}
-        />
       </Modal>
     </>
   );

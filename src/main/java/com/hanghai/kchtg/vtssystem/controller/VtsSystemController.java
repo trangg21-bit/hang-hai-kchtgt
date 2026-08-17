@@ -68,12 +68,6 @@ public class VtsSystemController {
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
-    @GetMapping("/org-unit-options")
-    public ResponseEntity<ApiResponse<List<com.hanghai.kchtg.orgunit.dto.OrgUnitResponse>>> getOrgUnitOptions() {
-        return ResponseEntity.ok(ApiResponse.success("Danh sÃ¡ch Ä‘Æ¡n vá»‹ theo phÃ¢n quyá»n", service.getScopedOrgUnitOptions()));
-    }
-
-    @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @DataScope
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> getById(

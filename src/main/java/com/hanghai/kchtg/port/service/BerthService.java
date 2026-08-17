@@ -359,6 +359,9 @@ public class BerthService {
         entity.setMapSymbolId(request.getMapSymbolId());
         if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
+        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt" (APPROVED_LEVEL1)
+            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
         Berth saved = berthRepository.save(entity);

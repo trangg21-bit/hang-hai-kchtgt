@@ -6,6 +6,7 @@ import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.service.OrganizationService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -39,6 +40,7 @@ import java.util.UUID;
 public class OrgUnitController {
 
     private final OrganizationService organizationService;
+    private final OrgUnitScopeService orgUnitScopeService;
     private final UserRepository userRepository;
     private final jakarta.persistence.EntityManager entityManager;
 
@@ -91,7 +93,7 @@ public class OrgUnitController {
         String sortField = (sortBy != null && !sortBy.isBlank()) ? sortBy : "path";
 
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by(direction, sortField));
-        Page<OrgUnitResponse> result = organizationService.findAll(pageable);
+        Page<OrgUnitResponse> result = organizationService.findAll(pageable, orgUnitScopeService.currentUserScope());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -100,8 +102,10 @@ public class OrgUnitController {
      * The service resolves this list from the long-lived backend cache.
      */
     @GetMapping("/options")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getOptions() {
-        return ResponseEntity.ok(ApiResponse.success(organizationService.findAll()));
+        return ResponseEntity.ok(ApiResponse.success(
+                organizationService.findAll(orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -110,7 +114,8 @@ public class OrgUnitController {
     @GetMapping("/tree")
     @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getTree() {
-        return ResponseEntity.ok(ApiResponse.success(organizationService.buildTree()));
+        return ResponseEntity.ok(ApiResponse.success(
+                organizationService.buildTree(orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -120,7 +125,8 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getSubTree(
             @PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(organizationService.findSubTree(id)));
+        return ResponseEntity.ok(ApiResponse.success(
+                organizationService.findSubTree(id, orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -130,7 +136,8 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getByParent(
             @RequestParam UUID parentId) {
-        return ResponseEntity.ok(ApiResponse.success(organizationService.findByParentId(parentId)));
+        return ResponseEntity.ok(ApiResponse.success(
+                organizationService.findByParentId(parentId, orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -140,7 +147,8 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> getById(
             @PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(organizationService.findById(id)));
+        return ResponseEntity.ok(ApiResponse.success(
+                organizationService.findById(id, orgUnitScopeService.currentUserScope())));
     }
 
     // ── Search / filter endpoints ────────────────────────────────────
@@ -152,7 +160,8 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> search(
             @RequestParam String q) {
-        return ResponseEntity.ok(ApiResponse.success(organizationService.searchUnits(q)));
+        return ResponseEntity.ok(ApiResponse.success(
+                organizationService.searchUnits(q, orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -167,7 +176,8 @@ public class OrgUnitController {
             @RequestParam(required = false, defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        Page<OrgUnitResponse> result = organizationService.filterUnits(status, level, pageable);
+        Page<OrgUnitResponse> result = organizationService.filterUnits(
+                status, level, pageable, orgUnitScopeService.currentUserScope());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -182,7 +192,8 @@ public class OrgUnitController {
             @Valid @RequestBody CreateOrgUnitRequest request) {
         User currentUser = getCurrentUser();
         Operator op = getOperator();
-        OrgUnitResponse response = organizationService.create(request, op.id(), op.name());
+        OrgUnitResponse response = organizationService.create(
+                request, op.id(), op.name(), orgUnitScopeService.currentUserScope());
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo đơn vị thành công", response));
@@ -196,14 +207,12 @@ public class OrgUnitController {
     public ResponseEntity<ApiResponse<OrgUnitResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrgUnitRequest request) {
-        try {
-            Operator op = getOperator();
-            entityManager.clear(); // flush auth-loaded User from persistence context
-            return ResponseEntity.ok(ApiResponse.success(
-                    "Cập nhật đơn vị thành công", organizationService.update(id, request, op.id(), op.name())));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(ApiResponse.error(e.getClass().getSimpleName() + ": " + e.getMessage()));
-        }
+        Operator op = getOperator();
+        entityManager.clear(); // flush auth-loaded User from persistence context
+        return ResponseEntity.ok(ApiResponse.success(
+                "Cập nhật đơn vị thành công",
+                organizationService.update(id, request, op.id(), op.name(),
+                        orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -215,7 +224,7 @@ public class OrgUnitController {
             @PathVariable UUID id) {
         Operator op = getOperator();
         entityManager.clear();
-        organizationService.delete(id, op.id(), op.name());
+        organizationService.delete(id, op.id(), op.name(), orgUnitScopeService.currentUserScope());
         return ResponseEntity.ok(ApiResponse.success("Xóa đơn vị thành công", null));
     }
 
@@ -232,7 +241,8 @@ public class OrgUnitController {
         Operator op = getOperator();
         return ResponseEntity.ok(ApiResponse.success(
                 "Gửi phê duyệt thành công",
-                organizationService.submitForApproval(id, op.id(), op.name())));
+                organizationService.submitForApproval(id, op.id(), op.name(),
+                        orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -248,7 +258,8 @@ public class OrgUnitController {
         Operator op = getOperator();
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt đơn vị thành công",
-                organizationService.approve(id, op.id(), op.name(), comments)));
+                organizationService.approve(id, op.id(), op.name(), comments,
+                        orgUnitScopeService.currentUserScope())));
     }
 
     /**
@@ -264,6 +275,7 @@ public class OrgUnitController {
         Operator op = getOperator();
         return ResponseEntity.ok(ApiResponse.success(
                 "Từ chối đơn vị thành công",
-                organizationService.reject(id, op.id(), op.name(), comments)));
+                organizationService.reject(id, op.id(), op.name(), comments,
+                        orgUnitScopeService.currentUserScope())));
     }
 }

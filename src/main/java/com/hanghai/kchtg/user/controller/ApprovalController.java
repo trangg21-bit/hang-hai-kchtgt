@@ -75,9 +75,7 @@ public class ApprovalController {
             @Valid @RequestBody ApprovalDecisionRequest request) {
         // Extract current user's ID from SecurityContext
         UUID approverId = getCurrentUserId();
-        String roleCode = request.getRoleCode();
-
-        PendingApprovalResponse result = approvalService.approve(id, approverId, roleCode);
+        PendingApprovalResponse result = approvalService.approve(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt thành công", result));
     }
 

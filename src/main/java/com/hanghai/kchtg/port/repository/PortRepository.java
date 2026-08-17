@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
 
 /**
@@ -38,9 +39,16 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
     @Query("SELECT MAX(p.portCode) FROM Port p WHERE p.portCode LIKE 'CB-%' AND p.deletedAt IS NULL")
     Optional<String> findMaxPortCode();
 
-    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName) " +
+    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
            "FROM Port p WHERE p.deletedAt IS NULL ORDER BY p.portName ASC")
     List<PortOptionResponse> findAllOptions();
+
+    @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
+           "FROM Port p WHERE p.deletedAt IS NULL AND p.orgUnitId IN :orgUnitIds ORDER BY p.portName ASC")
+    List<PortOptionResponse> findOptionsByOrgUnitIds(@Param("orgUnitIds") Collection<UUID> orgUnitIds);
+
+    @Query("SELECT p FROM Port p WHERE p.id = :id AND p.deletedAt IS NULL")
+    Optional<Port> findActiveById(@Param("id") UUID id);
 
     /**
      * All active (non-deleted) ports for the port directory cache.
@@ -57,8 +65,8 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             "AND (:approvalStatus IS NULL OR p.approvalStatus = :approvalStatus) " +
             "AND (:portGroup IS NULL OR p.portGroup = :portGroup) " +
             "AND (:portClass IS NULL OR p.portClass = :portClass) " +
-            "AND (CAST(:updatedFrom AS timestamp) IS NULL OR p.updatedAt >= :updatedFrom) " +
-            "AND (CAST(:updatedTo AS timestamp) IS NULL OR p.updatedAt <= :updatedTo) " +
+            "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR p.updatedAt >= :updatedFrom) " +
+            "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR p.updatedAt <= :updatedTo) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(p.portName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))))")
     Page<Port> searchPorts(
             @Param("orgUnitId") UUID orgUnitId,
@@ -69,8 +77,8 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("portGroup") Integer portGroup,
             @Param("portClass") Integer portClass,
-            @Param("updatedFrom") String updatedFrom,
-            @Param("updatedTo") String updatedTo,
+            @Param("updatedFrom") java.time.LocalDateTime updatedFrom,
+            @Param("updatedTo") java.time.LocalDateTime updatedTo,
             @Param("search") String search,
             Pageable pageable);
 

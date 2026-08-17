@@ -4,6 +4,7 @@ import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -78,8 +79,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     @Query("SELECT DISTINCT u FROM User u "
             + "LEFT JOIN FETCH u.orgUnit "
-            + "LEFT JOIN FETCH u.groups "
-            + "LEFT JOIN FETCH u.roles")
+            + "LEFT JOIN FETCH u.groups")
     List<User> findAllWithRelations();
 
     /**
@@ -94,7 +94,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u "
             + "LEFT JOIN FETCH u.orgUnit "
             + "LEFT JOIN FETCH u.groups "
-            + "LEFT JOIN FETCH u.roles "
             + "WHERE u.id = :id")
     Optional<User> findByIdWithRelations(UUID id);
 
@@ -104,68 +103,75 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u "
             + "LEFT JOIN FETCH u.orgUnit "
             + "LEFT JOIN FETCH u.groups "
-            + "LEFT JOIN FETCH u.roles "
             + "WHERE u.username = :username")
     Optional<User> findByUsernameWithRelations(String username);
 
-    /**
-     * Đếm số lượng người dùng hoạt động (chưa xóa) có vai trò này.
-     */
-    @Query("SELECT COUNT(u) FROM User u JOIN u.roles r WHERE r.id = :roleId AND u.status <> UserStatus.DELETED")
-    long countByRoleId(@org.springframework.data.repository.query.Param("roleId") UUID roleId);
+    @Query("SELECT u.status, COUNT(u) FROM User u " +
+           "WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
+           "AND (:fullName IS NULL OR :fullName = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
+           "AND u.deletedAt IS NULL " +
+           "GROUP BY u.status")
+    List<Object[]> countUsersByStatus(@Param("search") String search,
+                                      @Param("fullName") String fullName);
 
-    /**
-     * Lấy id của tất cả người dùng đang giữ một vai trò (dùng để invalidate cache
-     * quyền khi permission của vai trò đó thay đổi).
-     */
-    @Query("SELECT u.id FROM User u JOIN u.roles r WHERE r.id = :roleId")
-    List<UUID> findIdsByRoleId(@org.springframework.data.repository.query.Param("roleId") UUID roleId);
+    @Query("SELECT u.status, COUNT(u) FROM User u " +
+           "WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
+           "AND (:fullName IS NULL OR :fullName = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
+           "AND u.deletedAt IS NULL " +
+           "AND u.orgUnit.id IN :orgUnitIds " +
+           "GROUP BY u.status")
+    List<Object[]> countUsersByStatusAndOrgUnits(@Param("search") String search,
+                                                 @Param("fullName") String fullName,
+                                                 @Param("orgUnitIds") java.util.Collection<UUID> orgUnitIds);
 
-
-    /**
-     * Thống kê số lượng người dùng hoạt động theo từng vai trò (tránh N+1 query).
-     */
-    @Query("SELECT r.id, COUNT(u) FROM User u JOIN u.roles r WHERE u.status <> UserStatus.DELETED GROUP BY r.id")
-    List<Object[]> countUsersGroupByRoleId();
-
-    @Query("SELECT u.status, COUNT(u) FROM User u WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED GROUP BY u.status")
-    List<Object[]> countUsersByStatus();
-
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"roles"})
     @Query("SELECT DISTINCT u FROM User u " +
-           "LEFT JOIN u.roles r " +
            "WHERE (:search IS NULL OR :search = '' OR " +
-           "  LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "  LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "  LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "AND (:roleCode IS NULL OR :roleCode = '' OR r.code = :roleCode) " +
+           "  CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
+           "AND (:fullName IS NULL OR :fullName = '' OR " +
+           "  CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
+           "AND u.deletedAt IS NULL " +
            "AND (:status IS NULL OR u.status = :status)")
     org.springframework.data.domain.Page<User> searchUsers(
             @org.springframework.data.repository.query.Param("search") String search,
-            @org.springframework.data.repository.query.Param("roleCode") String roleCode,
+            @org.springframework.data.repository.query.Param("fullName") String fullName,
             @org.springframework.data.repository.query.Param("status") UserStatus status,
             org.springframework.data.domain.Pageable pageable);
 
     @Query(value = "SELECT u.id AS id, u.username AS username, u.email AS email, u.fullName AS fullName, " +
-           "u.orgUnit.id AS orgUnitId, u.status AS status, u.lastLoginAt AS lastLoginAt, " +
-           "r.code AS roleCode " +
-           "FROM User u LEFT JOIN u.roles r " +
+           "u.orgUnit.id AS orgUnitId, u.status AS status, u.lastLoginAt AS lastLoginAt " +
+           "FROM User u " +
            "WHERE (:search IS NULL OR :search = '' OR " +
-           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "AND (:roleCode IS NULL OR :roleCode = '' OR r.code = :roleCode) " +
-           "AND (:status IS NULL OR u.status = :status)",
-           countQuery = "SELECT COUNT(DISTINCT u) FROM User u LEFT JOIN u.roles r " +
-           "WHERE (:search IS NULL OR :search = '' OR " +
-           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "AND (:roleCode IS NULL OR :roleCode = '' OR r.code = :roleCode) " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
+           "AND (:fullName IS NULL OR :fullName = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
+           "AND u.deletedAt IS NULL " +
            "AND (:status IS NULL OR u.status = :status)")
-    org.springframework.data.domain.Page<UserListProjection> searchUserList(
+    List<UserListProjection> searchUserList(
             @org.springframework.data.repository.query.Param("search") String search,
-            @org.springframework.data.repository.query.Param("roleCode") String roleCode,
+            @org.springframework.data.repository.query.Param("fullName") String fullName,
             @org.springframework.data.repository.query.Param("status") UserStatus status,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query(value = "SELECT u.id AS id, u.username AS username, u.email AS email, u.fullName AS fullName, " +
+           "u.orgUnit.id AS orgUnitId, u.status AS status, u.lastLoginAt AS lastLoginAt " +
+           "FROM User u " +
+           "WHERE (:search IS NULL OR :search = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.email)) AS string) LIKE CAST(:search AS string)) " +
+           "AND (:fullName IS NULL OR :fullName = '' OR " +
+           "CAST(function('immutable_unaccent', LOWER(u.fullName)) AS string) LIKE CAST(:fullName AS string)) " +
+           "AND u.deletedAt IS NULL " +
+           "AND (:status IS NULL OR u.status = :status) " +
+           "AND u.orgUnit.id IN :orgUnitIds")
+    List<UserListProjection> searchUserListByOrgUnits(
+            @Param("search") String search,
+            @Param("fullName") String fullName,
+            @Param("status") UserStatus status,
+            @Param("orgUnitIds") java.util.Collection<UUID> orgUnitIds,
             org.springframework.data.domain.Pageable pageable);
 }
