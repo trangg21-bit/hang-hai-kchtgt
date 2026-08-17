@@ -3,11 +3,11 @@ feature-id: M-001
 feature-name: Quản trị hệ thống
 pipeline-type: sdlc
 status: in-progress
-current-stage: closed
+current-stage: engineering-business-analyst
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-08-14T06:31:59Z
+last-updated: 2026-08-17T09:09:26Z
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -18,26 +18,16 @@ completed-stages:
   intake:
     verdict: Ready for feature pipeline
     completed-at: 2026-06-28
-  engineering-business-analyst:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md
-    completed-at: 2026-08-14
-  engineering-frontend-developer-wave-1:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-hide-actions-permission-label.md
-    completed-at: 2026-08-14
-  engineering-qa-engineer-wave-2:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md
-    completed-at: 2026-08-14
-stages-queue: []
+stages-queue:
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-2
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count:
-  engineering-business-analyst: 3
+  engineering-business-analyst: 4
   engineering-solution-designer: 1
 locked-fields: []
 version: 4
@@ -46,10 +36,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-reopened-at: 2026-08-14T06:27:15Z
-reopened-reason: 'TRI-1786688745847-4d03: implementation — hide 3 row actions (reset-password/forgot-password/delete) + add "Danh sách chức năng" label above permission tree'
-triage-id: TRI-1786688745847-4d03
-released: true
+reopened-at: 2026-08-17T09:06:48Z
+reopened-reason: "TRI-1786957339465-c234: re-baseline toàn bộ feature-brief M-001 (F-001..F-006) sang template 7-section + mô hình phân quyền động (bỏ RBAC/vai trò cũ), giữ nguyên nghiệp vụ cũ"
+triage-id: TRI-1786957339465-c234
 ---
 # Pipeline State: Quản trị hệ thống (M-001)
 
@@ -71,14 +60,13 @@ none
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
 | 1 | intake | intake | Ready for feature pipeline | — | 2026-06-28 |
-| 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md | 2026-08-14 |
-| 3 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-hide-actions-permission-label.md | 2026-08-14 |
-| 4 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md | 2026-08-14 |
+| 2 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
+| 3 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
 
 ## Current Stage
 
-**closed** — Pipeline complete.
+**engineering-business-analyst** — Ready to start. Input: `docs/modules/M-001-quan-tri-he-thong/module-brief.md`.
 
 ## Next Action
 
-Released — sign-off recorded (`released: true`).
+Next stage `engineering-business-analyst` — dispatched by the project manager (via the build receptionist); no slash command to run.
