@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Tabs, Modal, Form, Input, Select, Button, Spin, Alert, Row, Col, DatePicker, Typography, Drawer } from 'antd';
-import { SearchOutlined, ReloadOutlined, EyeOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons';
+import { Tabs, Modal, Form, Input, Select, Button, Spin, Alert, DatePicker, Typography, Drawer, Row, Col } from 'antd';
+import { SearchOutlined, ReloadOutlined, EyeOutlined, EditOutlined, HistoryOutlined, FilterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { ScreenHeader, DataTable, Pagination } from '../components/list-view';
 import FilterTableLayout from '../components/list-view/FilterTableLayout';
@@ -16,6 +16,7 @@ import {
   actionPrimary,
   statusOperational,
   statusDraft,
+  statusCritical,
   textPrimary,
   textSecondary,
   textTertiary,
@@ -30,7 +31,6 @@ import {
   spaceMd,
   radiusPill,
   radiusMd,
-  metaStyle,
   fontMono,
   drawerProps,
   drawerTitleStyle,
@@ -76,6 +76,8 @@ interface SharingFilters {
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   ACTIVE: { label: 'Sử dụng', color: statusOperational },
   INACTIVE: { label: 'Không sử dụng', color: statusDraft },
+  'Thanh cong': { label: 'Thành công', color: statusOperational },
+  'That bai': { label: 'Thất bại', color: statusCritical },
 };
 
 function renderStatusTag(status: string) {
@@ -116,8 +118,9 @@ export default function InterconnectPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // Expanded row (transaction history) — only one at a time
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  // Transaction history drawer
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [historyConnectionName, setHistoryConnectionName] = useState('');
   const [transactions, setTransactions] = useState<IntegrationTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
@@ -268,20 +271,18 @@ export default function InterconnectPage() {
   }, []);
 
   // ============================================================
-  // Expand / collapse transaction sub-table
+  // Open transaction history modal
   // ============================================================
-  const handleExpandRow = useCallback(
-    (expanded: boolean, record: IntegrationConnection) => {
-      if (expanded) {
-        setExpandedRowKeys([record.id]);
-        setTransactionFilters({});
-        setTransactions([]);
-        setTxPage(1);
-        setShowAdvancedSearch(false);
-        fetchTransactions(record.id, {});
-      } else {
-        setExpandedRowKeys([]);
-      }
+  const handleOpenHistory = useCallback(
+    (record: IntegrationConnection) => {
+      setSelectedConnectionId(record.id);
+      setHistoryConnectionName(record.connectionName);
+      setTransactionFilters({});
+      setTransactions([]);
+      setTxPage(1);
+      setShowAdvancedSearch(false);
+      fetchTransactions(record.id, {});
+      setHistoryDrawerOpen(true);
     },
     [fetchTransactions],
   );
@@ -454,13 +455,12 @@ export default function InterconnectPage() {
   // ============================================================
   const integrationRowActions = useCallback(
     (record: IntegrationConnection) => {
-      const isExpanded = expandedRowKeys.includes(record.id);
       return [
         {
           key: 'history',
           label: 'Lịch sử giao dịch',
           icon: <HistoryOutlined />,
-          onClick: () => handleExpandRow(!isExpanded, record),
+          onClick: () => handleOpenHistory(record),
         },
         {
           key: 'edit',
@@ -470,7 +470,7 @@ export default function InterconnectPage() {
         },
       ];
     },
-    [expandedRowKeys, handleExpandRow, handleOpenEdit],
+    [handleOpenHistory, handleOpenEdit],
   );
 
   const transactionRowActions = useCallback(
@@ -511,7 +511,9 @@ export default function InterconnectPage() {
       {
         key: 'sequenceNo',
         label: 'STT',
-        width: 60,
+        width: 80,
+        fixed: 'left' as const,
+        type: 'mono' as const,
         align: 'center' as const,
         render: (_: unknown, record: SeqRecord<IntegrationConnection>) => (
           <span style={{ fontSize: fontSizeMd }}>{record._seq}</span>
@@ -521,25 +523,27 @@ export default function InterconnectPage() {
         key: 'accountName',
         label: 'Tên tài khoản',
         dataIndex: 'accountName',
-        width: 180,
+        width: 220,
+        fixed: 'left' as const,
       },
       {
         key: 'connectionName',
         label: 'Tên kết nối',
         dataIndex: 'connectionName',
-        width: 200,
+        width: 240,
+        fixed: 'left' as const,
       },
       {
         key: 'senderSystem',
         label: 'Hệ thống gửi',
         dataIndex: 'senderSystem',
-        width: 180,
+        width: 200,
       },
       {
         key: 'receiverSystem',
         label: 'Hệ thống nhận',
         dataIndex: 'receiverSystem',
-        width: 180,
+        width: 200,
       },
       {
         key: 'status',
@@ -561,7 +565,9 @@ export default function InterconnectPage() {
       {
         key: 'sequenceNo',
         label: 'STT',
-        width: 50,
+        width: 80,
+        fixed: 'left' as const,
+        type: 'mono' as const,
         align: 'center' as const,
         render: (_: unknown, record: SeqRecord<IntegrationTransaction>) => (
           <span style={{ fontSize: fontSizeMd }}>{record._seq}</span>
@@ -585,19 +591,19 @@ export default function InterconnectPage() {
         key: 'type',
         label: 'Loại',
         dataIndex: 'type',
-        width: 100,
+        width: 150,
       },
       {
         key: 'name',
         label: 'Tên',
         dataIndex: 'name',
-        width: 180,
+        width: 260,
       },
       {
         key: 'referenceNumber',
         label: 'Số TC',
         dataIndex: 'referenceNumber',
-        width: 120,
+        width: 140,
         render: (val: string) =>
           val || (
             <Typography.Text type="secondary" style={{ fontSize: fontSizeMd }}>
@@ -623,7 +629,7 @@ export default function InterconnectPage() {
         key: 'purpose',
         label: 'Mục đích',
         dataIndex: 'purpose',
-        width: 150,
+        width: 240,
         render: (val: string) =>
           val || (
             <Typography.Text type="secondary" style={{ fontSize: fontSizeMd }}>
@@ -635,7 +641,7 @@ export default function InterconnectPage() {
         key: 'organizationUnit',
         label: 'Đơn vị',
         dataIndex: 'organizationUnit',
-        width: 150,
+        width: 200,
         render: (val: string) =>
           val || (
             <Typography.Text type="secondary" style={{ fontSize: fontSizeMd }}>
@@ -647,7 +653,7 @@ export default function InterconnectPage() {
         key: 'sender',
         label: 'Người gửi',
         dataIndex: 'sender',
-        width: 150,
+        width: 180,
         render: (val: string) =>
           val || (
             <Typography.Text type="secondary" style={{ fontSize: fontSizeMd }}>
@@ -673,7 +679,7 @@ export default function InterconnectPage() {
         key: 'receiverCode',
         label: 'Mã nhận',
         dataIndex: 'receiverCode',
-        width: 120,
+        width: 140,
         render: (val: string) =>
           val || (
             <Typography.Text type="secondary" style={{ fontSize: fontSizeMd }}>
@@ -693,7 +699,9 @@ export default function InterconnectPage() {
       {
         key: 'sequenceNo',
         label: 'STT',
-        width: 60,
+        width: 80,
+        fixed: 'left' as const,
+        type: 'mono' as const,
         align: 'center' as const,
         render: (_: unknown, record: SeqRecord<DataSharingLog>) => (
           <span style={{ fontSize: fontSizeMd }}>{record._seq}</span>
@@ -703,31 +711,33 @@ export default function InterconnectPage() {
         key: 'accountName',
         label: 'Tên tài khoản',
         dataIndex: 'accountName',
-        width: 180,
+        width: 220,
+        fixed: 'left' as const,
       },
       {
         key: 'connectionName',
         label: 'Tên kết nối',
         dataIndex: 'connectionName',
-        width: 200,
+        width: 240,
+        fixed: 'left' as const,
       },
       {
         key: 'senderSystem',
         label: 'Hệ thống gửi',
         dataIndex: 'senderSystem',
-        width: 180,
+        width: 200,
       },
       {
         key: 'receiverSystem',
         label: 'Hệ thống nhận',
         dataIndex: 'receiverSystem',
-        width: 180,
+        width: 200,
       },
       {
         key: 'transactionCode',
         label: 'ID',
         dataIndex: 'transactionCode',
-        width: 180,
+        width: 220,
         render: (val: string) => (
           <Typography.Text
             copyable
@@ -871,185 +881,100 @@ export default function InterconnectPage() {
             />
           </div>
 
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: spaceSm, flexShrink: 0 }}>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleTxFilterReset}
-              style={{
-                color: textSecondary,
-                borderColor: borderDefault,
-                borderRadius: radiusPill,
-                height: 40,
-                fontSize: fontSizeMd,
-              }}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={handleTxFilterSearch}
-              style={{
-                background: actionPrimary,
-                borderColor: actionPrimary,
-                borderRadius: radiusPill,
-                height: 40,
-                fontSize: fontSizeMd,
-              }}
-            >
-              Tìm kiếm
-            </Button>
-          </div>
         </div>
 
-        {/* Advanced search toggle */}
-        <div style={{ marginTop: spaceSm }}>
+        {showAdvancedSearch && (
+          <Row gutter={[spaceMd, spaceSm]} style={{ marginTop: spaceSm }}>
+            <Col xs={24} sm={8}>
+              <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Mã nhận</div>
+              <Input placeholder="Nhập mã nhận" allowClear
+                value={transactionFilters.receiverCode || ''}
+                onChange={(e) => setTransactionFilters((prev) => ({ ...prev, receiverCode: e.target.value }))}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </Col>
+            <Col xs={24} sm={8}>
+              <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>ID giao dịch</div>
+              <Input placeholder="Nhập ID giao dịch" allowClear
+                value={transactionFilters.transactionId || ''}
+                onChange={(e) => setTransactionFilters((prev) => ({ ...prev, transactionId: e.target.value }))}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </Col>
+            <Col xs={24} sm={8}>
+              <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Mục đích</div>
+              <Input placeholder="Nhập mục đích" allowClear
+                value={transactionFilters.purpose || ''}
+                onChange={(e) => setTransactionFilters((prev) => ({ ...prev, purpose: e.target.value }))}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </Col>
+          </Row>
+        )}
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: spaceSm, justifyContent: 'center', marginTop: spaceMd }}>
           <Button
-            type="link"
-            onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
-            style={{ color: actionPrimary, fontSize: fontSizeMd, padding: 0 }}
+            icon={<ReloadOutlined />}
+            onClick={handleTxFilterReset}
+            style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+          />
+          <Button
+            type="primary"
+            icon={<SearchOutlined />}
+            onClick={handleTxFilterSearch}
+            style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
           >
-            {showAdvancedSearch ? 'Thu gọn tìm kiếm nâng cao' : 'Tìm kiếm nâng cao'}
+            Tìm kiếm
           </Button>
-          {showAdvancedSearch && (
-            <Row gutter={[spaceMd, spaceSm]} style={{ marginTop: spaceSm }}>
-              <Col xs={24} sm={8}>
-                <div
-                  style={{
-                    fontSize: fontSizeMd,
-                    color: colors.sidebarBg,
-                    fontWeight: fontWeightBold,
-                    marginBottom: 4,
-                  }}
-                >
-                  Mã nhận
-                </div>
-                <Input
-                  placeholder="Nhập mã nhận"
-                  allowClear
-                  value={transactionFilters.receiverCode || ''}
-                  onChange={(e) =>
-                    setTransactionFilters((prev) => ({
-                      ...prev,
-                      receiverCode: e.target.value,
-                    }))
-                  }
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </Col>
-              <Col xs={24} sm={8}>
-                <div
-                  style={{
-                    fontSize: fontSizeMd,
-                    color: colors.sidebarBg,
-                    fontWeight: fontWeightBold,
-                    marginBottom: 4,
-                  }}
-                >
-                  ID giao dịch
-                </div>
-                <Input
-                  placeholder="Nhập ID giao dịch"
-                  allowClear
-                  value={transactionFilters.transactionId || ''}
-                  onChange={(e) =>
-                    setTransactionFilters((prev) => ({
-                      ...prev,
-                      transactionId: e.target.value,
-                    }))
-                  }
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </Col>
-              <Col xs={24} sm={8}>
-                <div
-                  style={{
-                    fontSize: fontSizeMd,
-                    color: colors.sidebarBg,
-                    fontWeight: fontWeightBold,
-                    marginBottom: 4,
-                  }}
-                >
-                  Mục đích
-                </div>
-                <Input
-                  placeholder="Nhập mục đích"
-                  allowClear
-                  value={transactionFilters.purpose || ''}
-                  onChange={(e) =>
-                    setTransactionFilters((prev) => ({
-                      ...prev,
-                      purpose: e.target.value,
-                    }))
-                  }
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </Col>
-            </Row>
-          )}
+          <Button
+            icon={<FilterOutlined />}
+            onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+            shape="circle"
+            style={{ color: showAdvancedSearch ? actionPrimary : textSecondary, borderColor: showAdvancedSearch ? actionPrimary : borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
+          />
         </div>
       </div>
     );
   };
 
   // ============================================================
-  // Expanded row: transaction history sub-table
+  // Transaction history drawer
   // ============================================================
-  const renderExpandedRow = () => {
-    return (
-      <div style={{ padding: `${spaceMd}px 0` }}>
+  const renderHistoryDrawer = () => (
+    <Drawer
+      {...drawerProps}
+      title={
+        <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+          Lịch sử giao dịch — {historyConnectionName}
+        </span>
+      }
+      open={historyDrawerOpen}
+      onClose={() => setHistoryDrawerOpen(false)}
+      extra={<Button type="text" onClick={() => setHistoryDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+      styles={{
+        header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+        body: { padding: '0 24px 12px 24px' },
+      }}
+    >
+      <div style={{ paddingTop: 16 }}>
         {renderTransactionFilter()}
-
-        {transactionsError && (
-          <Alert
-            type="error"
-            message={transactionsError}
-            showIcon
-            style={{
-              marginBottom: spaceMd,
-              borderRadius: radiusMd,
-            }}
-            action={
-              <Button
-                size="small"
-                onClick={() =>
-                  selectedConnectionId &&
-                  fetchTransactions(selectedConnectionId, transactionFilters)
-                }
-              >
-                Thử lại
-              </Button>
-            }
-          />
-        )}
-
-        {transactionsLoading ? (
-          <LoadingSkeleton rows={4} />
-        ) : paginatedTransactions.length === 0 && !transactionsError ? (
-          <EmptyState description="Không tìm thấy lịch sử giao dịch" />
-        ) : (
-          <>
-            <DataTable
-              columns={transactionColumns}
-              dataSource={paginatedTransactions}
-              rowKey="id"
-              rowActions={transactionRowActions}
-              loading={transactionsLoading}
-              scroll={{ x: 1400 }}
-            />
-            <Pagination
-              total={transactions.length}
-              current={txPage}
-              pageSize={txPageSize}
-              onChange={(p, ps) => {
-                setTxPage(p);
-                setTxPageSize(ps);
-              }}
-            />
-          </>
-        )}
       </div>
-    );
-  };
+      {transactionsError && (
+        <Alert type="error" message={transactionsError} showIcon
+          style={{ marginBottom: spaceMd, borderRadius: radiusMd }}
+          action={<Button size="small" onClick={() => selectedConnectionId && fetchTransactions(selectedConnectionId, transactionFilters)}>Thử lại</Button>} />
+      )}
+      {transactionsLoading ? (
+        <LoadingSkeleton rows={4} />
+      ) : paginatedTransactions.length === 0 && !transactionsError ? (
+        <EmptyState description="Không tìm thấy lịch sử giao dịch" />
+      ) : (
+        <>
+          <DataTable columns={transactionColumns} dataSource={paginatedTransactions} rowKey="id"
+            rowActions={transactionRowActions} loading={transactionsLoading} scroll={{ x: 1400 }} />
+          <Pagination total={transactions.length} current={txPage} pageSize={txPageSize}
+            onChange={(p, ps) => { setTxPage(p); setTxPageSize(ps); }} />
+        </>
+      )}
+    </Drawer>
+  );
 
   // ============================================================
   // Tab content: "Tích hợp dữ liệu"
@@ -1091,22 +1016,6 @@ export default function InterconnectPage() {
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Trạng thái
-              </div>
-              <Select
-                placeholder="Chọn trạng thái"
-                allowClear
-                value={integrationFilterValues.status || undefined}
-                onChange={(val) => setIntegrationFilterValues((prev) => ({ ...prev, status: val }))}
-                options={[
-                  { value: 'ACTIVE', label: 'Sử dụng' },
-                  { value: 'INACTIVE', label: 'Không sử dụng' },
-                ]}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
           </>
         }
         statusTabs={integrationStatusTabs}
@@ -1135,12 +1044,6 @@ export default function InterconnectPage() {
             rowActions={integrationRowActions}
             loading={false}
             scroll={{ x: 1200 }}
-            expandable={{
-              expandedRowRender: renderExpandedRow,
-              expandedRowKeys,
-              onExpand: handleExpandRow,
-              expandIcon: () => null,
-            }}
           />
         ) : null}
         <Pagination
@@ -1194,22 +1097,6 @@ export default function InterconnectPage() {
                 onChange={(e) => setSharingFilterValues((prev) => ({ ...prev, senderSystem: e.target.value }))}
                 onPressEnter={handleSharingApply}
                 style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Trạng thái
-              </div>
-              <Select
-                placeholder="Chọn trạng thái"
-                allowClear
-                value={sharingFilterValues.status || undefined}
-                onChange={(val) => setSharingFilterValues((prev) => ({ ...prev, status: val }))}
-                options={[
-                  { value: 'ACTIVE', label: 'Sử dụng' },
-                  { value: 'INACTIVE', label: 'Không sử dụng' },
-                ]}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
             </div>
           </>
@@ -1287,13 +1174,9 @@ export default function InterconnectPage() {
 
       {/* Cho FilterTableLayout một chiều cao bị giới hạn: tabpane flex-fill */}
       <style>{`
-        .ant-tabs-content-holder,
         .ant-tabs-body-holder { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-        .ant-tabs-content,
-        .ant-tabs-body { flex: 1; min-height: 0; }
-        .ant-tabs-body { display: flex; flex-direction: column; }
-        .ant-tabs-tabpane { height: 100%; display: flex; flex-direction: column; }
-        .ant-tabs-tabpane-hidden,
+        .ant-tabs-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .ant-tabs-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .ant-tabs-content-hidden { display: none !important; }
       `}</style>
 
@@ -1346,10 +1229,10 @@ export default function InterconnectPage() {
           >
             <Select
               placeholder="Chọn trạng thái"
-              options={[
-                { value: 'ACTIVE', label: 'Sử dụng' },
-                { value: 'INACTIVE', label: 'Không sử dụng' },
-              ]}
+                options={[
+                  { value: 'ACTIVE', label: 'Sử dụng' },
+                  { value: 'INACTIVE', label: 'Không sử dụng' },
+                ]}
               style={{ borderRadius: radiusPill, height: 40 }}
             />
           </Form.Item>
@@ -1413,6 +1296,11 @@ export default function InterconnectPage() {
       </Modal>
 
       {/* ================================================ */}
+      {/* Transaction History Drawer */}
+      {/* ================================================ */}
+      {renderHistoryDrawer()}
+
+      {/* ================================================ */}
       {/* Sharing Detail Drawer */}
       {/* ================================================ */}
       <Drawer
@@ -1433,118 +1321,35 @@ export default function InterconnectPage() {
       >
         <Spin spinning={sharingDetailLoading}>
           {sharingDetail ? (
-            <div style={{ marginTop: spaceMd }}>
-              <Row gutter={[spaceMd, spaceMd]}>
-                <Col span={12}>
-                  <div style={metaStyle}>Mã giao dịch</div>
-                  <div
-                    style={{
-                      fontSize: fontSizeMd,
-                      fontWeight: fontWeightMedium,
-                      color: textPrimary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {sharingDetail.transactionCode}
+            <div style={{ paddingTop: 16 }}>
+              <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-row--full{grid-column:1 / -1}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1}`}</style>
+              <div className="detail-grid">
+                {[
+                  ['Mã giao dịch', sharingDetail.transactionCode],
+                  ['Tên tài khoản', sharingDetail.accountName],
+                  ['Tên kết nối', sharingDetail.connectionName],
+                  ['Hệ thống gửi', sharingDetail.senderSystem],
+                  ['Hệ thống nhận', sharingDetail.receiverSystem],
+                  ['Trạng thái', renderStatusTag(sharingDetail.status)],
+                ].map(([label, value], i) => (
+                  <div key={i} className="detail-row">
+                    <span className="detail-label">{label}</span>
+                    <span className="detail-value">{value}</span>
                   </div>
-                </Col>
-                <Col span={12}>
-                  <div style={metaStyle}>Tên tài khoản</div>
-                  <div
-                    style={{
-                      fontSize: fontSizeMd,
-                      fontWeight: fontWeightMedium,
-                      color: textPrimary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {sharingDetail.accountName}
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={metaStyle}>Tên kết nối</div>
-                  <div
-                    style={{
-                      fontSize: fontSizeMd,
-                      fontWeight: fontWeightMedium,
-                      color: textPrimary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {sharingDetail.connectionName}
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={metaStyle}>Hệ thống gửi</div>
-                  <div
-                    style={{
-                      fontSize: fontSizeMd,
-                      fontWeight: fontWeightMedium,
-                      color: textPrimary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {sharingDetail.senderSystem}
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={metaStyle}>Hệ thống nhận</div>
-                  <div
-                    style={{
-                      fontSize: fontSizeMd,
-                      fontWeight: fontWeightMedium,
-                      color: textPrimary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {sharingDetail.receiverSystem}
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={metaStyle}>Trạng thái</div>
-                  <div style={{ marginTop: 2 }}>
-                    {renderStatusTag(sharingDetail.status)}
-                  </div>
-                </Col>
-                <Col span={24}>
-                  <div style={metaStyle}>Thời gian tạo</div>
-                  <div
-                    style={{
-                      fontSize: fontSizeMd,
-                      fontWeight: fontWeightMedium,
-                      color: textPrimary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {dayjs(sharingDetail.createdAt).format('DD/MM/YYYY HH:mm')}
-                  </div>
-                </Col>
+                ))}
+                <div className="detail-row detail-row--full">
+                  <span className="detail-label">Thời gian tạo</span>
+                  <span className="detail-value">{dayjs(sharingDetail.createdAt).format('DD/MM/YYYY HH:mm')}</span>
+                </div>
                 {sharingDetail.detailContent && (
-                  <Col span={24}>
-                    <div style={{ ...metaStyle, marginBottom: 4 }}>
-                      Nội dung chi tiết
-                    </div>
-                    <pre
-                      style={{
-                        background: colors.bodyBg,
-                        padding: spaceSm,
-                        borderRadius: radiusMd,
-                        fontSize: fontSizeSm,
-                        fontFamily: fontMono,
-                        lineHeight: 1.6,
-                        maxHeight: 300,
-                        overflow: 'auto',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-all',
-                        margin: 0,
-                        border: `1px solid ${borderDefault}`,
-                      }}
-                    >
-                      {sharingDetail.detailContent}
-                    </pre>
-                  </Col>
+                  <div className="detail-row detail-row--full">
+                    <span className="detail-label">Nội dung chi tiết</span>
+                    <span className="detail-value">
+                      <pre style={{ background: colors.bodyBg, padding: spaceSm, borderRadius: radiusMd, fontSize: fontSizeSm, fontFamily: fontMono, lineHeight: 1.6, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, border: `1px solid ${borderDefault}` }}>{sharingDetail.detailContent}</pre>
+                    </span>
+                  </div>
                 )}
-              </Row>
+              </div>
             </div>
           ) : sharingDetailLoading ? null : (
             <div
