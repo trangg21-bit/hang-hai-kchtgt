@@ -1,19 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Modal, Descriptions, Select, Input, Tag, Button, message, Row, Col, Statistic, Tooltip } from 'antd';
-import { EyeOutlined, DownloadOutlined, DownOutlined, UpOutlined, SearchOutlined, FileTextOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Select, Input, Tag, message, Tooltip, DatePicker, Drawer, Button } from 'antd';
+import { EyeOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { ScreenHeader, FilterBar, StatusTabs, DataTable, Pagination } from '../components/list-view';
+import type { Dayjs } from 'dayjs';
+import { ScreenHeader, DataTable, Pagination } from '../components/list-view';
+import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import type { DataTableColumn } from '../components/list-view/DataTable';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
-import ErrorState from '../components/ErrorState';
 import {
-  textPrimary, textSecondary, textTertiary, surfaceCard, actionPrimary,
+  textPrimary, textSecondary, textTertiary, actionPrimary,
   statusOperational, statusAttention, statusCritical,
   spaceFormField, spaceMd, spaceSm, radiusPill, radiusSm,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl,
+  fontSizeSm, fontSizeMd,
   fontWeightMedium, fontWeightBold,
-  badgeBaseStyle, metaStyle, fontMono, borderDefault, cardStyle, radiusLg,
+  badgeBaseStyle, metaStyle, fontMono, borderDefault, radiusLg, controlHeight,
+  drawerProps, drawerTitleStyle, drawerCloseBtnStyle,
 } from '../tokens';
 import { colors } from '../theme';
 import { logService, type AccessLogEntry } from '../services/logService';
@@ -205,6 +207,13 @@ export default function LogsPage() {
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [orgOptions, setOrgOptions] = useState<{ value: string; label: string }[]>([]);
   const [filters, setFilters] = useState<Record<string, any>>({});
+  const [filterValues, setFilterValues] = useState<{
+    dateRange: [Dayjs | null, Dayjs | null] | null;
+    keyword: string;
+    severity?: string;
+    orgUnit?: string;
+    email: string;
+  }>({ dateRange: null, keyword: '', severity: undefined, orgUnit: undefined, email: '' });
 
   // ── Advanced filter state ──────────────────────────────────────
   const [filterSeverity, setFilterSeverity] = useState<string | undefined>();
@@ -224,9 +233,6 @@ export default function LogsPage() {
 
   // ---- Role-based tab visibility ----
   const visibleTabKeys = isAdminOp ? (['access', 'login'] as const) : TAB_KEYS;
-
-  // ---- Daily statistics ----
-  const [dailyStats, setDailyStats] = useState<{ total: number; success: number; failed: number } | null>(null);
 
   // ---- Detail modal state ----
   const [selectedLog, setSelectedLog] = useState<AccessLogEntry | null>(null);
@@ -319,7 +325,6 @@ export default function LogsPage() {
   useEffect(() => {
     fetchData();
     fetchTabCounts();
-    fetchDailyStats();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Event handlers ----
@@ -341,6 +346,7 @@ export default function LogsPage() {
   };
 
   const handleReset = () => {
+    setFilterValues({ dateRange: null, keyword: '', severity: undefined, orgUnit: undefined, email: '' });
     setFilters({});
     setFilterSeverity(undefined);
     setFilterOrgUnit(undefined);
@@ -398,63 +404,6 @@ export default function LogsPage() {
     } catch (e: any) {
       message.error({ content: e?.message || 'Xuất CSV thất bại', key: 'export' });
     }
-  };
-
-  // ---- Fetch daily stats ----
-  const fetchDailyStats = async () => {
-    try {
-      const data = await logService.getDailyStats();
-      let success = 0, failed = 0;
-      data.forEach((item) => {
-        if (item.status === 'SUCCESS') success = item.count;
-        else failed += item.count;
-      });
-      setDailyStats({ total: success + failed, success, failed });
-    } catch { setDailyStats(null); }
-  };
-
-  // ---- Render stats ----
-  const renderStats = () => {
-    if (!dailyStats) return null;
-    const items = [
-      { label: 'Tổng số log', value: dailyStats.total, icon: <FileTextOutlined />, color: actionPrimary },
-      { label: 'Thành công', value: dailyStats.success, icon: <CheckCircleOutlined />, color: statusOperational },
-      { label: 'Thất bại', value: dailyStats.failed, icon: <CloseCircleOutlined />, color: statusCritical },
-    ];
-    return (
-      <Row gutter={[spaceMd, spaceMd]} style={{ marginBottom: spaceSm }}>
-        {items.map((item) => (
-          <Col xs={8} sm={8} md={8} key={item.label}>
-            <div style={{
-              background: surfaceCard,
-              borderRadius: radiusLg,
-              border: `0.5px solid ${borderDefault}`,
-              padding: `${spaceMd}px ${spaceMd}px`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: spaceMd,
-            }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: radiusSm,
-                background: `${item.color}15`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 22, color: item.color,
-              }}>
-                {item.icon}
-              </div>
-              <div>
-                <div style={{ color: colors.sidebarBg, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
-                  {item.label}
-                </div>
-                <div style={{ color: item.color, fontSize: fontSizeXl, fontWeight: fontWeightBold, lineHeight: 1.2 }}>
-                  {item.value.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </Col>
-        ))}
-      </Row>
-    );
   };
 
   // ---- Status tabs ----
@@ -665,14 +614,13 @@ export default function LogsPage() {
             { label: 'Quản lý log truy cập' },
           ]}
         />
-        {renderStats()}
       </div>
     );
   }
 
   // ---- Render ----
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       {/* 1. ScreenHeader */}
       <ScreenHeader
         breadcrumb={[
@@ -684,110 +632,93 @@ export default function LogsPage() {
         ]}
       />
 
-      {/* 2. Aggregate stats */}
-      {renderStats()}
-
-      {/* 3. FilterBar */}
-      <FilterBar
-        fields={advancedVisible ? [
-          {
-            key: 'dateRange',
-            type: 'dateRange',
-            label: 'Khoảng thời gian',
-            placeholder: 'Từ ngày - Đến ngày',
-          } as any,
-          {
-            key: 'keyword',
-            type: 'search',
-            label: 'Từ khóa',
-            placeholder: 'Tìm kiếm...',
-          },
-          {
-            key: 'severity',
-            type: 'select',
-            label: 'Mức độ',
-            placeholder: 'Chọn mức độ',
-            options: SEVERITY_OPTIONS,
-          },
-          {
-            key: 'orgUnit',
-            type: 'select',
-            label: 'Đơn vị',
-            placeholder: 'Chọn đơn vị',
-            options: orgOptions,
-          },
-          {
-            key: 'email',
-            type: 'search',
-            label: 'Email',
-            placeholder: 'Tìm theo email...',
-          },
-        ] : [
-          {
-            key: 'dateRange',
-            type: 'dateRange',
-            label: 'Khoảng thời gian',
-            placeholder: 'Từ ngày - Đến ngày',
-          } as any,
-          {
-            key: 'keyword',
-            type: 'search',
-            label: 'Từ khóa',
-            placeholder: 'Tìm kiếm...',
-          },
-        ]}
-        onSearch={handleSearch}
-        onReset={handleReset}
-      />
-
-      {/* 4. StatusTabs + Bộ lọc nâng cao */}
-      <div
-        style={{
-          ...cardStyle,
-          marginBottom: spaceSm,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '8px 16px',
-          position: 'relative',
-        }}
-      >
-        <StatusTabs tabs={statusTabs} onChange={handleTabChange} />
-        <Button
-          type="link"
-          size="small"
-          icon={advancedVisible ? <UpOutlined /> : <DownOutlined />}
-          onClick={() => setAdvancedVisible((v) => { if (v) { setFilterSeverity(undefined); setFilterOrgUnit(undefined); setFilterEmail(''); } return !v; })}
-          style={{
-            position: 'absolute',
-            right: 16,
-            color: actionPrimary,
-            fontSize: fontSizeMd,
-            fontWeight: fontWeightMedium,
-            padding: 0,
-          }}
-        >
-          {advancedVisible ? 'Ẩn bộ lọc nâng cao' : 'Bộ lọc nâng cao'}
-        </Button>
-      </div>
-
-      {/* 5. Table */}
-      <div style={{ ...cardStyle, padding: '8px 16px' }}>
-        {loading ? (
-          <LoadingSkeleton rows={8} />
-        ) : error ? (
-          <ErrorState message={error} onRetry={fetchData} />
-        ) : data.length === 0 ? (
-          <EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />
-        ) : (
+      {/* 2. FilterTableLayout — filter panel dọc trái + StatusTabs + bảng (chuẩn màn /port) */}
+      <FilterTableLayout
+        filterCollapsed={advancedVisible}
+        onToggleCollapse={() => setAdvancedVisible((v) => !v)}
+        onFilterApply={() => handleSearch(filterValues)}
+        onFilterReset={handleReset}
+        loading={loading}
+        error={!!error}
+        onRetry={fetchData}
+        filterContent={
           <>
-            <DataTable
-              columns={columns}
-              dataSource={tableData}
-              rowKey="id"
-              rowActions={rowActions}
-              scroll={{ x: 1200, y: 500 }}
-            />
+            <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Khoảng thời gian</div>
+              <DatePicker.RangePicker
+                placeholder={['Từ ngày', 'Đến ngày']}
+                allowClear
+                value={filterValues.dateRange}
+                onChange={(dates) => setFilterValues((prev) => ({ ...prev, dateRange: dates }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: controlHeight, fontSize: fontSizeMd }}
+              />
+            </div>
+            <div style={{ marginBottom: spaceFormField }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Từ khóa</div>
+              <Input
+                placeholder="Tìm kiếm theo nội dung..."
+                allowClear
+                value={filterValues.keyword}
+                onChange={(e) => setFilterValues((prev) => ({ ...prev, keyword: e.target.value }))}
+                onPressEnter={() => handleSearch(filterValues)}
+                style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
+              />
+            </div>
+            {advancedVisible && (
+              <>
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mức độ</div>
+                  <Select
+                    placeholder="Chọn mức độ"
+                    allowClear
+                    value={filterValues.severity}
+                    onChange={(val) => setFilterValues((prev) => ({ ...prev, severity: val }))}
+                    options={SEVERITY_OPTIONS}
+                    style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
+                  />
+                </div>
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị</div>
+                  <Select
+                    placeholder="Chọn đơn vị"
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    value={filterValues.orgUnit}
+                    onChange={(val) => setFilterValues((prev) => ({ ...prev, orgUnit: val }))}
+                    options={orgOptions}
+                    style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
+                  />
+                </div>
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Email</div>
+                  <Input
+                    placeholder="Tìm theo email..."
+                    allowClear
+                    value={filterValues.email}
+                    onChange={(e) => setFilterValues((prev) => ({ ...prev, email: e.target.value }))}
+                    style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
+                  />
+                </div>
+              </>
+            )}
+          </>
+        }
+        statusTabs={statusTabs}
+        onStatusTabChange={handleTabChange}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <style>{`.logs-pagination-compact .list-view-pagination { padding-top: 20px !important; padding-bottom: 0 !important; } .logs-pagination-compact .list-view-pagination button { width: 40px !important; height: 40px !important; } .logs-pagination-compact .list-view-pagination .ant-select { height: 40px !important; }`}</style>
+          <DataTable
+            fill
+            columns={columns}
+            dataSource={tableData}
+            rowKey="id"
+            rowActions={rowActions}
+            scroll={{ x: 1400, y: 400 }}
+            emptyState={<EmptyState description="Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." />}
+          />
+          <div className="logs-pagination-compact" style={{ height: 55, overflow: 'visible', marginBottom: 8 }}>
             <Pagination
               total={total}
               current={page}
@@ -795,58 +726,92 @@ export default function LogsPage() {
               pageSizeOptions={[10, 20, 50]}
               onChange={handlePageChange}
             />
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      </FilterTableLayout>
 
-      {/* 7. Detail Modal */}
-      <Modal
-        title={<span style={{ color: actionPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết log truy cập</span>}
+      {/* 7. Detail Drawer — chuẩn màn /port, không chia tab */}
+      <Drawer
+        {...drawerProps}
+        size={1000}
+        mask
+        title={
+          <span style={drawerTitleStyle}>
+            Chi tiết log truy cập{r ? ` — ${r.username || r.email || ''}` : ''}
+          </span>
+        }
         open={modalVisible}
-        onCancel={closeDetail}
+        onClose={closeDetail}
+        extra={<Button type="text" onClick={closeDetail} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
-        width={700}
-        styles={{ body: { padding: spaceMd, maxHeight: '68vh', overflowY: 'auto' } }}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
       >
         {detailLoading ? <LoadingSkeleton rows={6} /> : r ? (
-          <Descriptions column={2} size="small" bordered labelStyle={{ width: 150 }}>
-            <Descriptions.Item label="Thời gian">{dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss')}</Descriptions.Item>
-            <Descriptions.Item label="Loại log">
-              <Tag color="blue">{LOG_TYPE_LABEL[r.type?.toLowerCase()] || r.type || '—'}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Mức độ">
-              {severityEntry ? (
-                <span style={{ ...badgeBaseStyle, background: `${severityEntry.color}15`, color: severityEntry.color }}>{severityEntry.label}</span>
-              ) : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              {r.status ? (
-                <Tag color={r.status === 'SUCCESS' ? 'green' : 'red'}>{r.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}</Tag>
-              ) : '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Người dùng">{r.username || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Email">{r.email || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Đơn vị">{r.orgUnit || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Hành động">{translateAction(r.action)}</Descriptions.Item>
-            <Descriptions.Item label="Địa chỉ IP"><span style={{ fontFamily: fontMono }}>{r.ipAddress}</span></Descriptions.Item>
-            <Descriptions.Item label="Trình duyệt">{r.userAgent || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Phiên đăng nhập"><span style={{ fontFamily: fontMono }}>{r.sessionId || '—'}</span></Descriptions.Item>
-            <Descriptions.Item label="Đường dẫn"><span style={{ fontFamily: fontMono }}>{r.requestPath || '—'}</span></Descriptions.Item>
-            <Descriptions.Item label="Mã phản hồi">
-              <Tag color={r.responseCode != null && r.responseCode >= 200 && r.responseCode < 400 ? 'green' : 'red'}>{r.responseCode ?? '—'}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Thời gian xử lý">{r.durationMs != null ? `${r.durationMs}ms` : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Nội dung" span={2}>{r.detail || '—'}</Descriptions.Item>
-            {r.metadata && (
-              <Descriptions.Item label="Metadata" span={2}>
-                <pre style={{ fontFamily: fontMono, fontSize: fontSizeSm, maxHeight: 200, overflow: 'auto', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {formatMetadata(r.metadata)}
-                </pre>
-              </Descriptions.Item>
-            )}
-          </Descriptions>
+          <div style={{ paddingTop: 3 }}>
+            <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; min-width: 0; overflow-wrap: anywhere; } .detail-value-full { grid-column: 1 / -1; }`}</style>
+            <div className="detail-grid">
+              {[
+                ['Thời gian', dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss')],
+                ['Người dùng', r.username || '—'],
+                ['Email', r.email || '—'],
+                ['Đơn vị', r.orgUnit || '—'],
+                ['Hành động', translateAction(r.action)],
+                ['Loại log', LOG_TYPE_LABEL[r.type?.toLowerCase()] || r.type || '—'],
+                ['Mức độ', severityEntry ? (
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${severityEntry.color}15`, color: severityEntry.color }}>{severityEntry.label}</span>
+                ) : '—'],
+                ['Trạng thái', r.status ? (
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${(r.status === 'SUCCESS' ? statusOperational : statusCritical)}15`, color: r.status === 'SUCCESS' ? statusOperational : statusCritical }}>{r.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}</span>
+                ) : '—'],
+                ['Địa chỉ IP', <span style={{ fontFamily: fontMono }}>{r.ipAddress}</span>],
+                ['Mã phản hồi', r.responseCode != null && r.responseCode >= 200 && r.responseCode < 400 ? (
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational }}>{r.responseCode}</span>
+                ) : (
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusCritical}15`, color: statusCritical }}>{r.responseCode ?? '—'}</span>
+                )],
+              ].map(([label, value], i) => (
+                <div key={i} className="detail-row">
+                  <span className="detail-label">{label}</span>
+                  <span className="detail-value">{value}</span>
+                </div>
+              ))}
+              <div className="detail-row detail-value-full">
+                <span className="detail-label">Thời gian xử lý</span>
+                <span className="detail-value">{r.durationMs != null ? `${r.durationMs}ms` : '—'}</span>
+              </div>
+              <div className="detail-row detail-value-full">
+                <span className="detail-label">Đường dẫn</span>
+                <span className="detail-value"><span style={{ fontFamily: fontMono }}>{r.requestPath || '—'}</span></span>
+              </div>
+              <div className="detail-row detail-value-full">
+                <span className="detail-label">Nội dung</span>
+                <span className="detail-value">{r.detail || '—'}</span>
+              </div>
+              {r.metadata && (
+                <div className="detail-row detail-value-full">
+                  <span className="detail-label">Metadata</span>
+                  <span className="detail-value">
+                    <pre style={{ fontFamily: fontMono, fontSize: fontSizeSm, maxHeight: 200, overflow: 'auto', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {formatMetadata(r.metadata)}
+                    </pre>
+                  </span>
+                </div>
+              )}
+              <div className="detail-row detail-value-full">
+                <span className="detail-label">Phiên đăng nhập</span>
+                <span className="detail-value"><span style={{ fontFamily: fontMono, wordBreak: 'break-all' }}>{r.sessionId || '—'}</span></span>
+              </div>
+              <div className="detail-row detail-value-full">
+                <span className="detail-label">Trình duyệt</span>
+                <span className="detail-value">{r.userAgent || '—'}</span>
+              </div>
+            </div>
+          </div>
         ) : null}
-      </Modal>
+      </Drawer>
     </div>
   );
 }
