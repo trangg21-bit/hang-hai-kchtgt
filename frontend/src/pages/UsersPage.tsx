@@ -15,7 +15,7 @@ import { organizationService, type Organization } from '../services/organization
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
-import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceXs, spaceLg, cardStyle, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
+import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceXs, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
 import { colors } from '../theme';
 import toast from '../components/ToastNotification';
 import ManagementDrawer from '../components/management/ManagementDrawer';
@@ -96,7 +96,7 @@ export default function UsersPage() {
     status: filterStatus, orgUnitId: filterOrganizationId, sortField, sortOrder,
   });
 
-  const statusCounts = (data as any)?.statusCounts;
+  const statusCounts = data?.statusCounts;
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -133,11 +133,9 @@ export default function UsersPage() {
         await updateUser.mutateAsync({ id: editingUser.id, payload });
       } else {
         const payload: CreateUserPayload = { 
-          username: values.username?.trim(), 
           fullName: values.fullName?.trim(), 
           email: values.email?.trim(), 
           phone: values.phone?.trim(), 
-          password: values.password, 
           orgUnitId: values.orgUnitId || undefined,
           status: values.status,
           address: values.address?.trim() || undefined,
@@ -321,7 +319,7 @@ export default function UsersPage() {
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'nameCode', label: 'Tên đăng nhập – Họ và tên', dataIndex: 'fullName', width: 300, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (_text: string, record: User) => <Typography.Text strong>{record.username} – {record.fullName}</Typography.Text> },
+    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 260, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
     { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null },
     { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <Typography.Text type="secondary">Chưa đăng nhập</Typography.Text> },
@@ -356,8 +354,8 @@ export default function UsersPage() {
   const filterContent = (
     <>
       <div style={{ marginBottom: 12, marginTop: 16 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
-        <Input placeholder="Tìm theo email / tên đăng nhập" allowClear
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Email</div>
+        <Input placeholder="Tìm theo email" allowClear
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onPressEnter={handleFilterApply}
@@ -435,7 +433,7 @@ export default function UsersPage() {
             labelCol={{ style: { padding: 0, marginBottom: 4 } }}
             initialValues={{ status: 'active' }}
           >
-            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={formFieldStyle} rules={!editingUser ? [{ required: true, message: 'Vui lòng chọn đơn vị' }] : undefined}>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng chọn đơn vị' }]}>
               <OrgUnitTreeSelect
                 organizations={organizations}
                 placeholder="Chọn đơn vị"
@@ -469,12 +467,12 @@ export default function UsersPage() {
             </Row>
             <Row gutter={formRowGutter}>
               <Col xs={24} md={12}>
-                <Form.Item name="department" {...labelProps('Phòng ban')} style={formFieldStyle} rules={[{ required: !editingUser, message: 'Vui lòng nhập phòng ban' }, { max: 100, message: 'Phòng ban tối đa 100 ký tự' }]}>
+                <Form.Item name="department" {...labelProps('Phòng ban')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập phòng ban' }, { max: 100, message: 'Phòng ban tối đa 100 ký tự' }]}>
                   <Input placeholder="Ví dụ: Phòng Quản lý cảng" style={inputStyle} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="position" {...labelProps('Chức vụ')} style={formFieldStyle} rules={[{ required: !editingUser, message: 'Vui lòng nhập chức vụ' }, { max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
+                <Form.Item name="position" {...labelProps('Chức vụ')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập chức vụ' }, { max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
                   <Input placeholder="Ví dụ: Chuyên viên" style={inputStyle} />
                 </Form.Item>
               </Col>
@@ -497,25 +495,6 @@ export default function UsersPage() {
             <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle} rules={[{ max: 500, message: 'Ghi chú tối đa 500 ký tự' }]}> 
               <Input.TextArea placeholder="Nhập ghi chú" rows={3} style={{ borderRadius: radiusTextArea }} />
             </Form.Item>
-            {!editingUser && (<>
-              <div style={{ ...cardStyle, marginTop: spaceLg }}>
-                <Typography.Text strong style={{ display: 'block', color: colors.sidebarBg, fontSize: fontSizeLg, marginBottom: spaceMd }}>
-                  Thông tin tài khoản
-                </Typography.Text>
-                <Row gutter={formRowGutter}>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 3, message: 'Tối thiểu 3 ký tự' }, { max: 100, message: 'Tối đa 100 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}>
-                      <Input placeholder="vd: nguyenvana" autoComplete="username" style={inputStyle} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="password" {...labelProps('Mật khẩu')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { max: 255, message: 'Tối đa 255 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#^_\-]).+$/, message: 'Phải có chữ hoa, chữ thường, số và ký tự đặc biệt' }]}>
-                      <Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={inputStyle} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </div>
-            </>)}
           </Form>
         </Spin>
       </ManagementDrawer>
@@ -670,8 +649,7 @@ export default function UsersPage() {
         {detailLoading ? <Spin /> : detailUser && (
           <div style={{ paddingTop: spaceMd }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-              {[
-                ['Tên đăng nhập', detailUser.username],
+              {[ 
                 ['Họ và tên', detailUser.fullName],
                 ['Email', detailUser.email],
                 ['Số điện thoại', detailUser.phone || '—'],

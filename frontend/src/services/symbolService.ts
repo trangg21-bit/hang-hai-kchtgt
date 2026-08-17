@@ -13,6 +13,9 @@ export interface Symbol {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  updatedBy?: string;
+  createdByName?: string;
+  updatedByName?: string;
 }
 
 export interface CreateSymbolPayload {
@@ -51,6 +54,9 @@ function mapSymbol(item: any): Symbol {
     createdBy: item.createdBy ?? '',
     createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
     updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : '',
+    createdByName: item.createdByName ?? '',
+    updatedBy: item.updatedBy ?? '',
+    updatedByName: item.updatedByName ?? '',
   };
 }
 

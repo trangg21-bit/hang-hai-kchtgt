@@ -3,6 +3,7 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   pageSize: number;
+  statusCounts?: Record<string, number>;
 }
 
 export interface ApiResponse<T> {

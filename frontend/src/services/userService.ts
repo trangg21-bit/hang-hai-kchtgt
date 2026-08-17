@@ -92,11 +92,11 @@ export const userService = {
 
   async create(payload: CreateUserPayload): Promise<ApiResponse<User>> {
     const response = await api.post('/users', {
-      username: payload.username,
       fullName: payload.fullName,
       email: payload.email,
       phone: payload.phone,
-      password: payload.password,
+      ...(payload.username ? { username: payload.username } : {}),
+      ...(payload.password ? { password: payload.password } : {}),
       permissionCodes: payload.permissionCodes,
       orgUnitId: payload.orgUnitId,
       status: payload.status?.toUpperCase(),

@@ -56,6 +56,9 @@ export interface DataTableProps {
   rowKey: string | ((record: any) => string);
   loading?: boolean;
   emptyState?: React.ReactNode;
+  /** Khi true (và scroll.y là số): thân bảng LUÔN lấp đầy chiều cao khả dụng,
+      scrollbar ngang nằm sát mép dưới bảng, kể cả khi ít bản ghi. */
+  fill?: boolean;
   rowActions?: (record: any) => {
     key: string; label: string; icon?: React.ReactNode;
     onClick: () => void; danger?: boolean; disabled?: boolean;
@@ -97,7 +100,7 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource, rowKey, loading, emptyState, onSort, rowActions, children, scroll, ...rest
+  columns, dataSource, rowKey, loading, emptyState, fill, onSort, rowActions, children, scroll, ...rest
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
   const dataSignatureRef = useRef<string | null>(null);
@@ -163,7 +166,9 @@ const DataTable: React.FC<DataTableProps> = ({
       // scroll.y nên scrollHeight luôn ≥ scroll.y → đo sai khi ít bản ghi
       // (làm bảng vẫn lấp đầy dù nội dung ngắn).
       const contentH = headerH + (tbody ? tbody.offsetHeight : 0);
-      if (contentH > availH + 1) {
+      // `fill`: luôn lấp đầy vùng trống (scrollbar ngang nằm sát mép dưới bảng),
+      // không bao giờ rơi về chế độ 'content' dù nội dung ít bản ghi.
+      if (fill || contentH > availH + 1) {
         setFitMode(Math.max(80, availH - headerH));
       } else {
         setFitMode('content');
@@ -174,7 +179,7 @@ const DataTable: React.FC<DataTableProps> = ({
     ro.observe(el);
     if (el.parentElement) ro.observe(el.parentElement);
     return () => ro.disconnect();
-  }, [dataSource.length, isNumericScrollY]);
+  }, [dataSource.length, isNumericScrollY, fill]);
   const tableScroll = {
     x: scroll?.x ?? layout.listTableMinWidth,
     y: isNumericScrollY && fitMode != null

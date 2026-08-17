@@ -53,6 +53,7 @@ export default function GroupList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [detailGroup, setDetailGroup] = useState<Group | null>(null);
+  const [detailMembersOnly, setDetailMembersOnly] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState('info');
@@ -100,6 +101,7 @@ export default function GroupList() {
   useEffect(() => {
     if (!detailGroup) {
       setDetailTab('info');
+      setDetailMembersOnly(false);
       setDetailMembers([]);
       setDetailMembersPage(1);
       setDetailMembersPageSize(10);
@@ -196,8 +198,9 @@ export default function GroupList() {
 
   const totalAll = countActive + countInactive;
 
-  const openDetail = useCallback(async (group: Group, tab: 'info' | 'members') => {
+  const openDetail = useCallback(async (group: Group, tab: 'info' | 'members', membersOnly = false) => {
     setDetailTab(tab);
+    setDetailMembersOnly(membersOnly);
     setDetailGroup(group);
     setDetailLoading(true);
     setDetailError(null);
@@ -213,7 +216,7 @@ export default function GroupList() {
 
   const handleViewDetail = useCallback((group: Group) => { void openDetail(group, 'info'); }, [openDetail]);
 
-  const handleViewMembers = useCallback((group: Group) => { void openDetail(group, 'members'); }, [openDetail]);
+  const handleViewMembers = useCallback((group: Group) => { void openDetail(group, 'members', true); }, [openDetail]);
 
   const handleDetailMembersSearch = useCallback(() => {
     setDetailMembersSearch(detailMembersSearchInput.trim());
@@ -439,7 +442,7 @@ export default function GroupList() {
   const rowActions = useCallback((record: Group) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean }[] = [];
     if (hasPerm(PERMISSIONS.GROUP.READ)) {
-      actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
+      actions.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
     }
     if (hasPerm(PERMISSIONS.GROUP.EDIT)) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
@@ -449,10 +452,10 @@ export default function GroupList() {
       actions.push({ key: 'lock', label: isActive ? 'Khóa nhóm' : 'Mở khóa nhóm', icon: isActive ? <LockOutlined /> : <UnlockOutlined />, onClick: () => handleLock(record) });
     }
     if (hasPerm(PERMISSIONS.GROUP.PERMISSION)) {
-      actions.push({ key: 'permissions', label: 'Phân quyền', icon: <EditOutlined />, onClick: () => openPermissionModal(record) });
+      actions.push({ key: 'permissions', label: 'Phân quyền nhóm', icon: <EditOutlined />, onClick: () => openPermissionModal(record) });
     }
     if (hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE)) {
-      actions.push({ key: 'members', label: 'Thêm người dùng vào nhóm', icon: <UserOutlined />, onClick: () => handleViewMembers(record) });
+      actions.push({ key: 'members', label: 'Thêm người vào nhóm', icon: <UserOutlined />, onClick: () => handleViewMembers(record) });
     }
     if (hasPerm(PERMISSIONS.GROUP.DELETE)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return actions;
@@ -462,8 +465,6 @@ export default function GroupList() {
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const,
       render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'organizationName', label: 'Đơn vị', dataIndex: 'organizationName', width: 220,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
-    { key: 'code', label: 'Mã nhóm', dataIndex: 'code', width: 180,
       render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 300,
       render: (text: string, record: Group) => (
@@ -587,13 +588,13 @@ export default function GroupList() {
 
       {/* Modal Xem chi tiết */}
       <ManagementDrawer
-        title={<>Chi tiết nhóm - {detailGroup?.name ?? ''}</>}
+        title={<>{detailMembersOnly ? 'Thành viên nhóm' : 'Chi tiết nhóm'} - {detailGroup?.name ?? ''}</>}
         open={!!detailGroup}
         onClose={() => { setDetailGroup(null); setAddMemberDrawerOpen(false); }}
       >
         {detailGroup && (
           <Spin spinning={detailLoading}>
-            {detailError ? <ErrorState message={detailError} onRetry={() => { void openDetail(detailGroup, detailTab as 'info' | 'members'); }} /> : (
+            {detailError ? <ErrorState message={detailError} onRetry={() => { void openDetail(detailGroup, detailTab as 'info' | 'members', detailMembersOnly); }} /> : (
           <div style={{ paddingTop: 16 }}>
             <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; }`}</style>
             <Tabs
@@ -601,7 +602,7 @@ export default function GroupList() {
               onChange={setDetailTab}
               tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
               items={[
-              {
+              ...(!detailMembersOnly ? [{
                 key: 'info',
                 label: 'Thông tin nhóm',
                 children: (
@@ -611,15 +612,13 @@ export default function GroupList() {
                         ['Đơn vị', detailGroup.organizationName || '—'],
                         ['Tên nhóm', <Typography.Text strong style={{ color: colors.sidebarBg }}>{detailGroup.name}</Typography.Text>],
                         ['Mã nhóm', detailGroup.code || '—'],
-                        ['Mô tả', detailGroup.description || 'Chưa có mô tả'],
                         ['Trạng thái', (() => {
                           const color = detailGroup.status === 'active' ? statusOperational : statusDraft;
                           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{STATUS_LABELS[detailGroup.status] || detailGroup.status}</span>;
                         })()],
-                        ['Ngày tạo', detailGroup.createdAt ? dayjs(detailGroup.createdAt).format('DD/MM/YYYY HH:mm') : '—'],
-                        ['Người tạo', detailGroup.createdByName || '—'],
-                        ['Cập nhật cuối', detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                        ['Người cập nhật', detailGroup.updatedByName || '—'],
+                        ['Mô tả', detailGroup.description || 'Chưa có mô tả'],
+                        ['Ngày cập nhật', detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
+                        ['Cán bộ cập nhật', detailGroup.updatedByName || '—'],
                       ].map(([label, value], index) => (
                         <div key={index} className="detail-row">
                           <span className="detail-label">{label}</span>
@@ -629,7 +628,7 @@ export default function GroupList() {
                     </div>
                   </div>
                 ),
-              },
+              }] : []),
               {
                 key: 'members',
                 label: 'Danh sách thành viên',
@@ -753,6 +752,9 @@ export default function GroupList() {
         }
       >
         <Spin spinning={permissionLoading}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginTop: spaceMd, marginBottom: spaceSm }}>
+            Danh sách chức năng
+          </div>
           <Input.Search
             allowClear
             value={permissionSearch}
@@ -796,18 +798,6 @@ export default function GroupList() {
           <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
             <ManagementFormGrid>
               <ManagementFormField>
-                <Form.Item name="name" {...labelProps('Tên nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }, { min: 2, max: 100, message: 'Tên nhóm phải từ 2 đến 100 ký tự' }]}>
-                  <Input placeholder="vd: Nhóm Quản lý" style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </ManagementFormField>
-              <ManagementFormField>
-                <Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }, { min: 2, max: 30, message: 'Mã nhóm phải từ 2 đến 30 ký tự' }, { pattern: /^[A-Z0-9_]+$/, message: 'Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới' }]}>
-                  <Input placeholder="vd: QL01" disabled={!!editingGroup} normalize={(value) => String(value ?? '').trim().toUpperCase()} style={{ borderRadius: radiusPill, height: 40 }} />
-                </Form.Item>
-              </ManagementFormField>
-            </ManagementFormGrid>
-            <ManagementFormGrid>
-              <ManagementFormField>
                 <Form.Item name="organizationId" {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: !editingGroup, message: 'Vui lòng chọn đơn vị' }]}>
                   <OrgUnitTreeSelect
                     organizations={orgTree}
@@ -817,6 +807,18 @@ export default function GroupList() {
                     allowClear
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
+                </Form.Item>
+              </ManagementFormField>
+              <ManagementFormField>
+                <Form.Item name="name" {...labelProps('Tên nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }, { min: 2, max: 100, message: 'Tên nhóm phải từ 2 đến 100 ký tự' }]}>
+                  <Input placeholder="vd: Nhóm Quản lý" style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </ManagementFormField>
+            </ManagementFormGrid>
+            <ManagementFormGrid>
+              <ManagementFormField>
+                <Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }, { min: 2, max: 30, message: 'Mã nhóm phải từ 2 đến 30 ký tự' }, { pattern: /^[A-Z0-9_]+$/, message: 'Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới' }]}>
+                  <Input placeholder="vd: QL01" disabled={!!editingGroup} normalize={(value) => String(value ?? '').trim().toUpperCase()} style={{ borderRadius: radiusPill, height: 40 }} />
                 </Form.Item>
               </ManagementFormField>
               <ManagementFormField>
