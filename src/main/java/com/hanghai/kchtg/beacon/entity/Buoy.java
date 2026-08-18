@@ -37,11 +37,11 @@ public class Buoy extends BaseEntity {
     private String code;
 
     @NotBlank(message = "Tên phao tiêu không được để trống")
-    @Size(max = 200)
-    @Column(nullable = false, length = 200)
+    @Size(max = 255)
+    @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(nullable = false)
+    @Column
     private String type;
 
 
@@ -108,8 +108,91 @@ public class Buoy extends BaseEntity {
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
+    @Column(name = "geometry_type", length = 20)
+    private String geometryType;
+
+    @Column(name = "map_symbol_id")
+    private java.util.UUID mapSymbolId;
+
+    @Column(name = "coordinate_system")
+    private Integer coordinateSystem;
+
+    @Column(name = "display_rule", length = 255)
+    private String displayRule;
+
     @Column(name = "spatial_id")
     private java.util.UUID spatialId;
+
+    // ── Các trường bổ sung theo đặc tả CSV 'QL Phao tiêu' (56 trường) ──
+    @Column(name = "buoy_station_id")
+    private java.util.UUID buoyStationId;
+
+    @Size(max = 100)
+    private String classification;
+
+    @Size(max = 100)
+    @Column(name = "classification_buoy")
+    private String classificationBuoy;
+
+    @Size(max = 100)
+    @Column(name = "classification_mark")
+    private String classificationMark;
+
+    @Size(max = 500)
+    @Column(name = "location_detail")
+    private String locationDetail;
+
+    @Size(max = 100)
+    private String condition;
+
+    @Size(max = 2000)
+    private String structure;
+
+    private Double area;
+
+    @Column(name = "body_height")
+    private Double bodyHeight;
+
+    private Double diameter;
+
+    @Size(max = 100)
+    @Column(name = "beacon_light")
+    private String beaconLight;
+
+    @Column(name = "tower_height")
+    private Double towerHeight;
+
+    @Column(name = "light_height")
+    private Double lightHeight;
+
+    @Size(max = 100)
+    @Column(name = "light_model")
+    private String lightModel;
+
+    @Size(max = 200)
+    @Column(name = "tower_color")
+    private String towerColor;
+
+    @Size(max = 500)
+    @Column(name = "power_supply")
+    private String powerSupply;
+
+    @Column(name = "commissioned_date")
+    private LocalDate commissionedDate;
+
+    @Column(name = "last_repair_date")
+    private LocalDate lastRepairDate;
+
+    @Size(max = 50)
+    @Column(name = "light_color")
+    private String lightColor;
+
+    @Size(max = 50)
+    @Column(name = "flash_type")
+    private String flashType;
+
+    @Size(max = 50)
+    private String period;
 
     @PrePersist
     protected void onPrePersist() {

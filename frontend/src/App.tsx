@@ -36,8 +36,7 @@ const InterconnectPage = lazy(() => import('./pages/InterconnectPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const BeaconList = lazy(() => import('./pages/beacons/BeaconList'));
 const BeaconForm = lazy(() => import('./pages/beacons/BeaconForm'));
-const BuoyList = lazy(() => import('./pages/buoys/BuoyList'));
-const BuoyForm = lazy(() => import('./pages/buoys/BuoyForm'));
+const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
 const HomePage = lazy(() => import('./pages/Home'));
@@ -82,7 +81,7 @@ const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'))
 // M-014 & M-015: Nhà trạm & Đài duyên hải
 const LighthouseStationList = lazy(() => import('./pages/station/LighthouseStationList'));
 const BuoyStationList = lazy(() => import('./pages/station/BuoyStationList'));
-const BuoyStationForm = lazy(() => import('./pages/station/BuoyStationForm'));
+
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));
 
@@ -178,9 +177,7 @@ export default function App() {
                 <Route path="/beacon-lights" element={<PermissionGuard permission="beaconlight:read"><BeaconList /></PermissionGuard>} />
                 <Route path="/beacon-lights/create" element={<PermissionGuard permission="beaconlight:create"><BeaconForm /></PermissionGuard>} />
                 <Route path="/beacon-lights/:id" element={<PermissionGuard permission="beaconlight:read"><BeaconForm /></PermissionGuard>} />
-                <Route path="/buoys" element={<PermissionGuard permission="buoy:read"><BuoyList /></PermissionGuard>} />
-                <Route path="/buoys/create" element={<PermissionGuard permission="buoy:create"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
-                <Route path="/buoys/:id" element={<PermissionGuard permission="buoy:read"><><BuoyList /><BuoyForm /></></PermissionGuard>} />
+                <Route path="/buoys" element={<PermissionGuard permission="buoy:read"><BuoyListPage /></PermissionGuard>} />
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
@@ -241,8 +238,6 @@ export default function App() {
                 {/* M-014: Quản lý Nhà trạm */}
                 <Route path="/lighthouse-station" element={<PermissionGuard permission="lighthousestation:read"><LighthouseStationList /></PermissionGuard>} />
                 <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationList /></PermissionGuard>} />
-                <Route path="/buoy-station/create" element={<PermissionGuard permission="buoystation:create"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
-                <Route path="/buoy-station/:id" element={<PermissionGuard permission="buoystation:read"><><BuoyStationList /><BuoyStationForm /></></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />

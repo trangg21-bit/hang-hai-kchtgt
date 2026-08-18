@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
@@ -50,12 +51,21 @@ public class BuoyController {
                 buoyService.search(name, code, type, status)));
     }
 
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'buoy:create')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateCode(
+            @RequestParam(required = false) java.util.UUID stationId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Sinh mã phao tiêu thành công",
+                Map.of("buoyCode", buoyService.generateCode(stationId))));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<BuoyResponse>> create(
             @Valid @RequestBody CreateBuoyRequest request) {
         BuoyResponse response = buoyService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tạo phao tiêu thành công", response));
+                .body(ApiResponse.success("Thêm mới phao tiêu thành công", response));
     }
 
     @PutMapping("/{id}")

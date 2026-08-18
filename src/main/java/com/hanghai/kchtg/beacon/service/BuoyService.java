@@ -21,11 +21,14 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.station.entity.BuoyStation;
+import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,7 @@ import java.util.*;
  * Service for Buoy CRUD + approval workflow (F-074 to F-077).
  * Parallel structure to BeaconLightService.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -50,6 +54,7 @@ public class BuoyService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final OrgUnitRepository orgUnitRepo;
+    private final BuoyStationRepository buoyStationRepo;
     private final ChangeHistoryService changeHistoryService;
     private final ChangeLogRepository changeLogRepository;
 
@@ -80,19 +85,79 @@ public class BuoyService {
                 .toList();
     }
 
+    // -- GENERATE CODE --
+
+    /**
+     * Sinh mã phao tiêu tự động theo định dạng PT-XXXXXX (6 số).
+     * Dùng MAX(code) từ DB, tăng dần; kiểm tra trùng với cả bảng buoy và beacon_light.
+     */
+    public String generateCode(java.util.UUID stationId) {
+        if (stationId == null) {
+            return generateGenericCode();
+        }
+        BuoyStation station = buoyStationRepo.findById(stationId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Nhà trạm phao tiêu không tìm thấy: " + stationId));
+        String prefix = station.getCode() + "-PT-";
+        int nextNumber = 1;
+        String maxCode = buoyRepo.findMaxCode().orElse(null);
+        if (maxCode != null && maxCode.startsWith(prefix)) {
+            try {
+                nextNumber = Integer.parseInt(maxCode.substring(prefix.length())) + 1;
+            } catch (NumberFormatException e) {
+                log.warn("Mã phao tiêu không đúng định dạng {}-PT-XXX: {}, bắt đầu từ 1", station.getCode(), maxCode);
+            }
+        }
+        String code = prefix + String.format("%03d", nextNumber);
+        while (buoyRepo.existsByCode(code) || beaconLightRepo.existsByCode(code)) {
+            nextNumber++;
+            code = prefix + String.format("%03d", nextNumber);
+        }
+        log.info("Sinh mã phao tiêu: {}", code);
+        return code;
+    }
+
+    /**
+     * Sinh mã phao tiêu dạng PT-XXXXXX khi chưa chọn nhà trạm (khiếm khuyết dữ liệu).
+     */
+    private String generateGenericCode() {
+        String maxCode = buoyRepo.findMaxCode().orElse(null);
+        int nextNumber = 1;
+        if (maxCode != null && maxCode.startsWith("PT-")) {
+            try {
+                nextNumber = Integer.parseInt(maxCode.substring(3)) + 1;
+            } catch (NumberFormatException e) {
+                log.warn("Mã phao tiêu không đúng định dạng PT-XXXXXX: {}, bắt đầu từ 1", maxCode);
+            }
+        }
+        String code = String.format("PT-%06d", nextNumber);
+        while (buoyRepo.existsByCode(code) || beaconLightRepo.existsByCode(code)) {
+            nextNumber++;
+            code = String.format("PT-%06d", nextNumber);
+        }
+        log.info("Sinh mã phao tiêu dự phòng: {}", code);
+        return code;
+    }
+
     // -- CREATE --
 
     @Transactional
     public BuoyResponse create(CreateBuoyRequest request) {
-        if (buoyRepo.existsByCode(request.getCode())
-                || beaconLightRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
+        String code = request.getCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = generateCode(request.getBuoyStationId());
+            log.info("Auto-generated buoy code: {}", code);
+        }
+
+        if (buoyRepo.existsByCode(code)
+                || beaconLightRepo.existsByCode(code)) {
+            throw new IllegalArgumentException("Đã tồn tại: " + code);
         }
 
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
         Buoy entity = Buoy.builder()
-                .code(request.getCode())
+                .code(code)
                 .name(request.getName())
                 .type(request.getType())
                 .color(request.getColor())
@@ -104,6 +169,32 @@ public class BuoyService {
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
+                .geometryType(request.getGeometryType())
+                .mapSymbolId(request.getMapSymbolId())
+                .coordinateSystem(request.getCoordinateSystem())
+                .displayRule(request.getDisplayRule())
+                .buoyStationId(request.getBuoyStationId())
+                .classification(request.getClassification())
+                .classificationBuoy(request.getClassificationBuoy())
+                .classificationMark(request.getClassificationMark())
+                .provinceId(request.getProvinceId())
+                .locationDetail(request.getLocationDetail())
+                .condition(request.getCondition())
+                .structure(request.getStructure())
+                .area(request.getArea())
+                .bodyHeight(request.getBodyHeight())
+                .diameter(request.getDiameter())
+                .beaconLight(request.getBeaconLight())
+                .towerHeight(request.getTowerHeight())
+                .lightHeight(request.getLightHeight())
+                .lightModel(request.getLightModel())
+                .towerColor(request.getTowerColor())
+                .powerSupply(request.getPowerSupply())
+                .commissionedDate(request.getCommissionedDate())
+                .lastRepairDate(request.getLastRepairDate())
+                .lightColor(request.getLightColor())
+                .flashType(request.getFlashType())
+                .period(request.getPeriod())
                 .status("DRAFT")
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .build();
@@ -120,14 +211,16 @@ public class BuoyService {
         entity = buoyRepo.save(entity);
 
         // Create GIS spatial object when coordinates are provided
-        if (request.getLatitude() != null && request.getLongitude() != null) {
-            validateCoordinates(request.getLongitude(), request.getLatitude());
-            String wkt = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        String wkt = buildBuoyWkt(request.getCoordinates(), request.getLongitude(), request.getLatitude());
+        if (wkt != null) {
+            if (request.getLatitude() != null && request.getLongitude() != null) {
+                validateCoordinates(request.getLongitude(), request.getLatitude());
+            }
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     entity.getName(),
                     "PHAOTIEU_" + entity.getCode(),
-                    GisGeometryType.POINT,
+                    resolveGeometryType(request.getGeometryType()),
                     GisSpatialObjectType.POINT_BUOY,
                     wkt, entity.getId(),
                     InfrastructureType.BUOY
@@ -141,6 +234,27 @@ public class BuoyService {
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
+    }
+
+    // -- GIS helpers --
+
+    private String buildBuoyWkt(String coordinates, Double longitude, Double latitude) {
+        if (coordinates != null && !coordinates.trim().isEmpty()) {
+            return coordinates.trim();
+        }
+        if (longitude != null && latitude != null) {
+            return "POINT(" + longitude + " " + latitude + ")";
+        }
+        return null;
+    }
+
+    private GisGeometryType resolveGeometryType(String type) {
+        if (type == null || type.trim().isEmpty()) return GisGeometryType.POINT;
+        try {
+            return GisGeometryType.valueOf(type.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return GisGeometryType.POINT;
+        }
     }
 
     // -- UPDATE --
@@ -202,10 +316,7 @@ public class BuoyService {
         if (currentLon != null && currentLat != null) {
             validateCoordinates(currentLon, currentLat);
         }
-        String wkt = null;
-        if (currentLon != null && currentLat != null) {
-            wkt = "POINT(" + currentLon + " " + currentLat + ")";
-        }
+        String wkt = buildBuoyWkt(request.getCoordinates(), currentLon, currentLat);
 
         if (request.getColor() != null) entity.setColor(request.getColor());
         if (request.getShape() != null) entity.setShape(request.getShape());
@@ -222,6 +333,34 @@ public class BuoyService {
             entity.setNextInspectionDate(request.getNextInspectionDate());
         }
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
+        if (request.getGeometryType() != null) entity.setGeometryType(request.getGeometryType());
+        if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+
+        // Các trường bổ sung theo đặc tả CSV 'QL Phao tiêu' (form chỉnh sửa)
+        if (request.getBuoyStationId() != null) entity.setBuoyStationId(request.getBuoyStationId());
+        if (request.getClassification() != null) entity.setClassification(request.getClassification());
+        if (request.getClassificationBuoy() != null) entity.setClassificationBuoy(request.getClassificationBuoy());
+        if (request.getClassificationMark() != null) entity.setClassificationMark(request.getClassificationMark());
+        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
+        if (request.getLocationDetail() != null) entity.setLocationDetail(request.getLocationDetail());
+        if (request.getCondition() != null) entity.setCondition(request.getCondition());
+        if (request.getStructure() != null) entity.setStructure(request.getStructure());
+        if (request.getArea() != null) entity.setArea(request.getArea());
+        if (request.getBodyHeight() != null) entity.setBodyHeight(request.getBodyHeight());
+        if (request.getDiameter() != null) entity.setDiameter(request.getDiameter());
+        if (request.getBeaconLight() != null) entity.setBeaconLight(request.getBeaconLight());
+        if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
+        if (request.getLightHeight() != null) entity.setLightHeight(request.getLightHeight());
+        if (request.getLightModel() != null) entity.setLightModel(request.getLightModel());
+        if (request.getTowerColor() != null) entity.setTowerColor(request.getTowerColor());
+        if (request.getPowerSupply() != null) entity.setPowerSupply(request.getPowerSupply());
+        if (request.getCommissionedDate() != null) entity.setCommissionedDate(request.getCommissionedDate());
+        if (request.getLastRepairDate() != null) entity.setLastRepairDate(request.getLastRepairDate());
+        if (request.getLightColor() != null) entity.setLightColor(request.getLightColor());
+        if (request.getFlashType() != null) entity.setFlashType(request.getFlashType());
+        if (request.getPeriod() != null) entity.setPeriod(request.getPeriod());
 
         // Status revert logic for approved states (same as BeaconLight)
         if (isApprovedStatus(entity.getStatus())) {
@@ -238,7 +377,7 @@ public class BuoyService {
                     entity.getSpatialId(),
                     entity.getName(),
                     "PHAOTIEU_" + entity.getCode(),
-                    GisGeometryType.POINT,
+                    resolveGeometryType(entity.getGeometryType()),
                     GisSpatialObjectType.POINT_BUOY,
                     wkt, entity.getId(),
                     InfrastructureType.BUOY
@@ -435,16 +574,17 @@ public class BuoyService {
 
         Double latitude = null;
         Double longitude = null;
+        String coordinates = null;
         if (entity.getSpatialId() != null) {
             Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
+                coordinates = coordsStr;
                 try {
-                    String clean = coordsStr.replace("POINT", "").replace("(", "").replace(")", "").trim();
-                    String[] parts = clean.split("\\s+");
-                    if (parts.length == 2) {
-                        longitude = Double.parseDouble(parts[0]);
-                        latitude = Double.parseDouble(parts[1]);
+                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("(-?\\d+(?:\\.\\d+)?)\\s+(-?\\d+(?:\\.\\d+)?)").matcher(coordsStr);
+                    if (m.find()) {
+                        longitude = Double.parseDouble(m.group(1));
+                        latitude = Double.parseDouble(m.group(2));
                     }
                 } catch (Exception ex) {
                     // ignore
@@ -466,6 +606,34 @@ public class BuoyService {
                 .unitName(unitName)
                 .latitude(latitude)
                 .longitude(longitude)
+                .coordinates(coordinates)
+                .geometryType(entity.getGeometryType())
+                .mapSymbolId(entity.getMapSymbolId())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayRule(entity.getDisplayRule())
+                .buoyStationId(entity.getBuoyStationId())
+                .buoyStationName(resolveBuoyStationName(entity.getBuoyStationId()))
+                .classification(entity.getClassification())
+                .classificationBuoy(entity.getClassificationBuoy())
+                .classificationMark(entity.getClassificationMark())
+                .provinceId(entity.getProvinceId())
+                .locationDetail(entity.getLocationDetail())
+                .condition(entity.getCondition())
+                .structure(entity.getStructure())
+                .area(entity.getArea())
+                .bodyHeight(entity.getBodyHeight())
+                .diameter(entity.getDiameter())
+                .beaconLight(entity.getBeaconLight())
+                .towerHeight(entity.getTowerHeight())
+                .lightHeight(entity.getLightHeight())
+                .lightModel(entity.getLightModel())
+                .towerColor(entity.getTowerColor())
+                .powerSupply(entity.getPowerSupply())
+                .commissionedDate(entity.getCommissionedDate())
+                .lastRepairDate(entity.getLastRepairDate())
+                .lightColor(entity.getLightColor())
+                .flashType(entity.getFlashType())
+                .period(entity.getPeriod())
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
@@ -484,6 +652,13 @@ public class BuoyService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    private String resolveBuoyStationName(java.util.UUID stationId) {
+        if (stationId == null) return null;
+        return buoyStationRepo.findById(stationId)
+                .map(BuoyStation::getName)
+                .orElse(null);
     }
 
     private boolean isApprovedStatus(String status) {

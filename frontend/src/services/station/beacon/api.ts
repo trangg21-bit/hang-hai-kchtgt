@@ -69,6 +69,8 @@ export async function fetchBuoyStationList(params: {
   name?: string;
   type?: string;
   status?: string;
+  unitId?: string;
+  province?: string;
 }): Promise<PageResponse<BuoyStationResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
@@ -77,8 +79,10 @@ export async function fetchBuoyStationList(params: {
   if (params.name) sp.set('name', params.name);
   if (params.type) sp.set('type', params.type);
   if (params.status) sp.set('status', params.status);
+  if (params.unitId) sp.set('unitId', params.unitId);
+  if (params.province) sp.set('province', params.province);
 
-  const hasFilter = params.code || params.name || params.type || params.status;
+  const hasFilter = params.code || params.name || params.type || params.status || params.unitId || params.province;
   const url = hasFilter ? '/v1/buoy-station/search' : '/v1/buoy-station';
 
   const res = await api.get(`${url}?${sp}`);
@@ -128,4 +132,9 @@ export async function approveBuoyStationL2(id: string, approverId: string): Prom
 export async function rejectBuoyStation(id: string, rejectReason: string, approverId: string): Promise<BuoyStationResponse> {
   const res = await api.post(`/v1/buoy-station/${id}/reject`, null, { params: { rejectReason, approverId } });
   return res.data.data;
+}
+
+export async function generateBuoyStationCode(portId: string): Promise<string> {
+  const res = await api.get('/v1/buoy-station/generate-code', { params: { portId } });
+  return res.data?.data?.code ?? res.data?.data ?? '';
 }

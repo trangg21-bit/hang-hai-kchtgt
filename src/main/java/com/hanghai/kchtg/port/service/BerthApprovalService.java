@@ -101,4 +101,20 @@ public class BerthApprovalService {
                 "approvalLog", approvalLog
         );
     }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getAllHistory() {
+        String entityType = "Berth";
+        List<ChangeLog> changeHistory = changeLogRepository.findByEntityType(entityType);
+        java.util.Map<String, String> entityNames = new java.util.HashMap<>();
+        for (ChangeLog log : changeHistory) {
+            if (!entityNames.containsKey(log.getEntityId())) {
+                try {
+                    berthRepository.findById(UUID.fromString(log.getEntityId()))
+                        .ifPresent(b -> entityNames.put(log.getEntityId(), b.getBerthName()));
+                } catch (Exception e) { entityNames.put(log.getEntityId(), log.getEntityId()); }
+            }
+        }
+        return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
+    }
 }

@@ -17,6 +17,9 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     Optional<Buoy> findByCode(String code);
     boolean existsByCode(String code);
 
+    @Query("SELECT MAX(b.code) FROM Buoy b WHERE b.code LIKE 'PT-%'")
+    Optional<String> findMaxCode();
+
     Page<Buoy> findByStatus(String status, Pageable pageable);
     Page<Buoy> findByType(String type, Pageable pageable);
     List<Buoy> findByNameContainingIgnoreCase(String name);

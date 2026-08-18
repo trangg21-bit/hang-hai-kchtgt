@@ -74,6 +74,7 @@ export interface BeaconLight {
   unitName?: string;
   lastRepairDate?: string;
   commissionedDate?: string;
+  lastRepairDate?: string;
   isActive: boolean;
   status: BeaconStatus;
   approvalStatus: string;
@@ -108,6 +109,7 @@ export interface CreateBeaconLightRequest {
   unitId?: string;
   lastRepairDate?: string;
   commissionedDate?: string;
+  lastRepairDate?: string;
   isActive?: boolean;
   action?: 'draft' | 'submit';
   shape?: string;
@@ -134,6 +136,7 @@ export interface UpdateBeaconLightRequest {
   unitId?: string;
   lastRepairDate?: string;
   commissionedDate?: string;
+  lastRepairDate?: string;
   isActive?: boolean;
   shape?: string;
   structure?: string;
@@ -154,6 +157,34 @@ export interface Buoy {
   type: BuoyType;
   latitude: number;
   longitude: number;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
+  coordinates?: string;
+  buoyStationId?: string;
+  buoyStationName?: string;
+  classification?: string;
+  classificationBuoy?: string;
+  classificationMark?: string;
+  provinceId?: number;
+  locationDetail?: string;
+  condition?: string;
+  structure?: string;
+  area?: number;
+  bodyHeight?: number;
+  diameter?: number;
+  beaconLight?: string;
+  towerHeight?: number;
+  lightHeight?: number;
+  lightModel?: string;
+  towerColor?: string;
+  powerSupply?: string;
+  commissionedDate?: string;
+  lastRepairDate?: string;
+  lightColor?: string;
+  flashType?: string;
+  period?: string;
   color?: string;
   shape?: string;
   lightCharacteristic?: string;
@@ -183,9 +214,14 @@ export interface Buoy {
 export interface CreateBuoyRequest {
   name: string;
   code: string;
-  type: BuoyType;
+  type?: BuoyType;
   latitude: number;
   longitude: number;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
+  coordinates?: string;
   color?: string;
   shape?: string;
   lightCharacteristic?: string;
@@ -196,6 +232,28 @@ export interface CreateBuoyRequest {
   nextInspectionDate?: string;
   isActive?: boolean;
   action?: 'draft' | 'submit';
+  buoyStationId: string;
+  classification: string;
+  classificationBuoy?: string;
+  classificationMark?: string;
+  provinceId?: number;
+  locationDetail?: string;
+  condition: string;
+  structure?: string;
+  area?: number;
+  bodyHeight?: number;
+  diameter?: number;
+  beaconLight?: string;
+  towerHeight?: number;
+  lightHeight: number;
+  lightModel?: string;
+  towerColor?: string;
+  powerSupply?: string;
+  commissionedDate?: string;
+  lastRepairDate?: string;
+  lightColor?: string;
+  flashType?: string;
+  period?: string;
 }
 
 export interface UpdateBuoyRequest {
@@ -203,6 +261,11 @@ export interface UpdateBuoyRequest {
   type?: BuoyType;
   latitude?: number;
   longitude?: number;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
+  coordinates?: string;
   color?: string;
   shape?: string;
   lightCharacteristic?: string;
@@ -212,6 +275,28 @@ export interface UpdateBuoyRequest {
   lastInspectionDate?: string;
   nextInspectionDate?: string;
   isActive?: boolean;
+  buoyStationId?: string;
+  classification?: string;
+  classificationBuoy?: string;
+  classificationMark?: string;
+  provinceId?: number;
+  locationDetail?: string;
+  condition?: string;
+  structure?: string;
+  area?: number;
+  bodyHeight?: number;
+  diameter?: number;
+  beaconLight?: string;
+  towerHeight?: number;
+  lightHeight?: number;
+  lightModel?: string;
+  towerColor?: string;
+  powerSupply?: string;
+  commissionedDate?: string;
+  lastRepairDate?: string;
+  lightColor?: string;
+  flashType?: string;
+  period?: string;
 }
 
 // ── Shared / History ────────────────────────────────────────────────

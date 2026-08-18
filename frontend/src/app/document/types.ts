@@ -1,6 +1,6 @@
 // ── Document types ──────────────────────────────────────────────────────
 
-export type DocumentEntityType = 'port' | 'berth' | 'pier' | 'dry-port' | 'water-zone';
+export type DocumentEntityType = 'port' | 'berth' | 'pier' | 'dry-port' | 'water-zone' | 'buoy';
 
 export const DOCUMENT_ENTITY_TYPES: { value: DocumentEntityType; label: string }[] = [
   { value: 'port', label: 'Cảng biển' },
@@ -8,6 +8,7 @@ export const DOCUMENT_ENTITY_TYPES: { value: DocumentEntityType; label: string }
   { value: 'pier', label: 'Cầu cảng' },
   { value: 'dry-port', label: 'Cảng cạn' },
   { value: 'water-zone', label: 'Vùng nước' },
+  { value: 'buoy', label: 'Phao tiêu' },
 ];
 
 export interface Document {

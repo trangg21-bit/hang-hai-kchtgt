@@ -11,7 +11,9 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.entity.ChangeLog;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
@@ -48,6 +50,7 @@ public class BuoyStationService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
     private final ChangeLogRepository changeLogRepository;
+    private final PortRepository portRepository;
 
     // -- READ --
 
@@ -65,10 +68,33 @@ public class BuoyStationService {
     }
 
     public List<BuoyStationResponse> search(
-            String name, String code, String type, String status) {
-        return phaoRepo.searchFiltered(name, code, type, status).stream()
+            String name, String code, String type, String status,
+            UUID unitId, String province) {
+        return phaoRepo.searchFiltered(name, code, type, status, unitId, province).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /**
+     * Sinh mã nhà trạm phao tiêu tự động theo cảng biển chủ.
+     * Format: {portCode}-NTPT{2 số} (mẫu BerthService.generateBerthCode).
+     */
+    public String generateCode(UUID portId) {
+        Port port = portRepository.findById(portId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
+        String prefix = port.getPortCode() + "-NTPT";
+        List<BuoyStation> existing = phaoRepo.findByPortIdAndDeletedAtIsNull(portId);
+        int maxNum = 0;
+        for (BuoyStation b : existing) {
+            if (b.getCode() != null && b.getCode().startsWith(prefix)) {
+                try {
+                    int n = Integer.parseInt(b.getCode().substring(prefix.length()));
+                    if (n > maxNum) maxNum = n;
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return prefix + String.format("%02d", maxNum + 1);
     }
 
     // -- CREATE --
