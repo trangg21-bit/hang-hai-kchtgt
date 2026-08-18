@@ -1,4 +1,5 @@
 import api from './api';
+import * as buoyApi from './buoy/api';
 import type { PaginatedResponse } from '../types/common';
 import type {
   BeaconLight,
@@ -76,17 +77,15 @@ export const beaconLightCRUD = {
   },
 };
 
-// ── Buoy CRUD ───────────────────────────────────────────────────────
+// ── Buoy CRUD (delegates to services/buoy/api.ts — D-2) ──────────────
 
 export const buoyCRUD = {
   async findAll(): Promise<Buoy[]> {
-    const res = await api.get('/buoys');
-    return res.data.data || [];
+    return buoyApi.fetchAllBuoys();
   },
 
   async findById(id: string): Promise<Buoy> {
-    const res = await api.get(`/buoys/${id}`);
-    return res.data.data;
+    return buoyApi.fetchBuoyById(id);
   },
 
   async search(params?: {
@@ -97,14 +96,12 @@ export const buoyCRUD = {
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Buoy>> {
-    const sp = buildSearchParams({
+    const data = await buoyApi.searchBuoys({
       name: params?.name,
       code: params?.code,
       type: params?.type,
       status: params?.status,
     });
-    const res = await api.get(`/buoys/search?${sp}`);
-    const data = res.data.data || [];
     return {
       data,
       total: data.length,
@@ -114,17 +111,15 @@ export const buoyCRUD = {
   },
 
   async create(payload: CreateBuoyRequest): Promise<Buoy> {
-    const res = await api.post('/buoys', payload);
-    return res.data.data;
+    return buoyApi.createBuoy(payload);
   },
 
   async update(id: string, payload: UpdateBuoyRequest): Promise<Buoy> {
-    const res = await api.put(`/buoys/${id}`, payload);
-    return res.data.data;
+    return buoyApi.updateBuoy(id, payload);
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/buoys/${id}`);
+    await buoyApi.deleteBuoy(id);
   },
 };
 
@@ -136,7 +131,7 @@ export const approval = {
   },
 
   async submitBuoyForApproval(entityId: string): Promise<void> {
-    await api.post(`/buoys/${entityId}/submit-approval`);
+    await buoyApi.submitBuoyForApproval(entityId);
   },
 
   async approveL1(entityId: string, approverId: string): Promise<unknown> {
@@ -147,10 +142,7 @@ export const approval = {
   },
 
   async approveBuoyL1(entityId: string, approverId: string): Promise<unknown> {
-    const res = await api.post(`/buoys/${entityId}/approve-l1`, null, {
-      params: { approverId },
-    });
-    return res.data.data;
+    return buoyApi.approveBuoyL1(entityId, approverId);
   },
 
   async approveL2(entityId: string, approverId: string): Promise<unknown> {
@@ -161,10 +153,7 @@ export const approval = {
   },
 
   async approveBuoyL2(entityId: string, approverId: string): Promise<unknown> {
-    const res = await api.post(`/buoys/${entityId}/approve-l2`, null, {
-      params: { approverId },
-    });
-    return res.data.data;
+    return buoyApi.approveBuoyL2(entityId, approverId);
   },
 
   async reject(entityId: string, rejectReason: string, approverId: string): Promise<unknown> {
@@ -175,10 +164,7 @@ export const approval = {
   },
 
   async rejectBuoy(entityId: string, rejectReason: string, approverId: string): Promise<unknown> {
-    const res = await api.post(`/buoys/${entityId}/reject`, null, {
-      params: { rejectReason, approverId },
-    });
-    return res.data.data;
+    return buoyApi.rejectBuoy(entityId, rejectReason, approverId);
   },
 };
 

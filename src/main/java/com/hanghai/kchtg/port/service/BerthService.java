@@ -135,6 +135,10 @@ public class BerthService {
             saved = berthRepository.save(saved);
         }
 
+        // Ghi toàn bộ trường mới vào lịch sử thay đổi (chuẩn Cảng biển)
+        Berth emptySnapshot = new Berth();
+        changeHistoryService.recordChanges("Berth", saved.getId().toString(), "system", emptySnapshot, saved);
+
         log.info("Created Berth [{}] code={}", saved.getId(), saved.getBerthCode());
         return toResponse(saved);
     }
@@ -402,8 +406,40 @@ public class BerthService {
         if (pierCount > 0) {
             throw new IllegalStateException("Không thể xóa: bến cảng đang có " + pierCount + " cầu cảng liên kết");
         }
+        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cảng biển)
+        Berth snapshot = Berth.builder()
+                .berthCode(entity.getBerthCode())
+                .berthName(entity.getBerthName()).portId(entity.getPortId())
+                .waterway(entity.getWaterway())
+                .length(entity.getLength())
+                .width(entity.getWidth()).berthType(entity.getBerthType())
+                .channelDepth(entity.getChannelDepth()).operationalFunction(entity.getOperationalFunction())
+                .operationalStatus(entity.getOperationalStatus())
+                .approvalStatus(entity.getApprovalStatus())
+                .orgUnitId(entity.getOrgUnitId())
+                .mapSymbolId(entity.getMapSymbolId())
+                .provinceId(entity.getProvinceId())
+                .detailedLocation(entity.getDetailedLocation())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayRule(entity.getDisplayRule())
+                .operator(entity.getOperator())
+                .totalArea(entity.getTotalArea())
+                .designThroughput(entity.getDesignThroughput())
+                .currentThroughput(entity.getCurrentThroughput())
+                .maxVesselSize(entity.getMaxVesselSize())
+                .plannedThroughput(entity.getPlannedThroughput())
+                .latestCargoVolume(entity.getLatestCargoVolume())
+                .openingAnnouncementDate(entity.getOpeningAnnouncementDate())
+                .openingDecision(entity.getOpeningDecision())
+                .investmentAgreement(entity.getInvestmentAgreement())
+                .structureType(entity.getStructureType())
+                .spatialId(entity.getSpatialId())
+                .build();
+
         entity.softDelete(SecurityUtils.getCurrentUserId());
         berthRepository.save(entity);
+        changeHistoryService.recordChanges("Berth", entity.getId().toString(), "system", snapshot, entity);
+        changeHistoryService.insertChangeRecord("Berth", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }

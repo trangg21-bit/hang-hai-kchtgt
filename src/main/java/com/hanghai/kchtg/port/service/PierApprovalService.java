@@ -73,4 +73,20 @@ public class PierApprovalService {
                 "approvalLog", approvalLog
         );
     }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getAllHistory() {
+        String entityType = "Pier";
+        List<ChangeLog> changeHistory = changeLogRepository.findByEntityType(entityType);
+        java.util.Map<String, String> entityNames = new java.util.HashMap<>();
+        for (ChangeLog log : changeHistory) {
+            if (!entityNames.containsKey(log.getEntityId())) {
+                try {
+                    pierRepository.findById(UUID.fromString(log.getEntityId()))
+                        .ifPresent(p -> entityNames.put(log.getEntityId(), p.getPierName()));
+                } catch (Exception e) { entityNames.put(log.getEntityId(), log.getEntityId()); }
+            }
+        }
+        return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
+    }
 }

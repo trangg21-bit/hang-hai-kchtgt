@@ -258,7 +258,7 @@ export default function PortFormContent({
             <Col span={12}>
               <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng bản đồ')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label"
-                  disabled={!geometryType} style={selectStyle}>
+                  style={selectStyle}>
                   {symbols.map((sym) => (
                     <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
                       <Space>

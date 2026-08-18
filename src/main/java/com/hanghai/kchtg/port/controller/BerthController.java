@@ -130,6 +130,14 @@ public class BerthController {
         return ResponseEntity.ok(ApiResponse.success("Từ chối bến cảng thành công", null));
     }
 
+    @GetMapping("/history/all")
+    @PreAuthorize("@auth.check(authentication, 'berth:history')")
+    public ResponseEntity<ApiResponse<Object>> getAllHistory() {
+        log.info("Getting all Berth history");
+        Object history = berthApprovalService.getAllHistory();
+        return ResponseEntity.ok(ApiResponse.success("Lấy tất cả lịch sử bến cảng thành công", history));
+    }
+
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'berth:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {

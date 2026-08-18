@@ -121,6 +121,14 @@ public class PierController {
         return ResponseEntity.ok(ApiResponse.success("Từ chối cầu cảng thành công", null));
     }
 
+    @GetMapping("/history/all")
+    @PreAuthorize("@auth.check(authentication, 'pier:history')")
+    public ResponseEntity<ApiResponse<Object>> getAllHistory() {
+        log.info("Getting all Pier history");
+        Object history = pierApprovalService.getAllHistory();
+        return ResponseEntity.ok(ApiResponse.success("Lấy tất cả lịch sử cầu cảng thành công", history));
+    }
+
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'pier:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {

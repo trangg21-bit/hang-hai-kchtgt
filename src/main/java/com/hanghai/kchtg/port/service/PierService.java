@@ -168,8 +168,9 @@ public class PierService {
 
         Pier saved = pierRepository.save(entity);
 
-        // BR-020-05: Auto audit log for creation
-        changeHistoryService.insertChangeRecord("Pier", saved.getId(), "CREATE", null, "created", saved.getCreatedBy() != null ? saved.getCreatedBy().toString() : "system");
+        // Ghi toàn bộ trường mới vào lịch sử thay đổi (chuẩn Cảng biển)
+        Pier emptySnapshot = new Pier();
+        changeHistoryService.recordChanges("Pier", saved.getId().toString(), "system", emptySnapshot, saved);
 
         log.info("Created Pier [{}] code={}", saved.getId(), saved.getPierCode());
         return toResponse(saved);
@@ -335,7 +336,8 @@ public class PierService {
             entity.setOperationalFunction(request.getOperationalFunction());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getMapSymbolId() != null)
+            entity.setMapSymbolId(request.getMapSymbolId());
         if (request.getCoordinateSystem() != null)
             entity.setCoordinateSystem(request.getCoordinateSystem());
         if (request.getDisplayRule() != null)
@@ -455,11 +457,53 @@ public class PierService {
             throw new IllegalStateException("Cầu cảng đã bị xóa trước đó");
         }
 
+        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cảng biển)
+        Pier snapshot = Pier.builder()
+                .pierCode(entity.getPierCode())
+                .pierName(entity.getPierName()).berthId(entity.getBerthId())
+                .length(entity.getLength()).designLoad(entity.getDesignLoad())
+                .pierType(entity.getPierType()).operationalFunction(entity.getOperationalFunction())
+                .operationalStatus(entity.getOperationalStatus())
+                .approvalStatus(entity.getApprovalStatus())
+                .orgUnitId(entity.getOrgUnitId())
+                .mapSymbolId(entity.getMapSymbolId())
+                .portId(entity.getPortId())
+                .navigationChannelId(entity.getNavigationChannelId())
+                .province(entity.getProvince())
+                .detailedLocation(entity.getDetailedLocation())
+                .constructionGrade(entity.getConstructionGrade())
+                .structureType(entity.getStructureType())
+                .conditionStatus(entity.getConditionStatus())
+                .width(entity.getWidth())
+                .currentWaterDepth(entity.getCurrentWaterDepth())
+                .designBedElevation(entity.getDesignBedElevation())
+                .publishedVesselDWT(entity.getPublishedVesselDWT())
+                .maintenanceApprovalDate(entity.getMaintenanceApprovalDate())
+                .safetyAssessmentDate(entity.getSafetyAssessmentDate())
+                .lastInspectionDate(entity.getLastInspectionDate())
+                .operatingPierCount(entity.getOperatingPierCount())
+                .publishedPierCount(entity.getPublishedPierCount())
+                .investmentAgreementPierCount(entity.getInvestmentAgreementPierCount())
+                .cargoThroughput(entity.getCargoThroughput())
+                .receivesLargeVessel(entity.getReceivesLargeVessel())
+                .documentNumber(entity.getDocumentNumber())
+                .documentDate(entity.getDocumentDate())
+                .openingAnnouncementDate(entity.getOpeningAnnouncementDate())
+                .openingDecision(entity.getOpeningDecision())
+                .investmentAgreementDoc(entity.getInvestmentAgreementDoc())
+                .waterAreaNeutralScope(entity.getWaterAreaNeutralScope())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayRule(entity.getDisplayRule())
+                .spatialId(entity.getSpatialId())
+                .build();
+
         entity.softDelete(SecurityUtils.getCurrentUserId());
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         pierRepository.save(entity);
+        changeHistoryService.recordChanges("Pier", entity.getId().toString(), "system", snapshot, entity);
+        changeHistoryService.insertChangeRecord("Pier", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
         log.info("Soft-deleted Pier [{}] code={}", entity.getId(), entity.getPierCode());
     }
 

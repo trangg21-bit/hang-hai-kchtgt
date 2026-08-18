@@ -2607,8 +2607,8 @@ export default function PortListPage() {
           title={
             <span style={drawerTitleStyle}>
               {selectedRecord
-                ? `Chỉnh sửa — ${selectedRecord.portName}`
-                : 'Chỉnh sửa cảng biển'}
+                ? `Chỉnh sửa thông tin — ${selectedRecord.portName}`
+                : 'Chỉnh sửa thông tin cảng biển'}
             </span>
           }
           open={updateModalVisible}

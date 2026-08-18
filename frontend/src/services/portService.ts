@@ -316,6 +316,11 @@ export const dryPortCRUD = {
     search?: string;
     status?: string;
     approvalStatus?: string;
+    region?: string;
+    transportCorridor?: string;
+    portStatus?: number;
+    updatedFrom?: string;
+    updatedTo?: string;
   }): Promise<PaginatedResponse<DryPort>> {
     const sp = buildSearchParams({
       page: params?.page !== undefined ? params.page - 1 : undefined,
@@ -325,6 +330,11 @@ export const dryPortCRUD = {
       search: params?.search,
       status: params?.status,
       approvalStatus: params?.approvalStatus,
+      region: params?.region,
+      transportCorridor: params?.transportCorridor,
+      portStatus: params?.portStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
     });
     const res = await api.get(`/v1/dry-ports?${sp}`);
     const pageData = res.data.data;
