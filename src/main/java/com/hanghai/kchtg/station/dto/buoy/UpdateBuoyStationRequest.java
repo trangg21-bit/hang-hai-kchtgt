@@ -64,6 +64,7 @@ public class UpdateBuoyStationRequest {
     private String displayFormat;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
+    private LocalDate lastRepairDate;
     private Boolean isActive;
     private Double latitude;
     private Double longitude;

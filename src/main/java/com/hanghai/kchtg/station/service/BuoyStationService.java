@@ -26,6 +26,8 @@ import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import com.hanghai.kchtg.station.repository.StationHistoryRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,7 @@ public class BuoyStationService {
     private final ChangeHistoryService changeHistoryService;
     private final ChangeLogRepository changeLogRepository;
     private final PortRepository portRepository;
+    private final UserRepository userRepository;
 
     // -- READ --
 
@@ -71,8 +74,8 @@ public class BuoyStationService {
 
     public List<BuoyStationResponse> search(
             String name, String code, String type, String status,
-            UUID unitId, String province) {
-        return phaoRepo.searchFiltered(name, code, type, status, unitId, province).stream()
+            UUID unitId, String province, UUID portId, UUID operatingOrgId) {
+        return phaoRepo.searchFiltered(name, code, type, status, unitId, province, portId, operatingOrgId).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -144,6 +147,7 @@ public class BuoyStationService {
                 .displayFormat(request.getDisplayFormat())
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
+                .lastRepairDate(request.getLastRepairDate())
                 .isActive(request.getIsActive())
                 .status(StationStatus.DRAFT)
                 .approvalStatus(ApprovalStatus.PROPOSED)
@@ -305,8 +309,12 @@ public class BuoyStationService {
         if (request.getNextInspectionDate() != null) {
             entity.setNextInspectionDate(request.getNextInspectionDate());
         }
-        if (request.getIsActive() != null)
+        if (request.getLastRepairDate() != null) {
+            entity.setLastRepairDate(request.getLastRepairDate());
+        }
+        if (request.getIsActive() != null) {
             entity.setIsActive(request.getIsActive());
+        }
 
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus(StationStatus.DRAFT);
@@ -556,7 +564,12 @@ public class BuoyStationService {
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt());
+                .updatedAt(entity.getUpdatedAt())
+                .createdBy(entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : null)
+                .createdByName(entity.getCreatedBy() != null ? this.getUserNameById(entity.getCreatedBy()) : null)
+                .updatedByName(entity.getUpdatedBy() != null ? this.getUserNameById(entity.getUpdatedBy()) : null)
+                .sentApprovedBy(entity.getSentApprovedBy())
+                .sentApprovedDate(entity.getSentApprovedDate());
 
         if (entity.getSpatialId() != null) {
             builder.spatialId(entity.getSpatialId());
@@ -605,6 +618,13 @@ public class BuoyStationService {
 
     private String resolveCreatedBy(BuoyStation entity) {
         return entity.getApprovedBy();
+    }
+
+    private String getUserNameById(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId)
+                .map(User::getFullName)
+                .orElse(null);
     }
 
     // -- JSON Comparison --

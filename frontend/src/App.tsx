@@ -80,7 +80,7 @@ const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'))
 
 // M-014 & M-015: Nhà trạm & Đài duyên hải
 const LighthouseStationList = lazy(() => import('./pages/station/LighthouseStationList'));
-const BuoyStationList = lazy(() => import('./pages/station/BuoyStationList'));
+const BuoyStationList = lazy(() => import('./services/buoy-station/BuoyStationList'));
 
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));

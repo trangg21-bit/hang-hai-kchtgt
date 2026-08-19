@@ -26,16 +26,29 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     List<Buoy> findByCodeContainingIgnoreCase(String code);
 
     @Query("SELECT b FROM Buoy b WHERE " +
-           "(cast(:name as string) IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) AND " +
-           "(cast(:code as string) IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%'))) AND " +
+           "((cast(:name as string) IS NULL AND cast(:code as string) IS NULL) OR " +
+           "(cast(:name as string) IS NOT NULL AND LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) OR " +
+           "(cast(:code as string) IS NOT NULL AND LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%')))) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
-           "(:status IS NULL OR b.status = :status)")
+           "(:status IS NULL OR b.status = :status) AND " +
+           "(:condition IS NULL OR b.condition = :condition) AND " +
+           "(:provinceId IS NULL OR b.provinceId = :provinceId) AND " +
+           "(cast(:locationDetail as string) IS NULL OR LOWER(b.locationDetail) LIKE LOWER(CONCAT('%', cast(:locationDetail as string), '%'))) AND " +
+           "(:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) ORDER BY b.updatedAt DESC")
     List<Buoy> searchFiltered(
         @Param("name") String name,
         @Param("code") String code,
         @Param("type") String type,
-        @Param("status") String status
+        @Param("status") String status,
+        @Param("condition") String condition,
+        @Param("provinceId") Integer provinceId,
+        @Param("locationDetail") String locationDetail,
+        @Param("approvalStatus") String approvalStatus
     );
+
+    default List<Buoy> searchFiltered(String name, String code, String type, String status) {
+        return searchFiltered(name, code, type, status, null, null, null, null);
+    }
 
     long countByStatus(String status);
 

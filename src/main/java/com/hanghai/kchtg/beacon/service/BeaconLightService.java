@@ -436,7 +436,7 @@ public class BeaconLightService {
                 .beaconType(BeaconType.BEACON_LIGHT)
                 .entityId(entity.getId())
                 .actionType(action)
-                .changedField(fields)
+                .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
                 .previousValue(previousJson)
                 .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
                 .changedBy(resolveCurrentUserId())

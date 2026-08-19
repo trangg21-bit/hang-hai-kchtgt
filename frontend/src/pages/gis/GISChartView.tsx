@@ -37,7 +37,8 @@ import {
   waterZoneCRUD
 } from '../../services/portService';
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
-import { fetchLighthouseStationById, fetchBuoyStationById } from '../../services/station/beacon/api';
+import { fetchLighthouseStationById } from '../../services/station/beacon/api';
+import { fetchBuoyStationById } from '../../services/buoy-station/api';
 import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { radarStationCRUD } from '../../services/radarStationService';

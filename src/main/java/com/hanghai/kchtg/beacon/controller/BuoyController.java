@@ -50,9 +50,13 @@ public class BuoyController {
                         @RequestParam(required = false) String name,
                         @RequestParam(required = false) String code,
                         @RequestParam(required = false) String type,
-                        @RequestParam(required = false) String status) {
+                        @RequestParam(required = false) String status,
+                        @RequestParam(required = false) String condition,
+                        @RequestParam(required = false) Integer provinceId,
+                        @RequestParam(required = false) String locationDetail,
+                        @RequestParam(required = false) String approvalStatus) {
                 return ResponseEntity.ok(ApiResponse.success(
-                                buoyService.search(name, code, type, status)));
+                                buoyService.search(name, code, type, status, condition, provinceId, locationDetail, approvalStatus)));
         }
 
         @GetMapping("/generate-code")
@@ -103,19 +107,23 @@ public class BuoyController {
         @PostMapping("/{id}/approve-l1")
         @PreAuthorize("@auth.check(authentication, 'buoy:approvec1') or @auth.check(authentication, 'buoy:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
         public ResponseEntity<ApiResponse<BuoyResponse>> approveL1(
-                        @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
+                        @PathVariable UUID id,
+                        @RequestParam java.util.UUID approverId,
+                        @RequestParam(required = false) String content) {
                 return ResponseEntity.ok(ApiResponse.success(
                                 "Phê duyệt L1 thành công",
-                                buoyService.approveL1(id, approverId)));
+                                buoyService.approveL1(id, approverId, content)));
         }
 
         @PostMapping("/{id}/approve-l2")
         @PreAuthorize("@auth.check(authentication, 'buoy:approvec2') or @auth.check(authentication, 'buoy:approvel2') or @auth.check(authentication, 'data:approvec2') or @auth.check(authentication, 'data:approvel2')")
         public ResponseEntity<ApiResponse<BuoyResponse>> approveL2(
-                        @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
+                        @PathVariable UUID id,
+                        @RequestParam java.util.UUID approverId,
+                        @RequestParam(required = false) String content) {
                 return ResponseEntity.ok(ApiResponse.success(
                                 "Phê duyệt L2 thành công — Đã công bố",
-                                buoyService.approveL2(id, approverId)));
+                                buoyService.approveL2(id, approverId, content)));
         }
 
         @PostMapping("/{id}/reject")
@@ -137,6 +145,28 @@ public class BuoyController {
                 Map<String, Object> result = Map.of(
                                 "changeHistory", changeHistory,
                                 "approvalLog", List.of());
+                return ResponseEntity.ok(ApiResponse.success(result));
+        }
+
+        @GetMapping("/history/all")
+        @PreAuthorize("@auth.check(authentication, 'buoy:read') or @auth.check(authentication, 'buoy:history') or @auth.check(authentication, 'data:read')")
+        public ResponseEntity<ApiResponse<Map<String, Object>>> getAllHistory() {
+                List<ChangeLog> changeHistory = changeLogRepository.findByEntityType("Buoy");
+                Map<String, String> entityNames = new java.util.HashMap<>();
+                for (ChangeLog log : changeHistory) {
+                        if (!entityNames.containsKey(log.getEntityId())) {
+                                try {
+                                        BuoyResponse buoy = buoyService.findById(UUID.fromString(log.getEntityId()));
+                                        entityNames.put(log.getEntityId(), buoy.getName());
+                                } catch (Exception e) {
+                                        entityNames.put(log.getEntityId(), log.getEntityId());
+                                }
+                        }
+                }
+                Map<String, Object> result = Map.of(
+                                "entityType", "Buoy",
+                                "changeHistory", changeHistory,
+                                "entityNames", entityNames);
                 return ResponseEntity.ok(ApiResponse.success(result));
         }
 }
