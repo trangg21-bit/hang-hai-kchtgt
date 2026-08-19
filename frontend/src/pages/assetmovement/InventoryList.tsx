@@ -10,11 +10,11 @@ import {
   Input,
   DatePicker,
   Select,
-  message,
   Tabs,
   Tooltip,
   Typography,
 } from 'antd';
+import { message } from '../../components/ToastNotification';
 import {
   PlusOutlined,
   ReloadOutlined,

@@ -4,6 +4,8 @@ import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -54,6 +56,7 @@ public class LegalDocumentService {
 
     @Transactional
     public LegalDocumentResponse create(LegalDocumentCreateRequest request) {
+        FieldWriteGuard.validateObject(request);
         log.info("Creating LegalDocument: {}", request.getDocumentName());
 
         if (request.getDocumentNumber() != null
@@ -71,7 +74,13 @@ public class LegalDocumentService {
         }
 
         boolean draft = Boolean.TRUE.equals(request.getDraft());
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "legaldocument", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         LegalDocument vb = LegalDocument.builder()
+                .securityLevel(secLevel)
                 .documentName(request.getDocumentName())
                 .documentNumber(request.getDocumentNumber())
                 .issuingAuthority(request.getIssuingAuthority())
@@ -80,8 +89,9 @@ public class LegalDocumentService {
                 .expirationDate(request.getExpirationDate())
                 .documentType(request.getDocumentType())
                 .applicationArea(request.getApplicationArea())
-                .validityStatus(draft ? ValidityStatus.DRAFT :
-                        (request.getValidityStatus() == null ? ValidityStatus.EFFECTIVE : request.getValidityStatus()))
+                .validityStatus(draft ? ValidityStatus.DRAFT
+                        : (request.getValidityStatus() == null ? ValidityStatus.EFFECTIVE
+                                : request.getValidityStatus()))
                 .signer(request.getSigner())
                 .description(request.getDescription())
                 .createdBy(request.getCreatedBy())
@@ -102,7 +112,8 @@ public class LegalDocumentService {
 
     @Transactional(readOnly = true)
     public List<LegalDocumentResponse> findAll() {
-        List<LegalDocument> documents = legalDocumentRepository.findActive(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
+        List<LegalDocument> documents = legalDocumentRepository
+                .findActive(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return toResponses(documents);
     }
 
@@ -116,6 +127,7 @@ public class LegalDocumentService {
 
     @Transactional
     public LegalDocumentResponse update(UUID id, LegalDocumentCreateRequest request) {
+        FieldWriteGuard.validateObject(request);
         LegalDocument vb = legalDocumentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy văn bản với id: " + id));
 
@@ -124,14 +136,22 @@ public class LegalDocumentService {
         }
 
         List<String> changes = new ArrayList<>();
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "legaldocument",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            vb.setSecurityLevel(request.getSecurityLevel());
+            changes.add("Mức độ bảo mật");
+        }
         if (request.getDocumentName() != null && !request.getDocumentName().equals(vb.getDocumentName())) {
             changes.add("Tên văn bản");
             vb.setDocumentName(request.getDocumentName());
         }
         if (request.getDocumentNumber() != null && !request.getDocumentNumber().equals(vb.getDocumentNumber())) {
-            if (!request.getDocumentNumber().equals(vb.getDocumentNumber()) && 
-                legalDocumentRepository.existsByDocumentNumberAndIdNotAndDeletedAtIsNull(request.getDocumentNumber(), id)) {
-                throw new IllegalArgumentException("Số hiệu văn bản pháp lý đã tồn tại: " + request.getDocumentNumber());
+            if (!request.getDocumentNumber().equals(vb.getDocumentNumber()) &&
+                    legalDocumentRepository
+                            .existsByDocumentNumberAndIdNotAndDeletedAtIsNull(request.getDocumentNumber(), id)) {
+                throw new IllegalArgumentException(
+                        "Số hiệu văn bản pháp lý đã tồn tại: " + request.getDocumentNumber());
             }
             changes.add("Số hiệu");
             vb.setDocumentNumber(request.getDocumentNumber());
@@ -151,7 +171,8 @@ public class LegalDocumentService {
             changes.add("Ngày có hiệu lực");
             vb.setEffectiveDate(request.getEffectiveDate());
         }
-        if (request.getExpirationDate() != null && !Objects.equals(request.getExpirationDate(), vb.getExpirationDate())) {
+        if (request.getExpirationDate() != null
+                && !Objects.equals(request.getExpirationDate(), vb.getExpirationDate())) {
             changes.add("Ngày hết hiệu lực");
             vb.setExpirationDate(request.getExpirationDate());
         }
@@ -180,10 +201,12 @@ public class LegalDocumentService {
             vb.setDescription(request.getDescription());
         }
 
-        if (Boolean.TRUE.equals(request.getDraft())) vb.setValidityStatus(ValidityStatus.DRAFT);
+        if (Boolean.TRUE.equals(request.getDraft()))
+            vb.setValidityStatus(ValidityStatus.DRAFT);
         LegalDocument saved = Objects.requireNonNull(legalDocumentRepository.save(vb));
         String note = changes.isEmpty() ? "Cập nhật thông tin văn bản" : "Cập nhật: " + String.join(", ", changes);
-        recordHistory(saved, Boolean.TRUE.equals(request.getDraft()) ? LegalDocumentHistoryAction.DRAFT_SAVED : LegalDocumentHistoryAction.UPDATED, note);
+        recordHistory(saved, Boolean.TRUE.equals(request.getDraft()) ? LegalDocumentHistoryAction.DRAFT_SAVED
+                : LegalDocumentHistoryAction.UPDATED, note);
         return toResponse(saved);
     }
 
@@ -201,14 +224,15 @@ public class LegalDocumentService {
     public List<LegalDocumentHistoryResponse> getHistory(UUID id) {
         legalDocumentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy văn bản với id: " + id));
-        List<LegalDocumentHistory> histories = legalDocumentHistoryRepository.findByLegalDocumentIdOrderByChangedAtDesc(id);
+        List<LegalDocumentHistory> histories = legalDocumentHistoryRepository
+                .findByLegalDocumentIdOrderByChangedAtDesc(id);
         List<UUID> userIds = histories.stream()
                 .map(LegalDocumentHistory::getChangedBy)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<UUID, String> displayNames = userIds.isEmpty() ? Map.of() :
-                userRepository.findAllById(userIds).stream()
+        Map<UUID, String> displayNames = userIds.isEmpty() ? Map.of()
+                : userRepository.findAllById(userIds).stream()
                         .collect(Collectors.toMap(User::getId, this::getDisplayName, (first, ignored) -> first));
 
         return histories.stream()
@@ -249,24 +273,33 @@ public class LegalDocumentService {
 
     @Transactional
     public SearchResultResponse searchDocuments(String keyword, String documentNumber, String issuingAuthority,
-                                                  String applicationArea, String type, String status,
-                                                  LocalDate issueDateStart, LocalDate issueDateEnd,
-                                                  LocalDate effectiveDateStart, LocalDate effectiveDateEnd,
-                                                  int page, int size) {
+            String applicationArea, String type, String status,
+            LocalDate issueDateStart, LocalDate issueDateEnd,
+            LocalDate effectiveDateStart, LocalDate effectiveDateEnd,
+            int page, int size) {
         if (keyword != null && !keyword.trim().isEmpty() && keyword.trim().length() < 2) {
             throw new IllegalArgumentException("Từ khóa tìm kiếm phải có ít nhất 2 ký tự");
         }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.UPDATED_AT));
 
         DocumentType typeEnum = (type != null && !type.isEmpty())
-                ? DocumentType.valueOf(type) : null;
+                ? DocumentType.valueOf(type)
+                : null;
         ValidityStatus statusEnum = (status != null && !status.isEmpty())
-                ? ValidityStatus.valueOf(status) : null;
+                ? ValidityStatus.valueOf(status)
+                : null;
 
-        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        String documentNumberLike = (documentNumber != null && !documentNumber.trim().isEmpty()) ? "%" + documentNumber.trim().toLowerCase() + "%" : null;
-        String issuingAuthorityPattern = (issuingAuthority != null && !issuingAuthority.trim().isEmpty()) ? "%" + issuingAuthority.trim().toLowerCase() + "%" : null;
-        String applicationAreaPattern = (applicationArea != null && !applicationArea.trim().isEmpty()) ? "%" + applicationArea.trim().toLowerCase() + "%" : null;
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
+                : null;
+        String documentNumberLike = (documentNumber != null && !documentNumber.trim().isEmpty())
+                ? "%" + documentNumber.trim().toLowerCase() + "%"
+                : null;
+        String issuingAuthorityPattern = (issuingAuthority != null && !issuingAuthority.trim().isEmpty())
+                ? "%" + issuingAuthority.trim().toLowerCase() + "%"
+                : null;
+        String applicationAreaPattern = (applicationArea != null && !applicationArea.trim().isEmpty())
+                ? "%" + applicationArea.trim().toLowerCase() + "%"
+                : null;
 
         Page<LegalDocument> result = legalDocumentRepository.searchDocuments(
                 keywordLike, documentNumberLike, issuingAuthorityPattern, applicationAreaPattern, typeEnum, statusEnum,
@@ -368,6 +401,7 @@ public class LegalDocumentService {
         }
         return LegalDocumentResponse.builder()
                 .id(vb.getId())
+                .securityLevel(vb.getSecurityLevel())
                 .documentName(vb.getDocumentName())
                 .documentNumber(vb.getDocumentNumber())
                 .issuingAuthority(vb.getIssuingAuthority())
@@ -390,13 +424,15 @@ public class LegalDocumentService {
     }
 
     private void recordSearch(String keyword, String issuingAuthority, String applicationArea,
-                              String type, String status, long resultCount) {
+            String type, String status, long resultCount) {
         String normalizedKeyword = keyword == null ? null : keyword.trim();
-        if (normalizedKeyword == null || normalizedKeyword.length() < 2) return;
+        if (normalizedKeyword == null || normalizedKeyword.length() < 2)
+            return;
         String filters = String.format("issuingAuthority=%s;applicationArea=%s;type=%s;status=%s",
                 issuingAuthority, applicationArea, type, status);
         searchLogRepository.save(SearchLog.builder()
-                .searchedBy(SecurityUtils.getCurrentUserId() == null ? null : SecurityUtils.getCurrentUserId().toString())
+                .searchedBy(
+                        SecurityUtils.getCurrentUserId() == null ? null : SecurityUtils.getCurrentUserId().toString())
                 .keyword(normalizedKeyword)
                 .filters(filters)
                 .resultCount((int) Math.min(Integer.MAX_VALUE, resultCount))
@@ -436,7 +472,8 @@ public class LegalDocumentService {
         recordHistory(document, action, null);
     }
 
-    private LegalDocumentHistoryResponse toHistoryResponse(LegalDocumentHistory history, Map<UUID, String> displayNames) {
+    private LegalDocumentHistoryResponse toHistoryResponse(LegalDocumentHistory history,
+            Map<UUID, String> displayNames) {
         return LegalDocumentHistoryResponse.builder()
                 .id(history.getId())
                 .action(history.getAction())
@@ -457,6 +494,7 @@ public class LegalDocumentService {
                 .note(history.getDescription())
                 .build();
     }
+
     private static final java.util.Set<String> ALLOWED_EXTENSIONS = java.util.Set.of(
             ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png");
 
@@ -485,7 +523,8 @@ public class LegalDocumentService {
         }
         Path directory = Paths.get(uploadDir).toAbsolutePath().normalize();
         String safeName = Paths.get(originalFilename).getFileName().toString();
-        Path destination = directory.resolve(legalDocumentId + "_" + System.currentTimeMillis() + "_" + safeName).normalize();
+        Path destination = directory.resolve(legalDocumentId + "_" + System.currentTimeMillis() + "_" + safeName)
+                .normalize();
         if (!destination.startsWith(directory)) {
             throw new IllegalArgumentException("Tên tệp không hợp lệ");
         }
@@ -531,7 +570,8 @@ public class LegalDocumentService {
             log.warn("Không thể xóa tệp vật lý {}", attachment.getFilePath(), e);
         }
         attachedDocumentRepository.delete(attachment);
-        recordHistory(attachment.getLegalDocument(), LegalDocumentHistoryAction.ATTACHMENT_DELETED, "Xóa tệp đính kèm: " + attachment.getDocumentName());
+        recordHistory(attachment.getLegalDocument(), LegalDocumentHistoryAction.ATTACHMENT_DELETED,
+                "Xóa tệp đính kèm: " + attachment.getDocumentName());
     }
 
     @Transactional(readOnly = true)

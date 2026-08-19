@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -77,7 +78,7 @@ class PortPlanningControllerTest {
     @Test
     void listPlans_shouldReturnAll() throws Exception {
         when(portPlanningService.findAll(anyInt(), anyInt()))
-                .thenReturn(new PageImpl<>(List.of(testResponse)));
+                .thenReturn(new PageImpl<>(List.of(testResponse), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/port-planning")
                         .param("page", "0").param("size", "20"))

@@ -3,7 +3,7 @@ feature-id: F-003
 stage: qa-test-creation
 agent: engineering-qa-engineer
 creation-date: 2026-06-28
-total-cases: 45
+total-cases: 37
 ---
 
 # Feature F-003: Quản lý đơn vị — QA Test Cases
@@ -17,7 +17,7 @@ total-cases: 45
 - **Steps**:
   1. POST /api/org-units with body: `{name: "Chi cục 1", code: "CC001", type: "CHI_CUC"}`
   2. Observe response status
-- **Expected**: 201 Created, response contains unit with code "CC001", status "DRAFT"
+- **Expected**: 201 Created, response contains unit with code "CC001"
 - **Type**: functional
 
 ### TC-002: Reject Duplicate Code on Create (BR-013)
@@ -90,46 +90,6 @@ total-cases: 45
 - **Expected**: 200 OK (soft-delete), unit excluded from subsequent queries
 - **Type**: functional
 
-### TC-009: Submit for Approval — DRAFT to PENDING (BR-015)
-- **ID**: TC-F003-009
-- **Priority**: Critical
-- **Preconditions**: A unit in DRAFT status exists
-- **Steps**:
-  1. POST /api/org-units/{id}/submit
-  2. Observe response
-- **Expected**: 200 OK, status changed to PENDING
-- **Type**: functional
-
-### TC-010: Approve Pending Unit (BR-015)
-- **ID**: TC-F003-010
-- **Priority**: Critical
-- **Preconditions**: A unit in PENDING status exists
-- **Steps**:
-  1. POST /api/org-units/{id}/approve?comments="OK"
-  2. Observe response
-- **Expected**: 200 OK, status changed to APPROVED, approvedAt set
-- **Type**: functional
-
-### TC-011: Reject Pending Unit (BR-015)
-- **ID**: TC-F003-011
-- **Priority**: Critical
-- **Preconditions**: A unit in PENDING status exists
-- **Steps**:
-  1. POST /api/org-units/{id}/reject?comments="Not ready"
-  2. Observe response
-- **Expected**: 200 OK, status changed to REJECTED, approvedAt cleared
-- **Type**: functional
-
-### TC-012: Reject Approve on Non-PENDING Unit
-- **ID**: TC-F003-012
-- **Priority**: Major
-- **Preconditions**: A unit in DRAFT or APPROVED status exists
-- **Steps**:
-  1. POST /api/org-units/{id}/approve
-  2. Observe response status
-- **Expected**: 400 Bad Request or 409 Conflict, status unchanged
-- **Type**: negative
-
 ### TC-013: Build Full Org Tree
 - **ID**: TC-F003-013
 - **Priority**: Major
@@ -178,16 +138,6 @@ total-cases: 45
   1. GET /api/org-units/filter?type=CHI_CUC
   2. Observe response
 - **Expected**: 200 OK, all returned units have type CHI_CUC
-- **Type**: functional
-
-### TC-018: Filter by Status
-- **ID**: TC-F003-018
-- **Priority**: Normal
-- **Preconditions**: Units of various statuses exist
-- **Steps**:
-  1. GET /api/org-units/filter?status=PENDING
-  2. Observe response
-- **Expected**: 200 OK, all returned units have status PENDING
 - **Type**: functional
 
 ### TC-019: Move Unit to Different Parent
@@ -302,15 +252,6 @@ total-cases: 45
 - **Expected**: UnitHistory record with action="CREATED", performedAt recorded
 - **Type**: functional
 
-### TC-030: Audit Trail on Approval
-- **ID**: TC-F003-030
-- **Priority**: Major
-- **Preconditions**: A unit was approved
-- **Steps**:
-  1. Query UnitHistory for the approved unit
-- **Expected**: UnitHistory record with action="APPROVED", approver name recorded, approvedAt comment captured
-- **Type**: functional
-
 ### TC-031: Unit Type Enum Validation
 - **ID**: TC-F003-031
 - **Priority**: Major
@@ -341,16 +282,6 @@ total-cases: 45
 - **Expected**: 200 OK, exactly 3 direct children returned (not grandchildren)
 - **Type**: functional
 
-### TC-034: Re-submit After Rejection (REJECTED → PENDING)
-- **ID**: TC-F003-034
-- **Priority**: Major
-- **Preconditions**: A unit in REJECTED status exists
-- **Steps**:
-  1. POST /api/org-units/{id}/submit
-  2. Observe response
-- **Expected**: 200 OK, status changed to PENDING
-- **Type**: functional
-
 ### TC-035: Coefficient Valid (1.50) Accepted
 - **ID**: TC-F003-035
 - **Priority**: Normal
@@ -377,7 +308,7 @@ total-cases: 45
 - **Preconditions**: Database freshly migrated with V19
 - **Steps**:
   1. Query org_units for root unit (parentId IS NULL)
-- **Expected**: Exactly one root unit with name "Cục Hàng hải", code "CUC_HH", type "CUC", status "APPROVED"
+- **Expected**: Exactly one root unit with name "Cục Hàng hải", code "CUC_HH", type "CUC"
 - **Type**: integration
 
 ### TC-038: Migration Idempotency (V18)
@@ -429,16 +360,6 @@ total-cases: 45
 - **Expected**: Unit path updated; all descendant paths updated via cascade
 - **Type**: integration
 
-### TC-043: Approval Comments Captured
-- **ID**: TC-F003-043
-- **Priority**: Major
-- **Preconditions**: Pending unit exists
-- **Steps**:
-  1. POST /api/org-units/{id}/approve?comments="Approved after review"
-  2. Check UnitHistory
-- **Expected**: UnitHistory record contains "Approved after review" in details/note
-- **Type**: functional
-
 ### TC-044: Get Single Unit by ID
 - **ID**: TC-F003-044
 - **Priority**: Minor
@@ -463,13 +384,12 @@ total-cases: 45
 
 | Category | Count | Coverage |
 |---|---|---|
-| CRUD Operations | 8 | TC-001 through TC-008, TC-006, TC-041, TC-044 |
-| Approval Workflow | 7 | TC-009 through TC-012, TC-034, TC-043, TC-030 |
-| Hierarchy/Tree | 7 | TC-003, TC-004, TC-005, TC-013, TC-019, TC-026, TC-027 |
-| Search/Filter | 5 | TC-014 through TC-018, TC-032, TC-033, TC-039 |
-| Business Rules (BR) | 10 | TC-002, TC-007, TC-010-012, TC-020-022, TC-031, TC-035-036 |
+| CRUD Operations | 7 | TC-001, TC-002, TC-006, TC-007, TC-008, TC-041, TC-044 |
+| Hierarchy/Tree | 9 | TC-003, TC-004, TC-005, TC-013, TC-019, TC-026, TC-027, TC-032, TC-033 |
+| Search/Filter | 4 | TC-014, TC-015, TC-016, TC-017 |
+| Business Rules (BR) | 8 | TC-002, TC-007, TC-020, TC-021, TC-022, TC-031, TC-035, TC-036 |
 | Security/RBAC | 2 | TC-024, TC-025 |
-| Audit Trail | 2 | TC-029, TC-030, TC-043 |
-| Integration/Migration | 4 | TC-037, TC-038, TC-042 |
+| Audit Trail | 1 | TC-029 |
+| Integration/Migration | 3 | TC-037, TC-038, TC-042 |
 | Boundary/Edge Cases | 5 | TC-022, TC-023, TC-039, TC-040, TC-045 |
-| **Total** | **45** | |
+| **Total** | **37** | |

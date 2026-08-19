@@ -1,10 +1,11 @@
 package com.hanghai.kchtg.orgunit.service;
 
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
 import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitHistoryRepository;
@@ -30,7 +31,7 @@ import static org.mockito.Mockito.*;
 /**
  * Unit tests for {@link OrganizationService}.
  * Covers: unique code constraint (BR-013), delete guard (BR-014),
- * circular reference detection (BR-016), approval workflow (BR-015).
+ * circular reference detection (BR-016).
  */
 @ExtendWith(MockitoExtension.class)
 class OrganizationServiceTest {
@@ -70,64 +71,6 @@ class OrganizationServiceTest {
         }).when(transactionTemplate).executeWithoutResult(any());
     }
 
-    // ── BR-013: Unique code constraint ───────────────────────────────
-
-    @Nested
-    @DisplayName("BR-013: Unique code constraint")
-    class UniqueCodeTests {
-
-        @Test
-        @DisplayName("shouldRejectDuplicateCodeOnCreate")
-        void shouldRejectDuplicateCodeOnCreate() {
-            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-            request.setName("Chi cục 1");
-            request.setCode("CUC001");
-
-            when(orgUnitRepo.existsByCode("CUC001")).thenReturn(true);
-
-            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                    () -> service.create(request, UUID.randomUUID(), "admin"));
-            assertTrue(ex.getMessage().contains("đã tồn tại"));
-        }
-
-    @Test
-    @DisplayName("shouldAllowUniqueCodeOnCreate")
-    void shouldAllowUniqueCodeOnCreate() {
-        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-        request.setName("Chi cục 1");
-        request.setCode("CUC001");
-
-            when(orgUnitRepo.existsByCode("CUC001")).thenReturn(false);
-            when(orgUnitRepo.save(any())).thenAnswer(invocation -> {
-                OrgUnit u = invocation.getArgument(0);
-                u.setId(childId);
-                return u;
-            });
-            when(materializedPathService.computePath(any(), any())).thenReturn("/" + childId + "/");
-            when(materializedPathService.calculateLevel(anyString())).thenReturn(1);
-            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
-
-            OrgUnitResponse response = service.create(request, UUID.randomUUID(), "admin");
-            assertNotNull(response);
-            assertEquals("CUC001", response.getCode());
-        }
-
-        @Test
-        @DisplayName("shouldRejectDuplicateCodeOnUpdate")
-        void shouldRejectDuplicateCodeOnUpdate() {
-            UUID updateId = UUID.randomUUID();
-            UpdateOrgUnitRequest request = new UpdateOrgUnitRequest();
-            request.setCode("CUC001");
-
-            when(orgUnitRepo.findById(updateId)).thenReturn(Optional.of(
-                    makeUnit(updateId, "Old Name", "OLD_CODE")));
-            when(orgUnitRepo.existsByCodeAndIdNotAndDeletedAtIsNull("CUC001", updateId)).thenReturn(true);
-
-            assertThrows(IllegalArgumentException.class,
-                    () -> service.update(updateId, request, UUID.randomUUID(), "admin"));
-        }
-    }
-
     // ── BR-014: Delete guard ─────────────────────────────────────────
 
     @Nested
@@ -138,7 +81,7 @@ class OrganizationServiceTest {
         @DisplayName("shouldRejectDeleteWhenUnitHasChildren")
         void shouldRejectDeleteWhenHasChildren() {
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(
-                    makeUnit(childId, "Cảng vụ", "CV001")));
+                    makeUnit(childId, "Cảng vụ")));
             when(orgUnitRepo.countByParentIdAndDeletedAtIsNull(childId)).thenReturn(2L);
 
             assertThrows(IllegalArgumentException.class,
@@ -149,7 +92,7 @@ class OrganizationServiceTest {
         @DisplayName("shouldAllowDeleteWhenUnitHasNoChildren")
         void shouldAllowDeleteWhenNoChildren() {
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(
-                    makeUnit(childId, "Cảng vụ", "CV001")));
+                    makeUnit(childId, "Cảng vụ")));
             when(orgUnitRepo.countByParentIdAndDeletedAtIsNull(childId)).thenReturn(0L);
 
             assertDoesNotThrow(() -> service.delete(childId, UUID.randomUUID(), "admin"));
@@ -165,92 +108,6 @@ class OrganizationServiceTest {
         }
     }
 
-    // ── BR-015: Approval workflow ────────────────────────────────────
-
-    @Nested
-    @DisplayName("BR-015: Approval workflow — Admin-only")
-    class ApprovalWorkflowTests {
-
-        @Test
-        @DisplayName("shouldTransitionDRAFT_to_PENDING_onSubmit")
-        void shouldTransitionDraftToPendingOnSubmit() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
-            unit.setStatus(OrgUnitStatus.DRAFT);
-
-            when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
-            when(orgUnitRepo.save(any())).thenAnswer(inv -> {
-                OrgUnit u = inv.getArgument(0);
-                return u;
-            });
-            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
-
-            OrgUnitResponse response = service.submitForApproval(rootId, UUID.randomUUID(), "admin");
-            assertEquals(OrgUnitStatus.PENDING, response.getStatus());
-        }
-
-        @Test
-        @DisplayName("shouldRejectSubmitWhenNotDraftOrRejected")
-        void shouldRejectSubmitWhenNotDraftOrRejected() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
-            unit.setStatus(OrgUnitStatus.APPROVED);
-
-            when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
-
-            assertThrows(IllegalStateException.class,
-                    () -> service.submitForApproval(rootId, UUID.randomUUID(), "admin"));
-        }
-
-        @Test
-        @DisplayName("shouldTransitionPending_to_APPROVED_onApprove")
-        void shouldTransitionPendingToApprovedOnApprove() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
-            unit.setStatus(OrgUnitStatus.PENDING);
-
-            when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
-            when(orgUnitRepo.save(any())).thenAnswer(inv -> {
-                OrgUnit u = inv.getArgument(0);
-                u.setApprovedAt(LocalDateTime.now());
-                return u;
-            });
-            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
-
-            OrgUnitResponse response = service.approve(rootId, UUID.randomUUID(), "director", "OK");
-            assertEquals(OrgUnitStatus.APPROVED, response.getStatus());
-            assertNotNull(response.getApprovedAt());
-        }
-
-        @Test
-        @DisplayName("shouldRejectApproveWhenNotPending")
-        void shouldRejectApproveWhenNotPending() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
-            unit.setStatus(OrgUnitStatus.DRAFT);
-
-            when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
-
-            assertThrows(IllegalStateException.class,
-                    () -> service.approve(rootId, UUID.randomUUID(), "director", "OK"));
-        }
-
-        @Test
-        @DisplayName("shouldTransitionPending_to_REJECTED_onReject")
-        void shouldTransitionPendingToRejectedOnReject() {
-            OrgUnit unit = makeUnit(rootId, "Cục", "CUC001");
-            unit.setStatus(OrgUnitStatus.PENDING);
-
-            when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(unit));
-            when(orgUnitRepo.save(any())).thenAnswer(inv -> {
-                OrgUnit u = inv.getArgument(0);
-                u.setApprovedAt(null);
-                return u;
-            });
-            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
-
-            OrgUnitResponse response = service.reject(rootId, UUID.randomUUID(), "director", "Not ready");
-            assertEquals(OrgUnitStatus.REJECTED, response.getStatus());
-            assertNull(response.getApprovedAt());
-        }
-    }
-
     // ── BR-016: Hierarchy / tree ─────────────────────────────────────
 
     @Nested
@@ -260,7 +117,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldRejectSelfAsParent")
         void shouldRejectSelfAsParent() {
-            OrgUnit unit = makeUnit(childId, "Cảng vụ", "CV001");
+            OrgUnit unit = makeUnit(childId, "Cảng vụ");
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(unit));
 
             UpdateOrgUnitRequest request = new UpdateOrgUnitRequest();
@@ -273,14 +130,12 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("shouldRejectCircularReferenceWhenChildBecomesParentOfAncestor")
         void shouldRejectCircularReference() {
-            OrgUnit unit = makeUnit(childId, "Cảng vụ", "CV001");
+            OrgUnit unit = makeUnit(childId, "Cảng vụ");
             unit.setPath("/" + rootId + "/" + parentId + "/" + childId + "/");
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(unit));
-            // Parent fetch must succeed before isAncestor is called
             when(orgUnitRepo.findById(rootId)).thenReturn(Optional.of(
-                    makeUnit(rootId, "Cục", "CUC001")));
+                    makeUnit(rootId, "Cục")));
 
-            // rootId is an ancestor of childId — trying to set it as new parent should be rejected
             when(materializedPathService.isAncestor(childId, rootId)).thenReturn(true);
 
             UpdateOrgUnitRequest request = new UpdateOrgUnitRequest();
@@ -291,14 +146,106 @@ class OrganizationServiceTest {
         }
     }
 
+    // ── BR-003-12/13: Rank ("Cấp đơn vị") resolution ────────────────
+
+    @Nested
+    @DisplayName("Rank (Cấp đơn vị) resolution")
+    class RankResolutionTests {
+
+        @Test
+        @DisplayName("shouldUseExplicitRankOnCreate")
+        void shouldUseExplicitRankOnCreate() {
+            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+            request.setName("Đại diện 1");
+            request.setRank(OrgUnitRank.REPRESENTATIVE);
+
+            when(orgUnitRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(materializedPathService.computePath(any(), any())).thenReturn("/" + childId + "/");
+            when(materializedPathService.calculateLevel(anyString())).thenReturn(1);
+            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
+
+            OrgUnitResponse response = service.create(request, UUID.randomUUID(), "admin");
+            assertEquals(OrgUnitRank.REPRESENTATIVE, response.getRank());
+        }
+
+        @Test
+        @DisplayName("shouldDefaultRankToCucForRootUnit")
+        void shouldDefaultRankToCucForRootUnit() {
+            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+            request.setName("Cục");
+
+            when(orgUnitRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(materializedPathService.computePath(any(), any())).thenReturn("/" + childId + "/");
+            when(materializedPathService.calculateLevel(anyString())).thenReturn(1);
+            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
+
+            OrgUnitResponse response = service.create(request, UUID.randomUUID(), "admin");
+            assertEquals(OrgUnitRank.DEPARTMENT, response.getRank());
+        }
+
+        @Test
+        @DisplayName("shouldInferRankFromLevelOneParent")
+        void shouldInferRankFromLevelOneParent() {
+            OrgUnit parent = makeUnit(parentId, "Cục");
+            parent.setLevel(1);
+
+            when(orgUnitRepo.findById(parentId)).thenReturn(Optional.of(parent));
+            when(orgUnitRepo.countByParentIdAndDeletedAtIsNull(parentId)).thenReturn(0L);
+            when(orgUnitRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(materializedPathService.computePath(any(), any())).thenReturn("/" + childId + "/");
+            when(materializedPathService.calculateLevel(anyString())).thenReturn(2);
+            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
+
+            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+            request.setName("Chi cục 1");
+            request.setParentId(parentId);
+
+            OrgUnitResponse response = service.create(request, UUID.randomUUID(), "admin");
+            assertEquals(OrgUnitRank.BRANCH, response.getRank());
+        }
+
+        @Test
+        @DisplayName("shouldInferRankFromLevelTwoParent")
+        void shouldInferRankFromLevelTwoParent() {
+            OrgUnit parent = makeUnit(parentId, "Chi cục");
+            parent.setLevel(2);
+
+            when(orgUnitRepo.findById(parentId)).thenReturn(Optional.of(parent));
+            when(orgUnitRepo.countByParentIdAndDeletedAtIsNull(parentId)).thenReturn(0L);
+            when(orgUnitRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(materializedPathService.computePath(any(), any())).thenReturn("/" + childId + "/");
+            when(materializedPathService.calculateLevel(anyString())).thenReturn(3);
+            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
+
+            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+            request.setName("Đại diện 1");
+            request.setParentId(parentId);
+
+            OrgUnitResponse response = service.create(request, UUID.randomUUID(), "admin");
+            assertEquals(OrgUnitRank.REPRESENTATIVE, response.getRank());
+        }
+
+        @Test
+        @DisplayName("shouldSetRankOnUpdate")
+        void shouldSetRankOnUpdate() {
+            OrgUnit unit = makeUnit(childId, "Cảng vụ");
+            when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(unit));
+            when(orgUnitRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            UpdateOrgUnitRequest request = new UpdateOrgUnitRequest();
+            request.setRank(OrgUnitRank.REPRESENTATIVE);
+
+            OrgUnitResponse response = service.update(childId, request, UUID.randomUUID(), "admin");
+            assertEquals(OrgUnitRank.REPRESENTATIVE, response.getRank());
+        }
+    }
+
     // ── Utility helpers ──────────────────────────────────────────────
 
-    private OrgUnit makeUnit(UUID id, String name, String code) {
+    private OrgUnit makeUnit(UUID id, String name) {
         OrgUnit unit = new OrgUnit();
         unit.setId(id);
         unit.setName(name);
-        unit.setCode(code);
-        unit.setStatus(OrgUnitStatus.APPROVED);
         unit.setPath("/" + id + "/");
         unit.setLevel(1);
         unit.setSortOrder(0);

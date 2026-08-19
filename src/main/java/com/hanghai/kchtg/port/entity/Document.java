@@ -3,6 +3,8 @@ package com.hanghai.kchtg.port.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -21,6 +23,10 @@ import lombok.experimental.SuperBuilder;
  *
  * Entity types supported: ports, berths, piers, dry-ports, water-zones
  */
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.Builder;
+import lombok.experimental.FieldNameConstants;
+
 @Entity
 @Table(name = "documents",
         indexes = {
@@ -32,7 +38,14 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@FieldNameConstants
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class Document extends BaseEntity {
+
+    @Enumerated(jakarta.persistence.EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     /**
      * Entity type that this document is attached to.

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.beacon_light;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,6 +18,8 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class CreateBeaconLightRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "Mã đèn biển không được để trống")
     @Size(max = 50)

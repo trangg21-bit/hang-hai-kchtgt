@@ -11,11 +11,11 @@ import {
   InputNumber,
   DatePicker,
   Switch,
-  message,
   Popconfirm,
   Tooltip,
   Select,
 } from 'antd';
+import { message } from '../../components/ToastNotification';
 import {
   PlusOutlined,
   EditOutlined,

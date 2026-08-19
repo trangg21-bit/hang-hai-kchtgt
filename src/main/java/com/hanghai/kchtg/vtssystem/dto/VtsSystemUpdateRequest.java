@@ -2,6 +2,7 @@ package com.hanghai.kchtg.vtssystem.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ import lombok.experimental.FieldNameConstants;
 public class VtsSystemUpdateRequest {
     private String systemName;
     private ConditionStatus conditionStatus;
+    private RecordSecurityLevel recordSecurityLevel;
     private String responsibilityLevel;
     private String source;
     private String partner;

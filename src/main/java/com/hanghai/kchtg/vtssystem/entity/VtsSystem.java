@@ -3,6 +3,7 @@ package com.hanghai.kchtg.vtssystem.entity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,7 +27,13 @@ import java.util.UUID;
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class VtsSystem extends BaseEntity {
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+
     @Column(name = "province_id")
     private Integer provinceId;
 
@@ -118,6 +125,8 @@ public class VtsSystem extends BaseEntity {
 
     @PrePersist
     protected void onCreate() {
+        if (securityLevel == null)
+            securityLevel = RecordSecurityLevel.NORMAL;
         if (approvalStatus == null)
             approvalStatus = ApprovalStatus.PROPOSED;
         if (approvedLevel1 == null)

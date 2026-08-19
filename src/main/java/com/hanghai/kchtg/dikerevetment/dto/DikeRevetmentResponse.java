@@ -3,6 +3,7 @@ package com.hanghai.kchtg.dikerevetment.dto;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,6 +24,7 @@ import java.util.UUID;
 @Builder
 public class DikeRevetmentResponse {
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private DikeRevetmentType dikeRevetmentType;
     private String location;
     private String dikeRevetmentName;

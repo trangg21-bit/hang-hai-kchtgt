@@ -18,12 +18,11 @@ import {
   Row,
   Col,
   Upload,
-  message,
   Tag,
 } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import toast from '../../components/ToastNotification';
+import toast, { message } from '../../components/ToastNotification';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
@@ -32,7 +31,7 @@ import type {
   UpdateVtsSystemRequest,
   ApprovalRequest,
 } from '../../types/vtsSystem';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, RecordSecurityLevel, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP, RECORD_SECURITY_LEVEL_OPTIONS } from '../../types/vtsSystem';
 import { drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, inputStyle, selectStyle, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, statusDraft, actionPrimary } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
@@ -157,7 +156,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   const [detailSectionsLoaded, setDetailSectionsLoaded] = useState({ zones: false, attachments: false });
   const [loadingDetailSection, setLoadingDetailSection] = useState<'zones' | 'attachments' | null>(null);
 
-  const formInitialValues = useRef({ conditionStatus: ConditionStatus.OPERATIONAL });
+  const formInitialValues = useRef({
+    conditionStatus: ConditionStatus.OPERATIONAL,
+    recordSecurityLevel: RecordSecurityLevel.NORMAL,
+  });
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   useEffect(() => {
@@ -203,8 +205,8 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         const localData = initialDataOnly && isCompleteVtsDetail(initialData)
           ? initialData
           : (isCompleteVtsDetail(cached)
-          ? cached
-          : (isCompleteVtsDetail(initialData) ? initialData : null));
+            ? cached
+            : (isCompleteVtsDetail(initialData) ? initialData : null));
 
         // The list response is intentionally lightweight. Only reuse a full
         // detail response here so edit mode does not lose fields.
@@ -226,29 +228,30 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           // Defer setFieldsValue to next frame so Form inside Drawer is mounted
           requestAnimationFrame(() => {
             form.setFieldsValue({
-            systemName: data.systemName,
-            location: data.address || data.province || '',
-            conditionStatus: data.conditionStatus || ConditionStatus.OPERATIONAL,
-            responsibilityLevel: data.responsibilityLevel,
-            source: data.source,
-            partner: data.partner,
-            scope: data.scope,
-            note: data.note,
-            orgUnitId: data.orgUnitId,
-            owningOrgId: data.owningOrgId,
-            operatingOrgId: data.operatingOrgId,
-            portId: data.portId,
-            code: data.code,
-            province: provinceVal,
-            provinceId: data.provinceId,
-            address: data.address,
-            maritimeNotice: data.maritimeNotice,
-            operationStartDate: data.operationStartDate ? dayjs(data.operationStartDate) : undefined,
-            spatialData: {
-              geometryType: data.geometryType,
-              coordinates: data.coordinates,
-            }
-          });
+              systemName: data.systemName,
+              location: data.address || data.province || '',
+              conditionStatus: data.conditionStatus || ConditionStatus.OPERATIONAL,
+              recordSecurityLevel: data.recordSecurityLevel || RecordSecurityLevel.NORMAL,
+              responsibilityLevel: data.responsibilityLevel,
+              source: data.source,
+              partner: data.partner,
+              scope: data.scope,
+              note: data.note,
+              orgUnitId: data.orgUnitId,
+              owningOrgId: data.owningOrgId,
+              operatingOrgId: data.operatingOrgId,
+              portId: data.portId,
+              code: data.code,
+              province: provinceVal,
+              provinceId: data.provinceId,
+              address: data.address,
+              maritimeNotice: data.maritimeNotice,
+              operationStartDate: data.operationStartDate ? dayjs(data.operationStartDate) : undefined,
+              spatialData: {
+                geometryType: data.geometryType,
+                coordinates: data.coordinates,
+              }
+            });
           });
           if (data.zones && data.zones.length > 0) {
             setZoneList(data.zones.map((z: any) => ({
@@ -314,6 +317,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       const payload: CreateVtsSystemRequest | UpdateVtsSystemRequest = {
         systemName: values.systemName,
         conditionStatus: values.conditionStatus,
+        recordSecurityLevel: values.recordSecurityLevel || RecordSecurityLevel.NORMAL,
         responsibilityLevel: values.responsibilityLevel,
         source: values.source,
         partner: values.partner,
@@ -339,9 +343,9 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         if (pendingFiles.length > 0 && res.id) {
           for (const file of pendingFiles) {
             try {
-               await vtsSystemApproval.uploadAttachment(res.id, file);
+              await vtsSystemApproval.uploadAttachment(res.id, file);
             } catch (err) {
-               console.error('Lỗi tải file lên:', file.name, err);
+              console.error('Lỗi tải file lên:', file.name, err);
             }
           }
         }
@@ -999,7 +1003,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                           beforeUpload={(file) => {
                             if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
                             const ext = file.name.split('.').pop()?.toLowerCase();
-                            if (!ext || !['pdf','doc','docx','xls','xlsx','jpg','jpeg','png','tiff','tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
+                            if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
                             handleUploadAttachment(file);
                             return false;
                           }}
@@ -1018,7 +1022,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                           beforeUpload={(file) => {
                             if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
                             const ext = file.name.split('.').pop()?.toLowerCase();
-                            if (!ext || !['pdf','doc','docx','xls','xlsx','jpg','jpeg','png','tiff','tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
+                            if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
                             handleUploadAttachment(file);
                             return false;
                           }}

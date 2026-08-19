@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.security.service.UserSecurityCacheService;
 import com.hanghai.kchtg.user.dto.ResendVerificationRequest;
 import com.hanghai.kchtg.user.dto.VerifyResponse;
 import com.hanghai.kchtg.user.dto.VerifyTokenRequest;
@@ -38,17 +39,30 @@ public class VerificationController {
     private final VerificationTokenRepository verificationTokenRepository;
     private final NotificationService notificationService;
     private final RateLimiterService rateLimiterService;
+    private final UserSecurityCacheService userSecurityCacheService;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public VerificationController(UserRepository userRepository,
                                    VerificationTokenService verificationTokenService,
                                    VerificationTokenRepository verificationTokenRepository,
                                    NotificationService notificationService,
-                                   RateLimiterService rateLimiterService) {
+                                   RateLimiterService rateLimiterService,
+                                   UserSecurityCacheService userSecurityCacheService) {
         this.userRepository = userRepository;
         this.verificationTokenService = verificationTokenService;
         this.verificationTokenRepository = verificationTokenRepository;
         this.notificationService = notificationService;
         this.rateLimiterService = rateLimiterService;
+        this.userSecurityCacheService = userSecurityCacheService;
+    }
+
+    public VerificationController(UserRepository userRepository,
+                                  VerificationTokenService verificationTokenService,
+                                  VerificationTokenRepository verificationTokenRepository,
+                                  NotificationService notificationService,
+                                  RateLimiterService rateLimiterService) {
+        this(userRepository, verificationTokenService, verificationTokenRepository,
+                notificationService, rateLimiterService, null);
     }
 
     /**
@@ -81,6 +95,9 @@ public class VerificationController {
             String previousStatus = user.getStatus().name();
             user.setStatus(UserStatus.ACTIVE);
             userRepository.save(user);
+            if (userSecurityCacheService != null) {
+                userSecurityCacheService.evict(user.getId());
+            }
 
             VerifyResponse response = new VerifyResponse();
             response.setVerified(true);

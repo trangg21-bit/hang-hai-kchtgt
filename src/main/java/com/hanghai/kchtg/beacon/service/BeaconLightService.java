@@ -20,6 +20,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -69,8 +71,7 @@ public class BeaconLightService {
                 name,
                 code,
                 type,
-                status
-        ).stream()
+                status).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -86,6 +87,7 @@ public class BeaconLightService {
 
     @Transactional
     public BeaconLightResponse create(CreateBeaconLightRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (beaconLightRepo.existsByCode(request.getCode())
                 || buoyRepo.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã đã tồn tại: " + request.getCode());
@@ -93,7 +95,13 @@ public class BeaconLightService {
 
         validateMaintenanceDates(request.getLastRepairDate(), request.getCommissionedDate());
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "beaconlight", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         BeaconLight entity = BeaconLight.builder()
+                .securityLevel(secLevel)
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
@@ -146,6 +154,7 @@ public class BeaconLightService {
 
     @Transactional
     public BeaconLightResponse update(UUID id, UpdateBeaconLightRequest request) {
+        FieldWriteGuard.validateObject(request);
         BeaconLight entity = beaconLightRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
@@ -157,7 +166,8 @@ public class BeaconLightService {
         String oldJson = toJson(entity);
 
         // Apply mutable fields only
-        if (request.getName() != null) entity.setName(request.getName());
+        if (request.getName() != null)
+            entity.setName(request.getName());
 
         // Handle type field update conditionally (BR-069-02)
         if (request.getType() != null && !request.getType().equals(entity.getType())) {
@@ -193,32 +203,52 @@ public class BeaconLightService {
             wkt = "POINT(" + currentLon + " " + currentLat + ")";
         }
 
-        if (request.getTowerColor() != null) entity.setTowerColor(request.getTowerColor());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "beaconlight",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getTowerColor() != null)
+            entity.setTowerColor(request.getTowerColor());
         if (request.getPrimaryLightModel() != null) {
             entity.setPrimaryLightModel(request.getPrimaryLightModel());
         }
         // BUG FIX #2: Apply lightRange on update
-        if (request.getLightRange() != null) entity.setLightRange(request.getLightRange());
-        if (request.getArea() != null) entity.setArea(request.getArea());
-        if (request.getLocation() != null) entity.setLocation(request.getLocation());
-        if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
+        if (request.getLightRange() != null)
+            entity.setLightRange(request.getLightRange());
+        if (request.getArea() != null)
+            entity.setArea(request.getArea());
+        if (request.getLocation() != null)
+            entity.setLocation(request.getLocation());
+        if (request.getUnitId() != null)
+            entity.setUnitId(request.getUnitId());
         if (request.getLastRepairDate() != null) {
             entity.setLastRepairDate(request.getLastRepairDate());
         }
         if (request.getCommissionedDate() != null) {
             entity.setCommissionedDate(request.getCommissionedDate());
         }
-        if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
+        if (request.getIsActive() != null)
+            entity.setIsActive(request.getIsActive());
 
-        if (request.getShape() != null) entity.setShape(request.getShape());
-        if (request.getStructure() != null) entity.setStructure(request.getStructure());
-        if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
-        if (request.getLightHeight() != null) entity.setLightHeight(request.getLightHeight());
-        if (request.getGeographicRange() != null) entity.setGeographicRange(request.getGeographicRange());
-        if (request.getBackupLightModel() != null) entity.setBackupLightModel(request.getBackupLightModel());
-        if (request.getPowerSupply() != null) entity.setPowerSupply(request.getPowerSupply());
-        if (request.getStaffCount() != null) entity.setStaffCount(request.getStaffCount());
-        if (request.getStationArea() != null) entity.setStationArea(request.getStationArea());
+        if (request.getShape() != null)
+            entity.setShape(request.getShape());
+        if (request.getStructure() != null)
+            entity.setStructure(request.getStructure());
+        if (request.getTowerHeight() != null)
+            entity.setTowerHeight(request.getTowerHeight());
+        if (request.getLightHeight() != null)
+            entity.setLightHeight(request.getLightHeight());
+        if (request.getGeographicRange() != null)
+            entity.setGeographicRange(request.getGeographicRange());
+        if (request.getBackupLightModel() != null)
+            entity.setBackupLightModel(request.getBackupLightModel());
+        if (request.getPowerSupply() != null)
+            entity.setPowerSupply(request.getPowerSupply());
+        if (request.getStaffCount() != null)
+            entity.setStaffCount(request.getStaffCount());
+        if (request.getStationArea() != null)
+            entity.setStationArea(request.getStationArea());
 
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
@@ -238,8 +268,7 @@ public class BeaconLightService {
                     GisGeometryType.POINT,
                     GisSpatialObjectType.POINT_LIGHTHOUSE,
                     wkt, entity.getId(),
-                    InfrastructureType.LIGHTHOUSE
-            );
+                    InfrastructureType.LIGHTHOUSE);
             if (entity.getSpatialId() == null) {
                 entity.setSpatialId(spatialObj.getId());
                 beaconLightRepo.save(entity);
@@ -402,7 +431,7 @@ public class BeaconLightService {
     }
 
     private void logHistory(BeaconLight entity,
-                            BeaconHistoryActionType action, String fields, String previousJson, String newJson) {
+            BeaconHistoryActionType action, String fields, String previousJson, String newJson) {
         BeaconHistory entry = BeaconHistory.builder()
                 .beaconType(BeaconType.BEACON_LIGHT)
                 .entityId(entity.getId())
@@ -441,6 +470,7 @@ public class BeaconLightService {
 
         return BeaconLightResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())

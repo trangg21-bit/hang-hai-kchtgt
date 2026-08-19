@@ -7,6 +7,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.lighthouse.CreateLighthouseStationRequest;
 import com.hanghai.kchtg.station.dto.lighthouse.LighthouseStationResponse;
@@ -69,6 +71,7 @@ public class LighthouseStationService {
 
     @Transactional
     public LighthouseStationResponse create(CreateLighthouseStationRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (lighthouseRepo.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã nhà trạm đèn biển đã tồn tại: " + request.getCode());
         }
@@ -76,7 +79,13 @@ public class LighthouseStationService {
         validateCoordinates(request.getLongitude(), request.getLatitude());
         validateMaintenanceDates(request.getLastMaintenanceDate(), request.getNextMaintenanceDate());
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "lighthousestation", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         LighthouseStation entity = LighthouseStation.builder()
+                .securityLevel(secLevel)
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
@@ -101,6 +110,7 @@ public class LighthouseStationService {
 
     @Transactional
     public LighthouseStationResponse update(UUID id, UpdateLighthouseStationRequest request) {
+        FieldWriteGuard.validateObject(request);
         LighthouseStation entity = lighthouseRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm đèn không tìm thấy: " + id));
@@ -111,8 +121,15 @@ public class LighthouseStationService {
 
         String oldJson = toJson(entity);
 
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "lighthousestation",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+
         // Apply mutable fields only
-        if (request.getName() != null) entity.setName(request.getName());
+        if (request.getName() != null)
+            entity.setName(request.getName());
 
         // Handle type field update conditionally
         if (request.getType() != null && !request.getType().equals(entity.getType())) {
@@ -136,7 +153,8 @@ public class LighthouseStationService {
                         String[] parts = clean.split("\\s+");
                         currentLon = Double.parseDouble(parts[0]);
                         currentLat = Double.parseDouble(parts[1]);
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             }
         }
@@ -149,21 +167,27 @@ public class LighthouseStationService {
             }
         }
 
-        if (request.getLightColor() != null) entity.setLightColor(request.getLightColor());
+        if (request.getLightColor() != null)
+            entity.setLightColor(request.getLightColor());
         if (request.getLightCharacteristic() != null) {
             entity.setLightCharacteristic(request.getLightCharacteristic());
         }
-        if (request.getLightRange() != null) entity.setLightRange(request.getLightRange());
-        if (request.getRange() != null) entity.setRange(request.getRange());
-        if (request.getDescription() != null) entity.setDescription(request.getDescription());
-        if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
+        if (request.getLightRange() != null)
+            entity.setLightRange(request.getLightRange());
+        if (request.getRange() != null)
+            entity.setRange(request.getRange());
+        if (request.getDescription() != null)
+            entity.setDescription(request.getDescription());
+        if (request.getUnitId() != null)
+            entity.setUnitId(request.getUnitId());
         if (request.getLastMaintenanceDate() != null) {
             entity.setLastMaintenanceDate(request.getLastMaintenanceDate());
         }
         if (request.getNextMaintenanceDate() != null) {
             entity.setNextMaintenanceDate(request.getNextMaintenanceDate());
         }
-        if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
+        if (request.getIsActive() != null)
+            entity.setIsActive(request.getIsActive());
 
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
@@ -176,12 +200,14 @@ public class LighthouseStationService {
 
         // Sync to GisSpatialObject
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_LIGHTHOUSE;
             UUID refId = entity.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -192,13 +218,13 @@ public class LighthouseStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.LIGHTHOUSE
-            );
+                    InfrastructureType.LIGHTHOUSE);
             entity.setSpatialId(spatialObj.getId());
 
             lighthouseRepo.save(entity);
         } else if (entity.getSpatialId() != null) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_LIGHTHOUSE;
             gisSpatialObjectService.createOrUpdate(
                     entity.getSpatialId(),
@@ -206,10 +232,10 @@ public class LighthouseStationService {
                     "DENBIEN_" + entity.getCode(),
                     geomType,
                     objType,
-                    "POINT(" + (currentLon != null ? currentLon : 0.0) + " " + (currentLat != null ? currentLat : 0.0) + ")",
+                    "POINT(" + (currentLon != null ? currentLon : 0.0) + " " + (currentLat != null ? currentLat : 0.0)
+                            + ")",
                     entity.getId(),
-                    InfrastructureType.LIGHTHOUSE
-            );
+                    InfrastructureType.LIGHTHOUSE);
         }
 
         // Compare JSON for actual changes
@@ -374,7 +400,7 @@ public class LighthouseStationService {
     }
 
     private void logHistory(LighthouseStation entity,
-                            String action, String fields, String previousJson, String newJson) {
+            String action, String fields, String previousJson, String newJson) {
         StationHistory entry = StationHistory.builder()
                 .stationType("DEN")
                 .entityId(entity.getId())
@@ -392,6 +418,7 @@ public class LighthouseStationService {
     private LighthouseStationResponse toResponse(LighthouseStation entity) {
         LighthouseStationResponse.LighthouseStationResponseBuilder builder = LighthouseStationResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())
@@ -428,15 +455,17 @@ public class LighthouseStationService {
                             builder.longitude(Double.parseDouble(parts[0]));
                             builder.latitude(Double.parseDouble(parts[1]));
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             });
         }
         return builder.build();
     }
 
-        private boolean isApprovedStatus(Object status) {
-        if (status == null) return false;
+    private boolean isApprovedStatus(Object status) {
+        if (status == null)
+            return false;
         String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
         return "APPROVED_L1".equals(name) || "PUBLISHED".equals(name);
     }
@@ -447,7 +476,8 @@ public class LighthouseStationService {
     }
 
     private boolean isInApprovalProcess(Object status) {
-        if (status == null) return false;
+        if (status == null)
+            return false;
         String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
         return "PENDING_APPROVAL".equals(name) || "APPROVED_L1".equals(name) || "APPROVED_L2".equals(name);
     }
@@ -507,4 +537,3 @@ public class LighthouseStationService {
         }
     }
 }
-

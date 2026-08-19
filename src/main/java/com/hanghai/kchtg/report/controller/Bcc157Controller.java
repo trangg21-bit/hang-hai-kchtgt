@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 /**
  * REST controller for BCC_157 (F-142) CRUD operations.
@@ -26,6 +27,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/bcc157")
 @RequiredArgsConstructor
 @Slf4j
+@DataScope
 public class Bcc157Controller {
 
     private final Bcc157Service bcc157Service;

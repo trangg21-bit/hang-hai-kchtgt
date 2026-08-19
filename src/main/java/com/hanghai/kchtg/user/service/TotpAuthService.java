@@ -4,6 +4,7 @@ import com.hanghai.kchtg.lockout.dto.enums.LockoutStatus;
 import com.hanghai.kchtg.password.service.PasswordHashService;
 import com.hanghai.kchtg.lockout.service.LockoutService;
 import com.hanghai.kchtg.security.TotpValidator;
+import com.hanghai.kchtg.security.service.UserSecurityCacheService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.MfaChallengeResponse;
 import com.hanghai.kchtg.user.dto.TotpLoginRequest;
@@ -51,6 +52,26 @@ public class TotpAuthService {
     private final TokenService tokenService;
     private final LoginAuditLogService auditLogService;
     private final LockoutService lockoutService;
+    private final UserSecurityCacheService userSecurityCacheService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public TotpAuthService(UserRepository userRepository,
+                           PasswordEncoder passwordEncoder,
+                           PasswordHashService passwordHashService,
+                           TotpValidator totpValidator,
+                           TokenService tokenService,
+                           LoginAuditLogService auditLogService,
+                           LockoutService lockoutService,
+                           UserSecurityCacheService userSecurityCacheService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.passwordHashService = passwordHashService;
+        this.totpValidator = totpValidator;
+        this.tokenService = tokenService;
+        this.auditLogService = auditLogService;
+        this.lockoutService = lockoutService;
+        this.userSecurityCacheService = userSecurityCacheService;
+    }
 
     public TotpAuthService(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
@@ -59,13 +80,8 @@ public class TotpAuthService {
                            TokenService tokenService,
                            LoginAuditLogService auditLogService,
                            LockoutService lockoutService) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.passwordHashService = passwordHashService;
-        this.totpValidator = totpValidator;
-        this.tokenService = tokenService;
-        this.auditLogService = auditLogService;
-        this.lockoutService = lockoutService;
+        this(userRepository, passwordEncoder, passwordHashService, totpValidator,
+                tokenService, auditLogService, lockoutService, null);
     }
     // =========================================================================
 
@@ -126,6 +142,7 @@ public class TotpAuthService {
             String newBcryptHash = passwordHashService.hash(password);
             user.setPassword(newBcryptHash);
             userRepository.save(user);
+            evictSecuritySnapshot(user);
             log.info("Automatically upgraded legacy password hash to BCrypt for user: {}", user.getUsername());
         }
 
@@ -201,6 +218,9 @@ public class TotpAuthService {
             }
 
             userRepository.save(user);
+            if (newCount >= MAX_TOTP_ATTEMPTS) {
+                evictSecuritySnapshot(user);
+            }
 
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
@@ -215,6 +235,7 @@ public class TotpAuthService {
         user.setLastLoginAt(LocalDateTime.now());
         // Xóa khóa (lock) nếu có (user đã xác thực thành công)
         lockoutService.recordSuccess(user, requestHttp);
+        evictSecuritySnapshot(user);
 
         // =========================================================================
         String accessToken = tokenService.createAccessToken(user);
@@ -242,6 +263,12 @@ public class TotpAuthService {
 
         log.info("User logged in with 2FA: {} (userId={})", user.getUsername(), userId);
         return response;
+    }
+
+    private void evictSecuritySnapshot(User user) {
+        if (userSecurityCacheService != null && user != null) {
+            userSecurityCacheService.evict(user.getId());
+        }
     }
 
     /**

@@ -15,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 /**
  * REST controller for chuyên đề statistics forms (Biểu) — M-017.
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@DataScope
 public class StatisticsController {
 
     private final StatisticsService statisticsService;

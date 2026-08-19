@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.entity;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,6 +20,10 @@ import java.util.UUID;
 @Accessors(chain = true)
 @SQLRestriction("deleted_at IS NULL")
 public abstract class BaseStation {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    protected RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

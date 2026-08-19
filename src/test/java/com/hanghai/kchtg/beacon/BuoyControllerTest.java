@@ -185,7 +185,10 @@ class BuoyControllerTest {
                   "longitude": 106.5,
                   "range": 15.0,
                   "color": "Xanh",
-                  "shape": "Hình cầu"
+                  "shape": "Hình cầu",
+                  "classification": "Phao tiêu luồng",
+                  "condition": "Hoạt động bình thường",
+                  "lightHeight": 4.5
                 }
                 """;
         BuoyResponse response = makeResponse(id, "Phao tiêu mới", "SAFE_WATER", "DRAFT");

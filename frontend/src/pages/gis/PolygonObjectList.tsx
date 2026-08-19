@@ -28,7 +28,7 @@ import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import {
   spaceMd, spaceFormField, spaceLg, spaceXs,
   radiusPill, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
@@ -210,7 +210,7 @@ export default function PolygonObjectList() {
           <Tooltip title="Xóa">
             <Button type="link" size="small" danger icon={<DeleteOutlined />}
               onClick={() => {
-                Modal.confirm({
+                modal.confirm({
                   title: 'Xác nhận xóa',
                   content: `Bạn có chắc muốn xóa "${record.name}"?`,
                   okText: 'Xóa',

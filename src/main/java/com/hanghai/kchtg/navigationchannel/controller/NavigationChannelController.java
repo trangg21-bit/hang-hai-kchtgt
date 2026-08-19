@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 /**
  * REST controller for NavigationChannel (F-038 to F-043).
@@ -21,6 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/navigation-channel")
 @RequiredArgsConstructor
+@DataScope
 public class NavigationChannelController {
 
     private final NavigationChannelService service;
@@ -30,7 +32,9 @@ public class NavigationChannelController {
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> create(
             @RequestBody @Valid NavigationChannelCreateRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
         return ResponseEntity.ok(ApiResponse.success("Tạo luồng hàng hải thành công", service.create(req, userId)));
     }
 
@@ -54,8 +58,11 @@ public class NavigationChannelController {
             @PathVariable UUID id,
             @RequestBody @Valid NavigationChannelUpdateRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật luồng hàng hải thành công", service.update(id, req, userId)));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
+        return ResponseEntity
+                .ok(ApiResponse.success("Cập nhật luồng hàng hải thành công", service.update(id, req, userId)));
     }
 
     @DeleteMapping("/{id}")
@@ -71,7 +78,9 @@ public class NavigationChannelController {
             @PathVariable UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, userId)));
     }
 
@@ -81,7 +90,9 @@ public class NavigationChannelController {
             @PathVariable UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
     }
 
@@ -105,6 +116,7 @@ public class NavigationChannelController {
             @RequestParam(name = "ApprovalStatus", required = false) String ApprovalStatus,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, ApprovalStatus, page, size)));
+        return ResponseEntity
+                .ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, ApprovalStatus, page, size)));
     }
 }

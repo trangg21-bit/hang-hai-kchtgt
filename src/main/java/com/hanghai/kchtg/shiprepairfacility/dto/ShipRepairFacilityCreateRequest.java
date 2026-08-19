@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.shiprepairfacility.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,6 +18,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class ShipRepairFacilityCreateRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "facilityName is required")
     @Size(max = 255)

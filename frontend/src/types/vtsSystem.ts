@@ -7,6 +7,20 @@ export const ConditionStatus = {
 
 export type ConditionStatus = typeof ConditionStatus[keyof typeof ConditionStatus];
 
+export const RecordSecurityLevel = {
+  NORMAL: 'NORMAL',
+  RESTRICTED: 'RESTRICTED',
+  CONFIDENTIAL: 'CONFIDENTIAL',
+} as const;
+
+export type RecordSecurityLevel = typeof RecordSecurityLevel[keyof typeof RecordSecurityLevel];
+
+export const RECORD_SECURITY_LEVEL_OPTIONS = [
+  { value: RecordSecurityLevel.NORMAL, label: 'Thông thường' },
+  { value: RecordSecurityLevel.RESTRICTED, label: 'Hạn chế' },
+  { value: RecordSecurityLevel.CONFIDENTIAL, label: 'Mật' },
+];
+
 export const ApprovalStatus = {
   DRAFT: 'DRAFT',
   PROPOSED: 'PROPOSED',
@@ -31,6 +45,7 @@ export interface VtsSystemResponse {
   zones?: VtsZoneDto[];
   systemName?: string;
   conditionStatus?: ConditionStatus;
+  recordSecurityLevel?: RecordSecurityLevel;
   code?: string;
   province?: string;
   provinceId?: number;
@@ -76,6 +91,7 @@ export interface VtsSystemListItem {
   systemName: string;
   address?: string;
   conditionStatus?: ConditionStatus;
+  recordSecurityLevel?: RecordSecurityLevel;
   responsibilityLevel?: string;
   partner?: string;
   orgUnitId?: string;
@@ -96,6 +112,7 @@ export interface CreateVtsSystemRequest {
   zones?: VtsZoneDto[];
   systemName?: string;
   conditionStatus?: ConditionStatus;
+  recordSecurityLevel?: RecordSecurityLevel;
   responsibilityLevel?: string;
   source?: string;
   partner?: string;

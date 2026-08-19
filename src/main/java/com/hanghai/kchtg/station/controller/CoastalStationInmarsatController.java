@@ -14,19 +14,22 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/stations/inmarsat")
 @Validated
 @RequiredArgsConstructor
 @Tag(name = "Inmarsat Coastal Station")
+@DataScope
 public class CoastalStationInmarsatController {
 
     private final CoastalStationInmarsatService service;
 
     @PostMapping
     @Operation(summary = "Create a new Inmarsat station")
-    public ResponseEntity<CoastalStationInmarsat> createStation(@Valid @RequestBody CoastalStationInmarsatRequest request) {
+    public ResponseEntity<CoastalStationInmarsat> createStation(
+            @Valid @RequestBody CoastalStationInmarsatRequest request) {
         CoastalStationInmarsat created = service.createStation(request);
         return ResponseEntity.ok(created);
     }

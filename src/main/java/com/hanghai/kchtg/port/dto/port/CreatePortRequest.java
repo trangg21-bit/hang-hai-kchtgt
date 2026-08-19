@@ -13,6 +13,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
  * Request DTO for creating a new Port.
@@ -20,6 +21,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
  */
 @Data
 public class CreatePortRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "Mã cảng không được để trống")
     @Size(max = 50, message = "Mã cảng tối đa 50 ký tự")

@@ -3,6 +3,7 @@ package com.hanghai.kchtg.port.dto.pier;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.PierType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -15,6 +16,8 @@ import java.util.UUID;
 
 @Data
 public class UpdatePierRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotNull(message = "ID không được để trống")
     private UUID id;

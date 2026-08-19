@@ -3,6 +3,7 @@ package com.hanghai.kchtg.port.dto.berth;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.BerthType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,6 +16,8 @@ import java.util.UUID;
 
 @Data
 public class CreateBerthRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @Size(max = 50)
     private String berthCode;

@@ -2,6 +2,7 @@ package com.hanghai.kchtg.dikerevetment.dto;
 
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,6 +22,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class DikeRevetmentCreateRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @jakarta.validation.constraints.NotNull(message = "Loại đê không được để trống")
     private DikeRevetmentType dikeRevetmentType;

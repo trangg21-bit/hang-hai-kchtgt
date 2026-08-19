@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.dto.lighthouse;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -20,6 +21,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class UpdateLighthouseStationRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @Size(max = 200)
     private String name;

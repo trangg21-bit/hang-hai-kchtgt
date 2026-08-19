@@ -19,11 +19,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for the instant permission revocation logic in {@link JwtAuthFilter}.
+ * Unit tests for the instant permission revocation logic in
+ * {@link JwtAuthFilter}.
  * <p>
- * A JWT carries the permission_version captured at issuance. When it is strictly
+ * A JWT carries the permission_version captured at issuance. When it is
+ * strictly
  * older than the user's current version (an admin changed the user's role), the
- * filter must reject the request with 401 and set no authentication (fail-closed).
+ * filter must reject the request with 401 and set no authentication
+ * (fail-closed).
  */
 class JwtAuthFilterPermissionVersionTest {
 
@@ -68,24 +71,28 @@ class JwtAuthFilterPermissionVersionTest {
     }
 
     @Test
-    @DisplayName("Stale token (version older than user) is rejected with 401 and no authentication")
-    void staleToken_rejectedWith401() throws Exception {
-        userWithVersion(2);
+    @DisplayName("Token authenticates with live database permissions and attaches X-New-Token on version change")
+    void tokenWithDifferentVersion_authenticatesWithLivePermissions() throws Exception {
+        User user = userWithVersion(2);
         when(jwtUtil.extractPermissionVersion(TOKEN)).thenReturn(1);
+        when(jwtUtil.generateAccessToken(user)).thenReturn("new.header.payload.signature");
 
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         filter.doFilter(requestWithBearer(), response, chain);
 
-        assertEquals(401, response.getStatus());
-        assertNull(SecurityContextHolder.getContext().getAuthentication(),
-                "No authentication should be set for a stale token");
-        verify(chain, never()).doFilter(any(), any());
+        assertEquals(200, response.getStatus());
+        assertEquals("new.header.payload.signature", response.getHeader("X-New-Token"));
+        assertEquals("X-New-Token", response.getHeader("Access-Control-Expose-Headers"));
+        assertEquals("no-store", response.getHeader("Cache-Control"));
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication(),
+                "Authentication should be set using live database permissions");
+        verify(chain).doFilter(any(), any());
     }
 
     @Test
-    @DisplayName("Current token (version matches user) authenticates and proceeds")
+    @DisplayName("Current token (version matches user) authenticates without attaching X-New-Token")
     void currentToken_authenticates() throws Exception {
         userWithVersion(2);
         when(jwtUtil.extractPermissionVersion(TOKEN)).thenReturn(2);
@@ -96,23 +103,56 @@ class JwtAuthFilterPermissionVersionTest {
         filter.doFilter(requestWithBearer(), response, chain);
 
         assertEquals(200, response.getStatus());
+        assertNull(response.getHeader("X-New-Token"));
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
         verify(chain).doFilter(any(), any());
     }
 
     @Test
-    @DisplayName("Legacy token without permission_version claim is accepted (backward compatible)")
-    void tokenWithoutVersionClaim_accepted() throws Exception {
-        userWithVersion(3);
-        when(jwtUtil.extractPermissionVersion(TOKEN)).thenReturn(null);
+    @DisplayName("Token for non-existent user in DB is rejected with 401 (fail-closed)")
+    void nonExistentUser_rejectedWith401() throws Exception {
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.empty());
+        when(userRepository.findByUsernameWithRelations("alice")).thenReturn(Optional.empty());
 
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
         filter.doFilter(requestWithBearer(), response, chain);
 
-        assertEquals(200, response.getStatus());
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
-        verify(chain).doFilter(any(), any());
+        assertEquals(401, response.getStatus());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(chain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    @DisplayName("Token for INACTIVE user in DB is rejected with 403 (fail-closed)")
+    void inactiveUser_rejectedWith403() throws Exception {
+        User user = userWithVersion(1);
+        user.setStatus(UserStatus.INACTIVE);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilter(requestWithBearer(), response, chain);
+
+        assertEquals(403, response.getStatus());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(chain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    @DisplayName("Token for LOCKED user in DB is rejected with 403 (fail-closed)")
+    void lockedUser_rejectedWith403() throws Exception {
+        User user = userWithVersion(1);
+        user.setStatus(UserStatus.LOCKED);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilter(requestWithBearer(), response, chain);
+
+        assertEquals(403, response.getStatus());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(chain, never()).doFilter(any(), any());
     }
 }

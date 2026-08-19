@@ -7,6 +7,7 @@ import type { PaginatedResponse } from '../types/common';
 export interface Symbol {
   id: string;
   name: string;
+  code?: string;
   description?: string;
   image: string;
   status: 'active' | 'inactive';
@@ -20,6 +21,7 @@ export interface Symbol {
 
 export interface CreateSymbolPayload {
   name: string;
+  code?: string;
   description?: string;
   image: string;
   status?: string;
@@ -27,6 +29,7 @@ export interface CreateSymbolPayload {
 
 export interface UpdateSymbolPayload {
   name?: string;
+  code?: string;
   description?: string;
   image?: string;
   status?: 'active' | 'inactive';
@@ -48,8 +51,9 @@ function mapSymbol(item: any): Symbol {
   return {
     id: item.id ?? '',
     name: item.name ?? '',
+    code: item.code ?? item.symbolCode ?? undefined,
     description: item.description ?? '',
-    image: item.image ?? '',
+    image: item.image ?? item.hinhAnh ?? '',
     status: (item.status?.toLowerCase() as Symbol['status']) || 'active',
     createdBy: item.createdBy ?? '',
     createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',

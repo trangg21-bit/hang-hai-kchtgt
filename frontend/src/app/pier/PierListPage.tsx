@@ -41,7 +41,7 @@ import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import {
   fetchCauCangList,
   fetchCauCangById,
@@ -485,7 +485,7 @@ export default function PierListPage() {
 
   const handleDelete = useCallback((record: Pier) => {
     let inputValue = '';
-    Modal.confirm({
+    modal.confirm({
       title: 'Xác nhận xóa cầu cảng',
       icon: <ExclamationCircleOutlined />,
       content: (

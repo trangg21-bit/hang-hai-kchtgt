@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, App as AntApp, theme } from 'antd';
 import { metronicTheme } from './theme';
 import viVN from 'antd/locale/vi_VN';
-import { setStaticMessage } from './components/ToastNotification';
+import { setStaticMessage, setStaticModal } from './components/ToastNotification';
 import { useAuthStore } from './store/authStore';
 import AppLayout from './components/AppLayout';
 import { Spin } from 'antd';
@@ -274,9 +274,10 @@ function UnknownRouteRedirect() {
 }
 
 function RegisterAntdStatic() {
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   useEffect(() => {
     setStaticMessage(message);
-  }, [message]);
+    setStaticModal(modal);
+  }, [message, modal]);
   return null;
 }

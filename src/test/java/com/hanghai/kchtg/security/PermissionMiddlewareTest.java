@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -91,14 +92,20 @@ class PermissionMiddlewareTest {
     }
 
     @Test
-    void doFilterInternal_whenUserNotAuthenticated_shouldSkip() throws Exception {
+    void doFilterInternal_whenUserNotAuthenticated_shouldWrite403Forbidden() throws Exception {
         when(request.getRequestURI()).thenReturn("/api/v1/users");
         when(request.getMethod()).thenReturn("GET");
 
+        StringWriter stringWriter = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(stringWriter);
+        when(response.getWriter()).thenReturn(printWriter);
+
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
-        verify(filterChain).doFilter(request, response);
+        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verify(filterChain, never()).doFilter(request, response);
         verifyNoInteractions(permissionRoleService);
+        assertThat(stringWriter.toString()).contains("user:read");
     }
 
     @Test
@@ -109,7 +116,7 @@ class PermissionMiddlewareTest {
 
         when(request.getRequestURI()).thenReturn("/api/v1/users");
         when(request.getMethod()).thenReturn("GET");
-        when(permissionRoleService.checkPermission(eq(userId), eq("user"), eq("read"))).thenReturn(false);
+        when(permissionRoleService.checkPermission(eq(auth), eq("user"), eq("read"))).thenReturn(false);
 
         StringWriter stringWriter = new StringWriter();
         PrintWriter printWriter = new PrintWriter(stringWriter);
@@ -130,7 +137,7 @@ class PermissionMiddlewareTest {
 
         when(request.getRequestURI()).thenReturn("/api/v1/users");
         when(request.getMethod()).thenReturn("GET");
-        when(permissionRoleService.checkPermission(eq(userId), eq("user"), eq("read"))).thenReturn(true);
+        when(permissionRoleService.checkPermission(eq(auth), eq("user"), eq("read"))).thenReturn(true);
 
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
@@ -143,12 +150,14 @@ class PermissionMiddlewareTest {
                 testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN")));
         SecurityContextHolder.getContext().setAuthentication(auth);
 
+        when(permissionRoleService.isSuperAdmin(auth)).thenReturn(true);
         when(request.getRequestURI()).thenReturn("/api/v1/vts-system");
         when(request.getMethod()).thenReturn("GET");
 
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
-        verify(permissionRoleService, never()).checkPermission(any(), anyString(), anyString());
+        verify(permissionRoleService, never()).checkPermission(any(Authentication.class), anyString(), anyString());
+        verify(permissionRoleService, never()).checkPermission(any(UUID.class), anyString(), anyString());
         verify(filterChain).doFilter(request, response);
     }
 
@@ -161,11 +170,11 @@ class PermissionMiddlewareTest {
         when(request.getRequestURI()).thenReturn("/api/v1/categories");
         when(request.getMethod()).thenReturn("POST");
         when(permissionRepository.countByResource("category")).thenReturn(1L);
-        when(permissionRoleService.checkPermission(eq(userId), eq("category"), eq("create"))).thenReturn(true);
+        when(permissionRoleService.checkPermission(eq(auth), eq("category"), eq("create"))).thenReturn(true);
 
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
-        verify(permissionRoleService).checkPermission(eq(userId), eq("category"), eq("create"));
+        verify(permissionRoleService).checkPermission(eq(auth), eq("category"), eq("create"));
         verify(filterChain).doFilter(request, response);
     }
 
@@ -177,12 +186,12 @@ class PermissionMiddlewareTest {
 
         when(request.getRequestURI()).thenReturn("/api/v1/vts-system/11111111-1111-1111-1111-111111111111/attachments");
         when(request.getMethod()).thenReturn("POST");
-        when(permissionRoleService.checkPermission(eq(userId), eq("vts"), eq("update"))).thenReturn(true);
+        when(permissionRoleService.checkPermission(eq(auth), eq("vts"), eq("update"))).thenReturn(true);
 
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
-        verify(permissionRoleService).checkPermission(eq(userId), eq("vts"), eq("update"));
-        verify(permissionRoleService, never()).checkPermission(eq(userId), eq("vts"), eq("create"));
+        verify(permissionRoleService).checkPermission(eq(auth), eq("vts"), eq("update"));
+        verify(permissionRoleService, never()).checkPermission(eq(auth), eq("vts"), eq("create"));
         verify(filterChain).doFilter(request, response);
     }
 
@@ -194,11 +203,11 @@ class PermissionMiddlewareTest {
 
         when(request.getRequestURI()).thenReturn("/api/v1/he-thong-vts");
         when(request.getMethod()).thenReturn("GET");
-        when(permissionRoleService.checkPermission(eq(userId), eq("vts"), eq("read"))).thenReturn(true);
+        when(permissionRoleService.checkPermission(eq(auth), eq("vts"), eq("read"))).thenReturn(true);
 
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
-        verify(permissionRoleService).checkPermission(eq(userId), eq("vts"), eq("read"));
+        verify(permissionRoleService).checkPermission(eq(auth), eq("vts"), eq("read"));
         verify(filterChain).doFilter(request, response);
     }
 }

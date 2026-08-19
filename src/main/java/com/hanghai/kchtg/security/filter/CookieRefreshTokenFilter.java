@@ -9,6 +9,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,21 +20,22 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Filter to extract, validate and authenticate refresh tokens stored in HTTP-Only cookies (F-24).
+ * Filter to extract, validate and authenticate refresh tokens stored in
+ * HTTP-Only cookies (F-24).
  */
 @Component
 public class CookieRefreshTokenFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
 
-    public CookieRefreshTokenFilter(TokenService tokenService) {
+    public CookieRefreshTokenFilter(@Nullable TokenService tokenService) {
         this.tokenService = tokenService;
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         if ("/api/auth/refresh".equals(request.getRequestURI()) && "POST".equalsIgnoreCase(request.getMethod())) {
             String refreshToken = null;
@@ -46,7 +48,7 @@ public class CookieRefreshTokenFilter extends OncePerRequestFilter {
                 }
             }
 
-            if (refreshToken != null && tokenService.isTokenValid(refreshToken)) {
+            if (tokenService != null && refreshToken != null && tokenService.isTokenValid(refreshToken)) {
                 try {
                     Claims claims = tokenService.validateToken(refreshToken);
                     String username = claims.getSubject();

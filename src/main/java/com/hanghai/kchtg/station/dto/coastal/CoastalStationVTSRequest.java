@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.station.dto.coastal;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,6 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CoastalStationVTSRequest {
+    private RecordSecurityLevel securityLevel;
     private Double latitude;
     private Double longitude;
 

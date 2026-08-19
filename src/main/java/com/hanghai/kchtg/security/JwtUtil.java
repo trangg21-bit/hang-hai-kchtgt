@@ -165,6 +165,20 @@ public class JwtUtil {
         return validateToken(token).getSubject();
     }
 
+    /** Extracts the stable user identifier embedded in access tokens. */
+    public UUID extractUserId(String token) {
+        Claims claims = validateToken(token);
+        String userId = claims.get("user_id", String.class);
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(userId);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
     /**
      * Lay role claim tu JWT.
      */

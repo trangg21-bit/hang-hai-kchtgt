@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.group.service;
 
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.group.dto.CreateGroupRequest;
 import com.hanghai.kchtg.group.dto.GroupResponse;
 import com.hanghai.kchtg.group.dto.UpdateGroupRequest;
@@ -41,6 +42,7 @@ public class GroupService {
      * @throws IllegalArgumentException neu ma code da ton tai
      */
     public GroupResponse create(CreateGroupRequest request) {
+        FieldWriteGuard.validateObject(request);
         log.info("Creating group: code={}, name={}", request.getCode(), request.getName());
 
         if (repository.existsByCode(request.getCode())) {
@@ -102,6 +104,7 @@ public class GroupService {
 
         UserGroup entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
+        FieldWriteGuard.validateUpdate(request, entity);
 
         if (request.getName() != null) {
             entity.setName(request.getName());

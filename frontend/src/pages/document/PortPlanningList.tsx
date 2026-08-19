@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Input, Modal, Select } from 'antd';
+import { Button, DatePicker, Form, Input, Select } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -16,7 +16,7 @@ import ManagementDrawer from '../../components/management/ManagementDrawer';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import { colors } from '../../theme';
 import {
   fontSizeMd,
@@ -174,7 +174,7 @@ export default function PortPlanningList() {
   }, [closeDrawer, currentUsername, editingItem, form, loadData]);
 
   const confirmDelete = useCallback((record: QuyHoachBenCangResponse) => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Xóa hồ sơ quy hoạch',
       content: 'Bạn có chắc chắn muốn xóa hồ sơ quy hoạch này?',
       okText: 'Xóa',

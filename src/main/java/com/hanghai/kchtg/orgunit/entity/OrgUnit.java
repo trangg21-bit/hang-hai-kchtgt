@@ -11,8 +11,8 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldNameConstants;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -36,7 +36,6 @@ import java.util.UUID;
 @Table(name = "org_units", indexes = {
         @Index(name = "idx_org_units_path", columnList = "path"),
         @Index(name = "idx_org_units_parent", columnList = "parent_id"),
-        @Index(name = "idx_org_units_status", columnList = "status"),
         @Index(name = "idx_org_units_level", columnList = "level")
 })
 @Getter
@@ -44,6 +43,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
 public class OrgUnit extends BaseEntity {
 
     /** Display name of the organisational unit (max 200 chars). BR-003-08 */
@@ -51,12 +51,6 @@ public class OrgUnit extends BaseEntity {
     @Size(max = 200, message = "Tên đơn vị tối đa 200 ký tự")
     @Column(nullable = false, length = 200)
     private String name;
-
-    /** Unique business code for the unit. BR-013 */
-    @NotBlank(message = "Mã đơn vị không được để trống")
-    @Size(max = 50, message = "Mã đơn vị tối đa 50 ký tự")
-    @Column(nullable = false, unique = true, length = 50)
-    private String code;
 
     /**
      * Parent unit ID for hierarchical organisation. null indicates a root-level
@@ -69,13 +63,9 @@ public class OrgUnit extends BaseEntity {
     @Column(length = 1000)
     private String description;
 
-    /** Province/city where unit is located (BA spec: tinh_thanh_pho). */
-    @Column(name = "province", length = 100)
-    private String province;
-
-    /** Physical or mailing address (max 500 chars, optional). */
-    @Column(length = 500)
-    private String address;
+    /** Integer ID of the province/city from the shared provinces catalogue. */
+    @Column(name = "province")
+    private Integer provinceId;
 
     /** Detailed street address (optional). */
     @Column(name = "detail_address", length = 500)
@@ -85,14 +75,9 @@ public class OrgUnit extends BaseEntity {
     @Column(length = 20)
     private String phone;
 
-    /** Contact person / representative of the unit (optional). */
-    @Size(max = 200, message = "Trưởng đơn vị tối đa 200 ký tự")
-    @Column(name = "contact_person", length = 200)
-    private String contactPerson;
-
-    /** Approval status. Defaults to DRAFT at creation time. */
+    /** Cấp đơn vị (rank) — DEPARTMENT(0), BRANCH(1), REPRESENTATIVE(2). BR-003-09 */
     @Column(nullable = false, columnDefinition = "SMALLINT")
-    private OrgUnitStatus status;
+    private OrgUnitRank rank;
 
     /** Whether the unit is available for use, independent from approval status. */
     @Enumerated(EnumType.ORDINAL)
@@ -124,24 +109,17 @@ public class OrgUnit extends BaseEntity {
     @Column(nullable = false)
     private Integer sortOrder;
 
-    /** Timestamp when unit was approved (set on APPROVED transition). */
-    @Column(name = "approved_at")
-    private LocalDateTime approvedAt;
-
     // ── Factory methods ──────────────────────────────────────────────
 
     /**
      * Create a new root unit (no parent).
      */
-    public static OrgUnit createRoot(String name, String code,
-            String description, String address, String phone) {
+    public static OrgUnit createRoot(String name,
+            String description, String phone) {
         OrgUnit unit = new OrgUnit();
         unit.name = name;
-        unit.code = code;
         unit.description = description;
-        unit.address = address;
         unit.phone = phone;
-        unit.status = OrgUnitStatus.DRAFT;
         unit.operationalStatus = OperationalStatus.OPERATIONAL;
         unit.path = ""; // set later by MaterializedPathService
         unit.level = 0;

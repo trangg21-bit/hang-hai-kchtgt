@@ -952,7 +952,7 @@ export default function BuoyListPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('data:read') || hasPerm('admin:manage')) {
+    if (hasPerm('buoy:create') || hasPerm('buoy:manage') || hasPerm('data:create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -1168,7 +1168,7 @@ export default function BuoyListPage() {
       onClick: () => openDetailDrawer(record),
     });
 
-    if (hasPerm('data:read') || hasPerm('admin:manage')) {
+    if (hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update')) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -1188,7 +1188,7 @@ export default function BuoyListPage() {
       });
     }
 
-    if ((hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'REJECTED')) {
+    if ((hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update')) && (record.status === 'DRAFT' || record.status === 'REJECTED')) {
       actions.push({
         key: 'submit',
         label: 'Gửi phê duyệt',
@@ -1197,7 +1197,7 @@ export default function BuoyListPage() {
       });
     }
 
-    const canApprove = hasPerm('admin:manage') || hasPerm('data:read');
+    const canApprove = hasPerm('buoy:approve') || hasPerm('buoy:approvec1') || hasPerm('buoy:approvec2') || hasPerm('data:approve');
     if (canApprove && record.status === 'PENDING_APPROVAL') {
       actions.push({
         key: 'approveL1',
@@ -1231,7 +1231,7 @@ export default function BuoyListPage() {
     }
 
     const deletableStatuses = ['DRAFT', 'REJECTED'];
-    if ((hasPerm('admin:manage') || hasPerm('data:read')) && deletableStatuses.includes(record.status || '')) {
+    if ((hasPerm('buoy:delete') || hasPerm('buoy:manage') || hasPerm('data:delete')) && deletableStatuses.includes(record.status || '')) {
       actions.push({
         key: 'delete',
         label: 'Xóa',

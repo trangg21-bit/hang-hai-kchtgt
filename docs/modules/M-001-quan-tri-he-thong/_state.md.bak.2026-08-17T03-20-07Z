@@ -1,0 +1,74 @@
+---
+feature-id: M-001
+feature-name: Quản trị hệ thống
+pipeline-type: sdlc
+status: in-progress
+current-stage: engineering-business-analyst
+depends-on: []
+blocked-by: []
+created: 2026-06-16T04:39:13Z
+last-updated: 2026-08-17T03:17:12Z
+output-mode: lean
+repo-type: mini
+repo-path: .
+project: ""
+docs-path: docs/modules/M-001-quan-tri-he-thong
+intel-path: docs/intel
+completed-stages:
+  intake:
+    verdict: Ready for feature pipeline
+    completed-at: 2026-06-28
+stages-queue:
+  - engineering-business-analyst
+  - engineering-frontend-developer-wave-1
+  - engineering-qa-engineer-wave-2
+kpi:
+  tokens-total: 0
+  cycle-time-start: 2026-06-16T04:39:13Z
+  tokens-by-stage: {}
+  tokens-by-feature: {}
+rework-count:
+  engineering-business-analyst: 4
+  engineering-solution-designer: 1
+locked-fields: []
+version: 4
+finalizers: []
+children-close-policy: TERMINATE
+child-events: []
+partial-redo: []
+agent-flags: {}
+reopened-at: 2026-08-17T03:17:12Z
+reopened-reason: 'TRI-1786936397148-3956: scope_expansion — add "Cấp đơn vị" (rank) dropdown + enum to F-003 org-unit (schema + backend + frontend)'
+triage-id: TRI-1786688745847-4d03
+---
+# Pipeline State: Quản trị hệ thống (M-001)
+
+## Business Goal
+
+Quản lý tài khoản người dùng, phân quyền RBAC, quản lý nhóm, đơn vị, admin và audit log truy cập.
+
+## Module Status
+
+**Status: closed, Stage: closed** — Module has completed all stages (BA, SA, TL, Dev, QA, Reviewer, Closed). Ready for deployment.
+
+## Active Blockers
+
+none
+---
+
+## Stage Progress
+
+| # | Stage | Agent | Verdict | Artifact | Date |
+|---|---|---|---|---|---|
+| 1 | intake | intake | Ready for feature pipeline | — | 2026-06-28 |
+| 2 | engineering-business-analyst | engineering-business-analyst | — | — | — |
+| 3 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | — | — | — |
+| 4 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
+
+## Current Stage
+
+**engineering-business-analyst** — Ready to start. Input: `docs/modules/M-001-quan-tri-he-thong/module-brief.md`.
+
+## Next Action
+
+Next stage `engineering-business-analyst` — dispatched by the project manager (via the build receptionist); no slash command to run.

@@ -219,6 +219,7 @@ class PortServiceTest {
     @Test
     @DisplayName("F-010: softDelete — succeeds when no active children")
     void softDelete_noChildren_succeeds() {
+        testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
         when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
@@ -233,6 +234,7 @@ class PortServiceTest {
     @Test
     @DisplayName("F-010: softDelete — blocked when Berth children exist")
     void softDelete_blockedByBerthChildren() {
+        testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(2L);
         when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
@@ -246,6 +248,7 @@ class PortServiceTest {
     @Test
     @DisplayName("F-010: softDelete — blocked when WaterZone children exist")
     void softDelete_blockedByWaterZoneChildren() {
+        testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
         when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(3L);
@@ -259,6 +262,7 @@ class PortServiceTest {
     @Test
     @DisplayName("F-010: softDelete — blocked when both child types exist, message lists both counts")
     void softDelete_blockedByBothChildTypes() {
+        testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(1L);
         when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(1L);

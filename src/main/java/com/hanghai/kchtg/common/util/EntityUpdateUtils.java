@@ -7,7 +7,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * Tiện ích tự động cập nhật thuộc tính Entity và ghi nhận Lịch sử thay đổi (Change Log) dùng chung toàn dự án.
+ * Tiện ích tự động cập nhật thuộc tính Entity và ghi nhận Lịch sử thay đổi
+ * (Change Log) dùng chung toàn dự án.
  */
 public final class EntityUpdateUtils {
 
@@ -17,12 +18,14 @@ public final class EntityUpdateUtils {
 
     /**
      * Tự động quét tất cả các thuộc tính non-null từ DTO và copy sang Entity.
-     * Đồng thời tự động phát hiện thay đổi và ghi nhận giá trị cũ vào previousValues map cho workflow phê duyệt / audit log.
+     * Đồng thời tự động phát hiện thay đổi và ghi nhận giá trị cũ vào
+     * previousValues map cho workflow phê duyệt / audit log.
      *
      * @param request        DTO chứa thông tin cập nhật
      * @param entity         Entity đích cần cập nhật
      * @param previousValues Map lưu lại giá trị cũ (cho phê duyệt)
-     * @param ignoreFields   Danh sách các trường cần bỏ qua (VD: "zones", "coordinates", "geometryType")
+     * @param ignoreFields   Danh sách các trường cần bỏ qua (VD: "zones",
+     *                       "coordinates", "geometryType")
      */
     public static <R, E> void copyPropertiesIfPresent(
             R request,
@@ -59,6 +62,7 @@ public final class EntityUpdateUtils {
                     Object oldValue = entityField.get(entity);
 
                     if (!Objects.equals(newValue, oldValue)) {
+                        com.hanghai.kchtg.fieldvisibility.FieldVisibilityContext.assertWritable(name);
                         if (previousValues != null) {
                             previousValues.put(name, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
                         }

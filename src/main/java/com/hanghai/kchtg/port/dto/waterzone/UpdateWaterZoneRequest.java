@@ -3,6 +3,7 @@ package com.hanghai.kchtg.port.dto.waterzone;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.WaterZoneType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -11,6 +12,8 @@ import java.util.UUID;
 
 @Data
 public class UpdateWaterZoneRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotNull(message = "ID không được để trống")
     private UUID id;

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.buoy;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,8 @@ import java.time.LocalDate;
 @Builder
 public class CreateBuoyRequest {
 
+    private RecordSecurityLevel securityLevel;
+
     @Size(max = 50)
     private String code;
 
@@ -26,8 +29,6 @@ public class CreateBuoyRequest {
     private String name;
 
     private String type;
-
-
 
     @Size(max = 50)
     private String color;

@@ -50,7 +50,7 @@ F-003 (Quản lý đơn vị / Unit Management) has been reviewed against the BA
 | BR-003-08 | Tên đơn vị max 200 | `@Size(max=200)` on name field | ✅ |
 | BR-013 | Unique code | `existsByCode()` in create | ✅ |
 | BR-014 | Delete guard | `countByParentIdAndDeletedAtIsNull()` check | ✅ |
-| BR-015 | Admin-only approval | `@PreAuthorize("@auth.check(authentication, 'orgunit:approve')")` | ✅ |
+| BR-015 | Admin-only approval | `@PreAuthorize("@auth.check(authentication, 'orgunit:approve')")` | ✅ — SUPERSEDED by TRI-1786950754582-5a51 (org-unit approval flow removed; this BR no longer applies) |
 | BR-016 | Hierarchical tree | Materialized path + `buildTree()` recursion | ✅ |
 | BR-017 | Coefficient > 0, max 2 decimals | `@DecimalMin("0.01")`, `BigDecimal(5,2)` precision | ✅ |
 

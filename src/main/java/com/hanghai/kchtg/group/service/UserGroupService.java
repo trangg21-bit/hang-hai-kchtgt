@@ -43,7 +43,7 @@ public class UserGroupService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final UUID UNRESTRICTED_SCOPE_PLACEHOLDER = new UUID(0L, 0L);
     private static final Set<String> NON_INHERITABLE_PERMISSIONS = Set.of(
-            "group:manage", "admin:all", "orgunit:scope_all", "*");
+            "group:manage", "admin:all", "admin:manage", "orgunit:scope_all", "*");
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -123,11 +123,19 @@ public class UserGroupService {
             group.setDescription(request.getDescription().trim());
         }
 
+        boolean statusChanged = false;
         if (request.getStatus() != null && request.getStatus() != group.getStatus()) {
             group.setStatus(request.getStatus());
+            statusChanged = true;
         }
 
         UserGroup saved = groupRepository.save(group);
+
+        if (statusChanged) {
+            List<UUID> memberUserIds = groupMemberRepository
+                    .findUserIdsByUserGroupIdAndStatus(id, GroupMemberStatus.ACTIVE);
+            memberUserIds.forEach(permissionCacheService::invalidateAndIncrementVersion);
+        }
 
         log.info("Updated group: {} ({}) by {}", saved.getCode(), saved.getId(), operatorName);
         return saved;
@@ -214,7 +222,8 @@ public class UserGroupService {
      * Only returns groups where the current user is a member.
      */
     @Transactional(readOnly = true)
-    public PaginatedGroupResponse findMyGroups(UUID userId, String search, String code, String statusStr, UUID organizationIdFilter,
+    public PaginatedGroupResponse findMyGroups(UUID userId, String search, String code, String statusStr,
+            UUID organizationIdFilter,
             int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
@@ -266,7 +275,8 @@ public class UserGroupService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
 
         if (!currentUserScope().allows(entity.getOrganizationId())) {
-            throw new AccessDeniedException("Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
+            throw new AccessDeniedException(
+                    "Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
         }
 
         long memberCount = groupMemberRepository
@@ -318,23 +328,29 @@ public class UserGroupService {
     }
 
     @Transactional(readOnly = true)
-    public UserGroup findEntityById(UUID id) { return findEntityByIdScoped(id); }
-    /*
-        UserGroup group = groupRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
+    public UserGroup findEntityById(UUID id) {
+        return findEntityByIdScoped(id);
     }
-
-    // ── Group Permission ────────────────────────────────────────────
-
-    /** Lấy danh sách quyền trực tiếp hiện đang được gán cho nhóm. */
     /*
-        if (!currentUserScope().allows(group.getOrganizationId())) {
-            throw new AccessDeniedException("Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
-        }
-        return group;
-    }
-
-    */
+     * UserGroup group = groupRepository.findById(id)
+     * .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id="
+     * + id));
+     * }
+     * 
+     * // ── Group Permission ────────────────────────────────────────────
+     * 
+     * /** Lấy danh sách quyền trực tiếp hiện đang được gán cho nhóm.
+     */
+    /*
+     * if (!currentUserScope().allows(group.getOrganizationId())) {
+     * throw new
+     * AccessDeniedException("Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n"
+     * );
+     * }
+     * return group;
+     * }
+     * 
+     */
 
     @Transactional(readOnly = true)
     public List<String> findGroupPermissions(UUID groupId) {
@@ -459,7 +475,8 @@ public class UserGroupService {
         List<GroupMember> existingMembers = userIds.stream()
                 .map(userId -> groupMemberRepository.findByUserIdAndUserGroupId(userId, groupId).orElse(null))
                 .toList();
-        if (existingMembers.stream().anyMatch(member -> member != null && member.getStatus() == GroupMemberStatus.ACTIVE)) {
+        if (existingMembers.stream()
+                .anyMatch(member -> member != null && member.getStatus() == GroupMemberStatus.ACTIVE)) {
             throw new IllegalArgumentException("Một hoặc nhiều người dùng đã thuộc nhóm này");
         }
 
@@ -597,7 +614,8 @@ public class UserGroupService {
 
     private void requireOrganizationInScope(UUID organizationId) {
         if (!currentUserScope().allows(organizationId)) {
-            throw new AccessDeniedException("Báº¡n khÃ´ng cÃ³ quyá»n táº¡o hoáº·c thay Ä‘á»•i nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
+            throw new AccessDeniedException(
+                    "Báº¡n khÃ´ng cÃ³ quyá»n táº¡o hoáº·c thay Ä‘á»•i nhÃ³m ngoÃ i pháº¡m vi Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n quyá»n");
         }
     }
 

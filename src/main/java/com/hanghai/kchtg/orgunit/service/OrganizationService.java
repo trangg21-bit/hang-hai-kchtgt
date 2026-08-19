@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.orgunit.service;
 
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
 import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitHistoryRepository;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
 
 /**
  * Primary service for organisational unit management.
- * Integrates MaterializedPathService for tree operations, approval workflow,
+ * Integrates MaterializedPathService for tree operations
  * and audit trail via UnitHistory.
  *
  * <p>
@@ -42,7 +43,6 @@ import java.util.stream.Collectors;
  * <ul>
  * <li>BR-013: unique unit code</li>
  * <li>BR-014: delete guard (no children, no related personnel)</li>
- * <li>BR-015: Admin-only approval</li>
  * <li>BR-016: parent-child hierarchy with circular ref detection</li>
  * </ul>
  * </p>
@@ -200,17 +200,17 @@ public class OrganizationService {
     // ── Search / filter ──────────────────────────────────────────────
 
     /**
-     * Search units by name or code (case-insensitive).
+     * Search units by name (case-insensitive).
      */
     @Transactional(readOnly = true)
     public Page<OrgUnitResponse> searchUnits(String query, Pageable pageable) {
-        return orgUnitRepo.findByNameLikeOrCodeLike(query, pageable)
+        return orgUnitRepo.findByNameLike(query, pageable)
                 .map(OrgUnitResponse::from);
     }
 
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> searchUnits(String query) {
-        return orgUnitRepo.findByNameLikeOrCodeLike(query).stream()
+        return orgUnitRepo.findByNameLike(query).stream()
                 .map(OrgUnitResponse::from)
                 .collect(Collectors.toList());
     }
@@ -223,31 +223,30 @@ public class OrganizationService {
         if (scope.orgUnitIds().isEmpty()) {
             return List.of();
         }
-        return orgUnitRepo.findByNameLikeOrCodeLikeAndIds(query, scope.orgUnitIds()).stream()
+        return orgUnitRepo.findByNameLikeAndIds(query, scope.orgUnitIds()).stream()
                 .map(OrgUnitResponse::from)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Filter units by status, and/or level.
+     * Filter units by level.
      */
     @Transactional(readOnly = true)
-    public Page<OrgUnitResponse> filterUnits(OrgUnitStatus status,
-            Integer level, Pageable pageable) {
-        return orgUnitRepo.findByFilters(status, level, pageable)
+    public Page<OrgUnitResponse> filterUnits(Integer level, Pageable pageable) {
+        return orgUnitRepo.findByFilters(level, pageable)
                 .map(OrgUnitResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public Page<OrgUnitResponse> filterUnits(OrgUnitStatus status, Integer level,
+    public Page<OrgUnitResponse> filterUnits(Integer level,
             Pageable pageable, OrgUnitScopeService.Scope scope) {
         if (scope.unrestricted()) {
-            return filterUnits(status, level, pageable);
+            return filterUnits(level, pageable);
         }
         if (scope.orgUnitIds().isEmpty()) {
             return Page.empty(pageable);
         }
-        return orgUnitRepo.findByFiltersAndIds(status, level, scope.orgUnitIds(), pageable)
+        return orgUnitRepo.findByFiltersAndIds(level, scope.orgUnitIds(), pageable)
                 .map(OrgUnitResponse::from);
     }
 
@@ -271,17 +270,7 @@ public class OrganizationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse create(CreateOrgUnitRequest request, UUID operatorId, String operatorName,
             OrgUnitScopeService.Scope scope) {
-        // Auto-generate code if not provided
-        String code = request.getCode();
-        if (code == null || code.isBlank()) {
-            code = generateCode(request.getName());
-        }
-
-        // BR-013: unique code check (active only)
-        if (orgUnitRepo.existsByCode(code)) {
-            throw new IllegalArgumentException("Mã đơn vị đã tồn tại: " + code);
-        }
-
+        FieldWriteGuard.validateObject(request);
         // Validate parent exists if specified
         OrgUnit parent = null;
         if (request.getParentId() != null) {
@@ -297,17 +286,15 @@ public class OrganizationService {
 
         OrgUnit unit = OrgUnit.builder()
                 .name(request.getName())
-                .code(code)
                 .parentId(request.getParentId())
                 .description(request.getDescription())
-                .address(request.getAddress())
+                .provinceId(request.getProvinceId())
                 .detailAddress(request.getDetailAddress())
                 .phone(request.getPhone())
-                .contactPerson(request.getContactPerson())
-                .status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)
                 .operationalStatus(request.getOperationalStatus() != null
                         ? request.getOperationalStatus()
                         : OperationalStatus.OPERATIONAL)
+                .rank(resolveRank(request.getRank(), parent))
                 .sortOrder(0)
                 .build();
 
@@ -328,7 +315,7 @@ public class OrganizationService {
         saveHistory(saved, "CREATED", "Tạo mới đơn vị", operatorId, operatorName);
         orgUnitCacheService.evictAfterCommit();
 
-        log.info("Created org unit: {} ({}, path: {}, level: {})", saved.getCode(), saved.getId(),
+        log.info("Created org unit: {} ({}, path: {}, level: {})", saved.getName(), saved.getId(),
                 saved.getPath(), saved.getLevel());
         return OrgUnitResponse.from(saved);
     }
@@ -348,14 +335,7 @@ public class OrganizationService {
         requireAllowed(scope, id);
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
-
-        // BR-013: unique code check (excluding self)
-        if (request.getCode() != null && !request.getCode().equals(unit.getCode())) {
-            if (orgUnitRepo.existsByCodeAndIdNotAndDeletedAtIsNull(request.getCode(), id)) {
-                throw new IllegalArgumentException("Mã đơn vị đã tồn tại: " + request.getCode());
-            }
-            unit.setCode(request.getCode());
-        }
+        FieldWriteGuard.validateUpdate(request, unit);
 
         // Handle parent change
         if (request.getParentId() != null) {
@@ -386,37 +366,36 @@ public class OrganizationService {
                 validateParentEligibility(newParent);
 
                 // BR-016: circular reference detection
+                validateSubtreeDepth(unit, newParent);
                 if (materializedPathService.isAncestor(id, newParentId)) {
                     throw new IllegalArgumentException(
-                            "Không thể đặt đơn vị con làm cha của đơn vị cha — sẽ tạo vòng lặp phân cấp");
+                            "Không thể chuyển đơn vị vào cây con của chính nó (tham chiếu vòng)");
                 }
 
-                validateSubtreeDepth(unit, newParent);
-
-                // Parent changed — cascade path rebuild
-                if (!newParentId.equals(unit.getParentId())) {
-                    materializedPathService.cascadePathRebuild(id, newParentId);
-                    unit.setParentId(newParentId);
-                }
+                unit.setParentId(newParentId);
+                materializedPathService.cascadePathRebuild(unit.getId(), newParentId);
             }
         }
 
-        // Update scalar fields
+        // Apply remaining scalar fields
         if (request.getName() != null)
             unit.setName(request.getName());
         if (request.getDescription() != null)
             unit.setDescription(request.getDescription());
-        if (request.getAddress() != null)
-            unit.setAddress(request.getAddress());
+        if (request.getProvinceId() != null)
+            unit.setProvinceId(request.getProvinceId());
         if (request.getDetailAddress() != null)
             unit.setDetailAddress(request.getDetailAddress());
         if (request.getPhone() != null)
             unit.setPhone(request.getPhone());
-        if (request.getContactPerson() != null)
-            unit.setContactPerson(request.getContactPerson());
-        if (request.getOperationalStatus() != null)
+        if (request.getOperationalStatus() != null) {
             unit.setOperationalStatus(request.getOperationalStatus());
+        }
+        if (request.getRank() != null) {
+            unit.setRank(request.getRank());
+        }
 
+        // Re-validate parent eligibility
         if (unit.getParentId() != null) {
             OrgUnit currentParent = orgUnitRepo.findById(unit.getParentId())
                     .orElseThrow(() -> new EntityNotFoundException(
@@ -427,8 +406,24 @@ public class OrganizationService {
         OrgUnit saved = orgUnitRepo.save(unit);
         orgUnitCacheService.evictAfterCommit();
 
-        log.info("Updated org unit: {} ({})", saved.getCode(), saved.getId());
+        log.info("Updated org unit: {} ({})", saved.getName(), saved.getId());
         return OrgUnitResponse.from(saved);
+    }
+
+    /**
+     * Resolve the effective rank ("Cấp đơn vị") for a new unit. An explicit request
+     * wins;
+     * otherwise infer from the parent: root → DEPARTMENT, parent at level 1 →
+     * BRANCH, deeper parent → REPRESENTATIVE. BR-003-12.
+     */
+    private OrgUnitRank resolveRank(OrgUnitRank requested, OrgUnit parent) {
+        if (requested != null)
+            return requested;
+        if (parent == null)
+            return OrgUnitRank.DEPARTMENT;
+        return parent.getLevel() != null && parent.getLevel() == 1
+                ? OrgUnitRank.BRANCH
+                : OrgUnitRank.REPRESENTATIVE;
     }
 
     /**
@@ -486,115 +481,12 @@ public class OrganizationService {
                             + "Vui lòng xóa hoặc di chuyển các đơn vị con trước.");
         }
 
-        String details = String.format("Xóa đơn vị '%s' (code: %s)", unit.getName(), unit.getCode());
+        String details = String.format("Xóa đơn vị '%s'", unit.getName());
         unit.softDelete(SecurityUtils.getCurrentUserId());
         orgUnitRepo.save(unit);
         orgUnitCacheService.evictAfterCommit();
 
-        log.info("Soft-deleted org unit: {} ({})", unit.getCode(), unit.getId());
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // ── Approval Workflow ────────────────────────────────────────────
-    // ═══════════════════════════════════════════════════════════════════
-
-    /**
-     * Submit a unit for approval. Transitions DRAFT → PENDING.
-     * Any role with create permissions can submit.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public OrgUnitResponse submitForApproval(UUID id, UUID operatorId, String operatorName) {
-        return submitForApproval(id, operatorId, operatorName, OrgUnitScopeService.Scope.allScope());
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public OrgUnitResponse submitForApproval(UUID id, UUID operatorId, String operatorName,
-            OrgUnitScopeService.Scope scope) {
-        requireAllowed(scope, id);
-        OrgUnit unit = orgUnitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
-
-        if (unit.getStatus() != OrgUnitStatus.DRAFT && unit.getStatus() != OrgUnitStatus.REJECTED) {
-            throw new IllegalStateException(
-                    "Chỉ đơn vị ở trạng thái DRAFT hoặc REJECTED mới được gửi phê duyệt. "
-                            + "Trạng thái hiện tại: " + unit.getStatus());
-        }
-
-        unit.setStatus(OrgUnitStatus.PENDING);
-        OrgUnit saved = orgUnitRepo.save(unit);
-        saveHistory(saved, "SUBMITTED", "Gửi phê duyệt", operatorId, operatorName);
-        orgUnitCacheService.evictAfterCommit();
-
-        log.info("Submitted org unit for approval: {} ({})", saved.getCode(), saved.getId());
-        return OrgUnitResponse.from(saved);
-    }
-
-    /**
-     * Approve a pending unit. Transitions PENDING → APPROVED.
-     * BR-015: Admin-only approval.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public OrgUnitResponse approve(UUID id, UUID approverId, String approverName, String comments) {
-        return approve(id, approverId, approverName, comments, OrgUnitScopeService.Scope.allScope());
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public OrgUnitResponse approve(UUID id, UUID approverId, String approverName, String comments,
-            OrgUnitScopeService.Scope scope) {
-        requireAllowed(scope, id);
-        OrgUnit unit = orgUnitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
-
-        if (unit.getStatus() != OrgUnitStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Chỉ đơn vị ở trạng thái PENDING mới được phê duyệt. "
-                            + "Trạng thái hiện tại: " + unit.getStatus());
-        }
-
-        unit.setStatus(OrgUnitStatus.APPROVED);
-        unit.setApprovedAt(java.time.LocalDateTime.now());
-        OrgUnit saved = orgUnitRepo.save(unit);
-        saveHistory(saved, "APPROVED",
-                "Đã phê duyệt bởi " + approverName + (comments != null ? ": " + comments : ""),
-                approverId, approverName);
-        orgUnitCacheService.evictAfterCommit();
-
-        log.info("Approved org unit: {} ({})", saved.getCode(), saved.getId());
-        return OrgUnitResponse.from(saved);
-    }
-
-    /**
-     * Reject a pending unit. Transitions PENDING → REJECTED.
-     * BR-015: Admin-only approval.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public OrgUnitResponse reject(UUID id, UUID approverId, String approverName, String comments) {
-        return reject(id, approverId, approverName, comments, OrgUnitScopeService.Scope.allScope());
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public OrgUnitResponse reject(UUID id, UUID approverId, String approverName, String comments,
-            OrgUnitScopeService.Scope scope) {
-        requireAllowed(scope, id);
-        OrgUnit unit = orgUnitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
-
-        if (unit.getStatus() != OrgUnitStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Chỉ đơn vị ở trạng thái PENDING mới được từ chối. "
-                            + "Trạng thái hiện tại: " + unit.getStatus());
-        }
-
-        unit.setStatus(OrgUnitStatus.REJECTED);
-        unit.setApprovedAt(null); // clear approvedAt on reject
-        OrgUnit saved = orgUnitRepo.save(unit);
-        saveHistory(saved, "REJECTED",
-                "Từ chối bởi " + approverName + (comments != null ? ": " + comments : ""),
-                approverId, approverName);
-        orgUnitCacheService.evictAfterCommit();
-
-        log.info("Rejected org unit: {} ({})", saved.getCode(), saved.getId());
-        return OrgUnitResponse.from(saved);
+        log.info("Soft-deleted org unit: {} ({})", unit.getName(), unit.getId());
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -616,28 +508,7 @@ public class OrganizationService {
             UnitHistory history = UnitHistory.create(unit.getId(), action, details,
                     performedBy, performedByName);
             history.setUnitName(unit.getName());
-            history.setUnitCode(unit.getCode());
             unitHistoryRepo.save(history);
         });
-    }
-
-    /**
-     * Auto-generate a unit code from the name.
-     * Strips diacritics, replaces spaces with underscores, uppercases, truncates,
-     * appends random suffix.
-     */
-    private String generateCode(String name) {
-        if (name == null || name.isBlank())
-            return "ORG_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        String normalized = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
-                .replaceAll("[^a-zA-Z0-9\\s]", "")
-                .trim()
-                .replaceAll("\\s+", "_")
-                .toUpperCase();
-        if (normalized.length() > 30)
-            normalized = normalized.substring(0, 30);
-        String suffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        return normalized + "_" + suffix;
     }
 }

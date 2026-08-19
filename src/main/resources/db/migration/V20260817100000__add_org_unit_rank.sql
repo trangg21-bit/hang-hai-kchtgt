@@ -1,0 +1,8 @@
+-- Cấp đơn vị: 0=CUC, 1=CHI_CUC_CANG_VU_CONG_TY_BAO_DAM, 2=DAI_DIEN
+ALTER TABLE org_units ADD COLUMN rank SMALLINT NOT NULL DEFAULT 0;
+UPDATE org_units SET rank = CASE
+    WHEN level <= 1 THEN 0
+    WHEN level = 2 THEN 1
+    ELSE 2
+END;
+ALTER TABLE org_units ALTER COLUMN rank DROP DEFAULT;

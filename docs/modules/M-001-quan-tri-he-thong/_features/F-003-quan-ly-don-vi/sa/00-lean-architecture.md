@@ -9,7 +9,7 @@ last-updated: "2026-06-28T12:00:00Z"
 
 ## Summary
 
-The Unit Management feature implements a hierarchical organizational tree using the **Materialized Path** pattern (Spring Data JPA, repository layer) with a self-referencing `Unit` entity, `path` field for O(log N) subtree traversal, and a state machine for the approval workflow (DRAFT → PENDING → APPROVED/REJECTED). The key trade-off is **materialized path over recursive CTE**: simpler queries and better read performance at the cost of path-rebuild on move operations (bounded by max depth of 3 levels).
+The Unit Management feature implements a hierarchical organizational tree using the **Materialized Path** pattern (Spring Data JPA, repository layer) with a self-referencing `Unit` entity and `path` field for O(log N) subtree traversal. The key trade-off is **materialized path over recursive CTE**: simpler queries and better read performance at the cost of path-rebuild on move operations (bounded by max depth of 3 levels).
 
 ## System Boundaries
 
@@ -48,9 +48,10 @@ The Unit Management feature implements a hierarchical organizational tree using 
 | code | String | `code` | UNIQUE, NOT NULL, VARCHAR(30) | BR-003-01: system-wide uniqueness |
 | unitType | Enum | `unit_type` | NOT NULL, CHECK | BR-003-04: Cục, Chi cục, Cảng vụ, TCT |
 | description | String | `description` | NULL, TEXT | Optional |
-| address | String | `address` | NULL, TEXT | Optional |
+| provinceId | Integer | `province` | FK → `provinces.id`, NULL | Province/city catalogue ID |
+| address | String | `address` | NULL, VARCHAR(500) | Temporarily restored for compatibility |
+| detailAddress | String | `detail_address` | NULL, TEXT | Optional detailed address |
 | coefficient | BigDecimal | `coefficient` | CHECK > 0, MAX 2 decimals | BR-017: validated at app + DB level |
-| status | Enum | `status` | NOT NULL, DEFAULT 'DRAFT' | DRAFT, PENDING, APPROVED, REJECTED |
 | parentId | Long | `parent_id` | FK → Unit.id NULLABLE | NULL for root; circular ref blocked at app + FK RESTRICT |
 | level | Integer | `level` | NOT NULL, DEFAULT 1 | Auto-computed: depth from root |
 | path | String | `path` | NOT NULL, VARCHAR(255) | Materialized path: `/1/5/12/` |
@@ -60,7 +61,6 @@ The Unit Management feature implements a hierarchical organizational tree using 
 | createdAt | Instant | `created_at` | NOT NULL | JPA @CreatedDate |
 | updatedBy | Long | `updated_by` | FK → UserAccount.id | JPA @LastModifiedBy |
 | updatedAt | Instant | `updated_at` | NOT NULL | JPA @LastModifiedDate |
-| approvedAt | Instant | `approved_at` | NULL | Set on APPROVED transition |
 | deletedAt | Instant | `deleted_at` | NULL | Soft delete |
 
 **DB Indexes:**
@@ -76,7 +76,7 @@ The Unit Management feature implements a hierarchical organizational tree using 
 |---|---|---|---|---|
 | id | BIGINT | `id` | PK | |
 | unitId | Long | `unit_id` | FK → Unit.id NOT NULL | |
-| action | String | `action` | NOT NULL, VARCHAR(30) | CREATE, UPDATE, DELETE, APPROVE, REJECT, MOVE |
+| action | String | `action` | NOT NULL, VARCHAR(30) | CREATE, UPDATE, DELETE, MOVE |
 | performedBy | Long | `performed_by` | FK → UserAccount.id NOT NULL | |
 | performedAt | Instant | `performed_at` | NOT NULL | JPA @CreatedDate |
 | notes | String | `notes` | NULL, TEXT | Optional change description |
@@ -95,7 +95,6 @@ The BA spec and feature-brief define an `OrganizationChart` entity, but its fiel
 |---|---|
 | **Create unit** | `@Transactional`: insert Unit, compute path/level, insert UnitHistory record |
 | **Move subtree** | `@Transactional`: update moving node's parent_id + path, then UPDATE all descendants' paths (path-rebuild) |
-| **Approve/Reject** | `@Transactional`: UPDATE Unit.status + approvedAt, insert UnitHistory record |
 | **Soft delete** | `@Transactional`: UPDATE deletedAt, check FK constraints first (children, assigned users) |
 | **All operations** | Single DB transaction; Spring `@Transactional` with `READ_COMMITTED` isolation |
 
@@ -130,15 +129,13 @@ The BA spec and feature-brief define an `OrganizationChart` entity, but its fiel
 | `POST /units` | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | `PUT /units/{id}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `DELETE /units/{id}` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `POST /units/{id}/approve` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `POST /units/{id}/reject` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `GET /units/tree` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Notes:**
 - `system-admin`: Full access across all units and hierarchy
 - `admin`: CRUD within assigned scope; cannot delete higher-level units
-- `Lanh dao`: Approve/reject only; no CRUD
-- `Can bo`: View + create (submit for approval)
+- `Lanh dao`: View only; no CRUD
+- `Can bo`: View + create
 - `Ca nhan`: View own unit only
 - `user`: View tree structure only
 
@@ -211,7 +208,6 @@ These files **do not exist on disk** and must be created as part of F-003 implem
 | **NFR-PERF-002** | Tree endpoint < 1,000ms | Materialized path query (`WHERE path LIKE '/{rootId}%'`) + `path` index | < 1,000ms | Path-rebuild on move has O(depth × subtree_size) cost; bounded by max 3 levels |
 | **NFR-PERF-003** | Unique code O(1) | DB UNIQUE index on `code` column | Index seek | No application-level scan needed |
 | **NFR-PERF-004** | Search < 500ms | LIKE with indexed columns (`name`, `code`); full-text index if needed | < 500ms | LIKE with leading wildcard loses index; prefix search required |
-| **NFR-REL-001** | Atomic approval state | Spring `@Transactional` on approve/reject methods; DB row-level lock | Atomic transition | Concurrent approve/reject: first wins, second gets OptimisticLockException |
 | **NFR-REL-002** | Idempotent soft delete | Check `deletedAt` before setting; return 200 if already deleted | No error on re-delete | Silent success — caller must check return value |
 | **NFR-SEC-001** | JWT + RBAC | `JwtAuthenticationFilter` + `@PreAuthorize` per endpoint | 401/403 for unauthorized | Per-endpoint annotation; not centralized permission table (future enhancement) |
 | **NFR-COMP-001** | Audit trail | `UnitHistory` append-only table, FK to `UserAccount` | Complete change log | Separate table; no JOIN performance penalty (rarely queried) |
@@ -223,7 +219,6 @@ These files **do not exist on disk** and must be created as part of F-003 implem
 | **Tree pattern** | Materialized Path (`path` field) | Nested Sets, Adjacency List, Recursive CTE | Materialized path offers O(log N) subtree read (prefix LIKE) and simple path computation; best fit for max depth 3 with infrequent moves. Nested Sets (left/right) has complex update cost; Adjacency List requires recursive queries; Recursive CTE is DB-specific (MSSQL supports but is slower than path prefix). |
 | **Root unit count** | Single root per hierarchy | Multiple independent roots | Simpler path computation, single scope boundary. Multi-root would require `scopeId` segregation, adding complexity for no current business need. |
 | **OrganizationChart entity** | Defer to future (not in F-003) | Create OrganizationChart as separate table | Duplicate of Unit hierarchy data. Materialized path on Unit alone satisfies all tree traversal needs. If temporal hierarchy needed later, add `effective_from`/`effective_to` to Unit. |
-| **Approval states** | DRAFT → PENDING → APPROVED / REJECTED | Binary (approved/not approved) | Three-state allows draft before submission, explicit rejection with notes, and approved activation. Matches business workflow (US-003-04, US-003-05). |
 | **Coefficient validation** | BigDecimal (5,2) with @DecimalMin + regex | Double with epsilon comparison | Exact decimal arithmetic for financial/calculational correctness; DB CHECK constraint enforces at storage level. |
 | **Soft delete strategy** | `deletedAt` column with `@Where` | Physical deletion with FK cascade | Data retention policy (NFR-COMP-003: 5 years); soft-delete prevents accidental data loss and preserves audit trail. |
 | **Path format** | `/id/id/id/` (trailing slash) | `/id,id,id` (comma-separated) | Trailing slash enables `LIKE '/1/%'` prefix match without edge-case false positives (e.g., path `/12/` would match `/1/2/` with comma format). |
@@ -237,7 +232,6 @@ These files **do not exist on disk** and must be created as part of F-003 implem
 |---|---|---|
 | **F-001 not ready at implementation start** | Unit.createdBy FK references UserAccount which doesn't exist yet | Defer physical FK to F-001 implementation; use logical reference in Entity |
 | **Path rebuild on subtree move causes blocking** | Moving a large subtree rewrites paths for all descendants | Bounded by max 3 levels; estimated max subtree size is small (≤ dozens of nodes) |
-| **Concurrent approve/reject on same unit** | Lost update if not handled | `@Transactional` + `@Version` (optimistic lock) on Unit entity |
 | **Circular reference via direct SQL bypass** | App-level circular check bypassed | FK with `ON DELETE RESTRICT` provides DB-level protection |
 
 ### Assumptions
@@ -255,7 +249,6 @@ These files **do not exist on disk** and must be created as part of F-003 implem
 | ID | Question | Impact | Owner |
 |---|---|---|---|
 | **OQ-003-01** | What is the business purpose of coefficient? (reporting, budgeting, weighting?) | Data model completeness; downstream consumers may need documentation | BA / Business |
-| **OQ-003-02** | Who initiates approval — only Admin, or Can bo as well? (AMBIGUITY-002) | API design: who can POST `/units` (just Admin or also Can bo)? | BA |
 | **OQ-003-03** | Root unit: exactly one or multiple independent trees? (AMBIGUITY-001) | Tree traversal logic; `scopeId` design | BA |
 | **OQ-003-04** | Unit type list: fixed enum or extensible via master data? (AMBIGUITY-004) | Validation: enum vs configurable lookup table | BA |
 | **OQ-003-05** | Scope-level RBAC: should admin see only units within their scope? | Service-layer authorization logic | Security / BA |
@@ -265,7 +258,7 @@ These files **do not exist on disk** and must be created as part of F-003 implem
 ### To engineering-technical-lead
 - Implement `Unit` entity with materialized path pattern per this design
 - Implement `UnitTreeService` for tree traversal (read subtree, get path, detect circular reference)
-- Implement `UnitService` for CRUD + approval workflow state machine
+- Implement `UnitService` for CRUD operations
 - Coordinate with F-001 implementation for `UserAccount` FK references
 - Ensure Flyway migrations follow proposed naming: `V_F003__create_units.sql`, `V_F003__create_unit_histories.sql` *(files to be created by engineering-technical-lead)*
 - Coordinate with F-005 (AccessLog) for audit logging of unit operations
@@ -276,12 +269,12 @@ These files **do not exist on disk** and must be created as part of F-003 implem
 - Service: `vn.eg.haihang.service.UnitService` + `vn.eg.haihang.service.UnitTreeService` *(proposed classes)*
 - Controller: `vn.eg.haihang.controller.UnitController` *(proposed class)*
 - DTOs: `vn.eg.haihang.dto.unit.*` — UnitCreateRequest, UnitUpdateRequest, UnitResponse, UnitTreeResponse *(all proposed)*
-- Enums: `UnitType` (CUC, CHI_CUC, CANG_VU, TCT), `UnitStatus` (DRAFT, PENDING, APPROVED, REJECTED) *(proposed)*
+- Enums: `UnitType` (CUC, CHI_CUC, CANG_VU, TCT) *(proposed)*
 - Validator: `vn.eg.haihang.validator.UnitCodeUniqueValidator` *(proposed class)*
 
 ### To engineering-qa-engineer
 - Critical test paths: circular reference detection, path rebuild on move, coefficient validation, soft-delete with FK check
-- Integration test: create → approve flow; tree traversal consistency
+- Integration test: CRUD + tree traversal consistency
 - Security test: RBAC enforcement per role matrix above
 
 ### To engineering-code-reviewer
