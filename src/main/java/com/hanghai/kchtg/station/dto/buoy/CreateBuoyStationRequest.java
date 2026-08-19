@@ -66,6 +66,7 @@ public class CreateBuoyStationRequest {
     private String displayFormat;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
+    private LocalDate lastRepairDate;
 
     @Builder.Default
     private Boolean isActive = true;

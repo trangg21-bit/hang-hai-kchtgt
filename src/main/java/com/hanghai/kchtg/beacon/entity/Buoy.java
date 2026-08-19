@@ -93,6 +93,12 @@ public class Buoy extends BaseEntity {
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;
 
+    @Column(name = "submitted_for_approval_by")
+    private java.util.UUID submittedForApprovalBy;
+
+    @Column(name = "submitted_for_approval_at")
+    private java.time.LocalDateTime submittedForApprovalAt;
+
     @Column(name = "level1_approved_by")
     private java.util.UUID level1ApprovedBy;
 
@@ -193,6 +199,61 @@ public class Buoy extends BaseEntity {
 
     @Size(max = 50)
     private String period;
+
+    // ── Các trường bổ sung theo đặc tả CSV 'QL Phao tiêu' (STT 41/44 — Nội dung phê duyệt) ──
+    @Size(max = 1000)
+    @Column(name = "level1_approval_content")
+    private String level1ApprovalContent;
+
+    @Size(max = 1000)
+    @Column(name = "level2_approval_content")
+    private String level2ApprovalContent;
+
+    // ── Thông tin vận hành khai thác (CSV STT 45-48, read-only) ──
+    @Size(max = 100)
+    @Column(name = "operation_plan_code")
+    private String operationPlanCode;
+
+    @Size(max = 255)
+    @Column(name = "operation_plan_name")
+    private String operationPlanName;
+
+    @Column(name = "operation_start_date")
+    private String operationStartDate;
+
+    @Column(name = "operation_end_date")
+    private String operationEndDate;
+
+    // ── Thông tin bảo trì (CSV STT 49-52, read-only) ──
+    @Size(max = 100)
+    @Column(name = "maintenance_plan_code")
+    private String maintenancePlanCode;
+
+    @Size(max = 255)
+    @Column(name = "maintenance_plan_name")
+    private String maintenancePlanName;
+
+    @Column(name = "maintenance_start_time")
+    private String maintenanceStartTime;
+
+    @Column(name = "maintenance_end_time")
+    private String maintenanceEndTime;
+
+    // ── Thông tin sự cố (CSV STT 53-56, read-only) ──
+    @Size(max = 100)
+    @Column(name = "incident_code")
+    private String incidentCode;
+
+    @Size(max = 100)
+    @Column(name = "incident_type")
+    private String incidentType;
+
+    @Size(max = 500)
+    @Column(name = "incident_location")
+    private String incidentLocation;
+
+    @Column(name = "incident_time")
+    private String incidentTime;
 
     @PrePersist
     protected void onPrePersist() {
