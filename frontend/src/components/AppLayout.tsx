@@ -26,8 +26,7 @@ import {
   GlobalOutlined,
   BankOutlined,
   BuildOutlined,
-  AimOutlined,
-  HomeOutlined,
+  EnvironmentOutlined,
   TruckOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';

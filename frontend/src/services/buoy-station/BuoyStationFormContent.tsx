@@ -10,10 +10,10 @@ import { portCRUD } from '../../services/portService';
 import {
   createBuoyStation, updateBuoyStation, submitBuoyStationForApproval,
   approveBuoyStationL1, approveBuoyStationL2, generateBuoyStationCode,
-} from '../../services/station/beacon/api';
+} from './api';
 import { BUOY_TYPE_OPTIONS } from '../../types/beacon';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import type { BuoyStationResponse, CreateBuoyStationRequest } from '../../services/station/beacon/types';
+import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
 import { useAuthStore } from '../../store/authStore';
 import { spaceFormField, radiusPill, radiusMd, borderDefault, textSecondary, textTertiary, spaceSm, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard } from '../../tokens';
 import { colors } from '../../theme';
@@ -160,6 +160,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       displayFormat: data.displayFormat || undefined,
       lastInspectionDate: data.lastInspectionDate ? dayjs(data.lastInspectionDate) : undefined,
       nextInspectionDate: data.nextInspectionDate ? dayjs(data.nextInspectionDate) : undefined,
+      lastRepairDate: data.lastRepairDate ? dayjs(data.lastRepairDate) : undefined,
     });
   }, [form, isEdit, entityData]);
 
@@ -223,6 +224,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         displayFormat: values.displayFormat || undefined, isActive: values.isActive !== false,
         lastInspectionDate: values.lastInspectionDate ? (typeof values.lastInspectionDate === 'string' ? values.lastInspectionDate : values.lastInspectionDate.format('YYYY-MM-DD')) : undefined,
         nextInspectionDate: values.nextInspectionDate ? (typeof values.nextInspectionDate === 'string' ? values.nextInspectionDate : values.nextInspectionDate.format('YYYY-MM-DD')) : undefined,
+        lastRepairDate: values.lastRepairDate ? (typeof values.lastRepairDate === 'string' ? values.lastRepairDate : values.lastRepairDate.format('YYYY-MM-DD')) : undefined,
         latitude: manualCoords[0]?.latitude, longitude: manualCoords[0]?.longitude,
         coordinates: manualCoords.length > 1 ? `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})` : manualCoords.length === 1 ? `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})` : undefined,
       };
@@ -305,6 +307,9 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       <Row gutter={16}>
         <Col span={12}><Form.Item name="lastInspectionDate" {...labelProps('Ngày KT gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
         <Col span={12}><Form.Item name="nextInspectionDate" {...labelProps('Ngày KT kế tiếp')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+      </Row>
+      <Row gutter={16}>
+        <Col span={12}><Form.Item name="lastRepairDate" {...labelProps('Thời điểm sửa chữa gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
       </Row>
     </div>) },
     // Tab 3: Thông tin vị trí

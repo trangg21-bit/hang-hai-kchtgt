@@ -21,14 +21,18 @@ public interface BuoyStationRepository extends JpaRepository<BuoyStation, UUID> 
                      "(:type IS NULL OR p.type = :type) AND " +
                      "(:status IS NULL OR p.status = :status) AND " +
                      "(:unitId IS NULL OR p.unitId = :unitId) AND " +
-                     "(:province IS NULL OR p.province = :province)")
+                     "(:province IS NULL OR p.province = :province) AND " +
+                     "(:portId IS NULL OR p.portId = :portId) AND " +
+                     "(:operatingOrgId IS NULL OR p.operatingOrgId = :operatingOrgId)")
        List<BuoyStation> searchFiltered(
                      @Param("name") String name,
                      @Param("code") String code,
                      @Param("type") String type,
                      @Param("status") String status,
                      @Param("unitId") UUID unitId,
-                     @Param("province") String province);
+                     @Param("province") String province,
+                     @Param("portId") UUID portId,
+                     @Param("operatingOrgId") UUID operatingOrgId);
     @Query("SELECT p FROM BuoyStation p WHERE " +
             "p.deletedAt IS NULL AND " +
             "(:orgUnitId IS NULL OR p.unitId = :orgUnitId) AND " +

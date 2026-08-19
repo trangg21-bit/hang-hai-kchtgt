@@ -43,6 +43,12 @@ export interface BuoySearchParams {
   code?: string;
   type?: string;
   status?: string;
+  condition?: string;
+  provinceId?: number;
+  locationDetail?: string;
+  approvalStatus?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
 }
 
 export async function searchBuoys(params?: BuoySearchParams): Promise<Buoy[]> {
@@ -51,6 +57,12 @@ export async function searchBuoys(params?: BuoySearchParams): Promise<Buoy[]> {
     code: params?.code,
     type: params?.type,
     status: params?.status,
+    condition: params?.condition,
+    provinceId: params?.provinceId,
+    locationDetail: params?.locationDetail,
+    approvalStatus: params?.approvalStatus,
+    updatedFrom: params?.updatedFrom,
+    updatedTo: params?.updatedTo,
   });
   const res = await api.get(`${BASE}/search?${sp}`);
   return res.data.data || [];
@@ -91,15 +103,15 @@ export async function submitBuoyForApproval(id: string): Promise<void> {
 
 // ── 8. POST /buoys/{id}/approve-l1?approverId= ───────────────────────
 
-export async function approveBuoyL1(id: string, approverId: string): Promise<Buoy> {
-  const res = await api.post(`${BASE}/${id}/approve-l1`, null, { params: { approverId } });
+export async function approveBuoyL1(id: string, approverId: string, content?: string): Promise<Buoy> {
+  const res = await api.post(`${BASE}/${id}/approve-l1`, null, { params: { approverId, ...(content ? { content } : {}) } });
   return res.data.data;
 }
 
 // ── 9. POST /buoys/{id}/approve-l2?approverId= ───────────────────────
 
-export async function approveBuoyL2(id: string, approverId: string): Promise<Buoy> {
-  const res = await api.post(`${BASE}/${id}/approve-l2`, null, { params: { approverId } });
+export async function approveBuoyL2(id: string, approverId: string, content?: string): Promise<Buoy> {
+  const res = await api.post(`${BASE}/${id}/approve-l2`, null, { params: { approverId, ...(content ? { content } : {}) } });
   return res.data.data;
 }
 
@@ -115,4 +127,11 @@ export async function rejectBuoy(id: string, rejectReason: string, approverId: s
 export async function fetchBuoyHistory(id: string): Promise<BuoyHistoryPayload> {
   const res = await api.get(`${BASE}/${id}/history`);
   return res.data?.data ?? { changeHistory: [], approvalLog: [] };
+}
+
+// ── GET /buoys/history/all — toàn bộ lịch sử thay đổi mọi phao tiêu ──
+
+export async function fetchBuoyAllHistory(): Promise<any> {
+  const res = await api.get(`${BASE}/history/all`);
+  return res.data?.data ?? { changeHistory: [], entityNames: {} };
 }
