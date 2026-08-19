@@ -60,6 +60,13 @@ public class BuoyStationResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Additional audit fields for list display
+    private String createdBy;
+    private String createdByName;
+    private String updatedByName;
+    private String sentApprovedBy;
+    private LocalDateTime sentApprovedDate;
+
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;

@@ -47,9 +47,11 @@ public class BuoyStationController {
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID unitId,
-            @RequestParam(required = false) String province) {
+            @RequestParam(required = false) String province,
+            @RequestParam(required = false) UUID portId,
+            @RequestParam(required = false) UUID operatingOrgId) {
         return ResponseEntity.ok(ApiResponse.success(
-                service.search(name, code, type, status, unitId, province)));
+                service.search(name, code, type, status, unitId, province, portId, operatingOrgId)));
     }
 
     @GetMapping("/generate-code")

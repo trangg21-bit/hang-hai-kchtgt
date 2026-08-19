@@ -110,6 +110,12 @@ public class BuoyStation extends BaseEntity {
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;
 
+    @Column(name = "sent_approved_by")
+    protected String sentApprovedBy;
+
+    @Column(name = "sent_approved_date")
+    protected java.time.LocalDateTime sentApprovedDate;
+
     @Column(length = 1000)
     protected String rejectionReason;
 
@@ -120,4 +126,5 @@ public class BuoyStation extends BaseEntity {
     private Double range;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
+    private LocalDate lastRepairDate;
 }

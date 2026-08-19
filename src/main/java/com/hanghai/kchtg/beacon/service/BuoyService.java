@@ -74,12 +74,17 @@ public class BuoyService {
     }
 
     public List<BuoyResponse> search(
-            String name, String code, String type, String status) {
+            String name, String code, String type, String status,
+            String condition, Integer provinceId, String locationDetail, String approvalStatus) {
         return buoyRepo.searchFiltered(
                 name,
                 code,
                 type,
-                status
+                status,
+                condition,
+                provinceId,
+                locationDetail,
+                approvalStatus
         ).stream()
                 .map(this::toResponse)
                 .toList();
@@ -206,6 +211,22 @@ public class BuoyService {
         if ("submit".equals(request.getAction())) {
             entity.setStatus("PENDING_APPROVAL");
             entity.setApprovalLevel(1);
+            entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId());
+            entity.setSubmittedForApprovalAt(LocalDateTime.now());
+        } else if ("approved".equals(request.getAction())) {
+            // "Lưu và phê duyệt" — duyệt thẳng 2 cấp (mirror BerthService.applySaveAction APPROVED)
+            entity.setStatus("PUBLISHED");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            java.util.UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSubmittedForApprovalBy(uid);
+            entity.setSubmittedForApprovalAt(LocalDateTime.now());
+            entity.setApprovedBy(uid);
+            entity.setApprovedDate(LocalDateTime.now());
+            entity.setLevel1ApprovedBy(uid);
+            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            entity.setLevel2ApprovedBy(uid);
+            entity.setLevel2ApprovedDate(LocalDateTime.now());
         }
 
         entity = buoyRepo.save(entity);
@@ -230,7 +251,8 @@ public class BuoyService {
         }
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "CREATE", null, "created", entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system");
+        Buoy emptySnapshot = new Buoy();
+        changeHistoryService.recordChanges("Buoy", entity.getId().toString(), "system", emptySnapshot, entity);
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
@@ -283,6 +305,35 @@ public class BuoyService {
                 .spatialId(entity.getSpatialId())
                 .provinceId(entity.getProvinceId())
                 .rejectionReason(entity.getRejectionReason())
+                .approvedBy(entity.getApprovedBy()).approvedDate(entity.getApprovedDate())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy()).submittedForApprovalAt(entity.getSubmittedForApprovalAt())
+                .level1ApprovedBy(entity.getLevel1ApprovedBy()).level1ApprovedDate(entity.getLevel1ApprovedDate())
+                .level2ApprovedBy(entity.getLevel2ApprovedBy()).level2ApprovedDate(entity.getLevel2ApprovedDate())
+                .geometryType(entity.getGeometryType()).mapSymbolId(entity.getMapSymbolId())
+                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
+                .buoyStationId(entity.getBuoyStationId())
+                .classification(entity.getClassification()).classificationBuoy(entity.getClassificationBuoy())
+                .classificationMark(entity.getClassificationMark()).locationDetail(entity.getLocationDetail())
+                .condition(entity.getCondition()).structure(entity.getStructure())
+                .area(entity.getArea()).bodyHeight(entity.getBodyHeight()).diameter(entity.getDiameter())
+                .beaconLight(entity.getBeaconLight()).towerHeight(entity.getTowerHeight()).lightHeight(entity.getLightHeight())
+                .lightModel(entity.getLightModel()).towerColor(entity.getTowerColor()).powerSupply(entity.getPowerSupply())
+                .commissionedDate(entity.getCommissionedDate()).lastRepairDate(entity.getLastRepairDate())
+                .lightColor(entity.getLightColor()).flashType(entity.getFlashType()).period(entity.getPeriod())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .operationPlanCode(entity.getOperationPlanCode())
+                .operationPlanName(entity.getOperationPlanName())
+                .operationStartDate(entity.getOperationStartDate())
+                .operationEndDate(entity.getOperationEndDate())
+                .maintenancePlanCode(entity.getMaintenancePlanCode())
+                .maintenancePlanName(entity.getMaintenancePlanName())
+                .maintenanceStartTime(entity.getMaintenanceStartTime())
+                .maintenanceEndTime(entity.getMaintenanceEndTime())
+                .incidentCode(entity.getIncidentCode())
+                .incidentType(entity.getIncidentType())
+                .incidentLocation(entity.getIncidentLocation())
+                .incidentTime(entity.getIncidentTime())
                 .build();
 
         // Apply mutable fields only
@@ -422,6 +473,7 @@ public class BuoyService {
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
+        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
 
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -444,13 +496,15 @@ public class BuoyService {
         entity.setStatus("PENDING_APPROVAL");
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(1);
+        entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId());
+        entity.setSubmittedForApprovalAt(LocalDateTime.now());
         buoyRepo.save(entity);
 
         notificationService.sendApprovalNotificationBuoy(entity);
     }
 
     @Transactional
-    public BuoyResponse approveL1(UUID id, java.util.UUID approverId) {
+    public BuoyResponse approveL1(UUID id, java.util.UUID approverId, String content) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
@@ -467,6 +521,9 @@ public class BuoyService {
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel1ApprovedBy(approverId);
         entity.setLevel1ApprovedDate(LocalDateTime.now());
+        if (content != null && !content.isBlank()) {
+            entity.setLevel1ApprovalContent(content.trim());
+        }
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L1, null, null, null);
@@ -476,7 +533,7 @@ public class BuoyService {
     }
 
     @Transactional
-    public BuoyResponse approveL2(UUID id, java.util.UUID approverId) {
+    public BuoyResponse approveL2(UUID id, java.util.UUID approverId, String content) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
@@ -492,6 +549,9 @@ public class BuoyService {
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel2ApprovedBy(approverId);
         entity.setLevel2ApprovedDate(LocalDateTime.now());
+        if (content != null && !content.isBlank()) {
+            entity.setLevel2ApprovalContent(content.trim());
+        }
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
@@ -554,7 +614,7 @@ public class BuoyService {
                 .beaconType(BeaconType.BUOY)
                 .entityId(entity.getId())
                 .actionType(action)
-                .changedField(fields)
+                .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
                 .previousValue(previousJson)
                 .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
                 .changedBy(resolveCurrentUserId())
@@ -634,6 +694,20 @@ public class BuoyService {
                 .lightColor(entity.getLightColor())
                 .flashType(entity.getFlashType())
                 .period(entity.getPeriod())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .operationPlanCode(entity.getOperationPlanCode())
+                .operationPlanName(entity.getOperationPlanName())
+                .operationStartDate(entity.getOperationStartDate())
+                .operationEndDate(entity.getOperationEndDate())
+                .maintenancePlanCode(entity.getMaintenancePlanCode())
+                .maintenancePlanName(entity.getMaintenancePlanName())
+                .maintenanceStartTime(entity.getMaintenanceStartTime())
+                .maintenanceEndTime(entity.getMaintenanceEndTime())
+                .incidentCode(entity.getIncidentCode())
+                .incidentType(entity.getIncidentType())
+                .incidentLocation(entity.getIncidentLocation())
+                .incidentTime(entity.getIncidentTime())
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
@@ -642,6 +716,8 @@ public class BuoyService {
                 .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
                 .level1ApprovedBy(entity.getLevel1ApprovedBy())
                 .level1ApprovedDate(entity.getLevel1ApprovedDate())
                 .level2ApprovedBy(entity.getLevel2ApprovedBy())

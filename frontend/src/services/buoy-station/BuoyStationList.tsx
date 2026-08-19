@@ -3,9 +3,9 @@ import { Button, Tag, Modal, Input, Alert, Descriptions, Divider, DatePicker, Sp
 import type { UploadFile } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, EyeOutlined, HistoryOutlined, ExclamationCircleOutlined, EnvironmentOutlined, ClockCircleFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { fetchBuoyStationList, fetchBuoyStationById, deleteBuoyStation, rejectBuoyStation, submitBuoyStationForApproval, approveBuoyStationL1, approveBuoyStationL2 } from '../../services/station/beacon/api';
-import type { BuoyStationResponse } from '../../services/station/beacon/types';
-import { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP } from '../../types/beacon';
+import { fetchBuoyStationList, fetchBuoyStationById, deleteBuoyStation, rejectBuoyStation, submitBuoyStationForApproval, approveBuoyStationL1, approveBuoyStationL2 } from './api';
+import type { BuoyStationResponse } from './types';
+import { BUOY_TYPE_MAP } from '../../types/beacon';
 import api from '../../services/api';
 import { organizationService } from '../../services/organizationService';
 import { userService } from '../../services/userService';
@@ -65,8 +65,11 @@ export default function BuoyStationList() {
   const currentUser = useAuthStore((s) => s.user);
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
   const [filterName, setFilterName] = useState(''); const [filterCode, setFilterCode] = useState('');
-  const [filterType, setFilterType] = useState<string | undefined>();
+
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
+  const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterPortId, setFilterPortId] = useState<string | undefined>();
+
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [activeTab, setActiveTab] = useState('all');
@@ -112,7 +115,7 @@ export default function BuoyStationList() {
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
-      const res = await fetchBuoyStationList({ name: filterName || undefined, code: filterCode || undefined, type: filterType || undefined, unitId: managingUnitId || undefined, province: filterProvince || undefined });
+      const res = await fetchBuoyStationList({ name: filterName || undefined, code: filterCode || undefined, unitId: managingUnitId || undefined, province: filterProvince || undefined, status: filterStatus || undefined, portId: filterPortId || undefined });
       const all = res.content || [];
       const counts: Record<string, number> = { all: all.length };
       TAB_LIST.slice(1).forEach(t => { counts[t.key] = all.filter(d => d.status === t.key).length; });
@@ -123,18 +126,21 @@ export default function BuoyStationList() {
       setDataSource(filtered.slice((page - 1) * pageSize, page * pageSize));
     } catch { setIsError(true); }
     finally { setIsLoading(false); }
-  }, [filterName, filterCode, filterType, managingUnitId, filterProvince, activeTab, page, pageSize]);
+  }, [filterName, filterCode, managingUnitId, filterProvince, filterStatus, filterPortId, activeTab, page, pageSize]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
   useEffect(() => { setDataSource(allData.slice((page - 1) * pageSize, page * pageSize)); }, [allData, page, pageSize]);
-  useEffect(() => { setPage(1); }, [filterName, filterCode, filterType, managingUnitId, filterProvince, activeTab]);
+  useEffect(() => { setPage(1); }, [filterName, filterCode, managingUnitId, filterProvince, filterStatus, filterPortId, activeTab]);
 
   const handleFilterApply = useCallback(() => {
     setManagingUnitId(filterValues.managingUnitId || undefined);
     setFilterName(filterValues.name || '');
     setFilterCode(filterValues.code || '');
-    setFilterType(filterValues.type || undefined);
+
     setFilterProvince(filterValues.province || undefined);
+    setFilterStatus(filterValues.status || undefined);
+    setFilterPortId(filterValues.portId || undefined);
+
     setPage(1);
   }, [filterValues]);
 
@@ -142,7 +148,8 @@ export default function BuoyStationList() {
     setFilterValues({});
     setManagingUnitId(undefined);
     setFilterName(''); setFilterCode('');
-    setFilterType(undefined); setFilterProvince(undefined);
+    setFilterProvince(undefined);
+    setFilterStatus(undefined); setFilterPortId(undefined);
     setActiveTab('all'); setPage(1);
   }, []);
 
@@ -202,10 +209,15 @@ export default function BuoyStationList() {
     { key: 'longitude', label: 'Kinh độ', dataIndex: 'longitude' as any, width: 100, align: 'right' as const, render: (v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v != null ? v.toFixed(4) : '—'}</span> },
     { key: 'range', label: 'Tầm xa (HL)', dataIndex: 'range' as any, width: 100, align: 'right' as const, render: (v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v != null ? v.toFixed(1) : '—'}</span> },
     { key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId' as any, width: 180, ellipsis: true, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v ? (orgMap.get(v) || v) : '—'}</span> },
-    { key: 'lastInspectionDate', label: 'KT gần nhất', dataIndex: 'lastInspectionDate' as any, width: 120, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{fmt(v)}</span> },
-    { key: 'nextInspectionDate', label: 'KT kế tiếp', dataIndex: 'nextInspectionDate' as any, width: 120, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{fmt(v)}</span> },
+    { key: 'province', label: 'Địa điểm', dataIndex: 'province' as any, width: 150, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v || '—'}</span> },
+    { key: 'portId', label: 'Thuộc nhà trạm', dataIndex: 'portId' as any, width: 180, ellipsis: true, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v ? (portMap.get(v) || v) : '—'}</span> },
+    { key: 'isActive', label: 'Tình trạng', dataIndex: 'isActive' as any, width: 100, align: 'center' as const, render: (v: boolean) => <Tag color={v ? 'green' : 'default'}>{v ? 'Hoạt động' : 'Ngừng'}</Tag> },
+    { key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt' as any, width: 120, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{fmt(v)}</span> },
+    { key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName' as any, width: 150, render: (v: string, record: BuoyStationResponse) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v || record.createdByName || '—'}</span> },
+    { key: 'sentApprovedBy', label: 'Người gửi duyệt', dataIndex: 'sentApprovedBy' as any, width: 150, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{v || '—'}</span> },
+    { key: 'sentApprovedDate', label: 'Ngày gửi duyệt', dataIndex: 'sentApprovedDate' as any, width: 120, render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{fmt(v)}</span> },
     { key: 'status', label: 'Trạng thái', dataIndex: 'status' as any, width: 160, align: 'center' as const, render: (s: string) => { if (!s) return <span style={{ color: textTertiary }}>—</span>; const m = APPROVAL_STYLE_MAP[s] || { color: 'default', label: s }; let c = textTertiary; if (m.color === statusOperational) c = statusOperational; else if (m.color === statusCritical) c = statusCritical; else if (m.color === statusAttention) c = statusAttention; else if (m.color === actionPrimary) c = actionPrimary; else if (m.color === statusDraft) c = statusDraft; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{m.label}</span>; } },
-  ], [page, pageSize, orgMap]);
+  ], [page, pageSize, orgMap, portMap]);
 
   const rowActions = useCallback((r: BuoyStationResponse) => {
     const a: any[] = [];
@@ -235,8 +247,8 @@ export default function BuoyStationList() {
     </div>);
   };
 
-  return (<div style={{ minHeight: '100%', marginTop: -8 }}>
-    <ScreenHeader breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Nhà trạm phao tiêu' }]} actions={[{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreate }]} />
+  return (<div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ScreenHeader breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý nhà trạm phao tiêu' }]} actions={[{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreate }]} />
     <FilterTableLayout
       filterCollapsed={filterCollapsed}
       onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
@@ -271,14 +283,7 @@ export default function BuoyStationList() {
             style={{ borderRadius: radiusPill, height: 40 }} />
         </div>
         {filterCollapsed && (<>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại</div>
-          <Select placeholder="Chọn loại" allowClear
-            value={filterValues.type || undefined}
-            onChange={(val) => setFilterValues((prev) => ({ ...prev, type: val }))}
-            options={BUOY_TYPE_OPTIONS}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-        </div>
+
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
           <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
@@ -296,6 +301,26 @@ export default function BuoyStationList() {
             options={TAB_LIST.slice(1).map((t) => ({ value: t.key, label: t.label }))}
             style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
         </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+          <Select placeholder="Tất cả" allowClear
+            value={filterValues.status || undefined}
+            onChange={(val) => setFilterValues((prev) => ({ ...prev, status: val }))}
+            options={[
+              { value: 'ACTIVE', label: 'Hoạt động' },
+              { value: 'INACTIVE', label: 'Ngừng hoạt động' },
+            ]}
+            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm</div>
+          <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
+            value={filterValues.portId || undefined}
+            onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
+            options={Array.from(portMap.entries()).map(([id, name]) => ({ label: name, value: id }))}
+            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+        </div>
+
         </>)}
       </>}
       statusTabs={TAB_LIST.map(t => ({ key: t.key, label: t.label, count: tabCounts[t.key] ?? 0, color: t.color, active: activeTab === t.key }))}
@@ -303,7 +328,7 @@ export default function BuoyStationList() {
     >
       <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} loading={false}
         emptyState={<EmptyState description="Không tìm thấy nhà trạm nào" />}
-        scroll={{ x: 1800, y: 'calc(100vh - 450px)' }} />
+        scroll={{ x: 1800, y: 550 }} />
       <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
     </FilterTableLayout>
     <Drawer title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết: {detailRecord?.name}</span>} open={detailOpen} onClose={() => { setDetailOpen(false); setDetailRecord(null); }} width={800} extra={<Button type="text" onClick={() => { setDetailOpen(false); setDetailRecord(null); }} style={{ color: textTertiary }}>✕</Button>} footer={[<Button key="close" onClick={() => { setDetailOpen(false); setDetailRecord(null); }} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Đóng</Button>, (hasPerm('data:read') || hasPerm('admin:manage')) && detailRecord ? <Button key="edit" type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); void openEdit(detailRecord); }} style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Chỉnh sửa</Button> : null].filter(Boolean)}><div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px 0' }}>{renderDetail()}</div></Drawer>
