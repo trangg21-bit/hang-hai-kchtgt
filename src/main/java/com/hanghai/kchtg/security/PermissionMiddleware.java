@@ -259,7 +259,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("reports", "report"),
             entry("bcc157", "report"),
             entry("statistics", "report"),
-            entry("lighthouse-station", "data"),
             entry("buoy-station", "data"),
             entry("stations", "data"),
             entry("users", "user"),

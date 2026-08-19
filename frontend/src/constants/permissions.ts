@@ -122,16 +122,6 @@ export const PERMISSIONS = {
     HISTORY: 'dikerevetment:history',
   },
 
-  /** Nhà trạm đèn biển (M-003) */
-  LIGHTHOUSESTATION: {
-    READ: 'lighthousestation:read',
-    CREATE: 'lighthousestation:create',
-    UPDATE: 'lighthousestation:update',
-    DELETE: 'lighthousestation:delete',
-    APPROVE_C1: 'lighthousestation:approvec1',
-    APPROVE_C2: 'lighthousestation:approvec2',
-    HISTORY: 'lighthousestation:history',
-  },
 
   /** Trạm Radar (M-003) */
   RADARSTATION: {
@@ -285,13 +275,6 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.DIKEREVETMENT.APPROVE_C1, title: 'Duyệt Đê chắn sóng C1' },
       { key: PERMISSIONS.DIKEREVETMENT.APPROVE_C2, title: 'Duyệt Đê chắn sóng C2' },
       { key: PERMISSIONS.DIKEREVETMENT.HISTORY, title: 'Lịch sử Đê chắn sóng' },
-      { key: PERMISSIONS.LIGHTHOUSESTATION.READ, title: 'Xem Trạm đèn biển' },
-      { key: PERMISSIONS.LIGHTHOUSESTATION.CREATE, title: 'Thêm Trạm đèn biển' },
-      { key: PERMISSIONS.LIGHTHOUSESTATION.UPDATE, title: 'Sửa Trạm đèn biển' },
-      { key: PERMISSIONS.LIGHTHOUSESTATION.DELETE, title: 'Xóa Trạm đèn biển' },
-      { key: PERMISSIONS.LIGHTHOUSESTATION.APPROVE_C1, title: 'Duyệt Trạm đèn biển C1' },
-      { key: PERMISSIONS.LIGHTHOUSESTATION.APPROVE_C2, title: 'Duyệt Trạm đèn biển C2' },
-      { key: PERMISSIONS.LIGHTHOUSESTATION.HISTORY, title: 'Lịch sử Trạm đèn biển' },
       { key: PERMISSIONS.RADARSTATION.READ, title: 'Xem Trạm Radar' },
       { key: PERMISSIONS.RADARSTATION.CREATE, title: 'Thêm Trạm Radar' },
       { key: PERMISSIONS.RADARSTATION.UPDATE, title: 'Sửa Trạm Radar' },

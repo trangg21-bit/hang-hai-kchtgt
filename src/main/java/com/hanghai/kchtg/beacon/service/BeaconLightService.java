@@ -20,11 +20,16 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,6 +52,10 @@ public class BeaconLightService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final AttachmentRepository attachmentRepository;
+
+    @Value("${app.upload.attachment-path:uploads/attachments}")
+    private String attachmentPath;
 
     // -- READ --
 
@@ -64,12 +73,28 @@ public class BeaconLightService {
     }
 
     public List<BeaconLightResponse> search(
-            String name, String code, String type, String status) {
+            String name, String code, String type, String status,
+            UUID unitId, UUID seaportId, String operator, Integer provinceId,
+            Integer operationalStatus, Double stationArea, String approvalStatus, UUID updatedBy,
+            String commissionedFrom, String commissionedTo,
+            String updatedFrom, String updatedTo) {
         return beaconLightRepo.searchFiltered(
                 name,
                 code,
                 type,
-                status
+                status,
+                unitId,
+                seaportId,
+                operator,
+                provinceId,
+                operationalStatus,
+                stationArea,
+                parseApprovalStatus(approvalStatus),
+                updatedBy,
+                parseLocalDate(commissionedFrom),
+                parseLocalDate(commissionedTo),
+                parseLocalDateTime(updatedFrom),
+                parseLocalDateTime(updatedTo)
         ).stream()
                 .map(this::toResponse)
                 .toList();
@@ -77,8 +102,18 @@ public class BeaconLightService {
 
     public org.springframework.data.domain.Page<BeaconLightResponse> searchPaged(
             String name, String code, String type, String status,
+            UUID unitId, UUID seaportId, String operator, Integer provinceId,
+            Integer operationalStatus, Double stationArea, String approvalStatus, UUID updatedBy,
+            String commissionedFrom, String commissionedTo,
+            String updatedFrom, String updatedTo,
             org.springframework.data.domain.Pageable pageable) {
-        return beaconLightRepo.searchFilteredPaged(name, code, type, status, pageable)
+        return beaconLightRepo.searchFilteredPaged(
+                name, code, type, status,
+                unitId, seaportId, operator, provinceId,
+                operationalStatus, stationArea, parseApprovalStatus(approvalStatus), updatedBy,
+                parseLocalDate(commissionedFrom), parseLocalDate(commissionedTo),
+                parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
+                pageable)
                 .map(this::toResponse);
     }
 
@@ -103,6 +138,7 @@ public class BeaconLightService {
                 .area(request.getArea())
                 .location(request.getLocation())
                 .unitId(request.getUnitId())
+                .provinceId(request.getProvinceId())
                 .lastRepairDate(request.getLastRepairDate())
                 .commissionedDate(request.getCommissionedDate())
                 .isActive(request.getIsActive())
@@ -115,6 +151,17 @@ public class BeaconLightService {
                 .powerSupply(request.getPowerSupply())
                 .staffCount(request.getStaffCount())
                 .stationArea(request.getStationArea())
+                .seaportId(request.getSeaportId())
+                .operator(request.getOperator())
+                .detailedLocation(request.getDetailedLocation())
+                .operationalStatus(request.getOperationalStatus())
+                .region(request.getRegion())
+                .identifyingFeature(request.getIdentifyingFeature())
+                .note(request.getNote())
+                .geometryType(request.getGeometryType())
+                .mapSymbolId(request.getMapSymbolId())
+                .coordinateSystem(request.getCoordinateSystem())
+                .displayRule(request.getDisplayRule())
                 .status("DRAFT")
                 .approvalLevel(1)
                 .approvalStatus(ApprovalStatus.PROPOSED)
@@ -202,6 +249,7 @@ public class BeaconLightService {
         if (request.getArea() != null) entity.setArea(request.getArea());
         if (request.getLocation() != null) entity.setLocation(request.getLocation());
         if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
+        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
         if (request.getLastRepairDate() != null) {
             entity.setLastRepairDate(request.getLastRepairDate());
         }
@@ -219,6 +267,18 @@ public class BeaconLightService {
         if (request.getPowerSupply() != null) entity.setPowerSupply(request.getPowerSupply());
         if (request.getStaffCount() != null) entity.setStaffCount(request.getStaffCount());
         if (request.getStationArea() != null) entity.setStationArea(request.getStationArea());
+
+        if (request.getSeaportId() != null) entity.setSeaportId(request.getSeaportId());
+        if (request.getOperator() != null) entity.setOperator(request.getOperator());
+        if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
+        if (request.getOperationalStatus() != null) entity.setOperationalStatus(request.getOperationalStatus());
+        if (request.getRegion() != null) entity.setRegion(request.getRegion());
+        if (request.getIdentifyingFeature() != null) entity.setIdentifyingFeature(request.getIdentifyingFeature());
+        if (request.getNote() != null) entity.setNote(request.getNote());
+        if (request.getGeometryType() != null) entity.setGeometryType(request.getGeometryType());
+        if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
 
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
@@ -322,36 +382,13 @@ public class BeaconLightService {
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
-        entity.setStatus("APPROVED_L1");
+        entity.setStatus("APPROVED");
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         beaconLightRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L1, null, null, null);
-        notificationService.sendL2ApprovalNotification(entity);
-
-        return toResponse(entity);
-    }
-
-    @Transactional
-    public BeaconLightResponse approveL2(UUID id, java.util.UUID approverId) {
-        BeaconLight entity = beaconLightRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Đèn biển không tìm thấy: " + id));
-
-        if (!"APPROVED_L1".equals(entity.getStatus())) {
-            throw new IllegalStateException(
-                    "Không ở trạng thái chờ phê duyệt L2");
-        }
-
-        entity.setStatus("PUBLISHED");
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverId);
-        entity.setApprovedDate(LocalDateTime.now());
-        beaconLightRepo.save(entity);
-
-        logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
 
         return toResponse(entity);
     }
@@ -398,6 +435,38 @@ public class BeaconLightService {
         if (last != null && last.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException(
                     "Ngày bảo trì gần nhất không được lớn hơn ngày hiện tại");
+        }
+    }
+
+    private ApprovalStatus parseApprovalStatus(String approvalStatus) {
+        return approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
+    }
+
+    private LocalDate parseLocalDate(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime parseLocalDateTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String v = value.trim();
+            if (v.length() == 10) {
+                v = v + "T00:00:00";
+            } else {
+                v = v.replace(" ", "T");
+            }
+            return LocalDateTime.parse(v);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -451,6 +520,7 @@ public class BeaconLightService {
                 .location(entity.getLocation())
                 .unitId(entity.getUnitId())
                 .unitName(unitName)
+                .provinceId(entity.getProvinceId())
                 .lastRepairDate(entity.getLastRepairDate())
                 .commissionedDate(entity.getCommissionedDate())
                 .isActive(entity.getIsActive())
@@ -469,8 +539,20 @@ public class BeaconLightService {
                 .powerSupply(entity.getPowerSupply())
                 .staffCount(entity.getStaffCount())
                 .stationArea(entity.getStationArea())
+                .seaportId(entity.getSeaportId())
+                .operator(entity.getOperator())
+                .detailedLocation(entity.getDetailedLocation())
+                .operationalStatus(entity.getOperationalStatus())
+                .region(entity.getRegion())
+                .identifyingFeature(entity.getIdentifyingFeature())
+                .note(entity.getNote())
+                .geometryType(entity.getGeometryType())
+                .mapSymbolId(entity.getMapSymbolId())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayRule(entity.getDisplayRule())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .updatedBy(entity.getUpdatedBy())
                 .build();
     }
 
@@ -542,5 +624,75 @@ public class BeaconLightService {
         } catch (Exception e) {
             return "fields_updated";
         }
+    }
+
+    // -- ATTACHMENTS --
+
+    @Transactional
+    public List<AttachmentDto> uploadAttachments(UUID entityId, List<MultipartFile> files, UUID userId) {
+        final String entityType = "BEACON_LIGHT";
+        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
+        if (existingCount + files.size() > 10) {
+            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
+        }
+        List<Attachment> saved = new ArrayList<>();
+        java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
+        for (MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
+            try {
+                java.nio.file.Path dir = basePath.resolve(entityType).resolve(entityId.toString());
+                java.nio.file.Files.createDirectories(dir);
+                java.nio.file.Path filePath = dir.resolve(storageFileName);
+                file.transferTo(filePath.toFile());
+            } catch (Exception e) {
+                throw new RuntimeException("Không thể lưu file: " + originalFilename);
+            }
+            String storagePath = basePath.resolve(entityType).resolve(entityId.toString()).resolve(storageFileName).toString();
+            Attachment attachment = new Attachment();
+            attachment.setEntityType(entityType);
+            attachment.setEntityId(entityId);
+            attachment.setFileName(originalFilename);
+            attachment.setFilePath(storagePath);
+            attachment.setFileSize(file.getSize());
+            attachment.setContentType(file.getContentType());
+            attachment.setUploadedBy(userId);
+            saved.add(attachmentRepository.save(attachment));
+        }
+        return saved.stream().map(this::toAttachmentDto).toList();
+    }
+
+    public List<AttachmentDto> listAttachments(UUID entityId) {
+        return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("BEACON_LIGHT", entityId)
+                .stream().map(this::toAttachmentDto).toList();
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc đèn biển này");
+        }
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
+        } catch (Exception e) {
+            // ignore file deletion failure; the DB record is still removed
+        }
+        attachmentRepository.delete(attachment);
+    }
+
+    private AttachmentDto toAttachmentDto(Attachment entity) {
+        AttachmentDto dto = new AttachmentDto();
+        dto.setId(entity.getId());
+        dto.setEntityType(entity.getEntityType());
+        dto.setEntityId(entity.getEntityId());
+        dto.setFileName(entity.getFileName());
+        dto.setFilePath(entity.getFilePath());
+        dto.setFileSize(entity.getFileSize());
+        dto.setContentType(entity.getContentType());
+        dto.setUploadedBy(entity.getUploadedBy());
+        dto.setUploadedAt(entity.getUploadedAt());
+        return dto;
     }
 }

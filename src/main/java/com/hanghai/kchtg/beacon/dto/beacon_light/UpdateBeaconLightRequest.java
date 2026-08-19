@@ -47,6 +47,7 @@ public class UpdateBeaconLightRequest {
     private String location;
 
     private java.util.UUID unitId;
+    private Integer provinceId;
     private LocalDate lastRepairDate;
     private LocalDate commissionedDate;
     private Boolean isActive;
@@ -60,4 +61,33 @@ public class UpdateBeaconLightRequest {
     private String powerSupply;
     private Integer staffCount;
     private Double stationArea;
+
+    private java.util.UUID seaportId;
+
+    @Size(max = 200)
+    private String operator;
+
+    @Size(max = 500)
+    private String detailedLocation;
+
+    private Integer operationalStatus;
+
+    @Size(max = 255)
+    private String region;
+
+    @Size(max = 500)
+    private String identifyingFeature;
+
+    @Size(max = 1000)
+    private String note;
+
+    @Size(max = 20)
+    private String geometryType;
+
+    private java.util.UUID mapSymbolId;
+
+    private Integer coordinateSystem;
+
+    @Size(max = 255)
+    private String displayRule;
 }

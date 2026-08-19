@@ -38,7 +38,7 @@ public class KchtAssetCountService {
             "beacon_light", "buoy",
             "navigation_channel", "dike_revetment",
             "radar_station", "vts_system", "ship_repair_facility",
-            "lighthouse_station", "buoy_station",
+            "buoy_station",
             "coastal_station_vts", "coastal_station_lrit",
             "coastal_station_inmarsat", "coastal_station_haiphong",
             "coastal_station_cospas_sarsat"
@@ -63,7 +63,6 @@ public class KchtAssetCountService {
         LABELS.put("radar_station", "Trạm Radar");
         LABELS.put("vts_system", "Hệ thống VTS");
         LABELS.put("ship_repair_facility", "Cơ sở sửa chữa tàu");
-        LABELS.put("lighthouse_station", "Trạm hải đăng");
         LABELS.put("buoy_station", "Trạm phao");
         LABELS.put("coastal_station_vts", "Đài VTS");
         LABELS.put("coastal_station_lrit", "Đài LRIT");

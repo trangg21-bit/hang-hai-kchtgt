@@ -5,11 +5,15 @@ import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.service.BeaconLightService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,9 +44,24 @@ public class BeaconLightController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) UUID seaportId,
+            @RequestParam(required = false) String operator,
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) Integer operationalStatus,
+            @RequestParam(required = false) Double stationArea,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) UUID updatedBy,
+            @RequestParam(required = false) String commissionedFrom,
+            @RequestParam(required = false) String commissionedTo,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo) {
         return ResponseEntity.ok(ApiResponse.success(
-                beaconLightService.search(name, code, type, status)));
+                beaconLightService.search(name, code, type, status,
+                        unitId, seaportId, operator, provinceId,
+                        operationalStatus, stationArea, approvalStatus, updatedBy,
+                        commissionedFrom, commissionedTo, updatedFrom, updatedTo)));
     }
 
     @GetMapping("/search-paged")
@@ -51,11 +70,27 @@ public class BeaconLightController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) UUID seaportId,
+            @RequestParam(required = false) String operator,
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) Integer operationalStatus,
+            @RequestParam(required = false) Double stationArea,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) UUID updatedBy,
+            @RequestParam(required = false) String commissionedFrom,
+            @RequestParam(required = false) String commissionedTo,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         return ResponseEntity.ok(ApiResponse.success(
-                beaconLightService.searchPaged(name, code, type, status, pageable)));
+                beaconLightService.searchPaged(name, code, type, status,
+                        unitId, seaportId, operator, provinceId,
+                        operationalStatus, stationArea, approvalStatus, updatedBy,
+                        commissionedFrom, commissionedTo, updatedFrom, updatedTo,
+                        pageable)));
     }
 
     @PostMapping
@@ -98,14 +133,6 @@ public class BeaconLightController {
                 beaconLightService.approveL1(id, approverId)));
     }
 
-    @PostMapping("/{id}/approve-l2")
-    public ResponseEntity<ApiResponse<BeaconLightResponse>> approveL2(
-            @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
-        return ResponseEntity.ok(ApiResponse.success(
-                "Phê duyệt L2 thành công — Đã công bố",
-                beaconLightService.approveL2(id, approverId)));
-    }
-
     @PostMapping("/{id}/reject")
     public ResponseEntity<ApiResponse<BeaconLightResponse>> reject(
             @PathVariable UUID id,
@@ -114,5 +141,31 @@ public class BeaconLightController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Đã từ chối",
                 beaconLightService.reject(id, rejectReason, approverId)));
+    }
+
+    // ── Attachment endpoints ────────────────────────────────────────
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Tải file đính kèm thành công",
+                beaconLightService.uploadAttachments(id, files, SecurityUtils.getCurrentUserId())));
+    }
+
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Lấy danh sách file đính kèm thành công",
+                beaconLightService.listAttachments(id)));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attachmentId) {
+        beaconLightService.deleteAttachment(id, attachmentId);
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa file đính kèm", null));
     }
 }

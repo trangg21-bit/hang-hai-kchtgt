@@ -39,18 +39,14 @@ export const BUOY_TYPE_MAP: Record<BuoyType, { color: string }> = {
 export type BeaconStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
-  | 'APPROVED_L1'
-  | 'APPROVED_L2'
-  | 'PUBLISHED'
+  | 'APPROVED'
   | 'REJECTED'
   | 'DELETED';
 
 export const BEACON_STATUS_MAP: Record<BeaconStatus, { color: string; label: string }> = {
   DRAFT: { color: 'blue', label: 'Nháp' },
-  PENDING_APPROVAL: { color: 'orange', label: 'Chờ duyệt L1' },
-  APPROVED_L1: { color: 'magenta', label: 'Chờ duyệt L2' },
-  APPROVED_L2: { color: 'purple', label: 'Đã duyệt L2' },
-  PUBLISHED: { color: 'green', label: 'Đã công bố' },
+  PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt' },
+  APPROVED: { color: 'green', label: 'Đã phê duyệt' },
   REJECTED: { color: 'red', label: 'Từ chối' },
   DELETED: { color: 'default', label: 'Đã xóa' },
 };
@@ -84,6 +80,19 @@ export interface BeaconLight {
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+  provinceId?: number;
+  seaportId?: string;
+  operator?: string;
+  detailedLocation?: string;
+  operationalStatus?: number;
+  region?: string;
+  identifyingFeature?: string;
+  note?: string;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
+  updatedBy?: string;
   shape?: string;
   structure?: string;
   towerHeight?: number;
@@ -99,8 +108,8 @@ export interface CreateBeaconLightRequest {
   name: string;
   code: string;
   type: BeaconLightType;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   lightRange: number;
   towerColor?: string;
   primaryLightModel?: string;
@@ -112,6 +121,18 @@ export interface CreateBeaconLightRequest {
   lastRepairDate?: string;
   isActive?: boolean;
   action?: 'draft' | 'submit';
+  provinceId?: number;
+  seaportId?: string;
+  operator?: string;
+  detailedLocation?: string;
+  operationalStatus?: number;
+  region?: string;
+  identifyingFeature?: string;
+  note?: string;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
   shape?: string;
   structure?: string;
   towerHeight?: number;
@@ -138,6 +159,18 @@ export interface UpdateBeaconLightRequest {
   commissionedDate?: string;
   lastRepairDate?: string;
   isActive?: boolean;
+  provinceId?: number;
+  seaportId?: string;
+  operator?: string;
+  detailedLocation?: string;
+  operationalStatus?: number;
+  region?: string;
+  identifyingFeature?: string;
+  note?: string;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
   shape?: string;
   structure?: string;
   towerHeight?: number;

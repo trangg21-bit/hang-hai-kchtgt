@@ -51,7 +51,6 @@ public class KchtGis155Service {
     private final NavigationChannelRepository navigationChannelRepository;
     private final DikeRevetmentRepository dikeRevetmentRepository;
     private final ShipRepairFacilityRepository shipRepairFacilityRepository;
-    private final LighthouseStationRepository lighthouseStationRepository;
     private final BuoyStationRepository buoyStationRepository;
     private final VtsSystemRepository vtsSystemRepository;
     private final RadarStationRepository radarStationRepository;
@@ -689,66 +688,6 @@ public class KchtGis155Service {
                             if (cs.getSpatialId() != null) {
                                 spatialIdMap.put(r.getId(), cs.getSpatialId());
                             }
-                        }
-                    }
-                    break;
-
-                case LIGHTHOUSE:
-                    // 1. Fetch from LighthouseStation
-                    String denSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<LighthouseStation> denList = lighthouseStationRepository.searchGis(orgUnitId, denSearchParam);
-                    Map<UUID, GisSpatialObject> denSpatialMap = new HashMap<>();
-                    if (objectType != null && !denList.isEmpty()) {
-                        List<UUID> denIds = denList.stream().map(LighthouseStation::getId).collect(Collectors.toList());
-                        gisSpatialObjectRepository.findByRefIdInAndRefType(denIds, InfrastructureType.LIGHTHOUSE)
-                                .forEach(so -> denSpatialMap.put(so.getRefId(), so));
-                    }
-                    for (LighthouseStation den : denList) {
-                        KchtGisSearchResult r = KchtGisSearchResult.builder()
-                                .id(den.getId() != null ? den.getId().toString() : null)
-                                .name(den.getName())
-                                .code(den.getCode())
-                                .orgName(getOrgName(den.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Nhà trạm đèn biển")
-                                .location("")
-                                .diaChiChiTiet("Mô tả: " + (den.getDescription() != null ? den.getDescription() : "") + ", Đặc tính ánh sáng: " + (den.getLightCharacteristic() != null ? den.getLightCharacteristic() : "") + ", Tầm hiệu lực: " + (den.getLightRange() != null ? den.getLightRange() : "") + " hải lý")
-                                .build();
-                        if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, den.getId(), objectType, GisObjectType.POINT, denSpatialMap);
-                        } else {
-                            results.add(r);
-                            spatialIdMap.put(r.getId(), den.getId());
-                        }
-                    }
-
-                    // 2. Fetch from BeaconLight
-                    List<BeaconLight> beaconList = beaconLightRepository.searchGis(orgUnitId, denSearchParam);
-                    Map<UUID, GisSpatialObject> beaconSpatialMap = new HashMap<>();
-                    if (!beaconList.isEmpty()) {
-                        List<UUID> beaconIds = beaconList.stream().map(BeaconLight::getId).collect(Collectors.toList());
-                        gisSpatialObjectRepository.findByRefIdInAndRefType(beaconIds, InfrastructureType.LIGHTHOUSE)
-                                .forEach(so -> beaconSpatialMap.put(so.getRefId(), so));
-                    }
-                    for (BeaconLight beacon : beaconList) {
-                        GisSpatialObject spatial = beaconSpatialMap.get(beacon.getId());
-                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
-                        Double lat = coords != null ? coords[0] : null;
-                        Double lng = coords != null ? coords[1] : null;
-
-                        KchtGisSearchResult r = KchtGisSearchResult.builder()
-                                .id(beacon.getId() != null ? beacon.getId().toString() : null)
-                                .name(beacon.getName())
-                                .code(beacon.getCode())
-                                .orgName(getOrgName(beacon.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Đèn biển")
-                                .location("")
-                                .diaChiChiTiet("Mô tả: " + (beacon.getLocation() != null ? beacon.getLocation() : "") + ", Đặc tính ánh sáng: " + (beacon.getPrimaryLightModel() != null ? beacon.getPrimaryLightModel() : "") + ", Tầm hiệu lực: " + (beacon.getLightRange() != null ? beacon.getLightRange() : "") + " hải lý")
-                                .build();
-                        if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, beacon.getId(), objectType, GisObjectType.POINT, beaconSpatialMap);
-                        } else {
-                            results.add(r);
-                            spatialIdMap.put(r.getId(), beacon.getId());
                         }
                     }
                     break;

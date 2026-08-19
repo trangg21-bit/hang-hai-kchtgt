@@ -41,6 +41,18 @@ export const beaconLightCRUD = {
     code?: string;
     type?: string;
     status?: string;
+    unitId?: string;
+    seaportId?: string;
+    operator?: string;
+    provinceId?: number | string;
+    operationalStatus?: number | string;
+    stationArea?: number;
+    approvalStatus?: string;
+    updatedBy?: string;
+    commissionedFrom?: string;
+    commissionedTo?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<BeaconLight>> {
@@ -49,6 +61,18 @@ export const beaconLightCRUD = {
       code: params?.code,
       type: params?.type,
       status: params?.status,
+      unitId: params?.unitId,
+      seaportId: params?.seaportId,
+      operator: params?.operator,
+      provinceId: params?.provinceId,
+      operationalStatus: params?.operationalStatus,
+      stationArea: params?.stationArea,
+      approvalStatus: params?.approvalStatus,
+      updatedBy: params?.updatedBy,
+      commissionedFrom: params?.commissionedFrom,
+      commissionedTo: params?.commissionedTo,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : 0,
       size: params?.pageSize || 20,
     });
@@ -74,6 +98,21 @@ export const beaconLightCRUD = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/beacon-lights/${id}`);
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<void> {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    await api.post(`/beacon-lights/${id}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+
+  async listAttachments(id: string): Promise<any[]> {
+    const res = await api.get(`/beacon-lights/${id}/attachments`);
+    return res.data.data || [];
+  },
+
+  async deleteAttachment(id: string, attachmentId: string): Promise<void> {
+    await api.delete(`/beacon-lights/${id}/attachments/${attachmentId}`);
   },
 };
 
@@ -143,13 +182,6 @@ export const approval = {
 
   async approveBuoyL1(entityId: string, approverId: string): Promise<unknown> {
     return buoyApi.approveBuoyL1(entityId, approverId);
-  },
-
-  async approveL2(entityId: string, approverId: string): Promise<unknown> {
-    const res = await api.post(`/beacon-lights/${entityId}/approve-l2`, null, {
-      params: { approverId },
-    });
-    return res.data.data;
   },
 
   async approveBuoyL2(entityId: string, approverId: string): Promise<unknown> {

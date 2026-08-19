@@ -134,4 +134,44 @@ public class BeaconLight extends BaseEntity {
 
     @Column(name = "station_area")
     private Double stationArea;
+
+    @Column(name = "seaport_id")
+    private java.util.UUID seaportId;
+
+    @Size(max = 200)
+    @Column(name = "operator", length = 200)
+    private String operator;
+
+    @Size(max = 500)
+    @Column(name = "detailed_location", length = 500)
+    private String detailedLocation;
+
+    @Column(name = "operational_status")
+    private Integer operationalStatus;
+
+    @Size(max = 255)
+    @Column(name = "region", length = 255)
+    private String region;
+
+    @Size(max = 500)
+    @Column(name = "identifying_feature", length = 500)
+    private String identifyingFeature;
+
+    @Size(max = 1000)
+    @Column(name = "note", length = 1000)
+    private String note;
+
+    @Size(max = 20)
+    @Column(name = "geometry_type", length = 20)
+    private String geometryType;
+
+    @Column(name = "map_symbol_id")
+    private java.util.UUID mapSymbolId;
+
+    @Column(name = "coordinate_system")
+    private Integer coordinateSystem;
+
+    @Size(max = 255)
+    @Column(name = "display_rule", length = 255)
+    private String displayRule;
 }
