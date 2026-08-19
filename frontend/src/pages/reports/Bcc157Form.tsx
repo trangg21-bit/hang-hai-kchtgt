@@ -10,8 +10,8 @@ import {
   Button,
   Card,
   Typography,
-  message,
 } from 'antd';
+import { message } from '../../components/ToastNotification';
 import { SaveOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { ScreenHeader } from '../../components/list-view';

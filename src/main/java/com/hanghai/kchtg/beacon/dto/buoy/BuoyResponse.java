@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.beacon.dto.buoy;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class BuoyResponse {
 
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String code;
     private String name;
     private String type;
@@ -38,6 +40,8 @@ public class BuoyResponse {
     private ApprovalLevel approvalLevel;
     private UUID approvedBy;
     private LocalDateTime approvedDate;
+    private UUID submittedForApprovalBy;
+    private LocalDateTime submittedForApprovalAt;
     private UUID level1ApprovedBy;
     private LocalDateTime level1ApprovedDate;
     private UUID level2ApprovedBy;
@@ -72,6 +76,20 @@ public class BuoyResponse {
     private String lightColor;
     private String flashType;
     private String period;
+    private String level1ApprovalContent;
+    private String level2ApprovalContent;
+    private String operationPlanCode;
+    private String operationPlanName;
+    private String operationStartDate;
+    private String operationEndDate;
+    private String maintenancePlanCode;
+    private String maintenancePlanName;
+    private String maintenanceStartTime;
+    private String maintenanceEndTime;
+    private String incidentCode;
+    private String incidentType;
+    private String incidentLocation;
+    private String incidentTime;
     private String rejectionReason;
     private UUID createdBy;
     private UUID updatedBy;

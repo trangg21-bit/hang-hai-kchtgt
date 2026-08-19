@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Row, Col, message, Tag } from 'antd';
+import { Card, Form, Button, Space, Typography, Row, Col, Tag } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { waterZoneCRUD, waterZoneApproval, portCRUD } from '../../services/portService';
@@ -7,7 +7,7 @@ import type { CreateVungNuocRequest, UpdateVungNuocRequest } from '../../types/p
 import { BECBANG_STATUS_MAP, type CangBenStatus } from '../../types/port';
 import FormField from '../../components/FormField';
 import { radiusPill, fontSizeMd, borderDefault, textSecondary, actionPrimary } from '../../tokens';
-import toast from '../../components/ToastNotification';
+import toast, { message } from '../../components/ToastNotification';
 
 export default function WaterZoneForm() {
   const navigate = useNavigate();

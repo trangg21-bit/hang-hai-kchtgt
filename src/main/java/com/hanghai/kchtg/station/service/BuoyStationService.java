@@ -8,6 +8,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
@@ -24,6 +26,8 @@ import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import com.hanghai.kchtg.station.repository.StationHistoryRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -51,6 +55,7 @@ public class BuoyStationService {
     private final ChangeHistoryService changeHistoryService;
     private final ChangeLogRepository changeLogRepository;
     private final PortRepository portRepository;
+    private final UserRepository userRepository;
 
     // -- READ --
 
@@ -69,8 +74,8 @@ public class BuoyStationService {
 
     public List<BuoyStationResponse> search(
             String name, String code, String type, String status,
-            UUID unitId, String province) {
-        return phaoRepo.searchFiltered(name, code, type, status, unitId, province).stream()
+            UUID unitId, String province, UUID portId, UUID operatingOrgId) {
+        return phaoRepo.searchFiltered(name, code, type, status, unitId, province, portId, operatingOrgId).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -101,13 +106,20 @@ public class BuoyStationService {
 
     @Transactional
     public BuoyStationResponse create(CreateBuoyStationRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (phaoRepo.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã nhà trạm phao tiêu đã tồn tại: " + request.getCode());
         }
 
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "buoystation", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         BuoyStation entity = BuoyStation.builder()
+                .securityLevel(secLevel)
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
@@ -135,6 +147,7 @@ public class BuoyStationService {
                 .displayFormat(request.getDisplayFormat())
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
+                .lastRepairDate(request.getLastRepairDate())
                 .isActive(request.getIsActive())
                 .status(StationStatus.DRAFT)
                 .approvalStatus(ApprovalStatus.PROPOSED)
@@ -152,12 +165,14 @@ public class BuoyStationService {
         entity = phaoRepo.save(entity);
 
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_BUOY;
             UUID refId = entity.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -168,8 +183,7 @@ public class BuoyStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.BUOY
-            );
+                    InfrastructureType.BUOY);
             entity.setSpatialId(spatialObj.getId());
             if (geomType == GisGeometryType.POINT) {
                 try {
@@ -185,7 +199,8 @@ public class BuoyStationService {
         }
 
         logHistory(entity, "CREATE", null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "CREATE", null, "created", entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system");
+        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "CREATE", null, "created",
+                entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system");
         notificationService.sendApprovalNotificationPhao(entity);
 
         return toResponse(entity);
@@ -195,6 +210,7 @@ public class BuoyStationService {
 
     @Transactional
     public BuoyStationResponse update(UUID id, UpdateBuoyStationRequest request) {
+        FieldWriteGuard.validateObject(request);
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
@@ -226,7 +242,13 @@ public class BuoyStationService {
                 .rejectionReason(entity.getRejectionReason())
                 .build();
 
-        if (request.getName() != null) entity.setName(request.getName());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoystation",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getName() != null)
+            entity.setName(request.getName());
 
         if (request.getType() != null && !request.getType().equals(entity.getType())) {
             if (isApprovedStatus(entity.getStatus())) {
@@ -236,37 +258,63 @@ public class BuoyStationService {
             entity.setType(request.getType());
         }
 
-        if (request.getColor() != null) entity.setColor(request.getColor());
-        if (request.getShape() != null) entity.setShape(request.getShape());
+        if (request.getColor() != null)
+            entity.setColor(request.getColor());
+        if (request.getShape() != null)
+            entity.setShape(request.getShape());
         if (request.getLightCharacteristic() != null) {
             entity.setLightCharacteristic(request.getLightCharacteristic());
         }
-        if (request.getRange() != null) entity.setRange(request.getRange());
-        if (request.getDescription() != null) entity.setDescription(request.getDescription());
-        if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
-        if (request.getOperatingOrgId() != null) entity.setOperatingOrgId(request.getOperatingOrgId());
-        if (request.getPortId() != null) entity.setPortId(request.getPortId());
-        if (request.getWaterwayId() != null) entity.setWaterwayId(request.getWaterwayId());
-        if (request.getWaterwayRouteId() != null) entity.setWaterwayRouteId(request.getWaterwayRouteId());
-        if (request.getProvince() != null) entity.setProvince(request.getProvince());
-        if (request.getAddress() != null) entity.setAddress(request.getAddress());
-        if (request.getConstructionDate() != null) entity.setConstructionDate(request.getConstructionDate());
-        if (request.getTotalArea() != null) entity.setTotalArea(request.getTotalArea());
-        if (request.getUsableArea() != null) entity.setUsableArea(request.getUsableArea());
-        if (request.getStaffCount() != null) entity.setStaffCount(request.getStaffCount());
-        if (request.getLastMaintenanceYear() != null) entity.setLastMaintenanceYear(request.getLastMaintenanceYear());
-        if (request.getNote() != null) entity.setNote(request.getNote());
-        if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
-        if (request.getIcon() != null) entity.setIcon(request.getIcon());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayFormat() != null) entity.setDisplayFormat(request.getDisplayFormat());
+        if (request.getRange() != null)
+            entity.setRange(request.getRange());
+        if (request.getDescription() != null)
+            entity.setDescription(request.getDescription());
+        if (request.getUnitId() != null)
+            entity.setUnitId(request.getUnitId());
+        if (request.getOperatingOrgId() != null)
+            entity.setOperatingOrgId(request.getOperatingOrgId());
+        if (request.getPortId() != null)
+            entity.setPortId(request.getPortId());
+        if (request.getWaterwayId() != null)
+            entity.setWaterwayId(request.getWaterwayId());
+        if (request.getWaterwayRouteId() != null)
+            entity.setWaterwayRouteId(request.getWaterwayRouteId());
+        if (request.getProvince() != null)
+            entity.setProvince(request.getProvince());
+        if (request.getAddress() != null)
+            entity.setAddress(request.getAddress());
+        if (request.getConstructionDate() != null)
+            entity.setConstructionDate(request.getConstructionDate());
+        if (request.getTotalArea() != null)
+            entity.setTotalArea(request.getTotalArea());
+        if (request.getUsableArea() != null)
+            entity.setUsableArea(request.getUsableArea());
+        if (request.getStaffCount() != null)
+            entity.setStaffCount(request.getStaffCount());
+        if (request.getLastMaintenanceYear() != null)
+            entity.setLastMaintenanceYear(request.getLastMaintenanceYear());
+        if (request.getNote() != null)
+            entity.setNote(request.getNote());
+        if (request.getObjectType() != null)
+            entity.setObjectType(request.getObjectType());
+        if (request.getIcon() != null)
+            entity.setIcon(request.getIcon());
+        if (request.getCoordinateSystem() != null)
+            entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayFormat() != null)
+            entity.setDisplayFormat(request.getDisplayFormat());
         if (request.getLastInspectionDate() != null) {
             entity.setLastInspectionDate(request.getLastInspectionDate());
         }
         if (request.getNextInspectionDate() != null) {
             entity.setNextInspectionDate(request.getNextInspectionDate());
         }
-        if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
+        if (request.getLastRepairDate() != null) {
+            entity.setLastRepairDate(request.getLastRepairDate());
+        }
+        if (request.getIsActive() != null) {
+            entity.setIsActive(request.getIsActive());
+        }
 
         if (isApprovedStatus(entity.getStatus())) {
             entity.setStatus(StationStatus.DRAFT);
@@ -277,12 +325,14 @@ public class BuoyStationService {
         phaoRepo.save(entity);
 
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_BUOY;
             UUID refId = entity.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -293,8 +343,7 @@ public class BuoyStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.BUOY
-            );
+                    InfrastructureType.BUOY);
             entity.setSpatialId(spatialObj.getId());
         }
 
@@ -461,7 +510,7 @@ public class BuoyStationService {
     }
 
     private void logHistory(BuoyStation entity,
-                            String action, String fields, String previousJson, String newJson) {
+            String action, String fields, String previousJson, String newJson) {
         StationHistory entry = StationHistory.builder()
                 .stationType("PHAO")
                 .entityId(entity.getId())
@@ -479,6 +528,7 @@ public class BuoyStationService {
     private BuoyStationResponse toResponse(BuoyStation entity) {
         BuoyStationResponse.BuoyStationResponseBuilder builder = BuoyStationResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())
@@ -514,7 +564,12 @@ public class BuoyStationService {
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt());
+                .updatedAt(entity.getUpdatedAt())
+                .createdBy(entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : null)
+                .createdByName(entity.getCreatedBy() != null ? this.getUserNameById(entity.getCreatedBy()) : null)
+                .updatedByName(entity.getUpdatedBy() != null ? this.getUserNameById(entity.getUpdatedBy()) : null)
+                .sentApprovedBy(entity.getSentApprovedBy())
+                .sentApprovedDate(entity.getSentApprovedDate());
 
         if (entity.getSpatialId() != null) {
             builder.spatialId(entity.getSpatialId());
@@ -531,21 +586,24 @@ public class BuoyStationService {
                             builder.longitude(Double.parseDouble(parts[0]));
                             builder.latitude(Double.parseDouble(parts[1]));
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             });
         }
         return builder.build();
     }
 
-        private boolean isApprovedStatus(Object status) {
-        if (status == null) return false;
+    private boolean isApprovedStatus(Object status) {
+        if (status == null)
+            return false;
         String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
         return "APPROVED_L1".equals(name) || "PUBLISHED".equals(name);
     }
 
-        private boolean isInApprovalProcess(Object status) {
-        if (status == null) return false;
+    private boolean isInApprovalProcess(Object status) {
+        if (status == null)
+            return false;
         String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
         return "PENDING_APPROVAL".equals(name);
     }
@@ -560,6 +618,13 @@ public class BuoyStationService {
 
     private String resolveCreatedBy(BuoyStation entity) {
         return entity.getApprovedBy();
+    }
+
+    private String getUserNameById(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId)
+                .map(User::getFullName)
+                .orElse(null);
     }
 
     // -- JSON Comparison --
@@ -601,7 +666,3 @@ public class BuoyStationService {
         }
     }
 }
-
-
-
-

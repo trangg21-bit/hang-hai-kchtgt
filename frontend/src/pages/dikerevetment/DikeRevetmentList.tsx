@@ -8,11 +8,11 @@ import {
   Input,
   Select,
   Tooltip,
-  message,
   Popconfirm,
   Table,
   Empty,
 } from 'antd';
+import { message } from '../../components/ToastNotification';
 import type { ColumnsType } from 'antd/es/table';
 import {
   EditOutlined,

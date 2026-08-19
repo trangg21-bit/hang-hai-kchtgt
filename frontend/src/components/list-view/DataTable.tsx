@@ -104,6 +104,7 @@ const DataTable: React.FC<DataTableProps> = ({
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
   const dataSignatureRef = useRef<string | null>(null);
+  const [measuredTableWidth, setMeasuredTableWidth] = useState<number>();
   // Preserve a content-sized table when the page explicitly requests
   // `max-content`. For lists whose columns are narrower than the common
   // minimum width, replacing it with a larger fixed width leaves an empty
@@ -135,6 +136,23 @@ const DataTable: React.FC<DataTableProps> = ({
     const frameId = window.requestAnimationFrame(resetHorizontalScroll);
     return () => window.cancelAnimationFrame(frameId);
   }, [dataSource, rowKey]);
+
+  useLayoutEffect(() => {
+    const shell = tableShellRef.current;
+    if (!shell) return;
+
+    const measureWidth = () => {
+      const nextWidth = shell.clientWidth;
+      if (nextWidth > 0) {
+        setMeasuredTableWidth((currentWidth) => currentWidth === nextWidth ? currentWidth : nextWidth);
+      }
+    };
+
+    measureWidth();
+    const resizeObserver = new ResizeObserver(measureWidth);
+    resizeObserver.observe(shell);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const requestedScrollY = scroll?.y ?? layout.listTableScrollY;
   const isNumericScrollY = typeof requestedScrollY === 'number';
@@ -180,12 +198,38 @@ const DataTable: React.FC<DataTableProps> = ({
     if (el.parentElement) ro.observe(el.parentElement);
     return () => ro.disconnect();
   }, [dataSource.length, isNumericScrollY, fill]);
+  const hasGeneratedActionColumn = Boolean(
+    rowActions && columns && !columns.some((column) => column.key === 'actions'),
+  );
+  const hasFixedColumns = Boolean(columns?.some((column) => Boolean(column.fixed)));
+  const declaredColumnsWidth = columns?.reduce(
+    (totalWidth, column) => totalWidth + (typeof column.width === 'number' ? column.width : 0),
+    0,
+  ) ?? 0;
+  const totalDeclaredWidth = declaredColumnsWidth + (hasGeneratedActionColumn ? ACTION_COLUMN_WIDTH : 0);
+  const numericScrollNeedsOverflow = typeof scroll?.x === 'number'
+    && measuredTableWidth !== undefined
+    && scroll.x > measuredTableWidth;
+  const shouldStretchColumns = Boolean(
+    columns?.length
+      && measuredTableWidth
+      && totalDeclaredWidth < measuredTableWidth
+      && !numericScrollNeedsOverflow,
+  );
+
   const tableScroll = {
-    x: scroll?.x ?? layout.listTableMinWidth,
+    x: shouldStretchColumns || scroll?.x === '100%'
+      ? (measuredTableWidth ?? layout.listTableMinWidth)
+      : (scroll?.x ?? ((hasFixedColumns || hasGeneratedActionColumn) ? layout.listTableMinWidth : undefined)),
     y: isNumericScrollY && fitMode != null
       ? (fitMode === 'content' ? undefined : fitMode)
       : requestedScrollY,
   };
+  // Keep column positions stable between populated and empty states. When the
+  // declared columns are narrower than the viewport, one content column absorbs
+  // the remainder so status/actions stay at the right edge instead of leaving a
+  // blank header segment.
+  const tableLayout = dataSource.length === 0 || shouldStretchColumns ? 'fixed' as const : undefined;
 
   if (children) {
     return (
@@ -193,12 +237,36 @@ const DataTable: React.FC<DataTableProps> = ({
         <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
           className="list-view-table"
           pagination={false}
+          tableLayout={tableLayout}
           scroll={resolvedScroll}
           locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
           {...rest}>{children}</Table>
       </div>
     );
   }
+
+  const widthlessStretchColumns = shouldStretchColumns
+    ? columns?.filter((column) => column.width == null && !column.fixed && column.key !== 'actions') ?? []
+    : [];
+  const explicitStretchColumn = shouldStretchColumns && widthlessStretchColumns.length === 0
+    ? columns
+      ?.filter((column) => !column.fixed && column.key !== 'actions' && column.key !== 'status')
+      .reduce<DataTableColumn | undefined>((widestColumn, column) => {
+        if (!widestColumn) return column;
+        const currentWidth = typeof column.width === 'number' ? column.width : 0;
+        const widestWidth = typeof widestColumn.width === 'number' ? widestColumn.width : 0;
+        return currentWidth > widestWidth ? column : widestColumn;
+      }, undefined)
+    : undefined;
+  const remainingViewportWidth = measuredTableWidth
+    ? measuredTableWidth - totalDeclaredWidth
+    : undefined;
+  const widthlessStretchColumnWidth = remainingViewportWidth !== undefined && widthlessStretchColumns.length > 0
+    ? remainingViewportWidth / widthlessStretchColumns.length
+    : undefined;
+  const explicitStretchColumnWidth = explicitStretchColumn && remainingViewportWidth !== undefined
+    ? (typeof explicitStretchColumn.width === 'number' ? explicitStretchColumn.width : 0) + remainingViewportWidth
+    : undefined;
 
   const antdColumns: ColumnsType<any> | undefined = columns?.map((col) => {
     const dataKey = col.dataIndex || col.key;
@@ -217,7 +285,9 @@ const DataTable: React.FC<DataTableProps> = ({
     const colObj: any = {
       key: col.key,
       dataIndex: dataKey,
-      width: col.width,
+      width: widthlessStretchColumns.some((column) => column.key === col.key)
+        ? widthlessStretchColumnWidth
+        : (col.key === explicitStretchColumn?.key ? explicitStretchColumnWidth : col.width),
       sorter: sorterFn,
       sortDirections: ['ascend', 'descend'],
       showSorterTooltip: false,
@@ -268,7 +338,7 @@ const DataTable: React.FC<DataTableProps> = ({
   });
 
   // Auto-append actions column when rowActions is provided and no actions column already exists
-  if (rowActions && columns && !columns.some((c) => c.key === 'actions')) {
+  if (rowActions && columns && !columns.some((column) => column.key === 'actions')) {
     antdColumns?.push({
       key: 'actions',
       title: (
@@ -309,6 +379,7 @@ const DataTable: React.FC<DataTableProps> = ({
       <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
         className="list-view-table"
         pagination={false}
+        tableLayout={tableLayout}
         locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
         scroll={tableScroll}

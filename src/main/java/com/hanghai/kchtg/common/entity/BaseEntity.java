@@ -35,6 +35,10 @@ import java.util.UUID;
         name = "orgUnitFilter",
         parameters = @org.hibernate.annotations.ParamDef(name = "orgUnitIds", type = java.util.UUID.class)
 )
+@org.hibernate.annotations.FilterDef(
+        name = "recordSecurityLevelFilter",
+        parameters = @org.hibernate.annotations.ParamDef(name = "maxSecurityLevel", type = Integer.class)
+)
 public abstract class BaseEntity {
 
     /**

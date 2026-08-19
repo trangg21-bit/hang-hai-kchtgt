@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Modal, Form, Button, Spin, Space, Typography, Select } from 'antd';
+import { Form, Button, Spin, Space, Typography, Select } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { groupService } from '../../services/groupService';
@@ -11,7 +11,7 @@ import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import { spaceMd, spaceFormField, radiusPill, fontSizeMd, cardStyle, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
 import { ManagementDrawer } from '../../components/management';
 import { usePermissionStore } from '../../store/permissionStore';
@@ -76,7 +76,7 @@ export default function GroupMembers() {
   useEffect(() => { void fetchMembers(); }, [fetchMembers]);
 
   const handleRemove = useCallback(async (member: GroupMember) => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Xác nhận xóa thành viên',
       icon: <ExclamationCircleOutlined />,
       content: `Bạn có chắc chắn muốn xóa "${member.fullName}" khỏi nhóm này?`,

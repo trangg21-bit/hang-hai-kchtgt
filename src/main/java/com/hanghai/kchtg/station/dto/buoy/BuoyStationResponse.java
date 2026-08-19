@@ -2,6 +2,7 @@ package com.hanghai.kchtg.station.dto.buoy;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class BuoyStationResponse {
 
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String code;
     private String name;
     private String type;    private String color;
@@ -59,6 +61,13 @@ public class BuoyStationResponse {
     private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Additional audit fields for list display
+    private String createdBy;
+    private String createdByName;
+    private String updatedByName;
+    private String sentApprovedBy;
+    private LocalDateTime sentApprovedDate;
 
     private UUID spatialId;
     private GisGeometryType geometryType;

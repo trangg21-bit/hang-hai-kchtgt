@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.beacon.dto.beacon_light;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class BeaconLightResponse {
 
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String code;
     private String name;
     private String type;    private Double lightRange;

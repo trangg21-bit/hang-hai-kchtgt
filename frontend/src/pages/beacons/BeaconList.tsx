@@ -13,7 +13,6 @@ import {
   Modal,
   Form,
   Descriptions,
-  message,
   TreeSelect,
 } from 'antd';
 import {
@@ -43,7 +42,7 @@ import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
+import toast, { message } from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';

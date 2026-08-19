@@ -7,7 +7,10 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
@@ -44,7 +47,14 @@ public class ShipRepairFacilityService {
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     public ShipRepairFacilityResponse create(ShipRepairFacilityCreateRequest request, UUID createdBy) {
+        FieldWriteGuard.validateObject(request);
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "shiprepairfacility",
+                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+
         ShipRepairFacility entity = ShipRepairFacility.builder()
+                .securityLevel(secLevel)
                 .facilityName(request.getFacilityName())
                 .address(request.getAddress())
                 .provinceId(request.getProvinceId())
@@ -118,6 +128,7 @@ public class ShipRepairFacilityService {
     }
 
     public ShipRepairFacilityResponse update(UUID id, ShipRepairFacilityUpdateRequest request, UUID updatedBy) {
+        FieldWriteGuard.validateObject(request);
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -152,6 +163,11 @@ public class ShipRepairFacilityService {
         if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId()))
             previousValues.put("orgUnitId", String.valueOf(entity.getOrgUnitId()));
 
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "shiprepairfacility",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
         if (request.getFacilityName() != null)
             entity.setFacilityName(request.getFacilityName());
         if (request.getAddress() != null)
@@ -358,13 +374,15 @@ public class ShipRepairFacilityService {
         Map<UUID, String> userNames = resolveUserNames(userIds);
 
         return historyList.stream().map(h -> HistoryEntry.builder()
-                        .id(h.getId())
-                        .approvalLevel(h.getApprovalLevel())
-                        .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                        .approvedBy(h.getApprovedBy() != null ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
-                        .approvedDate(h.getApprovedDate())
-                        .reason(h.getReason())
-                        .build())
+                .id(h.getId())
+                .approvalLevel(h.getApprovalLevel())
+                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                .approvedBy(h.getApprovedBy() != null
+                        ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                        : null)
+                .approvedDate(h.getApprovedDate())
+                .reason(h.getReason())
+                .build())
                 .toList();
     }
 
@@ -415,7 +433,8 @@ public class ShipRepairFacilityService {
     private ShipRepairFacilityResponse toResponse(ShipRepairFacility entity, boolean includeAttachments) {
         List<ShipRepairFacilityAttachmentResponse> attachments = includeAttachments
                 ? attachmentRepository
-                        .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.SHIP_REPAIR_FACILITY)
+                        .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(),
+                                InfrastructureType.SHIP_REPAIR_FACILITY)
                         .stream().map(a -> ShipRepairFacilityAttachmentResponse.builder()
                                 .id(a.getId())
                                 .fileName(a.getFileName())
@@ -442,6 +461,7 @@ public class ShipRepairFacilityService {
 
         return ShipRepairFacilityResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .facilityName(entity.getFacilityName())
                 .address(entity.getAddress())
                 .provinceId(entity.getProvinceId())

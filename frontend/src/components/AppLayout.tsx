@@ -26,8 +26,7 @@ import {
   GlobalOutlined,
   BankOutlined,
   BuildOutlined,
-  AimOutlined,
-  HomeOutlined,
+  EnvironmentOutlined,
   TruckOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
@@ -93,7 +92,7 @@ const canAccessMenu = (path: string): boolean => {
 
 const pageTitles: Record<string, string> = {
   '/': 'HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI',
-  '/users': 'Quản lý người dùng',
+  '/users': 'Quản lý tài khoản người dùng',
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
   '/gis/points': 'Quản lý danh mục đối tượng điểm',
@@ -104,9 +103,9 @@ const pageTitles: Record<string, string> = {
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
   '/beacon-lights': 'Đèn biển',
-  '/buoys': 'Phao tiêu',
+  '/buoys': 'Quản lý phao tiêu',
   '/lighthouse-station': 'Nhà trạm đèn biển',
-  '/buoy-station': 'Nhà trạm phao tiêu',
+  '/buoy-station': 'Quản lý nhà trạm phao tiêu',
   '/history': 'Lịch sử thay đổi',
   '/port': 'Quản lý cảng biển',
   '/berth': 'Quản lý bến cảng',
@@ -220,7 +219,7 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Quản trị hệ thống',
       children: [
-        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý người dùng' } : null,
+        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý tài khoản người dùng' } : null,
         canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
         canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
         canAccessMenu('/interconnect') ? { key: '/interconnect', label: 'Quản lý kết nối liên thông' } : null,
@@ -247,9 +246,9 @@ export default function AppLayout() {
       label: 'Báo hiệu hàng hải',
       children: [
         canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển' } : null,
-        canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu', icon: <AimOutlined /> } : null,
+        canAccessMenu('/buoys') ? { key: '/buoys', label: 'Quản lý phao tiêu', icon: <EnvironmentOutlined /> } : null,
         canAccessMenu('/lighthouse-station') ? { key: '/lighthouse-station', label: 'Nhà trạm đèn biển' } : null,
-        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Nhà trạm phao tiêu', icon: <HomeOutlined /> } : null,
+        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Quản lý nhà trạm phao tiêu', icon: <BankOutlined /> } : null,
         canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
       ].filter(Boolean),
     },

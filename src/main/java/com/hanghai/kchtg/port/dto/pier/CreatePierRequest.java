@@ -3,6 +3,7 @@ package com.hanghai.kchtg.port.dto.pier;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.PierType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +18,8 @@ import java.util.UUID;
 
 @Data
 public class CreatePierRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "Mã cầu không được để trống")
     @Size(max = 50)

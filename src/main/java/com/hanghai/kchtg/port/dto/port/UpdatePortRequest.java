@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 /**
  * Request DTO for updating an existing Port.
@@ -20,6 +21,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
  */
 @Data
 public class UpdatePortRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotNull(message = "ID không được để trống")
     private UUID id;

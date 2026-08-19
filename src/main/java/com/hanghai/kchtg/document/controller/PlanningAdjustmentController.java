@@ -27,13 +27,13 @@ public class PlanningAdjustmentController {
     private final PlanningAdjustmentService planningAdjustmentService;
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<PlanningAdjustmentResponse>>> listAdjustments() {
         return ResponseEntity.ok(ApiResponse.success(planningAdjustmentService.findAll()));
     }
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'planningadjustment:create')")
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:create') or @auth.check(authentication, 'document:create')")
     public ResponseEntity<ApiResponse<PlanningAdjustmentResponse>> createAdjustment(
             @RequestBody @Valid PlanningAdjustmentCreateRequest request) {
         PlanningAdjustmentResponse response = planningAdjustmentService.create(request);
@@ -41,13 +41,13 @@ public class PlanningAdjustmentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<PlanningAdjustmentResponse>> getAdjustment(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(planningAdjustmentService.getById(id)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'planningadjustment:update')")
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:update') or @auth.check(authentication, 'document:update')")
     public ResponseEntity<ApiResponse<PlanningAdjustmentResponse>> updateAdjustment(
             @PathVariable UUID id,
             @RequestBody @Valid PlanningAdjustmentCreateRequest request) {
@@ -56,22 +56,23 @@ public class PlanningAdjustmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'planningadjustment:delete')")
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:delete') or @auth.check(authentication, 'document:delete')")
     public ResponseEntity<ApiResponse<Void>> deleteAdjustment(@PathVariable UUID id) {
         planningAdjustmentService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa điều chỉnh quy hoạch thành công", null));
     }
 
     @GetMapping("/planning/{planningId}")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
-    public ResponseEntity<ApiResponse<List<PlanningAdjustmentResponse>>> getByPlanningId(@PathVariable UUID planningId) {
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:read') or @auth.check(authentication, 'document:read')")
+    public ResponseEntity<ApiResponse<List<PlanningAdjustmentResponse>>> getByPlanningId(
+            @PathVariable UUID planningId) {
         return ResponseEntity.ok(ApiResponse.success(planningAdjustmentService.findByPlanningId(planningId)));
     }
 
     // ── Filter Endpoints ──────────────────────────────────────────────
 
     @GetMapping("/status/{tinhTrang}")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<PlanningAdjustmentResponse>>> filterByStatus(
             @PathVariable String tinhTrang) {
         AdjustmentStatus status = AdjustmentStatus.valueOf(tinhTrang);
@@ -79,7 +80,7 @@ public class PlanningAdjustmentController {
     }
 
     @PostMapping("/{id}/approval")
-    @PreAuthorize("@auth.check(authentication, 'planningadjustment:approve')")
+    @PreAuthorize("@auth.check(authentication, 'planningadjustment:approve') or @auth.check(authentication, 'document:approve')")
     public ResponseEntity<ApiResponse<AdjustmentApprovalResponse>> addApproval(
             @PathVariable UUID id,
             @RequestBody @Valid AdjustmentApprovalRequest request) {

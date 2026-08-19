@@ -7,14 +7,7 @@ import { ScreenHeader } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import ErrorState from '../../components/ErrorState';
 import EmptyState from '../../components/EmptyState';
-import { statusOperational, statusAttention, statusCritical, statusDraft, cardStyle, dataSea1, fontSizeMd, fontWeightMedium } from '../../tokens';
-
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  draft: { color: statusDraft, label: 'Bản nháp' },
-  pending: { color: statusAttention, label: 'Chờ duyệt' },
-  approved: { color: statusOperational, label: 'Đã phê duyệt' },
-  rejected: { color: statusCritical, label: 'Bị từ chối' },
-};
+import { cardStyle, dataSea1, fontSizeMd, fontWeightMedium } from '../../tokens';
 
 interface OrgTreeNode {
   key: string;
@@ -32,9 +25,6 @@ function buildTree(orgs: Organization[], parentId?: string): OrgTreeNode[] {
         <Space>
           <Typography.Text strong>{org.name}</Typography.Text>
           <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${dataSea1}15`, color: dataSea1 }}>C{org.level}</span>
-          <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${STATUS_MAP[org.status]?.color}15`, color: STATUS_MAP[org.status]?.color }}>
-            {STATUS_MAP[org.status]?.label || org.status}
-          </span>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             {org.childCount} đơn vị con
           </Typography.Text>

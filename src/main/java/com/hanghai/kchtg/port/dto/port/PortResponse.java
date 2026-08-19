@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.dto.port.PortCoordinateDto;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class PortResponse {
 
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String portCode;
     private String portName;
     private Integer provinceId;

@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.dto.buoy;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class CreateBuoyStationRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "Mã nhà trạm phao không được để trống")
     @Size(max = 50)
@@ -66,6 +69,7 @@ public class CreateBuoyStationRequest {
     private String displayFormat;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
+    private LocalDate lastRepairDate;
 
     @Builder.Default
     private Boolean isActive = true;

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Modal, Form, Input, Select, Button, Spin, Row, Col, Drawer } from 'antd';
+import { Form, Input, Select, Button, Spin, Row, Col, Drawer } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
@@ -25,7 +25,7 @@ import {
   filterLabelStyle,
 } from '../tokens';
 import { colors } from '../theme';
-import toast from '../components/ToastNotification';
+import toast, { modal } from '../components/ToastNotification';
 
 const FEATURE_OPTIONS = [
   { value: 'phanhien', label: 'Phản hiện' },
@@ -194,7 +194,7 @@ export default function PermissionsPage() {
 
   const handleDelete = useCallback(
     (record: Permission) => {
-      Modal.confirm({
+      modal.confirm({
         title: 'Xác nhận xóa',
         content: `Bạn có chắc chắn muốn xóa quyền hạn "${record.name}" không?`,
         okText: 'Xóa',

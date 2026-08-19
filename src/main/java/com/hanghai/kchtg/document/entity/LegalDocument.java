@@ -6,8 +6,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,12 +23,19 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "legal_documents")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@FieldNameConstants
 public class LegalDocument extends BaseEntity {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false)
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "document_name", nullable = false, length = 200)
     private String documentName;

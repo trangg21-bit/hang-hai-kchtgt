@@ -2,6 +2,7 @@ package com.hanghai.kchtg.station.dto.lighthouse;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class LighthouseStationResponse {
 
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String code;
     private String name;
     private String type;    private Double lightRange;

@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class NavigationChannelCreateRequest {
+    private RecordSecurityLevel securityLevel;
     @NotBlank(message = "tên không được để trống")
     private String channelName;
     private String channelCode;

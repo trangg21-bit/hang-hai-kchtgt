@@ -4,6 +4,7 @@ import toast from '../../components/ToastNotification';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { borderDefault, statusAttention, spaceMd } from '../../tokens';
+import api from '../../services/api';
 import { fetchCangBienById, deleteCangBien } from './api';
 import type { CangBienResponse } from './types';
 
@@ -35,10 +36,10 @@ export default function PortDeleteConfirm() {
 
         // Check child guard
         try {
-          const childRes = await fetch(`/api/v1/ports/${id}/children`);
-          const json = await childRes.json();
-          if (json.data?.hasChildren) {
-            toast.error(`Không thể xóa: Cảng có ${json.data.berthCount} bến cảng và ${json.data.waterZoneCount} vùng nước liên kết`);
+          const childRes = await api.get<{ data?: { hasChildren?: boolean; berthCount?: number; waterZoneCount?: number } }>(`/v1/ports/${id}/children`);
+          const childData = childRes.data?.data;
+          if (childData?.hasChildren) {
+            toast.error(`Không thể xóa: Cảng có ${childData.berthCount} bến cảng và ${childData.waterZoneCount} vùng nước liên kết`);
             navigate('/Port');
             return;
           }

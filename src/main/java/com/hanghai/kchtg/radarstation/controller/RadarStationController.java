@@ -15,20 +15,25 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/radar-station")
 @RequiredArgsConstructor
 @Slf4j
+@DataScope
 public class RadarStationController {
 
     private final RadarStationService service;
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:create')")
     @PostMapping
-    public ResponseEntity<ApiResponse<RadarStationResponse>> create(@Valid @RequestBody RadarStationCreateRequest request, Authentication authentication) {
+    public ResponseEntity<ApiResponse<RadarStationResponse>> create(
+            @Valid @RequestBody RadarStationCreateRequest request, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             RadarStationResponse response = service.create(request, userId);
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
         } catch (Exception e) {
@@ -66,10 +71,12 @@ public class RadarStationController {
     @PreAuthorize("@auth.check(authentication, 'radarstation:update')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<RadarStationResponse>> update(@PathVariable UUID id,
-                                    @Valid @RequestBody RadarStationUpdateRequest request,
-                                    Authentication authentication) {
+            @Valid @RequestBody RadarStationUpdateRequest request,
+            Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             RadarStationResponse response = service.update(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
         } catch (Exception e) {
@@ -82,7 +89,9 @@ public class RadarStationController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             service.delete(id, userId);
             return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
         } catch (Exception e) {
@@ -94,10 +103,12 @@ public class RadarStationController {
     @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
     @PostMapping("/{id}/approve/c1")
     public ResponseEntity<ApiResponse<RadarStationResponse>> approveC1(@PathVariable UUID id,
-                                       @Valid @RequestBody ApprovalRequest request,
-                                       Authentication authentication) {
+            @Valid @RequestBody ApprovalRequest request,
+            Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             RadarStationResponse response = service.approveC1(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
         } catch (Exception e) {
@@ -109,10 +120,12 @@ public class RadarStationController {
     @PreAuthorize("@auth.check(authentication, 'radarstation:approvec2')")
     @PostMapping("/{id}/approve/c2")
     public ResponseEntity<ApiResponse<RadarStationResponse>> approveC2(@PathVariable UUID id,
-                                       @Valid @RequestBody ApprovalRequest request,
-                                       Authentication authentication) {
+            @Valid @RequestBody ApprovalRequest request,
+            Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             RadarStationResponse response = service.approveC2(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
         } catch (Exception e) {
@@ -134,7 +147,8 @@ public class RadarStationController {
     }
 
     /**
-     * List records sitting at a given approval status. Mirrors the endpoint the other
+     * List records sitting at a given approval status. Mirrors the endpoint the
+     * other
      * infrastructure modules expose, which the frontend already calls.
      */
     @PreAuthorize("@auth.check(authentication, 'radarstation:read')")

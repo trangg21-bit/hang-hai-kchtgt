@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree } from 'antd';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree, Checkbox } from 'antd';
 import { PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
@@ -17,9 +17,9 @@ import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
 import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceXs, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
 import { colors } from '../theme';
-import toast from '../components/ToastNotification';
+import toast, { modal } from '../components/ToastNotification';
 import ManagementDrawer from '../components/management/ManagementDrawer';
-const { confirm } = Modal;
+const { confirm } = modal;
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Hoạt động',
@@ -65,7 +65,7 @@ export default function UsersPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
-  const { tree: rawPermissionTree, isLoading: permissionCatalogLoading } = usePermissions();
+  const { tree: rawPermissionTree, allKeys: allPermissionKeys, isLoading: permissionCatalogLoading } = usePermissions();
   const [permissionUser, setPermissionUser] = useState<User | null>(null);
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
   const [permissionSearch, setPermissionSearch] = useState('');
@@ -119,11 +119,11 @@ export default function UsersPage() {
       const values = await form.validateFields();
       setSubmitting(true);
       if (editingUser) {
-        const payload: UpdateUserPayload = { 
-          fullName: values.fullName?.trim(), 
-          email: values.email?.trim(), 
-          phone: values.phone?.trim(), 
-          orgUnitId: values.orgUnitId || undefined, 
+        const payload: UpdateUserPayload = {
+          fullName: values.fullName?.trim(),
+          email: values.email?.trim(),
+          phone: values.phone?.trim(),
+          orgUnitId: values.orgUnitId || undefined,
           status: values.status,
           address: values.address?.trim() || undefined,
           department: values.department?.trim() || undefined,
@@ -132,10 +132,10 @@ export default function UsersPage() {
         };
         await updateUser.mutateAsync({ id: editingUser.id, payload });
       } else {
-        const payload: CreateUserPayload = { 
-          fullName: values.fullName?.trim(), 
-          email: values.email?.trim(), 
-          phone: values.phone?.trim(), 
+        const payload: CreateUserPayload = {
+          fullName: values.fullName?.trim(),
+          email: values.email?.trim(),
+          phone: values.phone?.trim(),
           orgUnitId: values.orgUnitId || undefined,
           status: values.status,
           address: values.address?.trim() || undefined,
@@ -291,6 +291,10 @@ export default function UsersPage() {
     return filter(rawPermissionTree);
   }, [rawPermissionTree, permissionSearch]);
 
+  const allPermissionsSelected = allPermissionKeys.length > 0
+    && allPermissionKeys.every((key) => selectedPermissionKeys.includes(key));
+  const somePermissionsSelected = allPermissionKeys.some((key) => selectedPermissionKeys.includes(key));
+
   const rowActions = useCallback((record: User) => {
     const actions: {
       key: string; label: string; icon?: ReactNode;
@@ -387,7 +391,6 @@ export default function UsersPage() {
   const statusTabs = [
     { key: 'all', label: 'Tất cả', count: statusCounts?.total ?? (data?.total || 0), color: textSecondary, active: !filterStatus },
     { key: 'active', label: 'Hoạt động', count: statusCounts?.active ?? 0, color: actionPrimary, active: filterStatus === 'active' },
-    { key: 'pending_approval', label: 'Chờ phê duyệt', count: statusCounts?.pending_approval ?? 0, color: statusAttention, active: filterStatus === 'pending_approval' || filterStatus === 'PENDING_APPROVAL' },
     { key: 'locked', label: 'Đã khóa', count: statusCounts?.locked ?? 0, color: statusCritical, active: filterStatus === 'locked' },
     { key: 'inactive', label: 'Không hoạt động', count: statusCounts?.inactive ?? 0, color: statusDraft, active: filterStatus === 'inactive' },
   ];
@@ -400,7 +403,7 @@ export default function UsersPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý người dùng' }]} actions={headerActions} />
+      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý tài khoản người dùng' }]} actions={headerActions} />
       <FilterTableLayout
         filterCollapsed={filterCollapsed}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
@@ -492,7 +495,7 @@ export default function UsersPage() {
                 style={selectStyle}
               />
             </Form.Item>
-            <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle} rules={[{ max: 500, message: 'Ghi chú tối đa 500 ký tự' }]}> 
+            <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle} rules={[{ max: 500, message: 'Ghi chú tối đa 500 ký tự' }]}>
               <Input.TextArea placeholder="Nhập ghi chú" rows={3} style={{ borderRadius: radiusTextArea }} />
             </Form.Item>
           </Form>
@@ -616,6 +619,16 @@ export default function UsersPage() {
           ) : (
             <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Danh sách chức năng</div>
+              <div style={{ marginBottom: spaceMd }}>
+                <Checkbox
+                  checked={allPermissionsSelected}
+                  indeterminate={!allPermissionsSelected && somePermissionsSelected}
+                  disabled={permissionLoading || permissionCatalogLoading || allPermissionKeys.length === 0}
+                  onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allPermissionKeys : [])}
+                >
+                  HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
+                </Checkbox>
+              </div>
               <Tree
                 checkable
                 defaultExpandAll
@@ -649,7 +662,7 @@ export default function UsersPage() {
         {detailLoading ? <Spin /> : detailUser && (
           <div style={{ paddingTop: spaceMd }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-              {[ 
+              {[
                 ['Họ và tên', detailUser.fullName],
                 ['Email', detailUser.email],
                 ['Số điện thoại', detailUser.phone || '—'],

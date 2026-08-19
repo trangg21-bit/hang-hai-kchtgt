@@ -1,5 +1,6 @@
 import api from "./api";
 import type { PaginatedResponse } from "../types/common";
+import { getProvinceNameById } from "../types/common";
 import { MOCK_ORGANIZATIONS } from './mockData';
 
 const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 200));
@@ -17,17 +18,16 @@ export interface Organization {
   level?: number;
   type?: "DEPARTMENT" | "GENERAL_DEPARTMENT" | "SUB_DEPARTMENT" | "PORT_AUTHORITY";
   description?: string;
-  address?: string;
+  provinceId?: number;
+  provinceName?: string;
   detailAddress?: string;
   phone?: string;
-  contactPerson?: string;
-  contactPhone?: string;
-  status: "draft" | "pending" | "approved" | "rejected";
-  operationalStatus: "active" | "inactive";
-  childCount: number;
-  createdAt: string;
-  updatedAt: string;
+  operationalStatus?: "active" | "inactive";
+  childCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
   updatedBy?: string;
+  rank?: OrgUnitRankName;
 }
 
 export interface CreateOrganizationPayload {
@@ -36,12 +36,11 @@ export interface CreateOrganizationPayload {
   parentId?: string;
   type?: "DEPARTMENT" | "GENERAL_DEPARTMENT" | "SUB_DEPARTMENT" | "PORT_AUTHORITY";
   description?: string;
-  address?: string;
+  provinceId?: number;
   detailAddress?: string;
   phone?: string;
-  contactPerson?: string;
-  contactPhone?: string;
   operationalStatus?: "active" | "inactive";
+  rank?: OrgUnitRankName;
 }
 
 export interface UpdateOrganizationPayload {
@@ -50,21 +49,32 @@ export interface UpdateOrganizationPayload {
   parentId?: string;
   type?: "DEPARTMENT" | "GENERAL_DEPARTMENT" | "SUB_DEPARTMENT" | "PORT_AUTHORITY";
   description?: string;
-  address?: string;
+  provinceId?: number;
   detailAddress?: string;
   phone?: string;
-  contactPerson?: string;
-  contactPhone?: string;
-  status?: "draft" | "pending" | "approved" | "rejected";
   operationalStatus?: "active" | "inactive";
+  rank?: OrgUnitRankName;
 }
 
 export interface OrgFilters {
   search?: string;
-  status?: string;
   level?: number;
   parentId?: string;
 }
+
+export type OrgUnitRankName = "DEPARTMENT" | "BRANCH" | "REPRESENTATIVE";
+
+export const RANK_LABELS: Record<OrgUnitRankName, string> = {
+  DEPARTMENT: "Cục",
+  BRANCH: "Chi cục/ Cảng vụ/ Công ty bảo đảm",
+  REPRESENTATIVE: "Đại diện",
+};
+
+export const RANK_OPTIONS: { value: OrgUnitRankName; label: string }[] = [
+  { value: "DEPARTMENT", label: "Cục" },
+  { value: "BRANCH", label: "Chi cục/ Cảng vụ/ Công ty bảo đảm" },
+  { value: "REPRESENTATIVE", label: "Đại diện" },
+];
 
 // ============================================================
 // API Response normalizer
@@ -73,13 +83,17 @@ function extractData<T>(response: any): T {
   return response.data?.data ?? response.data;
 }
 
+function toApiOperationalStatus(status?: Organization["operationalStatus"]): "OPERATIONAL" | "SUSPENDED" {
+  return status === "inactive" ? "SUSPENDED" : "OPERATIONAL";
+}
+
 // ============================================================
 // Service -- real API calls
 // ============================================================
 
 /**
  * Compute derived fields that the backend does not return in flat list responses.
- * The backend OrgUnitResponse has: id, name, code, parentId, type, address, phone, status, createdAt, updatedAt, children.
+ * The backend OrgUnitResponse has: id, name, code, parentId, type, provinceId, detailAddress, phone, createdAt, updatedAt, children.
  * The frontend Organization adds: parentOrgName, level, childCount, contactPerson, contactPhone.
  */
 function mapOrgUnit(
@@ -109,17 +123,16 @@ function mapOrgUnit(
   return {
     id: item.id ?? "",
     name: item.name ?? "",
-    code: item.code,
     parentId: item.parentId ? String(item.parentId) : undefined,
     parentOrgName,
     level,
     type: item.type as Organization["type"],
     description: item.description,
-    address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-    contactPerson: item.contactPerson,
-    contactPhone: item.contactPhone ?? item.phone,
-    status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+    provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+    provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+    detailAddress: item.detailAddress, phone: item.phone,
     operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+    rank: item.rank as OrgUnitRankName | undefined,
     childCount,
     createdAt: item.createdAt
       ? new Date(item.createdAt).toISOString()
@@ -192,9 +205,9 @@ export const organizationService = {
    * client-side for the cached directory list.
    */
   async list(
-    params?: { page?: number; pageSize?: number; search?: string; status?: string; parentId?: string }
+    params?: { page?: number; pageSize?: number; search?: string; parentId?: string }
   ): Promise<PaginatedResponse<Organization>> {
-    const isCacheable = !params?.search && !params?.status && !params?.parentId;
+    const isCacheable = !params?.search && !params?.parentId;
     if (isCacheable) {
       const cached = getCachedOrgs();
       if (cached) {
@@ -214,11 +227,11 @@ export const organizationService = {
       const resp = isCacheable
         ? await api.get("/common/options/org-units")
         : await api.get("/org-units", {
-            params: {
-              size: 1000,
-              parentId: params?.parentId,
-            }
-          });
+          params: {
+            size: 1000,
+            parentId: params?.parentId,
+          }
+        });
       const rawData: any = extractData(resp);
       const items: any[] = Array.isArray(rawData)
         ? rawData
@@ -230,12 +243,11 @@ export const organizationService = {
         // Map to frontend Organization type
         id: item.id ?? "",
         name: item.name ?? "",
-        code: item.code,
         parentId: item.parentId ? String(item.parentId) : undefined,
         level: item.level,
         type: item.type as Organization["type"],
-        status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
         operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+        rank: item.rank as OrgUnitRankName | undefined,
       }));
 
       // Build parent name lookup map
@@ -244,20 +256,19 @@ export const organizationService = {
         orgMap.set(item.id, {
           id: item.id,
           name: item.name,
-          code: item.code,
           parentId: item.parentId,
           parentOrgName: undefined,
           level: item.level,
           type: item.type as Organization["type"],
           description: item.description,
-          address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-          contactPerson: item.contactPerson,
-          contactPhone: item.contactPhone ?? item.phone,
-          status: item.status as Organization["status"],
+          provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+          provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+          detailAddress: item.detailAddress, phone: item.phone,
           operationalStatus: item.operationalStatus as Organization["operationalStatus"],
+          rank: item.rank as OrgUnitRankName | undefined,
           childCount: 0, // placeholder
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
+          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
         });
       });
 
@@ -280,20 +291,19 @@ export const organizationService = {
         return {
           id: item.id,
           name: item.name,
-          code: item.code,
           parentId: item.parentId,
           parentOrgName,
           level,
           type: item.type as Organization["type"],
           description: item.description,
-          address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-          contactPerson: item.contactPerson,
-          contactPhone: item.contactPhone ?? item.phone,
-          status: item.status as Organization["status"],
+          provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+          provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+          detailAddress: item.detailAddress, phone: item.phone,
           operationalStatus: item.operationalStatus as Organization["operationalStatus"],
+          rank: item.rank as OrgUnitRankName | undefined,
           childCount,
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
+          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
         };
       });
 
@@ -312,12 +322,6 @@ export const organizationService = {
             (o.description || "").toLowerCase().includes(q)
         );
       }
-      if (params?.status) {
-        filtered = filtered.filter(
-          (o) => o.status.toLowerCase() === params.status?.toLowerCase()
-        );
-      }
-
       const page = params?.page || 1;
       const pageSize = params?.pageSize || 1000;
       const start = (page - 1) * pageSize;
@@ -334,9 +338,6 @@ export const organizationService = {
       if (params?.search) {
         const s = params.search.toLowerCase();
         filtered = filtered.filter(o => o.name.toLowerCase().includes(s) || (o.description || '').toLowerCase().includes(s));
-      }
-      if (params?.status) {
-        filtered = filtered.filter(o => o.status === params.status);
       }
       const page = params?.page || 1;
       const pageSize = params?.pageSize || 1000;
@@ -367,17 +368,16 @@ export const organizationService = {
       return {
         id: item.id ?? "",
         name: item.name ?? "",
-        code: item.code,
         parentId: item.parentId ? String(item.parentId) : undefined,
         parentOrgName: undefined,
         level: item.level,
         type: item.type as Organization["type"],
         description: item.description,
-        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-        contactPerson: item.contactPerson,
-        contactPhone: item.contactPhone ?? item.phone,
-        status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+        provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+        provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+        detailAddress: item.detailAddress, phone: item.phone,
         operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+        rank: item.rank as OrgUnitRankName | undefined,
         childCount: 0,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
@@ -418,20 +418,20 @@ export const organizationService = {
         const org: Organization = {
           id: node.id ?? "",
           name: node.name ?? "",
-          code: node.code,
           parentId: node.parentId ? String(node.parentId) : undefined,
           parentOrgName: undefined,
           level: node.level,
           type: node.type as Organization["type"],
           description: node.description,
-          address: node.address,
+          provinceId: node.provinceId != null ? Number(node.provinceId) : undefined,
+          provinceName: node.provinceId != null ? getProvinceNameById(Number(node.provinceId)) : undefined,
           detailAddress: node.detailAddress,
           phone: node.phone,
-          status: (node.status?.toLowerCase() as Organization["status"]) ?? "draft",
           operationalStatus: (node.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+          rank: node.rank as OrgUnitRankName | undefined,
           childCount: Array.isArray(node.children) ? node.children.length : 0,
           createdAt: node.createdAt ? new Date(node.createdAt).toISOString() : "",
-          updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "", updatedBy: (node.updatedBy ?? undefined), 
+          updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "", updatedBy: (node.updatedBy ?? undefined),
         };
         flatList.push(org);
 
@@ -463,7 +463,7 @@ export const organizationService = {
       await delay();
       // Build a tree-like flat list from MOCK_ORGANIZATIONS
       const orgMap = new Map<string, Organization>();
-      organizations.forEach(o => orgMap.set(o.id, {...o}));
+      organizations.forEach(o => orgMap.set(o.id, { ...o }));
       // Enrich parentOrgName
       organizations.forEach(o => {
         if (o.parentId) {
@@ -500,10 +500,11 @@ export const organizationService = {
           parentOrgName: "",
           level: undefined,
           description: item.description,
-          address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-          contactPerson: item.contactPerson,
-          contactPhone: item.contactPhone ?? item.phone,
-          status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
+          provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+          provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+          detailAddress: item.detailAddress, phone: item.phone,
+          operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+          rank: item.rank as OrgUnitRankName | undefined,
           childCount: 0,
           createdAt: item.createdAt
             ? new Date(item.createdAt).toISOString()
@@ -541,16 +542,14 @@ export const organizationService = {
     try {
       const resp = await api.post("/org-units", {
         name: payload.name,
-        ...(payload.code ? { code: payload.code } : {}),
         parentId: payload.parentId,
         type: payload.type,
         description: payload.description,
-        address: payload.address,
+        provinceId: payload.provinceId,
         detailAddress: payload.detailAddress,
-        phone: payload.phone ?? payload.contactPhone,
-        contactPerson: payload.contactPerson,
-        status: "DRAFT",
-        operationalStatus: payload.operationalStatus?.toUpperCase() ?? "ACTIVE",
+        phone: payload.phone,
+        operationalStatus: toApiOperationalStatus(payload.operationalStatus),
+        rank: payload.rank,
       });
       const item: any = extractData(resp);
       clearCachedOrgs();
@@ -558,21 +557,20 @@ export const organizationService = {
       return {
         id: item.id ?? "",
         name: item.name ?? payload.name,
-        code: item.code,
         parentId: payload.parentId,
         parentOrgName: undefined,
         level: undefined,
         type: item.type as Organization["type"],
         description: item.description ?? payload.description,
-        address: item.address ?? payload.address,
+        provinceId: item.provinceId != null ? Number(item.provinceId) : payload.provinceId,
+        provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+        detailAddress: item.detailAddress ?? payload.detailAddress,
         phone: item.phone ?? payload.phone,
-        contactPerson: item.contactPerson ?? payload.contactPerson,
-        contactPhone: payload.contactPhone ?? payload.phone,
-        status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
         operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+        rank: item.rank as OrgUnitRankName | undefined,
         childCount: 0,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(), updatedBy: undefined, 
+        updatedAt: new Date().toISOString(), updatedBy: undefined,
       };
     } catch {
       await delay();
@@ -585,21 +583,19 @@ export const organizationService = {
       const newOrg: Organization = {
         id: `org-${Date.now()}`,
         name: payload.name,
-        code: payload.code ?? payload.name.substring(0, 10).replace(/\s+/g, "_").toLowerCase(),
         parentId: payload.parentId,
         parentOrgName,
         level: parentOrgName ? 2 : 1,
         type: payload.type,
         description: payload.description,
-        address: payload.address,
+        provinceId: payload.provinceId,
+        detailAddress: payload.detailAddress,
         phone: payload.phone,
-        contactPerson: payload.contactPerson,
-        contactPhone: payload.contactPhone ?? payload.phone,
-        status: 'draft',
         operationalStatus: payload.operationalStatus ?? 'active',
+        rank: payload.rank,
         childCount: 0,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(), updatedBy: undefined, 
+        updatedAt: new Date().toISOString(), updatedBy: undefined,
       };
       organizations.push(newOrg);
       clearCachedOrgs();
@@ -617,15 +613,15 @@ export const organizationService = {
     try {
       const body: Record<string, any> = {
         name: payload.name,
-        code: payload.code,
         type: payload.type,
         description: payload.description,
-        address: payload.address,
+        provinceId: payload.provinceId,
         detailAddress: payload.detailAddress,
-        phone: payload.phone ?? payload.contactPhone,
-        contactPerson: payload.contactPerson,
-        status: payload.status?.toUpperCase(),
-        operationalStatus: payload.operationalStatus?.toUpperCase(),
+        phone: payload.phone,
+        operationalStatus: payload.operationalStatus
+          ? toApiOperationalStatus(payload.operationalStatus)
+          : undefined,
+        rank: payload.rank,
       };
       if (payload.parentId !== undefined) {
         body.parentId = payload.parentId;
@@ -637,22 +633,19 @@ export const organizationService = {
       return {
         id: item.id ?? id,
         name: item.name ?? payload.name ?? "",
-        code: item.code,
         parentId: payload.parentId,
         parentOrgName: undefined,
         level: undefined,
         type: item.type as Organization["type"],
         description: item.description ?? payload.description,
-        address: item.address ?? payload.address,
+        provinceId: item.provinceId != null ? Number(item.provinceId) : payload.provinceId,
+        provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+        detailAddress: item.detailAddress ?? payload.detailAddress,
         phone: item.phone ?? payload.phone,
-        contactPerson: item.contactPerson ?? payload.contactPerson,
-        contactPhone: payload.contactPhone ?? payload.phone,
-        status:
-          (payload.status ?? item.status?.toLowerCase()) as Organization["status"] ??
-          "draft",
         operationalStatus:
           (payload.operationalStatus ?? item.operationalStatus?.toLowerCase()) as Organization["operationalStatus"] ??
           "active",
+        rank: item.rank as OrgUnitRankName | undefined,
         childCount: 0,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
@@ -668,7 +661,7 @@ export const organizationService = {
       organizations[idx] = {
         ...organizations[idx],
         ...payload,
-        updatedAt: new Date().toISOString(), updatedBy: undefined, 
+        updatedAt: new Date().toISOString(), updatedBy: undefined,
       };
       clearCachedOrgs();
       return { ...organizations[idx] };
@@ -691,112 +684,6 @@ export const organizationService = {
     }
   },
 
-  /**
-   * POST /api/org-units/:id/submit
-   */
-  async submit(id: string): Promise<Organization> {
-    try {
-      const resp = await api.post(`/org-units/${id}/submit`);
-      const item: any = extractData(resp);
-      clearCachedOrgs();
-      return {
-        id: item.id ?? id,
-        name: item.name ?? "",
-        code: item.code,
-        parentId: item.parentId ? String(item.parentId) : undefined,
-        parentOrgName: undefined,
-        level: undefined,
-        description: item.description,
-        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-        contactPerson: item.contactPerson,
-        contactPhone: item.contactPhone ?? item.phone,
-        status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
-        childCount: 0,
-        createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
-      };
-    } catch {
-      await delay();
-      const idx = organizations.findIndex(o => o.id === id);
-      if (idx === -1) throw new Error("Đơn vị không tồn tại");
-      organizations[idx] = { ...organizations[idx], status: 'pending', updatedAt: new Date().toISOString() };
-      clearCachedOrgs();
-      return { ...organizations[idx] };
-    }
-  },
-
-  /**
-   * POST /api/org-units/:id/approve
-   */
-  async approve(id: string, comments?: string): Promise<Organization> {
-    try {
-      const resp = await api.post(`/org-units/${id}/approve`, null, {
-        params: comments ? { comments } : undefined,
-      });
-      const item: any = extractData(resp);
-      clearCachedOrgs();
-      return {
-        id: item.id ?? id,
-        name: item.name ?? "",
-        code: item.code,
-        parentId: item.parentId ? String(item.parentId) : undefined,
-        parentOrgName: undefined,
-        level: undefined,
-        description: item.description,
-        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-        contactPerson: item.contactPerson,
-        contactPhone: item.contactPhone ?? item.phone,
-        status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
-        childCount: 0,
-        createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
-      };
-    } catch {
-      await delay();
-      const idx = organizations.findIndex(o => o.id === id);
-      if (idx === -1) throw new Error("Đơn vị không tồn tại");
-      organizations[idx] = { ...organizations[idx], status: 'approved', updatedAt: new Date().toISOString() };
-      clearCachedOrgs();
-      return { ...organizations[idx] };
-    }
-  },
-
-  /**
-   * POST /api/org-units/:id/reject
-   */
-  async reject(id: string, comments?: string): Promise<Organization> {
-    try {
-      const resp = await api.post(`/org-units/${id}/reject`, null, {
-        params: comments ? { comments } : undefined,
-      });
-      const item: any = extractData(resp);
-      clearCachedOrgs();
-      return {
-        id: item.id ?? id,
-        name: item.name ?? "",
-        code: item.code,
-        parentId: item.parentId ? String(item.parentId) : undefined,
-        parentOrgName: undefined,
-        level: undefined,
-        description: item.description,
-        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-        contactPerson: item.contactPerson,
-        contactPhone: item.contactPhone ?? item.phone,
-        status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
-        childCount: 0,
-        createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
-      };
-    } catch {
-      await delay();
-      const idx = organizations.findIndex(o => o.id === id);
-      if (idx === -1) throw new Error("Đơn vị không tồn tại");
-      organizations[idx] = { ...organizations[idx], status: 'rejected', updatedAt: new Date().toISOString() };
-      clearCachedOrgs();
-      return { ...organizations[idx] };
-    }
-  },
-
   async search(query: string): Promise<Organization[]> {
     try {
       const resp = await api.get("/org-units/search", {
@@ -812,20 +699,18 @@ export const organizationService = {
         level: item.level,
         type: item.type as Organization["type"],
         description: item.description,
-        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
-        contactPerson: item.contactPerson,
-        contactPhone: item.contactPhone ?? item.phone,
-        status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+        detailAddress: item.detailAddress, phone: item.phone,
+        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+        rank: item.rank as OrgUnitRankName | undefined,
         childCount: 0,
         createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
       }));
     } catch {
       await delay();
       const s = query.toLowerCase();
       return organizations.filter(o =>
         o.name.toLowerCase().includes(s) ||
-        (o.code || '').toLowerCase().includes(s) ||
         (o.description || '').toLowerCase().includes(s)
       );
     }

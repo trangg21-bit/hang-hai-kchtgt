@@ -37,7 +37,8 @@ import {
   waterZoneCRUD
 } from '../../services/portService';
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
-import { fetchLighthouseStationById, fetchBuoyStationById } from '../../services/station/beacon/api';
+import { fetchLighthouseStationById } from '../../services/station/beacon/api';
+import { fetchBuoyStationById } from '../../services/buoy-station/api';
 import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { radarStationCRUD } from '../../services/radarStationService';
@@ -46,7 +47,7 @@ import { shipRepairFacilityCRUD } from '../../services/shipRepairFacilityService
 import { organizationService } from '../../services/organizationService';
 import { userService } from '../../services/userService';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
 import EmptyState from '../../components/EmptyState';
@@ -2460,7 +2461,7 @@ export default function GISChartView() {
         const name = deleteBtn.getAttribute('data-name');
         if (!id || !type) return;
 
-        Modal.confirm({
+        modal.confirm({
           title: 'Xóa đối tượng KCHT',
           content: `Bạn có chắc chắn muốn xóa đối tượng "${name}" không?`,
           okText: 'Xóa',

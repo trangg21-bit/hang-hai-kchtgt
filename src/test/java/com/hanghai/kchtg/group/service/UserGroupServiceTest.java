@@ -197,6 +197,22 @@ class UserGroupServiceTest {
     }
 
     @Test
+    @DisplayName("removeMember_shouldRemoveMemberAndInvalidateCache")
+    void removeMember_shouldRemoveMemberAndInvalidateCache() {
+        user.setGroups(new ArrayList<>(List.of(group)));
+        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
+        when(groupMemberRepository.removeMember(user.getId(), groupId, GroupMemberStatus.ACTIVE, GroupMemberStatus.REMOVED))
+                .thenReturn(1);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        userGroupService.removeMember(groupId, user.getId(), operatorId, "Admin");
+
+        assertTrue(user.getGroups().isEmpty());
+        verify(userRepository).save(user);
+        verify(permissionCacheService).invalidateAndIncrementVersion(user.getId());
+    }
+
+    @Test
     @DisplayName("lockGroup_shouldToggleStatusFromInactiveToActive")
     void lockGroup_shouldToggleStatusFromInactiveToActiveAndLogHistory() {
         group.setStatus(GroupStatus.INACTIVE);

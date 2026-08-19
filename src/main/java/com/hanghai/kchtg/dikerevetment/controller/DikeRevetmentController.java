@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 /**
  * REST controller for DikeRevetment (F-044 to F-049).
@@ -21,6 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/dike-revetment")
 @RequiredArgsConstructor
+@DataScope
 public class DikeRevetmentController {
 
     private final DikeRevetmentService service;
@@ -30,7 +32,9 @@ public class DikeRevetmentController {
     public ResponseEntity<ApiResponse<DikeRevetmentResponse>> create(
             @RequestBody @Valid DikeRevetmentCreateRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
         return ResponseEntity.ok(ApiResponse.success("Tạo đê kè thành công", service.create(req, userId)));
     }
 
@@ -54,7 +58,9 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid DikeRevetmentUpdateRequest req,
             Authentication authentication) {
-        java.util.UUID userId2 = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId2 = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
         return ResponseEntity.ok(ApiResponse.success("Cập nhật đê kè thành công", service.update(id, req, userId2)));
     }
 
@@ -71,7 +77,9 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, userId)));
     }
 
@@ -81,7 +89,9 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
     }
 
@@ -107,6 +117,7 @@ public class DikeRevetmentController {
             @RequestParam(name = "approvalStatus", required = false) String approvalStatus,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(
+                service.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus, page, size)));
     }
 }

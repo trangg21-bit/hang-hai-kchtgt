@@ -34,7 +34,7 @@ public class MaintenancePlanController {
      * Returns all maintenance plans.
      */
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<MaintenancePlanResponse>>> listPlans(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
@@ -47,7 +47,7 @@ public class MaintenancePlanController {
      * Creates a new maintenance plan.
      */
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:create')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:create') or @auth.check(authentication, 'document:create')")
     public ResponseEntity<ApiResponse<MaintenancePlanResponse>> createPlan(
             @RequestBody @Valid MaintenancePlanCreateRequest request) {
         MaintenancePlanResponse response = maintenancePlanService.create(request);
@@ -59,7 +59,7 @@ public class MaintenancePlanController {
      * Returns a single maintenance plan by ID.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<MaintenancePlanResponse>> getPlan(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(maintenancePlanService.getById(id)));
     }
@@ -69,7 +69,7 @@ public class MaintenancePlanController {
      * Updates an existing maintenance plan.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:update')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:update') or @auth.check(authentication, 'document:update')")
     public ResponseEntity<ApiResponse<MaintenancePlanResponse>> updatePlan(
             @PathVariable UUID id,
             @RequestBody @Valid MaintenancePlanCreateRequest request) {
@@ -82,7 +82,7 @@ public class MaintenancePlanController {
      * Deletes a maintenance plan.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:delete')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:delete') or @auth.check(authentication, 'document:delete')")
     public ResponseEntity<ApiResponse<Void>> deletePlan(@PathVariable UUID id) {
         maintenancePlanService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa kế hoạch bảo trì thành công", null));
@@ -93,7 +93,7 @@ public class MaintenancePlanController {
      * Records maintenance result.
      */
     @PostMapping("/result")
-    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:report')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:report') or @auth.check(authentication, 'maintenanceplan:update') or @auth.check(authentication, 'document:update')")
     public ResponseEntity<ApiResponse<MaintenanceResultResponse>> recordResult(
             @RequestBody @Valid MaintenanceResultRequest request) {
         MaintenanceResultResponse response = maintenancePlanService.recordResult(request);
@@ -103,14 +103,14 @@ public class MaintenancePlanController {
     // ── Filter Endpoints ──────────────────────────────────────────────
 
     @GetMapping("/equipment/{equipment}")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<MaintenancePlanResponse>>> filterByEquipment(
             @PathVariable String equipment) {
         return ResponseEntity.ok(ApiResponse.success(maintenancePlanService.findByEquipment(equipment)));
     }
 
     @GetMapping("/status/{status}")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<MaintenancePlanResponse>>> filterByStatus(
             @PathVariable String status) {
         MaintenanceStatus maintenanceStatus = MaintenanceStatus.valueOf(status);
@@ -118,7 +118,7 @@ public class MaintenancePlanController {
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<MaintenancePlanResponse>>> filterByType(
             @PathVariable String type) {
         MaintenanceType maintenanceType = MaintenanceType.valueOf(type);
@@ -126,7 +126,7 @@ public class MaintenancePlanController {
     }
 
     @GetMapping("/date-range")
-    @PreAuthorize("@auth.check(authentication, 'document:read')")
+    @PreAuthorize("@auth.check(authentication, 'maintenanceplan:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<List<MaintenancePlanResponse>>> filterByDateRange(
             @RequestParam LocalDate start,
             @RequestParam LocalDate end) {

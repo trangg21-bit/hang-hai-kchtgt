@@ -3,7 +3,7 @@ package com.hanghai.kchtg.orgunit.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -23,19 +23,16 @@ public class OrgUnitResponse {
 
     private UUID id;
     private String name;
-    private String code;
     private UUID parentId;
-    private OrgUnitStatus status;
     private OperationalStatus operationalStatus;
+    private OrgUnitRank rank;
     private String description;
-    private String address;
+    private Integer provinceId;
     private String detailAddress;
     private String phone;
-    private String contactPerson;
     private String path;
     private Integer level;
     private Integer sortOrder;
-    private LocalDateTime approvedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -52,19 +49,16 @@ public class OrgUnitResponse {
         return OrgUnitResponse.builder()
                 .id(entity.getId())
                 .name(entity.getName())
-                .code(entity.getCode())
                 .parentId(entity.getParentId())
-                .status(entity.getStatus())
                 .operationalStatus(entity.getOperationalStatus())
+                .rank(entity.getRank())
                 .description(entity.getDescription())
-                .address(entity.getAddress())
+                .provinceId(entity.getProvinceId())
                 .detailAddress(entity.getDetailAddress())
                 .phone(entity.getPhone())
-                .contactPerson(entity.getContactPerson())
                 .path(entity.getPath())
                 .level(entity.getLevel())
                 .sortOrder(entity.getSortOrder())
-                .approvedAt(entity.getApprovedAt())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .updatedBy(entity.getUpdatedBy())

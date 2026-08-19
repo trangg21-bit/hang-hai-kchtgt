@@ -14,7 +14,10 @@ import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +53,14 @@ public class RadarStationService {
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     public RadarStationResponse create(RadarStationCreateRequest request, UUID createdBy) {
+        FieldWriteGuard.validateObject(request);
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "radarstation", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         RadarStation entity = RadarStation.builder()
+                .securityLevel(secLevel)
                 .stationName(request.getStationName())
                 .location(request.getLocation())
                 .stationType(request.getStationType())
@@ -64,18 +74,20 @@ public class RadarStationService {
                 .radarRange(request.getRadarRange())
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
-               .approvedLevel2(false)
+                .approvedLevel2(false)
                 .build();
 
         RadarStation saved = repository.save(entity);
 
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
             UUID refId = saved.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -86,8 +98,7 @@ public class RadarStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.RADAR_STATION_LEGACY
-            );
+                    InfrastructureType.RADAR_STATION_LEGACY);
             saved.setSpatialId(spatialObj.getId());
             saved = repository.save(saved);
         }
@@ -129,6 +140,7 @@ public class RadarStationService {
     }
 
     public RadarStationResponse update(UUID id, RadarStationUpdateRequest request, UUID updatedBy) {
+        FieldWriteGuard.validateObject(request);
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
@@ -140,27 +152,45 @@ public class RadarStationService {
             entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
-        if (request.getStationName() != null) entity.setStationName(request.getStationName());
-        if (request.getLocation() != null) entity.setLocation(request.getLocation());
-        if (request.getStationType() != null) entity.setStationType(request.getStationType());
-        if (request.getCoverage() != null) entity.setCoverage(request.getCoverage());
-        if (request.getEmissionArea() != null) entity.setEmissionArea(request.getEmissionArea());
-        if (request.getSource() != null) entity.setSource(request.getSource());
-        if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
-        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
-        if (request.getVtsSystemId() != null) entity.setVtsSystemId(request.getVtsSystemId());
-        if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
-        if (request.getRadarRange() != null) entity.setRadarRange(request.getRadarRange());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "radarstation",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getStationName() != null)
+            entity.setStationName(request.getStationName());
+        if (request.getLocation() != null)
+            entity.setLocation(request.getLocation());
+        if (request.getStationType() != null)
+            entity.setStationType(request.getStationType());
+        if (request.getCoverage() != null)
+            entity.setCoverage(request.getCoverage());
+        if (request.getEmissionArea() != null)
+            entity.setEmissionArea(request.getEmissionArea());
+        if (request.getSource() != null)
+            entity.setSource(request.getSource());
+        if (request.getConditionStatus() != null)
+            entity.setConditionStatus(request.getConditionStatus());
+        if (request.getOrgUnitId() != null)
+            entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getVtsSystemId() != null)
+            entity.setVtsSystemId(request.getVtsSystemId());
+        if (request.getTowerHeight() != null)
+            entity.setTowerHeight(request.getTowerHeight());
+        if (request.getRadarRange() != null)
+            entity.setRadarRange(request.getRadarRange());
 
         RadarStation saved = repository.save(entity);
 
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
             UUID refId = saved.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -171,8 +201,7 @@ public class RadarStationService {
                     objType,
                     coordinates,
                     refId,
-                    InfrastructureType.RADAR_STATION_LEGACY
-            );
+                    InfrastructureType.RADAR_STATION_LEGACY);
             saved.setSpatialId(spatialObj.getId());
             saved = repository.save(saved);
         }
@@ -268,12 +297,14 @@ public class RadarStationService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
         if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
+            throw new RuntimeException(
+                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
         UUID c1Actor = entity.getApproverLevel1();
         if (c1Actor != null && c1Actor.equals(approvedBy)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
+            throw new IllegalStateException(
+                    "Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
         if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
@@ -300,7 +331,8 @@ public class RadarStationService {
     }
 
     public List<HistoryEntry> getHistory(UUID radarStationId) {
-        List<ApprovalHistory> historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, radarStationId);
+        List<ApprovalHistory> historyList = historyRepository
+                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, radarStationId);
         Set<UUID> userIds = historyList.stream()
                 .map(ApprovalHistory::getApprovedBy)
                 .filter(Objects::nonNull)
@@ -308,13 +340,15 @@ public class RadarStationService {
         Map<UUID, String> userNames = resolveUserNames(userIds);
 
         return historyList.stream().map(h -> HistoryEntry.builder()
-                        .id(h.getId())
-                        .approvalLevel(h.getApprovalLevel())
-                        .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                        .approvedBy(h.getApprovedBy() != null ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null)
-                        .approvedDate(h.getApprovedDate())
-                        .reason(h.getReason())
-                        .build()).toList();
+                .id(h.getId())
+                .approvalLevel(h.getApprovalLevel())
+                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                .approvedBy(h.getApprovedBy() != null
+                        ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                        : null)
+                .approvedDate(h.getApprovedDate())
+                .reason(h.getReason())
+                .build()).toList();
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
@@ -337,17 +371,24 @@ public class RadarStationService {
     }
 
     private String resolveUserName(UUID userId) {
-        if (userId == null) return null;
+        if (userId == null)
+            return null;
         Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
         return map.getOrDefault(userId, userId.toString());
     }
 
-    public List<RadarStationResponse> search(UUID orgUnitId, String keyword, String conditionStatus, String approvalStatusStr) {
+    public List<RadarStationResponse> search(UUID orgUnitId, String keyword, String conditionStatus,
+            String approvalStatusStr) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + keyword.trim().toLowerCase() + "%"
                 : null;
-        ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty()) ? ApprovalStatus.fromString(approvalStatusStr) : null;
-        return repository.search(orgUnitId, keywordLike, conditionStatus, statusEnum, org.springframework.data.domain.Pageable.unpaged()).stream()
+        ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty())
+                ? ApprovalStatus.fromString(approvalStatusStr)
+                : null;
+        return repository
+                .search(orgUnitId, keywordLike, conditionStatus, statusEnum,
+                        org.springframework.data.domain.Pageable.unpaged())
+                .stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -363,10 +404,12 @@ public class RadarStationService {
                         .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
                         .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
                         .uploadedDate(a.getUploadedDate())
-                        .build()).toList();
+                        .build())
+                .toList();
 
         RadarStationResponse.RadarStationResponseBuilder builder = RadarStationResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .stationName(entity.getStationName())
                 .location(entity.getLocation())
                 .stationType(entity.getStationType())
@@ -392,8 +435,7 @@ public class RadarStationService {
                 .vtsSystemId(entity.getVtsSystemId())
                 .towerHeight(entity.getTowerHeight())
                 .radarRange(entity.getRadarRange())
-                .vtsSystemName(entity.getVtsSystemId() != null ?
-                    vtsSystemRepository.findById(entity.getVtsSystemId())
+                .vtsSystemName(entity.getVtsSystemId() != null ? vtsSystemRepository.findById(entity.getVtsSystemId())
                         .map(VtsSystem::getSystemName)
                         .orElse("") : "");
 
@@ -403,7 +445,8 @@ public class RadarStationService {
                 builder.geometryType(spatialObj.getGeometryType());
                 builder.coordinates(spatialObj.getCoordinates());
                 try {
-                    String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "")
+                            .trim();
                     String[] parts = clean.split("\\s+");
                     if (parts.length == 2) {
                         builder.longitude(new BigDecimal(parts[0]));

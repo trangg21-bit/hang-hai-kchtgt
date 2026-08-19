@@ -4,7 +4,6 @@ import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.service.OrganizationService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.user.entity.User;
@@ -30,7 +29,7 @@ import java.util.UUID;
  *
  * <p>
  * Base path: /api/org-units
- * Endpoints: CRUD, tree traversal, search/filter, approval workflow.
+ * Endpoints: CRUD, tree traversal, search/filter.
  * RBAC per role matrix from SA design.
  * </p>
  */
@@ -165,19 +164,18 @@ public class OrgUnitController {
     }
 
     /**
-     * Paginated search with filter by type, status, and/or level.
+     * Paginated search with filter by level.
      */
     @GetMapping("/filter")
     @PreAuthorize("@auth.check(authentication, 'orgunit:read')")
     public ResponseEntity<ApiResponse<Page<OrgUnitResponse>>> filter(
-            @RequestParam(required = false) OrgUnitStatus status,
             @RequestParam(required = false) Integer level,
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
         Page<OrgUnitResponse> result = organizationService.filterUnits(
-                status, level, pageable, orgUnitScopeService.currentUserScope());
+                level, pageable, orgUnitScopeService.currentUserScope());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -228,54 +226,4 @@ public class OrgUnitController {
         return ResponseEntity.ok(ApiResponse.success("Xóa đơn vị thành công", null));
     }
 
-    // ── Approval workflow endpoints ──────────────────────────────────
-
-    /**
-     * Submit a unit for approval. Transitions DRAFT/REJECTED → PENDING.
-     */
-    @PostMapping("/{id}/submit")
-    @PreAuthorize("@auth.check(authentication, 'orgunit:manage')")
-    public ResponseEntity<ApiResponse<OrgUnitResponse>> submitForApproval(
-            @PathVariable UUID id) {
-        User currentUser = getCurrentUser();
-        Operator op = getOperator();
-        return ResponseEntity.ok(ApiResponse.success(
-                "Gửi phê duyệt thành công",
-                organizationService.submitForApproval(id, op.id(), op.name(),
-                        orgUnitScopeService.currentUserScope())));
-    }
-
-    /**
-     * Approve a pending unit. Transitions PENDING → APPROVED.
-     * BR-015: Admin-only.
-     */
-    @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'orgunit:approve')")
-    public ResponseEntity<ApiResponse<OrgUnitResponse>> approve(
-            @PathVariable UUID id,
-            @RequestParam(required = false) String comments) {
-        User currentUser = getCurrentUser();
-        Operator op = getOperator();
-        return ResponseEntity.ok(ApiResponse.success(
-                "Phê duyệt đơn vị thành công",
-                organizationService.approve(id, op.id(), op.name(), comments,
-                        orgUnitScopeService.currentUserScope())));
-    }
-
-    /**
-     * Reject a pending unit. Transitions PENDING → REJECTED.
-     * BR-015: Admin-only.
-     */
-    @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'orgunit:approve')")
-    public ResponseEntity<ApiResponse<OrgUnitResponse>> reject(
-            @PathVariable UUID id,
-            @RequestParam(required = false) String comments) {
-        User currentUser = getCurrentUser();
-        Operator op = getOperator();
-        return ResponseEntity.ok(ApiResponse.success(
-                "Từ chối đơn vị thành công",
-                organizationService.reject(id, op.id(), op.name(), comments,
-                        orgUnitScopeService.currentUserScope())));
-    }
 }

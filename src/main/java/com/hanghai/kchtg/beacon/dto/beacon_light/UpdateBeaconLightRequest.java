@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.beacon_light;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -20,6 +21,8 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class UpdateBeaconLightRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @Size(max = 200)
     private String name;

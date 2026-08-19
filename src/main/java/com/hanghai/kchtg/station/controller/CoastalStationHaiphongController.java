@@ -13,19 +13,22 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/stations/haiphong")
 @Validated
 @RequiredArgsConstructor
 @Tag(name = "Haiphong Maritime Station")
+@DataScope
 public class CoastalStationHaiphongController {
 
     private final CoastalStationHaiphongService service;
 
     @PostMapping("/create")
     @Operation(summary = "Create a new Haiphong maritime station")
-    public ResponseEntity<CoastalStationHaiphong> createStation(@Valid @RequestBody CoastalStationHaiphongRequest request) {
+    public ResponseEntity<CoastalStationHaiphong> createStation(
+            @Valid @RequestBody CoastalStationHaiphongRequest request) {
         CoastalStationHaiphong created = service.createStation(request);
         return ResponseEntity.ok(created);
     }

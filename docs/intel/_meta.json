@@ -26,10 +26,10 @@
       "updated_by": "sdlc-ba"
     },
     "docs/modules/M-001-quan-tri-he-thong/_state.md": {
-      "content_hash": "sha256:cd85dcb6670a48bc769a9a03b3ced4007788db94bf8673fa1de6a4b82f7a7a05",
-      "last_modified": "2026-08-14T06:27:26Z",
-      "last_producer": "ai-kit/update_state(refit_lane)",
-      "version": 7
+      "content_hash": "sha256:a34b2f1b855417376fca9b297d50fa2ff1355bd9c6c9df4ed575091d2a518f1c",
+      "last_modified": "2026-08-17T07:14:15Z",
+      "last_producer": "ai-kit/update_state(stage_rollback)",
+      "version": 11
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:1d089ed0b8f03f0b11f2504dac0eadad4035d75de8eb3d1af73cbf23fc43cc45",
@@ -38,22 +38,22 @@
       "version": 15
     },
     "docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md": {
-      "content_hash": "sha256:b4f643957f7fd243b2a516a52b760e19c52fabdc89f394ef38c5d5a1179b34bf",
-      "last_modified": "2026-08-14T05:46:05Z",
+      "content_hash": "sha256:24d31857e320baf1099c0b0adf57d39c4282181359b4a96f25093c9af47ffa7d",
+      "last_modified": "2026-08-17T08:06:07Z",
       "last_producer": "ai-kit/state-update(auto-lock-qa)",
       "locked_fields": [
         "content_hash"
       ],
-      "version": 2
+      "version": 4
     },
     "docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md": {
-      "content_hash": "sha256:f4d95ee1f2528192381a8b7b70ec02c66db58a3dfa94a0ffe47f1d93d3d1c1f8",
-      "last_modified": "2026-08-14T06:31:53Z",
+      "content_hash": "sha256:6dafa3aab64af107a75756bdb043e2f073b2a0a7d2f8251b6f21c22710461a59",
+      "last_modified": "2026-08-17T08:42:07Z",
       "last_producer": "ai-kit/state-update(auto-lock-qa)",
       "locked_fields": [
         "content_hash"
       ],
-      "version": 3
+      "version": 6
     },
     "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/ba/00-lean-spec.md": {
       "last_modified": "2026-06-27T18:05:00Z",
@@ -357,6 +357,42 @@
         "content_hash"
       ],
       "version": 2
+    },
+    "docs/modules/M-1003-fix-antd-static-message-context-warning/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:82621bb349cffc87e6b644651c19d4de3c0d6959ed1937ff882c398d22bfef59",
+      "last_modified": "2026-08-17T03:46:23Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-1003-fix-antd-static-message-context-warning/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:e87704192c6f6d2591d1d09a53e54f14716c40266ba8b9851e80da5586118b3f",
+      "last_modified": "2026-08-17T04:49:34Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-1004-field-level-authorization/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:767b5434ffcba6ee64b2f811b0fee337c9f464195ac9162367e3f2c3b9c14191",
+      "last_modified": "2026-08-17T04:31:45Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-1004-field-level-authorization/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:995ad1ec362bee179acf977bfb06a12361ff73203524c838b5b77c91e17554ea",
+      "last_modified": "2026-08-17T04:59:32Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
     },
     "feature-catalog.json": {
       "content_hash": "sha256:c43f373f413835fdd1318e4533bdd6e1cf51d5fd939b0feccefd92caa699948f",

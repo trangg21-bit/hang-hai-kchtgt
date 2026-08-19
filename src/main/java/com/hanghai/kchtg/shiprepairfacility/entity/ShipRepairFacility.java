@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -14,20 +16,26 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.experimental.FieldNameConstants;
+
 @Entity
 @Table(name = "ship_repair_facility")
 @EntityListeners(AuditingEntityListener.class)
 @Data
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
+@FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class ShipRepairFacility extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "facility_name", nullable = false, length = 255)
     private String facilityName;
@@ -85,9 +93,6 @@ public class ShipRepairFacility extends BaseEntity {
 
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
-
-    @Column(name = "created_by", nullable = false)
-    private UUID createdBy;
 
     @PrePersist
     public void prePersist() {

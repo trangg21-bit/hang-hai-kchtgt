@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.dto.buoy;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -20,6 +21,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class UpdateBuoyStationRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @Size(max = 200)
     private String name;
@@ -61,6 +64,7 @@ public class UpdateBuoyStationRequest {
     private String displayFormat;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
+    private LocalDate lastRepairDate;
     private Boolean isActive;
     private Double latitude;
     private Double longitude;

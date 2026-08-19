@@ -18,19 +18,26 @@ import java.util.UUID;
  * hh.csdl TS_QL structure. Linked to KCHT_CB / KCHT_ATHH via {@code nhom}.
  * </p>
  */
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.experimental.FieldNameConstants;
+
 @Entity
 @Table(name = "ts_ql")
-// TODO: refactor to extend BaseEntity — remove own id/createdAt/updatedAt,
-//       change @Getter @Setter @Builder to @Getter @Setter @SuperBuilder.
-//       Then @FilterDef can be removed (inherited from BaseEntity), keep only @Filter.
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
 @EntityListeners(AuditingEntityListener.class)
 public class ManagedAsset {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

@@ -18,7 +18,10 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -49,7 +52,14 @@ public class DikeRevetmentService {
 
     @Transactional
     public DikeRevetmentResponse create(DikeRevetmentCreateRequest req, java.util.UUID userId) {
+        FieldWriteGuard.validateObject(req);
+        RecordSecurityLevel secLevel = req.getSecurityLevel() != null ? req.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "dikerevetment", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         DikeRevetment dr = DikeRevetment.builder()
+                .securityLevel(secLevel)
                 .dikeRevetmentType(req.getDikeRevetmentType())
                 .location(req.getLocation())
                 .dikeRevetmentName(req.getDikeRevetmentName())
@@ -81,8 +91,7 @@ public class DikeRevetmentService {
                     objType,
                     req.getCoordinates(),
                     refId,
-                    InfrastructureType.DIKE_REVETMENT
-            );
+                    InfrastructureType.DIKE_REVETMENT);
             dr.setSpatialId(spatialObj.getId());
             dr = repo.save(dr);
         }
@@ -120,43 +129,69 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public Page<DikeRevetmentResponse> findAll(int page, int size) {
-        return repo.findByDeletedAtIsNull(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
+        return repo
+                .findByDeletedAtIsNull(
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
                 .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<DikeRevetmentResponse> search(UUID orgUnitId, String keyword, DikeRevetmentType dikeRevetmentType, String status,
-                                              String approvalStatusStr, int page, int size) {
+    public Page<DikeRevetmentResponse> search(UUID orgUnitId, String keyword, DikeRevetmentType dikeRevetmentType,
+            String status,
+            String approvalStatusStr, int page, int size) {
         Page<DikeRevetment> results;
         ApprovalStatus approvalStatus = null;
         if (approvalStatusStr != null && !approvalStatusStr.isEmpty()) {
-            try { approvalStatus = ApprovalStatus.valueOf(approvalStatusStr); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
+            try {
+                approvalStatus = ApprovalStatus.valueOf(approvalStatusStr);
+            } catch (IllegalArgumentException e) {
+                log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr);
+            }
         }
-        if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || dikeRevetmentType != null || status != null || approvalStatus != null) {
+        if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || dikeRevetmentType != null || status != null
+                || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
-            results = repo.findByDeletedAtIsNull(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
+            results = repo.findByDeletedAtIsNull(
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         }
         return results.map(this::toResponse);
     }
 
     @Transactional
     public DikeRevetmentResponse update(UUID id, DikeRevetmentUpdateRequest req, java.util.UUID userId) {
+        FieldWriteGuard.validateObject(req);
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        if (req.getDikeRevetmentType() != null) dr.setDikeRevetmentType(req.getDikeRevetmentType());
-        if (req.getLocation() != null) dr.setLocation(req.getLocation());
-        if (req.getDikeRevetmentName() != null) dr.setDikeRevetmentName(req.getDikeRevetmentName());
-        if (req.getLength() != null) dr.setLength(req.getLength());
-        if (req.getCrestElevation() != null) dr.setCrestElevation(req.getCrestElevation());
-        if (req.getCommissioningDate() != null) dr.setCommissioningDate(req.getCommissioningDate());
-        if (req.getHeight() != null) dr.setHeight(req.getHeight());
-        if (req.getSurfaceMaterial() != null) dr.setSurfaceMaterial(req.getSurfaceMaterial());
-        if (req.getStatus() != null) dr.setStatus(req.getStatus());
-        if (req.getNote() != null) dr.setNote(req.getNote());
-        if (req.getOrgUnitId() != null) dr.setOrgUnitId(req.getOrgUnitId());
+        if (req.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(req.getSecurityLevel(), "dikerevetment",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            dr.setSecurityLevel(req.getSecurityLevel());
+        }
+        if (req.getDikeRevetmentType() != null)
+            dr.setDikeRevetmentType(req.getDikeRevetmentType());
+        if (req.getLocation() != null)
+            dr.setLocation(req.getLocation());
+        if (req.getDikeRevetmentName() != null)
+            dr.setDikeRevetmentName(req.getDikeRevetmentName());
+        if (req.getLength() != null)
+            dr.setLength(req.getLength());
+        if (req.getCrestElevation() != null)
+            dr.setCrestElevation(req.getCrestElevation());
+        if (req.getCommissioningDate() != null)
+            dr.setCommissioningDate(req.getCommissioningDate());
+        if (req.getHeight() != null)
+            dr.setHeight(req.getHeight());
+        if (req.getSurfaceMaterial() != null)
+            dr.setSurfaceMaterial(req.getSurfaceMaterial());
+        if (req.getStatus() != null)
+            dr.setStatus(req.getStatus());
+        if (req.getNote() != null)
+            dr.setNote(req.getNote());
+        if (req.getOrgUnitId() != null)
+            dr.setOrgUnitId(req.getOrgUnitId());
         dr.setUpdatedBy(userId);
 
         if (req.getCoordinates() != null) {
@@ -177,8 +212,7 @@ public class DikeRevetmentService {
                         objType,
                         req.getCoordinates(),
                         refId,
-                        InfrastructureType.DIKE_REVETMENT
-                );
+                        InfrastructureType.DIKE_REVETMENT);
                 dr.setSpatialId(spatialObj.getId());
             }
         } else if (dr.getSpatialId() != null && req.getLocation() != null) {
@@ -192,8 +226,7 @@ public class DikeRevetmentService {
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
                         refId,
-                        InfrastructureType.DIKE_REVETMENT
-                );
+                        InfrastructureType.DIKE_REVETMENT);
             });
         }
 
@@ -286,7 +319,8 @@ public class DikeRevetmentService {
             dr.setRejectionReason(req.getReason());
         }
 
-        saveApprovalHistory(dr, 2, req.getDecision(), approvedBy != null ? approvedBy.toString() : null, req.getReason());
+        saveApprovalHistory(dr, 2, req.getDecision(), approvedBy != null ? approvedBy.toString() : null,
+                req.getReason());
         return buildApprovalResponse(dr, 2);
     }
 
@@ -333,7 +367,8 @@ public class DikeRevetmentService {
         repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        List<ApprovalHistory> history = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, id);
+        List<ApprovalHistory> history = approvalHistoryRepo
+                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, id);
         return history.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
                 .dikeRevetmentId(h.getRefId())
@@ -358,14 +393,20 @@ public class DikeRevetmentService {
     }
 
     @Transactional(readOnly = true)
-    public SearchResultResponse searchDocuments(UUID orgUnitId, String kw, DikeRevetmentType dikeRevetmentType, String status, String approvalStatusStr, int page, int size) {
+    public SearchResultResponse searchDocuments(UUID orgUnitId, String kw, DikeRevetmentType dikeRevetmentType,
+            String status, String approvalStatusStr, int page, int size) {
         ApprovalStatus approvalStatus = null;
         if (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty()) {
-            try { approvalStatus = ApprovalStatus.valueOf(approvalStatusStr.trim()); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
+            try {
+                approvalStatus = ApprovalStatus.valueOf(approvalStatusStr.trim());
+            } catch (IllegalArgumentException e) {
+                log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr);
+            }
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         String statusVal = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
-        Page<DikeRevetment> r = repo.searchDocuments(orgUnitId, keywordLike, dikeRevetmentType, statusVal, approvalStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
+        Page<DikeRevetment> r = repo.searchDocuments(orgUnitId, keywordLike, dikeRevetmentType, statusVal,
+                approvalStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
@@ -390,7 +431,8 @@ public class DikeRevetmentService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        List<ApprovalHistory> histories = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, dr.getId());
+        List<ApprovalHistory> histories = approvalHistoryRepo
+                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, dr.getId());
         List<ApprovalResponse> hist = histories.stream()
                 .map(h -> ApprovalResponse.builder()
                         .id(String.valueOf(h.getId()))
@@ -416,6 +458,7 @@ public class DikeRevetmentService {
 
         return DikeRevetmentResponse.builder()
                 .id(dr.getId())
+                .securityLevel(dr.getSecurityLevel())
                 .dikeRevetmentType(dr.getDikeRevetmentType())
                 .location(dr.getLocation())
                 .dikeRevetmentName(dr.getDikeRevetmentName())
@@ -451,7 +494,8 @@ public class DikeRevetmentService {
     }
 
     private GisGeometryType parseGeometryType(String typeStr) {
-        if (typeStr == null) return GisGeometryType.LINE;
+        if (typeStr == null)
+            return GisGeometryType.LINE;
         try {
             return GisGeometryType.valueOf(typeStr.toUpperCase());
         } catch (IllegalArgumentException ex) {
@@ -460,14 +504,10 @@ public class DikeRevetmentService {
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
-        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
-        if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
+        if (geomType == GisGeometryType.POINT)
+            return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.POLYGON)
+            return GisSpatialObjectType.POLYGON_OTHER;
         return GisSpatialObjectType.LINE_OTHER;
     }
 }
-
-
-
-
-
-

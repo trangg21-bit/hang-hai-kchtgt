@@ -3,6 +3,7 @@ package com.hanghai.kchtg.port.dto.waterzone;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.WaterZoneType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,6 +14,8 @@ import java.util.UUID;
 
 @Data
 public class CreateWaterZoneRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "Mã vùng nước không được để trống")
     @Size(max = 50)

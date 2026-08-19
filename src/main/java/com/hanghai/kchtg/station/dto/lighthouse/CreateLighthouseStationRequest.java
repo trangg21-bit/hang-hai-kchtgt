@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.dto.lighthouse;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class CreateLighthouseStationRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "Mã nhà trạm đèn không được để trống")
     @Size(max = 50)

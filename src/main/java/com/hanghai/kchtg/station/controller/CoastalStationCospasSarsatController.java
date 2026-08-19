@@ -14,19 +14,22 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/stations/cospas-sarsat")
 @Validated
 @RequiredArgsConstructor
 @Tag(name = "Cospas-Sarsat Coastal Station")
+@DataScope
 public class CoastalStationCospasSarsatController {
 
     private final CoastalStationCospasSarsatService service;
 
     @PostMapping("/create")
     @Operation(summary = "Create a new Cospas-Sarsat station")
-    public ResponseEntity<CoastalStationCospasSarsat> createStation(@Valid @RequestBody CoastalStationCospasSarsatRequest request) {
+    public ResponseEntity<CoastalStationCospasSarsat> createStation(
+            @Valid @RequestBody CoastalStationCospasSarsatRequest request) {
         CoastalStationCospasSarsat created = service.createStation(request);
         return ResponseEntity.ok(created);
     }

@@ -20,6 +20,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.entity.BuoyStation;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
@@ -74,22 +76,32 @@ public class BuoyService {
     }
 
     public List<BuoyResponse> search(
-            String name, String code, String type, String status) {
+            String name, String code, String type, String status,
+            String condition, Integer provinceId, String locationDetail, String approvalStatus) {
         return buoyRepo.searchFiltered(
                 name,
                 code,
                 type,
-                status
+                status,
+                condition,
+                provinceId,
+                locationDetail,
+                approvalStatus
         ).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public List<BuoyResponse> search(String name, String code, String type, String status) {
+        return search(name, code, type, status, null, null, null, null);
     }
 
     // -- GENERATE CODE --
 
     /**
      * Sinh mã phao tiêu tự động theo định dạng PT-XXXXXX (6 số).
-     * Dùng MAX(code) từ DB, tăng dần; kiểm tra trùng với cả bảng buoy và beacon_light.
+     * Dùng MAX(code) từ DB, tăng dần; kiểm tra trùng với cả bảng buoy và
+     * beacon_light.
      */
     public String generateCode(java.util.UUID stationId) {
         if (stationId == null) {
@@ -118,7 +130,8 @@ public class BuoyService {
     }
 
     /**
-     * Sinh mã phao tiêu dạng PT-XXXXXX khi chưa chọn nhà trạm (khiếm khuyết dữ liệu).
+     * Sinh mã phao tiêu dạng PT-XXXXXX khi chưa chọn nhà trạm (khiếm khuyết dữ
+     * liệu).
      */
     private String generateGenericCode() {
         String maxCode = buoyRepo.findMaxCode().orElse(null);
@@ -143,6 +156,7 @@ public class BuoyService {
 
     @Transactional
     public BuoyResponse create(CreateBuoyRequest request) {
+        FieldWriteGuard.validateObject(request);
         String code = request.getCode();
         if (code == null || code.trim().isEmpty()) {
             code = generateCode(request.getBuoyStationId());
@@ -156,7 +170,13 @@ public class BuoyService {
 
         validateInspectionDates(request.getLastInspectionDate(), request.getNextInspectionDate());
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "buoy", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         Buoy entity = Buoy.builder()
+                .securityLevel(secLevel)
                 .code(code)
                 .name(request.getName())
                 .type(request.getType())
@@ -206,6 +226,22 @@ public class BuoyService {
         if ("submit".equals(request.getAction())) {
             entity.setStatus("PENDING_APPROVAL");
             entity.setApprovalLevel(1);
+            entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId());
+            entity.setSubmittedForApprovalAt(LocalDateTime.now());
+        } else if ("approved".equals(request.getAction())) {
+            // "Lưu và phê duyệt" — duyệt thẳng 2 cấp (mirror BerthService.applySaveAction APPROVED)
+            entity.setStatus("PUBLISHED");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            java.util.UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSubmittedForApprovalBy(uid);
+            entity.setSubmittedForApprovalAt(LocalDateTime.now());
+            entity.setApprovedBy(uid);
+            entity.setApprovedDate(LocalDateTime.now());
+            entity.setLevel1ApprovedBy(uid);
+            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            entity.setLevel2ApprovedBy(uid);
+            entity.setLevel2ApprovedDate(LocalDateTime.now());
         }
 
         entity = buoyRepo.save(entity);
@@ -223,14 +259,15 @@ public class BuoyService {
                     resolveGeometryType(request.getGeometryType()),
                     GisSpatialObjectType.POINT_BUOY,
                     wkt, entity.getId(),
-                    InfrastructureType.BUOY
-            );
+                    InfrastructureType.BUOY);
             entity.setSpatialId(spatialObj.getId());
             entity = buoyRepo.save(entity);
         }
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "CREATE", null, "created", entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system");
+        Buoy emptySnapshot = new Buoy();
+        changeHistoryService.recordChanges("Buoy", entity.getId().toString(),
+                entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system", emptySnapshot, entity);
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
@@ -249,7 +286,8 @@ public class BuoyService {
     }
 
     private GisGeometryType resolveGeometryType(String type) {
-        if (type == null || type.trim().isEmpty()) return GisGeometryType.POINT;
+        if (type == null || type.trim().isEmpty())
+            return GisGeometryType.POINT;
         try {
             return GisGeometryType.valueOf(type.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
@@ -261,6 +299,7 @@ public class BuoyService {
 
     @Transactional
     public BuoyResponse update(UUID id, UpdateBuoyRequest request) {
+        FieldWriteGuard.validateObject(request);
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
@@ -283,10 +322,40 @@ public class BuoyService {
                 .spatialId(entity.getSpatialId())
                 .provinceId(entity.getProvinceId())
                 .rejectionReason(entity.getRejectionReason())
+                .approvedBy(entity.getApprovedBy()).approvedDate(entity.getApprovedDate())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy()).submittedForApprovalAt(entity.getSubmittedForApprovalAt())
+                .level1ApprovedBy(entity.getLevel1ApprovedBy()).level1ApprovedDate(entity.getLevel1ApprovedDate())
+                .level2ApprovedBy(entity.getLevel2ApprovedBy()).level2ApprovedDate(entity.getLevel2ApprovedDate())
+                .geometryType(entity.getGeometryType()).mapSymbolId(entity.getMapSymbolId())
+                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
+                .buoyStationId(entity.getBuoyStationId())
+                .classification(entity.getClassification()).classificationBuoy(entity.getClassificationBuoy())
+                .classificationMark(entity.getClassificationMark()).locationDetail(entity.getLocationDetail())
+                .condition(entity.getCondition()).structure(entity.getStructure())
+                .area(entity.getArea()).bodyHeight(entity.getBodyHeight()).diameter(entity.getDiameter())
+                .beaconLight(entity.getBeaconLight()).towerHeight(entity.getTowerHeight()).lightHeight(entity.getLightHeight())
+                .lightModel(entity.getLightModel()).towerColor(entity.getTowerColor()).powerSupply(entity.getPowerSupply())
+                .commissionedDate(entity.getCommissionedDate()).lastRepairDate(entity.getLastRepairDate())
+                .lightColor(entity.getLightColor()).flashType(entity.getFlashType()).period(entity.getPeriod())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .operationPlanCode(entity.getOperationPlanCode())
+                .operationPlanName(entity.getOperationPlanName())
+                .operationStartDate(entity.getOperationStartDate())
+                .operationEndDate(entity.getOperationEndDate())
+                .maintenancePlanCode(entity.getMaintenancePlanCode())
+                .maintenancePlanName(entity.getMaintenancePlanName())
+                .maintenanceStartTime(entity.getMaintenanceStartTime())
+                .maintenanceEndTime(entity.getMaintenanceEndTime())
+                .incidentCode(entity.getIncidentCode())
+                .incidentType(entity.getIncidentType())
+                .incidentLocation(entity.getIncidentLocation())
+                .incidentTime(entity.getIncidentTime())
                 .build();
 
         // Apply mutable fields only
-        if (request.getName() != null) entity.setName(request.getName());
+        if (request.getName() != null)
+            entity.setName(request.getName());
 
         // Handle type field update conditionally (BR-075-02)
         if (request.getType() != null && !request.getType().equals(entity.getType())) {
@@ -296,7 +365,8 @@ public class BuoyService {
             entity.setType(request.getType());
         }
 
-        // Handle latitude/longitude updates — prefer request values, fallback to existing spatial
+        // Handle latitude/longitude updates — prefer request values, fallback to
+        // existing spatial
         Double currentLon = request.getLongitude();
         Double currentLat = request.getLatitude();
         if ((currentLon == null || currentLat == null) && entity.getSpatialId() != null) {
@@ -310,7 +380,8 @@ public class BuoyService {
                         currentLon = Double.parseDouble(parts[0]);
                         currentLat = Double.parseDouble(parts[1]);
                     }
-                } catch (Exception ex) { /* ignore */ }
+                } catch (Exception ex) {
+                    /* ignore */ }
             }
         }
         if (currentLon != null && currentLat != null) {
@@ -318,49 +389,83 @@ public class BuoyService {
         }
         String wkt = buildBuoyWkt(request.getCoordinates(), currentLon, currentLat);
 
-        if (request.getColor() != null) entity.setColor(request.getColor());
-        if (request.getShape() != null) entity.setShape(request.getShape());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "buoy",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getColor() != null)
+            entity.setColor(request.getColor());
+        if (request.getShape() != null)
+            entity.setShape(request.getShape());
         if (request.getLightCharacteristic() != null) {
             entity.setLightCharacteristic(request.getLightCharacteristic());
         }
-        if (request.getRange() != null) entity.setRange(request.getRange());
-        if (request.getDescription() != null) entity.setDescription(request.getDescription());
-        if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
+        if (request.getRange() != null)
+            entity.setRange(request.getRange());
+        if (request.getDescription() != null)
+            entity.setDescription(request.getDescription());
+        if (request.getUnitId() != null)
+            entity.setUnitId(request.getUnitId());
         if (request.getLastInspectionDate() != null) {
             entity.setLastInspectionDate(request.getLastInspectionDate());
         }
-        if (request.getNextInspectionDate() != null) {
-            entity.setNextInspectionDate(request.getNextInspectionDate());
-        }
-        if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
-        if (request.getGeometryType() != null) entity.setGeometryType(request.getGeometryType());
-        if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+        if (request.getIsActive() != null)
+            entity.setIsActive(request.getIsActive());
+        if (request.getGeometryType() != null)
+            entity.setGeometryType(request.getGeometryType());
+        if (request.getMapSymbolId() != null)
+            entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getCoordinateSystem() != null)
+            entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayRule() != null)
+            entity.setDisplayRule(request.getDisplayRule());
 
         // Các trường bổ sung theo đặc tả CSV 'QL Phao tiêu' (form chỉnh sửa)
-        if (request.getBuoyStationId() != null) entity.setBuoyStationId(request.getBuoyStationId());
-        if (request.getClassification() != null) entity.setClassification(request.getClassification());
-        if (request.getClassificationBuoy() != null) entity.setClassificationBuoy(request.getClassificationBuoy());
-        if (request.getClassificationMark() != null) entity.setClassificationMark(request.getClassificationMark());
-        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
-        if (request.getLocationDetail() != null) entity.setLocationDetail(request.getLocationDetail());
-        if (request.getCondition() != null) entity.setCondition(request.getCondition());
-        if (request.getStructure() != null) entity.setStructure(request.getStructure());
-        if (request.getArea() != null) entity.setArea(request.getArea());
-        if (request.getBodyHeight() != null) entity.setBodyHeight(request.getBodyHeight());
-        if (request.getDiameter() != null) entity.setDiameter(request.getDiameter());
-        if (request.getBeaconLight() != null) entity.setBeaconLight(request.getBeaconLight());
-        if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
-        if (request.getLightHeight() != null) entity.setLightHeight(request.getLightHeight());
-        if (request.getLightModel() != null) entity.setLightModel(request.getLightModel());
-        if (request.getTowerColor() != null) entity.setTowerColor(request.getTowerColor());
-        if (request.getPowerSupply() != null) entity.setPowerSupply(request.getPowerSupply());
-        if (request.getCommissionedDate() != null) entity.setCommissionedDate(request.getCommissionedDate());
-        if (request.getLastRepairDate() != null) entity.setLastRepairDate(request.getLastRepairDate());
-        if (request.getLightColor() != null) entity.setLightColor(request.getLightColor());
-        if (request.getFlashType() != null) entity.setFlashType(request.getFlashType());
-        if (request.getPeriod() != null) entity.setPeriod(request.getPeriod());
+        if (request.getBuoyStationId() != null)
+            entity.setBuoyStationId(request.getBuoyStationId());
+        if (request.getClassification() != null)
+            entity.setClassification(request.getClassification());
+        if (request.getClassificationBuoy() != null)
+            entity.setClassificationBuoy(request.getClassificationBuoy());
+        if (request.getClassificationMark() != null)
+            entity.setClassificationMark(request.getClassificationMark());
+        if (request.getProvinceId() != null)
+            entity.setProvinceId(request.getProvinceId());
+        if (request.getLocationDetail() != null)
+            entity.setLocationDetail(request.getLocationDetail());
+        if (request.getCondition() != null)
+            entity.setCondition(request.getCondition());
+        if (request.getStructure() != null)
+            entity.setStructure(request.getStructure());
+        if (request.getArea() != null)
+            entity.setArea(request.getArea());
+        if (request.getBodyHeight() != null)
+            entity.setBodyHeight(request.getBodyHeight());
+        if (request.getDiameter() != null)
+            entity.setDiameter(request.getDiameter());
+        if (request.getBeaconLight() != null)
+            entity.setBeaconLight(request.getBeaconLight());
+        if (request.getTowerHeight() != null)
+            entity.setTowerHeight(request.getTowerHeight());
+        if (request.getLightHeight() != null)
+            entity.setLightHeight(request.getLightHeight());
+        if (request.getLightModel() != null)
+            entity.setLightModel(request.getLightModel());
+        if (request.getTowerColor() != null)
+            entity.setTowerColor(request.getTowerColor());
+        if (request.getPowerSupply() != null)
+            entity.setPowerSupply(request.getPowerSupply());
+        if (request.getCommissionedDate() != null)
+            entity.setCommissionedDate(request.getCommissionedDate());
+        if (request.getLastRepairDate() != null)
+            entity.setLastRepairDate(request.getLastRepairDate());
+        if (request.getLightColor() != null)
+            entity.setLightColor(request.getLightColor());
+        if (request.getFlashType() != null)
+            entity.setFlashType(request.getFlashType());
+        if (request.getPeriod() != null)
+            entity.setPeriod(request.getPeriod());
 
         // Status revert logic for approved states (same as BeaconLight)
         if (isApprovedStatus(entity.getStatus())) {
@@ -380,8 +485,7 @@ public class BuoyService {
                     resolveGeometryType(entity.getGeometryType()),
                     GisSpatialObjectType.POINT_BUOY,
                     wkt, entity.getId(),
-                    InfrastructureType.BUOY
-            );
+                    InfrastructureType.BUOY);
             if (entity.getSpatialId() == null) {
                 entity.setSpatialId(spatialObj.getId());
                 buoyRepo.save(entity);
@@ -422,6 +526,7 @@ public class BuoyService {
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
+        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
 
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -444,13 +549,15 @@ public class BuoyService {
         entity.setStatus("PENDING_APPROVAL");
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(1);
+        entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId());
+        entity.setSubmittedForApprovalAt(LocalDateTime.now());
         buoyRepo.save(entity);
 
         notificationService.sendApprovalNotificationBuoy(entity);
     }
 
     @Transactional
-    public BuoyResponse approveL1(UUID id, java.util.UUID approverId) {
+    public BuoyResponse approveL1(UUID id, java.util.UUID approverId, String content) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
@@ -467,6 +574,9 @@ public class BuoyService {
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel1ApprovedBy(approverId);
         entity.setLevel1ApprovedDate(LocalDateTime.now());
+        if (content != null && !content.isBlank()) {
+            entity.setLevel1ApprovalContent(content.trim());
+        }
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L1, null, null, null);
@@ -476,7 +586,7 @@ public class BuoyService {
     }
 
     @Transactional
-    public BuoyResponse approveL2(UUID id, java.util.UUID approverId) {
+    public BuoyResponse approveL2(UUID id, java.util.UUID approverId, String content) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
@@ -492,11 +602,24 @@ public class BuoyService {
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel2ApprovedBy(approverId);
         entity.setLevel2ApprovedDate(LocalDateTime.now());
+        if (content != null && !content.isBlank()) {
+            entity.setLevel2ApprovalContent(content.trim());
+        }
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
 
         return toResponse(entity);
+    }
+
+    @Transactional
+    public BuoyResponse approveL1(UUID id, java.util.UUID approverId) {
+        return approveL1(id, approverId, null);
+    }
+
+    @Transactional
+    public BuoyResponse approveL2(UUID id, java.util.UUID approverId) {
+        return approveL2(id, approverId, null);
     }
 
     @Transactional
@@ -549,12 +672,12 @@ public class BuoyService {
     }
 
     private void logHistory(Buoy entity,
-                            BeaconHistoryActionType action, String fields, String previousJson, String newJson) {
+            BeaconHistoryActionType action, String fields, String previousJson, String newJson) {
         BeaconHistory entry = BeaconHistory.builder()
                 .beaconType(BeaconType.BUOY)
                 .entityId(entity.getId())
                 .actionType(action)
-                .changedField(fields)
+                .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
                 .previousValue(previousJson)
                 .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
                 .changedBy(resolveCurrentUserId())
@@ -581,7 +704,8 @@ public class BuoyService {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
                 coordinates = coordsStr;
                 try {
-                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("(-?\\d+(?:\\.\\d+)?)\\s+(-?\\d+(?:\\.\\d+)?)").matcher(coordsStr);
+                    java.util.regex.Matcher m = java.util.regex.Pattern
+                            .compile("(-?\\d+(?:\\.\\d+)?)\\s+(-?\\d+(?:\\.\\d+)?)").matcher(coordsStr);
                     if (m.find()) {
                         longitude = Double.parseDouble(m.group(1));
                         latitude = Double.parseDouble(m.group(2));
@@ -594,6 +718,7 @@ public class BuoyService {
 
         return BuoyResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())
@@ -634,6 +759,20 @@ public class BuoyService {
                 .lightColor(entity.getLightColor())
                 .flashType(entity.getFlashType())
                 .period(entity.getPeriod())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .operationPlanCode(entity.getOperationPlanCode())
+                .operationPlanName(entity.getOperationPlanName())
+                .operationStartDate(entity.getOperationStartDate())
+                .operationEndDate(entity.getOperationEndDate())
+                .maintenancePlanCode(entity.getMaintenancePlanCode())
+                .maintenancePlanName(entity.getMaintenancePlanName())
+                .maintenanceStartTime(entity.getMaintenanceStartTime())
+                .maintenanceEndTime(entity.getMaintenanceEndTime())
+                .incidentCode(entity.getIncidentCode())
+                .incidentType(entity.getIncidentType())
+                .incidentLocation(entity.getIncidentLocation())
+                .incidentTime(entity.getIncidentTime())
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
@@ -642,6 +781,8 @@ public class BuoyService {
                 .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
                 .level1ApprovedBy(entity.getLevel1ApprovedBy())
                 .level1ApprovedDate(entity.getLevel1ApprovedDate())
                 .level2ApprovedBy(entity.getLevel2ApprovedBy())
@@ -655,7 +796,8 @@ public class BuoyService {
     }
 
     private String resolveBuoyStationName(java.util.UUID stationId) {
-        if (stationId == null) return null;
+        if (stationId == null)
+            return null;
         return buoyStationRepo.findById(stationId)
                 .map(BuoyStation::getName)
                 .orElse(null);

@@ -11,7 +11,6 @@ import {
   Select,
   Tooltip,
   Progress,
-  Modal,
 } from 'antd';
 import {
   PlusOutlined,
@@ -33,7 +32,7 @@ import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 
 const STATUS_MAP: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
   healthy: { color: 'green', label: 'Khỏe mạnh', icon: <CheckCircleOutlined /> },
@@ -95,7 +94,7 @@ export default function ConnectionList() {
 
   const handleDelete = useCallback(
     async (conn: Connection) => {
-      Modal.confirm({
+      modal.confirm({
         title: 'Xác nhận xóa kết nối',
         content: `Bạn có chắc chắn muốn xóa kết nối "${conn.name}"?`,
         okText: 'Xóa',

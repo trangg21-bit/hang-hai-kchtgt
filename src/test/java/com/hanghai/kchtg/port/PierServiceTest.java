@@ -183,6 +183,7 @@ class PierServiceTest {
     @Test
     @DisplayName("softDelete — entity found, softDelete() called, save called")
     void softDelete_setsDeletedAt() {
+        testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
         when(pierRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(pierRepository.save(any())).thenReturn(testEntity);
 

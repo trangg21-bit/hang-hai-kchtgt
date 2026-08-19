@@ -11,6 +11,11 @@ public interface UserListProjection {
     String getUsername();
     String getEmail();
     String getFullName();
+    String getPhone();
+    String getAddress();
+    String getDepartment();
+    String getPosition();
+    String getNote();
     UUID getOrgUnitId();
     UserStatus getStatus();
     LocalDateTime getLastLoginAt();

@@ -1,0 +1,166 @@
+{
+  "triage_id": "TRI-1786950754582-5a51",
+  "created_at": 1786950754582,
+  "request_summary": "Xóa hoàn toàn luồng phê duyệt đơn vị (org-unit approval flow): gỡ OrgUnit.status + approvedAt, enum OrgUnitStatus + OrgUnitStatusConverter, endpoints submit/approve/reject, permission orgunit:approve, filter status, UI phê duyệt frontend (UnitList/UnitForm/UnitTree/organizationService/permissions), đồng bộ docs F-003; thêm migration Flyway drop cột status + approved_at.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/ba/00-lean-spec.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/qa/qa-test-cases.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/sa/00-lean-architecture.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/tech-lead/04-plan.md",
+      "frontend/src/constants/permissions.ts",
+      "frontend/src/pages/organizations/UnitForm.tsx",
+      "frontend/src/pages/organizations/UnitList.tsx",
+      "frontend/src/pages/organizations/UnitTree.tsx",
+      "frontend/src/services/mockData.ts",
+      "frontend/src/services/organizationService.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/config/OrgUnitDataFixer.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/controller/OrgUnitController.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/CreateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/OrgUnitResponse.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/UpdateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnit.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitRank.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitStatus.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitStatusConverter.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/repository/OrgUnitRepository.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/service/OrganizationService.java",
+      "src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java",
+      "src/main/java/com/hanghai/kchtg/seeder/M001DataSeeder.java",
+      "src/main/resources/db/migration/V20260817150000__drop_org_unit_approval.sql",
+      "src/test/java/com/hanghai/kchtg/orgunit/service/OrganizationServiceTest.java"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/ba/00-lean-spec.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/qa/qa-test-cases.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/sa/00-lean-architecture.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/tech-lead/04-plan.md",
+      "frontend/src/constants/permissions.ts",
+      "frontend/src/pages/organizations/UnitForm.tsx",
+      "frontend/src/pages/organizations/UnitList.tsx",
+      "frontend/src/pages/organizations/UnitTree.tsx",
+      "frontend/src/services/mockData.ts",
+      "frontend/src/services/organizationService.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/config/OrgUnitDataFixer.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/controller/OrgUnitController.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/CreateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/OrgUnitResponse.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/UpdateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnit.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitRank.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitStatus.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitStatusConverter.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/repository/OrgUnitRepository.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/service/OrganizationService.java",
+      "src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java",
+      "src/main/java/com/hanghai/kchtg/seeder/M001DataSeeder.java",
+      "src/main/resources/db/migration/V20260817150000__drop_org_unit_approval.sql",
+      "src/test/java/com/hanghai/kchtg/orgunit/service/OrganizationServiceTest.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "frontend/src/constants/permissions.ts"
+      },
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260817150000__drop_org_unit_approval.sql"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: security:frontend/src/constants/permissions.ts, schema:src/main/resources/db/migration/V20260817150000__drop_org_unit_approval.sql — floors at C3 regardless of size (27 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý đơn vị (UnitList/UnitForm/UnitTree) — các hành động Trình duyệt/Phê duyệt/Từ chối và nhãn trạng thái Chờ phê duyệt/Đã phê duyệt",
+  "blast_radius": 27,
+  "done_oracle": "Tạo/sửa/xóa đơn vị chạy bình thường, chỉ còn trạng thái Sử dụng/Không sử dụng (operational_status); không còn bất kỳ UI/API/enum/cột/permission nào thuộc luồng phê duyệt đơn vị; backend compile + OrganizationServiceTest pass + frontend build pass không lỗi tsc mới.",
+  "verification_commands": [
+    {
+      "command": "mvn -q clean compile -DskipTests",
+      "cwd": "D:\\project\\hang-hai-kchtgt",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "mvn -q test -Dtest=OrganizationServiceTest",
+      "cwd": "D:\\project\\hang-hai-kchtgt",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "D:\\project\\hang-hai-kchtgt\\frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "scope_shrink",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnit.java",
+      "line": 97,
+      "quote": "private OrgUnitStatus status;",
+      "source_hash": "a9190849e00f1edb6c0af9c9d3e13c7d5d8651d4fa2fed51cfac13a74f873c85",
+      "quote_hash": "fb059eafbac9197f2e3d08fa9fb8270012df9b1623b7238833a7caed83390f32",
+      "note": "Cột status (phê duyệt) trên entity — mục tiêu xóa"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnit.java",
+      "line": 132,
+      "quote": "private LocalDateTime approvedAt;",
+      "source_hash": "a9190849e00f1edb6c0af9c9d3e13c7d5d8651d4fa2fed51cfac13a74f873c85",
+      "quote_hash": "6ca931f8c72c1a79a6ec7c396f584e4573306f0f63ddd38cc79ce7970077d39a",
+      "note": "approvedAt chỉ được set trong approve()"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/service/OrganizationService.java",
+      "line": 308,
+      "quote": ".status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)",
+      "source_hash": "67b85c625cc36bf2c2a7d35105e392679dece01a4daf77063f5916a9ec650419",
+      "quote_hash": "0f7abd4e7760d8581c6e6e9c8a96356de657e95be22bb8d6bbf552f9f82eba3c",
+      "note": "create() ép status mặc định DRAFT"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/controller/OrgUnitController.java",
+      "line": 253,
+      "quote": "@PreAuthorize(\"@auth.check(authentication, 'orgunit:approve')\")",
+      "source_hash": "61c463eaad89dc9219d70ef334135c453857f4e425ad6f64e72f70cad79fab36",
+      "quote_hash": "53bd4104b46f1d75938ed5a856e399da3fa0aac2bc186c84829a97bd6d357c30",
+      "note": "Endpoints approve/reject yêu cầu permission orgunit:approve"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "line": 45,
+      "quote": "seedPermission(definitions, \"orgunit\", \"approve\");",
+      "source_hash": "210cebe21fbd069a094401f350e3b73f1a34c026f2e39b46e5e91212ffdb72a3",
+      "quote_hash": "aaffb02748447a1ac0dd37e03b51580fb5d6dfe06f095db873d1abcf8ef32c9e",
+      "note": "Permission orgunit:approve được seed"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/repository/OrgUnitRepository.java",
+      "line": 85,
+      "quote": "List<OrgUnit> findByStatusAndDeletedAtIsNull(@Param(\"status\") OrgUnitStatus status);",
+      "source_hash": "12d22c81c08e31e2436b1e9a9b0da0fdf68d6bf86bd65147977b957edede516d",
+      "quote_hash": "bfe7b90fc2aff3451a486fa3a050e58a3143cf9192035a48e729f2f50480bce1",
+      "note": "Repo query theo status phê duyệt"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "1f6e8b039d04002078b121487230e2e5e4aad156",
+    "dirty": true,
+    "captured_at": 1786950754699
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

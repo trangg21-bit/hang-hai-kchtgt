@@ -1,0 +1,125 @@
+{
+  "triage_id": "TRI-1787126589933-7a62",
+  "created_at": 1787126589933,
+  "request_summary": "Sửa 5 vướng mắc phân quyền đã rà soát: (1) PermissionSeeder bỏ reset mật khẩu admin mỗi lần boot; (2) PermissionMiddleware cache set resource thay vì countByResource DB/request; (3) UserGroup.permissions thêm @BatchSize tránh N+1; (4) thống nhất TTL 2 cache Redis về 5 phút; (5) FE memoize hasPermissionFromList + PermissionGuard hiển thị loading khi user chưa load.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/PermissionGuard.tsx",
+      "frontend/src/store/permissionStore.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/group/entity/UserGroup.java",
+      "src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java",
+      "src/main/java/com/hanghai/kchtg/security/service/PermissionCacheService.java",
+      "src/main/java/com/hanghai/kchtg/security/service/UserSecurityCacheService.java"
+    ],
+    "impact_files": [
+      "frontend/src/components/PermissionGuard.tsx",
+      "frontend/src/store/permissionStore.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "src/main/java/com/hanghai/kchtg/group/entity/UserGroup.java",
+      "src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java",
+      "src/main/java/com/hanghai/kchtg/security/service/PermissionCacheService.java",
+      "src/main/java/com/hanghai/kchtg/security/service/UserSecurityCacheService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "frontend/src/store/permissionStore.ts"
+      }
+    ],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C3: one-way door: security:frontend/src/store/permissionStore.ts — floors at C3 regardless of size (7 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Toàn luồng phân quyền: login → JwtAuthFilter → PermissionMiddleware → @PreAuthorize (BE); PermissionGuard + permissionStore + authStore (FE).",
+  "blast_radius": 7,
+  "done_oracle": "Backend biên dịch thành công (mvn clean compile); frontend build thành công (npm run build) và không thêm lỗi mới. PermissionSeeder không còn dòng setPassword(admin123); PermissionMiddleware không còn gọi countByResource trực tiếp mỗi request (qua Caffeine cache); UserGroup.permissions có @BatchSize; 2 cache Redis cùng TTL 5 phút; permissionStore dùng WeakMap memoize Set; PermissionGuard render Spin khi user chưa load.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "D:\\project\\hang-hai-kchtgt",
+      "timeout_ms": 420000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "D:\\project\\hang-hai-kchtgt\\frontend",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java",
+      "line": 37,
+      "quote": "adminUser.setPassword(new BCryptPasswordEncoder().encode(\"admin123\"));",
+      "source_hash": "d6ed207f2196064af5ba0a485ca23d4839508a3488a9f43b80b938d93b197773",
+      "quote_hash": "3e12eb02d9f44a0f9132ba42e2061b45ec05b6263ce0989c090f149a5f5b2461",
+      "note": "Reset mật khẩu admin mỗi lần boot — cần bỏ để giữ mật khẩu do admin đặt"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java",
+      "line": 210,
+      "quote": "return permissionRepository.countByResource(resource) > 0;",
+      "source_hash": "35850e395778d3d1b52ce3487ffa6874a62b6a7327370498e264100da64d55d6",
+      "quote_hash": "9b15bb5cc8e174d2c469434fbf17499e6fc57fc30cd38cfe4cedfbc050282a0b",
+      "note": "COUNT query DB chạy mỗi request — thay bằng Caffeine cache"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/group/entity/UserGroup.java",
+      "line": 47,
+      "quote": "@ElementCollection(fetch = FetchType.EAGER)",
+      "source_hash": "7022067f36f616b8239ff7af333b2c9c0f7546f47f4304ba446b1c45c0fd2153",
+      "quote_hash": "5ae040b0193ce3cb42961f498291635165f7258e80b15f8219f59705e2c959d0",
+      "note": "EAGER collection gây N+1 — thêm @BatchSize"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/security/service/PermissionCacheService.java",
+      "line": 25,
+      "quote": "private static final long CACHE_TTL_MINUTES = 10;",
+      "source_hash": "1ccca33dd3918d1c621119e2a6583282e4a7c071eab1d4a417eb7d3fa8eee633",
+      "quote_hash": "5e91332c95f4e226401b734f36f20a20f0dce35381067c51937986fc1aeaaec5",
+      "note": "TTL 10 phút lệch với user_security 5 phút — thống nhất về 5 phút"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/security/service/UserSecurityCacheService.java",
+      "line": 24,
+      "quote": "private static final Duration TTL = Duration.ofMinutes(5);",
+      "source_hash": "c17a3abeedc51b4869326c1b298fd28eac8a2b6a11d9eca228ecc1d672115598",
+      "quote_hash": "eb0ec99537c8a1b4c911241d08dc5c5439dad88c07ff7d91ec96cefefcbb446b",
+      "note": "TTL snapshot bảo mật 5 phút — giữ làm chuẩn chung"
+    },
+    {
+      "file": "frontend/src/store/permissionStore.ts",
+      "line": 55,
+      "quote": "const permissions = new Set(",
+      "source_hash": "c1ccf9c2171268a87be85e94e05ea32fa850b5b6a912ed16100168383f880763",
+      "quote_hash": "3ff6e28757e3e5c089a32c62cb643fc54d410b67dbfbfe565e201bc6c2fbe1e3",
+      "note": "Tạo Set mới mỗi lần hasPermissionFromList — memoize bằng WeakMap theo mảng quyền"
+    },
+    {
+      "file": "frontend/src/components/PermissionGuard.tsx",
+      "line": 26,
+      "quote": "const isAllowed = userPermissions !== undefined && checkPermission();",
+      "source_hash": "58eaeecec7fe03a5c5880ec677caab954643ee48e3db874029e0bc332b1984df",
+      "quote_hash": "11c2c545c5ec1577ee6b22a3b8f95be9153e290720352e50a5188be535850ad0",
+      "note": "user chưa load (undefined) bị hiểu là 403 — thêm nhánh loading"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "444d6d93feb67999385fe7430e5b0e199f23887c",
+    "dirty": true,
+    "captured_at": 1787126590077
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

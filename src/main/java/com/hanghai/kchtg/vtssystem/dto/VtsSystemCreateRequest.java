@@ -2,6 +2,7 @@ package com.hanghai.kchtg.vtssystem.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -23,6 +24,7 @@ public class VtsSystemCreateRequest {
 
     @NotNull(message = "Tình trạng không được để trống")
     private ConditionStatus conditionStatus;
+    private RecordSecurityLevel recordSecurityLevel;
     private String responsibilityLevel;
     private String source;
     private String partner;

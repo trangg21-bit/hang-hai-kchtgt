@@ -23,6 +23,8 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -55,6 +57,7 @@ public class PierService {
 
     @Transactional
     public PierResponse create(CreatePierRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (pierRepository.existsByPierCode(request.getPierCode())) {
             throw new IllegalArgumentException("Mã " + request.getPierCode() + " đã tồn tại");
         }
@@ -97,7 +100,8 @@ public class PierService {
         UUID spatialId = null;
 
         if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.LINE;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.LINE;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
@@ -107,16 +111,21 @@ public class PierService {
                     objType,
                     request.getCoordinates(),
                     pierId,
-                    InfrastructureType.PIER
-            );
+                    InfrastructureType.PIER);
             spatialId = spatialObj.getId();
         }
 
         // Default conditionStatus to 1 (Sử dụng) if not provided
         Integer conditionStatus = request.getConditionStatus() != null ? request.getConditionStatus() : 1;
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "pier", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         Pier entity = Pier.builder()
                 .id(pierId)
+                .securityLevel(secLevel)
                 .pierCode(request.getPierCode()).pierName(request.getPierName())
                 .berthId(request.getBerthId()).length(request.getLength())
                 .designLoad(request.getDesignLoad()).pierType(request.getPierType())
@@ -162,7 +171,8 @@ public class PierService {
                 .displayRule(request.getDisplayRule())
                 .build();
 
-        // Handle saveAction the same way as Berth (DRAFT / SUBMIT / SAVE_AND_APPROVE / APPROVED)
+        // Handle saveAction the same way as Berth (DRAFT / SUBMIT / SAVE_AND_APPROVE /
+        // APPROVED)
         String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
         applySaveAction(entity, action);
 
@@ -199,10 +209,12 @@ public class PierService {
             String search, UUID berthId, UUID portId, PierType pierType, String province,
             String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize,
+                Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
-        Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, portId, pierType, province, statusEnum, approvalEnum, pageable);
+        Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, portId, pierType, province,
+                statusEnum, approvalEnum, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(Pier::getBerthId)
@@ -220,8 +232,10 @@ public class PierService {
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         pageResult.getContent().forEach(e -> {
             try {
-                if (e.getCreatedBy() != null) userUuids.add(e.getCreatedBy());
-                if (e.getUpdatedBy() != null) userUuids.add(e.getUpdatedBy());
+                if (e.getCreatedBy() != null)
+                    userUuids.add(e.getCreatedBy());
+                if (e.getUpdatedBy() != null)
+                    userUuids.add(e.getUpdatedBy());
             } catch (Exception ex) {
                 // ignore
             }
@@ -254,8 +268,7 @@ public class PierService {
                 parentNameMap.get(e.getBerthId()),
                 userNamesMap.get(e.getCreatedBy()),
                 userNamesMap.get(e.getUpdatedBy()),
-                spatialMap.get(e.getSpatialId())
-        ));
+                spatialMap.get(e.getSpatialId())));
     }
 
     @Transactional(readOnly = true)
@@ -266,6 +279,7 @@ public class PierService {
 
     @Transactional
     public PierResponse update(UpdatePierRequest request) {
+        FieldWriteGuard.validateObject(request);
         Pier entity = pierRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + request.getId()));
 
@@ -313,6 +327,11 @@ public class PierService {
                 .spatialId(entity.getSpatialId())
                 .build();
 
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "pier",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
         if (request.getPierName() != null)
             entity.setPierName(request.getPierName());
         if (request.getBerthId() != null) {
@@ -400,7 +419,8 @@ public class PierService {
                     entity.setSpatialId(null);
                 }
             } else {
-                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.LINE;
+                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                        : GisGeometryType.LINE;
                 GisSpatialObjectType objType = getSpatialObjectType(geomType);
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         entity.getSpatialId(),
@@ -410,8 +430,7 @@ public class PierService {
                         objType,
                         request.getCoordinates(),
                         entity.getId(),
-                        InfrastructureType.PIER
-                );
+                        InfrastructureType.PIER);
                 entity.setSpatialId(spatialObj.getId());
             }
         } else if (entity.getSpatialId() != null && request.getPierName() != null) {
@@ -424,8 +443,7 @@ public class PierService {
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
                         entity.getId(),
-                        InfrastructureType.PIER
-                );
+                        InfrastructureType.PIER);
             });
         }
 
@@ -507,7 +525,6 @@ public class PierService {
         log.info("Soft-deleted Pier [{}] code={}", entity.getId(), entity.getPierCode());
     }
 
-
     private PierResponse toResponse(Pier e) {
         return toResponse(e, null, null, null, null);
     }
@@ -516,11 +533,13 @@ public class PierService {
         return toResponse(e, preResolvedBerthName, null, null, null);
     }
 
-    private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName, String preResolvedUpdaterName) {
+    private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName,
+            String preResolvedUpdaterName) {
         return toResponse(e, preResolvedBerthName, preResolvedCreatorName, preResolvedUpdaterName, null);
     }
 
-    private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName, String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
+    private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName,
+            String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
         GisGeometryType geomType = null;
         String coords = null;
 
@@ -539,11 +558,15 @@ public class PierService {
             berthName = berthRepository.findById(e.getBerthId()).map(Berth::getBerthName).orElse(null);
         }
 
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(e.getCreatedBy() != null ? e.getCreatedBy() : null);
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(e.getUpdatedBy() != null ? e.getUpdatedBy() : null);
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
+                : userResolverService.resolveName(e.getCreatedBy() != null ? e.getCreatedBy() : null);
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
+                : userResolverService.resolveName(e.getUpdatedBy() != null ? e.getUpdatedBy() : null);
 
         return PierResponse.builder()
-                .id(e.getId()).pierCode(e.getPierCode()).pierName(e.getPierName())
+                .id(e.getId())
+                .securityLevel(e.getSecurityLevel())
+                .pierCode(e.getPierCode()).pierName(e.getPierName())
                 .berthId(e.getBerthId())
                 .berthName(berthName)
                 .length(e.getLength())
@@ -596,7 +619,8 @@ public class PierService {
     }
 
     private GisGeometryType parseGeometryType(String typeStr) {
-        if (typeStr == null) return GisGeometryType.LINE;
+        if (typeStr == null)
+            return GisGeometryType.LINE;
         try {
             return GisGeometryType.valueOf(typeStr.toUpperCase());
         } catch (IllegalArgumentException ex) {
@@ -623,7 +647,7 @@ public class PierService {
 
     public String generatePierCode(UUID berthId) {
         Berth berth = berthRepository.findById(berthId)
-            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng"));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng"));
         String berthCode = berth.getBerthCode();
         String prefix = berthCode + "-CC";
         List<Pier> existing = pierRepository.findByBerthIdAndDeletedAtIsNull(berthId);
@@ -632,16 +656,20 @@ public class PierService {
             if (p.getPierCode() != null && p.getPierCode().startsWith(prefix)) {
                 try {
                     int n = Integer.parseInt(p.getPierCode().substring(prefix.length()));
-                    if (n > maxNum) maxNum = n;
-                } catch (NumberFormatException ignored) {}
+                    if (n > maxNum)
+                        maxNum = n;
+                } catch (NumberFormatException ignored) {
+                }
             }
         }
         return prefix + String.format("%02d", maxNum + 1);
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
-        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
-        if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
+        if (geomType == GisGeometryType.POINT)
+            return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.POLYGON)
+            return GisSpatialObjectType.POLYGON_OTHER;
         return GisSpatialObjectType.LINE_OTHER;
     }
 }

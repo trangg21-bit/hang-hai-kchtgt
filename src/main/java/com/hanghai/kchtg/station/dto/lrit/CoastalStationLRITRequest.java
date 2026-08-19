@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.station.dto.lrit;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,6 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CoastalStationLRITRequest {
 
+    private RecordSecurityLevel securityLevel;
     private String stationCode;
     private String stationName;
     private String terminalId;

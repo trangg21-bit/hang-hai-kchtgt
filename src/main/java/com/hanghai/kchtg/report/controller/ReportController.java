@@ -19,6 +19,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 /**
  * REST controller cho Báo cáo & Tổng hợp (M-016).
@@ -29,6 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@DataScope
 public class ReportController {
 
     private final ReportService reportService;

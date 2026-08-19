@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.inmarsat.CoastalStationInmarsatHistoryResponse;
 import com.hanghai.kchtg.station.dto.inmarsat.CoastalStationInmarsatRequest;
@@ -28,13 +30,20 @@ public class CoastalStationInmarsatService {
     private final HistoryService historyService;
 
     public CoastalStationInmarsat createStation(CoastalStationInmarsatRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (repository.findByDeviceCode(request.getDeviceCode()).isPresent()) {
             throw new IllegalArgumentException("Mã đã tồn tại: " + request.getDeviceCode());
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationinmarsat",
+                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+
         CoastalStationInmarsat entity = new CoastalStationInmarsat();
+        entity.setSecurityLevel(secLevel);
         entity.setDeviceCode(request.getDeviceCode());
         entity.setCode(request.getDeviceCode());
         entity.setName(request.getStationName());
@@ -54,25 +63,40 @@ public class CoastalStationInmarsatService {
                 null,
                 "Inmarsat station created",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
     public CoastalStationInmarsat updateStation(UUID id, CoastalStationInmarsatUpdateRequest request) {
+        FieldWriteGuard.validateObject(request);
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Inmarsat station not found with id: " + id));
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
-        if (request.getStationName() != null) entity.setName(request.getStationName());
-        if (request.getModemType() != null) entity.setModemType(request.getModemType());
-        if (request.getFrequency() != null) entity.setFrequency(request.getFrequency());
-        if (request.getCoverageZone() != null) entity.setCoverageZone(request.getCoverageZone());
-        if (request.getSarCode() != null) entity.setSarCode(request.getSarCode());
-        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationinmarsat",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+
+        if (request.getStationName() != null)
+            entity.setName(request.getStationName());
+        if (request.getModemType() != null)
+            entity.setModemType(request.getModemType());
+        if (request.getFrequency() != null)
+            entity.setFrequency(request.getFrequency());
+        if (request.getCoverageZone() != null)
+            entity.setCoverageZone(request.getCoverageZone());
+        if (request.getSarCode() != null)
+            entity.setSarCode(request.getSarCode());
+        if (request.getLocationAddress() != null)
+            entity.setLocationAddress(request.getLocationAddress());
+        if (request.getContactPerson() != null)
+            entity.setContactPerson(request.getContactPerson());
+        if (request.getContactPhone() != null)
+            entity.setContactPhone(request.getContactPhone());
 
         CoastalStationInmarsat saved = repository.save(entity);
         historyService.recordHistory(
@@ -81,14 +105,14 @@ public class CoastalStationInmarsatService {
                 null,
                 "Inmarsat station updated",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
     public void deleteStation(UUID id) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Inmarsat station not found with id: " + id));
 
         String deviceCode = entity.getDeviceCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
@@ -100,13 +124,13 @@ public class CoastalStationInmarsatService {
                 "Active",
                 "Inmarsat station deleted",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
     }
 
     public CoastalStationInmarsat getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Inmarsat station not found with id: " + id));
     }
 
     public List<CoastalStationInmarsat> getAllStations() {
@@ -123,7 +147,8 @@ public class CoastalStationInmarsatService {
 
     public CoastalStationInmarsat approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Inmarsat station not found with id: " + id));
 
         String creatorId = resolveCreatedBy(entity);
         if (creatorId != null && creatorId.equals(String.valueOf(userId))) {
@@ -159,8 +184,7 @@ public class CoastalStationInmarsatService {
                     "Pending approval",
                     "Approved at level " + entity.getApprovalLevel(),
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         } else {
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -173,8 +197,7 @@ public class CoastalStationInmarsatService {
                     "Approved L1",
                     "Reset to pending",
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         }
 
         return repository.save(entity);
@@ -182,7 +205,8 @@ public class CoastalStationInmarsatService {
 
     public CoastalStationInmarsat rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Inmarsat station not found with id: " + id));
 
         if (rejectionReason == null || rejectionReason.length() < 10) {
             throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
@@ -201,15 +225,15 @@ public class CoastalStationInmarsatService {
                 "Approved",
                 "Rejected: " + rejectionReason,
                 String.valueOf(userId),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
 
         return repository.save(entity);
     }
 
     public List<CoastalStationInmarsatHistoryResponse> getHistory(UUID id) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Inmarsat station not found with id: " + id));
         return historyService.getHistory(entity.getDeviceCode()).stream()
                 .map(h -> {
                     CoastalStationInmarsatHistoryResponse r = new CoastalStationInmarsatHistoryResponse();
@@ -246,6 +270,7 @@ public class CoastalStationInmarsatService {
     public CoastalStationInmarsatResponse buildResponse(CoastalStationInmarsat entity) {
         return CoastalStationInmarsatResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .deviceCode(entity.getDeviceCode())
                 .stationName(entity.getName())
                 .modemType(entity.getModemType())
@@ -266,6 +291,3 @@ public class CoastalStationInmarsatService {
                 .build();
     }
 }
-
-
-

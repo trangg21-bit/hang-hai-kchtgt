@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -39,9 +40,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.text.Normalizer;
 
 /**
@@ -83,6 +87,7 @@ public class UserService {
     private final EntityManager entityManager;
     private final com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
+    private final UserPermissionService userPermissionService;
 
     public UserService(UserRepository userRepository,
             OrgUnitRepository orgUnitRepository,
@@ -95,7 +100,7 @@ public class UserService {
             EntityManager entityManager) {
         this(userRepository, orgUnitRepository, groupRepository, passwordEncoder,
                 passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
-                userStatusLogRepository, entityManager, null, null);
+                userStatusLogRepository, entityManager, null, null, null);
     }
 
     public UserService(UserRepository userRepository,
@@ -110,7 +115,23 @@ public class UserService {
             @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
         this(userRepository, orgUnitRepository, groupRepository, passwordEncoder,
                 passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
-                userStatusLogRepository, entityManager, orgUnitCacheService, null);
+                userStatusLogRepository, entityManager, orgUnitCacheService, null, null);
+    }
+
+    public UserService(UserRepository userRepository,
+            OrgUnitRepository orgUnitRepository,
+            GroupRepository groupRepository,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyValidator passwordPolicyValidator,
+            PermissionCacheService permissionCacheService,
+            PasswordHistoryRepository passwordHistoryRepository,
+            UserStatusLogRepository userStatusLogRepository,
+            EntityManager entityManager,
+            @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService,
+            @org.springframework.lang.Nullable OrgUnitScopeService orgUnitScopeService) {
+        this(userRepository, orgUnitRepository, groupRepository, passwordEncoder,
+                passwordPolicyValidator, permissionCacheService, passwordHistoryRepository,
+                userStatusLogRepository, entityManager, orgUnitCacheService, orgUnitScopeService, null);
     }
 
     @Autowired
@@ -124,7 +145,8 @@ public class UserService {
             UserStatusLogRepository userStatusLogRepository,
             EntityManager entityManager,
             @org.springframework.lang.Nullable com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService,
-            @org.springframework.lang.Nullable OrgUnitScopeService orgUnitScopeService) {
+            @org.springframework.lang.Nullable OrgUnitScopeService orgUnitScopeService,
+            @org.springframework.lang.Nullable UserPermissionService userPermissionService) {
         this.userRepository = userRepository;
         this.orgUnitRepository = orgUnitRepository;
         this.groupRepository = groupRepository;
@@ -136,6 +158,7 @@ public class UserService {
         this.entityManager = entityManager;
         this.orgUnitCacheService = orgUnitCacheService;
         this.orgUnitScopeService = orgUnitScopeService;
+        this.userPermissionService = userPermissionService;
     }
 
     // =========================================================================
@@ -214,10 +237,11 @@ public class UserService {
 
         List<UserListProjection> listItems = organizationFilter == null
                 ? userRepository.searchUserList(searchLike, fullNameLike, status, cappedPageable)
-                : userRepository.searchUserListByOrgUnits(searchLike, fullNameLike, status, organizationFilter, cappedPageable);
+                : userRepository.searchUserListByOrgUnits(searchLike, fullNameLike, status, organizationFilter,
+                        cappedPageable);
 
         // The status tabs must describe the same filtered result set as the
-        // table.  Using the global counts here makes a search for one user
+        // table. Using the global counts here makes a search for one user
         // still show the totals of the whole user database.
         java.util.Map<String, Long> counts = getStatusCounts(search, fullName, organizationFilter);
         long totalElements = status == null
@@ -404,6 +428,15 @@ public class UserService {
      * @throws ValidationException      neu mat khau khong dap ung chinh sach
      */
     public User create(CreateUserRequest request) {
+        FieldWriteGuard.validateObject(request);
+        if (request.getPermissionCodes() != null && !request.getPermissionCodes().isEmpty()
+                && userPermissionService != null) {
+            userPermissionService.validateDirectPermissionsAssignment(null, request.getPermissionCodes());
+        }
+        if (request.getOrgUnitId() != null) {
+            assertOrgUnitInScope(request.getOrgUnitId());
+        }
+
         String email = normalizeEmail(request.getEmail());
         String username = trimToNull(request.getUsername());
         if (username == null) {
@@ -447,15 +480,18 @@ public class UserService {
 
         // Set UserGroup relationships
         if (request.getGroupIds() != null && !request.getGroupIds().isEmpty()) {
+            validateGroupAssignment(request.getGroupIds());
             List<UserGroup> groups = groupRepository.findAllById(request.getGroupIds());
-            if (groups.size() != request.getGroupIds().size()) {
-                throw new IllegalArgumentException("Một số nhóm không tồn tại");
-            }
             user.setGroups(new ArrayList<>(groups));
         }
 
         User saved = userRepository.save(user);
         savePasswordHistory(saved.getId(), saved.getPassword());
+
+        if (request.getPermissionCodes() != null && userPermissionService != null) {
+            userPermissionService.replaceDirectPermissions(saved.getId(), request.getPermissionCodes());
+        }
+
         log.info("Created user: {} ({})", saved.getUsername(), saved.getId());
         return saved;
     }
@@ -470,6 +506,16 @@ public class UserService {
      */
     public User update(UUID id, UpdateUserRequest request) {
         User user = findById(id);
+        assertTargetUserInScope(user);
+        FieldWriteGuard.validateUpdate(request, user);
+
+        if (request.getOrgUnitId() != null) {
+            assertOrgUnitInScope(request.getOrgUnitId());
+        }
+
+        if (request.getPermissionCodes() != null && userPermissionService != null) {
+            userPermissionService.validateDirectPermissionsAssignment(user, request.getPermissionCodes());
+        }
 
         if (request.getStatus() != null && request.getStatus() != user.getStatus()) {
             user = changeStatus(id, request.getStatus(), "Cập nhật trạng thái từ biểu mẫu chỉnh sửa");
@@ -497,10 +543,14 @@ public class UserService {
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
-        if (request.getAddress() != null) user.setAddress(trimToNull(request.getAddress()));
-        if (request.getDepartment() != null) user.setDepartment(trimToNull(request.getDepartment()));
-        if (request.getPosition() != null) user.setPosition(trimToNull(request.getPosition()));
-        if (request.getNote() != null) user.setNote(trimToNull(request.getNote()));
+        if (request.getAddress() != null)
+            user.setAddress(trimToNull(request.getAddress()));
+        if (request.getDepartment() != null)
+            user.setDepartment(trimToNull(request.getDepartment()));
+        if (request.getPosition() != null)
+            user.setPosition(trimToNull(request.getPosition()));
+        if (request.getNote() != null)
+            user.setNote(trimToNull(request.getNote()));
 
         boolean permissionsChanged = false;
 
@@ -512,11 +562,31 @@ public class UserService {
                 user.setOrgUnit(orgUnit);
                 // BR-275-12: Org hierarchy change -> invalidate token version & clear cache
                 permissionsChanged = true;
-                permissionCacheService.invalidateAndIncrementVersion(user.getId());
             }
         }
 
-        if (permissionsChanged) {
+        if (request.getGroupIds() != null) {
+            validateGroupAssignment(request.getGroupIds());
+            List<UserGroup> groups = request.getGroupIds().isEmpty()
+                    ? List.of()
+                    : groupRepository.findAllById(request.getGroupIds());
+            Set<UUID> oldGroupIds = user.getGroups() == null
+                    ? Set.of()
+                    : user.getGroups().stream().map(UserGroup::getId).collect(Collectors.toSet());
+            Set<UUID> newGroupIds = new HashSet<>(request.getGroupIds());
+            if (!oldGroupIds.equals(newGroupIds)) {
+                user.setGroups(new ArrayList<>(groups));
+                permissionsChanged = true;
+            }
+        }
+
+        boolean directPermsChanged = false;
+        if (request.getPermissionCodes() != null && userPermissionService != null) {
+            directPermsChanged = userPermissionService.syncDirectPermissionsInternal(user,
+                    request.getPermissionCodes());
+        }
+
+        if (permissionsChanged || directPermsChanged) {
             user.incrementPermissionVersion();
         }
 
@@ -524,9 +594,10 @@ public class UserService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             savePasswordHistory(saved.getId(), saved.getPassword());
         }
-        if (permissionsChanged) {
-            permissionCacheService.invalidateCache(saved.getId());
-        }
+        // The security snapshot also contains profile/status/org-unit data, so
+        // evict it for every user update, not only permission changes.
+        permissionCacheService.invalidateCache(saved.getId());
+
         log.info("Updated user: {} ({})", saved.getUsername(), saved.getId());
         return saved;
     }
@@ -542,6 +613,7 @@ public class UserService {
     public void delete(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
+        assertTargetUserInScope(user);
 
         // BR-003: Data-dependency check — query phanhen/bao cao FK references
         // If FK constraints exist in the DB, this will fail at constraint level.
@@ -551,6 +623,7 @@ public class UserService {
         user.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         user.setStatus(UserStatus.DELETED);
         userRepository.save(user);
+        permissionCacheService.invalidateCache(id);
         log.info("Soft-deleted user: {} ({})", user.getUsername(), id);
     }
 
@@ -669,12 +742,14 @@ public class UserService {
      */
     public User changeStatus(UUID id, UserStatus status, String reason) {
         User user = findById(id);
+        assertTargetUserInScope(user);
         UserStatus oldStatus = user.getStatus();
         if (oldStatus == status) {
             return user;
         }
         user.setStatus(status);
         User saved = userRepository.save(user);
+        permissionCacheService.invalidateCache(saved.getId());
 
         // BR-001-07 / BR-015: log status change
         UserStatusLog logEntry = new UserStatusLog();
@@ -726,8 +801,13 @@ public class UserService {
         }
         User user = findByUsername(username);
 
-        // Admin can update more fields; regular users only fullName + phone
-        boolean isAdmin = isCurrentUserAdmin();
+        // Disallow modifying security, unit, group or status boundaries via
+        // self-profile update
+        if (request.getOrgUnitId() != null || request.getGroupIds() != null
+                || request.getPermissionCodes() != null || request.getStatus() != null) {
+            throw new AccessDeniedException(
+                    "Không được phép thay đổi đơn vị, nhóm, quyền hoặc trạng thái thông qua API cập nhật thông tin cá nhân");
+        }
 
         // Validate password if provided
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
@@ -737,41 +817,29 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        // Email update: only admins can change email for security reasons
-        if (!isAdmin && request.getEmail() != null) {
-            throw new AccessDeniedException("Chỉ quản trị viên mới được thay đổi email");
-        }
-        if (request.getEmail() != null) {
-            String email = normalizeEmail(request.getEmail());
-            if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(email, user.getId())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + email);
-            }
-            user.setEmail(email);
+        // Email update: self cannot update email directly without verification flow
+        if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+            throw new AccessDeniedException("Không thể thay đổi email trực tiếp qua cập nhật thông tin cá nhân");
         }
 
-        // Self can update fullName and phone
+        // Self can update fullName, phone, address, department, position, note
         if (request.getFullName() != null) {
             user.setFullName(request.getFullName());
         }
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
-
-        // Admin can update orgUnit and groups. Permission assignments are managed
-        // through UserPermissionService so every grant/revoke is audited.
-        if (isAdmin) {
-            if (request.getOrgUnitId() != null) {
-                OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
-                user.setOrgUnit(orgUnit);
-            }
-            if (request.getGroupIds() != null) {
-                List<UserGroup> groups = request.getGroupIds().isEmpty()
-                        ? List.of()
-                        : groupRepository.findAllById(request.getGroupIds());
-                user.setGroups(new ArrayList<>(groups));
-            }
+        if (request.getAddress() != null) {
+            user.setAddress(trimToNull(request.getAddress()));
+        }
+        if (request.getDepartment() != null) {
+            user.setDepartment(trimToNull(request.getDepartment()));
+        }
+        if (request.getPosition() != null) {
+            user.setPosition(trimToNull(request.getPosition()));
+        }
+        if (request.getNote() != null) {
+            user.setNote(trimToNull(request.getNote()));
         }
 
         User saved = userRepository.save(user);
@@ -779,6 +847,7 @@ public class UserService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             savePasswordHistory(saved.getId(), saved.getPassword());
         }
+        permissionCacheService.invalidateCache(saved.getId());
         log.info("Updated self profile: {}", saved.getUsername());
         return UserResponse.from(saved);
     }
@@ -791,6 +860,7 @@ public class UserService {
      */
     public User resetPasswordByAdmin(UUID userId, String newPassword) {
         User user = findById(userId);
+        assertTargetUserInScope(user);
         // Relaxed policy for admin reset: >= 8 chars, contains letter + digit, no
         // special char required
         validateResetPassword(newPassword, true);
@@ -839,6 +909,36 @@ public class UserService {
     // =========================================================================
 
     /**
+     * Kiem tra nguoi dung muc tieu co thuoc pham vi don vi cua nguoi thao tac
+     * khong.
+     */
+    private void assertTargetUserInScope(User target) {
+        if (target == null || orgUnitScopeService == null)
+            return;
+        OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
+        if (scope == null)
+            return;
+        UUID targetOrgUnitId = target.getOrgUnit() == null ? null : target.getOrgUnit().getId();
+        if (!scope.allows(targetOrgUnitId)) {
+            throw new AccessDeniedException("Bạn không có quyền thao tác trên người dùng ngoài phạm vi đơn vị");
+        }
+    }
+
+    /**
+     * Kiem tra don vi co thuoc pham vi quan ly cua nguoi thao tac khong.
+     */
+    private void assertOrgUnitInScope(UUID orgUnitId) {
+        if (orgUnitId == null || orgUnitScopeService == null)
+            return;
+        OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
+        if (scope == null)
+            return;
+        if (!scope.allows(orgUnitId)) {
+            throw new AccessDeniedException("Bạn không có quyền thao tác trên đơn vị ngoài phạm vi phân quyền");
+        }
+    }
+
+    /**
      * Lay username hien tai tu SecurityContext.
      */
     private String getCurrentUsername() {
@@ -850,17 +950,48 @@ public class UserService {
     }
 
     /**
-     * Kiem tra xem user hien tai co phai admin khong.
+     * Kiem tra quyen gan nhom va pham vi don vi cua nhom.
      */
-    private boolean isCurrentUserAdmin() {
+    private void validateGroupAssignment(List<UUID> groupIds) {
+        if (groupIds == null)
+            return;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getAuthorities() != null) {
-            return auth.getAuthorities().stream()
-                    .anyMatch(a -> "admin:manage".equals(a.getAuthority())
-                            || "admin:*".equals(a.getAuthority())
-                            || "*".equals(a.getAuthority()));
+        boolean hasGroupPerm = auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "groupmember:manage".equals(a.getAuthority())
+                        || "group:manage".equals(a.getAuthority())
+                        || "admin:all".equals(a.getAuthority())
+                        || "*".equals(a.getAuthority())
+                        || "ROLE_SYSTEM_ADMIN".equals(a.getAuthority())
+                        || "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
+        if (!hasGroupPerm) {
+            throw new AccessDeniedException(
+                    "Cần quyền groupmember:manage hoặc group:manage để gán hoặc thay đổi nhóm người dùng");
         }
-        return false;
+        if (groupIds.isEmpty()) {
+            return;
+        }
+        List<UserGroup> groups = groupRepository.findAllById(groupIds);
+        if (groups.size() != groupIds.size()) {
+            throw new IllegalArgumentException("Một số nhóm không tồn tại");
+        }
+        if (orgUnitScopeService != null) {
+            OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
+            if (scope != null) {
+                for (UserGroup group : groups) {
+                    if (group.getOrganizationId() != null) {
+                        if (!scope.allows(group.getOrganizationId())) {
+                            throw new AccessDeniedException(
+                                    "Bạn không có quyền gán nhóm ngoài phạm vi đơn vị được phân quyền");
+                        }
+                    } else {
+                        if (!scope.unrestricted() && !SecurityUtils.isElevatedAdministrator()) {
+                            throw new AccessDeniedException(
+                                    "Bạn không có quyền gán nhóm toàn hệ thống khi bị giới hạn phạm vi đơn vị");
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -888,7 +1019,8 @@ public class UserService {
      * (BR-001-20).
      */
     private static String trimToNull(String value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }

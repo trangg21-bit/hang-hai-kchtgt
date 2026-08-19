@@ -138,4 +138,71 @@ class DataScopeAspectTest {
         assertThat(result).isEqualTo("success");
         verify(session).enableFilter("orgUnitFilter");
     }
+
+    @Test
+    void enforceDataScopeClass_whenOrgUser_shouldActivateFilter() throws Throwable {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "testuser", "pass", List.of(new SimpleGrantedAuthority("ROLE_INTEGRATION")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        when(userRepository.findByUsernameWithRelations("testuser")).thenReturn(Optional.of(testUser));
+
+        Method targetMethod = DataScopeAspectTest.class.getMethod("targetMethod", int.class, int.class, UUID.class, String.class);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(signature.getMethod()).thenReturn(targetMethod);
+
+        Object[] originalArgs = new Object[]{0, 20, UUID.randomUUID(), "test"};
+        when(joinPoint.getArgs()).thenReturn(originalArgs);
+        when(joinPoint.proceed()).thenReturn("success");
+
+        Object result = aspect.enforceDataScopeClass(joinPoint, dataScope);
+
+        assertThat(result).isEqualTo("success");
+        verify(session, atLeastOnce()).enableFilter("orgUnitFilter");
+    }
+
+    @Test
+    void enforceDataScope_whenUserNotFoundInDb_shouldThrowAccessDenied() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "ghost", "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        when(userRepository.findByUsernameWithRelations("ghost")).thenReturn(Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
+                () -> aspect.enforceDataScope(joinPoint, dataScope)
+        );
+    }
+
+    @Test
+    void enforceDataScope_whenUserHasNoOrgUnit_shouldActivateFilterWithRestrictedScope() throws Throwable {
+        User userWithoutOrg = new User();
+        userWithoutOrg.setUsername("noorguser");
+        userWithoutOrg.setOrgUnit(null);
+
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "noorguser", "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        when(userRepository.findByUsernameWithRelations("noorguser")).thenReturn(Optional.of(userWithoutOrg));
+        when(joinPoint.proceed()).thenReturn("success");
+
+        Object result = aspect.enforceDataScope(joinPoint, dataScope);
+
+        assertThat(result).isEqualTo("success");
+        verify(session).enableFilter("orgUnitFilter");
+        verify(filter).setParameterList(eq("orgUnitIds"), eq(List.of(new UUID(0L, 0L))));
+    }
+
+    @Test
+    void enforceDataScope_whenEnableFilterFails_shouldThrowAccessDenied() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "testuser", "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        when(userRepository.findByUsernameWithRelations("testuser")).thenReturn(Optional.of(testUser));
+        when(session.enableFilter("orgUnitFilter")).thenThrow(new RuntimeException("Session closed"));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
+                () -> aspect.enforceDataScope(joinPoint, dataScope)
+        );
+    }
 }
