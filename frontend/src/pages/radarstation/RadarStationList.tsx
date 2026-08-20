@@ -30,6 +30,7 @@ import {
   CloseCircleOutlined,
   EyeOutlined,
   HistoryOutlined,
+  SendOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -41,12 +42,13 @@ import {
 } from '../../services/radarStationService';
 import type {
   RadarStationResponse,
+  RadarStationStatus,
   HistoryEntry,
   CreateRadarStationRequest,
 } from '../../types/radarStation';
 import {
   CONDITION_STATUS_OPTIONS,
-  APPROVAL_STATUS_OPTIONS,
+  RADAR_STATION_STATUS_MAP,
   UNIT_OF_MEASURE_OPTIONS,
 } from '../../types/radarStation';
 import { organizationService } from '../../services/organizationService';
@@ -57,16 +59,17 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { colors } from '../../theme';
 import {
   statusOperational,
   statusAttention,
   statusCritical,
+  statusDraft,
   actionPrimary,
   textPrimary,
   textSecondary,
@@ -120,22 +123,36 @@ import {
 
 // ── Constants ────────────────────────────────────────────────────────
 
-// Status tabs dựa trên approvalStatus (luồng phê duyệt 2 cấp: PROPOSED → C1 → PENDING_APPROVAL → C2 → APPROVED)
+// Status tabs dựa trên trường status 1 cấp (mirror beacon): DRAFT → PENDING_APPROVAL → APPROVED / REJECTED
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
-  { key: 'PROPOSED', label: 'Chờ phê duyệt', color: statusAttention },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: actionPrimary },
+  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 
-const TAB_QUERY_MAP: Record<string, string | undefined> = {
+const TAB_QUERY_MAP: Record<string, RadarStationStatus | undefined> = {
   '': undefined,
-  PROPOSED: 'PROPOSED',
+  DRAFT: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 };
+
+// Status badge — semantic tokens (AGENTS.md: không hardcode màu)
+const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  DRAFT: { color: statusDraft, label: 'Nháp' },
+  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  REJECTED: { color: statusCritical, label: 'Từ chối' },
+};
+
+// Bộ lọc trạng thái (Select) — 4 trạng thái mới
+const STATUS_FILTER_OPTIONS = Object.entries(RADAR_STATION_STATUS_MAP).map(([value, s]) => ({
+  value,
+  label: s.label,
+}));
 
 // Tình trạng hoạt động — semantic tokens (khớp CONDITION_STATUS_OPTIONS '0'/'1'/'2')
 const CONDITION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -194,7 +211,7 @@ export default function RadarStationList() {
   const [filterOperatingUnitId, setFilterOperatingUnitId] = useState<string | undefined>();
   const [filterProvinceId, setFilterProvinceId] = useState<string | undefined>();
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>();
-  const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
+  const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterUpdatedBy, setFilterUpdatedBy] = useState('');
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState('');
   const [filterUpdatedTo, setFilterUpdatedTo] = useState('');
@@ -235,10 +252,11 @@ export default function RadarStationList() {
   const [deletingRecord, setDeletingRecord] = useState<RadarStationResponse | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  // ── Approval state (C1 / C2 / reject) ────────────────────────────
+  // ── Approval state (submit / approve / reject) ───────────────────
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [submittingRecord, setSubmittingRecord] = useState<RadarStationResponse | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<RadarStationResponse | null>(null);
-  const [approveLevel, setApproveLevel] = useState<'C1' | 'C2'>('C1');
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectTarget, setRejectTarget] = useState<RadarStationResponse | null>(null);
@@ -252,10 +270,10 @@ export default function RadarStationList() {
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
   const [logOpen, setLogOpen] = useState(false);
-  const [kchtOpen, setKchtOpen] = useState(false);
-  const [operationOpen, setOperationOpen] = useState(false);
-  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
-  const [incidentOpen, setIncidentOpen] = useState(false);
+  const [kchtOpen, setKchtOpen] = useState(true);
+  const [operationOpen, setOperationOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
+  const [incidentOpen, setIncidentOpen] = useState(true);
   const [symbolOptions, setSymbolOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
@@ -310,7 +328,7 @@ export default function RadarStationList() {
       const results = await Promise.allSettled(
         STATUS_TAB_LIST.map((tab) =>
           radarStationCRUD.searchPaged({
-            approvalStatus: TAB_QUERY_MAP[tab.key],
+            status: TAB_QUERY_MAP[tab.key],
             page: 1,
             size: 1,
           }),
@@ -339,7 +357,7 @@ export default function RadarStationList() {
         operatingUnitId: filterOperatingUnitId,
         provinceId: filterProvinceId,
         conditionStatus: filterConditionStatus,
-        approvalStatus: filterApprovalStatus || TAB_QUERY_MAP[activeTab],
+        status: filterStatus || TAB_QUERY_MAP[activeTab],
         updatedBy: filterUpdatedBy.trim() || undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
@@ -357,7 +375,7 @@ export default function RadarStationList() {
   }, [
     filterKeyword, filterOrgUnitId, filterSeaportId,
     filterVtsSystemId, filterVtsOperationCenterId, filterOperatingUnitId,
-    filterProvinceId, filterConditionStatus, filterApprovalStatus,
+    filterProvinceId, filterConditionStatus, filterStatus,
     filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo,
     activeTab, page, pageSize,
   ]);
@@ -376,7 +394,7 @@ export default function RadarStationList() {
     setFilterOperatingUnitId(undefined);
     setFilterProvinceId(undefined);
     setFilterConditionStatus(undefined);
-    setFilterApprovalStatus(undefined);
+    setFilterStatus(undefined);
     setFilterUpdatedBy('');
     setFilterUpdatedFrom('');
     setFilterUpdatedTo('');
@@ -544,10 +562,29 @@ export default function RadarStationList() {
     }
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts]);
 
-  // ── Approve C1 / C2 (modal xác nhận) ────────────────────────────
-  const openApproveModal = useCallback((record: RadarStationResponse, level: 'C1' | 'C2') => {
+  // ── Submit approval (modal xác nhận) ────────────────────────────
+  const openSubmitModal = useCallback((record: RadarStationResponse) => {
+    setSubmittingRecord(record);
+    setSubmitModalOpen(true);
+  }, []);
+
+  const confirmSubmit = useCallback(async () => {
+    if (!submittingRecord) return;
+    try {
+      await radarStationApproval.submitForApproval(submittingRecord.id);
+      toast.success('Đã gửi duyệt trạm radar');
+      setSubmitModalOpen(false);
+      setSubmittingRecord(null);
+      void fetchData();
+      void fetchCounts();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
+    }
+  }, [submittingRecord, fetchData, fetchCounts]);
+
+  // ── Approve L1 (modal xác nhận) ─────────────────────────────────
+  const openApproveModal = useCallback((record: RadarStationResponse) => {
     setApprovingRecord(record);
-    setApproveLevel(level);
     setApproveModalOpen(true);
   }, []);
 
@@ -559,13 +596,9 @@ export default function RadarStationList() {
   const confirmApprove = useCallback(async () => {
     if (!approvingRecord) return;
     try {
-      if (approveLevel === 'C1') {
-        await radarStationApproval.approveC1(approvingRecord.id, { decision: 'APPROVED' });
-        toast.success('Đã phê duyệt cấp 1');
-      } else {
-        await radarStationApproval.approveC2(approvingRecord.id, { decision: 'APPROVED' });
-        toast.success('Đã phê duyệt cấp 2');
-      }
+      const approverId = useAuthStore.getState().user?.userId || 'system';
+      await radarStationApproval.approveL1(approvingRecord.id, approverId);
+      toast.success('Đã phê duyệt');
       setApproveModalOpen(false);
       setApprovingRecord(null);
       void fetchData();
@@ -573,7 +606,7 @@ export default function RadarStationList() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
     }
-  }, [approvingRecord, approveLevel, fetchData, fetchCounts]);
+  }, [approvingRecord, fetchData, fetchCounts]);
 
   // ── Reject (modal nhập lý do) ───────────────────────────────────
   const openRejectModal = useCallback((record: RadarStationResponse) => {
@@ -582,36 +615,26 @@ export default function RadarStationList() {
     setRejectModalVisible(true);
   }, []);
 
-  const handleRejectConfirm = useCallback(
-    async (reason: string) => {
-      if (!rejectTarget) return;
-      try {
-        const data = { decision: 'REJECTED' as const, reason };
-        if (rejectTarget.approvalStatus === 'PENDING_APPROVAL') {
-          await radarStationApproval.approveC2(rejectTarget.id, data);
-        } else {
-          await radarStationApproval.approveC1(rejectTarget.id, data);
-        }
-        toast.success('Đã từ chối');
-        setRejectModalVisible(false);
-        setRejectTarget(null);
-        void fetchData();
-        void fetchCounts();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
-      }
-    },
-    [rejectTarget, fetchData, fetchCounts],
-  );
-
-  const confirmReject = useCallback(() => {
+  const confirmReject = useCallback(async () => {
+    if (!rejectTarget) return;
     const reason = rejectReason.trim();
     if (reason.length < 10) {
       toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
-    void handleRejectConfirm(reason);
-  }, [rejectReason, handleRejectConfirm]);
+    try {
+      const approverId = useAuthStore.getState().user?.userId || 'system';
+      await radarStationApproval.reject(rejectTarget.id, reason, approverId);
+      toast.success('Đã từ chối phê duyệt');
+      setRejectModalVisible(false);
+      setRejectTarget(null);
+      setRejectReason('');
+      void fetchData();
+      void fetchCounts();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+    }
+  }, [rejectTarget, rejectReason, fetchData, fetchCounts]);
 
   // ── Submit form (create / update) ───────────────────────────────
   const handleSubmit = useCallback(async () => {
@@ -680,7 +703,7 @@ export default function RadarStationList() {
     }
   }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles]);
 
-  // ── Row actions (approval: PROPOSED → C1; PENDING_APPROVAL → C2) ────
+  // ── Row actions (approval 1 cấp: DRAFT/REJECTED → submit; PENDING_APPROVAL → approve/reject) ──
   const rowActions = useCallback((record: RadarStationResponse) => {
     const actions: any[] = [];
     if (hasPerm('radarstation:read')) {
@@ -689,12 +712,13 @@ export default function RadarStationList() {
     if (hasPerm('radarstation:update')) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) });
     }
-    const st = record.approvalStatus || '';
-    if (st === 'PROPOSED' && hasPerm('radarstation:approvec1')) {
-      actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record, 'C1') });
+    const st = record.status || '';
+    if ((st === 'DRAFT' || st === 'REJECTED') && hasPerm('radarstation:update')) {
+      actions.push({ key: 'submit', label: 'Gửi duyệt', icon: <SendOutlined />, onClick: () => openSubmitModal(record) });
     }
-    const canApprove = hasPerm('radarstation:approvec1') || hasPerm('radarstation:approvec2');
-    if (canApprove && (st === 'PROPOSED' || st === 'PENDING_APPROVAL')) {
+    const canApprove = hasPerm('radarstation:approvec1');
+    if (canApprove && st === 'PENDING_APPROVAL') {
+      actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
     }
     actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
@@ -702,7 +726,7 @@ export default function RadarStationList() {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteConfirm(record) });
     }
     return actions;
-  }, [hasPerm, openDetailDrawer, openEditDrawer, openApproveModal, openRejectModal, openHistory, openDeleteConfirm]);
+  }, [hasPerm, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openHistory, openDeleteConfirm]);
 
   // ── Label helper (tên đơn vị / cảng / VTS theo id) ──────────────
   const orgNameById = useCallback((orgUnitId?: string): string => {
@@ -800,8 +824,11 @@ export default function RadarStationList() {
       render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{userOptions.find((u) => u.value === v)?.label || '—'}</span>,
     },
     {
-      key: 'approvalStatus', label: 'Trạng thái phê duyệt', dataIndex: 'approvalStatus', width: 170,
-      render: (status: string) => <ApprovalStatusBadge status={status} />,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 150,
+      render: (status: string) => {
+        const s = RADAR_STATION_STATUS_STYLE_MAP[status] || { color: textTertiary, label: status || '—' };
+        return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+      },
     },
   ], [page, pageSize, openDetailDrawer, orgNameById, seaportLabelById, vtsLabelById, userOptions]);
 
@@ -882,10 +909,10 @@ export default function RadarStationList() {
               options={CONDITION_STATUS_OPTIONS} style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Trạng thái phê duyệt</div>
-            <Select placeholder="Chọn trạng thái phê duyệt" allowClear value={filterApprovalStatus}
-              onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
-              options={APPROVAL_STATUS_OPTIONS} style={filterInputStyle} />
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Trạng thái</div>
+            <Select placeholder="Chọn trạng thái" allowClear value={filterStatus}
+              onChange={(v) => { setFilterStatus(v); setPage(1); }}
+              options={STATUS_FILTER_OPTIONS} style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
             <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
@@ -1005,17 +1032,17 @@ export default function RadarStationList() {
     ? [
         { label: 'Ngày cập nhật', value: formatDate(detailRecord.updatedAt) },
         { label: 'Cán bộ cập nhật', value: userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || '—' },
-        { label: 'Ngày gửi phê duyệt', value: '—' },
-        { label: 'Cán bộ gửi phê duyệt', value: '—' },
-        { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: formatDate(detailRecord.approvedDateLevel1) },
-        { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: userOptions.find((u) => u.value === detailRecord.approverLevel1)?.label || '—' },
-        { label: 'Ngày phê duyệt cấp Cục', value: formatDate(detailRecord.approvedDateLevel2) },
-        { label: 'Cán bộ phê duyệt cấp Cục', value: userOptions.find((u) => u.value === detailRecord.approverLevel2)?.label || '—' },
+        { label: 'Ngày gửi phê duyệt', value: formatDate(detailRecord.submittedForApprovalAt) },
+        { label: 'Cán bộ gửi phê duyệt', value: userOptions.find((u) => u.value === detailRecord.submittedForApprovalBy)?.label || '—' },
+        { label: 'Ngày phê duyệt', value: formatDate(detailRecord.approvedDateLevel1) },
+        { label: 'Cán bộ phê duyệt', value: userOptions.find((u) => u.value === detailRecord.approverLevel1)?.label || '—' },
         { label: 'Nội dung phê duyệt', value: detailRecord.rejectionReason || '—' },
-        { label: 'Nội dung phê duyệt', value: '—' },
         {
-          label: 'Trạng thái phê duyệt',
-          value: <ApprovalStatusBadge status={detailRecord.approvalStatus} />,
+          label: 'Trạng thái',
+          value: (() => {
+            const s = RADAR_STATION_STATUS_STYLE_MAP[detailRecord.status || ''] || { color: textTertiary, label: detailRecord.status || '—' };
+            return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+          })(),
         },
       ]
     : [];
@@ -1438,7 +1465,6 @@ export default function RadarStationList() {
                     label: 'File đính kèm',
                     children: (
                       <div style={{ paddingTop: 16 }}>
-                        {editingRecord ? (
                           <>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceMd }}>
                               <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
@@ -1473,12 +1499,7 @@ export default function RadarStationList() {
                             <div style={{ marginTop: spaceSm }}>
                               <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>
                             </div>
-                          </>
-                        ) : (
-                          <div style={{ padding: '12px 16px', borderRadius: radiusMd, border: `1px dashed ${borderDefault}`, color: textTertiary, fontSize: fontSizeMd }}>
-                            Tải lên tài liệu đính kèm sau khi tạo trạm radar (chỉnh sửa bản ghi để tải tệp).
-                          </div>
-                        )}
+                        </>
                       </div>
                     ),
                   },
@@ -1513,6 +1534,25 @@ export default function RadarStationList() {
           <Input placeholder="Nhập tên trạm radar hoặc XÓA" value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={confirmDelete}
             style={inputStyle} autoFocus />
+        </div>
+      </Modal>
+
+      {/* ── Submit Approval Modal ────────────────────────────────── */}
+      <Modal
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Gửi duyệt trạm radar</span>}
+        open={submitModalOpen}
+        onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
+        footer={[
+          <Button key="cancel" onClick={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
+            style={outlineButtonStyle}>Hủy</Button>,
+          <Button key="submit" type="primary" onClick={confirmSubmit} style={primaryButtonStyle}>Gửi duyệt</Button>,
+        ]}
+        width={480}
+      >
+        <div style={confirmModalBodyStyle}>
+          <p>
+            Xác nhận gửi <strong>{submittingRecord?.stationName || submittingRecord?.code || ''}</strong> để phê duyệt?
+          </p>
         </div>
       </Modal>
 

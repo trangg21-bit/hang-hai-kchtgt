@@ -100,6 +100,7 @@ public class RadarStationController {
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String conditionStatus,
             @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID updatedBy,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
@@ -112,7 +113,7 @@ public class RadarStationController {
             PageRequest pageable = PageRequest.of(page, size, sort);
             Page<RadarStationResponse> responses = service.searchPaged(
                     keyword, orgUnitId, seaportId, vtsSystemId, vtsOperationCenterId,
-                    operatingUnitId, provinceId, conditionStatus, approvalStatus,
+                    operatingUnitId, provinceId, conditionStatus, approvalStatus, status,
                     updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo), pageable);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm trạm radar thành công", responses));
         } catch (Exception e) {
@@ -149,32 +150,42 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
-    @PostMapping("/{id}/approve/c1")
-    public ResponseEntity<ApiResponse<RadarStationResponse>> approveC1(@PathVariable UUID id,
-                                       @Valid @RequestBody ApprovalRequest request,
-                                       Authentication authentication) {
+    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update')")
+    @PostMapping("/{id}/submit-approval")
+    public ResponseEntity<ApiResponse<Void>> submitForApproval(@PathVariable UUID id, Authentication authentication) {
         try {
             java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            RadarStationResponse response = service.approveC1(id, request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
+            service.submitForApproval(id, userId);
+            return ResponseEntity.ok(ApiResponse.success("Đã gửi phê duyệt", null));
         } catch (Exception e) {
-            log.warn("Lỗi khi duyệt cấp 1 trạm radar id {}: {}", id, e.getMessage());
+            log.warn("Lỗi khi gửi phê duyệt trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec2')")
-    @PostMapping("/{id}/approve/c2")
-    public ResponseEntity<ApiResponse<RadarStationResponse>> approveC2(@PathVariable UUID id,
-                                       @Valid @RequestBody ApprovalRequest request,
-                                       Authentication authentication) {
+    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
+    @PostMapping("/{id}/approve-l1")
+    public ResponseEntity<ApiResponse<RadarStationResponse>> approveL1(@PathVariable UUID id,
+                                       @RequestParam java.util.UUID approverId) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
-            RadarStationResponse response = service.approveC2(id, request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
+            RadarStationResponse response = service.approveL1(id, approverId);
+            return ResponseEntity.ok(ApiResponse.success("Phê duyệt thành công", response));
         } catch (Exception e) {
-            log.warn("Lỗi khi duyệt cấp 2 trạm radar id {}: {}", id, e.getMessage());
+            log.warn("Lỗi khi phê duyệt trạm radar id {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<ApiResponse<RadarStationResponse>> reject(@PathVariable UUID id,
+                                       @RequestParam String rejectReason,
+                                       @RequestParam java.util.UUID approverId) {
+        try {
+            RadarStationResponse response = service.reject(id, rejectReason, approverId);
+            return ResponseEntity.ok(ApiResponse.success("Đã từ chối", response));
+        } catch (Exception e) {
+            log.warn("Lỗi khi từ chối trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }

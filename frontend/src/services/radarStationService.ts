@@ -5,7 +5,6 @@ import type {
   RadarStationAttachment,
   CreateRadarStationRequest,
   UpdateRadarStationRequest,
-  ApprovalRequest,
   HistoryEntry,
   ListParams,
   SearchResponse,
@@ -39,6 +38,7 @@ export const radarStationCRUD = {
       operatingUnitId: params?.operatingUnitId,
       provinceId: params?.provinceId,
       conditionStatus: params?.conditionStatus,
+      status: params?.status,
       approvalStatus: params?.approvalStatus,
       updatedBy: params?.updatedBy,
       updatedFrom: params?.updatedFrom,
@@ -77,13 +77,21 @@ export const radarStationCRUD = {
 };
 
 export const radarStationApproval = {
-  async approveC1(id: string, data: ApprovalRequest): Promise<RadarStationResponse> {
-    const res = await api.post(`${BASE_PATH}/${id}/approve/c1`, data);
+  async submitForApproval(id: string): Promise<void> {
+    await api.post(`${BASE_PATH}/${id}/submit-approval`);
+  },
+
+  async approveL1(id: string, approverId: string): Promise<RadarStationResponse> {
+    const res = await api.post(`${BASE_PATH}/${id}/approve-l1`, null, {
+      params: { approverId },
+    });
     return toSingle<RadarStationResponse>(res.data) || {} as RadarStationResponse;
   },
 
-  async approveC2(id: string, data: ApprovalRequest): Promise<RadarStationResponse> {
-    const res = await api.post(`${BASE_PATH}/${id}/approve/c2`, data);
+  async reject(id: string, rejectReason: string, approverId: string): Promise<RadarStationResponse> {
+    const res = await api.post(`${BASE_PATH}/${id}/reject`, null, {
+      params: { rejectReason, approverId },
+    });
     return toSingle<RadarStationResponse>(res.data) || {} as RadarStationResponse;
   },
 

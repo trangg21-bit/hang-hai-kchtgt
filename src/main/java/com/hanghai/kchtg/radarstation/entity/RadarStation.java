@@ -74,6 +74,16 @@ public class RadarStation extends BaseEntity {
     @Column(name = "note", length = 2000)
     private String note;
 
+    @Column(name = "status", nullable = false, length = 50)
+    @Builder.Default
+    private String status = "DRAFT";
+
+    @Column(name = "submitted_for_approval_by")
+    private UUID submittedForApprovalBy;
+
+    @Column(name = "submitted_for_approval_at")
+    private LocalDateTime submittedForApprovalAt;
+
     @Column(name = "approval_status", nullable = false)
     @Enumerated(EnumType.ORDINAL)
     private ApprovalStatus approvalStatus;
@@ -119,6 +129,7 @@ public class RadarStation extends BaseEntity {
 
     @PrePersist
     protected void onCreate() {
+        if (status == null || status.isBlank()) status = "DRAFT";
         if (approvalStatus == null) approvalStatus = ApprovalStatus.PROPOSED;
         if (approvedLevel1 == null) approvedLevel1 = false;
         if (approvedLevel2 == null) approvedLevel2 = false;

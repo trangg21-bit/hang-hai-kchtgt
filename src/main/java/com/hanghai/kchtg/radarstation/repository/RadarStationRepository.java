@@ -58,6 +58,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+          AND (:status IS NULL OR t.status = :status)
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
@@ -72,6 +73,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") String conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
+        @Param("status") String status,
         @Param("updatedBy") UUID updatedBy,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo,

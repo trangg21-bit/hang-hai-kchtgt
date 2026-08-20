@@ -44,6 +44,9 @@ public class RadarStationResponse {
     private String unitOfMeasure;
     private Integer quantity;
     private String note;
+    private String status;
+    private UUID submittedForApprovalBy;
+    private LocalDateTime submittedForApprovalAt;
     private ApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;

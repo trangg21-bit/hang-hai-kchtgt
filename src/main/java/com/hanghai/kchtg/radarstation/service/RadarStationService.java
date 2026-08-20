@@ -107,6 +107,9 @@ public class RadarStationService {
                 .note(trimToNull(request.getNote()))
                 .towerHeight(request.getTowerHeight())
                 .radarRange(request.getRadarRange())
+                .status("submit".equals(action) ? "PENDING_APPROVAL" : "DRAFT")
+                .submittedForApprovalBy("submit".equals(action) ? createdBy : null)
+                .submittedForApprovalAt("submit".equals(action) ? LocalDateTime.now() : null)
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
                 .approvedLevel2(false)
@@ -181,7 +184,7 @@ public class RadarStationService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
-        // BR-057-02: sau khi sửa, trạng thái phê duyệt quay về PROPOSED — cần duyệt lại
+        // BR-057-02: sau khi sửa, bản ghi quay về Nháp (DRAFT) — cần gửi duyệt lại
         if (entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setApprovedLevel1(false);
@@ -192,6 +195,9 @@ public class RadarStationService {
             entity.setApprovedDateLevel2(null);
             entity.setRejectionReason(null);
         }
+        entity.setStatus("DRAFT");
+        entity.setSubmittedForApprovalBy(null);
+        entity.setSubmittedForApprovalAt(null);
 
         if (request.getStationName() != null) entity.setStationName(request.getStationName().trim());
         if (request.getLocation() != null) entity.setLocation(request.getLocation().trim());
@@ -271,85 +277,79 @@ public class RadarStationService {
                 .build());
     }
 
-    public RadarStationResponse approveC1(UUID id, ApprovalRequest request, UUID approvedBy) {
-        boolean autoApproved = false;
+    public void submitForApproval(UUID id, UUID submittedBy) {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
-            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
+        if (!"DRAFT".equals(entity.getStatus())) {
+            throw new IllegalStateException("Chỉ có thể gửi phê duyệt khi trạng thái là Nháp (DRAFT)");
         }
 
-        if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
-            entity.setRejectionReason(request.getReason());
-        } else {
-            entity.setApprovedLevel1(true);
-            entity.setApproverLevel1(approvedBy);
-            entity.setApprovedDateLevel1(LocalDateTime.now());
+        entity.setStatus("PENDING_APPROVAL");
+        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+        entity.setSubmittedForApprovalBy(submittedBy);
+        entity.setSubmittedForApprovalAt(LocalDateTime.now());
+        RadarStation saved = repository.save(entity);
 
-            // Phê duyệt 1 bước (y hệt /beacon-lights): duyệt thẳng APPROVED, không cần cấp 2.
-            entity.setApprovedLevel2(true);
-            entity.setApproverLevel2(approvedBy);
-            entity.setApprovedDateLevel2(LocalDateTime.now());
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-            autoApproved = true;
+        historyRepository.save(ApprovalHistory.builder()
+                .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(ApprovalHistoryStatus.PROPOSED)
+                .approvedBy(submittedBy)
+                .reason("Gửi phê duyệt trạm radar")
+                .build());
+    }
+
+    public RadarStationResponse approveL1(UUID id, UUID approverId) {
+        RadarStation entity = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
+
+        if (!"PENDING_APPROVAL".equals(entity.getStatus())) {
+            throw new IllegalStateException("Không ở trạng thái chờ phê duyệt");
         }
 
+        UUID creatorId = entity.getCreatedBy();
+        if (creatorId != null && creatorId.equals(approverId)) {
+            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
+        }
+
+        entity.setStatus("APPROVED");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApprovedLevel1(true);
+        entity.setApproverLevel1(approverId);
+        entity.setApprovedDateLevel1(LocalDateTime.now());
         RadarStation saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
                 .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_1)
-                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
-                .approvedBy(approvedBy)
-                .reason(request.getReason())
+                .status(ApprovalHistoryStatus.APPROVED)
+                .approvedBy(approverId)
+                .reason("Phê duyệt trạm radar")
                 .build());
-
-        if (autoApproved) {
-            historyRepository.save(ApprovalHistory.builder()
-                    .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
-                    .approvedBy(approvedBy)
-                    .reason(request.getReason())
-                    .build());
-        }
 
         return toResponse(saved);
     }
 
-    public RadarStationResponse approveC2(UUID id, ApprovalRequest request, UUID approvedBy) {
+    public RadarStationResponse reject(UUID id, String rejectReason, UUID approverId) {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ phê duyệt (PENDING_APPROVAL) với ID: " + id);
+        if (rejectReason == null || rejectReason.trim().length() < 10) {
+            throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        UUID c1Actor = entity.getApproverLevel1();
-        if (c1Actor != null && c1Actor.equals(approvedBy)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
-        }
-
-        if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
-            entity.setRejectionReason(request.getReason());
-        } else {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-            entity.setApprovedLevel2(true);
-            entity.setApproverLevel2(approvedBy);
-            entity.setApprovedDateLevel2(LocalDateTime.now());
-        }
-
+        entity.setStatus("DRAFT");
+        entity.setApprovalStatus(ApprovalStatus.REJECTED);
+        entity.setRejectionReason(rejectReason.trim());
         RadarStation saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
                 .refId(saved.getId()).refType(InfrastructureType.RADAR_STATION)
-                .approvalLevel(ApprovalLevel.LEVEL_2)
-                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
-                .approvedBy(approvedBy)
-                .reason(request.getReason())
+                .approvalLevel(ApprovalLevel.LEVEL_1)
+                .status(ApprovalHistoryStatus.REJECTED)
+                .approvedBy(approverId)
+                .reason(rejectReason.trim())
                 .build());
 
         return toResponse(saved);
@@ -417,15 +417,16 @@ public class RadarStationService {
                                                    UUID vtsSystemId, UUID vtsOperationCenterId,
                                                    UUID operatingUnitId, Integer provinceId,
                                                    String conditionStatus, String approvalStatusStr,
-                                                   UUID updatedBy, LocalDateTime updatedFrom, LocalDateTime updatedTo,
+                                                   String status, UUID updatedBy, LocalDateTime updatedFrom, LocalDateTime updatedTo,
                                                    Pageable pageable) {
         String trimmedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
         ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty())
                 ? ApprovalStatus.fromString(approvalStatusStr)
                 : null;
+        String statusFilter = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
         return repository.searchPaged(trimmedKeyword, orgUnitId, seaportId, vtsSystemId,
                         vtsOperationCenterId, operatingUnitId, provinceId, conditionStatus, statusEnum,
-                        updatedBy, updatedFrom, updatedTo, pageable)
+                        statusFilter, updatedBy, updatedFrom, updatedTo, pageable)
                 .map(this::toResponse);
     }
 
@@ -532,6 +533,9 @@ public class RadarStationService {
                 .unitOfMeasure(entity.getUnitOfMeasure())
                 .quantity(entity.getQuantity())
                 .note(entity.getNote())
+                .status(entity.getStatus())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvedLevel1(entity.getApprovedLevel1())
                 .approverLevel1(entity.getApproverLevel1())

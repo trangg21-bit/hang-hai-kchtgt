@@ -14,9 +14,11 @@ import {
   Col,
   Breadcrumb,
   Popconfirm,
+  Upload,
   message,
 } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import type { UploadFile } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined, SendOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
 import toast from '../../components/ToastNotification';
 import { radarStationCRUD, radarStationApproval, radarStationAttachment } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
@@ -25,24 +27,24 @@ import type {
   RadarStationResponse,
   CreateRadarStationRequest,
   UpdateRadarStationRequest,
-  ApprovalRequest,
   HistoryEntry,
 } from '../../types/radarStation';
 import {
   CONDITION_STATUS_MAP,
   CONDITION_STATUS_OPTIONS,
+  RADAR_STATION_STATUS_MAP,
   UNIT_OF_MEASURE_OPTIONS,
 } from '../../types/radarStation';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import RejectionModal from '../../components/shared/RejectionModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg, fontSizeMd, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, surfaceCard, outlineButtonStyle, primaryButtonStyle } from '../../tokens';
+import { fontWeightBold, fontSizeLg, fontSizeMd, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, badgeBaseStyle, statusDraft, statusAttention, statusOperational, statusCritical } from '../../tokens';
 
 export interface RadarStationFormProps {
   open?: boolean;
@@ -56,6 +58,14 @@ const getProvinceLabel = (provinceId?: string): string =>
   provinceId
     ? VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(provinceId))?.label || provinceId
     : '—';
+
+// Status badge — semantic tokens (AGENTS.md: không hardcode màu), label từ RADAR_STATION_STATUS_MAP
+const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  DRAFT: { color: statusDraft, label: RADAR_STATION_STATUS_MAP.DRAFT.label },
+  PENDING_APPROVAL: { color: statusAttention, label: RADAR_STATION_STATUS_MAP.PENDING_APPROVAL.label },
+  APPROVED: { color: statusOperational, label: RADAR_STATION_STATUS_MAP.APPROVED.label },
+  REJECTED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED.label },
+};
 
 export default function RadarStationForm({ open, editId, mode, onCancel, onSuccess }: RadarStationFormProps = {}) {
   const navigate = useNavigate();
@@ -78,6 +88,18 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | undefined>();
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+
+  const handleBeforeUpload = useCallback((file: File): false => {
+    if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
+    if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file đính kèm'); return false; }
+    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file }]);
+    return false;
+  }, [uploadedFiles]);
+
+  const removeUploadedFile = useCallback((uid: string) => {
+    setUploadedFiles((p) => p.filter((f) => f.uid !== uid));
+  }, []);
 
   // Dữ liệu dropdown
   const [orgOptions, setOrgOptions] = useState<OrgUnitTreeOption[]>([]);
@@ -240,6 +262,14 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       setIsSubmitting(true);
       if (isCreateMode) {
         const created = await radarStationCRUD.create(payload);
+        const newFiles = uploadedFiles.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
+        if (newFiles.length > 0) {
+          try {
+            await Promise.all(newFiles.map((f) => radarStationAttachment.upload(created.id, f)));
+          } catch (err) {
+            console.error('Không tải lên được tài liệu đính kèm', err);
+          }
+        }
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[created.id] = created;
         }
@@ -268,7 +298,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     } finally {
       setIsSubmitting(false);
     }
-  }, [form, isCreateMode, isEditMode, id, isModalMode, isIframe, navigate, onCancel, onSuccess]);
+  }, [form, isCreateMode, isEditMode, id, isModalMode, isIframe, navigate, onCancel, onSuccess, uploadedFiles]);
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
@@ -291,47 +321,42 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     }
   }, [id, isModalMode, isIframe, navigate, onCancel, onSuccess]);
 
-  const handleApprove = useCallback(
-    async (level: 'C1' | 'C2') => {
-      if (!id || !record) return;
-      setIsSubmitting(true);
-      try {
-        const data: ApprovalRequest = { decision: 'APPROVED' };
-        const updated = level === 'C1'
-          ? await radarStationApproval.approveC1(id, data)
-          : await radarStationApproval.approveC2(id, data);
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = updated;
-        }
-        toast.success(level === 'C1' ? 'Đã phê duyệt cấp 1' : 'Đã phê duyệt cấp 2');
-        setRecord(updated);
-        void loadHistory(id);
-        onSuccess?.();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-      } finally {
-        setIsSubmitting(false);
+  const handleApprove = useCallback(async () => {
+    if (!id || !record) return;
+    setIsSubmitting(true);
+    try {
+      const approverId = useAuthStore.getState().user?.userId || 'system';
+      const updated = await radarStationApproval.approveL1(id, approverId);
+      if (window.parent && (window.parent as any).kchtDetailCache) {
+        (window.parent as any).kchtDetailCache[id] = updated;
       }
-    },
-    [id, record, loadHistory, onSuccess],
-  );
+      toast.success('Đã phê duyệt');
+      setRecord(updated);
+      void loadHistory(id);
+      onSuccess?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [id, record, loadHistory, onSuccess]);
 
   const handleRejectConfirm = useCallback(
     async (reason: string) => {
       if (!id || !record) return;
+      const trimmedReason = reason.trim();
+      if (trimmedReason.length < 10) {
+        toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
+        return;
+      }
       setIsSubmitting(true);
       try {
-        const data: ApprovalRequest = { decision: 'REJECTED', reason };
-        let updated: RadarStationResponse;
-        if (record.approvalStatus === 'PENDING_APPROVAL') {
-          updated = await radarStationApproval.approveC2(id, data);
-        } else {
-          updated = await radarStationApproval.approveC1(id, data);
-        }
+        const approverId = useAuthStore.getState().user?.userId || 'system';
+        const updated = await radarStationApproval.reject(id, trimmedReason, approverId);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updated;
         }
-        toast.success('Đã từ chối');
+        toast.success('Đã từ chối phê duyệt');
         setRejectModalVisible(false);
         setRecord(updated);
         void loadHistory(id);
@@ -344,6 +369,26 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     },
     [id, record, loadHistory, onSuccess],
   );
+
+  const handleSubmitApproval = useCallback(async () => {
+    if (!id) return;
+    setIsSubmitting(true);
+    try {
+      await radarStationApproval.submitForApproval(id);
+      const updated = await radarStationCRUD.getById(id);
+      if (window.parent && (window.parent as any).kchtDetailCache) {
+        (window.parent as any).kchtDetailCache[id] = updated;
+      }
+      toast.success('Đã gửi duyệt trạm radar');
+      setRecord(updated);
+      void loadHistory(id);
+      onSuccess?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [id, loadHistory, onSuccess]);
 
   const handleUploadAttachment = useCallback(
     async (file: File) => {
@@ -418,8 +463,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             <Descriptions.Item label="Vĩ độ">{record.latitude != null ? Number(record.latitude).toFixed(6) : '—'}</Descriptions.Item>
             <Descriptions.Item label="Vị trí" span={2}>{record.location || '—'}</Descriptions.Item>
             <Descriptions.Item label="Ghi chú" span={2}>{record.note || '—'}</Descriptions.Item>
-            <Descriptions.Item label="Trạng thái phê duyệt">
-              <ApprovalStatusBadge status={record.approvalStatus} />
+            <Descriptions.Item label="Trạng thái">
+              {(() => {
+                const s = RADAR_STATION_STATUS_STYLE_MAP[record.status || ''] || { color: textTertiary, label: record.status || '—' };
+                return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+              })()}
             </Descriptions.Item>
             <Descriptions.Item label="Người tạo">{record.createdBy || '—'}</Descriptions.Item>
             <Descriptions.Item label="Ngày tạo">{record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
@@ -433,41 +481,40 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             </Descriptions.Item>
           </Descriptions>
 
-          {/* Nút phê duyệt C1/C2 + Xóa (trong Popconfirm) */}
+          {/* Nút phê duyệt 1 cấp + Gửi duyệt + Xóa (trong Popconfirm) */}
           <Space wrap style={{ marginTop: 16, marginBottom: 8 }}>
-            {record.approvalStatus === 'PROPOSED' && hasPerm('radarstation:approvec1') && (
+            {(record.status === 'DRAFT' || record.status === 'REJECTED') && hasPerm('radarstation:update') && (
               <Popconfirm
-                title="Phê duyệt cấp 1?"
-                description="Sau khi phê duyệt, trạm radar chuyển sang trạng thái đang xem xét cấp 2."
-                okText="Phê duyệt"
+                title="Gửi duyệt?"
+                description="Sau khi gửi duyệt, trạm radar chuyển sang trạng thái chờ phê duyệt."
+                okText="Gửi duyệt"
                 cancelText="Hủy"
-                onConfirm={() => handleApprove('C1')}
+                onConfirm={handleSubmitApproval}
               >
-                <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting}>
-                  Phê duyệt cấp 1
+                <Button type="primary" icon={<SendOutlined />} loading={isSubmitting}>
+                  Gửi duyệt
                 </Button>
               </Popconfirm>
             )}
-            {record.approvalStatus === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec2') && (
+            {record.status === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (
               <Popconfirm
-                title="Phê duyệt cấp 2?"
+                title="Phê duyệt?"
                 description="Sau khi phê duyệt, trạm radar chuyển sang trạng thái đã phê duyệt."
                 okText="Phê duyệt"
                 cancelText="Hủy"
-                onConfirm={() => handleApprove('C2')}
+                onConfirm={handleApprove}
               >
                 <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting}>
-                  Phê duyệt cấp 2
+                  Phê duyệt
                 </Button>
               </Popconfirm>
             )}
-            {(record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'PENDING_APPROVAL') &&
-              (hasPerm('radarstation:approvec1') || hasPerm('radarstation:approvec2')) && (
-                <Button danger icon={<CloseCircleOutlined />} onClick={() => setRejectModalVisible(true)}>
-                  Từ chối
-                </Button>
-              )}
-            {record.approvalStatus === 'PROPOSED' && hasPerm('radarstation:delete') && (
+            {record.status === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (
+              <Button danger icon={<CloseCircleOutlined />} onClick={() => setRejectModalVisible(true)}>
+                Từ chối
+              </Button>
+            )}
+            {record.status === 'APPROVED' && hasPerm('radarstation:delete') && (
               <Popconfirm
                 title="Xác nhận xóa"
                 description={`Bạn có chắc muốn xóa trạm radar "${record.stationName || record.code}"?`}
@@ -749,8 +796,22 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             onDelete={handleDeleteAttachment}
           />
         ) : (
-          <div style={{ padding: '12px 16px', borderRadius: radiusPill, border: `1px dashed ${borderDefault}`, color: textTertiary, fontSize: fontSizeMd }}>
-            Tải lên tài liệu đính kèm sau khi tạo trạm radar (chỉnh sửa bản ghi để tải tệp).
+          <div>
+            <Upload beforeUpload={handleBeforeUpload} showUploadList={false} multiple>
+              <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
+            </Upload>
+            {uploadedFiles.length > 0 && (
+              <div style={{ marginTop: spaceFormField }}>
+                {uploadedFiles.map((f) => (
+                  <div key={f.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: `1px solid ${borderDefault}`, borderRadius: radiusPill, marginBottom: spaceFormField, fontSize: fontSizeMd }}>
+                    <span style={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: spaceFormField }}>
+                      <FileOutlined style={{ marginRight: 8, color: textTertiary }} />{f.name}
+                    </span>
+                    <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => removeUploadedFile(f.uid)} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Form.Item>

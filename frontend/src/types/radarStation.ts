@@ -9,6 +9,16 @@ export interface RadarStationAttachment {
   filePath?: string;
 }
 
+// Trạng thái phê duyệt 1 cấp (mirror beacon): Nháp → Chờ phê duyệt → Đã phê duyệt / Từ chối
+export type RadarStationStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+
+export const RADAR_STATION_STATUS_MAP: Record<RadarStationStatus, { label: string }> = {
+  DRAFT: { label: 'Nháp' },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt' },
+  APPROVED: { label: 'Đã phê duyệt' },
+  REJECTED: { label: 'Từ chối' },
+};
+
 export interface RadarStationResponse {
   id: string;
   code?: string;
@@ -37,6 +47,16 @@ export interface RadarStationResponse {
   longitude?: number;
   latitude?: number;
   approvalStatus: string;
+  status: RadarStationStatus;
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  approvedLevel1?: boolean;
+  approverLevel1?: string;
+  approvedDateLevel1?: string;
+  approvedLevel2?: boolean;
+  approverLevel2?: string;
+  approvedDateLevel2?: string;
+  rejectionReason?: string;
   attachments?: RadarStationAttachment[];
   createdAt?: string;
   updatedAt?: string;
@@ -80,17 +100,13 @@ export interface ListParams {
   operatingUnitId?: string;
   provinceId?: string;
   conditionStatus?: string;
+  status?: RadarStationStatus;
   approvalStatus?: string;
   updatedBy?: string;
   updatedFrom?: string;
   updatedTo?: string;
   page?: number;
   size?: number;
-}
-
-export interface ApprovalRequest {
-  decision: string;
-  reason?: string;
 }
 
 export interface HistoryEntry {
@@ -128,7 +144,7 @@ export const CONDITION_STATUS_MAP: Record<string, string> = {
 };
 
 export const APPROVAL_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'PROPOSED', label: 'Chờ duyệt' },
+  { value: 'DRAFT', label: 'Nháp' },
   { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt' },
   { value: 'APPROVED', label: 'Đã phê duyệt' },
   { value: 'REJECTED', label: 'Từ chối' },

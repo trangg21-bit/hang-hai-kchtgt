@@ -2,7 +2,6 @@ package com.hanghai.kchtg.radarstation.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.radarstation.dto.ApprovalRequest;
 import com.hanghai.kchtg.radarstation.dto.RadarStationCreateRequest;
 import com.hanghai.kchtg.radarstation.dto.RadarStationResponse;
 import com.hanghai.kchtg.radarstation.dto.RadarStationUpdateRequest;
@@ -100,18 +99,23 @@ class RadarStationControllerTest {
     }
 
     @Test
-    void testApproveC1() {
-        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
-        when(service.approveC1(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
-        ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
+    void testSubmitForApproval() {
+        doNothing().when(service).submitForApproval(eq(TEST_ID), any(java.util.UUID.class));
+        ResponseEntity<?> result = controller.submitForApproval(TEST_ID, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
-    void testApproveC2() {
-        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
-        when(service.approveC2(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
-        ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
+    void testApproveL1() {
+        when(service.approveL1(eq(TEST_ID), any(java.util.UUID.class))).thenReturn(response);
+        ResponseEntity<?> result = controller.approveL1(TEST_ID, TEST_USER_ID);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
+
+    @Test
+    void testReject() {
+        when(service.reject(eq(TEST_ID), any(String.class), any(java.util.UUID.class))).thenReturn(response);
+        ResponseEntity<?> result = controller.reject(TEST_ID, "Lý do từ chối hợp lệ", TEST_USER_ID);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
