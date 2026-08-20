@@ -84,10 +84,7 @@ const VALUE_TRANSLATIONS: Record<string, string> = {
 
   // BeaconStatus
   DRAFT: 'Nháp',
-  PENDING_APPROVAL: 'Chờ duyệt L1',
-  APPROVED_L1: 'Chờ duyệt L2',
-  APPROVED_L2: 'Đã duyệt L2',
-  PUBLISHED: 'Đã công bố',
+  PENDING_APPROVAL: 'Chờ phê duyệt',
   REJECTED: 'Từ chối',
   DELETED: 'Đã xóa',
 };

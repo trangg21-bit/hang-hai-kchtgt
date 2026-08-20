@@ -142,7 +142,7 @@ const KCHT_LABEL_ROUTES: Record<string, string> = {
   'Kè bảo vệ bờ': '/dike-revetment',
   'Cảng cạn': '/dry-port',
   'Cơ sở sửa chữa tàu': '/ship-repair-facility',
-  'Trạm hải đăng': '/lighthouse-station',
+
   'Trạm phao': '/buoy-station',
   'Đài VTS': '/station/coastal',
   'Đài LRIT': '/station/coastal',

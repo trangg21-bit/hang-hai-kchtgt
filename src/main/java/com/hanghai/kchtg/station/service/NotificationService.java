@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.station.entity.BuoyStation;
-import com.hanghai.kchtg.station.entity.LighthouseStation;
 import org.springframework.stereotype.Service;
 
 /**
@@ -10,15 +9,6 @@ import org.springframework.stereotype.Service;
  */
 @Service("stationNotificationService")
 public class NotificationService {
-
-    public void sendApprovalNotificationDen(LighthouseStation entity) {
-    }
-
-    public void sendL2ApprovalNotificationDen(LighthouseStation entity) {
-    }
-
-    public void sendRejectionNotificationDen(LighthouseStation entity, String rejectReason) {
-    }
 
     public void sendApprovalNotificationPhao(BuoyStation entity) {
     }

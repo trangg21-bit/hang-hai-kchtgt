@@ -75,4 +75,3 @@ export interface CoastalStationInmarsatResponse {
   createdAt?: string;
   updatedAt?: string;
 }
-

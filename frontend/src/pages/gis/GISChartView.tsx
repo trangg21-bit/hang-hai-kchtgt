@@ -37,8 +37,7 @@ import {
   waterZoneCRUD
 } from '../../services/portService';
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
-import { fetchLighthouseStationById } from '../../services/station/beacon/api';
-import { fetchBuoyStationById } from '../../services/buoy-station/api';
+import { fetchBuoyStationById } from '../../services/station/beacon/api';
 import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { radarStationCRUD } from '../../services/radarStationService';
@@ -898,9 +897,6 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       data = await waterZoneCRUD.findById(id);
     } else if (type === 'Đèn biển') {
       data = await beaconLightCRUD.findById(id);
-    } else if (type === 'Nhà trạm đèn biển') {
-      data = await fetchLighthouseStationById(id);
-      displayType = 'Đèn biển';
     } else if (type === 'Phao tiêu' || type === 'Phao, tiêu') {
       data = await buoyCRUD.findById(id);
       displayType = 'Phao tiêu';
@@ -1315,9 +1311,7 @@ export default function GISChartView() {
     (window as any).handleKchtAction = (id: string, typeLabel: string, action: 'view' | 'edit') => {
       const label = (typeLabel || '').trim().toLowerCase();
       let path = '';
-      if (label === 'nhà trạm đèn biển' || label === 'nha tram den bien') {
-        path = `/lighthouse-station?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
-      } else if (label === 'nhà trạm phao tiêu' || label === 'nha tram phao tieu') {
+      if (label === 'nhà trạm phao tiêu' || label === 'nha tram phao tieu') {
         path = `/buoy-station?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('đèn biển') || label.includes('den bien')) {
         path = `/beacons/${id}${action === 'edit' ? '?mode=edit' : ''}`;

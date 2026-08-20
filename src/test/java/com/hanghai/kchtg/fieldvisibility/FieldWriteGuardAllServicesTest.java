@@ -15,7 +15,6 @@ import com.hanghai.kchtg.port.dto.waterzone.CreateWaterZoneRequest;
 import com.hanghai.kchtg.radarstation.dto.RadarStationCreateRequest;
 import com.hanghai.kchtg.shiprepairfacility.dto.ShipRepairFacilityCreateRequest;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
-import com.hanghai.kchtg.station.dto.lighthouse.CreateLighthouseStationRequest;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemCreateRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
