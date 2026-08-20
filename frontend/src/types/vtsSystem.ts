@@ -29,7 +29,7 @@ export const ApprovalStatus = {
   APPROVED_LEVEL2: 'APPROVED_LEVEL2',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
-  UNDER_REVIEW: 'UNDER_REVIEW',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
 } as const;
 
 export type ApprovalStatus = typeof ApprovalStatus[keyof typeof ApprovalStatus];
@@ -52,9 +52,6 @@ export interface VtsSystemResponse {
   address?: string;
   maritimeNotice?: string;
   operationStartDate?: string; // ISO date string
-  responsibilityLevel?: string;
-  source?: string;
-  partner?: string; // partner field unique to VTS
   orgUnitId?: string;
   orgUnitName?: string;
   owningOrgName?: string;
@@ -66,15 +63,20 @@ export interface VtsSystemResponse {
   scope?: string;
   note?: string;
   approvalStatus: ApprovalStatus; // status as plain String
-  approvedLevel1?: boolean;
   approverLevel1?: string;
+  approverLevel1Name?: string;
   approvedDateLevel1?: string;
-  approvedLevel2?: boolean;
+  approvalContentLevel1?: string;
   approverLevel2?: string;
+  approverLevel2Name?: string;
   approvedDateLevel2?: string;
+  approvalContentLevel2?: string;
   rejectionReason?: string;
   createdBy?: string;
+  createdByName?: string;
   createdDate?: string;
+  submittedByName?: string;
+  submittedDate?: string;
   updatedBy?: string;
   updatedByName?: string;
   updatedDate?: string;
@@ -92,13 +94,20 @@ export interface VtsSystemListItem {
   address?: string;
   conditionStatus?: ConditionStatus;
   recordSecurityLevel?: RecordSecurityLevel;
-  responsibilityLevel?: string;
-  partner?: string;
   orgUnitId?: string;
   orgUnitName?: string;
+  owningOrgId?: string;
+  owningOrgName?: string;
+  operatingOrgId?: string;
+  operatingOrgName?: string;
+  portId?: string;
+  portName?: string;
+  provinceId?: number;
+  operationStartDate?: string;
   approvalStatus: ApprovalStatus;
   approverLevel1?: string;
   updatedDate?: string;
+  updatedByName?: string;
 }
 
 export interface VtsZoneDto {
@@ -113,9 +122,6 @@ export interface CreateVtsSystemRequest {
   systemName?: string;
   conditionStatus?: ConditionStatus;
   recordSecurityLevel?: RecordSecurityLevel;
-  responsibilityLevel?: string;
-  source?: string;
-  partner?: string;
   orgUnitId?: string;
   owningOrgId?: string;
   operatingOrgId?: string;

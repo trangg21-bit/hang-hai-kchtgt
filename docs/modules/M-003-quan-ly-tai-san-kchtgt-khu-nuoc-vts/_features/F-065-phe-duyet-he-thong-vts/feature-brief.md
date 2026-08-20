@@ -7,55 +7,57 @@ status: proposed
 classification: local
 priority: P0
 created: "2026-06-30T00:00:00Z"
-last-updated: "2026-06-30T00:00:00Z"
+last-updated: "2026-08-20T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
 
 # Feature: Phe duyet He thong VTS
 
-## Description
-Quy trinh phe duyet 2 cap cho He thong VTS: Cap C1 (Truong Phong) → Cap C2 (Giam Cuc), tu trang thai PROPOSED/UNDER_REVIEW den APPROVED.
+## 1. Mô tả ngắn
+Quy trình phê duyệt 2 cấp cho Hệ thống VTS: Cấp 1 (Trưởng phòng/Chi cục/Cảng vụ) → Cấp 2 (Lãnh đạo Cục), chuyển trạng thái từ PROPOSED → UNDER_REVIEW → APPROVED. Người dùng thực hiện phê duyệt/từ chối qua thanh thao tác trên Form chi tiết hoặc menu ngữ cảnh trên bảng danh sách.
 
-## Business Intent
-Đảm bảo mọi thay đổi về Hệ thống VTS đều được xem xét, phê duyệt chặt chẽ theo đúng phân cấp quản lý, đảm bảo tính chính xác và hợp lệ của dữ liệu phục vụ công tác quản lý tài sản KCHTGT khu nước & VTS.
+## 2. Luồng thao tác & Giao diện phê duyệt
 
-## Flow Summary
-1. Chuyen vien gui y kiến PROPOSED/UPDATE (C1)
-2. Truong Phong xem xet → Phê duyệt C1 → UNDER_REVIEW (Chuyen Cuc)
-3. Giam Cuc xem xét chi tiết → Phê duyệt C2 → APPROVED
-4. Nếu từ chối ở bất kỳ cấp nào → trạng thái REJECTED (tra lại Chuyen vien)
+### 2.1. Phê duyệt C1 (Cảng vụ / Chi cục)
+1. Người dùng có quyền `vts:approvec1` chọn "Phê duyệt C1" (khi bản ghi ở trạng thái `PROPOSED`).
+2. Hệ thống hiển thị **Popup xác nhận phê duyệt cấp 1 (Cảng vụ/Chi cục)**:
+   - Ô nhập **Nội dung / Ý kiến phê duyệt**: Textarea tối đa 500 ký tự, placeholder gợi ý: *"Nhập nội dung / ý kiến phê duyệt..."*. Trường này là **tùy chọn (không bắt buộc)**.
+   - Nếu người dùng để trống và bấm "Xác nhận phê duyệt", hệ thống tự động ghi nhận nội dung mặc định là `"Đã phê duyệt"`.
+3. Bản ghi chuyển sang trạng thái `UNDER_REVIEW`, ghi nhận `approver_level1`, `approved_date_level1` và bản ghi trong bảng lịch sử phê duyệt (`approval_history`).
 
-## Acceptance Criteria
-- [x] Phe duyet 2 cap: phong (C1) → Cuc (C2)
-- [x] Cap C1 chuyen PROPOSED → UNDER_REVIEW
-- [x] Cap C2 chuyen UNDER_REVIEW → APPROVED
-- [x] Từ chối ở bất kỳ cấp → REJECTED (tra lại cho Chuyen vien)
-- [x] Ghi nhan lich sử phê duyệt (ai phê duyệt, khi nào, kết quả)
+### 2.2. Phê duyệt C2 (Cục Hàng hải)
+1. Người dùng có quyền `vts:approvec2` chọn "Phê duyệt C2" (khi bản ghi ở trạng thái `UNDER_REVIEW`).
+2. **Quy tắc chống tự duyệt (Self-Approval Prevention / Nguyên tắc 4 mắt)**:
+   - Nếu tài khoản hiện tại trùng với người đã duyệt C1 (`approver_level1`), nút "Phê duyệt C2" và "Từ chối C2" sẽ bị vô hiệu hóa (disabled) trên giao diện kèm Tooltip cảnh báo: *"Bạn không thể tự phê duyệt hồ sơ do mình xét duyệt C1"*.
+   - Backend chặn tại tầng Service: Nếu `approverLevel2 == approverLevel1` sẽ ném ngoại lệ chặn giao dịch.
+3. Hệ thống hiển thị **Popup xác nhận phê duyệt cấp 2 (Cục)** với ô nhập ý kiến phê duyệt tương tự Cấp 1.
+4. Bản ghi chuyển sang trạng thái `APPROVED`, ghi nhận `approver_level2`, `approved_date_level2` và bản ghi lịch sử.
 
-## Business Rules
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
-| BR-065-01 | 2 cấp duyệt: phong (C1) → Cuc (C2) | Approval | UC-3312 |
-| BR-065-02 | Cap C1: PROPOSED → UNDER_REVIEW | Approval | DESIGN.md |
-| BR-065-03 | Cap C2: UNDER_REVIEW → APPROVED | Approval | UC-3312 |
-| BR-065-04 | Tu choi ở bất kỳ cấp → REJECTED | Approval | DESIGN.md |
+### 2.3. Từ chối phê duyệt (C1 / C2)
+1. Khi chọn "Từ chối", hệ thống hiển thị **Popup Từ chối**.
+2. **Lý do từ chối là BẮT BUỘC** (tối thiểu 10 ký tự). Nút "Từ chối" chỉ kích hoạt khi đã nhập đủ 10 ký tự.
+3. Bản ghi chuyển sang trạng thái `REJECTED`, lưu lý do vào `rejection_reason` và bảng lịch sử phê duyệt.
 
-## Roles + Permissions
-| Role | Level | Notes |
+## 3. Quy tắc nghiệp vụ
+
+| ID | Quy tắc | Mô tả chi tiết |
 |---|---|---|
-| A-003 (Chuyen vien) | Gui xet duyet | Tao cap nhat → gui C1 xem xét |
-| A-002 (Lanh dao Phong) | Phe duyet C1 | PROPOSED → UNDER_REVIEW / REJECTED |
-| A-004 (Lanh dao Cuc) | Phe duyet C2 | UNDER_REVIEW → APPROVED / REJECTED |
+| BR-065-01 | Phê duyệt 2 cấp | C1: PROPOSED → UNDER_REVIEW; C2: UNDER_REVIEW → APPROVED |
+| BR-065-02 | Chống tự phê duyệt (Self-approval guard) | Người duyệt C2 không được trùng với người duyệt C1 (`approverLevel1 != approverLevel2`). Áp dụng cả Frontend và Backend. |
+| BR-065-03 | Ý kiến phê duyệt | Tùy chọn khi duyệt (mặc định "Đã phê duyệt" nếu để trống). Bắt buộc tối thiểu 10 ký tự khi từ chối. |
+| BR-065-04 | Lịch sử phê duyệt | Mọi hành động duyệt/từ chối đều lưu bản ghi kiểm toán trong `approval_history`. |
 
-## Entities
-| Entity | Table | Description |
+## 4. Phân quyền
+
+| Quyền | Mã quyền | Vai trò áp dụng |
 |---|---|---|
-| HeThongVTS | he_thong_vts | Entity chinh |
-| HeThongVTSApproval | he_thong_vts_approval | Lich su phe duyet 2 cap |
-| HeThongVTSAttachment | attachment | Tai lieu dinh kem |
+| Phê duyệt C1 | `vts:approvec1` | Lãnh đạo Phòng / Chi cục / Cảng vụ |
+| Phê duyệt C2 | `vts:approvec2` | Lãnh đạo Cục |
+| Xem lịch sử duyệt | `vts:history` | Toàn bộ tài khoản có quyền đọc VTS |
 
-## Design Reference
-- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
-- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
-- Source: UC-3312
+## 5. Cấu trúc bảng & Thực thể liên quan
+
+- Bảng chính `vts_system`: Lưu trạng thái `approval_status`, người duyệt `approver_level1`, `approver_level2`, ngày duyệt `approved_date_level1`, `approved_date_level2`, lý do từ chối `rejection_reason`. *(Đã loại bỏ 2 cờ boolean thừa `approved_level1`, `approved_level2`)*.
+- Bảng lịch sử `approval_history`: Lưu vết chi tiết từng lần duyệt/từ chối kèm lý do (`reason`), người thực hiện (`actor_id`), thời gian (`action_time`), cấp duyệt (`approval_level`).
+

@@ -94,7 +94,7 @@ class DikeRevetmentControllerTest {
                 .id(TEST_ID.toString())
                 .dikeRevetmentId(TEST_ID)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
-                .status("UNDER_REVIEW")
+                .status("PENDING_APPROVAL")
                 .approver("Truong Phong")
                 .build();
         when(service.approveC1(eq(TEST_ID), any(), nullable(java.util.UUID.class))).thenReturn(resp);

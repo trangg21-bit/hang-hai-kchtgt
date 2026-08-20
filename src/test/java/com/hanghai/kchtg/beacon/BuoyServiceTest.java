@@ -197,7 +197,7 @@ class BuoyServiceTest {
                     .thenReturn(List.of(entity));
 
             List<BuoyResponse> result = service.search(
-                    "Phao", "PHAO", "CARDINAL", "DRAFT");
+                    "Phao", "PHAO", "CARDINAL", "DRAFT", null, null, null, null);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Phao tiêu test");
@@ -522,7 +522,7 @@ class BuoyServiceTest {
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BuoyResponse result = service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+            BuoyResponse result = service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null);
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
@@ -543,7 +543,7 @@ class BuoyServiceTest {
             entity.setApprovedBy(null);
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
+            assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), null))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L1");
         }
@@ -557,7 +557,7 @@ class BuoyServiceTest {
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BuoyResponse result = service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
+            BuoyResponse result = service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"), null);
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
@@ -575,7 +575,7 @@ class BuoyServiceTest {
             Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003")))
+            assertThatThrownBy(() -> service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"), null))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L2");
         }

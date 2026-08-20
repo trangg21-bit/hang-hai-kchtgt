@@ -28,6 +28,8 @@ import {
   BuildOutlined,
   EnvironmentOutlined,
   TruckOutlined,
+  AimOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -49,7 +51,6 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/gis/permits': 'map:manage',
   '/beacon-lights': 'data:read',
   '/buoys': 'data:read',
-  '/lighthouse-station': 'data:read',
   '/buoy-station': 'data:read',
   '/history': 'admin:view',
   '/port': 'port:read',
@@ -102,10 +103,10 @@ const pageTitles: Record<string, string> = {
   '/gis/search': 'Tra cứu thông tin KCHT hàng hải trên bản đồ',
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
+  '/beacon-lights': 'Đèn biển và nhà trạm',
   '/beacon-lights': 'Đèn biển',
-  '/buoys': 'Quản lý phao tiêu',
-  '/lighthouse-station': 'Nhà trạm đèn biển',
-  '/buoy-station': 'Quản lý nhà trạm phao tiêu',
+  '/buoys': 'Quản lý Phao, tiêu',
+  '/buoy-station': 'Nhà trạm Phao, tiêu',
   '/history': 'Lịch sử thay đổi',
   '/port': 'Quản lý cảng biển',
   '/berth': 'Quản lý bến cảng',
@@ -164,7 +165,10 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'lighthouse-station' || pathSegments[0] === 'buoy-station' || pathSegments[0] === 'documents' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
+  } else if (pathSegments[0] === 'buoy-station') {
+    // M-014: /buoy-station là submenu title, không có segment con — map về key của submenu
+    selectedKey = 'buoy-station-parent';
+  } else if (pathSegments[0] === 'documents' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'port') {
@@ -183,7 +187,11 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (selectedKey) {
-      if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/lighthouse-station') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/buoys' || selectedKey === '/history') {
+      if (selectedKey === 'buoy-station-parent' || selectedKey === '/buoys') {
+        // Giữ submenu "Nhà trạm phao, tiêu" mở khi đang ở /buoy-station hoặc /buoys
+        // (tương tự chuỗi cảng biển → bến cảng được giữ mở ở nhánh phía dưới)
+        setOpenKeys(['beacon', 'buoy-station-parent']);
+      } else if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/history') {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
@@ -245,11 +253,17 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Báo hiệu hàng hải',
       children: [
-        canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển' } : null,
-        canAccessMenu('/buoys') ? { key: '/buoys', label: 'Quản lý phao tiêu', icon: <EnvironmentOutlined /> } : null,
-        canAccessMenu('/lighthouse-station') ? { key: '/lighthouse-station', label: 'Nhà trạm đèn biển' } : null,
-        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Quản lý nhà trạm phao tiêu', icon: <BankOutlined /> } : null,
-        canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
+        (canAccessMenu('/buoy-station') || canAccessMenu('/buoys')) ? {
+          key: 'buoy-station-parent',
+          label: 'Nhà trạm Phao, tiêu',
+          icon: <BankOutlined />,
+          onTitleClick: () => navigate('/buoy-station'),
+          className: selectedKey === 'buoy-station-parent' ? 'submenu-active' : '',
+          children: [
+            canAccessMenu('/buoys') ? { key: '/buoys', label: 'Quản lý Phao, tiêu', icon: <EnvironmentOutlined /> } : null,
+          ].filter(Boolean),
+        } : null,
+        canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển và nhà trạm', icon: <EnvironmentOutlined /> } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },

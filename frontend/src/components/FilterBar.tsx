@@ -28,7 +28,6 @@ const INFRA_TYPE_OPTIONS = [
   { value: 'radar_station', label: 'Trạm Radar' },
   { value: 'vts_system', label: 'Hệ thống VTS' },
   { value: 'ship_repair_facility', label: 'Cơ sở sửa chữa, đóng tàu' },
-  { value: 'lighthouse_station', label: 'Nhà trạm đèn biển' },
   { value: 'buoy_station', label: 'Nhà trạm quản lý vận hành phao tiêu' },
   { value: 'coastal_station_vts', label: 'Đài Thông tin Duyên hải' },
   { value: 'coastal_station_lrit', label: 'Đài Nhận dạng và truy theo tầm xa (LRIT)' },

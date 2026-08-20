@@ -9,11 +9,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface RadarStationRepository extends JpaRepository<RadarStation, UUID> {
+
+    boolean existsByCode(String code);
 
     List<RadarStation> findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
@@ -38,6 +41,42 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         @Param("keyword") String keyword,
         @Param("conditionStatus") String conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
+        Pageable pageable
+    );
+
+    @Query("""
+        SELECT t FROM RadarStation t
+        WHERE t.deletedAt IS NULL
+          AND (:keyword IS NULL OR
+            LOWER(t.stationName) LIKE LOWER(CONCAT('%', cast(:keyword as string), '%')) OR
+            LOWER(t.code) LIKE LOWER(CONCAT('%', cast(:keyword as string), '%')))
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:seaportId IS NULL OR t.seaportId = :seaportId)
+          AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
+          AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
+          AND (:operatingUnitId IS NULL OR t.operatingUnitId = :operatingUnitId)
+          AND (:provinceId IS NULL OR t.provinceId = :provinceId)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+          AND (:status IS NULL OR t.status = :status)
+          AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
+          AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
+    """)
+    Page<RadarStation> searchPaged(
+        @Param("keyword") String keyword,
+        @Param("orgUnitId") UUID orgUnitId,
+        @Param("seaportId") UUID seaportId,
+        @Param("vtsSystemId") UUID vtsSystemId,
+        @Param("vtsOperationCenterId") UUID vtsOperationCenterId,
+        @Param("operatingUnitId") UUID operatingUnitId,
+        @Param("provinceId") Integer provinceId,
+        @Param("conditionStatus") String conditionStatus,
+        @Param("approvalStatus") ApprovalStatus approvalStatus,
+        @Param("status") String status,
+        @Param("updatedBy") UUID updatedBy,
+        @Param("updatedFrom") LocalDateTime updatedFrom,
+        @Param("updatedTo") LocalDateTime updatedTo,
         Pageable pageable
     );
 

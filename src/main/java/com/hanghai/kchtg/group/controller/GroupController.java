@@ -38,7 +38,7 @@ public class GroupController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'group:read') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<PaginatedGroupResponse>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -65,14 +65,14 @@ public class GroupController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'group:read') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:read')")
     public ResponseEntity<ApiResponse<UserGroupResponse>> get(@PathVariable UUID id) {
         UserGroupResponse group = service.findById(id);
         return ResponseEntity.ok(ApiResponse.success(group));
     }
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'group:create') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:create')")
     public ResponseEntity<ApiResponse<UserGroupResponse>> create(
             @Valid @RequestBody CreateUserGroupRequest request,
             Authentication authentication) {
@@ -92,7 +92,7 @@ public class GroupController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'group:edit') or @auth.check(authentication, 'group:update') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:edit') or @auth.check(authentication, 'group:update')")
     public ResponseEntity<ApiResponse<UserGroupResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserGroupRequest request,
@@ -111,7 +111,7 @@ public class GroupController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'group:delete') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -128,7 +128,7 @@ public class GroupController {
     }
 
     @PostMapping("/{id}/members")
-    @PreAuthorize("@auth.check(authentication, 'groupmember:manage') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'groupmember:manage')")
     public ResponseEntity<ApiResponse<GroupMemberResponse>> addMember(
             @PathVariable UUID id,
             @Valid @RequestBody AddGroupMemberRequest request,
@@ -148,7 +148,7 @@ public class GroupController {
     }
 
     @PostMapping("/{id}/members/batch")
-    @PreAuthorize("@auth.check(authentication, 'groupmember:manage') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'groupmember:manage')")
     public ResponseEntity<ApiResponse<BatchAddGroupMembersResponse>> addMembers(
             @PathVariable UUID id,
             @Valid @RequestBody BatchAddGroupMembersRequest request,
@@ -167,7 +167,7 @@ public class GroupController {
     }
 
     @DeleteMapping("/{groupId}/members/{userId}")
-    @PreAuthorize("@auth.check(authentication, 'groupmember:manage') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'groupmember:manage')")
     public ResponseEntity<ApiResponse<Void>> removeMember(
             @PathVariable UUID groupId,
             @PathVariable UUID userId,
@@ -185,7 +185,7 @@ public class GroupController {
     }
 
     @GetMapping("/{id}/members")
-    @PreAuthorize("@auth.check(authentication, 'group:read') or @auth.check(authentication, 'groupmember:manage') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:read') or @auth.check(authentication, 'groupmember:manage')")
     public ResponseEntity<ApiResponse<PaginatedGroupMemberResponse>> listMembers(
             @PathVariable UUID id,
             @RequestParam(required = false) String search,
@@ -202,13 +202,13 @@ public class GroupController {
     }
 
     @GetMapping("/{id}/permissions")
-    @PreAuthorize("@auth.check(authentication, 'group:permission') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<String>>> listGroupPermissions(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.findGroupPermissions(id)));
     }
 
     @PutMapping("/{id}/permissions")
-    @PreAuthorize("@auth.check(authentication, 'group:permission') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<String>>> updateGroupPermissions(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateGroupPermissionsRequest request,
@@ -224,7 +224,7 @@ public class GroupController {
     }
 
     @PatchMapping("/{id}/lock")
-    @PreAuthorize("@auth.check(authentication, 'group:lock') or @auth.check(authentication, 'group:manage')")
+    @PreAuthorize("@auth.check(authentication, 'group:lock')")
     public ResponseEntity<ApiResponse<UserGroupResponse>> lock(
             @PathVariable UUID id,
             Authentication authentication) {

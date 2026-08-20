@@ -46,10 +46,15 @@ export interface LegalDocumentHistoryResponse {
   id: string;
   action: string;
   changedBy?: string;
+  changedByName?: string;
+  orgUnitName?: string;
+  unitName?: string;
   changedAt: string;
   documentName: string;
   documentNumber?: string;
   validityStatus?: string;
+  description?: string;
+  note?: string;
 }
 
 export interface SuCoCreateRequest {

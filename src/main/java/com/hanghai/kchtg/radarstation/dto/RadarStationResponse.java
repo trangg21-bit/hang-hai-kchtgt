@@ -19,6 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class RadarStationResponse {
     private UUID id;
+    private String code;
     private RecordSecurityLevel securityLevel;
     private String stationName;
     private String location;
@@ -31,6 +32,21 @@ public class RadarStationResponse {
     private String conditionStatus;
     private UUID orgUnitId;
     private String orgUnitName;
+    private UUID seaportId;
+    private String seaportName;
+    private UUID vtsSystemId;
+    private String vtsSystemName;
+    private UUID vtsOperationCenterId;
+    private String vtsOperationCenterName;
+    private UUID operatingUnitId;
+    private String operatingUnitName;
+    private Integer provinceId;
+    private String unitOfMeasure;
+    private Integer quantity;
+    private String note;
+    private String status;
+    private UUID submittedForApprovalBy;
+    private LocalDateTime submittedForApprovalAt;
     private ApprovalStatus approvalStatus;
     private Boolean approvedLevel1;
     private UUID approverLevel1;
@@ -51,7 +67,4 @@ public class RadarStationResponse {
 
     private BigDecimal towerHeight;
     private BigDecimal radarRange;
-
-    private UUID vtsSystemId;
-    private String vtsSystemName;
 }

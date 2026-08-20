@@ -1,10 +1,10 @@
 package com.hanghai.kchtg.document;
 
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.document.dto.AttachedDocumentResponse;
 import com.hanghai.kchtg.document.entity.AttachedDocument;
 import com.hanghai.kchtg.document.entity.LegalDocument;
 import com.hanghai.kchtg.document.repository.AttachedDocumentRepository;
-import com.hanghai.kchtg.document.repository.LegalDocumentHistoryRepository;
 import com.hanghai.kchtg.document.repository.LegalDocumentRepository;
 import com.hanghai.kchtg.document.repository.SearchLogRepository;
 import com.hanghai.kchtg.document.repository.SearchResultRepository;
@@ -51,7 +51,7 @@ class LegalDocumentAttachmentServiceTest {
     private SearchSuggestionRepository searchSuggestionRepository;
 
     @Mock
-    private LegalDocumentHistoryRepository legalDocumentHistoryRepository;
+    private ApprovalHistoryRepository approvalHistoryRepository;
 
     private UUID documentId;
     private LegalDocument document;
@@ -89,7 +89,7 @@ class LegalDocumentAttachmentServiceTest {
         }
         assertEquals(1, storedFiles.length);
         assertEquals("noi dung", Files.readString(storedFiles[0]));
-        verify(legalDocumentHistoryRepository).save(any());
+        verify(approvalHistoryRepository).save(any());
 
         UUID attachmentId = response.getId();
         AttachedDocument storedAttachment = AttachedDocument.builder()
@@ -104,7 +104,7 @@ class LegalDocumentAttachmentServiceTest {
 
         assertFalse(Files.exists(storedFiles[0]));
         verify(attachedDocumentRepository).delete(storedAttachment);
-        verify(legalDocumentHistoryRepository, times(2)).save(any());
+        verify(approvalHistoryRepository, times(2)).save(any());
     }
 
     @Test

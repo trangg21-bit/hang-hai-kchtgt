@@ -47,10 +47,10 @@ public interface LegalDocumentRepository extends JpaRepository<LegalDocument, UU
          * Dynamic JPQL search with pagination (F-135).
          */
     @Query("SELECT v FROM LegalDocument v WHERE v.deletedAt IS NULL AND " +
-            "(cast(:keyword as string) IS NULL OR LOWER(v.documentName) LIKE :keyword) AND " +
-            "(cast(:documentNumber as string) IS NULL OR LOWER(v.documentNumber) LIKE :documentNumber) AND " +
-            "(cast(:coQuan as string) IS NULL OR LOWER(v.issuingAuthority) LIKE :coQuan) AND " +
-            "(cast(:applicationArea as string) IS NULL OR LOWER(v.applicationArea) LIKE :applicationArea) AND " +
+            "(cast(:keyword as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.documentName)) AS string) LIKE :keyword) AND " +
+            "(cast(:documentNumber as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.documentNumber)) AS string) LIKE :documentNumber) AND " +
+            "(cast(:coQuan as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.issuingAuthority)) AS string) LIKE :coQuan) AND " +
+            "(cast(:applicationArea as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.applicationArea)) AS string) LIKE :applicationArea) AND " +
             "(:loai IS NULL OR v.documentType = :loai) AND " +
             "(:tinhTrang IS NULL OR v.validityStatus = :tinhTrang) AND " +
             "(cast(:issueDateStart as date) IS NULL OR v.issueDate >= :issueDateStart) AND " +
@@ -64,10 +64,10 @@ public interface LegalDocumentRepository extends JpaRepository<LegalDocument, UU
 
     /** Count statuses using the active search filters, without restricting to one status. */
     @Query("SELECT v.validityStatus, COUNT(v) FROM LegalDocument v WHERE v.deletedAt IS NULL AND " +
-            "(cast(:keyword as string) IS NULL OR LOWER(v.documentName) LIKE :keyword) AND " +
-            "(cast(:documentNumber as string) IS NULL OR LOWER(v.documentNumber) LIKE :documentNumber) AND " +
-            "(cast(:coQuan as string) IS NULL OR LOWER(v.issuingAuthority) LIKE :coQuan) AND " +
-            "(cast(:applicationArea as string) IS NULL OR LOWER(v.applicationArea) LIKE :applicationArea) AND " +
+            "(cast(:keyword as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.documentName)) AS string) LIKE :keyword) AND " +
+            "(cast(:documentNumber as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.documentNumber)) AS string) LIKE :documentNumber) AND " +
+            "(cast(:coQuan as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.issuingAuthority)) AS string) LIKE :coQuan) AND " +
+            "(cast(:applicationArea as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.applicationArea)) AS string) LIKE :applicationArea) AND " +
             "(:loai IS NULL OR v.documentType = :loai) AND " +
             "(cast(:issueDateStart as date) IS NULL OR v.issueDate >= :issueDateStart) AND " +
             "(cast(:issueDateEnd as date) IS NULL OR v.issueDate <= :issueDateEnd) AND " +

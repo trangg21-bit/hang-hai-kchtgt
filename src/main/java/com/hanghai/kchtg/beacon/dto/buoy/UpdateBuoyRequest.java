@@ -13,7 +13,9 @@ import java.time.LocalDate;
 
 /**
  * Request DTO for updating an existing Buoy (F-075).
- * NOTE: code and type are NOT mutable (BR-075-01, BR-075-02).
+ * NOTE: code is mutable ONLY when buoyStationId changes (regenerated as {stationCode}-PT-{seq},
+ *       uniqueness still enforced — BR-001).
+ * NOTE: type is NOT mutable (BR-075-02).
  * NOTE: longitude/latitude are NOT mutable (BR-075-03).
  */
 @Data
@@ -23,6 +25,9 @@ import java.time.LocalDate;
 public class UpdateBuoyRequest {
 
     private RecordSecurityLevel securityLevel;
+
+    @Size(max = 50)
+    private String code;
 
     @Size(max = 255)
     private String name;

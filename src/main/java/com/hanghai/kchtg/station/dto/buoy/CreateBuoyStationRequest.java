@@ -30,7 +30,6 @@ public class CreateBuoyStationRequest {
     @Size(max = 200)
     private String name;
 
-    @NotNull(message = "Loại phao không được để trống")
     private String type;
 
     @Size(max = 50, message = "Màu sắc không được vượt quá 50 ký tự")
@@ -42,7 +41,6 @@ public class CreateBuoyStationRequest {
     @Size(max = 100, message = "Đặc tính ánh sáng không được vượt quá 100 ký tự")
     private String lightCharacteristic;
 
-    @NotNull(message = "Tầm nhìn xa không được để trống")
     @DecimalMin(value = "0.01", message = "Tầm nhìn xa phải lớn hơn hoặc bằng 0.01 hải lý")
     @DecimalMax(value = "100.0", message = "Tầm nhìn xa phải nhỏ hơn hoặc bằng 100.0 hải lý")
     private Double range;
@@ -70,6 +68,9 @@ public class CreateBuoyStationRequest {
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private LocalDate lastRepairDate;
+
+    @Size(max = 100, message = "Tình trạng không được vượt quá 100 ký tự")
+    private String condition;
 
     @Builder.Default
     private Boolean isActive = true;

@@ -14,7 +14,6 @@ import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
@@ -24,8 +23,9 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationHistory;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
-import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import com.hanghai.kchtg.station.repository.StationHistoryRepository;
+import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.station.dto.buoy.StationBuoySummary;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.EntityNotFoundException;
@@ -46,7 +46,6 @@ import java.util.*;
 public class BuoyStationService {
 
     private final BuoyStationRepository phaoRepo;
-    private final LighthouseStationRepository denRepo;
     private final StationHistoryRepository historyRepo;
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
@@ -56,6 +55,7 @@ public class BuoyStationService {
     private final ChangeLogRepository changeLogRepository;
     private final PortRepository portRepository;
     private final UserRepository userRepository;
+    private final BuoyRepository buoyRepository;
 
     // -- READ --
 
@@ -72,6 +72,22 @@ public class BuoyStationService {
         return toResponse(entity);
     }
 
+    public List<StationBuoySummary> listStationBuoys(UUID id) {
+        phaoRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Nhà trạm phao không tìm thấy: " + id));
+        return buoyRepository.findByBuoyStationId(id).stream()
+                .map(b -> StationBuoySummary.builder()
+                        .id(b.getId() != null ? b.getId().toString() : null)
+                        .code(b.getCode())
+                        .name(b.getName())
+                        .classification(b.getClassification())
+                        .classificationBuoy(b.getClassificationBuoy())
+                        .classificationMark(b.getClassificationMark())
+                        .build())
+                .toList();
+    }
+
     public List<BuoyStationResponse> search(
             String name, String code, String type, String status,
             UUID unitId, String province, UUID portId, UUID operatingOrgId) {
@@ -85,21 +101,20 @@ public class BuoyStationService {
      * Format: {portCode}-NTPT{2 số} (mẫu BerthService.generateBerthCode).
      */
     public String generateCode(UUID portId) {
-        Port port = portRepository.findById(portId)
+        portRepository.findById(portId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
-        String prefix = port.getPortCode() + "-NTPT";
-        List<BuoyStation> existing = phaoRepo.findByPortIdAndDeletedAtIsNull(portId);
+        // CSV: mã tự sinh NT-{seq} — đếm toàn bộ nhà trạm (không phụ thuộc prefix cảng)
         int maxNum = 0;
-        for (BuoyStation b : existing) {
-            if (b.getCode() != null && b.getCode().startsWith(prefix)) {
+        for (BuoyStation b : phaoRepo.findAll()) {
+            if (b.getCode() != null && b.getCode().startsWith("NT-")) {
                 try {
-                    int n = Integer.parseInt(b.getCode().substring(prefix.length()));
+                    int n = Integer.parseInt(b.getCode().substring(3));
                     if (n > maxNum) maxNum = n;
                 } catch (NumberFormatException ignored) {
                 }
             }
         }
-        return prefix + String.format("%02d", maxNum + 1);
+        return "NT-" + (maxNum + 1);
     }
 
     // -- CREATE --
@@ -148,6 +163,7 @@ public class BuoyStationService {
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
                 .lastRepairDate(request.getLastRepairDate())
+                .condition(request.getCondition())
                 .isActive(request.getIsActive())
                 .status(StationStatus.DRAFT)
                 .approvalStatus(ApprovalStatus.PROPOSED)
@@ -160,6 +176,9 @@ public class BuoyStationService {
         if ("submit".equals(request.getAction())) {
             entity.setStatus(StationStatus.PENDING_APPROVAL);
             entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            entity.setSentApprovedBy(currentUserId);
+            entity.setSentApprovedDate(LocalDateTime.now());
         }
 
         entity = phaoRepo.save(entity);
@@ -199,8 +218,9 @@ public class BuoyStationService {
         }
 
         logHistory(entity, "CREATE", null, null, toJson(entity));
-        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "CREATE", null, "created",
-                entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system");
+        changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
+                entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system",
+                new BuoyStation(), entity);
         notificationService.sendApprovalNotificationPhao(entity);
 
         return toResponse(entity);
@@ -236,7 +256,7 @@ public class BuoyStationService {
                 .objectType(entity.getObjectType()).icon(entity.getIcon())
                 .coordinateSystem(entity.getCoordinateSystem()).displayFormat(entity.getDisplayFormat())
                 .lastInspectionDate(entity.getLastInspectionDate()).nextInspectionDate(entity.getNextInspectionDate())
-                .isActive(entity.getIsActive()).status(entity.getStatus())
+                .condition(entity.getCondition()).isActive(entity.getIsActive()).status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus()).approvalLevel(entity.getApprovalLevel())
                 .spatialId(entity.getSpatialId()).provinceId(entity.getProvinceId())
                 .rejectionReason(entity.getRejectionReason())
@@ -312,14 +332,16 @@ public class BuoyStationService {
         if (request.getLastRepairDate() != null) {
             entity.setLastRepairDate(request.getLastRepairDate());
         }
-        if (request.getIsActive() != null) {
-            entity.setIsActive(request.getIsActive());
-        }
+        if (request.getCondition() != null) entity.setCondition(request.getCondition());
+        if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
 
         if (isApprovedStatus(entity.getStatus())) {
-            entity.setStatus(StationStatus.DRAFT);
+            // Bản đã phê duyệt khi cập nhật → quay về chờ Cảng vụ duyệt (yêu cầu user 2026-08-20)
+            entity.setStatus(StationStatus.PENDING_APPROVAL);
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            entity.setSentApprovedBy(SecurityUtils.getCurrentUserId());
+            entity.setSentApprovedDate(LocalDateTime.now());
         }
 
         phaoRepo.save(entity);
@@ -382,6 +404,7 @@ public class BuoyStationService {
         }
 
         logHistory(entity, "SOFT_DELETE", null, null, toJson(entity));
+        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
 
         pointObjectSyncService.hideFromMapPhao(entity);
     }
@@ -394,21 +417,25 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (!StationStatus.DRAFT.equals(entity.getStatus()) && !StationStatus.REJECTED.equals(entity.getStatus())) {
+        if (!StationStatus.DRAFT.equals(entity.getStatus()) && !StationStatus.REJECTED.equals(entity.getStatus())
+                && !StationStatus.PENDING_APPROVAL.equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT hoặc REJECTED");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED hoặc PENDING_APPROVAL");
         }
 
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
         entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        entity.setSentApprovedBy(currentUserId);
+        entity.setSentApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
 
         notificationService.sendApprovalNotificationPhao(entity);
     }
 
     @Transactional
-    public BuoyStationResponse approveL1(UUID id, java.util.UUID approverId) {
+    public BuoyStationResponse approveL1(UUID id, java.util.UUID approverId, String content) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
@@ -418,16 +445,13 @@ public class BuoyStationService {
                     "Không ở trạng thái chờ phê duyệt L1");
         }
 
-        String creatorId = resolveCreatedBy(entity);
-        if (creatorId != null && creatorId.equals(approverId != null ? approverId.toString() : null)) {
-            throw new IllegalStateException(
-                    "Bạn không thể phê duyệt bản do chính mình gửi");
-        }
-
         entity.setStatus(StationStatus.APPROVED_L1);
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
-        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
+        entity.setLevel1ApprovedBy(approverId);
+        entity.setLevel1ApprovedDate(LocalDateTime.now());
+        if (content != null && !content.isBlank()) entity.setLevel1ApprovalContent(content.trim());
         phaoRepo.save(entity);
 
         logHistory(entity, "APPROVE_L1", null, null, null);
@@ -437,7 +461,7 @@ public class BuoyStationService {
     }
 
     @Transactional
-    public BuoyStationResponse approveL2(UUID id, java.util.UUID approverId) {
+    public BuoyStationResponse approveL2(UUID id, java.util.UUID approverId, String content) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
@@ -449,8 +473,11 @@ public class BuoyStationService {
 
         entity.setStatus(StationStatus.PUBLISHED);
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
-        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
+        entity.setLevel2ApprovedBy(approverId);
+        entity.setLevel2ApprovedDate(LocalDateTime.now());
+        if (content != null && !content.isBlank()) entity.setLevel2ApprovalContent(content.trim());
         phaoRepo.save(entity);
 
         logHistory(entity, "APPROVE_L2", null, null, null);
@@ -556,12 +583,31 @@ public class BuoyStationService {
                 .displayFormat(entity.getDisplayFormat())
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
+                .condition(entity.getCondition())
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .approvalStatus(entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : null)
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
+                .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
+                .level1ApprovedBy(entity.getLevel1ApprovedBy())
+                .level1ApprovedDate(entity.getLevel1ApprovedDate())
+                .level2ApprovedBy(entity.getLevel2ApprovedBy())
+                .level2ApprovedDate(entity.getLevel2ApprovedDate())
+                .level1ApprovalContent(entity.getLevel1ApprovalContent())
+                .level2ApprovalContent(entity.getLevel2ApprovalContent())
+                .operationPlanCode(entity.getOperationPlanCode())
+                .operationPlanName(entity.getOperationPlanName())
+                .operationStartDate(entity.getOperationStartDate())
+                .operationEndDate(entity.getOperationEndDate())
+                .maintenancePlanCode(entity.getMaintenancePlanCode())
+                .maintenancePlanName(entity.getMaintenancePlanName())
+                .maintenanceStartTime(entity.getMaintenanceStartTime())
+                .maintenanceEndTime(entity.getMaintenanceEndTime())
+                .incidentCode(entity.getIncidentCode())
+                .incidentType(entity.getIncidentType())
+                .incidentLocation(entity.getIncidentLocation())
+                .incidentTime(entity.getIncidentTime())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -614,10 +660,6 @@ public class BuoyStationService {
 
     private Long resolveCurrentUserId() {
         return 1L;
-    }
-
-    private String resolveCreatedBy(BuoyStation entity) {
-        return entity.getApprovedBy();
     }
 
     private String getUserNameById(UUID userId) {

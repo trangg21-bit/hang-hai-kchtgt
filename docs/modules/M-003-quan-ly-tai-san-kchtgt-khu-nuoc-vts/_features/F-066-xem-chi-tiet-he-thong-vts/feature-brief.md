@@ -27,31 +27,55 @@ consumed_by_modules: []
 
 ## Mô tả màn hình
 
-### Nhóm 1 — Thông tin chung
+### 1. Bảng danh sách Quản lý Hệ thống VTS (List Screen)
+Gồm 13 cột dữ liệu theo đúng thứ tự:
+1. `STT` (Cố định trái)
+2. `Đơn vị quản lý` (`orgUnitName`)
+3. `Trạng thái phê duyệt` (`approvalStatus` - Badge màu)
+4. `Ngày cập nhật` (`updatedDate` - `DD/MM/YYYY HH:mm:ss`)
+5. `Cán bộ cập nhật` (`updatedByName` - Email/Họ tên cán bộ)
+6. `Đơn vị chủ quản` (`owningOrgName`)
+7. `Đơn vị vận hành` (`operatingOrgName`)
+8. `Thuộc cảng biển` (`portName`)
+9. `Mã hệ thống VTS` (`code`)
+10. `Tên hệ thống VTS` (`systemName` - In đậm)
+11. `Địa điểm` (`address`, `province`)
+12. `Thời gian bắt đầu hoạt động` (`operationStartDate` - `DD/MM/YYYY`)
+13. `Tình trạng` (`conditionStatus` - Badge màu)
+14. `Thao tác` (Action Dropdown - Cố định phải)
 
-| STT | Tên trường | Loại điều khiển | Cho phép sửa | Giá trị hiển thị | Mô tả |
-|---|---|---|---|---|---|
-| 1 | Đơn vị quản lý | Label | Không | **Có:** "G17.43 - Cục Hàng hải và Đường thủy Việt Nam". **Không:** "—" | |
-| 2 | Ghi chú | Label | Không | **Có:** nội dung ghi chú. **Không:** "—" | |
-| 3 | Trạng thái | Label (Badge) | Không | **Có:** badge "Đã phê duyệt" (xanh) / "Chờ phê duyệt" (vàng) / "Từ chối" (đỏ). **Không:** "—" | Trạng thái phê duyệt |
-| 4 | Ngày cập nhật | Label | Không | **Có:** "20/07/2026 09:26:30". **Không:** "—" | Định dạng DD/MM/YYYY HH:mm:ss |
-| 5 | Cán bộ cập nhật | Label | Không | **Có:** "cuc@vimawa.gov.vn - Cục HH & ĐT VN". **Không:** "—" | Email + tên đơn vị |
+### 2. Chi tiết hệ thống VTS (Drawer / Popup)
 
-### Nhóm 2 — Thông tin hệ thống VTS
+#### Tab 1 — Thông tin chung
+| STT | Tên trường | Loại điều khiển | Giá trị hiển thị | Mô tả |
+|---|---|---|---|---|
+| 1 | Đơn vị quản lý | Label | Tên đơn vị quản lý | |
+| 2 | Ghi chú | Label | Nội dung ghi chú | |
+| 3 | Trạng thái | Label (Badge) | "Đã phê duyệt" (xanh) / "Chờ phê duyệt" (vàng) / "Từ chối" (đỏ) | Kèm box Lý do từ chối nếu bị từ chối |
 
-| STT | Tên trường | Loại điều khiển | Cho phép sửa | Giá trị hiển thị | Mô tả |
-|---|---|---|---|---|---|
-| 1 | Đơn vị chủ quản | Label | Không | **Có:** tên đơn vị. **Không:** "—" | |
-| 2 | Đơn vị vận hành khai thác | Label | Không | **Có:** tên đơn vị. **Không:** "—" | |
-| 3 | Thuộc cảng biển | Label | Không | **Có:** tên cảng. **Không:** "—" | |
-| 4 | Mã hệ thống VTS | Label | Không | **Có:** "VTS-000002". **Không:** "—" | |
-| 5 | Tên hệ thống VTS | Label | Không | **Có:** "vts demo 034". **Không:** "—" | |
-| 6 | Địa điểm (Tỉnh/Thành phố) | Label | Không | **Có:** tên tỉnh. **Không:** "—" | |
-| 7 | Địa điểm chi tiết | Label | Không | **Có:** nội dung. **Không:** "—" | |
-| 8 | Thời gian bắt đầu hoạt động | Label | Không | **Có:** "17/04/2026". **Không:** "—" | Định dạng DD/MM/YYYY |
-| 9 | Phạm vi áp dụng | Label | Không | **Có:** "Việt Nam". **Không:** "—" | |
-| 10 | Thông báo hàng hải | Label | Không | **Có:** nội dung. **Không:** "—" | |
-| 11 | Tình trạng | Label (Badge) | Không | **Có:** "Đang khai thác/vận hành" (xanh) / "Dừng hoạt động" (đỏ) / "Đang bảo trì" (vàng) / "Đang xây dựng" (xám). **Không:** "—" | |
+#### Tab 2 — Thông tin log cập nhật
+Bố cục dạng lưới 2 cột đối xứng, các trường nội dung phê duyệt chiếm trọn 1 dòng (full-width):
+- **Dòng 1**: `Ngày cập nhật` (Trái) — `Cán bộ cập nhật` (Phải) *(Chỉ hiển thị Email/Tên cán bộ, không kèm tên đơn vị)*
+- **Dòng 2**: `Ngày gửi phê duyệt` (Trái) — `Cán bộ gửi phê duyệt` (Phải)
+- **Dòng 3 (Cấp 1)**: `Ngày phê duyệt cấp Cảng vụ/Chi cục` (Trái) — `Cán bộ phê duyệt cấp Cảng vụ/Chi cục` (Phải)
+- **Dòng 4 (Cấp 1 - Full dòng)**: `Nội dung phê duyệt cấp Cảng vụ/Chi cục` (Hiển thị ý kiến chỉ đạo hoặc "Đã phê duyệt")
+- **Dòng 5 (Cấp 2)**: `Ngày phê duyệt cấp Cục` (Trái) — `Cán bộ phê duyệt cấp Cục` (Phải)
+- **Dòng 6 (Cấp 2 - Full dòng)**: `Nội dung phê duyệt cấp Cục` (Hiển thị ý kiến chỉ đạo hoặc "Đã phê duyệt")
+
+#### Tab 3 — Thông tin hệ thống VTS
+| STT | Tên trường | Loại điều khiển | Giá trị hiển thị | Mô tả |
+|---|---|---|---|---|
+| 1 | Đơn vị chủ quản | Label | Tên đơn vị | |
+| 2 | Đơn vị vận hành khai thác | Label | Tên đơn vị | |
+| 3 | Thuộc cảng biển | Label | Tên cảng biển | |
+| 4 | Mã hệ thống VTS | Label | Mã hệ thống (VD: "VTS-000002") | |
+| 5 | Tên hệ thống VTS | Label | Tên hệ thống (VD: "VTS Hải Phòng") | |
+| 6 | Địa điểm (Tỉnh/Thành phố) | Label | Tên tỉnh/thành phố | |
+| 7 | Địa điểm chi tiết | Label | Địa chỉ cụ thể | |
+| 8 | Thời gian bắt đầu hoạt động | Label | Định dạng DD/MM/YYYY | |
+| 9 | Phạm vi áp dụng | Label | Nội dung | |
+| 10 | Thông báo hàng hải | Label | Nội dung | |
+| 11 | Tình trạng | Label (Badge) | "Đang hoạt động" / "Dừng hoạt động" / "Đang bảo trì" / "Đang xây dựng" | |
 
 ### Nhóm 3 — Thông tin vùng VTS
 

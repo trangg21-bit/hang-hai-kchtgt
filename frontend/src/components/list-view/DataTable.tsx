@@ -39,7 +39,7 @@ function computeRowSetSignature(dataSource: any[], rowKey: string | ((record: an
 }
 
 export interface DataTableColumn {
-  key: string; label: string; sortable?: boolean; twoLine?: boolean;
+  key: string; label: React.ReactNode; sortable?: boolean; twoLine?: boolean;
   type?: 'text' | 'status' | 'action' | 'number' | 'date' | 'mono';
   width?: number | string;
   align?: 'left' | 'center' | 'right';
@@ -48,6 +48,8 @@ export interface DataTableColumn {
   sortOrder?: 'ascend' | 'descend' | null;
   cellTitle?: (record: any) => string;
   fixed?: 'left' | 'right';
+  /** Mặc định true (cắt chữ "..."); đặt false để header/cell wrap hiển thị đủ chữ. */
+  ellipsis?: boolean;
 }
 
 export interface DataTableProps {
@@ -217,10 +219,16 @@ const DataTable: React.FC<DataTableProps> = ({
       && !numericScrollNeedsOverflow,
   );
 
+  const resolvedScrollX = typeof scroll?.x === 'number'
+    ? scroll.x
+    : scroll?.x === 'max-content'
+      ? Math.max(totalDeclaredWidth, measuredTableWidth ?? layout.listTableMinWidth)
+      : (shouldStretchColumns || scroll?.x === '100%')
+        ? (measuredTableWidth ?? layout.listTableMinWidth)
+        : (scroll?.x ?? ((hasFixedColumns || hasGeneratedActionColumn) ? Math.max(totalDeclaredWidth, layout.listTableMinWidth) : undefined));
+
   const tableScroll = {
-    x: shouldStretchColumns || scroll?.x === '100%'
-      ? (measuredTableWidth ?? layout.listTableMinWidth)
-      : (scroll?.x ?? ((hasFixedColumns || hasGeneratedActionColumn) ? layout.listTableMinWidth : undefined)),
+    x: resolvedScrollX,
     y: isNumericScrollY && fitMode != null
       ? (fitMode === 'content' ? undefined : fitMode)
       : requestedScrollY,
@@ -229,7 +237,7 @@ const DataTable: React.FC<DataTableProps> = ({
   // declared columns are narrower than the viewport, one content column absorbs
   // the remainder so status/actions stay at the right edge instead of leaving a
   // blank header segment.
-  const tableLayout = dataSource.length === 0 || shouldStretchColumns ? 'fixed' as const : undefined;
+  const tableLayout = 'fixed' as const;
 
   if (children) {
     return (
@@ -293,7 +301,7 @@ const DataTable: React.FC<DataTableProps> = ({
       showSorterTooltip: false,
       align: col.align,
       fixed: col.fixed,
-      ellipsis: true,
+      ellipsis: col.ellipsis !== false,
       render: col.render ? (val: any, record: any, index: number) => col.render!(val, record, index)
         : col.type === 'mono'
           ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
@@ -312,7 +320,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 }
               : undefined,
       onHeaderCell: () => ({
-        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined },
+        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined, whiteSpace: col.ellipsis === false ? 'normal' : undefined, lineHeight: col.ellipsis === false ? 1.35 : undefined },
         onClick: col.sortable ? () => {
           if (onSort && dataKey) {
             const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';

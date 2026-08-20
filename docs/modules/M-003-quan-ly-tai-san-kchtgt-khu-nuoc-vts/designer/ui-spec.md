@@ -89,11 +89,13 @@ Visibility rules (gates are additive — all conditions must be true):
 | Phê duyệt C2 | Phê duyệt C2 | UNDER_REVIEW | `{prefix}:approvec2` |
 | Từ chối | Từ chối | UNDER_REVIEW | `{prefix}:approvec1` OR `{prefix}:approvec2` |
 
-Self-approval guard: if `nguoiPheDuyet` on the record matches the current user, the Phê duyệt C2 button is disabled with Tooltip: "Bạn không thể tự phê duyệt hồ sơ do mình xét duyệt C1".
+Self-approval guard: if `approverLevel1` on the record matches the current user, the Phê duyệt C2 button is disabled with Tooltip: "Bạn không thể tự phê duyệt hồ sơ do mình xét duyệt C1".
 
-Rejection flow: clicking "Từ chối" opens `RejectionModal` (Modal with required textarea for `lyDo`). Confirmation disabled until at least 10 characters entered.
+Approval flow: clicking "Phê duyệt C1" / "Phê duyệt C2" opens `ApprovalModal` (Modal with optional textarea for `approvalNote`, placeholder "Nhập nội dung / ý kiến phê duyệt..."). If left empty, defaults to "Đã phê duyệt".
 
-Loading state: all buttons enter `loading` state during pending API call; show `Spin` overlay if full-page save.
+Rejection flow: clicking "Từ chối" opens `RejectionModal` (Modal with required textarea for `rejectionReason`). Confirmation disabled until at least 10 characters entered.
+
+User name formatting rule: user identities (updatedBy, approver, etc.) are rendered cleanly as email / full name (without trailing organization name suffix).
 
 ### 1.3 `HistoryTimeline`
 

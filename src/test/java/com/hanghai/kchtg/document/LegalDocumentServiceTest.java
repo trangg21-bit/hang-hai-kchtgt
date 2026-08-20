@@ -1,18 +1,22 @@
 package com.hanghai.kchtg.document;
 
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;
+import com.hanghai.kchtg.document.entity.DocumentType;
 import com.hanghai.kchtg.document.entity.LegalDocument;
 import com.hanghai.kchtg.document.entity.ValidityStatus;
 import com.hanghai.kchtg.document.repository.AttachedDocumentRepository;
-import com.hanghai.kchtg.document.repository.LegalDocumentHistoryRepository;
 import com.hanghai.kchtg.document.repository.LegalDocumentRepository;
 import com.hanghai.kchtg.document.repository.SearchLogRepository;
 import com.hanghai.kchtg.document.repository.SearchResultRepository;
 import com.hanghai.kchtg.document.repository.SearchSuggestionRepository;
 import com.hanghai.kchtg.document.service.LegalDocumentService;
-import com.hanghai.kchtg.document.entity.LegalDocumentHistory;
 import com.hanghai.kchtg.document.entity.LegalDocumentHistoryAction;
 import com.hanghai.kchtg.document.entity.SearchSuggestion;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -29,9 +33,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,7 +52,7 @@ class LegalDocumentServiceTest {
     @Mock
     private SearchSuggestionRepository searchSuggestionRepository;
     @Mock
-    private LegalDocumentHistoryRepository legalDocumentHistoryRepository;
+    private ApprovalHistoryRepository approvalHistoryRepository;
     @Mock
     private UserRepository userRepository;
 
@@ -64,7 +68,7 @@ class LegalDocumentServiceTest {
                     org.springframework.test.util.ReflectionTestUtils.setField(doc, "id", UUID.randomUUID());
                     return doc;
                 });
-        lenient().when(legalDocumentHistoryRepository.save(any()))
+        lenient().when(approvalHistoryRepository.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(userRepository.findAllById(any())).thenReturn(java.util.Collections.emptyList());
         lenient().when(userRepository.findById(any())).thenReturn(java.util.Optional.empty());
@@ -122,7 +126,6 @@ class LegalDocumentServiceTest {
 
         assertThat(document.getDeletedAt()).isNotNull();
         verify(legalDocumentRepository).save(document);
-        verify(legalDocumentHistoryRepository).save(any());
     }
 
     @Test
@@ -184,30 +187,43 @@ class LegalDocumentServiceTest {
 
         assertThat(document.getValidityStatus()).isEqualTo(ValidityStatus.EXPIRED);
         verify(legalDocumentRepository).save(document);
-        verify(legalDocumentHistoryRepository).save(any());
+        verify(approvalHistoryRepository).save(any());
     }
 
     @Test
     void getHistory_shouldReturnHistoryList() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         LegalDocument document = LegalDocument.builder().documentName("Doc with history").build();
         document.setId(id);
 
-        LegalDocumentHistory history1 = LegalDocumentHistory.builder()
-                .legalDocument(document)
-                .action(LegalDocumentHistoryAction.CREATED)
-                .changedAt(LocalDateTime.now())
-                .documentName("Doc with history")
+        ApprovalHistory history1 = ApprovalHistory.builder()
+                .refId(id)
+                .refType(InfrastructureType.LEGAL_DOCUMENT)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(ApprovalHistoryStatus.CREATED)
+                .approvedBy(userId)
+                .approvedDate(LocalDateTime.now())
+                .changedField("Doc with history")
                 .build();
 
+        var orgUnit = com.hanghai.kchtg.orgunit.entity.OrgUnit.builder().name("Cục Hàng hải Việt Nam").build();
+        var user = new User();
+        user.setId(userId);
+        user.setFullName("Nguyễn Văn An");
+        user.setOrgUnit(orgUnit);
+
         when(legalDocumentRepository.findById(id)).thenReturn(Optional.of(document));
-        when(legalDocumentHistoryRepository.findByLegalDocumentIdOrderByChangedAtDesc(id))
+        when(approvalHistoryRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.LEGAL_DOCUMENT, id))
                 .thenReturn(List.of(history1));
+        when(userRepository.findAllById(List.of(userId))).thenReturn(List.of(user));
 
         var histories = service.getHistory(id);
 
         assertThat(histories).hasSize(1);
         assertThat(histories.get(0).getAction()).isEqualTo(LegalDocumentHistoryAction.CREATED);
+        assertThat(histories.get(0).getChangedByName()).isEqualTo("Nguyễn Văn An");
+        assertThat(histories.get(0).getOrgUnitName()).isEqualTo("Cục Hàng hải Việt Nam");
     }
 
     @Test

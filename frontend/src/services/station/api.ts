@@ -113,4 +113,3 @@ export async function updateInmarsat(id: string, payload: CoastalStationInmarsat
 export async function deleteInmarsat(id: string): Promise<void> {
   await api.delete(`/v1/stations/inmarsat/${id}`);
 }
-
