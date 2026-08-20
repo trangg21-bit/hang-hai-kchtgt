@@ -1,0 +1,44 @@
+{
+  "triage_id": "TRI-1787194536636-b6e2",
+  "created_at": 1787194536636,
+  "request_summary": "Bổ sung BR về đơn vị trực thuộc (BR-002-09/10/11/12) vào feature-brief F-002 + đồng bộ lean-spec cũ hết mâu thuẫn (mô hình Role cũ, thiếu organizationId, GroupHistory/xóa nhóm)",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/ba/00-lean-spec.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/ba/00-lean-spec.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Quản lý nhóm người dùng (F-002) — popup Tạo nhóm có trường Đơn vị bắt buộc; danh sách nhóm lọc theo đơn vị",
+  "blast_radius": 2,
+  "done_oracle": "feature-brief.md F-002 mục 4.1 có BR-002-09 (nhóm bắt buộc thuộc đơn vị), BR-002-10 (đơn vị không đổi khi sửa), BR-002-11 (thao tác trong phạm vi đơn vị được phân quyền), BR-002-12 (orgunit:scope_all/admin:all không kế thừa qua nhóm); lean-spec 00-lean-spec.md không còn mô tả mô hình Role cũ/UserGroup thiếu organizationId/GroupHistory/xóa nhóm trái với brief mới; không file code nào bị sửa",
+  "verification_commands": [
+    {
+      "command": "git diff --stat -- docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 60000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "fa683309863f5a0d0523ee36df1729e91afce54d",
+    "dirty": true,
+    "captured_at": 1787194536821
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}
