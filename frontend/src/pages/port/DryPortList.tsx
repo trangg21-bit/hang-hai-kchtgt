@@ -198,7 +198,7 @@ const numberInputStyle: React.CSSProperties = {
 /* ── Helpers ────────────────────────────────────────────── */
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm'); } catch { return dateStr; }
+  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
 function provinceName(provinceId: number | null | undefined): string {
@@ -227,7 +227,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (fn === 'approvalStatus') { const m: Record<string, string> = { DRAFT: 'Nháp', PENDING: 'Chờ phê duyệt', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối' }; return m[val] || val; }
   if (fn === 'operationalStatus') { const m: Record<string, string> = { OPERATIONAL: 'Đang hoạt động', SUSPENDED: 'Tạm ngừng' }; return m[val] || val; }
   if (fn === 'portStatus') { const m: Record<string, string> = { '0': 'Chưa khai thác', '1': 'Vận hành' }; return m[val] || val; }
-  if (fn === 'announcementTime' || fn === 'changedAt' || fn === 'createdAt') { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
+  if (fn === 'announcementTime' || fn === 'changedAt' || fn === 'createdAt') { try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; } }
   if (fn === 'announcementDecisionDate') { try { return dayjs(val).format('DD/MM/YYYY'); } catch { return val; } }
   return val;
 }
@@ -991,7 +991,7 @@ export default function DryPortList() {
 
   const columns = useMemo(() => [
     {
-      key: 'sequenceNo', label: 'STT', width: 55, type: 'mono' as const, align: 'center' as const,
+      key: 'sequenceNo', label: 'STT', width: 70, type: 'mono' as const, align: 'center' as const,
       render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
     },
     {
@@ -999,7 +999,7 @@ export default function DryPortList() {
       render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
     },
     {
-      key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 250, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
+      key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 215, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
       render: (_: unknown, record: DryPort) => (
         <div>
           <a onClick={() => openDetailModal(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{record.dryPortName || '—'}</a>
@@ -1008,7 +1008,7 @@ export default function DryPortList() {
       )
     },
     {
-      key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 150,
+      key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 200,
       render: (v: number | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceName(v)}</span>
     },
     {
@@ -1146,7 +1146,7 @@ export default function DryPortList() {
             </Col>
             <Col span={12}>
               <Form.Item name="teuCapacity" {...labelProps('Công suất khai thác')} required rules={[{ required: true, message: 'Công suất khai thác là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>

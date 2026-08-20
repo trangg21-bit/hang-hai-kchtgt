@@ -47,11 +47,10 @@ body {
   overflow-x: auto !important;
 }
 
-/* Keep list pagination anchored below a stable table body when a page has
-   only a few rows. The body still grows naturally when there are more rows. */
-.list-view-table .ant-table-body {
-  min-height: var(--list-table-scroll-y);
-}
+/* Thân bảng chỉ bị giới hạn trên bởi max-height (scroll.y) — ít bản ghi thì
+   bảng co sát nội dung, nhiều bản ghi thì cuộn trong bảng. KHÔNG đặt
+   min-height theo viewport: nó thắng max-height (CSS) và tạo khoảng trống
+   lớn dưới bản ghi cuối cùng khi danh sách ngắn. */
 
 /* Keep the empty state centered in the same full-height body as a populated
    list. AntD otherwise sizes the placeholder row only to its content and

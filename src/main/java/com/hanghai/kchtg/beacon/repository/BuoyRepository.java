@@ -24,6 +24,7 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     Page<Buoy> findByType(String type, Pageable pageable);
     List<Buoy> findByNameContainingIgnoreCase(String name);
     List<Buoy> findByCodeContainingIgnoreCase(String code);
+    List<Buoy> findByBuoyStationId(UUID buoyStationId);
 
     @Query("SELECT b FROM Buoy b WHERE " +
            "((cast(:name as string) IS NULL AND cast(:code as string) IS NULL) OR " +

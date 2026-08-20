@@ -146,7 +146,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm'); } catch { return dateStr; }
+  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
 // ── History helpers ───────────────────────────────────────────────────
