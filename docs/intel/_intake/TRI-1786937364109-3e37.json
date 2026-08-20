@@ -1,0 +1,113 @@
+{
+  "triage_id": "TRI-1786937364109-3e37",
+  "created_at": 1786937364109,
+  "request_summary": "Chuẩn hóa trường Tỉnh/Thành phố trong form tạo/sửa Đơn vị (org-units) từ Input free text thành dropdown 63 tỉnh, lưu province_id INT như các đối tượng KCHT khác (VTS)",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/organizations/UnitForm.tsx",
+      "frontend/src/pages/organizations/UnitList.tsx",
+      "frontend/src/services/organizationService.ts",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/CreateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/OrgUnitResponse.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/UpdateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnit.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/service/OrganizationService.java",
+      "src/main/resources/db/migration/V110__add_org_units_province_id.sql"
+    ],
+    "impact_files": [
+      "frontend/src/pages/organizations/UnitForm.tsx",
+      "frontend/src/pages/organizations/UnitList.tsx",
+      "frontend/src/services/organizationService.ts",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/CreateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/OrgUnitResponse.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/UpdateOrgUnitRequest.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnit.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/service/OrganizationService.java",
+      "src/main/resources/db/migration/V110__add_org_units_province_id.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V110__add_org_units_province_id.sql"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V110__add_org_units_province_id.sql — floors at C3 regardless of size (9 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Quản lý đơn vị (/organizations) → Drawer Thêm mới/Sửa đơn vị → trường \"Địa điểm (Tỉnh/Thành phố)\"",
+  "blast_radius": 9,
+  "done_oracle": "Mở Drawer tạo/sửa đơn vị: trường \"Địa điểm (Tỉnh/Thành phố)\" là dropdown 63 tỉnh (showSearch), không còn nhập text tự do; khi lưu, bản ghi org_units.province_id được ghi mã tỉnh tương ứng và màn chi tiết/xem hiển thị đúng tên tỉnh",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q",
+      "cwd": "D:\\project\\hang-hai-kchtgt",
+      "timeout_ms": 420000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "D:\\project\\hang-hai-kchtgt\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "business_rule",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/organizations/UnitList.tsx",
+      "line": 494,
+      "quote": "<Form.Item name=\"address\" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập địa điểm (Tỉnh/Thành phố)' }]}>",
+      "source_hash": "680805262960561930d0dbd153f026e595550d55314242f5ca0c47745b16e5bf",
+      "quote_hash": "5641dc1438c1cb92eb68164c1320e997be1e2058ec5dcee225c77c14af837c7c",
+      "note": "Trường Tỉnh/Thành phố trong Drawer tạo/sửa đơn vị đang là Input free text (placeholder 'vd: Hải Phòng'), value lưu vào cột address"
+    },
+    {
+      "file": "frontend/src/pages/organizations/UnitList.tsx",
+      "line": 454,
+      "quote": "['Địa điểm (Tỉnh/Thành phố)', editingOrg.address || '—'],",
+      "source_hash": "680805262960561930d0dbd153f026e595550d55314242f5ca0c47745b16e5bf",
+      "quote_hash": "45d34bfd64b7497c52924e97d1248ed4d15dbcff94b9a0ddf58ef9d28e1df019",
+      "note": "Màn xem chi tiết hiển thị tỉnh/TP từ address (string tự nhập)"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnit.java",
+      "line": 73,
+      "quote": "@Column(name = \"province\", length = 100)",
+      "source_hash": "b400fe5eb73ae8785120d4ee64d5fbd7abb01920ed61aba8a5a3ec943baf47e4",
+      "quote_hash": "324d37c7c48426646b5ebf19b41379fcdbef918736e3bb35eca0d105eaca35f5",
+      "note": "OrgUnit có cột province string nhưng không có provinceId — DTO create/update/response không expose province"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/vtssystem/entity/VtsSystem.java",
+      "line": 30,
+      "quote": "@Column(name = \"province_id\")",
+      "source_hash": "1553a302a74552188e79ea6fa69baf1f1ccb06d68f28f61b209cc30221377764",
+      "quote_hash": "55a9fdb53f7bbef2ba9f124fdc6c7e08d7552902d4a493b149701a4c39a6852b",
+      "note": "Pattern chuẩn của các đối tượng KCHT (VTS): lưu province_id INT khớp bảng provinces (V108)"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/service/OrganizationService.java",
+      "line": 303,
+      "quote": ".address(request.getAddress())",
+      "source_hash": "c9e1826d96709a72cb6256ee3c065f14afe3702ed536a7a7572631ef9f8b1d85",
+      "quote_hash": "8fa0914f65f80b75f6a477f0c498628182506df189cf8ac44768f4122e59f3c4",
+      "note": "Builder create không map provinceId từ request"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "1f6e8b039d04002078b121487230e2e5e4aad156",
+    "dirty": true,
+    "captured_at": 1786937364247
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

@@ -196,6 +196,7 @@ class BerthServiceTest {
     @Test
     @DisplayName("F-016: softDelete — sets deletedAt and saves")
     void softDelete_succeeds() {
+        testBerth.setApprovalStatus(ApprovalStatus.DRAFT);
         when(berthRepository.findById(testId)).thenReturn(Optional.of(testBerth));
         when(pierRepository.countByBerthIdAndDeletedAtIsNull(testId)).thenReturn(0L);
         when(berthRepository.save(any())).thenReturn(testBerth);

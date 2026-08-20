@@ -21,12 +21,14 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/dry-ports")
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@DataScope
 public class DryPortController {
 
     private final DryPortService dryPortService;
@@ -52,7 +54,7 @@ public class DryPortController {
         DryPortResponse response = dryPortService.create(request);
         String msg = "draft".equals(request.getSaveAction()) ? "Đã lưu nháp"
                 : "approve".equals(request.getSaveAction()) ? "Đã tạo và phê duyệt thành công"
-                : "Tạo mới cảng cạn thành công";
+                        : "Tạo mới cảng cạn thành công";
         return ResponseEntity.ok(ApiResponse.success(msg, response));
     }
 
@@ -74,9 +76,11 @@ public class DryPortController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing DryPorts: page={}, size={}, orgUnitId={}, provinceId={}, search={}, status={}, approvalStatus={}",
+        log.info(
+                "Listing DryPorts: page={}, size={}, orgUnitId={}, provinceId={}, search={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, provinceId, search, status, approvalStatus);
-        Page<DryPortResponse> result = dryPortService.findAll(page, size, orgUnitId, provinceId, search, status, approvalStatus);
+        Page<DryPortResponse> result = dryPortService.findAll(page, size, orgUnitId, provinceId, search, status,
+                approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng cạn thành công", result));
     }
 
@@ -88,7 +92,7 @@ public class DryPortController {
         DryPortResponse response = dryPortService.update(request);
         String msg = "submit".equals(request.getSaveAction()) ? "Đã gửi phê duyệt"
                 : "approve".equals(request.getSaveAction()) ? "Đã cập nhật và phê duyệt thành công"
-                : "Cập nhật cảng cạn thành công";
+                        : "Cập nhật cảng cạn thành công";
         return ResponseEntity.ok(ApiResponse.success(msg, response));
     }
 
@@ -171,7 +175,8 @@ public class DryPortController {
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
             Authentication authentication) {
-        if (files == null || files.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.error("Không có file"));
+        if (files == null || files.isEmpty())
+            return ResponseEntity.badRequest().body(ApiResponse.error("Không có file"));
         UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
         dryPortService.uploadAttachments(id, files, userId);
         return ResponseEntity.ok(ApiResponse.success("Tải lên thành công", null));

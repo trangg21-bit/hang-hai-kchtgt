@@ -6,7 +6,6 @@ import {
   Form,
   Input,
   InputNumber,
-  message,
   Space
 } from 'antd';
 import {
@@ -26,9 +25,9 @@ import { colors } from '../../theme';
 import { fontWeightBold, fontSizeMd, fontSizeLg, radiusPill, spaceFormField } from '../../tokens';
 import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components/list-view';
 import { usePermissionStore } from '../../store/permissionStore';
-import toast from '../../components/ToastNotification';
+import toast, { message, modal } from '../../components/ToastNotification';
 
-const { confirm } = Modal;
+const { confirm } = modal;
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 

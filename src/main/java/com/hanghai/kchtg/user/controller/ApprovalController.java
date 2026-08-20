@@ -1,10 +1,10 @@
 package com.hanghai.kchtg.user.controller;
 
-import com.hanghai.kchtg.common.entity.EntityFields;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.user.dto.ApprovalDecisionRequest;
 import com.hanghai.kchtg.user.dto.PendingApprovalResponse;
+import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.service.ApprovalService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -27,7 +27,6 @@ import java.util.UUID;
  * - GET /api/approvals/pending — list pending approvals (admin only)
  * - POST /api/approvals/{id}/approve — approve a pending request
  * - POST /api/approvals/{id}/reject — reject a pending request
- * - POST /api/users/pending — self-registration (public)
  * </p>
  */
 @RestController
@@ -42,10 +41,10 @@ public class ApprovalController {
 
     /**
      * GET /api/approvals/pending — Danh sach yeu ca dang ky dang cho phep duyet (phan trang).
-     * @PreAuthorize for ADMIN_OPERATION or SYSTEM_ADMIN.
+     * @PreAuthorize for user:read or user:approve (including user:manage, admin:all, and Super Admin).
      */
     @GetMapping("/pending")
-    @PreAuthorize("hasRole('ADMIN_OPERATION') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'user:read') or @auth.check(authentication, 'user:approve')")
     public ResponseEntity<ApiResponse<Page<PendingApprovalResponse>>> listPending(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -59,7 +58,7 @@ public class ApprovalController {
      * GET /api/approvals/{id} — Chi tiet yeu ca phep duyet theo ID.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN_OPERATION') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'user:read') or @auth.check(authentication, 'user:approve')")
     public ResponseEntity<ApiResponse<PendingApprovalResponse>> getById(@PathVariable UUID id) {
         PendingApprovalResponse result = approvalService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(result));
@@ -69,11 +68,10 @@ public class ApprovalController {
      * POST /api/approvals/{id}/approve — Phep duyet yeu ca.
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN_OPERATION') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'user:approve')")
     public ResponseEntity<ApiResponse<PendingApprovalResponse>> approve(
             @PathVariable UUID id,
             @Valid @RequestBody ApprovalDecisionRequest request) {
-        // Extract current user's ID from SecurityContext
         UUID approverId = getCurrentUserId();
         PendingApprovalResponse result = approvalService.approve(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt thành công", result));
@@ -83,15 +81,15 @@ public class ApprovalController {
      * POST /api/approvals/{id}/reject — Tu tuyen yeu ca.
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN_OPERATION') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'user:approve')")
     public ResponseEntity<ApiResponse<PendingApprovalResponse>> reject(
             @PathVariable UUID id,
             @Valid @RequestBody ApprovalDecisionRequest request) {
         UUID approverId = getCurrentUserId();
-        String reason = request.getReason() != null ? request.getReason() : "Khong co ly do";
+        String reason = request.getReason() != null ? request.getReason() : "Không có lý do";
 
         PendingApprovalResponse result = approvalService.reject(id, approverId, reason);
-        return ResponseEntity.ok(ApiResponse.success("Tu tuyen thành công", result));
+        return ResponseEntity.ok(ApiResponse.success("Từ chối thành công", result));
     }
 
     // =========================================================================
@@ -104,10 +102,12 @@ public class ApprovalController {
      */
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getDetails() != null) {
-            Object details = auth.getDetails();
-            if (details instanceof Map) {
-                Object userId = ((Map<?, ?>) details).get("userId");
+        if (auth != null && auth.isAuthenticated()) {
+            if (auth.getPrincipal() instanceof User user) {
+                return user.getId();
+            }
+            if (auth.getDetails() instanceof Map<?, ?> details) {
+                Object userId = details.get("userId");
                 if (userId != null) {
                     return UUID.fromString(userId.toString());
                 }

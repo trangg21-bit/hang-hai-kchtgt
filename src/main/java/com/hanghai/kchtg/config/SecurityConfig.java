@@ -8,11 +8,14 @@ import com.hanghai.kchtg.security.filter.CookieRefreshTokenFilter;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -34,7 +37,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * <p>
  * Enables JWT-based stateless authentication.
  * CSRF is disabled (REST APIs are stateless).
- * The H2 console is open for local development ({@code /h2-console/**}).
+ * The H2 console is open for local development ({@code /h2-console/**}) only when enabled and in dev/local/test.
  * {@code /api/auth/login} is the unauthenticated login endpoint.
  * All other {@code /api/**} endpoints require a valid JWT Bearer token.
  * </p>
@@ -51,12 +54,43 @@ public class SecurityConfig {
     private final CookieRefreshTokenFilter cookieRefreshTokenFilter;
     private final PermissionMiddleware permissionMiddleware;
 
+    @Value("${spring.h2.console.enabled:false}")
+    private boolean h2ConsoleEnabled;
+
+    @Autowired(required = false)
+    private Environment environment;
+
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           CookieRefreshTokenFilter cookieRefreshTokenFilter,
                           @Nullable PermissionMiddleware permissionMiddleware) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.cookieRefreshTokenFilter = cookieRefreshTokenFilter;
         this.permissionMiddleware = permissionMiddleware;
+    }
+
+    private boolean isH2ConsolePermitted() {
+        if (!h2ConsoleEnabled) {
+            return false;
+        }
+        if (environment == null) {
+            return true;
+        }
+        String[] activeProfiles = environment.getActiveProfiles();
+        if (activeProfiles.length == 0) {
+            String[] defaultProfiles = environment.getDefaultProfiles();
+            for (String profile : defaultProfiles) {
+                if ("dev".equalsIgnoreCase(profile) || "local".equalsIgnoreCase(profile) || "test".equalsIgnoreCase(profile)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        for (String profile : activeProfiles) {
+            if ("dev".equalsIgnoreCase(profile) || "local".equalsIgnoreCase(profile) || "test".equalsIgnoreCase(profile)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Bean
@@ -73,8 +107,13 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/h2-console/**").permitAll()
+                .authorizeHttpRequests(auth -> {
+                    if (isH2ConsolePermitted()) {
+                        auth.requestMatchers("/h2-console/**").permitAll();
+                    } else {
+                        auth.requestMatchers("/h2-console/**").denyAll();
+                    }
+                    auth
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/password-policy").permitAll()
                         // Map data stays readable without a login so the public map keeps
@@ -102,8 +141,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/register/**").permitAll()
                         .requestMatchers("/api/auth/totp/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated();
+                })
 
                 // Disable form/basic login - JWT only
                 .formLogin(AbstractHttpConfigurer::disable)

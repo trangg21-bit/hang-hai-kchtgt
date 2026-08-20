@@ -3,7 +3,7 @@ import {
   Alert, Card, Button, Space, Typography, Row, Col, InputNumber,
   Select, Input, Form, Upload, Divider,
 } from 'antd';
-import type { UploadFile } from 'antd';
+import type { RcFile, UploadFile } from 'antd/es/upload/interface';
 import {
   ArrowLeftOutlined, PlusOutlined, DeleteOutlined, UploadOutlined,
 } from '@ant-design/icons';
@@ -12,6 +12,7 @@ import api from '../api';
 import toast from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
   actionPrimary, spaceFormField, radiusPill, radiusLg, surfaceCard,
@@ -86,8 +87,8 @@ export default function PortCreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [portCodeLoading, setPortCodeLoading] = useState(true);
   const currentUser = useAuthStore((s) => s.user);
-  const userPermissions = currentUser?.permissions || [];
-  const isSystemAdmin = userPermissions.includes('admin:manage');
+  const hasPermission = usePermissionStore((s) => s.hasPermission);
+  const isSystemAdmin = hasPermission('admin:all') || hasPermission('*') || currentUser?.role === 'ROLE_SYSTEM_ADMIN' || currentUser?.role === 'ROLE_SUPER_ADMIN';
   const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
@@ -162,7 +163,7 @@ export default function PortCreatePage() {
   }, [form, isSystemAdmin]);
 
   /* ── File upload handlers ── */
-  const handleBeforeUpload = (file: File): false => {
+  const handleBeforeUpload = (file: RcFile): false => {
     // Size check
     if (file.size > MAX_FILE_SIZE) {
       toast.error(`File "${file.name}" vượt quá 20MB`);

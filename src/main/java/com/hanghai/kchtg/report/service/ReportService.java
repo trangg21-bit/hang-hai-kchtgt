@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.report.service;
 
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
@@ -72,6 +73,7 @@ public class ReportService {
      */
     @Transactional
     public ReportEntity createReport(ReportRequest request) {
+        FieldWriteGuard.validateObject(request);
         ReportEntity entity = ReportEntity.builder()
                 .reportType(request.getReportType())
                 .status(ReportStatus.PENDING)
@@ -312,7 +314,8 @@ public class ReportService {
             Bcc157Response savedData = bcc157Service.findByOrgUnitIdAndReportYearAndNguonDuLieu(
                     targetUnitId, reportYear, "1");
             if (savedData != null) {
-                // Build preview rows from real saved data — matching frontend ReportViewer.tsx lines 182-196
+                // Build preview rows from real saved data — matching frontend ReportViewer.tsx
+                // lines 182-196
                 rows.add(buildF142Row("1", "Nguyên giá - Số dư đầu năm",
                         savedData.getOpeningOriginalCostCode(), "1.1",
                         savedData.getAssetOpeningOriginalCost()));
@@ -401,11 +404,13 @@ public class ReportService {
      * Helper to build a single F-142 preview row from Bcc157Response fields.
      * Matches the frontend pattern in ReportViewer.tsx lines 182-196:
      * - Mã số uses the saved maSo* value, falling back to the default id
-     * - TSHT hàng hải / Tổng cộng use the saved taiSan* BigDecimal, falling back to 0
-     * Both columns carry the same value (B04a/BCTC form — no sub-category breakdown).
+     * - TSHT hàng hải / Tổng cộng use the saved taiSan* BigDecimal, falling back to
+     * 0
+     * Both columns carry the same value (B04a/BCTC form — no sub-category
+     * breakdown).
      */
     private Map<String, Object> buildF142Row(String sequenceNo, String chiTieu, String maSo, String defaultCode,
-                                              java.math.BigDecimal value) {
+            java.math.BigDecimal value) {
         Map<String, Object> row = new HashMap<>();
         row.put("STT", sequenceNo);
         row.put("Chỉ tiêu", chiTieu);
@@ -420,8 +425,7 @@ public class ReportService {
                 "STT", "Danh mục tài sản", "Đơn vị tính", "Số lượng", "Năm xây dựng",
                 "Năm sử dụng", "Diện tích đất (m2)", "Diện tích sàn sử dụng (m2)",
                 "Nguyên giá (nghìn đồng)", "Giá trị còn lại (nghìn đồng)",
-                "Tình trạng tài sản", "Ghi chú"
-        ));
+                "Tình trạng tài sản", "Ghi chú"));
 
         List<Map<String, Object>> rows = new ArrayList<>();
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -531,10 +535,13 @@ public class ReportService {
                     r.put("Năm xây dựng", ts.getConstructionYear() != null ? ts.getConstructionYear() : "");
                     r.put("Năm sử dụng", ts.getInServiceYear() != null ? ts.getInServiceYear() : "");
                     r.put("Diện tích đất (m2)", ts.getLandArea() != null ? ts.getLandArea().doubleValue() : 0.0);
-                    r.put("Diện tích sàn sử dụng (m2)", ts.getFloorArea() != null ? ts.getFloorArea().doubleValue() : 0.0);
+                    r.put("Diện tích sàn sử dụng (m2)",
+                            ts.getFloorArea() != null ? ts.getFloorArea().doubleValue() : 0.0);
 
-                    java.math.BigDecimal ngVal = ts.getOriginalCost() != null ? ts.getOriginalCost() : java.math.BigDecimal.ZERO;
-                    java.math.BigDecimal clVal = ts.getResidualValue() != null ? ts.getResidualValue() : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal ngVal = ts.getOriginalCost() != null ? ts.getOriginalCost()
+                            : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal clVal = ts.getResidualValue() != null ? ts.getResidualValue()
+                            : java.math.BigDecimal.ZERO;
 
                     // Convert to nghìn đồng
                     r.put("Nguyên giá (nghìn đồng)", ngVal.longValue() / 1000);
@@ -916,10 +923,6 @@ public class ReportService {
         return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
     }
 
-
-
-
-
     private ReportResponse getPreviewF148(ReportPreviewRequest request) {
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
 
@@ -927,7 +930,7 @@ public class ReportService {
 
         if (targetUnitId != null) {
             isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> "CUC_HHVT".equals(u.getCode()))
+                    .map(u -> u.getParentId() == null)
                     .orElse(false);
         }
 
@@ -938,14 +941,16 @@ public class ReportService {
         final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear()
                 : LocalDate.now().getYear();
 
-        // 1. Query Port (ports) as root — matching hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng
+        // 1. Query Port (ports) as root — matching hh.csdl hierarchy: Cảng biển → Bến
+        // cảng → Cầu cảng
         List<Port> allPorts = portRepository.findAll().stream()
                 .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                 .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                 .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                 .toList();
 
-        // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
+        // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data
+        // rows)
         List<Port> group1Ports = new ArrayList<>(allPorts);
         List<Port> group2Ports = new ArrayList<>();
 
@@ -962,8 +967,7 @@ public class ReportService {
                 "Đơn vị tính",
                 "Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
                 "Tàu neo đậu, làm hàng lớn nhất (DWT)",
-                "Ghi chú"
-        );
+                "Ghi chú");
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int sequenceNo = 1;
@@ -991,7 +995,8 @@ public class ReportService {
             }
         }
 
-        // Section II: Cảng, bến thủy nội địa (inland waterways) — always shows even if empty
+        // Section II: Cảng, bến thủy nội địa (inland waterways) — always shows even if
+        // empty
         {
             Map<String, Object> sectionRow = new LinkedHashMap<>();
             sectionRow.put("STT", "II");
@@ -1038,10 +1043,6 @@ public class ReportService {
         summary.put("Tổng số dòng", dataRowCount);
         return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
     }
-
-
-
-
 
     /**
      * Formats TrangThaiHoatDong enum to a human-readable Vietnamese label.
@@ -1115,11 +1116,13 @@ public class ReportService {
     }
 
     /**
-     * Appends one Port port row, then its BenCang children, then each BenCang's Pier children.
+     * Appends one Port port row, then its BenCang children, then each BenCang's
+     * Pier children.
      * Returns the next STT value.
      * <p>
      * This implements the hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng.
-     * Port rows carry the sequential STT; berth and wharf rows are indented with empty STT.
+     * Port rows carry the sequential STT; berth and wharf rows are indented with
+     * empty STT.
      */
     private int appendF148Hierarchy(
             Port port,
@@ -1148,15 +1151,15 @@ public class ReportService {
         portRow.put("Đơn vị tính", "tấn/năm");
         portRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", "");
         double portDwt = port.getMaxVesselCapacity() != null
-                ? port.getMaxVesselCapacity().doubleValue() : 0.0;
+                ? port.getMaxVesselCapacity().doubleValue()
+                : 0.0;
         portRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", portDwt);
         portRow.put("Ghi chú", "");
         portRow.put("_rowType", "port");
         rows.add(portRow);
 
         // ── Berths (Bến cảng) under this port ──
-        List<Berth> berths =
-                berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
+        List<Berth> berths = berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
         for (Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
@@ -1174,11 +1177,13 @@ public class ReportService {
             }
 
             double dwtBerth = berth.getMaxVesselSize() != null
-                    ? berth.getMaxVesselSize().doubleValue() : 0.0;
+                    ? berth.getMaxVesselSize().doubleValue()
+                    : 0.0;
 
             Map<String, Object> berthRow = new LinkedHashMap<>();
             berthRow.put("STT", "");
-            berthRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0" + berth.getBerthName());
+            berthRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa",
+                    "\u00A0\u00A0\u00A0\u00A0" + berth.getBerthName());
             berthRow.put("Đơn vị quản lý khai thác cảng", donViBerth);
             berthRow.put("Địa điểm, vị trí cảng", berthLocation);
             berthRow.put("Thời điểm công bố mở", thoiDiemBerth);
@@ -1187,13 +1192,15 @@ public class ReportService {
             // Năng lực từ Berth extended fields
             // Năm báo cáo = currentThroughput
             double reportYearCapacity = berth.getCurrentThroughput() != null
-                    ? berth.getCurrentThroughput().doubleValue() : 0.0;
+                    ? berth.getCurrentThroughput().doubleValue()
+                    : 0.0;
             berthRow.put("Năng lực năm báo cáo", reportYearCapacity);
             // Năm trước = currentThroughput if updatedAt.year == reportYear - 1
             double nlTruoc = (berth.getCurrentThroughput() != null
                     && berth.getUpdatedAt() != null
                     && berth.getUpdatedAt().getYear() == reportYear - 1)
-                    ? berth.getCurrentThroughput().doubleValue() : 0.0;
+                            ? berth.getCurrentThroughput().doubleValue()
+                            : 0.0;
             berthRow.put("Năng lực năm trước", nlTruoc);
             berthRow.put("Đơn vị tính", "tấn/năm");
             berthRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
@@ -1203,15 +1210,16 @@ public class ReportService {
             rows.add(berthRow);
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<Pier> wharves =
-                    pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
+            List<Pier> wharves = pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
             for (Pier wharf : wharves) {
                 double dwtWharf = wharf.getDesignLoad() != null
-                        ? wharf.getDesignLoad().doubleValue() : 0.0;
+                        ? wharf.getDesignLoad().doubleValue()
+                        : 0.0;
 
                 Map<String, Object> wharfRow = new LinkedHashMap<>();
                 wharfRow.put("STT", "");
-                wharfRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getPierName());
+                wharfRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa",
+                        "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getPierName());
                 wharfRow.put("Đơn vị quản lý khai thác cảng", "");
                 wharfRow.put("Địa điểm, vị trí cảng", "");
                 wharfRow.put("Thời điểm công bố mở", "");
@@ -1236,7 +1244,7 @@ public class ReportService {
         boolean isRoot = false;
         if (targetUnitId != null) {
             isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> "CUC_HHVT".equals(u.getCode()))
+                    .map(u -> u.getParentId() == null)
                     .orElse(false);
         }
         final boolean skipFilter = targetUnitId == null || isRoot;
@@ -1291,12 +1299,14 @@ public class ReportService {
                 List<Berth> children = berthRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
                 double reportYearCapacity = children.stream()
                         .filter(b -> b.getCurrentThroughput() != null)
-                        .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear)
+                        .filter(b -> b.getOpeningAnnouncementDate() != null
+                                && b.getOpeningAnnouncementDate().getYear() == reportYear)
                         .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                         .sum();
                 double capNamTruoc = children.stream()
                         .filter(b -> b.getCurrentThroughput() != null)
-                        .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear - 1)
+                        .filter(b -> b.getOpeningAnnouncementDate() != null
+                                && b.getOpeningAnnouncementDate().getYear() == reportYear - 1)
                         .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                         .sum();
                 Map<String, Object> itemRow = new LinkedHashMap<>();
@@ -1334,7 +1344,8 @@ public class ReportService {
                 Map<String, String> replacements = buildReplacements(request, reportYear);
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
 
-                // 1. CRUD-first: try to read real data from bcc157_report table (nguonDuLieu='1')
+                // 1. CRUD-first: try to read real data from bcc157_report table
+                // (nguonDuLieu='1')
                 boolean useCrudData = false;
                 if (targetUnitId != null) {
                     Bcc157Response savedData = bcc157Service.findByOrgUnitIdAndReportYearAndNguonDuLieu(
@@ -1393,7 +1404,8 @@ public class ReportService {
                     }
                 }
 
-                // 2. Fallback: if no CRUD data was found, set all data placeholders to safe defaults
+                // 2. Fallback: if no CRUD data was found, set all data placeholders to safe
+                // defaults
                 // so Excel formulas don't produce #VALUE! from literal unreplaced placeholders.
                 if (!useCrudData) {
                     replacements.put("${zobjComReport.openingOriginalCostCode.asText()}", "1.1");
@@ -1456,8 +1468,10 @@ public class ReportService {
                 // Compute BCC_157 formula cells directly from replacements map values
                 directComputeBcc157FromReplacements(destSheet, replacements);
 
-                // Force-overwrite computed cells: removeFormula() + setCellType(NUMERIC) + setCellValue()
-                // This defeats any stale formula/string formatting that survived copyCell + directCompute
+                // Force-overwrite computed cells: removeFormula() + setCellType(NUMERIC) +
+                // setCellValue()
+                // This defeats any stale formula/string formatting that survived copyCell +
+                // directCompute
                 forceWriteNumericCells(destSheet, replacements);
 
                 return outputWorkbook(workbook, destSheet, isExcel);
@@ -1546,7 +1560,8 @@ public class ReportService {
 
                     for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
                         Row srcRow = srcSheet.getRow(r);
-                        if (srcRow == null) continue;
+                        if (srcRow == null)
+                            continue;
 
                         if (r < 10) {
                             // Copy Row 0 to 9 (Header & Tổng cộng)
@@ -1558,8 +1573,10 @@ public class ReportService {
                                     Cell destCell = destRow.createCell(c);
                                     copyCell(srcCell, destCell, replacements);
                                     if (r == 9) {
-                                        if (c == 8) setNumericValue(destCell, (double) totalOriginalCostExport);
-                                        else if (c == 9) setNumericValue(destCell, (double) cLaiDauNamExport);
+                                        if (c == 8)
+                                            setNumericValue(destCell, (double) totalOriginalCostExport);
+                                        else if (c == 9)
+                                            setNumericValue(destCell, (double) cLaiDauNamExport);
                                     }
                                 }
                             }
@@ -1592,9 +1609,12 @@ public class ReportService {
                                     if (srcCell != null) {
                                         Cell destCell = catHeaderRow.createCell(c);
                                         destCell.setCellStyle(srcCell.getCellStyle());
-                                        if (c == 1) destCell.setCellValue(catName);
-                                        else if (c == 8) setNumericValue(destCell, (double) catOriginalCost);
-                                        else if (c == 9) setNumericValue(destCell, (double) catResidualValue);
+                                        if (c == 1)
+                                            destCell.setCellValue(catName);
+                                        else if (c == 8)
+                                            setNumericValue(destCell, (double) catOriginalCost);
+                                        else if (c == 9)
+                                            setNumericValue(destCell, (double) catResidualValue);
                                     }
                                 }
                                 destRowIdx++;
@@ -1605,14 +1625,18 @@ public class ReportService {
                                     detailRow.setHeight(srcRow11.getHeight());
 
                                     long val = ts.getOriginalCost() != null ? ts.getOriginalCost().longValue() : 0L;
-                                    long gTriConLai = ts.getResidualValue() != null ? ts.getResidualValue().longValue() : 0L;
+                                    long gTriConLai = ts.getResidualValue() != null ? ts.getResidualValue().longValue()
+                                            : 0L;
                                     String unitName = ts.getUnitOfMeasure() != null ? ts.getUnitOfMeasure() : "";
-                                    int pYear = ts.getConstructionYear() != null ? ts.getConstructionYear() : reportYear;
+                                    int pYear = ts.getConstructionYear() != null ? ts.getConstructionYear()
+                                            : reportYear;
                                     int pYearSuDung = ts.getInServiceYear() != null ? ts.getInServiceYear() : pYear;
                                     String tinhTrang = ts.getAssetCondition() != null ? ts.getAssetCondition() : "";
                                     String ghiChu = ts.getNotes() != null ? ts.getNotes() : "";
-                                    double dienTichDat = ts.getLandArea() != null ? ts.getLandArea().doubleValue() : 0.0;
-                                    double sanSuDung = ts.getFloorArea() != null ? ts.getFloorArea().doubleValue() : 0.0;
+                                    double dienTichDat = ts.getLandArea() != null ? ts.getLandArea().doubleValue()
+                                            : 0.0;
+                                    double sanSuDung = ts.getFloorArea() != null ? ts.getFloorArea().doubleValue()
+                                            : 0.0;
 
                                     for (int c = 0; c < srcRow11.getLastCellNum(); c++) {
                                         Cell srcCell = srcRow11.getCell(c);
@@ -1620,19 +1644,47 @@ public class ReportService {
                                             Cell destCell = detailRow.createCell(c);
                                             destCell.setCellStyle(srcCell.getCellStyle());
                                             switch (c) {
-                                                case 0: destCell.setCellValue(overallIdx); break;
-                                                case 1: destCell.setCellValue(ts.getAssetName() != null ? ts.getAssetName() : ""); break;
-                                                case 2: destCell.setCellValue(unitName); break;
-                                                case 3: destCell.setCellValue(ts.getQuantity() != null ? ts.getQuantity().doubleValue() : 1.0); break;
-                                                case 4: destCell.setCellValue(pYear); break;
-                                                case 5: destCell.setCellValue(pYearSuDung); break;
-                                                case 6: destCell.setCellValue(dienTichDat); break;
-                                                case 7: destCell.setCellValue(sanSuDung); break;
-                                                case 8: destCell.setCellValue((double) val); break;
-                                                case 9: destCell.setCellValue((double) gTriConLai); break;
-                                                case 10: destCell.setCellValue(tinhTrang); break;
-                                                case 11: destCell.setCellValue(ghiChu); break;
-                                                default: break;
+                                                case 0:
+                                                    destCell.setCellValue(overallIdx);
+                                                    break;
+                                                case 1:
+                                                    destCell.setCellValue(
+                                                            ts.getAssetName() != null ? ts.getAssetName() : "");
+                                                    break;
+                                                case 2:
+                                                    destCell.setCellValue(unitName);
+                                                    break;
+                                                case 3:
+                                                    destCell.setCellValue(
+                                                            ts.getQuantity() != null ? ts.getQuantity().doubleValue()
+                                                                    : 1.0);
+                                                    break;
+                                                case 4:
+                                                    destCell.setCellValue(pYear);
+                                                    break;
+                                                case 5:
+                                                    destCell.setCellValue(pYearSuDung);
+                                                    break;
+                                                case 6:
+                                                    destCell.setCellValue(dienTichDat);
+                                                    break;
+                                                case 7:
+                                                    destCell.setCellValue(sanSuDung);
+                                                    break;
+                                                case 8:
+                                                    destCell.setCellValue((double) val);
+                                                    break;
+                                                case 9:
+                                                    destCell.setCellValue((double) gTriConLai);
+                                                    break;
+                                                case 10:
+                                                    destCell.setCellValue(tinhTrang);
+                                                    break;
+                                                case 11:
+                                                    destCell.setCellValue(ghiChu);
+                                                    break;
+                                                default:
+                                                    break;
                                             }
                                         }
                                     }
@@ -1665,7 +1717,8 @@ public class ReportService {
                     }
                     for (PointObject p : points) {
                         ObjectType type = p.getObjectType();
-                        if (type == null) type = ObjectType.OTHER;
+                        if (type == null)
+                            type = ObjectType.OTHER;
                         groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
                     }
 
@@ -1678,7 +1731,8 @@ public class ReportService {
 
                     for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
                         Row srcRow = srcSheet.getRow(r);
-                        if (srcRow == null) continue;
+                        if (srcRow == null)
+                            continue;
 
                         if (r < 10) {
                             Row destRow = destSheet.createRow(r);
@@ -1689,8 +1743,10 @@ public class ReportService {
                                     Cell destCell = destRow.createCell(c);
                                     copyCell(srcCell, destCell, replacements);
                                     if (r == 9) {
-                                        if (c == 8) setNumericValue(destCell, (double) totalOriginalCostExport);
-                                        else if (c == 9) setNumericValue(destCell, (double) cLaiDauNamExport);
+                                        if (c == 8)
+                                            setNumericValue(destCell, (double) totalOriginalCostExport);
+                                        else if (c == 9)
+                                            setNumericValue(destCell, (double) cLaiDauNamExport);
                                     }
                                 }
                             }
@@ -1716,9 +1772,12 @@ public class ReportService {
                                     if (srcCell != null) {
                                         Cell destCell = catHeaderRow.createCell(c);
                                         destCell.setCellStyle(srcCell.getCellStyle());
-                                        if (c == 1) destCell.setCellValue(catName);
-                                        else if (c == 8) setNumericValue(destCell, (double) catOriginalCost);
-                                        else if (c == 9) setNumericValue(destCell, (double) catResidualValue);
+                                        if (c == 1)
+                                            destCell.setCellValue(catName);
+                                        else if (c == 8)
+                                            setNumericValue(destCell, (double) catOriginalCost);
+                                        else if (c == 9)
+                                            setNumericValue(destCell, (double) catResidualValue);
                                     }
                                 }
                                 destRowIdx++;
@@ -1738,17 +1797,40 @@ public class ReportService {
                                             Cell destCell = detailRow.createCell(c);
                                             destCell.setCellStyle(srcCell.getCellStyle());
                                             switch (c) {
-                                                case 0: destCell.setCellValue(overallIdx); break;
-                                                case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
-                                                case 2: destCell.setCellValue(unitName); break;
-                                                case 3: destCell.setCellValue(1.0); break;
-                                                case 4: case 5: destCell.setCellValue(pYear); break;
-                                                case 6: case 7: destCell.setCellValue(0.0); break;
-                                                case 8: destCell.setCellValue((double) val); break;
-                                                case 9: destCell.setCellValue((double) gTriConLai); break;
-                                                case 10: destCell.setCellValue(""); break;
-                                                case 11: destCell.setCellValue(""); break;
-                                                default: break;
+                                                case 0:
+                                                    destCell.setCellValue(overallIdx);
+                                                    break;
+                                                case 1:
+                                                    destCell.setCellValue(p.getName() != null ? p.getName() : "");
+                                                    break;
+                                                case 2:
+                                                    destCell.setCellValue(unitName);
+                                                    break;
+                                                case 3:
+                                                    destCell.setCellValue(1.0);
+                                                    break;
+                                                case 4:
+                                                case 5:
+                                                    destCell.setCellValue(pYear);
+                                                    break;
+                                                case 6:
+                                                case 7:
+                                                    destCell.setCellValue(0.0);
+                                                    break;
+                                                case 8:
+                                                    destCell.setCellValue((double) val);
+                                                    break;
+                                                case 9:
+                                                    destCell.setCellValue((double) gTriConLai);
+                                                    break;
+                                                case 10:
+                                                    destCell.setCellValue("");
+                                                    break;
+                                                case 11:
+                                                    destCell.setCellValue("");
+                                                    break;
+                                                default:
+                                                    break;
                                             }
                                         }
                                     }
@@ -3379,12 +3461,13 @@ public class ReportService {
 
                 if ("F-148".equalsIgnoreCase(request.getReportCode())) {
                     // Custom hierarchical export for F-148 (BCKCHT_163)
-                    // Hierarchy: Port → BenCang → Pier (same as getPreviewF148 + appendF148Hierarchy)
+                    // Hierarchy: Port → BenCang → Pier (same as getPreviewF148 +
+                    // appendF148Hierarchy)
 
                     boolean isRoot = false;
                     if (targetUnitId != null) {
                         isRoot = orgUnitRepository.findById(targetUnitId)
-                                .map(u -> "CUC_HHVT".equals(u.getCode()))
+                                .map(u -> u.getParentId() == null)
                                 .orElse(false);
                     }
 
@@ -3398,7 +3481,8 @@ public class ReportService {
                             .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                             .toList();
 
-                    // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
+                    // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data
+                    // rows)
                     List<Port> group1Ports = new ArrayList<>(allPorts);
                     List<Port> group2Ports = new ArrayList<>();
 
@@ -3533,10 +3617,13 @@ public class ReportService {
                     // Write "Tính đến ngày" to F7 if current year
                     if (reportYear == LocalDate.now().getYear()) {
                         Row r6 = destSheet.getRow(6);
-                        if (r6 == null) r6 = destSheet.createRow(6);
+                        if (r6 == null)
+                            r6 = destSheet.createRow(6);
                         Cell c = r6.getCell(5);
-                        if (c == null) c = r6.createCell(5);
-                        c.setCellValue("Tính đến ngày " + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                        if (c == null)
+                            c = r6.createCell(5);
+                        c.setCellValue("Tính đến ngày "
+                                + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
                         org.apache.poi.ss.usermodel.CellStyle style = destSheet.getWorkbook().createCellStyle();
                         org.apache.poi.ss.usermodel.Font font = destSheet.getWorkbook().createFont();
                         font.setFontName("Times New Roman");
@@ -3546,9 +3633,9 @@ public class ReportService {
                         style.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
                         c.setCellStyle(style);
                     }
-                finalizeWorkbookSheet(workbook);
+                    finalizeWorkbookSheet(workbook);
 
-                return outputWorkbook(workbook, destSheet, isExcel);
+                    return outputWorkbook(workbook, destSheet, isExcel);
                 } else if ("F-149".equalsIgnoreCase(request.getReportCode())) {
                     // Custom hierarchical export for F-149 (BCKCHT_164) using real Port
                     // entities
@@ -3557,7 +3644,7 @@ public class ReportService {
 
                     if (targetUnitId != null) {
                         isRoot = orgUnitRepository.findById(targetUnitId)
-                                .map(u -> "CUC_HHVT".equals(u.getCode()))
+                                .map(u -> u.getParentId() == null)
                                 .orElse(false);
                     }
 
@@ -3599,12 +3686,14 @@ public class ReportService {
                         List<Berth> children = berthRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
                         double reportYearCapacity = children.stream()
                                 .filter(b -> b.getCurrentThroughput() != null)
-                                .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear)
+                                .filter(b -> b.getOpeningAnnouncementDate() != null
+                                        && b.getOpeningAnnouncementDate().getYear() == reportYear)
                                 .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                                 .sum();
                         double capNamTruoc = children.stream()
                                 .filter(b -> b.getCurrentThroughput() != null)
-                                .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear - 1)
+                                .filter(b -> b.getOpeningAnnouncementDate() != null
+                                        && b.getOpeningAnnouncementDate().getYear() == reportYear - 1)
                                 .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                                 .sum();
 
@@ -3800,9 +3889,9 @@ public class ReportService {
                         applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalGeneratedRows - 1);
                     }
 
-                finalizeWorkbookSheet(workbook);
+                    finalizeWorkbookSheet(workbook);
 
-                return outputWorkbook(workbook, destSheet, isExcel);
+                    return outputWorkbook(workbook, destSheet, isExcel);
                 }
 
                 List<Map<String, Object>> arrResult = null;
@@ -3950,8 +4039,8 @@ public class ReportService {
                                 if (srcCell.getCellType() == CellType.STRING) {
                                     String expr = srcCell.getStringCellValue();
 
-if (expr != null && (expr.contains("table.")
-                                        || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+                                    if (expr != null && (expr.contains("table.")
+                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(0);
 
@@ -4050,8 +4139,8 @@ if (expr != null && (expr.contains("table.")
                                 if (srcCell.getCellType() == CellType.STRING) {
                                     String expr = srcCell.getStringCellValue();
 
-if (expr != null && (expr.contains("table.")
-                                        || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+                                    if (expr != null && (expr.contains("table.")
+                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(arrResult.size() - 1);
 
@@ -4092,11 +4181,13 @@ if (expr != null && (expr.contains("table.")
 
                 // F-150: fix năng lực rows — unmerge + fill "-"
                 if ("F-150".equalsIgnoreCase(request.getReportCode())) {
-                    // First pass: find năng lực rows and remove any merged regions that overlap them
+                    // First pass: find năng lực rows and remove any merged regions that overlap
+                    // them
                     java.util.Set<Integer> nangLucRows = new java.util.HashSet<>();
                     for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
                         Row row = destSheet.getRow(r);
-                        if (row == null) continue;
+                        if (row == null)
+                            continue;
                         Cell cellB = row.getCell(1);
                         if (cellB != null && cellB.getCellType() == CellType.STRING) {
                             String val = cellB.getStringCellValue();
@@ -4112,7 +4203,8 @@ if (expr != null && (expr.contains("table.")
                         for (int i = 0; i < destSheet.getNumMergedRegions(); i++) {
                             org.apache.poi.ss.util.CellRangeAddress region = destSheet.getMergedRegion(i);
                             for (int r = region.getFirstRow(); r <= region.getLastRow(); r++) {
-                                if (nangLucRows.contains(r) && region.getFirstColumn() >= 2 && region.getFirstColumn() <= 8) {
+                                if (nangLucRows.contains(r) && region.getFirstColumn() >= 2
+                                        && region.getFirstColumn() <= 8) {
                                     toRemove.add(i);
                                     break;
                                 }
@@ -4129,15 +4221,18 @@ if (expr != null && (expr.contains("table.")
                         Row row = destSheet.getRow(r);
                         // Ensure "Nghìn tấn/năm" stays in column C only
                         Cell cellC = row.getCell(2);
-                        if (cellC == null) cellC = row.createCell(2);
+                        if (cellC == null)
+                            cellC = row.createCell(2);
                         cellC.setCellValue("Nghìn tấn/năm");
 
                         // Fill "-" in columns D-I
                         for (int c = 3; c <= 8; c++) {
                             Cell cell = row.getCell(c);
-                            if (cell == null) cell = row.createCell(c);
+                            if (cell == null)
+                                cell = row.createCell(c);
                             CellStyle style = cell.getCellStyle();
-                            if (style == null) style = destSheet.getWorkbook().createCellStyle();
+                            if (style == null)
+                                style = destSheet.getWorkbook().createCellStyle();
                             style.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
                             cell.setCellStyle(style);
                             cell.setCellValue("-");
@@ -4150,7 +4245,8 @@ if (expr != null && (expr.contains("table.")
                     int sttCounter = 0;
                     for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
                         Row row = destSheet.getRow(r);
-                        if (row == null) continue;
+                        if (row == null)
+                            continue;
                         Cell cellB = row.getCell(1);
                         if (cellB != null && cellB.getCellType() == CellType.STRING) {
                             String val = cellB.getStringCellValue();
@@ -4158,11 +4254,13 @@ if (expr != null && (expr.contains("table.")
                                 // Section header row: reset STT, clear all cells except B, set font
                                 sttCounter = 0;
                                 Cell cellA = row.getCell(0);
-                                if (cellA != null) cellA.setCellValue("");
+                                if (cellA != null)
+                                    cellA.setCellValue("");
                                 // Clear all other cells in this row
                                 for (int c = 2; c < row.getLastCellNum(); c++) {
                                     Cell cell = row.getCell(c);
-                                    if (cell != null) cell.setCellValue("");
+                                    if (cell != null)
+                                        cell.setCellValue("");
                                 }
                                 // Set font: Times New Roman, size 10, bold
                                 CellStyle style = workbook.createCellStyle();
@@ -4208,11 +4306,13 @@ if (expr != null && (expr.contains("table.")
                     boolean dataStarted1 = false;
                     for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
                         Row row = destSheet.getRow(r);
-                        if (row == null) continue;
+                        if (row == null)
+                            continue;
                         // Detect start of data: row where column A is "A"
                         if (!dataStarted1) {
                             Cell cellA = row.getCell(0);
-                            if (cellA != null && cellA.getCellType() == CellType.STRING && "A".equals(cellA.getStringCellValue().trim())) {
+                            if (cellA != null && cellA.getCellType() == CellType.STRING
+                                    && "A".equals(cellA.getStringCellValue().trim())) {
                                 dataStarted1 = true;
                             }
                             continue;
@@ -4220,8 +4320,10 @@ if (expr != null && (expr.contains("table.")
                         Cell cellL = row.getCell(11); // Column L = Tên trạm QL luồng
                         boolean isChild = (cellL == null)
                                 || (cellL.getCellType() == CellType.BLANK)
-                                || (cellL.getCellType() == CellType.STRING && cellL.getStringCellValue().trim().isEmpty());
-                        if (!isChild) continue;
+                                || (cellL.getCellType() == CellType.STRING
+                                        && cellL.getStringCellValue().trim().isEmpty());
+                        if (!isChild)
+                            continue;
                         // Clear STT number for child rows
                         Cell cellSTT = row.getCell(0);
                         if (cellSTT != null) {
@@ -4230,9 +4332,11 @@ if (expr != null && (expr.contains("table.")
                         // Child row: unbold all cells in this row
                         for (int c = 0; c < row.getLastCellNum(); c++) {
                             Cell cell = row.getCell(c);
-                            if (cell == null) continue;
+                            if (cell == null)
+                                continue;
                             CellStyle style = cell.getCellStyle();
-                            if (style == null) continue;
+                            if (style == null)
+                                continue;
                             org.apache.poi.ss.usermodel.Font font = workbook.getFontAt(style.getFontIndex());
                             if (font != null && font.getBold()) {
                                 CellStyle unboldStyle = workbook.createCellStyle();
@@ -4251,22 +4355,27 @@ if (expr != null && (expr.contains("table.")
                     boolean dataStarted = false;
                     for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
                         Row row = destSheet.getRow(r);
-                        if (row == null) continue;
+                        if (row == null)
+                            continue;
                         // Detect start of data: row where column A is "A" (column-letter reference row)
                         if (!dataStarted) {
                             Cell cellA = row.getCell(0);
-                            if (cellA != null && cellA.getCellType() == CellType.STRING && "A".equals(cellA.getStringCellValue().trim())) {
+                            if (cellA != null && cellA.getCellType() == CellType.STRING
+                                    && "A".equals(cellA.getStringCellValue().trim())) {
                                 dataStarted = true;
                             }
                             continue;
                         }
                         Cell cellL = row.getCell(11);
                         boolean isParent = (cellL != null)
-                                && (cellL.getCellType() == CellType.STRING && !cellL.getStringCellValue().trim().isEmpty());
-                        if (!isParent) continue;
+                                && (cellL.getCellType() == CellType.STRING
+                                        && !cellL.getStringCellValue().trim().isEmpty());
+                        if (!isParent)
+                            continue;
                         parentSequenceNo++;
                         Cell cellSTT = row.getCell(0);
-                        if (cellSTT == null) cellSTT = row.createCell(0);
+                        if (cellSTT == null)
+                            cellSTT = row.createCell(0);
                         cellSTT.setCellValue(parentSequenceNo);
                     }
                 }
@@ -4392,15 +4501,13 @@ if (expr != null && (expr.contains("table.")
         return null;
     }
 
-
-
     private List<PointObject> getFilteredPoints(java.util.UUID targetUnitId,
             int reportYear) {
         boolean isRoot = false;
 
         if (targetUnitId != null) {
             isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> "CUC_HHVT".equals(u.getCode()))
+                    .map(u -> u.getParentId() == null)
                     .orElse(false);
         }
 
@@ -4454,7 +4561,7 @@ if (expr != null && (expr.contains("table.")
         String orgName = ""; // was: "Cục Hàng hải và Đường thủy Việt Nam"
 
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().isBlank()
-                /* && !"g17-43-demo".equalsIgnoreCase(request.getOrgUnitId()) */) {
+        /* && !"g17-43-demo".equalsIgnoreCase(request.getOrgUnitId()) */) {
             try {
                 orgName = orgUnitRepository.findById(java.util.UUID.fromString(request.getOrgUnitId()))
                         .map(OrgUnit::getName)
@@ -4558,7 +4665,7 @@ if (expr != null && (expr.contains("table.")
         map.put(ObjectType.BUOY,
                 "Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ.");
         map.put(ObjectType.LIGHTHOUSE,
-"Luồng hàng hải, vùng đón trả hoa tiêu.");
+                "Luồng hàng hải, vùng đón trả hoa tiêu.");
         map.put(ObjectType.OTHER,
                 "Khu chuyển tải, khu neo đậu, khu tránh, trú bão trong vùng nước cảng biển.");
 
@@ -5096,14 +5203,18 @@ if (expr != null && (expr.contains("table.")
     }
 
     /**
-     * Resolves a formula cell by computing its value in Java and replacing the formula
-     * with the computed result. This handles formulas like =VALUE(D14)+VALUE(D15)-VALUE(D16)
+     * Resolves a formula cell by computing its value in Java and replacing the
+     * formula
+     * with the computed result. This handles formulas like
+     * =VALUE(D14)+VALUE(D15)-VALUE(D16)
      * where POI's built-in evaluator may not support the VALUE() function.
      */
     private void resolveFormulaCell(Cell cell) {
-        if (cell.getCellType() != CellType.FORMULA) return;
+        if (cell.getCellType() != CellType.FORMULA)
+            return;
         String formula = cell.getCellFormula();
-        if (formula == null) return;
+        if (formula == null)
+            return;
 
         try {
             // Replace VALUE(X99) with just the numeric reference X99
@@ -5163,8 +5274,10 @@ if (expr != null && (expr.contains("table.")
                 op = '-';
             } else if (!part.isEmpty()) {
                 double val = Double.parseDouble(part);
-                if (op == '+') result += val;
-                else result -= val;
+                if (op == '+')
+                    result += val;
+                else
+                    result -= val;
             }
         }
         return result;
@@ -5172,16 +5285,18 @@ if (expr != null && (expr.contains("table.")
 
     /**
      * Direct computation for BCC_157 (F-142) template.
-     * Reads known placeholder values from D column, computes formula cells (D and E columns),
-     * and writes the results directly. This replaces all formula evaluation which POI cannot
+     * Reads known placeholder values from D column, computes formula cells (D and E
+     * columns),
+     * and writes the results directly. This replaces all formula evaluation which
+     * POI cannot
      * handle for VALUE() functions and complex formulas.
      */
     private void directComputeBcc157(Sheet sheet) {
         try {
             // Read source values from placeholder cells (rows are 0-indexed in POI)
             // Excel rows: 14=rowIdx13, 15=rowIdx14, 16=rowIdx15, 17=rowIdx16,
-            //              19=rowIdx18, 20=rowIdx19, 21=rowIdx20, 22=rowIdx21,
-            //              24=rowIdx23, 25=rowIdx24
+            // 19=rowIdx18, 20=rowIdx19, 21=rowIdx20, 22=rowIdx21,
+            // 24=rowIdx23, 25=rowIdx24
             // Column D = colIdx 3, Column E = colIdx 4
 
             double d14 = getCellNumericValue(sheet, 13, 3); // assetOpeningOriginalCost
@@ -5192,28 +5307,28 @@ if (expr != null && (expr.contains("table.")
             double d21 = getCellNumericValue(sheet, 20, 3); // assetDepreciationDecrease
 
             // Compute formula results
-            double d17 = d14 + d15 - d16;         // Số dư cuối năm Nguyên giá
-            double d22 = d19 + d20 - d21;         // Số dư cuối năm Hao mòn
-            double d24 = d14 - d19;               // Giá trị còn lại Đầu năm
-            double d25 = d17 - d22;               // Giá trị còn lại Cuối năm
+            double d17 = d14 + d15 - d16; // Số dư cuối năm Nguyên giá
+            double d22 = d19 + d20 - d21; // Số dư cuối năm Hao mòn
+            double d24 = d14 - d19; // Giá trị còn lại Đầu năm
+            double d25 = d17 - d22; // Giá trị còn lại Cuối năm
 
             // Write D column computed cells
-            setCellNumericValue(sheet, 16, 3, d17);  // D17
-            setCellNumericValue(sheet, 21, 3, d22);  // D22
-            setCellNumericValue(sheet, 23, 3, d24);  // D24
-            setCellNumericValue(sheet, 24, 3, d25);  // D25
+            setCellNumericValue(sheet, 16, 3, d17); // D17
+            setCellNumericValue(sheet, 21, 3, d22); // D22
+            setCellNumericValue(sheet, 23, 3, d24); // D24
+            setCellNumericValue(sheet, 24, 3, d25); // D25
 
             // Write E column (Tổng cộng = D column values)
-            setCellNumericValue(sheet, 13, 4, d14);  // E14 = D14
-            setCellNumericValue(sheet, 14, 4, d15);  // E15 = D15
-            setCellNumericValue(sheet, 15, 4, d16);  // E16 = D16
-            setCellNumericValue(sheet, 16, 4, d17);  // E17 = D17
-            setCellNumericValue(sheet, 18, 4, d19);  // E19 = D19
-            setCellNumericValue(sheet, 19, 4, d20);  // E20 = D20
-            setCellNumericValue(sheet, 20, 4, d21);  // E21 = D21
-            setCellNumericValue(sheet, 21, 4, d22);  // E22 = D22
-            setCellNumericValue(sheet, 23, 4, d24);  // E24 = D24
-            setCellNumericValue(sheet, 24, 4, d25);  // E25 = D25
+            setCellNumericValue(sheet, 13, 4, d14); // E14 = D14
+            setCellNumericValue(sheet, 14, 4, d15); // E15 = D15
+            setCellNumericValue(sheet, 15, 4, d16); // E16 = D16
+            setCellNumericValue(sheet, 16, 4, d17); // E17 = D17
+            setCellNumericValue(sheet, 18, 4, d19); // E19 = D19
+            setCellNumericValue(sheet, 19, 4, d20); // E20 = D20
+            setCellNumericValue(sheet, 20, 4, d21); // E21 = D21
+            setCellNumericValue(sheet, 21, 4, d22); // E22 = D22
+            setCellNumericValue(sheet, 23, 4, d24); // E24 = D24
+            setCellNumericValue(sheet, 24, 4, d25); // E25 = D25
 
         } catch (Exception e) {
             log.warn("directComputeBcc157 failed: {}", e.getMessage());
@@ -5222,12 +5337,15 @@ if (expr != null && (expr.contains("table.")
 
     /**
      * Computes BCC_157 formula cells directly from the replacements map values.
-     * This is more reliable than reading from the sheet because the replacements map
-     * already contains all correct values from the CRUD data, while the sheet may still
+     * This is more reliable than reading from the sheet because the replacements
+     * map
+     * already contains all correct values from the CRUD data, while the sheet may
+     * still
      * have unresolved formula text at this point in the export pipeline.
      *
-     * @param sheet       the destination sheet to write computed values to
-     * @param replacements the replacements map containing all placeholder → value mappings
+     * @param sheet        the destination sheet to write computed values to
+     * @param replacements the replacements map containing all placeholder → value
+     *                     mappings
      */
     private void directComputeBcc157FromReplacements(Sheet sheet, Map<String, String> replacements) {
         try {
@@ -5236,33 +5354,34 @@ if (expr != null && (expr.contains("table.")
             double d14 = parseReplacement(replacements, "${zobjComReport.assetOpeningOriginalCost.asText()}");
             double d15 = parseReplacement(replacements, "${zobjComReport.assetOriginalCostIncrease.asText()}");
             double d16 = parseReplacement(replacements, "${zobjComReport.assetOriginalCostDecrease.asText()}");
-            double d19 = parseReplacement(replacements, "${zobjComReport.assetOpeningAccumulatedDepreciation.asText()}");
+            double d19 = parseReplacement(replacements,
+                    "${zobjComReport.assetOpeningAccumulatedDepreciation.asText()}");
             double d20 = parseReplacement(replacements, "${zobjComReport.assetDepreciationIncrease.asText()}");
             double d21 = parseReplacement(replacements, "${zobjComReport.assetDepreciationDecrease.asText()}");
 
             // Compute formula results
-            double d17 = d14 + d15 - d16;         // Số dư cuối năm Nguyên giá
-            double d22 = d19 + d20 - d21;         // Số dư cuối năm Hao mòn
-            double d24 = d14 - d19;               // Giá trị còn lại Đầu năm
-            double d25 = d17 - d22;               // Giá trị còn lại Cuối năm
+            double d17 = d14 + d15 - d16; // Số dư cuối năm Nguyên giá
+            double d22 = d19 + d20 - d21; // Số dư cuối năm Hao mòn
+            double d24 = d14 - d19; // Giá trị còn lại Đầu năm
+            double d25 = d17 - d22; // Giá trị còn lại Cuối năm
 
             // Write D column computed cells
-            setCellNumericValue(sheet, 16, 3, d17);  // D17 - Số dư cuối năm Nguyên giá
-            setCellNumericValue(sheet, 21, 3, d22);  // D22 - Số dư cuối năm Hao mòn
-            setCellNumericValue(sheet, 23, 3, d24);  // D24 - Giá trị còn lại Đầu năm
-            setCellNumericValue(sheet, 24, 3, d25);  // D25 - Giá trị còn lại Cuối năm
+            setCellNumericValue(sheet, 16, 3, d17); // D17 - Số dư cuối năm Nguyên giá
+            setCellNumericValue(sheet, 21, 3, d22); // D22 - Số dư cuối năm Hao mòn
+            setCellNumericValue(sheet, 23, 3, d24); // D24 - Giá trị còn lại Đầu năm
+            setCellNumericValue(sheet, 24, 3, d25); // D25 - Giá trị còn lại Cuối năm
 
             // Write E column (Tổng cộng = D column values)
-            setCellNumericValue(sheet, 13, 4, d14);  // E14 = D14
-            setCellNumericValue(sheet, 14, 4, d15);  // E15 = D15
-            setCellNumericValue(sheet, 15, 4, d16);  // E16 = D16
-            setCellNumericValue(sheet, 16, 4, d17);  // E17 = D17
-            setCellNumericValue(sheet, 18, 4, d19);  // E19 = D19
-            setCellNumericValue(sheet, 19, 4, d20);  // E20 = D20
-            setCellNumericValue(sheet, 20, 4, d21);  // E21 = D21
-            setCellNumericValue(sheet, 21, 4, d22);  // E22 = D22
-            setCellNumericValue(sheet, 23, 4, d24);  // E24 = D24
-            setCellNumericValue(sheet, 24, 4, d25);  // E25 = D25
+            setCellNumericValue(sheet, 13, 4, d14); // E14 = D14
+            setCellNumericValue(sheet, 14, 4, d15); // E15 = D15
+            setCellNumericValue(sheet, 15, 4, d16); // E16 = D16
+            setCellNumericValue(sheet, 16, 4, d17); // E17 = D17
+            setCellNumericValue(sheet, 18, 4, d19); // E19 = D19
+            setCellNumericValue(sheet, 19, 4, d20); // E20 = D20
+            setCellNumericValue(sheet, 20, 4, d21); // E21 = D21
+            setCellNumericValue(sheet, 21, 4, d22); // E22 = D22
+            setCellNumericValue(sheet, 23, 4, d24); // E24 = D24
+            setCellNumericValue(sheet, 24, 4, d25); // E25 = D25
 
         } catch (Exception e) {
             log.warn("directComputeBcc157FromReplacements failed: {}", e.getMessage());
@@ -5271,16 +5390,21 @@ if (expr != null && (expr.contains("table.")
 
     /**
      * Force-overwrites computed numeric cells in BCC_157 (F-142) export.
-     * For each computed cell: removeFormula() + setCellType(NUMERIC) + setCellValue().
-     * This is the final defense against stale formulas or string placeholders that survived
-     * copyCell and directComputeBcc157FromReplacements (which uses setCellNumericValue
+     * For each computed cell: removeFormula() + setCellType(NUMERIC) +
+     * setCellValue().
+     * This is the final defense against stale formulas or string placeholders that
+     * survived
+     * copyCell and directComputeBcc157FromReplacements (which uses
+     * setCellNumericValue
      * without removeFormula/setCellType).
      * <p>
-     * Follows the same pattern as F-148's exportDynamicReport — programmatic values only,
+     * Follows the same pattern as F-148's exportDynamicReport — programmatic values
+     * only,
      * no template formulas.
      *
-     * @param sheet       the destination sheet
-     * @param replacements the replacements map containing all placeholder → value mappings
+     * @param sheet        the destination sheet
+     * @param replacements the replacements map containing all placeholder → value
+     *                     mappings
      */
     private void forceWriteNumericCells(Sheet sheet, Map<String, String> replacements) {
         // Read input values from replacements map
@@ -5292,28 +5416,28 @@ if (expr != null && (expr.contains("table.")
         double d21 = parseReplacement(replacements, "${zobjComReport.assetDepreciationDecrease.asText()}");
 
         // Compute formula results
-        double d17 = d14 + d15 - d16;         // Số dư cuối năm Nguyên giá
-        double d22 = d19 + d20 - d21;         // Số dư cuối năm Hao mòn
-        double d24 = d14 - d19;               // Giá trị còn lại Đầu năm
-        double d25 = d17 - d22;               // Giá trị còn lại Cuối năm
+        double d17 = d14 + d15 - d16; // Số dư cuối năm Nguyên giá
+        double d22 = d19 + d20 - d21; // Số dư cuối năm Hao mòn
+        double d24 = d14 - d19; // Giá trị còn lại Đầu năm
+        double d25 = d17 - d22; // Giá trị còn lại Cuối năm
 
         // Force-write D column: removeFormula() + setCellType(NUMERIC) + setCellValue()
-        forceCellValue(sheet, 16, 3, d17);   // D17
-        forceCellValue(sheet, 21, 3, d22);   // D22
-        forceCellValue(sheet, 23, 3, d24);   // D24
-        forceCellValue(sheet, 24, 3, d25);   // D25
+        forceCellValue(sheet, 16, 3, d17); // D17
+        forceCellValue(sheet, 21, 3, d22); // D22
+        forceCellValue(sheet, 23, 3, d24); // D24
+        forceCellValue(sheet, 24, 3, d25); // D25
 
         // Force-write E column (Tổng cộng = D column values)
-        forceCellValue(sheet, 13, 4, d14);   // E14
-        forceCellValue(sheet, 14, 4, d15);   // E15
-        forceCellValue(sheet, 15, 4, d16);   // E16
-        forceCellValue(sheet, 16, 4, d17);   // E17
-        forceCellValue(sheet, 18, 4, d19);   // E19
-        forceCellValue(sheet, 19, 4, d20);   // E20
-        forceCellValue(sheet, 20, 4, d21);   // E21
-        forceCellValue(sheet, 21, 4, d22);   // E22
-        forceCellValue(sheet, 23, 4, d24);   // E24
-        forceCellValue(sheet, 24, 4, d25);   // E25
+        forceCellValue(sheet, 13, 4, d14); // E14
+        forceCellValue(sheet, 14, 4, d15); // E15
+        forceCellValue(sheet, 15, 4, d16); // E16
+        forceCellValue(sheet, 16, 4, d17); // E17
+        forceCellValue(sheet, 18, 4, d19); // E19
+        forceCellValue(sheet, 19, 4, d20); // E20
+        forceCellValue(sheet, 20, 4, d21); // E21
+        forceCellValue(sheet, 21, 4, d22); // E22
+        forceCellValue(sheet, 23, 4, d24); // E24
+        forceCellValue(sheet, 24, 4, d25); // E25
     }
 
     /**
@@ -5328,9 +5452,11 @@ if (expr != null && (expr.contains("table.")
      */
     private void forceCellValue(Sheet sheet, int rowIdx, int colIdx, double value) {
         Row row = sheet.getRow(rowIdx);
-        if (row == null) row = sheet.createRow(rowIdx);
+        if (row == null)
+            row = sheet.createRow(rowIdx);
         Cell cell = row.getCell(colIdx);
-        if (cell == null) cell = row.createCell(colIdx);
+        if (cell == null)
+            cell = row.createCell(colIdx);
         // Remove any formula the cell may have (from the copied template)
         cell.removeFormula();
         // Force type to NUMERIC — defeats any stale STRING placeholder
@@ -5351,7 +5477,8 @@ if (expr != null && (expr.contains("table.")
      */
     private double parseReplacement(Map<String, String> replacements, String key) {
         String val = replacements.get(key);
-        if (val == null || val.isBlank()) return 0;
+        if (val == null || val.isBlank())
+            return 0;
         try {
             return Double.parseDouble(val);
         } catch (NumberFormatException e) {
@@ -5360,14 +5487,17 @@ if (expr != null && (expr.contains("table.")
     }
 
     /**
-     * Reads a numeric value from a cell, handling both NUMERIC and STRING cell types.
+     * Reads a numeric value from a cell, handling both NUMERIC and STRING cell
+     * types.
      * Returns 0 if the cell is empty or unparseable.
      */
     private double getCellNumericValue(Sheet sheet, int rowIdx, int colIdx) {
         Row row = sheet.getRow(rowIdx);
-        if (row == null) return 0;
+        if (row == null)
+            return 0;
         Cell cell = row.getCell(colIdx);
-        if (cell == null) return 0;
+        if (cell == null)
+            return 0;
         try {
             return cell.getNumericCellValue();
         } catch (Exception e) {
@@ -5385,16 +5515,20 @@ if (expr != null && (expr.contains("table.")
      */
     private void setCellNumericValue(Sheet sheet, int rowIdx, int colIdx, double value) {
         Row row = sheet.getRow(rowIdx);
-        if (row == null) row = sheet.createRow(rowIdx);
+        if (row == null)
+            row = sheet.createRow(rowIdx);
         Cell cell = row.getCell(colIdx);
-        if (cell == null) cell = row.createCell(colIdx);
+        if (cell == null)
+            cell = row.createCell(colIdx);
         cell.setCellValue(value);
         setNumericCellFormat(cell, value);
     }
 
     /**
-     * @deprecated Returns fake/hardidd asset values — no real asset value data exists in V2 entities.
-     *             Replaced with literal 0 in F-143 methods. Scheduled for removal once a real asset
+     * @deprecated Returns fake/hardidd asset values — no real asset value data
+     *             exists in V2 entities.
+     *             Replaced with literal 0 in F-143 methods. Scheduled for removal
+     *             once a real asset
      *             value source is available.
      */
     @Deprecated
@@ -5451,7 +5585,11 @@ if (expr != null && (expr.contains("table.")
     private ReportResponse buildPreviewResponse(String id, List<String> headers, List<Map<String, Object>> rows,
             Map<String, Object> summary) {
         return ReportResponse.builder()
-                .id(id != null && id.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$") ? java.util.UUID.fromString(id) : null).code(id)
+                .id(id != null
+                        && id.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+                                ? java.util.UUID.fromString(id)
+                                : null)
+                .code(id)
                 .name("Xem trước: " + id)
                 .reportType(ReportType.SUMMARY)
                 .status(ReportStatus.READY)
@@ -5579,7 +5717,8 @@ if (expr != null && (expr.contains("table.")
                 // e.g. formula="${zobjComReport.assetOpeningOriginalCost.asText()}"
                 // We must check if this is actually a placeholder, not a real formula
                 if (formulaText != null && formulaText.trim().startsWith("${") && formulaText.trim().endsWith("}")) {
-                    // This is a placeholder formula — replace with actual value from replacements map
+                    // This is a placeholder formula — replace with actual value from replacements
+                    // map
                     String trimFormula = formulaText.trim();
                     if (replacements.containsKey(trimFormula)) {
                         String repVal = replacements.get(trimFormula);
@@ -5622,7 +5761,8 @@ if (expr != null && (expr.contains("table.")
     }
 
     /**
-     * Writes one Port port row + its BenCang children + each BenCang's Pier children
+     * Writes one Port port row + its BenCang children + each BenCang's Pier
+     * children
      * to the destination sheet. Returns the next available destination row index.
      * Used by F-148 (BCKCHT_163) hierarchical export.
      */
@@ -5675,7 +5815,8 @@ if (expr != null && (expr.contains("table.")
                     destCell.setCellValue("");
                 } else if (c == 10) {
                     double portDwt = port.getMaxVesselCapacity() != null
-                            ? port.getMaxVesselCapacity().doubleValue() : 0.0;
+                            ? port.getMaxVesselCapacity().doubleValue()
+                            : 0.0;
                     destCell.setCellValue(portDwt);
                     if (portDwt != 0) {
                         setNumericCellFormat(destCell, portDwt);
@@ -5690,8 +5831,7 @@ if (expr != null && (expr.contains("table.")
 
         // ── Berths (Bến cảng) under this port ──
         int numWharfCols = wharfTemplateRow.getLastCellNum();
-        List<Berth> berths =
-                berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
+        List<Berth> berths = berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
         for (Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
@@ -5709,7 +5849,8 @@ if (expr != null && (expr.contains("table.")
             }
 
             double dwtBerth = berth.getMaxVesselSize() != null
-                    ? berth.getMaxVesselSize().doubleValue() : 0.0;
+                    ? berth.getMaxVesselSize().doubleValue()
+                    : 0.0;
 
             Row berthRow = destSheet.createRow(currentDestRow++);
             berthRow.setHeight(wharfTemplateRow.getHeight());
@@ -5729,13 +5870,15 @@ if (expr != null && (expr.contains("table.")
                     } else if (c == 4) {
                         destCell.setCellValue(thoiDiemBerth);
                     } else if (c == 5) {
-                        destCell.setCellValue(berth.getOperationalFunction() != null ? berth.getOperationalFunction() : "");
+                        destCell.setCellValue(
+                                berth.getOperationalFunction() != null ? berth.getOperationalFunction() : "");
                     } else if (c == 6) {
                         // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
                         double nlTruoc = (berth.getCurrentThroughput() != null
                                 && berth.getUpdatedAt() != null
                                 && berth.getUpdatedAt().getYear() == reportYear - 1)
-                                ? berth.getCurrentThroughput().doubleValue() : 0.0;
+                                        ? berth.getCurrentThroughput().doubleValue()
+                                        : 0.0;
                         destCell.setCellValue(nlTruoc);
                         if (nlTruoc != 0) {
                             setNumericCellFormat(destCell, nlTruoc);
@@ -5743,7 +5886,8 @@ if (expr != null && (expr.contains("table.")
                     } else if (c == 7) {
                         // Năm báo cáo = nangLucThongQuaHienTrang
                         double reportYearCapacity = berth.getCurrentThroughput() != null
-                                ? berth.getCurrentThroughput().doubleValue() : 0.0;
+                                ? berth.getCurrentThroughput().doubleValue()
+                                : 0.0;
                         destCell.setCellValue(reportYearCapacity);
                         if (reportYearCapacity != 0) {
                             setNumericCellFormat(destCell, reportYearCapacity);
@@ -5770,11 +5914,11 @@ if (expr != null && (expr.contains("table.")
             }
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<Pier> wharves =
-                    pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
+            List<Pier> wharves = pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
             for (Pier wharf : wharves) {
                 double dwtWharf = wharf.getDesignLoad() != null
-                        ? wharf.getDesignLoad().doubleValue() : 0.0;
+                        ? wharf.getDesignLoad().doubleValue()
+                        : 0.0;
 
                 Row wharfRow = destSheet.createRow(currentDestRow++);
                 wharfRow.setHeight(wharfTemplateRow.getHeight());
@@ -5786,7 +5930,8 @@ if (expr != null && (expr.contains("table.")
                         if (c == 0) {
                             destCell.setCellValue("");
                         } else if (c == 1) {
-                            destCell.setCellValue("        " + (wharf.getPierName() != null ? wharf.getPierName() : ""));
+                            destCell.setCellValue(
+                                    "        " + (wharf.getPierName() != null ? wharf.getPierName() : ""));
                         } else if (c == 2) {
                             destCell.setCellValue("");
                         } else if (c == 3) {
@@ -5794,7 +5939,8 @@ if (expr != null && (expr.contains("table.")
                         } else if (c == 4) {
                             destCell.setCellValue("");
                         } else if (c == 5) {
-                            destCell.setCellValue(wharf.getOperationalFunction() != null ? wharf.getOperationalFunction() : "");
+                            destCell.setCellValue(
+                                    wharf.getOperationalFunction() != null ? wharf.getOperationalFunction() : "");
                         } else if (c == 6) {
                             destCell.setCellValue("");
                         } else if (c == 7) {
@@ -6318,4 +6464,3 @@ if (expr != null && (expr.contains("table.")
         }
     }
 }
-

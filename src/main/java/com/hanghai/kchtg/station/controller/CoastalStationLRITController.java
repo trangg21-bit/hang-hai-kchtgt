@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/stations/lrit")
 @Validated
 @RequiredArgsConstructor
 @Tag(name = "LRIT Coastal Station")
+@DataScope
 public class CoastalStationLRITController {
 
     private final CoastalStationLRITService service;

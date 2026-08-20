@@ -138,6 +138,14 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- JSR-305 Annotations (@Nullable, @NonNull, javax.annotation.meta.When) -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>3.0.2</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Apache Tika for MIME type detection (GiayTo file upload validation) -->
         <dependency>
             <groupId>org.apache.tika</groupId>
@@ -240,6 +248,13 @@
                 <configuration>
                     <source>17</source>
                     <target>17</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>

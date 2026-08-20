@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Button, Modal, Drawer, Input, Space, Typography, Alert, DatePicker, Radio, Select,
   Form, Tabs, Row, Col, InputNumber, Upload, Table,
@@ -224,9 +224,9 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if ((fn === 'mapSymbolId' || fn === 'symbolId') && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PENDING:'Chờ phê duyệt', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối' }; return m[val] || val; }
-  if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang hoạt động', SUSPENDED:'Tạm ngừng' }; return m[val] || val; }
-  if (fn === 'portStatus') { const m: Record<string,string> = { '0':'Chưa khai thác', '1':'Vận hành' }; return m[val] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string, string> = { DRAFT: 'Nháp', PENDING: 'Chờ phê duyệt', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối' }; return m[val] || val; }
+  if (fn === 'operationalStatus') { const m: Record<string, string> = { OPERATIONAL: 'Đang hoạt động', SUSPENDED: 'Tạm ngừng' }; return m[val] || val; }
+  if (fn === 'portStatus') { const m: Record<string, string> = { '0': 'Chưa khai thác', '1': 'Vận hành' }; return m[val] || val; }
   if (fn === 'announcementTime' || fn === 'changedAt' || fn === 'createdAt') { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
   if (fn === 'announcementDecisionDate') { try { return dayjs(val).format('DD/MM/YYYY'); } catch { return val; } }
   return val;
@@ -402,8 +402,8 @@ export default function DryPortList() {
                   {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
-                {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
-                {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                  {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
+                  {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
@@ -469,8 +469,7 @@ export default function DryPortList() {
   const [submitting, setSubmitting] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const userPermissions = currentUser?.permissions || [];
-  const isSystemAdmin = userPermissions.includes('admin:manage');
+  const isSystemAdmin = currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*') || false;
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const editCodeRef = useRef<string | undefined>(undefined);
 
@@ -532,13 +531,13 @@ export default function DryPortList() {
       list.forEach((s: any) => { map.set(s.id, s.name); if (s.image) imgMap.set(s.id, s.image); });
       setSymbolMap(map);
       setSymbolImageMap(imgMap);
-    }).catch(() => {});
+    }).catch(() => { });
     userService.list({ pageSize: 1000 }).then(r => {
       const users = r.data || (r as any).content || [];
       const umap = new Map<string, string>();
       users.forEach((u: any) => umap.set(u.id, u.fullName || u.username || u.id));
       setUserMap(umap);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const fetchCounts = useCallback(async () => {
@@ -991,19 +990,27 @@ export default function DryPortList() {
   }, [hasPerm]);
 
   const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 55, type: 'mono' as const, align: 'center' as const,
-      render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span> },
-    { key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
-      render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-    { key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 250, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
+    {
+      key: 'sequenceNo', label: 'STT', width: 55, type: 'mono' as const, align: 'center' as const,
+      render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
+    },
+    {
+      key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
+      render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
+    },
+    {
+      key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 250, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
       render: (_: unknown, record: DryPort) => (
         <div>
           <a onClick={() => openDetailModal(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{record.dryPortName || '—'}</a>
           <span style={{ opacity: 0.85, fontSize: fontSizeMd }}>{record.dryPortCode}</span>
         </div>
-      ) },
-    { key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 150,
-      render: (v: number | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceName(v)}</span> },
+      )
+    },
+    {
+      key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 150,
+      render: (v: number | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceName(v)}</span>
+    },
     {
       key: 'updatedAt',
       label: 'Ngày cập nhật',
@@ -1017,11 +1024,13 @@ export default function DryPortList() {
         </span>
       ),
     },
-    { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 130, align: 'center' as const,
+    {
+      key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 130, align: 'center' as const,
       render: (status: string) => {
         const s = APPROVAL_STYLE_MAP[status || ''] || { color: textTertiary, label: status || '—' };
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
-      }},
+      }
+    },
   ], [page, pageSize, sortField, sortOrder]);
 
   const rowActions = useCallback((record: DryPort) => {
@@ -1038,7 +1047,7 @@ export default function DryPortList() {
     }
     // Xóa: chỉ trạng thái DRAFT/NHAP (giống cảng biển)
     if (hasPerm('dryport:delete') && isDraft) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => openDeleteModal(record), danger: true });
-    actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
+    if (hasPerm('dryport:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
     return actions;
   }, [hasPerm, openHistory, openDetailModal, openSubmitModal, openApproveModal, openRejectModal, openDeleteModal]);
 
@@ -1511,40 +1520,40 @@ export default function DryPortList() {
         }}>
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
         <div style={{ flexShrink: 0 }}>
-        {!historyLoading && (
-          <div style={{ display: 'none' }}>
-            <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}
-              onChange={e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { dryPortHistory.getAll({ page: 0, size: 500 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); setHistoryEntityNames(d.entityNames || {}); }).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); } else { dryPortHistory.getHistory(historyTarget?.id ?? '', { page: 0, size: 200 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); }).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); } }}>
-              <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại </Radio.Button>
-              <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi </Radio.Button>
-            </Radio.Group>
-          </div>
-        )}
-        {!historyLoading && (
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
-            {historyMode === 'all' && <Select placeholder="Chọn cảng cạn" allowClear showSearch value={historyEntityFilter || undefined}
-              onChange={v => setHistoryEntityFilter(v || '')}
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              style={{ width: 200, borderRadius: radiusPill, height: 40 }}
-              options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
-            <DatePicker placeholder="Từ ngày" popupClassName="history-dt-popup" value={historyFrom ? dayjs(historyFrom) : null}
-              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" popupClassName="history-dt-popup" value={historyTo ? dayjs(historyTo) : null}
-              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-              style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
-          </div>
-        )}
+          {!historyLoading && (
+            <div style={{ display: 'none' }}>
+              <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}
+                onChange={e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { dryPortHistory.getAll({ page: 0, size: 500 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); setHistoryEntityNames(d.entityNames || {}); }).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); } else { dryPortHistory.getHistory(historyTarget?.id ?? '', { page: 0, size: 200 }).then((d: any) => { setHistoryRecords(d.changeHistory || []); }).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); } }}>
+                <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại </Radio.Button>
+                <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi </Radio.Button>
+              </Radio.Group>
+            </div>
+          )}
+          {!historyLoading && (
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
+              {historyMode === 'all' && <Select placeholder="Chọn cảng cạn" allowClear showSearch value={historyEntityFilter || undefined}
+                onChange={v => setHistoryEntityFilter(v || '')}
+                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                style={{ width: 200, borderRadius: radiusPill, height: 40 }}
+                options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
+              <DatePicker placeholder="Từ ngày" popupClassName="history-dt-popup" value={historyFrom ? dayjs(historyFrom) : null}
+                onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+              <DatePicker placeholder="Đến ngày" popupClassName="history-dt-popup" value={historyTo ? dayjs(historyTo) : null}
+                onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
+              <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
+            </div>
+          )}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        {historyLoading ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-        ) : renderDryPortHistoryTimeline(historyRecords) /* STALE_RENDER const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000); const sorted = [...historyRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime()); const q = historySearch.toLowerCase().trim(); const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = []; for (const r of sorted) { if (q) { const fn = (r.fieldName || '').toLowerCase(); const ov = (r.oldValue || '').toLowerCase(); const nv = (r.newValue || '').toLowerCase(); const lb = historyFieldName(r.fieldName || '').toLowerCase(); const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase(); const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase(); if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue; } if (historyEntityFilter && r.entityId !== historyEntityFilter) continue; if (historyDateFrom || historyDateTo) { const cd = (r.changedAt || r.createdAt || '').substring(0, 16); if (historyDateFrom && cd < historyDateFrom.replace(' ', 'T')) continue; if (historyDateTo && cd > historyDateTo.replace(' ', 'T') + ':59') continue; } const ts = r.changedAt || r.createdAt || ''; const sec = ts ? toSec(ts) : 0; const prev = groups[groups.length - 1]; if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r); else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] }); } if (groups.length === 0) return (<div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>); const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; }; if (historySearchRef.current === 'initial') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length > 0 && historySearchRef.current !== q) { historySearchRef.current = q; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length === 0 && historySearchRef.current !== '') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = false; }); setTimeout(() => setHistoryExpanded(init), 0); } return (<div>{groups.map((g, gi) => (<div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', background: surfaceCard, border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} /></div>{gi < groups.length - 1 && <div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: 4 }} />}</div><div style={{ ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, marginBottom: 0, borderRadius: radiusLg, boxShadow: shadowSm }}><div onClick={() => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] }))} style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}><Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold }}>{g.ts ? fmtTime(g.ts) : '—'}</Text>{g.actor && <Text style={{ fontSize: fontSizeMd, color: textSecondary }}>— {g.actor}</Text>}{(() => { const a = getActionLabel(g.items); return <Tag color={a.color} style={{ fontSize: 11, marginLeft: spaceSm, borderRadius: radiusPill }}>{a.label}</Tag>; })()}<span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: actionPrimary, background: `${actionPrimary}12`, borderRadius: radiusPill, padding: '2px 10px', marginLeft: 'auto' }}>{g.items.length}</span>{historyExpanded[gi] === false ? <DownOutlined style={{ fontSize: 12, color: textTertiary }} /> : <UpOutlined style={{ fontSize: 12, color: textTertiary }} />}</div>{historyExpanded[gi] !== false && <><Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} /><table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>{g.items.map((r: any, ri: number) => { const fn = r.fieldName || ''; const ov = r.oldValue !== undefined && r.oldValue != null ? historyFieldValue(fn, r.oldValue, orgMap, symbolMap) : null; const nv = r.newValue !== undefined && r.newValue != null ? historyFieldValue(fn, r.newValue, orgMap, symbolMap) : null; return (<tr key={r.id || ri}><td style={{ padding: '4px 8px 4px 0', fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary, whiteSpace: 'nowrap', verticalAlign: 'middle', width: 1 }}>{historyMode === 'all' ? <><Tag color="blue" style={{ marginRight: 4, fontSize: 10, cursor: 'pointer', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryEntityName(historyEntityNames[r.entityId] || ''); setHistoryMode('current'); setHistoryLoading(true); setHistoryRecords([]); historySearchRef.current = 'initial'; dryPortHistory.getHistory(r.entityId, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); }} onClick={(e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryEntityName(historyEntityNames[r.entityId] || ''); setHistoryMode('current'); setHistoryLoading(true); setHistoryRecords([]); historySearchRef.current = 'initial'; dryPortHistory.getHistory(r.entityId, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); }}>{historyEntityNames[r.entityId] || r.entityId?.substring(0,8)}</Tag> </> : null}{fn ? historyFieldName(fn) : '—'}</td><td style={{ padding: '4px 0', verticalAlign: 'middle' }}><Space size={4}>{ov ? <Text delete style={{ fontSize: fontSizeMd, color: statusCritical }}>{ov}</Text> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}<ArrowRightOutlined style={{ fontSize: 10, color: textTertiary }} />{nv ? <Text strong style={{ fontSize: fontSizeMd, color: statusOperational }}>{nv}</Text> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}</Space></td></tr>); })}</tbody></table></>}</div></div>))}</div>); })()}
+          {historyLoading ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
+          ) : renderDryPortHistoryTimeline(historyRecords) /* STALE_RENDER const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000); const sorted = [...historyRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime()); const q = historySearch.toLowerCase().trim(); const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = []; for (const r of sorted) { if (q) { const fn = (r.fieldName || '').toLowerCase(); const ov = (r.oldValue || '').toLowerCase(); const nv = (r.newValue || '').toLowerCase(); const lb = historyFieldName(r.fieldName || '').toLowerCase(); const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase(); const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase(); if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue; } if (historyEntityFilter && r.entityId !== historyEntityFilter) continue; if (historyDateFrom || historyDateTo) { const cd = (r.changedAt || r.createdAt || '').substring(0, 16); if (historyDateFrom && cd < historyDateFrom.replace(' ', 'T')) continue; if (historyDateTo && cd > historyDateTo.replace(' ', 'T') + ':59') continue; } const ts = r.changedAt || r.createdAt || ''; const sec = ts ? toSec(ts) : 0; const prev = groups[groups.length - 1]; if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r); else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] }); } if (groups.length === 0) return (<div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>); const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; }; if (historySearchRef.current === 'initial') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length > 0 && historySearchRef.current !== q) { historySearchRef.current = q; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length === 0 && historySearchRef.current !== '') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = false; }); setTimeout(() => setHistoryExpanded(init), 0); } return (<div>{groups.map((g, gi) => (<div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', background: surfaceCard, border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} /></div>{gi < groups.length - 1 && <div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: 4 }} />}</div><div style={{ ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, marginBottom: 0, borderRadius: radiusLg, boxShadow: shadowSm }}><div onClick={() => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] }))} style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}><Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold }}>{g.ts ? fmtTime(g.ts) : '—'}</Text>{g.actor && <Text style={{ fontSize: fontSizeMd, color: textSecondary }}>— {g.actor}</Text>}{(() => { const a = getActionLabel(g.items); return <Tag color={a.color} style={{ fontSize: 11, marginLeft: spaceSm, borderRadius: radiusPill }}>{a.label}</Tag>; })()}<span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: actionPrimary, background: `${actionPrimary}12`, borderRadius: radiusPill, padding: '2px 10px', marginLeft: 'auto' }}>{g.items.length}</span>{historyExpanded[gi] === false ? <DownOutlined style={{ fontSize: 12, color: textTertiary }} /> : <UpOutlined style={{ fontSize: 12, color: textTertiary }} />}</div>{historyExpanded[gi] !== false && <><Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} /><table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>{g.items.map((r: any, ri: number) => { const fn = r.fieldName || ''; const ov = r.oldValue !== undefined && r.oldValue != null ? historyFieldValue(fn, r.oldValue, orgMap, symbolMap) : null; const nv = r.newValue !== undefined && r.newValue != null ? historyFieldValue(fn, r.newValue, orgMap, symbolMap) : null; return (<tr key={r.id || ri}><td style={{ padding: '4px 8px 4px 0', fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary, whiteSpace: 'nowrap', verticalAlign: 'middle', width: 1 }}>{historyMode === 'all' ? <><Tag color="blue" style={{ marginRight: 4, fontSize: 10, cursor: 'pointer', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryEntityName(historyEntityNames[r.entityId] || ''); setHistoryMode('current'); setHistoryLoading(true); setHistoryRecords([]); historySearchRef.current = 'initial'; dryPortHistory.getHistory(r.entityId, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); }} onClick={(e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryEntityName(historyEntityNames[r.entityId] || ''); setHistoryMode('current'); setHistoryLoading(true); setHistoryRecords([]); historySearchRef.current = 'initial'; dryPortHistory.getHistory(r.entityId, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử thay đổi')).finally(() => setHistoryLoading(false)); }}>{historyEntityNames[r.entityId] || r.entityId?.substring(0,8)}</Tag> </> : null}{fn ? historyFieldName(fn) : '—'}</td><td style={{ padding: '4px 0', verticalAlign: 'middle' }}><Space size={4}>{ov ? <Text delete style={{ fontSize: fontSizeMd, color: statusCritical }}>{ov}</Text> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}<ArrowRightOutlined style={{ fontSize: 10, color: textTertiary }} />{nv ? <Text strong style={{ fontSize: fontSizeMd, color: statusOperational }}>{nv}</Text> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}</Space></td></tr>); })}</tbody></table></>}</div></div>))}</div>); })()}
         */}
-      </div>
+        </div>
       </Drawer>
 
       {/* Create Drawer */}

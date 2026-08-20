@@ -21,7 +21,7 @@ export function normalizePermissionKey(key: string): string {
   if (lower.startsWith('role.')) return lower.replace('role.', 'role:');
   if (lower.startsWith('group.')) return lower.replace('group.', 'group:');
   if (lower.startsWith('connection.')) return lower.replace('connection.view', 'connection:read').replace('connection.', 'connection:');
-  if (lower.startsWith('org.')) return lower.replace('org.view', 'orgunit:read').replace('org.approve', 'orgunit:approve').replace('org.', 'orgunit:');
+  if (lower.startsWith('org.')) return lower.replace('org.view', 'orgunit:read').replace('org.', 'orgunit:');
   if (lower.startsWith('symbol.')) return 'map:manage';
   if (lower.startsWith('gis.')) {
     if (lower.startsWith('gis.layer.')) return 'map:manage';
@@ -48,19 +48,9 @@ export function normalizePermissionKey(key: string): string {
  * quyền group được Backend đưa vào JWT/profile. Không coi admin:manage là
  * toàn quyền; chỉ admin:all hoặc * mới được bypass.
  */
-/**
- * Resources ungated by business rule — any authenticated user is granted access
- * regardless of the granted permission list (seaport / berth / pier management).
- */
-const ALWAYS_ALLOWED_RESOURCES = new Set(['port', 'berth', 'pier']);
-
 export function hasPermissionFromList(grantedPermissions: string[] | undefined, key: string): boolean {
   const normalizedKey = normalizePermissionKey(key);
   if (!normalizedKey) return false;
-
-  if (ALWAYS_ALLOWED_RESOURCES.has(normalizedKey.split(':', 2)[0])) {
-    return true;
-  }
 
   const permissions = new Set(
     (grantedPermissions || [])
@@ -92,11 +82,15 @@ export function hasPermissionFromList(grantedPermissions: string[] | undefined, 
   return false;
 }
 
-export const usePermissionStore = create<PermissionState>((set) => ({
-  permissions: [],
+const initialPermissions = useAuthStore.getState().user?.permissions || [];
+
+export const usePermissionStore = create<PermissionState>((set, get) => ({
+  permissions: initialPermissions,
 
   hasPermission: (key: string) => {
-    return hasPermissionFromList(useAuthStore.getState().user?.permissions, key);
+    const storePerms = get().permissions;
+    const authPerms = useAuthStore.getState().user?.permissions;
+    return hasPermissionFromList(storePerms.length > 0 ? storePerms : authPerms, key);
   },
 
   hasAnyPermission: (keys: string[]) => {
@@ -111,3 +105,12 @@ export const usePermissionStore = create<PermissionState>((set) => ({
 
   setPermissions: (permissions: string[]) => set({ permissions }),
 }));
+
+// Automatically sync permissionStore whenever authStore user/permissions change (login, logout, token renewal)
+useAuthStore.subscribe((state) => {
+  const currentPerms = state.user?.permissions || [];
+  const existingPerms = usePermissionStore.getState().permissions;
+  if (currentPerms !== existingPerms) {
+    usePermissionStore.setState({ permissions: currentPerms });
+  }
+});

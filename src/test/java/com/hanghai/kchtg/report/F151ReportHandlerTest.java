@@ -296,7 +296,7 @@ class F151ReportHandlerTest {
         // isOrgUnitRoot(targetUnitId) + resolveOrgUnitName — same id, one stub covers both
         OrgUnit filterUnit = new OrgUnit();
         filterUnit.setId(orgUnitId);
-        filterUnit.setCode("CANG_VU");          // NOT "CUC_HHVT" → isOrgUnitRoot = false
+        filterUnit.setParentId(UUID.randomUUID());          // has parentId → isOrgUnitRoot = false
         filterUnit.setName("Cảng vụ khu vực I");
         when(orgUnitRepository.findById(orgUnitId))
                 .thenReturn(Optional.of(filterUnit));

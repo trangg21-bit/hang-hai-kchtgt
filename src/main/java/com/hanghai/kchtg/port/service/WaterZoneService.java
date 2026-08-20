@@ -21,6 +21,8 @@ import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -53,6 +55,7 @@ public class WaterZoneService {
 
     @Transactional
     public WaterZoneResponse create(CreateWaterZoneRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (waterZoneRepository.existsByWaterZoneCode(request.getWaterZoneCode())) {
             throw new IllegalArgumentException("Mã " + request.getWaterZoneCode() + " đã tồn tại");
         }
@@ -63,7 +66,8 @@ public class WaterZoneService {
         UUID spatialId = null;
 
         if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POLYGON;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POLYGON;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
@@ -73,13 +77,18 @@ public class WaterZoneService {
                     objType,
                     request.getCoordinates(),
                     waterZoneId,
-                    InfrastructureType.WATER_AREA
-            );
+                    InfrastructureType.WATER_AREA);
             spatialId = spatialObj.getId();
         }
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "waterzone", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         WaterZone entity = WaterZone.builder()
                 .id(waterZoneId)
+                .securityLevel(secLevel)
                 .waterZoneCode(request.getWaterZoneCode()).waterZoneName(request.getWaterZoneName())
                 .portId(request.getPortId()).area(request.getArea())
                 .maxDepth(request.getMaxDepth()).avgDepth(request.getAvgDepth())
@@ -112,18 +121,20 @@ public class WaterZoneService {
 
     @Transactional(readOnly = true)
     public Page<WaterZoneResponse> findAll(int page, int size, UUID orgUnitId, UUID portId,
-                                          String search, String status, String approvalStatus) {
+            String search, String status, String approvalStatus) {
         return findAll(page, size, orgUnitId, portId, search, (WaterZoneType) null, status, approvalStatus);
     }
 
     @Transactional(readOnly = true)
     public Page<WaterZoneResponse> findAll(int page, int size, UUID orgUnitId, UUID portId,
-                                          String search, WaterZoneType waterZoneType, String status, String approvalStatus) {
+            String search, WaterZoneType waterZoneType, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize,
+                Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
-        Page<WaterZone> pageResult = waterZoneRepository.searchWaterZones(orgUnitId, portId, search, waterZoneType, statusEnum, approvalEnum, pageable);
+        Page<WaterZone> pageResult = waterZoneRepository.searchWaterZones(orgUnitId, portId, search, waterZoneType,
+                statusEnum, approvalEnum, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(WaterZone::getPortId)
@@ -141,8 +152,10 @@ public class WaterZoneService {
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         pageResult.getContent().forEach(e -> {
             try {
-                if (e.getCreatedBy() != null) userUuids.add(e.getCreatedBy());
-                if (e.getUpdatedBy() != null) userUuids.add(e.getUpdatedBy());
+                if (e.getCreatedBy() != null)
+                    userUuids.add(e.getCreatedBy());
+                if (e.getUpdatedBy() != null)
+                    userUuids.add(e.getUpdatedBy());
             } catch (Exception ex) {
                 // ignore
             }
@@ -175,8 +188,7 @@ public class WaterZoneService {
                 parentNameMap.get(e.getPortId()),
                 userNamesMap.get(e.getCreatedBy()),
                 userNamesMap.get(e.getUpdatedBy()),
-                spatialMap.get(e.getSpatialId())
-        ));
+                spatialMap.get(e.getSpatialId())));
     }
 
     @Transactional(readOnly = true)
@@ -187,10 +199,12 @@ public class WaterZoneService {
 
     @Transactional
     public WaterZoneResponse update(UpdateWaterZoneRequest request) {
+        FieldWriteGuard.validateObject(request);
         WaterZone entity = waterZoneRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + request.getId()));
 
         WaterZone snapshot = WaterZone.builder()
+                .securityLevel(entity.getSecurityLevel())
                 .waterZoneCode(entity.getWaterZoneCode())
                 .waterZoneName(entity.getWaterZoneName()).portId(entity.getPortId())
                 .area(entity.getArea()).maxDepth(entity.getMaxDepth())
@@ -200,7 +214,13 @@ public class WaterZoneService {
                 .mapSymbolId(entity.getMapSymbolId())
                 .build();
 
-        if (request.getWaterZoneName() != null) entity.setWaterZoneName(request.getWaterZoneName());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "waterzone",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getWaterZoneName() != null)
+            entity.setWaterZoneName(request.getWaterZoneName());
         if (request.getPortId() != null) {
             entity.setPortId(request.getPortId());
             Port parent = portRepository.findById(request.getPortId())
@@ -211,11 +231,16 @@ public class WaterZoneService {
                 entity.setOrgUnitId(p.getOrgUnitId());
             });
         }
-        if (request.getArea() != null) entity.setArea(request.getArea());
-        if (request.getMaxDepth() != null) entity.setMaxDepth(request.getMaxDepth());
-        if (request.getAvgDepth() != null) entity.setAvgDepth(request.getAvgDepth());
-        if (request.getWaterZoneType() != null) entity.setWaterZoneType(request.getWaterZoneType());
-        if (request.getOperationalStatus() != null) entity.setOperationalStatus(request.getOperationalStatus());
+        if (request.getArea() != null)
+            entity.setArea(request.getArea());
+        if (request.getMaxDepth() != null)
+            entity.setMaxDepth(request.getMaxDepth());
+        if (request.getAvgDepth() != null)
+            entity.setAvgDepth(request.getAvgDepth());
+        if (request.getWaterZoneType() != null)
+            entity.setWaterZoneType(request.getWaterZoneType());
+        if (request.getOperationalStatus() != null)
+            entity.setOperationalStatus(request.getOperationalStatus());
         entity.setMapSymbolId(request.getMapSymbolId());
 
         if (request.getCoordinates() != null) {
@@ -225,7 +250,8 @@ public class WaterZoneService {
                     entity.setSpatialId(null);
                 }
             } else {
-                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POLYGON;
+                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                        : GisGeometryType.POLYGON;
                 GisSpatialObjectType objType = getSpatialObjectType(geomType);
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         entity.getSpatialId(),
@@ -235,8 +261,7 @@ public class WaterZoneService {
                         objType,
                         request.getCoordinates(),
                         entity.getId(),
-                        InfrastructureType.WATER_AREA
-                );
+                        InfrastructureType.WATER_AREA);
                 entity.setSpatialId(spatialObj.getId());
             }
         } else if (entity.getSpatialId() != null && request.getWaterZoneName() != null) {
@@ -249,8 +274,7 @@ public class WaterZoneService {
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
                         entity.getId(),
-                        InfrastructureType.WATER_AREA
-                );
+                        InfrastructureType.WATER_AREA);
             });
         }
 
@@ -258,7 +282,8 @@ public class WaterZoneService {
 
         WaterZone saved = waterZoneRepository.save(entity);
 
-        // changeHistoryService.recordChanges("WaterZone", saved.getId().toString(), "system", snapshot, saved);
+        // changeHistoryService.recordChanges("WaterZone", saved.getId().toString(),
+        // "system", snapshot, saved);
 
         log.info("Updated WaterZone [{}] code={}", saved.getId(), saved.getWaterZoneCode());
         return toResponse(saved);
@@ -276,7 +301,6 @@ public class WaterZoneService {
         log.info("Soft-deleted WaterZone [{}] code={}", entity.getId(), entity.getWaterZoneCode());
     }
 
-
     private WaterZoneResponse toResponse(WaterZone e) {
         return toResponse(e, null, null, null, null);
     }
@@ -285,11 +309,13 @@ public class WaterZoneService {
         return toResponse(e, preResolvedPortName, null, null, null);
     }
 
-    private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName, String preResolvedCreatorName, String preResolvedUpdaterName) {
+    private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName, String preResolvedCreatorName,
+            String preResolvedUpdaterName) {
         return toResponse(e, preResolvedPortName, preResolvedCreatorName, preResolvedUpdaterName, null);
     }
 
-    private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName, String preResolvedCreatorName, String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
+    private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName, String preResolvedCreatorName,
+            String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
         GisGeometryType geomType = null;
         String coords = null;
 
@@ -308,17 +334,22 @@ public class WaterZoneService {
             portName = portCacheService.getName(e.getPortId());
         }
 
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(e.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(e.getUpdatedBy());
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
+                : userResolverService.resolveName(e.getCreatedBy());
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
+                : userResolverService.resolveName(e.getUpdatedBy());
 
         return WaterZoneResponse.builder()
-                .id(e.getId()).waterZoneCode(e.getWaterZoneCode()).waterZoneName(e.getWaterZoneName())
+                .id(e.getId())
+                .securityLevel(e.getSecurityLevel())
+                .waterZoneCode(e.getWaterZoneCode()).waterZoneName(e.getWaterZoneName())
                 .portId(e.getPortId())
                 .portName(portName)
                 .area(e.getArea())
                 .maxDepth(e.getMaxDepth()).avgDepth(e.getAvgDepth())
                 .waterZoneType(e.getWaterZoneType()).operationalStatus(e.getOperationalStatus())
-                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
+                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId())
+                .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
                 .spatialId(e.getSpatialId())
                 .geometryType(geomType)
@@ -329,7 +360,8 @@ public class WaterZoneService {
     }
 
     private GisGeometryType parseGeometryType(String typeStr) {
-        if (typeStr == null) return GisGeometryType.POLYGON;
+        if (typeStr == null)
+            return GisGeometryType.POLYGON;
         try {
             return GisGeometryType.valueOf(typeStr.toUpperCase());
         } catch (IllegalArgumentException ex) {
@@ -338,8 +370,10 @@ public class WaterZoneService {
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
-        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
-        if (geomType == GisGeometryType.LINE) return GisSpatialObjectType.LINE_OTHER;
+        if (geomType == GisGeometryType.POINT)
+            return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.LINE)
+            return GisSpatialObjectType.LINE_OTHER;
         return GisSpatialObjectType.POLYGON_WATER_ZONE;
     }
 }

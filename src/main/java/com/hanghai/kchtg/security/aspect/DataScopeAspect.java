@@ -4,6 +4,8 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.annotation.DataScope;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -28,12 +30,22 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Spring AOP Aspect phân quyền phạm vi dữ liệu theo Đơn vị (OrgUnit Data Scope).
+ * Spring AOP Aspect phân quyền phạm vi dữ liệu theo Đơn vị (OrgUnit Data
+ * Scope).
  * <p>
- * Aspect này chặn các method được đánh dấu {@link DataScope}, trích xuất danh sách ID
- * của Đơn vị hiện tại và tất cả Đơn vị con trực thuộc, sau đó kích hoạt Hibernate
+ * Aspect này chặn các method được đánh dấu {@link DataScope}, trích xuất danh
+ * sách ID
+ * của Đơn vị hiện tại và tất cả Đơn vị con trực thuộc, sau đó kích hoạt
+ * Hibernate
  * Global Filter {@code orgUnitFilter} cho Session truy vấn.
  * </p>
+ *
+ * TODO(SECURITY): Audit every record-bearing controller/service and apply
+ * record scope
+ * to detail, update, delete, approve, restore, attachment, and export
+ * operations;
+ * entity filters are not active unless the scoped aspect/filter is actually
+ * invoked.
  */
 @Aspect
 @Component
@@ -43,8 +55,14 @@ public class DataScopeAspect {
 
     private final UserRepository userRepository;
     private final OrgUnitCacheService orgUnitCacheService;
+    private PermissionCacheService permissionCacheService;
     @PersistenceContext
     private final EntityManager entityManager;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPermissionCacheService(PermissionCacheService permissionCacheService) {
+        this.permissionCacheService = permissionCacheService;
+    }
 
     /**
      * Vai trò có quyền tra cứu toàn quốc (không bị cưỡng chế bộ lọc đơn vị).
@@ -53,21 +71,56 @@ public class DataScopeAspect {
 
     @Around("@annotation(dataScope)")
     public Object enforceDataScope(ProceedingJoinPoint joinPoint, DataScope dataScope) throws Throwable {
+        return processDataScope(joinPoint, dataScope);
+    }
+
+    @Around("@within(dataScope) && !@annotation(com.hanghai.kchtg.security.annotation.DataScope)")
+    public Object enforceDataScopeClass(ProceedingJoinPoint joinPoint, DataScope dataScope) throws Throwable {
+        return processDataScope(joinPoint, dataScope);
+    }
+
+    private Object processDataScope(ProceedingJoinPoint joinPoint, DataScope dataScope) throws Throwable {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             return joinPoint.proceed();
         }
 
         String username = auth.getName();
-        User currentUser = userRepository.findByUsernameWithRelations(username).orElse(null);
+        User currentUser = auth.getPrincipal() instanceof User principalUser
+                ? principalUser
+                : userRepository.findByUsernameWithRelations(username).orElse(null);
         if (currentUser == null) {
-            return joinPoint.proceed();
+            log.warn("[DataScopeAspect] User '{}' not found in database", username);
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Không tìm thấy thông tin người dùng thực hiện truy vấn");
+        }
+
+        // Record-level security is independent from the organisational scope.
+        // It must also apply to nationwide users; nationwide only removes the
+        // organisation predicate and must not grant access to sensitive rows.
+        Set<String> effectivePermissions = permissionCacheService == null
+                ? currentUser.getAllPermissions()
+                : permissionCacheService.getEffectivePermissions(currentUser);
+        try {
+            Session session = entityManager.unwrap(Session.class);
+            var securityFilter = session.enableFilter("recordSecurityLevelFilter");
+            if (securityFilter != null) {
+                boolean elevatedAdministrator = auth.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(authority.getAuthority())
+                                || "ROLE_SUPER_ADMIN".equalsIgnoreCase(authority.getAuthority()));
+                securityFilter.setParameter("maxSecurityLevel",
+                        RecordSecurityLevel.maxAllowed(effectivePermissions, elevatedAdministrator).ordinal());
+            }
+        } catch (Exception ex) {
+            log.warn("[DataScopeAspect] Failed to enable recordSecurityLevelFilter: {}", ex.getMessage());
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Không thể xác định phạm vi bảo mật của bản ghi");
         }
 
         // Kiểm tra xem user có mang vai trò tra cứu toàn quốc hay không
-        boolean isNationwide = currentUser.getAllPermissions().contains(NATIONWIDE_PERMISSION)
-                || currentUser.getAllPermissions().contains("admin:all")
-                || currentUser.getAllPermissions().contains("*");
+        boolean isNationwide = effectivePermissions.contains(NATIONWIDE_PERMISSION)
+                || effectivePermissions.contains("admin:all")
+                || effectivePermissions.contains("*");
 
         if (isNationwide) {
             // User có quyền xem toàn quốc -> Giữ nguyên bộ lọc tùy chọn
@@ -75,24 +128,28 @@ public class DataScopeAspect {
         }
 
         OrgUnit userOrgUnit = currentUser.getOrgUnit();
-        if (userOrgUnit == null) {
-            return joinPoint.proceed();
+        List<UUID> allowedOrgUnitIds;
+        if (userOrgUnit == null || userOrgUnit.getId() == null) {
+            log.warn("[DataScopeAspect] User '{}' has no assigned org unit - restricting to empty scope", username);
+            allowedOrgUnitIds = List.of(new UUID(0L, 0L));
+        } else {
+            allowedOrgUnitIds = collectSubtreeIds(userOrgUnit);
+            if (allowedOrgUnitIds.isEmpty()) {
+                allowedOrgUnitIds = List.of(userOrgUnit.getId());
+            }
         }
-
-        // Thu thập toàn bộ ID của đơn vị hiện tại + toàn bộ cây đơn vị con.
-        // Không chỉ lấy con trực tiếp vì tài liệu yêu cầu phạm vi theo subtree.
-        UUID userOrgId = userOrgUnit.getId();
-        List<UUID> allowedOrgUnitIds = collectSubtreeIds(userOrgUnit);
 
         // Kích hoạt Hibernate Global Filter cho Session hiện tại
         try {
             Session session = entityManager.unwrap(Session.class);
             session.enableFilter("orgUnitFilter")
-                   .setParameterList("orgUnitIds", allowedOrgUnitIds);
+                    .setParameterList("orgUnitIds", allowedOrgUnitIds);
             log.info("[DataScopeAspect] Activated Hibernate Filter 'orgUnitFilter' for user={} with orgUnits={}",
                     username, allowedOrgUnitIds);
         } catch (Exception ex) {
             log.warn("[DataScopeAspect] Failed to enable orgUnitFilter: {}", ex.getMessage());
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Không thể thiết lập bộ lọc phạm vi dữ liệu theo đơn vị");
         }
 
         // Keep a user-selected orgUnitId filter. The Hibernate filter above
@@ -103,6 +160,9 @@ public class DataScopeAspect {
     }
 
     private List<UUID> collectSubtreeIds(OrgUnit userOrgUnit) {
+        if (userOrgUnit == null || userOrgUnit.getId() == null) {
+            return List.of();
+        }
         Map<UUID, List<UUID>> childIdsByParent = orgUnitCacheService.getList().stream()
                 .filter(unit -> unit.getId() != null && unit.getParentId() != null)
                 .collect(Collectors.groupingBy(

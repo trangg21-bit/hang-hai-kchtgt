@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.orgunit.config;
 
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,40 +48,44 @@ public class OrgUnitDataFixer implements ApplicationRunner {
     private void seedDemoData() {
         OrgUnit root = OrgUnit.builder()
                 .name("Cục Hàng hải và Đường thủy Việt Nam")
-                .code("CUC_HHVT")
                 .description("Đơn vị gốc - Cục Hàng hải và Đường thủy Việt Nam")
-                .status(OrgUnitStatus.APPROVED)
                 .parentId(null)
                 .level(1)
+                .rank(rankForLevel(1))
                 .path("")
                 .sortOrder(0)
                 .build();
         root = repo.save(root);
 
-        OrgUnit cvHp = child(root, "Cảng vụ Hàng hải Hải Phòng", "CV_HH_HP", 1);
-        OrgUnit cvQn = child(root, "Cảng vụ Hàng hải Quảng Ninh", "CV_HH_QN", 2);
-        child(root, "Cảng vụ Hàng hải TP. Hồ Chí Minh", "CV_HH_HCM", 3);
+        OrgUnit cvHp = child(root, "Cảng vụ Hàng hải Hải Phòng", 1);
+        OrgUnit cvQn = child(root, "Cảng vụ Hàng hải Quảng Ninh", 2);
+        child(root, "Cảng vụ Hàng hải TP. Hồ Chí Minh", 3);
 
-        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", "DD_CVHP_DV", 1);
-        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", "DD_CVHP_BD", 2);
-        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", "DD_CVQN_MC", 1);
-        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", "DD_CVQN_VD", 2);
+        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", 1);
+        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", 2);
+        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", 1);
+        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", 2);
 
         log.info("OrgUnitDataFixer: seeded Cục HHVT + 3 Cảng vụ + 4 Đại diện");
     }
 
-    private OrgUnit child(OrgUnit parent, String name, String code, int sort) {
+    private OrgUnit child(OrgUnit parent, String name, int sort) {
         OrgUnit child = OrgUnit.builder()
                 .name(name)
-                .code(code)
                 .description(name)
-                .status(OrgUnitStatus.APPROVED)
                 .parentId(parent.getId())
                 .level(parent.getLevel() + 1)
+                .rank(rankForLevel(parent.getLevel() + 1))
                 .path(parent.getPath() + parent.getId() + "/")
                 .sortOrder(sort)
                 .build();
         return repo.save(child);
+    }
+
+    private static OrgUnitRank rankForLevel(Integer level) {
+        if (level == null || level <= 1) return OrgUnitRank.DEPARTMENT;
+        if (level == 2) return OrgUnitRank.BRANCH;
+        return OrgUnitRank.REPRESENTATIVE;
     }
 
     private void fixOrphans() {

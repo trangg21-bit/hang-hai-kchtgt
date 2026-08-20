@@ -127,6 +127,9 @@ public class User extends BaseEntity implements java.security.Principal {
      * group đang hoạt động mà user đang tham gia.
      */
     public Set<String> getAllPermissions() {
+        if (effectivePermissionsSnapshot != null) {
+            return new HashSet<>(effectivePermissionsSnapshot);
+        }
         Set<String> perms = new HashSet<>();
         if (permissionOverrides != null) {
             perms.addAll(permissionOverrides.stream()
@@ -150,7 +153,7 @@ public class User extends BaseEntity implements java.security.Principal {
                     // Group inheritance must never provide a global bypass or
                     // an organisation-scope bypass. Those permissions may only
                     // be granted directly by the system administrator.
-                    .filter(permission -> !Set.of("group:manage", "admin:all", "orgunit:scope_all", "*")
+                    .filter(permission -> !Set.of("group:manage", "admin:all", "admin:manage", "orgunit:scope_all", "*")
                             .contains(permission))
                     .forEach(perms::add);
         }
@@ -170,6 +173,10 @@ public class User extends BaseEntity implements java.security.Principal {
     /** Quyền cấp trực tiếp cho người dùng ngoài quyền kế thừa từ Group. */
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserPermissionOverride> permissionOverrides = new ArrayList<>();
+
+    /** Effective permissions restored from the distributed security snapshot. */
+    @Transient
+    private Set<String> effectivePermissionsSnapshot;
 
     /**
      * Trạng thái tài khoản.

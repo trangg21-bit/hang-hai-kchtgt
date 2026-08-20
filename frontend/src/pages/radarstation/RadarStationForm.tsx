@@ -224,7 +224,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         }
       }
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
+      toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
       setIsSubmitting(false);
     }

@@ -2,6 +2,7 @@ package com.hanghai.kchtg.station.dto.coastal;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class CoastalStationVTSResponse {
 
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String stationCode;
     private String stationName;    private String frequencyBand;
     private Double transmitPower;

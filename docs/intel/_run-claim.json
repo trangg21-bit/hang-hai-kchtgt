@@ -1,25 +1,25 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-19T04:10:00.064Z",
+  "last_modified_at": "2026-08-19T08:56:39.910Z",
   "modules": {
     "M-001": {
       "depends_on": [],
       "topo_level": 0,
       "status": "done",
-      "claimed_by": "tab-cd4e174e2a12020d",
-      "claimed_at": "2026-08-14T06:27:21.506Z",
-      "heartbeat_at": "2026-08-14T06:32:04.077Z",
+      "claimed_by": "tab-7335d195c37fbbc0",
+      "claimed_at": "2026-08-17T07:14:36.801Z",
+      "heartbeat_at": "2026-08-17T08:43:30.777Z",
       "current_stage": null,
       "started_at": "2026-08-05T07:24:47.234Z",
-      "completed_at": "2026-08-14T06:32:04.077Z",
+      "completed_at": "2026-08-17T08:43:30.777Z",
       "auto_pass_count": 0,
       "attempt": 2,
       "name": "Quản trị hệ thống",
       "slug": "quan-tri-he-thong",
       "risk_path": "M",
-      "reopened_at": "2026-08-14T06:27:15.424Z",
-      "reopened_reason": "TRI-1786688745847-4d03: implementation — hide 3 row actions (reset-password/forgot-password/delete) + add \"Danh sách chức năng\" label above permission tree",
+      "reopened_at": "2026-08-17T07:14:15.654Z",
+      "reopened_reason": "Scope-shrink change request TRI-1786950754582-5a51: remove the org-unit approval flow entirely (status/approvedAt columns, OrgUnitStatus enum+converter, submit/approve/reject endpoints, orgunit:approve permission, frontend approval UI/API, F-003 docs).",
       "claimed_pid": null,
       "claimed_host": null
     },
@@ -448,6 +448,78 @@
       "claimed_pid": null,
       "claimed_host": null,
       "previous_claimed_by": "tab-a890f7f3907fd107"
+    },
+    "M-1002": {
+      "depends_on": [
+        "M-004"
+      ],
+      "topo_level": 1,
+      "status": "queued",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
+      "current_stage": null,
+      "started_at": null,
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 0,
+      "name": "Quản lý tài sản Đài TTDH",
+      "slug": "quan-ly-tai-san-dai-ttdh",
+      "risk_path": "M"
+    },
+    "M-1003": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "done",
+      "claimed_by": "tab-6ca82e3ee5ab70ed",
+      "claimed_at": "2026-08-17T03:20:48.672Z",
+      "heartbeat_at": "2026-08-17T05:02:09.967Z",
+      "current_stage": null,
+      "started_at": "2026-08-17T03:20:48.672Z",
+      "completed_at": "2026-08-17T05:02:09.966Z",
+      "auto_pass_count": 0,
+      "attempt": 1,
+      "name": "Fix AntD static message/Modal.confirm context warning",
+      "slug": "fix-antd-static-message-context-warning",
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null
+    },
+    "M-1004": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "done",
+      "claimed_by": "tab-c2ac4f45b8830937",
+      "claimed_at": "2026-08-17T03:50:56.041Z",
+      "heartbeat_at": "2026-08-17T05:16:40.330Z",
+      "current_stage": null,
+      "started_at": "2026-08-17T03:50:56.041Z",
+      "completed_at": "2026-08-17T05:16:40.330Z",
+      "auto_pass_count": 0,
+      "attempt": 1,
+      "name": "Phân quyền cấp trường dữ liệu",
+      "slug": "field-level-authorization",
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null
+    },
+    "M-1005": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "in_progress",
+      "claimed_by": "tab-bc1802f18c6d6a69",
+      "claimed_at": "2026-08-19T08:14:08.910Z",
+      "heartbeat_at": "2026-08-19T08:56:39.910Z",
+      "current_stage": null,
+      "started_at": "2026-08-19T08:14:08.910Z",
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 1,
+      "name": "Tối ưu hiệu năng phân quyền FE/BE",
+      "slug": "toi-uu-hieu-nang-phan-quyen",
+      "risk_path": "M",
+      "claimed_pid": 35780,
+      "claimed_host": "PTPM-SONPN-PC"
     }
   },
   "tabs": {
@@ -607,6 +679,57 @@
       "last_seen": "2026-08-19T04:10:00.063Z",
       "claimed_modules": [
         "M-023"
+      ],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-639521d41a1139a4": {
+      "started_at": "2026-08-17T03:19:49.393Z",
+      "last_seen": "2026-08-17T06:27:27.208Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-001",
+        "M-001"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-6ca82e3ee5ab70ed": {
+      "started_at": "2026-08-17T03:20:48.672Z",
+      "last_seen": "2026-08-17T05:02:09.967Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-1003"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-c2ac4f45b8830937": {
+      "started_at": "2026-08-17T03:50:56.041Z",
+      "last_seen": "2026-08-17T05:16:40.331Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-1004"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-7335d195c37fbbc0": {
+      "started_at": "2026-08-17T07:14:36.801Z",
+      "last_seen": "2026-08-17T08:43:30.777Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-001"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-bc1802f18c6d6a69": {
+      "started_at": "2026-08-19T08:14:08.910Z",
+      "last_seen": "2026-08-19T08:56:39.910Z",
+      "claimed_modules": [
+        "M-1005"
       ],
       "completed_modules": [],
       "failed_modules": [],

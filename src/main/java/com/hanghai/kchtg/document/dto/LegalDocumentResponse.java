@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.experimental.FieldNameConstants;
+
 /**
  * Response DTO for LegalDocument.
  */
@@ -19,9 +22,11 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
 public class LegalDocumentResponse {
 
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String documentName;
     private String documentNumber;
     private String issuingAuthority;

@@ -13,15 +13,22 @@ import java.util.List;
 import java.util.UUID;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.experimental.FieldNameConstants;
 
 @Entity
 @Table(name = "navigation_channel")
-// TODO: refactor to extend BaseEntity — remove own id/createdAt/updatedAt/createdBy/updatedBy/deletedAt/deletedBy,
-//       change @Data @Builder to @Getter @Setter @SuperBuilder, remove @PrePersist @PreUpdate.
-//       Then @FilterDef can be removed (inherited from BaseEntity), keep only @Filter.
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
+@FieldNameConstants
 public class NavigationChannel {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+
     @Column(name = "province_id")
     private Integer provinceId;
 

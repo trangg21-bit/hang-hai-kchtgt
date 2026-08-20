@@ -26,6 +26,9 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -112,7 +115,12 @@ public class PortService {
 
     @Transactional
     public PortResponse create(CreatePortRequest request) {
-        String action = request.getAction();
+        return create(request, request.getAction());
+    }
+
+    @Transactional
+    public PortResponse create(CreatePortRequest request, String action) {
+        FieldWriteGuard.validateObject(request);
         if (action == null || action.trim().isEmpty()) {
             action = "submit";
         }
@@ -133,7 +141,11 @@ public class PortService {
             log.info("Auto-generated port code: {}", portCode);
         }
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel() : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "port", SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+
         Port entity = Port.builder()
+                .securityLevel(secLevel)
                 .portCode(portCode)
                 .portName(request.getPortName())
                 .province(request.getProvince())
@@ -339,6 +351,7 @@ public class PortService {
 
     @Transactional
     public PortResponse update(UpdatePortRequest request) {
+        FieldWriteGuard.validateObject(request);
         Port entity = portRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + request.getId()));
 
@@ -409,6 +422,10 @@ public class PortService {
                 .build();
 
         // Update mutable fields — code (portCode) is immutable
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "port", SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
         if (request.getPortName() != null) entity.setPortName(request.getPortName());
         if (request.getProvince() != null) entity.setProvince(request.getProvince());
 
@@ -667,6 +684,7 @@ public class PortService {
 
         PortResponse.PortResponseBuilder builder = PortResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .portCode(entity.getPortCode())
                 .portName(entity.getPortName())
                 .province(entity.getProvince())

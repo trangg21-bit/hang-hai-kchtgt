@@ -92,7 +92,7 @@ const canAccessMenu = (path: string): boolean => {
 
 const pageTitles: Record<string, string> = {
   '/': 'HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI',
-  '/users': 'Quản lý người dùng',
+  '/users': 'Quản lý tài khoản người dùng',
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
   '/gis/points': 'Quản lý danh mục đối tượng điểm',
@@ -218,7 +218,7 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Quản trị hệ thống',
       children: [
-        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý người dùng' } : null,
+        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý tài khoản người dùng' } : null,
         canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
         canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
         canAccessMenu('/interconnect') ? { key: '/interconnect', label: 'Quản lý kết nối liên thông' } : null,

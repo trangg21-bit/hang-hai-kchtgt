@@ -161,6 +161,7 @@ class DryPortServiceTest {
         @Test
         @DisplayName("F-028: softDelete — entity found, soft-deleted and saved")
         void softDelete_setsDeletedAt() {
+            testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
             when(dryPortRepository.save(any())).thenReturn(testEntity);
 

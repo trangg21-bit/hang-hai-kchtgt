@@ -3,12 +3,14 @@ package com.hanghai.kchtg.station.entity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
@@ -24,11 +26,18 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
+@FieldNameConstants
 @SQLRestriction("deleted_at IS NULL")
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class CoastalStationInmarsat extends BaseEntity {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+
     @Column(name = "province_id")
     private Integer provinceId;
-
 
     @Column(length = 50)
     protected String code;
@@ -38,10 +47,6 @@ public class CoastalStationInmarsat extends BaseEntity {
 
     @Column(length = 1000)
     protected String description;
-
-
-
-
 
     @Column(name = "unit_id")
     protected UUID unitId;
@@ -72,27 +77,18 @@ public class CoastalStationInmarsat extends BaseEntity {
     @Column(length = 1000)
     protected String rejectionReason;
 
-
     private String deviceCode;
-
     private String modemType;
-
     private String frequency;
-
     private String coverageZone;
-
     private String sarCode;
 
     @Column(length = 1000)
     private String locationAddress;
 
     private String contactPerson;
-
     private String contactPhone;
 
-    /**
-     * Initialize status on entity creation.
-     */
     @PrePersist
     protected void onCreate() {
         setDefaultStatus();

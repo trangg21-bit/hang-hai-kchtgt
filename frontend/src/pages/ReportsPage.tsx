@@ -17,9 +17,9 @@ import {
   Badge,
   Alert,
   Tooltip,
-  message,
   Descriptions,
 } from 'antd';
+import { message } from '../components/ToastNotification';
 import {
   FileTextOutlined,
   FileExcelOutlined,

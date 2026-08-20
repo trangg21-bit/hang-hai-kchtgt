@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { Typography, Modal, Form, Input, Spin, Button, Select, Tree, Tabs, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
+import { Typography, Form, Input, Spin, Button, Select, Tree, Tabs, Empty, Checkbox } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
-import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../../hooks/usePermissions';
+import { getPermissionTreeKeys, getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../../hooks/usePermissions';
+import type { MenuTreeNode } from '../../types/permission';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
@@ -17,12 +18,12 @@ import { userService } from '../../services/userService';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { actionPrimary, textPrimary, textSecondary, statusDraft, statusCritical, statusOperational, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, borderDefault, spaceFormField, spaceMd, spaceSm, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
 import { colors } from '../../theme';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import { normalizeSearchText } from '../../components/org-unit';
 import { ManagementDrawer, ManagementFormField, ManagementFormGrid } from '../../components/management';
 import { PERMISSIONS } from '../../constants/permissions';
 
-const { confirm } = Modal;
+const { confirm } = modal;
 
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
 const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['group:manage', 'admin:all', 'orgunit:scope_all', '*']);
@@ -88,7 +89,7 @@ export default function GroupList() {
     try {
       const res = await groupService.list({ page, pageSize, search: search || undefined, code: code || undefined, status: filterStatus, organizationId: filterOrganizationId });
       setDataSource(res.data); setTotal(res.total);
-      
+
       // Update counts based on backend stats
       setCountActive(res.activeCount);
       setCountInactive(res.inactiveCount);
@@ -311,19 +312,6 @@ export default function GroupList() {
     } finally { setSubmitting(false); }
   }, [editingGroup, form, fetchGroups]);
 
-  const handleDelete = useCallback((group: Group) => {
-    confirm({
-      title: 'Xác nhận xóa nhóm',
-      icon: <ExclamationCircleOutlined />,
-      content: `Bạn có chắc chắn muốn xóa nhóm "${group.name}"? Hành động này không thể hoàn tác.`,
-      okText: 'Xóa', okType: 'danger', cancelText: 'Hủy',
-      onOk: async () => {
-        try { await groupService.delete(group.id); toast.success('Đã xóa nhóm'); fetchGroups(); }
-        catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-      },
-    });
-  }, [fetchGroups]);
-
   const handleLock = useCallback((group: Group) => {
     const isActive = group.status === 'active';
     const actionLabel = isActive ? 'khóa' : 'mở khóa';
@@ -405,13 +393,21 @@ export default function GroupList() {
   const permissionTreeData = useMemo(() => {
     const keyword = normalizeSearchText(permissionSearch);
     if (!keyword) return assignablePermissionTree;
-    const filter = (nodes: typeof assignablePermissionTree): typeof assignablePermissionTree => nodes.flatMap((node) => {
+    const filter = (nodes: readonly MenuTreeNode[]): MenuTreeNode[] => nodes.flatMap((node) => {
       const children = filter(node.children || []);
-      const matches = normalizeSearchText(node.title).includes(keyword) || normalizeSearchText(node.key).includes(keyword);
+      const matches = normalizeSearchText(node.title).includes(keyword) || normalizeSearchText(String(node.key)).includes(keyword);
       return matches || children.length ? [{ ...node, children }] : [];
     });
     return filter(assignablePermissionTree);
   }, [assignablePermissionTree, permissionSearch]);
+
+  const allGroupPermissionKeys = useMemo(
+    () => Array.from(getPermissionTreeKeys(assignablePermissionTree)).filter((key) => !key.startsWith('group_')),
+    [assignablePermissionTree],
+  );
+  const allGroupPermissionsSelected = allGroupPermissionKeys.length > 0
+    && allGroupPermissionKeys.every((key) => selectedPermissionKeys.includes(key));
+  const someGroupPermissionsSelected = allGroupPermissionKeys.some((key) => selectedPermissionKeys.includes(key));
 
   const handleFilterSearch = useCallback(() => {
     setSearch(searchInput.trim());
@@ -457,16 +453,24 @@ export default function GroupList() {
     if (hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE)) {
       actions.push({ key: 'members', label: 'Thêm người vào nhóm', icon: <UserOutlined />, onClick: () => handleViewMembers(record) });
     }
-    if (hasPerm(PERMISSIONS.GROUP.DELETE)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return actions;
-  }, [hasPerm, handleViewDetail, handleViewMembers, openPermissionModal, openEditModal, handleDelete, handleLock]);
+  }, [hasPerm, handleViewDetail, handleViewMembers, openPermissionModal, openEditModal, handleLock]);
 
   const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const,
-      render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'organizationName', label: 'Đơn vị', dataIndex: 'organizationName', width: 220,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
-    { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 300,
+    {
+      key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
+      render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span>
+    },
+    {
+      key: 'organizationName', label: 'Đơn vị', dataIndex: 'organizationName', width: 260,
+      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>
+    },
+    {
+      key: 'code', label: 'Mã nhóm', dataIndex: 'code', width: 160,
+      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>
+    },
+    {
+      key: 'name', label: 'Tên nhóm', dataIndex: 'name',
       render: (text: string, record: Group) => (
         <Typography.Text
           strong
@@ -475,13 +479,16 @@ export default function GroupList() {
         >
           {text}
         </Typography.Text>
-      ) },
-    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, align: 'center' as const,
+      )
+    },
+    {
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, align: 'center' as const,
       render: (status: string) => {
         const color = status === 'active' ? statusOperational : statusDraft;
         const label = STATUS_LABELS[status] || status;
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
-      } },
+      }
+    },
   ], [page, pageSize, handleViewDetail, hasPerm]);
 
   const detailMemberColumns = useMemo(() => [
@@ -510,7 +517,7 @@ export default function GroupList() {
         dataSource={dataSource}
         rowKey="id"
         rowActions={rowActions}
-        scroll={{ x: 'max-content' }}
+        scroll={{ x: '100%' }}
         emptyState={dataSource.length === 0 ? <EmptyState description={emptyDescription} /> : undefined}
       />
       {dataSource.length > 0 && (
@@ -595,144 +602,149 @@ export default function GroupList() {
         {detailGroup && (
           <Spin spinning={detailLoading}>
             {detailError ? <ErrorState message={detailError} onRetry={() => { void openDetail(detailGroup, detailTab as 'info' | 'members', detailMembersOnly); }} /> : (
-          <div style={{ paddingTop: 16 }}>
-            <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; }`}</style>
-            <Tabs
-              activeKey={detailTab}
-              onChange={setDetailTab}
-              tabBarStyle={{ marginBottom: 0, paddingTop: 0 }}
-              items={[
-              ...(!detailMembersOnly ? [{
-                key: 'info',
-                label: 'Thông tin nhóm',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <div className="detail-grid">
-                      {[
-                        ['Đơn vị', detailGroup.organizationName || '—'],
-                        ['Tên nhóm', <Typography.Text strong style={{ color: colors.sidebarBg }}>{detailGroup.name}</Typography.Text>],
-                        ['Mã nhóm', detailGroup.code || '—'],
-                        ['Trạng thái', (() => {
-                          const color = detailGroup.status === 'active' ? statusOperational : statusDraft;
-                          return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{STATUS_LABELS[detailGroup.status] || detailGroup.status}</span>;
-                        })()],
-                        ['Mô tả', detailGroup.description || 'Chưa có mô tả'],
-                        ['Ngày cập nhật', detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
-                        ['Cán bộ cập nhật', detailGroup.updatedByName || '—'],
-                      ].map(([label, value], index) => (
-                        <div key={index} className="detail-row">
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value">{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ),
-              }] : []),
-              {
-                key: 'members',
-                label: 'Danh sách thành viên',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spaceMd, marginBottom: spaceMd }}>
-                      <Input.Search
-                        allowClear
-                        value={detailMembersSearchInput}
-                        placeholder="Tìm theo họ tên, tên đăng nhập, email..."
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setDetailMembersSearchInput(value);
-                          if (!value) {
-                            setDetailMembersSearch('');
-                            setDetailMembersPage(1);
-                          }
-                        }}
-                        onSearch={handleDetailMembersSearch}
-                        style={{ width: 360, maxWidth: '100%', borderRadius: radiusPill }}
-                      />
-                      {hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) && (
-                        <Button
-                          type={addMemberDrawerOpen ? 'default' : 'primary'}
-                          icon={<PlusOutlined />}
-                          onClick={() => {
-                            if (addMemberDrawerOpen) {
-                              setAddMemberDrawerOpen(false);
-                              addMemberForm.resetFields();
-                            } else {
-                              openAddMemberDrawer();
-                            }
-                          }}
-                          style={addMemberDrawerOpen ? outlineButtonStyle : primaryButtonStyle}
-                        >
-                          {addMemberDrawerOpen ? 'Ẩn thêm thành viên' : 'Thêm thành viên'}
-                        </Button>
-                      )}
-                    </div>
-                    {addMemberDrawerOpen && (
-                      <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, marginBottom: spaceMd }}>
-                        <Form form={addMemberForm} layout="vertical">
-                          <Form.Item
-                            name="userIds"
-                            label="Chọn người dùng"
-                            required
-                            style={{ marginBottom: spaceMd }}
-                            rules={[
-                              { required: true, message: 'Vui lòng chọn ít nhất một người dùng' },
-                              { validator: (_, value: string[]) => value?.length > 100
-                                ? Promise.reject(new Error('Mỗi lần chỉ được thêm tối đa 100 người dùng'))
-                                : Promise.resolve() },
-                            ]}
-                          >
-                            <Select
-                              mode="multiple"
-                              showSearch
-                              placeholder="Tìm và chọn nhiều người dùng..."
-                              options={addMemberOptions}
-                              filterOption={false}
-                              maxTagCount="responsive"
-                              onSearch={(value) => { void fetchAddMemberOptions(value, existingMemberIds); }}
-                              loading={addMemberSearchLoading}
-                              style={{ borderRadius: radiusPill, minHeight: 40 }}
-                            />
-                          </Form.Item>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceMd }}>
-                            <Button onClick={() => { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); }} style={outlineButtonStyle}>Hủy</Button>
-                            <Button type="primary" onClick={handleAddMembers} loading={addMemberSubmitting} style={primaryButtonStyle}>Thêm</Button>
+              <div style={{ paddingTop: 16 }}>
+                <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; }`}</style>
+                <Tabs
+                  activeKey={detailTab}
+                  onChange={setDetailTab}
+                  tabBarStyle={detailMembersOnly
+                    ? { display: 'none' }
+                    : { marginBottom: 0, paddingTop: 0 }}
+                  items={[
+                    ...(!detailMembersOnly ? [{
+                      key: 'info',
+                      label: 'Thông tin nhóm',
+                      children: (
+                        <div style={{ paddingTop: 16 }}>
+                          <div className="detail-grid">
+                            {[
+                              ['Đơn vị', detailGroup.organizationName || '—'],
+                              ['Tên nhóm', <Typography.Text strong style={{ color: colors.sidebarBg }}>{detailGroup.name}</Typography.Text>],
+                              ['Mã nhóm', detailGroup.code || '—'],
+                              ['Trạng thái', (() => {
+                                const color = detailGroup.status === 'active' ? statusOperational : statusDraft;
+                                return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{STATUS_LABELS[detailGroup.status] || detailGroup.status}</span>;
+                              })()],
+                              ['Mô tả', detailGroup.description || 'Chưa có mô tả'],
+                              ['Ngày cập nhật', detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm') : '—'],
+                              ['Cán bộ cập nhật', detailGroup.updatedByName || '—'],
+                            ].map(([label, value], index) => (
+                              <div key={index} className="detail-row">
+                                <span className="detail-label">{label}</span>
+                                <span className="detail-value">{value}</span>
+                              </div>
+                            ))}
                           </div>
-                        </Form>
-                      </div>
-                    )}
-                    <Spin spinning={detailMembersLoading}>
-                      {detailMembersError ? (
-                        <ErrorState message={detailMembersError} onRetry={() => setDetailMembersReload((value) => value + 1)} />
-                      ) : (
-                        <>
-                          <DataTable
-                            columns={detailMemberColumns}
-                            dataSource={detailMembers}
-                            rowKey="userId"
-                            rowActions={hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? detailMemberActions : undefined}
-                            scroll={{ x: 'max-content' }}
-                            emptyState={<EmptyState description={detailMembersSearch ? 'Không tìm thấy thành viên phù hợp' : 'Chưa có thành viên nào'} />}
-                          />
-                          {detailMembersTotal > 0 && (
-                            <Pagination
-                              total={detailMembersTotal}
-                              current={detailMembersPage}
-                              pageSize={detailMembersPageSize}
-                              pageSizeOptions={[10, 20, 50, 100]}
-                              onChange={handleDetailMembersPageChange}
+                        </div>
+                      ),
+                    }] : []),
+                    {
+                      key: 'members',
+                      label: 'Danh sách thành viên',
+                      children: (
+                        <div style={{ paddingTop: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spaceMd, marginBottom: spaceMd }}>
+                            <Input
+                              allowClear
+                              prefix={<SearchOutlined style={{ color: colors.sidebarBg }} />}
+                              value={detailMembersSearchInput}
+                              placeholder="Tìm theo họ tên, tên đăng nhập, email..."
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setDetailMembersSearchInput(value);
+                                if (!value) {
+                                  setDetailMembersSearch('');
+                                  setDetailMembersPage(1);
+                                }
+                              }}
+                              onPressEnter={handleDetailMembersSearch}
+                              style={{ width: 360, maxWidth: '100%', borderRadius: radiusPill, height: 40 }}
                             />
+                            {hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) && (
+                              <Button
+                                type={addMemberDrawerOpen ? 'default' : 'primary'}
+                                icon={<PlusOutlined />}
+                                onClick={() => {
+                                  if (addMemberDrawerOpen) {
+                                    setAddMemberDrawerOpen(false);
+                                    addMemberForm.resetFields();
+                                  } else {
+                                    openAddMemberDrawer();
+                                  }
+                                }}
+                                style={addMemberDrawerOpen ? outlineButtonStyle : primaryButtonStyle}
+                              >
+                                {addMemberDrawerOpen ? 'Ẩn thêm thành viên' : 'Thêm thành viên'}
+                              </Button>
+                            )}
+                          </div>
+                          {addMemberDrawerOpen && (
+                            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, marginBottom: spaceMd }}>
+                              <Form form={addMemberForm} layout="vertical">
+                                <Form.Item
+                                  name="userIds"
+                                  label="Chọn người dùng"
+                                  required
+                                  style={{ marginBottom: spaceMd }}
+                                  rules={[
+                                    { required: true, message: 'Vui lòng chọn ít nhất một người dùng' },
+                                    {
+                                      validator: (_, value: string[]) => value?.length > 100
+                                        ? Promise.reject(new Error('Mỗi lần chỉ được thêm tối đa 100 người dùng'))
+                                        : Promise.resolve()
+                                    },
+                                  ]}
+                                >
+                                  <Select
+                                    mode="multiple"
+                                    showSearch
+                                    placeholder="Tìm và chọn nhiều người dùng..."
+                                    options={addMemberOptions}
+                                    filterOption={false}
+                                    maxTagCount="responsive"
+                                    onSearch={(value) => { void fetchAddMemberOptions(value, existingMemberIds); }}
+                                    loading={addMemberSearchLoading}
+                                    style={{ borderRadius: radiusPill, minHeight: 40 }}
+                                  />
+                                </Form.Item>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceMd }}>
+                                  <Button onClick={() => { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); }} style={outlineButtonStyle}>Hủy</Button>
+                                  <Button type="primary" onClick={handleAddMembers} loading={addMemberSubmitting} style={primaryButtonStyle}>Thêm</Button>
+                                </div>
+                              </Form>
+                            </div>
                           )}
-                        </>
-                      )}
-                    </Spin>
-                  </div>
-                ),
-              },
-              ]}
-            />
-          </div>
+                          <Spin spinning={detailMembersLoading}>
+                            {detailMembersError ? (
+                              <ErrorState message={detailMembersError} onRetry={() => setDetailMembersReload((value) => value + 1)} />
+                            ) : (
+                              <>
+                                <DataTable
+                                  columns={detailMemberColumns}
+                                  dataSource={detailMembers}
+                                  rowKey="userId"
+                                  rowActions={hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? detailMemberActions : undefined}
+                                  scroll={{ x: 'max-content' }}
+                                  emptyState={<EmptyState description={detailMembersSearch ? 'Không tìm thấy thành viên phù hợp' : 'Chưa có thành viên nào'} />}
+                                />
+                                {detailMembersTotal > 0 && (
+                                  <Pagination
+                                    total={detailMembersTotal}
+                                    current={detailMembersPage}
+                                    pageSize={detailMembersPageSize}
+                                    pageSizeOptions={[10, 20, 50, 100]}
+                                    onChange={handleDetailMembersPageChange}
+                                  />
+                                )}
+                              </>
+                            )}
+                          </Spin>
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
             )}
           </Spin>
         )}
@@ -765,7 +777,17 @@ export default function GroupList() {
           {permissionTreeData.length === 0 && !permissionLoading ? (
             <Empty description="Không tìm thấy quyền phù hợp" />
           ) : (
-              <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
+            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
+              <div style={{ marginBottom: spaceMd }}>
+                <Checkbox
+                  checked={allGroupPermissionsSelected}
+                  indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected}
+                  disabled={permissionLoading || allGroupPermissionKeys.length === 0}
+                  onChange={(event) => setSelectedPermissionKeys(event.target.checked ? allGroupPermissionKeys : [])}
+                >
+                  HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
+                </Checkbox>
+              </div>
               <Tree
                 checkable
                 defaultExpandAll
@@ -789,8 +811,8 @@ export default function GroupList() {
         maskClosable={false}
         footer={
           <>
-          <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
-          <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button>
+            <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+            <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button>
           </>
         }
       >
@@ -817,8 +839,18 @@ export default function GroupList() {
             </ManagementFormGrid>
             <ManagementFormGrid>
               <ManagementFormField>
-                <Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }, { min: 2, max: 30, message: 'Mã nhóm phải từ 2 đến 30 ký tự' }, { pattern: /^[A-Z0-9_]+$/, message: 'Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới' }]}>
-                  <Input placeholder="vd: QL01" disabled={!!editingGroup} normalize={(value) => String(value ?? '').trim().toUpperCase()} style={{ borderRadius: radiusPill, height: 40 }} />
+                <Form.Item
+                  name="code"
+                  {...labelProps('Mã nhóm')}
+                  style={{ marginBottom: spaceFormField }}
+                  normalize={(value) => String(value ?? '').trim().toUpperCase()}
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập mã nhóm' },
+                    { min: 2, max: 30, message: 'Mã nhóm phải từ 2 đến 30 ký tự' },
+                    { pattern: /^[A-Z0-9_]+$/, message: 'Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới' },
+                  ]}
+                >
+                  <Input placeholder="vd: QL01" disabled={!!editingGroup} style={{ borderRadius: radiusPill, height: 40 }} />
                 </Form.Item>
               </ManagementFormField>
               <ManagementFormField>

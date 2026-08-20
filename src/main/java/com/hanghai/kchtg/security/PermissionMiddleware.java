@@ -4,9 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.PermissionRoleService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -30,17 +28,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import static com.hanghai.kchtg.security.constants.PermissionConstants.*;
 import static java.util.Map.entry;
 
 /**
- * Permission enforcement middleware that runs AFTER authentication (F-275 3-Level RBAC).
+ * Permission enforcement middleware that runs AFTER authentication (F-275
+ * 3-Level RBAC).
  * <p>
  * Extracts the resource and action from the request path and HTTP method,
  * then delegates to {@link PermissionRoleService#checkPermission} for the
- * currently authenticated user. Returns 403 JSON with {@code requiredPermission}
+ * currently authenticated user. Returns 403 JSON with
+ * {@code requiredPermission}
  * field on denial (BR-275-11).
  * </p>
  */
@@ -59,35 +58,31 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/v1/integration/share/",
             "/api/org-units/options",
             "/api/v1/org-units/options",
-            "/api/common/options/"
-    );
+            "/api/common/options/",
+            "/api/field-visibility");
 
     private static final Set<String> SKIP_PERMISSION_ORG_UNIT_PATHS = Set.of(
             "/api/org-units",
             "/api/org-units/",
             "/api/v1/org-units",
-            "/api/v1/org-units/"
-    );
+            "/api/v1/org-units/");
 
     private final PermissionRoleService permissionRoleService;
-    private final UserRepository userRepository;
     private final PermissionRepository permissionRepository;
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     public PermissionMiddleware(PermissionRoleService permissionRoleService,
-                                UserRepository userRepository,
-                                @Nullable PermissionRepository permissionRepository) {
+            @Nullable PermissionRepository permissionRepository) {
         this.permissionRoleService = permissionRoleService;
-        this.userRepository = userRepository;
         this.permissionRepository = permissionRepository;
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         String path = request.getRequestURI();
         String method = request.getMethod();
@@ -99,19 +94,16 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         }
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()) {
-            boolean isSuperAdmin = auth.getAuthorities().stream().anyMatch(a ->
-                    "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority()) ||
-                    "SYSTEM_ADMIN".equalsIgnoreCase(a.getAuthority()) ||
-                    "*".equals(a.getAuthority()) ||
-                    "admin:all".equalsIgnoreCase(a.getAuthority()) ||
-                    "admin:manage".equalsIgnoreCase(a.getAuthority()) ||
-                    "ROLE_ADMIN".equalsIgnoreCase(a.getAuthority())
-            );
-            if (isSuperAdmin) {
-                filterChain.doFilter(request, response);
-                return;
-            }
+        if (auth == null || !auth.isAuthenticated()) {
+            String requiredPermission = extractResource(path) + ":" + mapMethodToAction(method, path);
+            log.warn("Permission denied for unauthenticated user on protected path: {} {}", method, path);
+            writeForbiddenResponse(response, path, requiredPermission);
+            return;
+        }
+
+        if (permissionRoleService.isSuperAdmin(auth)) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
         // Extract resource from path
@@ -119,17 +111,11 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         // Map HTTP method to action
         String action = mapMethodToAction(method, path);
 
-        // Resolve authenticated user
-        UUID userId = resolveUserId();
-        if (userId == null) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // Check permission
-        if (!permissionRoleService.checkPermission(userId, resource, action)) {
+        // Check the permission snapshot already attached by JwtAuthFilter.
+        // Do not resolve the same user from DB/Redis again for this request.
+        if (!permissionRoleService.checkPermission(auth, resource, action)) {
             String requiredPermission = resource + ":" + action;
-            log.warn("Permission denied for user {}: {} {}", userId, method, path);
+            log.warn("Permission denied for user {}: {} {}", auth.getName(), method, path);
             writeForbiddenResponse(response, path, requiredPermission);
             return;
         }
@@ -158,7 +144,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         StringBuilder resource = new StringBuilder();
         boolean found = false;
         for (String segment : segments) {
-            if (segment.isEmpty()) continue;
+            if (segment.isEmpty())
+                continue;
             if (!found && ("api".equals(segment) || "v1".equals(segment))) {
                 continue;
             }
@@ -167,7 +154,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             break;
         }
         String res = resource.toString();
-        if (res.isEmpty()) return "unknown";
+        if (res.isEmpty())
+            return "unknown";
         return normalizeResource(res);
     }
 
@@ -189,13 +177,15 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             return URL_TO_PERMISSION.get(clean);
         }
 
-        // 2. Convention rule: Strip hyphens/underscores (e.g. legal-documents -> legaldocuments)
+        // 2. Convention rule: Strip hyphens/underscores (e.g. legal-documents ->
+        // legaldocuments)
         String noDash = clean.replace("-", "").replace("_", "");
         if (isKnownDbResource(noDash)) {
             return noDash;
         }
 
-        // 3. Convention rule: Singularization (e.g. documents -> document, users -> user, categories -> category)
+        // 3. Convention rule: Singularization (e.g. documents -> document, users ->
+        // user, categories -> category)
         String singular = noDash;
         if (singular.endsWith("ies") && singular.length() > 3) {
             singular = singular.substring(0, singular.length() - 3) + "y";
@@ -214,7 +204,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
     }
 
     private boolean isKnownDbResource(String resource) {
-        if (permissionRepository == null) return false;
+        if (permissionRepository == null)
+            return false;
         try {
             return permissionRepository.countByResource(resource) > 0;
         } catch (Exception e) {
@@ -229,12 +220,13 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("log-export", "log"),
             entry("org-units", "orgunit"),
             entry("data-connections", "connection"),
-            entry("beacon-lights", "data"),
-            entry("buoys", "data"),
-            entry("beacon-history", "data"),
-            entry("point-objects", "data"),
-            entry("line-objects", "data"),
-            entry("polygon-objects", "data"),
+            entry("interconnect", "connection"),
+            entry("beacon-lights", "beaconlight"),
+            entry("buoys", "buoy"),
+            entry("beacon-history", "beaconlight"),
+            entry("point-objects", "pointobject"),
+            entry("line-objects", "lineobject"),
+            entry("polygon-objects", "polygonobject"),
             entry("map-layers", "map"),
             entry("map-icons", "map"),
             entry("symbols", "map"),
@@ -245,39 +237,51 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("water-zones", "waterzone"),
             entry("navigation-channel", "navigationchannel"),
             entry("dike-revetment", "dikerevetment"),
-            entry("ship-repair-facility", "shiprepair"),
+            entry("ship-repair-facility", "shiprepairfacility"),
             entry("radar-station", "radarstation"),
             entry("vts-system", "vts"),
             entry("vts-systems", "vts"),
             entry("he-thong-vts", "vts"),
-            entry("port-planning", "document"),
-            entry("planning-adjustments", "document"),
-            entry("operation-plans", "document"),
-            entry("maintenance-plans", "document"),
+            entry("port-planning", "portplanning"),
+            entry("planning-adjustments", "planningadjustment"),
+            entry("operation-plans", "operationplan"),
+            entry("maintenance-plans", "maintenanceplan"),
             entry("legal-documents", "document"),
             entry("incidents", "incident"),
             entry("reports", "report"),
             entry("bcc157", "report"),
             entry("statistics", "report"),
-            entry("buoy-station", "data"),
-            entry("stations", "data"),
+            entry("buoy-station", "buoystation"),
+            entry("buoy-stations", "buoystation"),
+            entry("stations", "station"),
             entry("users", "user"),
             entry("approvals", "approve"),
             entry("dashboard", "dashboard"),
             entry("backups", "admin"),
             entry("siem", "security"),
-            entry("admin", "admin")
-    );
+            entry("admin", "admin"));
 
     /**
      * Map HTTP method to CRUD action.
      */
     private String mapMethodToAction(String method, String path) {
         String normalizedPath = path.toLowerCase(java.util.Locale.ROOT);
-        if (normalizedPath.contains("approve-c1") || normalizedPath.contains("approvec1")) {
+        if (normalizedPath.contains("approve-c1") || normalizedPath.contains("approvec1")
+                || normalizedPath.contains("approve-l1") || normalizedPath.contains("approvel1")
+                || normalizedPath.contains("/approve/level1") || normalizedPath.contains("/approve/l1")
+                || normalizedPath.contains("/approve/c1") || normalizedPath.contains("c1/approve")
+                || normalizedPath.contains("l1/approve") || normalizedPath.contains("level1/approve")
+                || normalizedPath.contains("reject-c1") || normalizedPath.contains("rejectc1")
+                || normalizedPath.contains("reject-l1") || normalizedPath.contains("rejectl1")) {
             return ACTION_APPROVE_C1;
         }
-        if (normalizedPath.contains("approve-c2") || normalizedPath.contains("approvec2")) {
+        if (normalizedPath.contains("approve-c2") || normalizedPath.contains("approvec2")
+                || normalizedPath.contains("approve-l2") || normalizedPath.contains("approvel2")
+                || normalizedPath.contains("/approve/level2") || normalizedPath.contains("/approve/l2")
+                || normalizedPath.contains("/approve/c2") || normalizedPath.contains("c2/approve")
+                || normalizedPath.contains("l2/approve") || normalizedPath.contains("level2/approve")
+                || normalizedPath.contains("reject-c2") || normalizedPath.contains("rejectc2")
+                || normalizedPath.contains("reject-l2") || normalizedPath.contains("rejectl2")) {
             return ACTION_APPROVE_C2;
         }
         if (normalizedPath.contains("approve") || normalizedPath.contains("reject")) {
@@ -285,6 +289,21 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         }
         if (normalizedPath.contains("history")) {
             return ACTION_HISTORY;
+        }
+        if (normalizedPath.contains("/lock") || normalizedPath.contains("/unlock")) {
+            return "lock";
+        }
+        if (normalizedPath.contains("/permissions")) {
+            return "permission";
+        }
+        if (normalizedPath.contains("/members")) {
+            if (HttpMethod.GET.matches(method)) {
+                return ACTION_READ;
+            }
+            return ACTION_MANAGE;
+        }
+        if (normalizedPath.contains("/result")) {
+            return "report";
         }
         // File upload/delete are edits to the VTS record. Keep this aligned
         // with VtsSystemController, which protects both operations with
@@ -316,32 +335,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
     }
 
     /**
-     * Resolve the authenticated user ID from the SecurityContext.
-     * Follows the same resolveUser pattern as PermissionAuthorizationManager.
-     */
-    private UUID resolveUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return null;
-        }
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
-            return user.getId();
-        }
-        if (principal instanceof org.springframework.security.core.userdetails.User springUser) {
-            return userRepository.findByUsername(springUser.getUsername())
-                    .map(User::getId)
-                    .orElse(null);
-        }
-        if (principal instanceof String username) {
-            return userRepository.findByUsername(username)
-                    .map(User::getId)
-                    .orElse(null);
-        }
-        return null;
-    }
-
-    /**
      * Write a 403 JSON response with requiredPermission field (BR-275-11).
      */
     private void writeForbiddenResponse(HttpServletResponse response, String path, String requiredPermission)
@@ -355,9 +348,7 @@ public class PermissionMiddleware extends OncePerRequestFilter {
                 Map.of(
                         "path", path,
                         "requiredPermission", requiredPermission,
-                        "granted", false
-                )
-        );
+                        "granted", false));
 
         java.io.PrintWriter writer = response.getWriter();
         if (writer != null) {

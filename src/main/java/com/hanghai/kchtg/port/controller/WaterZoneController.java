@@ -18,12 +18,14 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/water-zones")
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@DataScope
 public class WaterZoneController {
 
     private final WaterZoneService waterZoneService;
@@ -39,7 +41,8 @@ public class WaterZoneController {
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'waterzone:read')")
     public ResponseEntity<ApiResponse<WaterZoneResponse>> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin vùng nước thành công", waterZoneService.getById(id)));
+        return ResponseEntity
+                .ok(ApiResponse.success("Lấy thông tin vùng nước thành công", waterZoneService.getById(id)));
     }
 
     @GetMapping
@@ -53,10 +56,12 @@ public class WaterZoneController {
             @RequestParam(required = false) WaterZoneType waterZoneType,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing WaterZones: page={}, size={}, orgUnitId={}, portId={}, search={}, waterZoneType={}, status={}, approvalStatus={}",
+        log.info(
+                "Listing WaterZones: page={}, size={}, orgUnitId={}, portId={}, search={}, waterZoneType={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, portId, search, waterZoneType, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng nước thành công",
-                waterZoneService.findAll(page, size, orgUnitId, portId, search, waterZoneType, status, approvalStatus)));
+                waterZoneService.findAll(page, size, orgUnitId, portId, search, waterZoneType, status,
+                        approvalStatus)));
     }
 
     @GetMapping("/code/{waterZoneCode}")
@@ -69,7 +74,8 @@ public class WaterZoneController {
     @PutMapping
     @PreAuthorize("@auth.check(authentication, 'waterzone:update')")
     public ResponseEntity<ApiResponse<WaterZoneResponse>> update(@Valid @RequestBody UpdateWaterZoneRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật vùng nước thành công", waterZoneService.update(request)));
+        return ResponseEntity
+                .ok(ApiResponse.success("Cập nhật vùng nước thành công", waterZoneService.update(request)));
     }
 
     @DeleteMapping("/{id}")

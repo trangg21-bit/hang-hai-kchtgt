@@ -154,6 +154,7 @@ public class DocumentService {
     private DocumentResponse toResponse(Document entity) {
         return DocumentResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .entityType(entity.getEntityType())
                 .entityId(entity.getEntityId())
                 .fileName(entity.getFileName())

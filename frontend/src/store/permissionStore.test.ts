@@ -88,13 +88,12 @@ describe('permissionStore Unit Tests', () => {
       user: {
         id: '1',
         username: 'user1',
-        permissions: ['user:read', 'orgunit:approve', 'map:manage', 'data:create'],
+        permissions: ['user:read', 'map:manage', 'data:create'],
       } as any,
     });
 
     const store = usePermissionStore.getState();
     expect(store.hasPermission('user.view')).toBe(true);
-    expect(store.hasPermission('org.approve')).toBe(true);
     expect(store.hasPermission('symbol.list')).toBe(true);
     expect(store.hasPermission('gis.point.create')).toBe(true);
   });
@@ -117,5 +116,14 @@ describe('permissionStore Unit Tests', () => {
     const store = usePermissionStore.getState();
     expect(store.hasAllPermissions(['user:read', 'user:update'])).toBe(true);
     expect(store.hasAllPermissions(['user:read', 'user:delete'])).toBe(false);
+  });
+
+  it('should automatically sync permissions array when authStore user updates', () => {
+    useAuthStore.setState({
+      user: { id: '1', username: 'user1', permissions: ['vts:read', 'vts:approvec1'] } as any,
+    });
+
+    expect(usePermissionStore.getState().permissions).toEqual(['vts:read', 'vts:approvec1']);
+    expect(usePermissionStore.getState().hasPermission('vts:approvec1')).toBe(true);
   });
 });

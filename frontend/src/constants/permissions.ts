@@ -27,7 +27,6 @@ export const PERMISSIONS = {
   ORGUNIT: {
     READ: 'orgunit:read',
     MANAGE: 'orgunit:manage',
-    APPROVE: 'orgunit:approve',
   },
 
   /** Quản lý nhóm người dùng */
@@ -215,7 +214,6 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.GROUP.PERMISSION, title: 'Phân quyền Nhóm' },
       { key: PERMISSIONS.ORGUNIT.READ, title: 'Xem Đơn vị' },
       { key: PERMISSIONS.ORGUNIT.MANAGE, title: 'Quản lý Đơn vị' },
-      { key: PERMISSIONS.ORGUNIT.APPROVE, title: 'Duyệt Đơn vị' },
     ],
   },
   {

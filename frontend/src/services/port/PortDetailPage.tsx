@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Card, Button, Space, Tag, Typography, Row, Col, Popconfirm, Table,
-  Tabs, Breadcrumb, Spin, Divider, Descriptions, Modal,
+  Tabs, Breadcrumb, Spin, Divider, Descriptions, Modal, Collapse,
 } from 'antd';
 import {
   UploadOutlined, DownloadOutlined, ArrowLeftOutlined,
@@ -16,7 +16,7 @@ import { fetchCangBienById, deleteCangBien, approveCangBien, rejectCangBien } fr
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
 import { documentApi } from '../../app/document/api';
-import type { GiayTo } from '../../app/document/types';
+import type { Document } from '../../app/document/types';
 import EmptyState from '../../components/EmptyState';
 import { berthCRUD, waterZoneCRUD } from '../../services/portService';
 import type { Berth, WaterZone } from '../../types/port';
@@ -30,7 +30,7 @@ import {
   statusOperational, statusAttention, statusCritical, statusDraft,
   actionPrimary, actionHover,
   borderDefault, surfaceCard, surfacePage,
-  spaceMd, spaceSm, spaceLg, spaceXl, spaceFormField,
+  spaceMd, spaceSm, spaceXs, spaceLg, spaceXl, spaceFormField,
   fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl,
   fontWeightNormal, fontWeightMedium, fontWeightBold,
   radiusPill, radiusLg, radiusMd,
@@ -195,7 +195,7 @@ export default function PortDetailPage() {
   const hasPermission = usePermissionStore((s) => s.hasPermission);
 
   const [data, setData] = useState<CangBienResponse | null>(null);
-  const [files, setFiles] = useState<GiayTo[]>([]);
+  const [files, setFiles] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
@@ -230,7 +230,7 @@ export default function PortDetailPage() {
       try { const r = await organizationService.list({ pageSize: 1000 }); setOrgUnits(r.data || []); } catch {}
     })();
     (async () => {
-      try { const s = await symbolService.list(); setSymbols(s || []); } catch {}
+      try { const s = await symbolService.list(); setSymbols(s?.data || []); } catch {}
     })();
   }, []);
 
@@ -313,7 +313,8 @@ export default function PortDetailPage() {
     const s = symbols.find((x: Symbol) => x.id === sid);
     return s ? s.name : sid.substring(0, 8) + '…';
   };
-  const isAdmin = hasPermission('admin:manage');
+
+  const isAdmin = hasPermission('admin:all') || hasPermission('*');
 
   return (
     <Modal
@@ -382,7 +383,7 @@ function renderGeneralTab(
   totalBenCangs: number,
   waterZones: WaterZone[],
   totalVungNuocs: number,
-  files: GiayTo[],
+  files: Document[],
   childrenLoading: boolean,
   portId: string,
   navigate: ReturnType<typeof useNavigate>,

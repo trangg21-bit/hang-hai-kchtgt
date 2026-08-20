@@ -30,6 +30,10 @@ import java.util.UUID;
  * <p>
  * Endpoints are deliberately accessible without JWT authentication so that
  * first-time users can complete the MFA setup flow.
+ *
+ * TODO(SECURITY): Replace arbitrary client-supplied userId access with a signed,
+ * short-lived enrollment session bound to the authenticated user or recovery flow.
+ * Do not write TOTP secrets or verification codes into audit metadata/logs.
  * </p>
  */
 @RestController

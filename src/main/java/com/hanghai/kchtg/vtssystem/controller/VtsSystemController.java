@@ -28,7 +28,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/api/v1/vts-systems", "/api/v1/vts-system", "/api/v1/he-thong-vts"})
+@RequestMapping({ "/api/v1/vts-systems", "/api/v1/vts-system", "/api/v1/he-thong-vts" })
+@DataScope
 public class VtsSystemController {
 
     private final VtsSystemService service;
@@ -90,7 +91,8 @@ public class VtsSystemController {
     @DataScope
     @GetMapping("/{id}/attachments")
     public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> getAttachments(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tài liệu đính kèm thành công", service.getAttachments(id)));
+        return ResponseEntity
+                .ok(ApiResponse.success("Lấy danh sách tài liệu đính kèm thành công", service.getAttachments(id)));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:update')")
@@ -155,7 +157,8 @@ public class VtsSystemController {
     }
 
     /**
-     * List records sitting at a given approval status. Mirrors the endpoint the other
+     * List records sitting at a given approval status. Mirrors the endpoint the
+     * other
      * infrastructure modules expose, which the frontend already calls.
      */
     @PreAuthorize("@auth.check(authentication, 'vts:read')")

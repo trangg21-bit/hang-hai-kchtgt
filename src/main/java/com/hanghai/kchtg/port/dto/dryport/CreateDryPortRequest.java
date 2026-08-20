@@ -10,12 +10,15 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 @Data
 public class CreateDryPortRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     /**
      * Action: draft (Lưu tạm), submit (Gửi phê duyệt), approve (Lưu và phê duyệt).

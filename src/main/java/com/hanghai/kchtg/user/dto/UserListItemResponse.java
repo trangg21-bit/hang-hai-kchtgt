@@ -21,6 +21,11 @@ public class UserListItemResponse {
     private String username;
     private String email;
     private String fullName;
+    private String phone;
+    private String address;
+    private String department;
+    private String position;
+    private String note;
     private UUID orgUnitId;
     private String orgUnitName;
     private UserStatus status;
@@ -32,6 +37,7 @@ public class UserListItemResponse {
                 : cache.getName(item.getOrgUnitId());
         return new UserListItemResponse(
                 item.getId(), item.getUsername(), item.getEmail(), item.getFullName(),
+                item.getPhone(), item.getAddress(), item.getDepartment(), item.getPosition(), item.getNote(),
                 item.getOrgUnitId(), orgUnitName, item.getStatus(), item.getLastLoginAt());
     }
 }

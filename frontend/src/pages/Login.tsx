@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Form, Input, Button, message, Alert } from 'antd';
+import { Form, Input, Button, Alert } from 'antd';
+import { message } from '../components/ToastNotification';
 import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';

@@ -20,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -86,7 +87,7 @@ class LegalDocumentControllerTest {
         @Test
         void listVanBan_shouldReturnAll() throws Exception {
                 when(legalDocumentService.findAll(anyInt(), anyInt()))
-                                .thenReturn(new PageImpl<>(java.util.Objects.requireNonNull(List.of(testResponse))));
+                                .thenReturn(new PageImpl<>(java.util.Objects.requireNonNull(List.of(testResponse)), PageRequest.of(0, 20), 1));
 
                 mockMvc.perform(get("/api/v1/legal-documents")
                                 .param("page", "0").param("size", "20"))

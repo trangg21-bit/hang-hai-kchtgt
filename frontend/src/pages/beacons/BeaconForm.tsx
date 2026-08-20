@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Row, Col, message, Tag, Select } from 'antd';
+import { Card, Form, Button, Space, Typography, Row, Col, Tag, Select } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { beaconLightCRUD, approval } from '../../services/beaconService';
@@ -11,7 +11,7 @@ import {
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
 import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
-import toast from '../../components/ToastNotification';
+import toast, { message } from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 
 export default function BeaconForm() {

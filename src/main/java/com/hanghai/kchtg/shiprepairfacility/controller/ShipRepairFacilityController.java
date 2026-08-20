@@ -15,11 +15,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/ship-repair-facility")
 @RequiredArgsConstructor
 @Slf4j
+@DataScope
 public class ShipRepairFacilityController {
 
     private final ShipRepairFacilityService service;
@@ -30,7 +32,9 @@ public class ShipRepairFacilityController {
             @Valid @RequestBody ShipRepairFacilityCreateRequest request,
             Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             ShipRepairFacilityResponse response = service.create(request, userId);
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
         } catch (Exception e) {
@@ -72,7 +76,9 @@ public class ShipRepairFacilityController {
             @Valid @RequestBody ShipRepairFacilityUpdateRequest request,
             Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             ShipRepairFacilityResponse response = service.update(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
         } catch (Exception e) {
@@ -85,7 +91,9 @@ public class ShipRepairFacilityController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id, Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             service.delete(id, userId);
             return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
         } catch (Exception e) {
@@ -101,7 +109,9 @@ public class ShipRepairFacilityController {
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             ShipRepairFacilityResponse response = service.approveC1(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
         } catch (Exception e) {
@@ -117,7 +127,9 @@ public class ShipRepairFacilityController {
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         try {
-            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+            java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                    ? ((User) authentication.getPrincipal()).getId()
+                    : null;
             ShipRepairFacilityResponse response = service.approveC2(id, request, userId);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
         } catch (Exception e) {
@@ -139,7 +151,8 @@ public class ShipRepairFacilityController {
     }
 
     /**
-     * List records sitting at a given approval status. Mirrors the endpoint the other
+     * List records sitting at a given approval status. Mirrors the endpoint the
+     * other
      * infrastructure modules expose, which the frontend already calls.
      */
     @PreAuthorize("@auth.check(authentication, 'shiprepair:read')")
@@ -164,7 +177,8 @@ public class ShipRepairFacilityController {
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String reviewStatus) {
         try {
-            List<ShipRepairFacilityResponse> responses = service.search(orgUnitId, keyword, provinceId, approvalStatus, reviewStatus);
+            List<ShipRepairFacilityResponse> responses = service.search(orgUnitId, keyword, provinceId, approvalStatus,
+                    reviewStatus);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", responses));
         } catch (Exception e) {
             log.warn("Lỗi khi tìm kiếm cơ sở sửa chữa, đóng tàu: {}", e.getMessage());

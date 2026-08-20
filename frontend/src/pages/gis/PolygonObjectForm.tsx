@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Form, Button, Space, Input, InputNumber, Select, Row, Col, message } from 'antd';
+import { Form, Button, Space, Input, InputNumber, Select, Row, Col } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { polygonObjectService } from '../../services/polygonObjectService';
 import type { CreatePolygonObjectPayload, UpdatePolygonObjectPayload } from '../../types/polygonObject';
 import {
   POLYGON_OBJECT_TYPE_OPTIONS,
 } from '../../types/polygonObject';
-import toast from '../../components/ToastNotification';
+import toast, { message } from '../../components/ToastNotification';
 import { ScreenHeader } from '../../components/list-view';
 import {
   spaceMd, spaceLg, spaceFormField,

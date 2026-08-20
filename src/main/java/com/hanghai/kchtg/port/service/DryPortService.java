@@ -17,6 +17,8 @@ import com.hanghai.kchtg.port.repository.DryPortRepository;
 import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -92,12 +94,14 @@ public class DryPortService {
 
     @Transactional
     public DryPortResponse create(CreateDryPortRequest request) {
+        FieldWriteGuard.validateObject(request);
         String action = request.getSaveAction();
         if (action == null || action.trim().isEmpty()) {
             action = "submit";
         }
         if (!"draft".equals(action) && !"submit".equals(action) && !"approve".equals(action)) {
-            throw new IllegalArgumentException("Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft', 'submit' hoặc 'approve'");
+            throw new IllegalArgumentException(
+                    "Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft', 'submit' hoặc 'approve'");
         }
 
         boolean isDraft = "draft".equals(action);
@@ -123,7 +127,13 @@ public class DryPortService {
             throw new IllegalArgumentException("Mã " + dryPortCode + " đã tồn tại");
         }
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "dryport", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         DryPort entity = DryPort.builder()
+                .securityLevel(secLevel)
                 .dryPortCode(dryPortCode)
                 .dryPortName(request.getDryPortName())
                 .provinceId(request.getProvinceId())
@@ -142,7 +152,8 @@ public class DryPortService {
                 .operationalStatus(request.getOperationalStatus())
                 .remarks(request.getRemarks())
                 // Approval
-                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING_APPROVAL)
+                .approvalStatus(isDraft ? ApprovalStatus.DRAFT
+                        : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING_APPROVAL)
                 // GIS
                 .mapSymbolId(request.getMapSymbolId())
                 .coordinateSystem(request.getCoordinateSystem())
@@ -158,12 +169,14 @@ public class DryPortService {
 
         // Spatial sync
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
@@ -173,8 +186,7 @@ public class DryPortService {
                     objType,
                     coordinates,
                     saved.getId(),
-                    InfrastructureType.DRY_PORT
-            );
+                    InfrastructureType.DRY_PORT);
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
         }
@@ -212,18 +224,22 @@ public class DryPortService {
 
     @Transactional(readOnly = true)
     public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
-                                             String search, String status, String approvalStatus) {
+            String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize,
+                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
-        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, provinceId, search, statusEnum, approvalEnum, pageable);
+        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, provinceId, search, statusEnum,
+                approvalEnum, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         pageResult.getContent().forEach(e -> {
             try {
-                if (e.getCreatedBy() != null) userUuids.add(e.getCreatedBy());
-                if (e.getUpdatedBy() != null) userUuids.add(e.getUpdatedBy());
+                if (e.getCreatedBy() != null)
+                    userUuids.add(e.getCreatedBy());
+                if (e.getUpdatedBy() != null)
+                    userUuids.add(e.getUpdatedBy());
             } catch (Exception ex) {
                 // ignore
             }
@@ -239,7 +255,8 @@ public class DryPortService {
             });
         }
 
-        return pageResult.map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
+        return pageResult
+                .map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
     }
 
     @Transactional(readOnly = true)
@@ -252,6 +269,7 @@ public class DryPortService {
 
     @Transactional
     public DryPortResponse update(UpdateDryPortRequest request) {
+        FieldWriteGuard.validateObject(request);
         DryPort entity = dryPortRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + request.getId()));
 
@@ -264,8 +282,10 @@ public class DryPortService {
             UUID orgUnitId = request.getOrgUnitId() != null ? request.getOrgUnitId() : entity.getOrgUnitId();
             String name = request.getDryPortName() != null ? request.getDryPortName() : entity.getDryPortName();
             Integer provinceId = request.getProvinceId() != null ? request.getProvinceId() : entity.getProvinceId();
-            String detailedLocation = request.getDetailedLocation() != null ? request.getDetailedLocation() : entity.getDetailedLocation();
-            java.math.BigDecimal teuCapacity = request.getTeuCapacity() != null ? request.getTeuCapacity() : entity.getTeuCapacity();
+            String detailedLocation = request.getDetailedLocation() != null ? request.getDetailedLocation()
+                    : entity.getDetailedLocation();
+            java.math.BigDecimal teuCapacity = request.getTeuCapacity() != null ? request.getTeuCapacity()
+                    : entity.getTeuCapacity();
             Integer portStatus = request.getPortStatus() != null ? request.getPortStatus() : entity.getPortStatus();
             validateMandatoryFields(orgUnitId, name, provinceId, detailedLocation, teuCapacity, portStatus);
         }
@@ -275,31 +295,57 @@ public class DryPortService {
         log.info("DryPort update: snapshot captured for id={}, name={}", entity.getId(), entity.getDryPortName());
 
         // Update mutable fields — code is immutable
-        if (request.getDryPortName() != null) entity.setDryPortName(request.getDryPortName());
-        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
-        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "dryport",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getDryPortName() != null)
+            entity.setDryPortName(request.getDryPortName());
+        if (request.getProvinceId() != null)
+            entity.setProvinceId(request.getProvinceId());
+        if (request.getOrgUnitId() != null)
+            entity.setOrgUnitId(request.getOrgUnitId());
         // General info
-        if (request.getOperatingUnit() != null) entity.setOperatingUnit(request.getOperatingUnit());
-        if (request.getRegion() != null) entity.setRegion(request.getRegion());
-        if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getTransportCorridor() != null) entity.setTransportCorridor(request.getTransportCorridor());
-        if (request.getArea() != null) entity.setArea(request.getArea());
-        if (request.getWarehouseArea() != null) entity.setWarehouseArea(request.getWarehouseArea());
-        if (request.getYardArea() != null) entity.setYardArea(request.getYardArea());
-        if (request.getTeuCapacity() != null) entity.setTeuCapacity(request.getTeuCapacity());
-        if (request.getConnectionMode() != null) entity.setConnectionMode(request.getConnectionMode());
-        if (request.getPortStatus() != null) entity.setPortStatus(request.getPortStatus());
-        if (request.getOperationalStatus() != null) entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getRemarks() != null) entity.setRemarks(request.getRemarks());
+        if (request.getOperatingUnit() != null)
+            entity.setOperatingUnit(request.getOperatingUnit());
+        if (request.getRegion() != null)
+            entity.setRegion(request.getRegion());
+        if (request.getDetailedLocation() != null)
+            entity.setDetailedLocation(request.getDetailedLocation());
+        if (request.getTransportCorridor() != null)
+            entity.setTransportCorridor(request.getTransportCorridor());
+        if (request.getArea() != null)
+            entity.setArea(request.getArea());
+        if (request.getWarehouseArea() != null)
+            entity.setWarehouseArea(request.getWarehouseArea());
+        if (request.getYardArea() != null)
+            entity.setYardArea(request.getYardArea());
+        if (request.getTeuCapacity() != null)
+            entity.setTeuCapacity(request.getTeuCapacity());
+        if (request.getConnectionMode() != null)
+            entity.setConnectionMode(request.getConnectionMode());
+        if (request.getPortStatus() != null)
+            entity.setPortStatus(request.getPortStatus());
+        if (request.getOperationalStatus() != null)
+            entity.setOperationalStatus(request.getOperationalStatus());
+        if (request.getRemarks() != null)
+            entity.setRemarks(request.getRemarks());
         // Announcement
-        if (request.getAnnouncementTime() != null) entity.setAnnouncementTime(request.getAnnouncementTime());
-        if (request.getAnnouncementDecisionNumber() != null) entity.setAnnouncementDecisionNumber(request.getAnnouncementDecisionNumber());
-        if (request.getAnnouncementDecisionDate() != null) entity.setAnnouncementDecisionDate(request.getAnnouncementDecisionDate());
-        if (request.getAnnouncementOrg() != null) entity.setAnnouncementOrg(request.getAnnouncementOrg());
+        if (request.getAnnouncementTime() != null)
+            entity.setAnnouncementTime(request.getAnnouncementTime());
+        if (request.getAnnouncementDecisionNumber() != null)
+            entity.setAnnouncementDecisionNumber(request.getAnnouncementDecisionNumber());
+        if (request.getAnnouncementDecisionDate() != null)
+            entity.setAnnouncementDecisionDate(request.getAnnouncementDecisionDate());
+        if (request.getAnnouncementOrg() != null)
+            entity.setAnnouncementOrg(request.getAnnouncementOrg());
         // GIS
         entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+        if (request.getCoordinateSystem() != null)
+            entity.setCoordinateSystem(request.getCoordinateSystem());
+        if (request.getDisplayRule() != null)
+            entity.setDisplayRule(request.getDisplayRule());
 
         // Set approval status
         if (isSubmit) {
@@ -312,7 +358,8 @@ public class DryPortService {
                     "DRYPORT_UPDATE_APPROVE",
                     "Cập nhật và phê duyệt cảng cạn: " + entity.getDryPortCode(),
                     null);
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.REJECTED) {
+        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.REJECTED) {
             entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
@@ -320,12 +367,14 @@ public class DryPortService {
 
         // Spatial sync
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
+                    : GisGeometryType.POINT;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(),
@@ -335,16 +384,17 @@ public class DryPortService {
                     objType,
                     coordinates,
                     saved.getId(),
-                    InfrastructureType.DRY_PORT
-            );
+                    InfrastructureType.DRY_PORT);
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
         }
 
-        java.util.List<String> changed = changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
+        java.util.List<String> changed = changeHistoryService.recordChanges("DryPort", saved.getId().toString(),
+                "system", snapshot, saved);
         log.info("DryPort update: recorded {} changed fields for id={}: {}", changed.size(), saved.getId(), changed);
 
-        log.info("Updated DryPort [{}] code={} action={}", saved.getId(), saved.getDryPortCode(), action != null ? action : "default");
+        log.info("Updated DryPort [{}] code={} action={}", saved.getId(), saved.getDryPortCode(),
+                action != null ? action : "default");
         return toResponse(saved);
     }
 
@@ -408,7 +458,8 @@ public class DryPortService {
 
         // Kiểm tra 90 ngày
         if (deletedAt.isBefore(LocalDateTime.now().minusDays(90))) {
-            throw new IllegalArgumentException("Cảng cạn đã bị xóa quá 90 ngày (từ " + deletedAt + "), không thể khôi phục");
+            throw new IllegalArgumentException(
+                    "Cảng cạn đã bị xóa quá 90 ngày (từ " + deletedAt + "), không thể khôi phục");
         }
 
         // Thực hiện restore
@@ -428,17 +479,24 @@ public class DryPortService {
     // ── VALIDATION ──────────────────────────────────────────────
 
     private void validateMandatoryFields(UUID orgUnitId, String name, Integer provinceId,
-                                          String detailedLocation, java.math.BigDecimal teuCapacity,
-                                          Integer portStatus) {
+            String detailedLocation, java.math.BigDecimal teuCapacity,
+            Integer portStatus) {
         java.util.List<String> missing = new java.util.ArrayList<>();
-        if (orgUnitId == null) missing.add("Đơn vị quản lý");
-        if (name == null || name.trim().isEmpty()) missing.add("Tên cảng cạn");
-        if (provinceId == null) missing.add("Tỉnh/TP");
-        if (detailedLocation == null || detailedLocation.trim().isEmpty()) missing.add("Địa chỉ chi tiết");
-        if (teuCapacity == null) missing.add("Công suất khai thác (TEU)");
-        if (portStatus == null) missing.add("Tình trạng");
+        if (orgUnitId == null)
+            missing.add("Đơn vị quản lý");
+        if (name == null || name.trim().isEmpty())
+            missing.add("Tên cảng cạn");
+        if (provinceId == null)
+            missing.add("Tỉnh/TP");
+        if (detailedLocation == null || detailedLocation.trim().isEmpty())
+            missing.add("Địa chỉ chi tiết");
+        if (teuCapacity == null)
+            missing.add("Công suất khai thác (TEU)");
+        if (portStatus == null)
+            missing.add("Tình trạng");
         if (!missing.isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng hoàn thiện thông tin trước khi gửi. Thiếu: " + String.join(", ", missing));
+            throw new IllegalArgumentException(
+                    "Vui lòng hoàn thiện thông tin trước khi gửi. Thiếu: " + String.join(", ", missing));
         }
     }
 
@@ -446,6 +504,7 @@ public class DryPortService {
 
     private DryPort captureSnapshot(DryPort e) {
         return DryPort.builder()
+                .securityLevel(e.getSecurityLevel())
                 .dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
                 .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
                 .operatingUnit(e.getOperatingUnit()).region(e.getRegion())
@@ -469,11 +528,15 @@ public class DryPortService {
     }
 
     private DryPortResponse toResponse(DryPort e, String preResolvedCreatorName, String preResolvedUpdaterName) {
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(e.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(e.getUpdatedBy());
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
+                : userResolverService.resolveName(e.getCreatedBy());
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
+                : userResolverService.resolveName(e.getUpdatedBy());
 
         DryPortResponse.DryPortResponseBuilder builder = DryPortResponse.builder()
-                .id(e.getId()).dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
+                .id(e.getId())
+                .securityLevel(e.getSecurityLevel())
+                .dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
                 .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 // General info
@@ -500,7 +563,8 @@ public class DryPortService {
                 builder.geometryType(spatialObj.getGeometryType());
                 builder.coordinates(spatialObj.getCoordinates());
                 try {
-                    String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "")
+                            .trim();
                     String[] parts = clean.split("\\s+");
                     if (parts.length == 2) {
                         builder.longitude(new java.math.BigDecimal(parts[0]));
@@ -528,8 +592,10 @@ public class DryPortService {
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
-        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_PORT;
-        if (geomType == GisGeometryType.LINE) return GisSpatialObjectType.LINE_OTHER;
+        if (geomType == GisGeometryType.POINT)
+            return GisSpatialObjectType.POINT_PORT;
+        if (geomType == GisGeometryType.LINE)
+            return GisSpatialObjectType.LINE_OTHER;
         return GisSpatialObjectType.POLYGON_OTHER;
     }
 }

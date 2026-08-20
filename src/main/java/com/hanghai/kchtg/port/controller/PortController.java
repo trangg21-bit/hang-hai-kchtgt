@@ -30,6 +30,7 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@DataScope
 public class PortController {
 
     private final PortService portService;
@@ -84,10 +85,12 @@ public class PortController {
             @RequestParam(required = false) Integer portClass,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo) {
-        log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}",
+        log.info(
+                "Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, search, portCode, portName, province, operationalStatus, approvalStatus);
         Page<PortResponse> result = portService.findAll(
-                page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, portGroup, portClass, updatedFrom, updatedTo, search);
+                page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, portGroup,
+                portClass, updatedFrom, updatedTo, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 

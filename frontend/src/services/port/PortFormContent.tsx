@@ -1,7 +1,8 @@
 import React from 'react';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Table, Upload, Space, Tag, message,
+  Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Table, Upload, Space, Tag,
 } from 'antd';
+import { message } from '../../components/ToastNotification';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
 import {
   colors,

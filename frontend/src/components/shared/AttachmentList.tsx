@@ -1,4 +1,5 @@
-import { Upload, Table, Empty, Button, Space, message } from 'antd';
+import { Upload, Table, Empty, Button, Space } from 'antd';
+import { message } from '../ToastNotification';
 import { DeleteOutlined, DownloadOutlined, EyeOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
 import type { UploadFile } from 'antd/es/upload/interface';

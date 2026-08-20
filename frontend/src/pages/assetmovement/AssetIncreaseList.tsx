@@ -8,11 +8,11 @@ import {
   Modal,
   Form,
   Input,
-  message,
   Popconfirm,
   Tooltip,
   Select,
 } from 'antd';
+import { message } from '../../components/ToastNotification';
 import {
   PlusOutlined,
   EditOutlined,

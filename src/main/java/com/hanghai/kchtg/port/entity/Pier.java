@@ -15,6 +15,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.Builder;
+import lombok.experimental.FieldNameConstants;
+
 /**
  * Entity representing a pier (Cầu cảng) — child of Berth.
  * Corresponds to table: piers (renamed from cau_cang).
@@ -28,8 +32,15 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class Pier extends BaseEntity {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "pier_code", nullable = false, unique = true, length = 50)
     private String pierCode;

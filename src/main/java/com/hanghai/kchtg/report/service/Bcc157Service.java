@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.service;
 
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.report.dto.Bcc157CreateRequest;
 import com.hanghai.kchtg.report.dto.Bcc157Response;
 import com.hanghai.kchtg.report.dto.Bcc157SearchRequest;
@@ -30,8 +31,12 @@ public class Bcc157Service {
      * Create a new BCC_157 report.
      * Validates for duplicates (same orgUnitId + reportYear + nguonDuLieu).
      */
+    // TODO(SECURITY): Enforce OrgUnitScope and RecordSecurityLevel before every
+    // BCC_157
+    // create/search/read query; repository access is currently unscoped.
     @Transactional
     public Bcc157Response create(Bcc157CreateRequest request) {
+        FieldWriteGuard.validateObject(request);
         log.info("Creating BCC_157 report for orgUnitId={}, year={}, nguonDuLieu={}",
                 request.getOrgUnitId(), request.getReportYear(), request.getNguonDuLieu());
 

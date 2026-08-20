@@ -5,10 +5,12 @@ import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
@@ -16,14 +18,28 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.Builder;
+import lombok.experimental.FieldNameConstants;
+
 @Entity
 @Table(name = "buoy_station")
 @Data
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@FieldNameConstants
 @SQLRestriction("deleted_at IS NULL")
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class BuoyStation extends BaseEntity {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+
     @Column(name = "province_id")
     private Integer provinceId;
 

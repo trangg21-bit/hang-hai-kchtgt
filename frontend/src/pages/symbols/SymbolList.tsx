@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { Button, Modal, Form, Input, Select, Upload, Row, Col, Typography, Alert, Drawer, Tabs } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { symbolService } from '../../services/symbolService';
@@ -9,7 +9,7 @@ import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import {
   statusOperational, statusDraft, statusCritical, textSecondary, textPrimary, textTertiary,
   fontSizeMd, fontWeightBold,
