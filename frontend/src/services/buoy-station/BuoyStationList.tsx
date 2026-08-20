@@ -29,6 +29,10 @@ import {
   approveBuoyStationL1, approveBuoyStationL2, fetchStationBuoys,
 } from './api';
 import { documentApi } from '../../app/document/api';
+import { fetchBuoyById } from '../buoy/api';
+import { buoyStatusBadge } from '../buoy/schema';
+import BuoyDetailContent from '../buoy/BuoyDetailContent';
+import type { Buoy } from '../buoy/types';
 import { searchBuoys } from '../buoy/api';
 import type { BuoyStationResponse, ChangeHistory, StationBuoySummary } from './types';
 import {
@@ -121,8 +125,8 @@ export default function BuoyStationList() {
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
   const [filterCondition, setFilterCondition] = useState<string | undefined>();
-  const [filterClassification, setFilterClassification] = useState<string | undefined>();
-  const [filterClassificationBuoy, setFilterClassificationBuoy] = useState<string | undefined>();
+  const [filterClassification, setFilterClassification] = useState<string[] | undefined>();
+  const [filterClassificationBuoy, setFilterClassificationBuoy] = useState<string[] | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [filterCollapsed, setFilterCollapsed] = useState(false);
@@ -152,6 +156,9 @@ export default function BuoyStationList() {
   }, [organizations]);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [stationBuoys, setStationBuoys] = useState<Record<string, { classifications: string[]; classificationBuoys: string[] }>>({});
+  const [viewBuoyOpen, setViewBuoyOpen] = useState(false);
+  const [viewBuoyRecord, setViewBuoyRecord] = useState<Buoy | null>(null);
+  const [viewBuoyFiles, setViewBuoyFiles] = useState<any[]>([]);
 
   // ── Detail Drawer ─────────────────────────────────────────────────
   const [detailOpen, setDetailOpen] = useState(false);
@@ -317,8 +324,8 @@ export default function BuoyStationList() {
       let filtered = sf ? all.filter((d) => d.status === sf) : all;
       if (filterWaterwayId) filtered = filtered.filter((d) => d.waterwayId === filterWaterwayId);
       if (filterCondition) filtered = filtered.filter((d) => d.condition === filterCondition);
-      if (filterClassification) filtered = filtered.filter((d) => stationBuoys[d.id]?.classifications.includes(filterClassification));
-      if (filterClassificationBuoy) filtered = filtered.filter((d) => stationBuoys[d.id]?.classificationBuoys.includes(filterClassificationBuoy));
+      if (filterClassification && filterClassification.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classifications?.some((c) => filterClassification.includes(c)));
+      if (filterClassificationBuoy && filterClassificationBuoy.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classificationBuoys?.some((c) => filterClassificationBuoy.includes(c)));
       setAllData(filtered); setTotal(filtered.length);
     } catch { setIsError(true); }
     finally { setIsLoading(false); }
@@ -363,8 +370,8 @@ export default function BuoyStationList() {
     setFilterPortId(filterValues.portId || undefined);
     setFilterWaterwayId(filterValues.waterwayId || undefined);
     setFilterCondition(filterValues.condition || undefined);
-    setFilterClassification(filterValues.classification || undefined);
-    setFilterClassificationBuoy(filterValues.classificationBuoy || undefined);
+    setFilterClassification(Array.isArray(filterValues.classification) && filterValues.classification.length > 0 ? filterValues.classification : undefined);
+    setFilterClassificationBuoy(Array.isArray(filterValues.classificationBuoy) && filterValues.classificationBuoy.length > 0 ? filterValues.classificationBuoy : undefined);
     setFilterUpdatedFrom(filterValues.updatedFrom || undefined);
     setFilterUpdatedTo(filterValues.updatedTo || undefined);
     setPage(1);
@@ -399,6 +406,20 @@ export default function BuoyStationList() {
   }, []);
 
   const closeDetail = useCallback(() => { setDetailOpen(false); setDetailRecord(null); setDetailFiles([]); setDetailBuoys([]); }, []);
+
+  const openBuoyDetail = useCallback(async (buoyId: string) => {
+    setViewBuoyOpen(true);
+    setViewBuoyFiles([]);
+    setViewBuoyRecord(null);
+    try {
+      const b = await fetchBuoyById(buoyId);
+      setViewBuoyRecord(b);
+      try {
+        const fr = await documentApi.listByEntity('buoy', buoyId, { page: 1, size: 20 });
+        setViewBuoyFiles(fr.data || []);
+      } catch { setViewBuoyFiles([]); }
+    } catch { setViewBuoyRecord(null); }
+  }, []);
 
   // ── History ───────────────────────────────────────────────────────
   const loadHistoryMode = useCallback(async (mode: 'current' | 'all', rec?: BuoyStationResponse | null) => {
@@ -751,7 +772,7 @@ export default function BuoyStationList() {
       ),
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 180, align: 'center' as const,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 180,
       render: (s: string) => {
         if (!s) return <span style={{ color: textTertiary }}>—</span>;
         const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };
@@ -787,6 +808,7 @@ export default function BuoyStationList() {
   // ── Render ────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+      <style>{`.buoy-station-filter .ant-select-selector { border-radius: 999px !important; } .buoy-station-filter .ant-select-selection-item { border-radius: 999px !important; } .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Nhà trạm Phao, tiêu' }]}
         actions={[{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreate }]}
@@ -818,7 +840,9 @@ export default function BuoyStationList() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
-            <Select placeholder="Tất cả" allowClear
+            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại..." allowClear showSearch
+              maxTagCount={2}
+              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
               value={filterValues.classification || undefined}
               onChange={(val) => setFilterValues((prev) => ({ ...prev, classification: val }))}
               options={CLASSIFICATION_OPTIONS}
@@ -826,7 +850,9 @@ export default function BuoyStationList() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại phao</div>
-            <Select placeholder="Tất cả" allowClear
+            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại phao..." allowClear showSearch
+              maxTagCount={2}
+              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
               value={filterValues.classificationBuoy || undefined}
               onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
               options={CLASSIFICATION_BUOY_OPTIONS}
@@ -882,13 +908,13 @@ export default function BuoyStationList() {
             </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-              <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
+              <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']} allowClear
                 value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
                 onChange={(dates) => setFilterValues((prev) => ({
                   ...prev,
-                  updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD HH:mm') : undefined,
-                  updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD HH:mm') : undefined,
+                  updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined,
+                  updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined,
                 }))}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
@@ -907,6 +933,7 @@ export default function BuoyStationList() {
           <DataTable dataSource={[]} rowKey="id"
             emptyState={
               <div style={{ padding: '40px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div>
                 <div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy nhà trạm phao tiêu nào phù hợp</div>
               </div>
             }
@@ -947,6 +974,7 @@ export default function BuoyStationList() {
             userMap={userMap}
             detailFiles={detailFiles}
             detailBuoys={detailBuoys}
+            onViewBuoy={openBuoyDetail}
             waterwayMap={waterwayMap}
             routeMap={routeMap}
             ddToDms={ddToDms}
@@ -954,6 +982,31 @@ export default function BuoyStationList() {
             symbolImageMap={symbolImageMap}
           />
         ) : null}
+      </Drawer>
+
+      {/* ── Buoy Detail Drawer (nested — đè lên chi tiết nhà trạm) ── */}
+      <Drawer
+        {...drawerProps}
+        size={950}
+        title={<span style={drawerTitleStyle}>{viewBuoyRecord ? `Chi tiết phao tiêu - ${viewBuoyRecord.name}` : 'Chi tiết phao tiêu'}</span>}
+        open={viewBuoyOpen}
+        onClose={() => setViewBuoyOpen(false)}
+        extra={<Button type="text" onClick={() => setViewBuoyOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}
+      >
+        {viewBuoyRecord ? (
+          <BuoyDetailContent
+            selectedRecord={viewBuoyRecord}
+            orgUnits={organizations.map((o) => ({ id: o.id, name: o.name }))}
+            userMap={userMap}
+            detailFiles={viewBuoyFiles}
+            buoyStatusBadge={buoyStatusBadge}
+            symbolMap={symbolMap}
+            symbolImageMap={symbolImageMap}
+            ddToDms={ddToDms}
+          />
+        ) : <LoadingSkeleton rows={6} />}
       </Drawer>
 
       {/* ── History Drawer ─────────────────────────────────────────── */}

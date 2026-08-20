@@ -3,7 +3,7 @@
 // Thông tin vị trí (bảng tọa độ GPS) / File đính kèm.
 
 import React, { useState } from 'react';
-import { Tabs, Table, Space, InputNumber } from 'antd';
+import { Tabs, Table, Space, InputNumber, Button } from 'antd';
 import { FileOutlined, EnvironmentOutlined, ScheduleOutlined, ToolOutlined, WarningOutlined } from '@ant-design/icons';
 import type { BuoyStationResponse, StationBuoySummary } from './types';
 import {
@@ -35,6 +35,7 @@ export interface BuoyStationDetailContentProps {
   userMap: Map<string, string>;
   detailFiles: any[];
   detailBuoys: StationBuoySummary[];
+  onViewBuoy?: (buoyId: string) => void;
   ddToDms: (v: number) => { d: number; m: number; s: number };
   symbolMap: Map<string, string>;
   symbolImageMap: Map<string, string>;
@@ -104,6 +105,7 @@ export default function BuoyStationDetailContent({
   userMap,
   detailFiles,
   detailBuoys,
+  onViewBuoy,
   ddToDms,
   symbolMap,
   symbolImageMap,
@@ -280,15 +282,15 @@ export default function BuoyStationDetailContent({
                   <Table.Column title="STT" key="stt" width={60} align="center"
                     render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Mã phao, tiêu" key="code" dataIndex="code" render={(v: string) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{v || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Tên phao, tiêu" key="name" dataIndex="name" render={(v: string, rec: any) => onViewBuoy ? <Button type="link" onClick={() => onViewBuoy(rec.id)} style={{ fontWeight: fontWeightBold, color: actionPrimary, padding: 0, height: 'auto' }}>{v || '—'}</Button> : <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Phân loại" key="classification" dataIndex="classification" render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Phân loại phao" key="classificationBuoy" dataIndex="classificationBuoy" render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Phân loại tiêu" key="classificationMark" dataIndex="classificationMark" render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Mã phao, tiêu" key="code" dataIndex="code" render={(v: string) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Tên phao, tiêu" key="name" dataIndex="name" render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               </Table>
             </div>
