@@ -160,61 +160,75 @@ class RadarStationServiceTest {
     }
 
     @Test
-    void testApproveC1_Approve() {
-        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
+    void testSubmitForApproval() {
+        entity.setStatus("DRAFT");
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        RadarStationResponse response = service.approveC1(TEST_ID, req,
+        service.submitForApproval(TEST_ID,
                 java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(ApprovalStatus.PENDING_APPROVAL,
-                entity.getApprovalStatus());
+        assertEquals("PENDING_APPROVAL", entity.getStatus());
+        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
+    }
+
+    @Test
+    void testSubmitForApproval_WrongStatus_Throws() {
+        entity.setStatus("APPROVED");
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.submitForApproval(TEST_ID,
+                        java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
+    }
+
+    @Test
+    void testApproveL1() {
+        entity.setStatus("PENDING_APPROVAL");
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+
+        RadarStationResponse response = service.approveL1(TEST_ID,
+                java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        assertEquals("APPROVED", entity.getStatus());
+        assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
     }
 
     @Test
-    void testApproveC2_Approve() {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
-        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
-        when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
-
-        RadarStationResponse response = service.approveC2(TEST_ID, req,
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        assertEquals(ApprovalStatus.APPROVED,
-                entity.getApprovalStatus());
-        assertTrue(entity.getApprovedLevel2());
-    }
-
-    @Test
-    void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        entity.setApprovedLevel1(true);
-        entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
-
+    void testApproveL1_SelfApproval_Throws() {
+        entity.setStatus("PENDING_APPROVAL");
+        // entity.createdBy = ...0001 — phê duyệt bởi chính người tạo phải bị từ chối
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.approveC2(TEST_ID, req,
+        assertThrows(IllegalStateException.class,
+                () -> service.approveL1(TEST_ID,
                         java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
-        assertTrue(ex.getMessage().contains("Nguoi phe duyet C2 khong duoc trung"));
     }
 
     @Test
-    void testRejectC1() {
-        ApprovalRequest req = ApprovalRequest.builder().decision("REJECTED").reason("Không đủ điều kiện").build();
+    void testReject() {
+        entity.setStatus("PENDING_APPROVAL");
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        RadarStationResponse response = service.approveC1(TEST_ID, req,
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(ApprovalStatus.REJECTED,
-                entity.getApprovalStatus());
+        RadarStationResponse response = service.reject(TEST_ID, "Không đủ điều kiện",
+                java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        assertEquals("DRAFT", entity.getStatus());
+        assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
         assertEquals("Không đủ điều kiện", entity.getRejectionReason());
+    }
+
+    @Test
+    void testReject_ReasonTooShort_Throws() {
+        entity.setStatus("PENDING_APPROVAL");
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.reject(TEST_ID, "ngắn",
+                        java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")));
     }
 
     @Test

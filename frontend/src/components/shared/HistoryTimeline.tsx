@@ -31,7 +31,7 @@ interface HistoryTimelineProps {
 
 const STATUS_COLOR_MAP: Record<string, string> = {
   PROPOSED: 'gray',
-  UNDER_REVIEW: 'blue',
+  PENDING_APPROVAL: 'blue',
   APPROVED: 'green',
   REJECTED: 'red',
   CREATED: 'blue',
@@ -53,7 +53,7 @@ const STATUS_LABEL_MAP: Record<string, string> = {
   REJECTED: 'Từ chối',
   DELETED: 'Xóa mềm',
   PROPOSED: 'Chờ duyệt',
-  UNDER_REVIEW: 'Đang xem xét',
+  PENDING_APPROVAL: 'Chờ phê duyệt',
 };
 
 const FIELD_LABEL_MAP: Record<string, string> = {
@@ -143,7 +143,7 @@ const FIELD_LABEL_MAP: Record<string, string> = {
 const VALUE_LABEL_MAP: Record<string, string> = {
   // Approval statuses
   PROPOSED: 'Chờ duyệt',
-  UNDER_REVIEW: 'Đang xem xét',
+  PENDING_APPROVAL: 'Chờ phê duyệt',
   APPROVED: 'Đã phê duyệt',
   APPROVED_LEVEL_1: 'Đã duyệt Cấp 1',
   APPROVED_LEVEL_2: 'Đã duyệt Cấp 2',

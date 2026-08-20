@@ -1,6 +1,6 @@
 import { actionPrimary, statusAttention, statusOperational, statusCritical, textTertiary, radiusPill } from '../../tokens';
 
-export type ApprovalStatusType = 'PROPOSED' | 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | string;
+export type ApprovalStatusType = 'PROPOSED' | 'PENDING' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | string;
 
 interface ApprovalStatusBadgeProps {
   status: ApprovalStatusType;
@@ -11,8 +11,7 @@ const STATUS_STYLE_MAP: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Nháp', color: textTertiary },
   PROPOSED: { label: 'Chờ phê duyệt', color: statusAttention },
   PENDING: { label: 'Chờ phê duyệt', color: statusAttention },
-  PENDING_APPROVAL: { label: 'Đang xem xét', color: actionPrimary },
-  UNDER_REVIEW: { label: 'Đang xem xét', color: actionPrimary },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt', color: actionPrimary },
   APPROVED_LEVEL1: { label: 'Đã duyệt C1', color: actionPrimary },
   APPROVED_LEVEL2: { label: 'Đã phê duyệt', color: statusOperational },
   APPROVED: { label: 'Đã phê duyệt', color: statusOperational },

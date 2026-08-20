@@ -9,16 +9,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-
-import com.hanghai.kchtg.security.RecordSecurityLevel;
-import lombok.experimental.FieldNameConstants;
 
 @Entity
 @Table(name = "radar_station")
@@ -29,13 +25,9 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class RadarStation extends BaseEntity {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+    @Column(name = "code", nullable = false, unique = true, length = 50)
+    private String code;
 
     @Column(name = "province_id")
     private Integer provinceId;
@@ -63,6 +55,34 @@ public class RadarStation extends BaseEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
+
+    @Column(name = "seaport_id")
+    private UUID seaportId;
+
+    @Column(name = "vts_operation_center_id")
+    private UUID vtsOperationCenterId;
+
+    @Column(name = "operating_unit_id")
+    private UUID operatingUnitId;
+
+    @Column(name = "unit_of_measure", length = 50)
+    private String unitOfMeasure;
+
+    @Column(name = "quantity")
+    private Integer quantity;
+
+    @Column(name = "note", length = 2000)
+    private String note;
+
+    @Column(name = "status", nullable = false, length = 50)
+    @Builder.Default
+    private String status = "DRAFT";
+
+    @Column(name = "submitted_for_approval_by")
+    private UUID submittedForApprovalBy;
+
+    @Column(name = "submitted_for_approval_at")
+    private LocalDateTime submittedForApprovalAt;
 
     @Column(name = "approval_status", nullable = false)
     @Enumerated(EnumType.ORDINAL)
@@ -109,6 +129,7 @@ public class RadarStation extends BaseEntity {
 
     @PrePersist
     protected void onCreate() {
+        if (status == null || status.isBlank()) status = "DRAFT";
         if (approvalStatus == null) approvalStatus = ApprovalStatus.PROPOSED;
         if (approvedLevel1 == null) approvedLevel1 = false;
         if (approvedLevel2 == null) approvedLevel2 = false;

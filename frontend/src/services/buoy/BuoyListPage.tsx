@@ -115,7 +115,7 @@ const COORD_SYS_LABELS: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000'
 const APPROVAL_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Nháp', PROPOSED: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
   APPROVED_LEVEL1: 'Chờ Cục duyệt', APPROVED_LEVEL2: 'Đã duyệt L2', APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối', UNDER_REVIEW: 'Đang xem xét',
+  REJECTED: 'Từ chối', PENDING_APPROVAL: 'Chờ phê duyệt',
 };
 
 function formatDateTime(dateStr: string | null | undefined): string {
