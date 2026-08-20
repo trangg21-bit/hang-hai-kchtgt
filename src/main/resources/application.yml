@@ -128,6 +128,11 @@ spring:
   config:
     activate:
       on-profile: prod
+  flyway:
+    enabled: true
+    out-of-order: true
+    baseline-on-migrate: true
+    validate-on-migrate: false
   datasource:
     url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vmd_csdl_v2_dev}}
     driver-class-name: org.postgresql.Driver
