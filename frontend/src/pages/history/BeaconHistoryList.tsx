@@ -68,7 +68,7 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
 
 const VALUE_TRANSLATIONS: Record<string, string> = {
   PROPOSED: 'Chờ duyệt',
-  UNDER_REVIEW: 'Đang xem xét',
+  PENDING_APPROVAL: 'Chờ phê duyệt',
   APPROVED: 'Đã phê duyệt',
   // BeaconLightType
   LIGHTHOUSE: 'Hải đăng',

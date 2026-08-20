@@ -48,7 +48,6 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   [ApprovalStatus.APPROVED_LEVEL2]: 'Đã duyệt C2',
   [ApprovalStatus.APPROVED]: 'Đã phê duyệt',
   [ApprovalStatus.REJECTED]: 'Từ chối',
-  [ApprovalStatus.UNDER_REVIEW]: 'Đang xem xét',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -58,7 +57,6 @@ const APPROVAL_COLOR: Record<string, string> = {
   [ApprovalStatus.APPROVED_LEVEL2]: actionPrimary,
   [ApprovalStatus.APPROVED]: statusOperational,
   [ApprovalStatus.REJECTED]: statusCritical,
-  [ApprovalStatus.UNDER_REVIEW]: actionPrimary,
 };
 
 const CONDITION_COLOR: Record<string, string> = {
@@ -104,9 +102,8 @@ function historyFieldValue(fn: string, val: string | null): string {
   if (isApprovalField) {
     const statusMap: Record<string, string> = {
       PROPOSED: 'Chờ phê duyệt',
-      PENDING_APPROVAL: 'Đang xem xét',
-      PENDING: 'Đang xem xét',
-      UNDER_REVIEW: 'Đang xem xét',
+      PENDING_APPROVAL: 'Chờ phê duyệt',
+      PENDING: 'Chờ phê duyệt',
       APPROVED_LEVEL1: 'Đã phê duyệt C1',
       APPROVED_LEVEL2: 'Đã phê duyệt C2',
       APPROVED: 'Đã phê duyệt',
@@ -186,7 +183,7 @@ function getHistoryActionAccent(items: any[], action: { color: string }): string
   if (statuses.includes('PROPOSED') || approvalValues.some((value) => value === 'proposed' || value === 'cho phe duyet')) {
     return statusAttention;
   }
-  if (statuses.includes('UNDER_REVIEW') || approvalValues.some((value) => value === 'under_review' || value === 'dang xem xet')) {
+  if (statuses.includes('PENDING_APPROVAL') || approvalValues.some((value) => value === 'pending_approval' || value === 'cho phe duyet')) {
     return actionPrimary;
   }
 
@@ -325,7 +322,7 @@ export default function VtsSystemList() {
 
   // Count tabs
   const [countProposed, setCountProposed] = useState<number>(0);
-  const [countUnderReview, setCountUnderReview] = useState<number>(0);
+  const [countPendingApproval, setCountPendingApproval] = useState<number>(0);
   const [countApproved, setCountApproved] = useState<number>(0);
   const [countRejected, setCountRejected] = useState<number>(0);
   const statusCountFilterKey = useRef<string | null>(null);
@@ -378,7 +375,7 @@ export default function VtsSystemList() {
         // filter (which made the tabs show stale totals such as 329).
         const counts = res.statusCounts || {};
         setCountProposed(Number(counts.PROPOSED) || 0);
-        setCountUnderReview(Number(counts.UNDER_REVIEW) || 0);
+        setCountPendingApproval(Number(counts.PENDING_APPROVAL) || 0);
         setCountApproved(Number(counts.APPROVED) || 0);
         setCountRejected(Number(counts.REJECTED) || 0);
         statusCountFilterKey.current = currentStatusCountFilterKey;
@@ -548,7 +545,7 @@ export default function VtsSystemList() {
       actions.push({ key: 'approveC1', label: 'Phê duyệt C1', icon: <CheckOutlined />, onClick: () => handleApproveC1(record) });
       actions.push({ key: 'rejectC1', label: 'Từ chối C1', danger: true, icon: <CloseOutlined />, onClick: () => openRejectModal(record.id, 'c1') });
     }
-    if (hasPerm('vts:approvec2') && record.approvalStatus === ApprovalStatus.UNDER_REVIEW) {
+    if (hasPerm('vts:approvec2') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL) {
       const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
       actions.push({ key: 'approveC2', label: isSelfApproval ? 'Phê duyệt C2 (không thể tự duyệt)' : 'Phê duyệt C2', icon: <CheckOutlined />, disabled: isSelfApproval, onClick: () => handleApproveC2(record) });
       actions.push({ key: 'rejectC2', label: isSelfApproval ? 'Từ chối C2 (không thể tự duyệt)' : 'Từ chối C2', danger: true, disabled: isSelfApproval, icon: <CloseOutlined />, onClick: () => openRejectModal(record.id, 'c2') });
@@ -559,15 +556,15 @@ export default function VtsSystemList() {
     return actions;
   }, [hasPerm, currentUser?.userId, refreshList]);
 
-  const countAllFiltered = countProposed + countUnderReview + countApproved + countRejected;
+  const countAllFiltered = countProposed + countPendingApproval + countApproved + countRejected;
 
   const statusTabs = useMemo(() => [
     { key: 'all', label: 'Tất cả', count: filterApprovalStatus ? countAllFiltered : total, color: textSecondary, active: !filterApprovalStatus },
     { key: ApprovalStatus.PROPOSED, label: 'Chờ phê duyệt', count: countProposed, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PROPOSED },
-    { key: ApprovalStatus.UNDER_REVIEW, label: 'Đang xem xét', count: countUnderReview, color: actionPrimary, active: filterApprovalStatus === ApprovalStatus.UNDER_REVIEW },
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt', count: countPendingApproval, color: actionPrimary, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
     { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
     { key: ApprovalStatus.REJECTED, label: 'Từ chối', count: countRejected, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED },
-  ], [total, countAllFiltered, filterApprovalStatus, countProposed, countUnderReview, countApproved, countRejected]);
+  ], [total, countAllFiltered, filterApprovalStatus, countProposed, countPendingApproval, countApproved, countRejected]);
 
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
     setFilterKeyword(values.keyword?.trim() || '');
@@ -755,7 +752,7 @@ export default function VtsSystemList() {
                   onChange={(value) => setFilterValues((prev) => ({ ...prev, approvalStatus: value }))}
                   options={[
                     { value: ApprovalStatus.PROPOSED, label: 'Chờ phê duyệt' },
-                    { value: ApprovalStatus.UNDER_REVIEW, label: 'Đang xem xét' },
+                    { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt' },
                     { value: ApprovalStatus.APPROVED, label: 'Đã phê duyệt' },
                     { value: ApprovalStatus.REJECTED, label: 'Từ chối' },
                   ]}

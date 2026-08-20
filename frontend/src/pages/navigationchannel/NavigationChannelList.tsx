@@ -32,7 +32,7 @@ import NavigationChannelForm from './NavigationChannelForm';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
-  { label: 'Đang xem xét', value: 'UNDER_REVIEW' },
+  { label: 'Chờ phê duyệt', value: 'PENDING_APPROVAL' },
   { label: 'Đã phê duyệt', value: 'APPROVED' },
   { label: 'Từ chối', value: 'REJECTED' },
 ];

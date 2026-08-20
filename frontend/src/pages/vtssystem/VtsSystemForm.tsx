@@ -417,7 +417,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         let updatedRecord: VtsSystemResponse | null = null;
         if (record.approvalStatus === ApprovalStatus.PROPOSED) {
           updatedRecord = await vtsSystemApproval.approveC1(id, pheDuyetData);
-        } else if (record.approvalStatus === ApprovalStatus.UNDER_REVIEW) {
+        } else if (record.approvalStatus === ApprovalStatus.PENDING_APPROVAL) {
           updatedRecord = await vtsSystemApproval.approveC2(id, pheDuyetData);
         } else {
           throw new Error('Chỉ được từ chối bản ghi đang chờ C1 hoặc C2');

@@ -313,7 +313,7 @@ public class ShipRepairFacilityService {
 
         if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
             throw new RuntimeException(
-                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
+                    "Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ phê duyệt (PENDING_APPROVAL) với ID: " + id);
         }
 
         UUID c1Actor = entity.getApproverLevel1();

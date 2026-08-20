@@ -9,12 +9,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -23,9 +22,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class RadarStation extends BaseEntity {
+    @Column(name = "code", nullable = false, unique = true, length = 50)
+    private String code;
+
     @Column(name = "province_id")
     private Integer provinceId;
 
@@ -52,6 +55,24 @@ public class RadarStation extends BaseEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
+
+    @Column(name = "seaport_id")
+    private UUID seaportId;
+
+    @Column(name = "vts_operation_center_id")
+    private UUID vtsOperationCenterId;
+
+    @Column(name = "operating_unit_id")
+    private UUID operatingUnitId;
+
+    @Column(name = "unit_of_measure", length = 50)
+    private String unitOfMeasure;
+
+    @Column(name = "quantity")
+    private Integer quantity;
+
+    @Column(name = "note", length = 2000)
+    private String note;
 
     @Column(name = "approval_status", nullable = false)
     @Enumerated(EnumType.ORDINAL)

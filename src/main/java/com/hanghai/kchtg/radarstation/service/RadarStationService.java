@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.radarstation.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.AttachmentFileType;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -18,11 +19,17 @@ import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -34,47 +41,85 @@ import java.util.stream.Collectors;
 
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.port.entity.Port;
+import com.hanghai.kchtg.port.repository.PortRepository;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class RadarStationService {
 
     private final RadarStationRepository repository;
     private final ApprovalHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final VtsSystemRepository vtsSystemRepository;
+    private final PortRepository portRepository;
     private final OrgUnitCacheService orgUnitCacheService;
     private final InfrastructureAttachmentRepository attachmentRepository;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
+    @Value("${app.upload.attachment-path:uploads/attachments}")
+    private String attachmentPath;
+
+    /**
+     * Sinh mã trạm radar tự động: 'RADAR-' + 4 chữ số (RADAR-0001, RADAR-0002, ...).
+     * Dựa trên tổng số bản ghi hiện có, kiểm tra trùng lặp bằng existsByCode.
+     */
+    @Transactional(readOnly = true)
+    public String generateCode() {
+        long next = repository.count() + 1;
+        String code = String.format("RADAR-%04d", next);
+        while (repository.existsByCode(code)) {
+            next++;
+            code = String.format("RADAR-%04d", next);
+        }
+        return code;
+    }
+
     public RadarStationResponse create(RadarStationCreateRequest request, UUID createdBy) {
+        String action = request.getAction() != null ? request.getAction().trim() : "draft";
+        if (action.isEmpty()) action = "draft";
+        if (!"draft".equals(action) && !"submit".equals(action)) {
+            throw new IllegalArgumentException("Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft' hoặc 'submit'");
+        }
+
+        // Mã tự động sinh ở server — bỏ qua code từ client
+        String code = generateCode();
+
         RadarStation entity = RadarStation.builder()
-                .stationName(request.getStationName())
-                .location(request.getLocation())
-                .stationType(request.getStationType())
-                .coverage(request.getCoverage())
+                .code(code)
+                .stationName(trimToNull(request.getStationName()))
+                .location(trimToNull(request.getLocation()))
+                .stationType(trimToNull(request.getStationType()))
+                .coverage(trimToNull(request.getCoverage()))
                 .emissionArea(request.getEmissionArea())
-                .source(request.getSource())
-                .conditionStatus(request.getConditionStatus())
+                .source(trimToNull(request.getSource()))
+                .conditionStatus(request.getConditionStatus() != null ? request.getConditionStatus().trim() : "1")
                 .orgUnitId(request.getOrgUnitId())
+                .seaportId(request.getSeaportId())
                 .vtsSystemId(request.getVtsSystemId())
+                .vtsOperationCenterId(request.getVtsOperationCenterId())
+                .operatingUnitId(request.getOperatingUnitId())
+                .provinceId(request.getProvinceId())
+                .unitOfMeasure(trimToNull(request.getUnitOfMeasure()))
+                .quantity(request.getQuantity())
+                .note(trimToNull(request.getNote()))
                 .towerHeight(request.getTowerHeight())
                 .radarRange(request.getRadarRange())
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvedLevel1(false)
-               .approvedLevel2(false)
+                .approvedLevel2(false)
                 .build();
 
         RadarStation saved = repository.save(entity);
 
-        String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        String coordinates = trimToNull(request.getCoordinates());
+        if (coordinates == null && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (coordinates != null && !coordinates.trim().isEmpty()) {
+        if (coordinates != null) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
             UUID refId = saved.getId();
@@ -136,30 +181,45 @@ public class RadarStationService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        // BR-057-02: sau khi sửa, trạng thái phê duyệt quay về PROPOSED — cần duyệt lại
+        if (entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
+            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+            entity.setApprovedLevel1(false);
+            entity.setApproverLevel1(null);
+            entity.setApprovedDateLevel1(null);
+            entity.setApprovedLevel2(false);
+            entity.setApproverLevel2(null);
+            entity.setApprovedDateLevel2(null);
+            entity.setRejectionReason(null);
         }
 
-        if (request.getStationName() != null) entity.setStationName(request.getStationName());
-        if (request.getLocation() != null) entity.setLocation(request.getLocation());
-        if (request.getStationType() != null) entity.setStationType(request.getStationType());
-        if (request.getCoverage() != null) entity.setCoverage(request.getCoverage());
+        if (request.getStationName() != null) entity.setStationName(request.getStationName().trim());
+        if (request.getLocation() != null) entity.setLocation(request.getLocation().trim());
+        if (request.getStationType() != null) entity.setStationType(request.getStationType().trim());
+        if (request.getCoverage() != null) entity.setCoverage(request.getCoverage().trim());
         if (request.getEmissionArea() != null) entity.setEmissionArea(request.getEmissionArea());
-        if (request.getSource() != null) entity.setSource(request.getSource());
-        if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
+        if (request.getSource() != null) entity.setSource(request.getSource().trim());
+        if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus().trim());
         if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getSeaportId() != null) entity.setSeaportId(request.getSeaportId());
         if (request.getVtsSystemId() != null) entity.setVtsSystemId(request.getVtsSystemId());
+        if (request.getVtsOperationCenterId() != null) entity.setVtsOperationCenterId(request.getVtsOperationCenterId());
+        if (request.getOperatingUnitId() != null) entity.setOperatingUnitId(request.getOperatingUnitId());
+        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
+        if (request.getUnitOfMeasure() != null) entity.setUnitOfMeasure(request.getUnitOfMeasure().trim());
+        if (request.getQuantity() != null) entity.setQuantity(request.getQuantity());
+        if (request.getNote() != null) entity.setNote(request.getNote().trim());
         if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
         if (request.getRadarRange() != null) entity.setRadarRange(request.getRadarRange());
 
         RadarStation saved = repository.save(entity);
 
-        String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+        String coordinates = trimToNull(request.getCoordinates());
+        if (coordinates == null && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (coordinates != null && !coordinates.trim().isEmpty()) {
+        if (coordinates != null) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
             UUID refId = saved.getId();
@@ -228,16 +288,12 @@ public class RadarStationService {
             entity.setApproverLevel1(approvedBy);
             entity.setApprovedDateLevel1(LocalDateTime.now());
 
-            if (AdminAutoApproval.isAutoApprover()) {
-                // Administrators clear both levels in one step.
-                entity.setApprovedLevel2(true);
-                entity.setApproverLevel2(approvedBy);
-                entity.setApprovedDateLevel2(LocalDateTime.now());
-                entity.setApprovalStatus(ApprovalStatus.APPROVED);
-                autoApproved = true;
-            } else {
-                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-            }
+            // Phê duyệt 1 bước (y hệt /beacon-lights): duyệt thẳng APPROVED, không cần cấp 2.
+            entity.setApprovedLevel2(true);
+            entity.setApproverLevel2(approvedBy);
+            entity.setApprovedDateLevel2(LocalDateTime.now());
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            autoApproved = true;
         }
 
         RadarStation saved = repository.save(entity);
@@ -268,7 +324,7 @@ public class RadarStationService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
         if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
+            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ phê duyệt (PENDING_APPROVAL) với ID: " + id);
         }
 
         UUID c1Actor = entity.getApproverLevel1();
@@ -352,21 +408,106 @@ public class RadarStationService {
                 .toList();
     }
 
+    /**
+     * Tìm kiếm mở rộng có phân trang cho màn danh sách F-068.
+     * keyword khớp stationName/code (substring, không phân biệt hoa/thường).
+     * Lọc thêm theo cán bộ cập nhật (updatedBy) và khoảng ngày cập nhật (updatedFrom/updatedTo).
+     */
+    public Page<RadarStationResponse> searchPaged(String keyword, UUID orgUnitId, UUID seaportId,
+                                                   UUID vtsSystemId, UUID vtsOperationCenterId,
+                                                   UUID operatingUnitId, Integer provinceId,
+                                                   String conditionStatus, String approvalStatusStr,
+                                                   UUID updatedBy, LocalDateTime updatedFrom, LocalDateTime updatedTo,
+                                                   Pageable pageable) {
+        String trimmedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+        ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty())
+                ? ApprovalStatus.fromString(approvalStatusStr)
+                : null;
+        return repository.searchPaged(trimmedKeyword, orgUnitId, seaportId, vtsSystemId,
+                        vtsOperationCenterId, operatingUnitId, provinceId, conditionStatus, statusEnum,
+                        updatedBy, updatedFrom, updatedTo, pageable)
+                .map(this::toResponse);
+    }
+
+    // ── Attachment operations (InfrastructureAttachment + refType RADAR_STATION) ──
+
+    @Transactional
+    public List<RadarStationAttachmentResponse> uploadAttachments(UUID id, List<MultipartFile> files, UUID userId) {
+        RadarStation entity = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
+
+        long existingCount = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.RADAR_STATION).size();
+        if (existingCount + files.size() > 10) {
+            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
+        }
+
+        java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
+        List<InfrastructureAttachment> savedAttachments = new ArrayList<>();
+        for (MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
+
+            try {
+                java.nio.file.Path dir = basePath.resolve(InfrastructureType.RADAR_STATION.name()).resolve(id.toString());
+                java.nio.file.Files.createDirectories(dir);
+                java.nio.file.Path filePath = dir.resolve(storageFileName);
+                file.transferTo(filePath.toFile());
+            } catch (Exception e) {
+                log.warn("Không thể lưu file {} cho trạm radar {}: {}", originalFilename, id, e.getMessage());
+                throw new RuntimeException("Không thể lưu file: " + originalFilename);
+            }
+
+            InfrastructureAttachment attachment = InfrastructureAttachment.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .fileName(originalFilename)
+                    .filePath(basePath.resolve(InfrastructureType.RADAR_STATION.name()).resolve(id.toString()).resolve(storageFileName).toString())
+                    .fileSize(file.getSize())
+                    .fileType(AttachmentFileType.fromValue(file.getContentType()))
+                    .uploadedBy(userId)
+                    .build();
+            savedAttachments.add(attachmentRepository.save(attachment));
+        }
+        return savedAttachments.stream().map(this::toAttachmentResponse).toList();
+    }
+
+    public List<RadarStationAttachmentResponse> listAttachments(UUID id) {
+        return attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.RADAR_STATION)
+                .stream().map(this::toAttachmentResponse).toList();
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID id, UUID attachmentId, UUID userId) {
+        InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.RADAR_STATION)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
+        } catch (Exception e) {
+            log.warn("Không thể xóa file vật lý {}: {}", attachment.getFilePath(), e.getMessage());
+        }
+        attachmentRepository.delete(attachment);
+    }
+
+    private RadarStationAttachmentResponse toAttachmentResponse(InfrastructureAttachment a) {
+        return RadarStationAttachmentResponse.builder()
+                .id(a.getId())
+                .fileName(a.getFileName())
+                .filePath(a.getFilePath())
+                .fileSize(a.getFileSize())
+                .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
+                .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
+                .uploadedDate(a.getUploadedDate())
+                .build();
+    }
+
     private RadarStationResponse toResponse(RadarStation entity) {
         List<RadarStationAttachmentResponse> attachments = attachmentRepository
                 .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.RADAR_STATION)
-                .stream().map(a -> RadarStationAttachmentResponse.builder()
-                        .id(a.getId())
-                        .fileName(a.getFileName())
-                        .filePath(a.getFilePath())
-                        .fileSize(a.getFileSize())
-                        .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
-                        .uploadedBy(a.getUploadedBy() != null ? a.getUploadedBy().toString() : null)
-                        .uploadedDate(a.getUploadedDate())
-                        .build()).toList();
+                .stream().map(this::toAttachmentResponse).toList();
 
         RadarStationResponse.RadarStationResponseBuilder builder = RadarStationResponse.builder()
                 .id(entity.getId())
+                .code(entity.getCode())
                 .stationName(entity.getStationName())
                 .location(entity.getLocation())
                 .stationType(entity.getStationType())
@@ -376,6 +517,21 @@ public class RadarStationService {
                 .conditionStatus(entity.getConditionStatus())
                 .orgUnitId(entity.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
+                .seaportId(entity.getSeaportId())
+                .seaportName(entity.getSeaportId() != null ?
+                        portRepository.findById(entity.getSeaportId()).map(Port::getPortName).orElse("") : "")
+                .vtsSystemId(entity.getVtsSystemId())
+                .vtsSystemName(entity.getVtsSystemId() != null ?
+                        vtsSystemRepository.findById(entity.getVtsSystemId()).map(VtsSystem::getSystemName).orElse("") : "")
+                .vtsOperationCenterId(entity.getVtsOperationCenterId())
+                .vtsOperationCenterName(entity.getVtsOperationCenterId() != null ?
+                        vtsSystemRepository.findById(entity.getVtsOperationCenterId()).map(VtsSystem::getSystemName).orElse("") : "")
+                .operatingUnitId(entity.getOperatingUnitId())
+                .operatingUnitName(orgUnitCacheService.getName(entity.getOperatingUnitId()))
+                .provinceId(entity.getProvinceId())
+                .unitOfMeasure(entity.getUnitOfMeasure())
+                .quantity(entity.getQuantity())
+                .note(entity.getNote())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvedLevel1(entity.getApprovedLevel1())
                 .approverLevel1(entity.getApproverLevel1())
@@ -389,13 +545,8 @@ public class RadarStationService {
                 .updatedBy(entity.getUpdatedBy())
                 .updatedDate(entity.getUpdatedAt())
                 .attachments(attachments)
-                .vtsSystemId(entity.getVtsSystemId())
                 .towerHeight(entity.getTowerHeight())
-                .radarRange(entity.getRadarRange())
-                .vtsSystemName(entity.getVtsSystemId() != null ?
-                    vtsSystemRepository.findById(entity.getVtsSystemId())
-                        .map(VtsSystem::getSystemName)
-                        .orElse("") : "");
+                .radarRange(entity.getRadarRange());
 
         if (entity.getSpatialId() != null) {
             builder.spatialId(entity.getSpatialId());
@@ -415,5 +566,11 @@ public class RadarStationService {
             });
         }
         return builder.build();
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

@@ -217,7 +217,7 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   APPROVED_LEVEL2: 'Đã duyệt cấp 2',
   APPROVED: 'Đã phê duyệt',
   REJECTED: 'Từ chối',
-  UNDER_REVIEW: 'Đang xem xét',
+  PENDING_APPROVAL: 'Chờ phê duyệt',
 };
 
 // History action colors — semantic tokens (BEACON_HISTORY_ACTION_MAP keeps AntD names; use tokens for the accent bar/badge)

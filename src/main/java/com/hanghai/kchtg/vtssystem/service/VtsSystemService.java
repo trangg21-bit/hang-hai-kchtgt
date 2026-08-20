@@ -563,11 +563,9 @@ public class VtsSystemService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
         ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
-        boolean canApproveC1 = entity.getApprovalStatus() == ApprovalStatus.PROPOSED
-                || (entity.getApprovalStatus() == ApprovalStatus.UNDER_REVIEW
-                        && !Boolean.TRUE.equals(entity.getApprovedLevel1()));
+        boolean canApproveC1 = entity.getApprovalStatus() == ApprovalStatus.PROPOSED;
         if (!canApproveC1) {
-            throw new RuntimeException("Chỉ có thể phê duyệt C1 từ trạng thái Chờ duyệt (PROPOSED/UNDER_REVIEW)");
+            throw new RuntimeException("Chỉ có thể phê duyệt C1 từ trạng thái Chờ duyệt (PROPOSED)");
         }
 
         if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())) {
@@ -577,7 +575,7 @@ public class VtsSystemService {
             entity.setApproverLevel1(null);
             entity.setApprovedDateLevel1(null);
         } else {
-            entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             entity.setRejectionReason(null);
             entity.setApprovedLevel1(true);
             entity.setApproverLevel1(userId);
@@ -596,7 +594,7 @@ public class VtsSystemService {
                 .changedField("Trạng thái phê duyệt")
                 .previousValue(formatDisplayValue(VtsSystem.Fields.approvalStatus, previousApprovalStatus.name()))
                 .newValue(ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())
-                        ? "Từ chối" : "Đang xem xét")
+                        ? "Từ chối" : "Chờ phê duyệt")
                 .build());
 
         return toLightResponse(saved);
@@ -607,9 +605,9 @@ public class VtsSystemService {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        if (entity.getApprovalStatus() != ApprovalStatus.UNDER_REVIEW
+        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
                 || !Boolean.TRUE.equals(entity.getApprovedLevel1())) {
-            throw new RuntimeException("Chỉ có thể phê duyệt từ trạng thái Đang xem xét (UNDER_REVIEW)");
+            throw new RuntimeException("Chỉ có thể phê duyệt từ trạng thái Chờ phê duyệt (PENDING_APPROVAL)");
         }
 
         UUID c1Actor = entity.getApproverLevel1();
@@ -642,7 +640,7 @@ public class VtsSystemService {
                 .approvedBy(userId)
                 .reason(request.getReason())
                 .changedField("Trạng thái phê duyệt")
-                .previousValue(formatDisplayValue(VtsSystem.Fields.approvalStatus, ApprovalStatus.UNDER_REVIEW.name()))
+                .previousValue(formatDisplayValue(VtsSystem.Fields.approvalStatus, ApprovalStatus.PENDING_APPROVAL.name()))
                 .newValue(ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())
                         ? "Từ chối" : "Đã phê duyệt")
                 .build());
@@ -1072,8 +1070,7 @@ public class VtsSystemService {
         if (VtsSystem.Fields.approvalStatus.equals(field)) {
             if (ApprovalStatus.DRAFT.name().equals(rawValue)) return "Bản nháp";
             if (ApprovalStatus.PROPOSED.name().equals(rawValue)) return "Chờ phê duyệt";
-            if (ApprovalStatus.PENDING_APPROVAL.name().equals(rawValue)) return "Đang xem xét";
-            if (ApprovalStatus.UNDER_REVIEW.name().equals(rawValue)) return "Đang xem xét";
+            if (ApprovalStatus.PENDING_APPROVAL.name().equals(rawValue)) return "Chờ phê duyệt";
             if (ApprovalStatus.APPROVED_LEVEL1.name().equals(rawValue)) return "Đã phê duyệt cấp 1";
             if (ApprovalStatus.APPROVED_LEVEL2.name().equals(rawValue)) return "Đã phê duyệt cấp 2";
             if (ApprovalStatus.APPROVED.name().equals(rawValue)) return "Đã phê duyệt";

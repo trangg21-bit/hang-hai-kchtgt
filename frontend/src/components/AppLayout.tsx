@@ -20,6 +20,7 @@ import {
   DownOutlined,
   CompassOutlined,
   BarChartOutlined,
+  AimOutlined,
   ApiOutlined,
   ContainerOutlined,
   SearchOutlined,
@@ -28,7 +29,7 @@ import {
   BuildOutlined,
   EnvironmentOutlined,
   TruckOutlined,
-  EnvironmentOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';

@@ -142,7 +142,7 @@ class BuoyControllerTest {
     @DisplayName("GET /api/buoys/search — returns 200 with filtered list")
     void testSearch() throws Exception {
         UUID id = UUID.randomUUID();
-        when(buoyService.search(eq("Phao"), any(), any(), any()))
+        when(buoyService.search(eq("Phao"), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(makeResponse(id)));
 
         mockMvc.perform(get("/api/buoys/search")
@@ -151,13 +151,13 @@ class BuoyControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray());
 
-        verify(buoyService).search(eq("Phao"), isNull(), isNull(), isNull());
+        verify(buoyService).search(eq("Phao"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
     }
 
     @Test
     @DisplayName("GET /api/buoys/search — with all params")
     void testSearchWithAllParams() throws Exception {
-        when(buoyService.search(any(), any(), any(), any())).thenReturn(List.of());
+        when(buoyService.search(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/buoys/search")
                         .param("name", "Phao")
@@ -167,7 +167,7 @@ class BuoyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(buoyService).search("Phao", "PHAO", "CARDINAL", "DRAFT");
+        verify(buoyService).search(eq("Phao"), eq("PHAO"), eq("CARDINAL"), eq("DRAFT"), isNull(), isNull(), isNull(), isNull());
     }
 
     // ── CREATE ───────────────────────────────────────────────────
@@ -185,7 +185,10 @@ class BuoyControllerTest {
                   "longitude": 106.5,
                   "range": 15.0,
                   "color": "Xanh",
-                  "shape": "Hình cầu"
+                  "shape": "Hình cầu",
+                  "classification": "CARDINAL",
+                  "condition": "1",
+                  "lightHeight": 8.0
                 }
                 """;
         BuoyResponse response = makeResponse(id, "Phao tiêu mới", "SAFE_WATER", "DRAFT");
@@ -230,7 +233,10 @@ class BuoyControllerTest {
                   "type": "CARDINAL",
                   "latitude": 10.5,
                   "longitude": 106.5,
-                  "range": 12.0
+                  "range": 12.0,
+                  "classification": "CARDINAL",
+                  "condition": "1",
+                  "lightHeight": 8.0
                 }
                 """;
         when(buoyService.create(any(CreateBuoyRequest.class)))
@@ -349,7 +355,7 @@ class BuoyControllerTest {
         UUID id = UUID.randomUUID();
         BuoyResponse approved = makeResponse(id, "Đã duyệt L1", "CARDINAL", "APPROVED_L1");
         approved.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        when(buoyService.approveL1(eq(id), any(java.util.UUID.class))).thenReturn(approved);
+        when(buoyService.approveL1(eq(id), any(java.util.UUID.class), any())).thenReturn(approved);
 
         mockMvc.perform(post("/api/buoys/{id}/approve-l1", id)
                         .param("approverId", "00000000-0000-0000-0000-000000000002"))
@@ -358,7 +364,7 @@ class BuoyControllerTest {
                 .andExpect(jsonPath("$.data.status").value("APPROVED_L1"))
                 .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000002"));
 
-        verify(buoyService).approveL1(eq(id), any(java.util.UUID.class));
+        verify(buoyService).approveL1(eq(id), any(java.util.UUID.class), any());
     }
 
     // ── APPROVE L2 ───────────────────────────────────────────────
@@ -369,7 +375,7 @@ class BuoyControllerTest {
         UUID id = UUID.randomUUID();
         BuoyResponse published = makeResponse(id, "Đã duyệt L2", "CARDINAL", "PUBLISHED");
         published.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
-        when(buoyService.approveL2(eq(id), any(java.util.UUID.class))).thenReturn(published);
+        when(buoyService.approveL2(eq(id), any(java.util.UUID.class), any())).thenReturn(published);
 
         mockMvc.perform(post("/api/buoys/{id}/approve-l2", id)
                         .param("approverId", "00000000-0000-0000-0000-000000000003"))
@@ -378,7 +384,7 @@ class BuoyControllerTest {
                 .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
                 .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000003"));
 
-        verify(buoyService).approveL2(eq(id), any(java.util.UUID.class));
+        verify(buoyService).approveL2(eq(id), any(java.util.UUID.class), any());
     }
 
     // ── REJECT ───────────────────────────────────────────────────

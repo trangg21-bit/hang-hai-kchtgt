@@ -332,7 +332,7 @@ class VtsSystemServiceTest {
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
     }
 
@@ -350,7 +350,7 @@ class VtsSystemServiceTest {
             service.approveC1(TEST_ID, req,
                     java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-            assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
+            assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
             assertFalse(entity.getApprovedLevel2());
             verify(historyRepository, times(1)).save(any());
         } finally {
@@ -360,7 +360,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_Approve() {
-        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
         ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -374,7 +374,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
@@ -400,7 +400,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testRejectC2() {
-        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
@@ -563,7 +563,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_RejectsInvalidDecision() {
-        entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovedLevel1(true);
 
         ApprovalRequest req = ApprovalRequest.builder()

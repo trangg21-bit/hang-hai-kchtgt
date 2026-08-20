@@ -224,7 +224,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         };
         await dikeRevetmentApproval.approveC1(id, pheDuyetData);
         toast.success('Phê duyệt C1 thành công');
-        setRecord({ ...record, approvalStatus: 'UNDER_REVIEW' });
+        setRecord({ ...record, approvalStatus: 'PENDING_APPROVAL' });
         setHasChanges(true);
       } else if (action === 'approveC2') {
         const pheDuyetData: ApprovalRequest = {
@@ -244,7 +244,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
 
         if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED') {
           await dikeRevetmentApproval.approveC1(id, pheDuyetData);
-        } else if (record.approvalStatus === 'UNDER_REVIEW') {
+        } else if (record.approvalStatus === 'PENDING_APPROVAL') {
           await dikeRevetmentApproval.approveC2(id, pheDuyetData);
         }
 
