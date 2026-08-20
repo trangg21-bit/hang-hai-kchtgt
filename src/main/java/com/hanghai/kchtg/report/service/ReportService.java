@@ -28,7 +28,6 @@ import com.hanghai.kchtg.report.entity.ReportType;
 import com.hanghai.kchtg.report.handler.ReportHandler;
 import com.hanghai.kchtg.report.repository.ReportEntityRepository;
 import com.hanghai.kchtg.report.repository.ReportRepository;
-import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +64,6 @@ public class ReportService {
     private final PierRepository pierRepository;
     private final LineObjectRepository lineObjectRepository;
     private final PolygonObjectRepository polygonObjectRepository;
-    private final LighthouseStationRepository lighthouseStationRepository;
     private final List<ReportHandler> reportHandlers;
     private final Bcc157Service bcc157Service;
     private final ManagedAssetRepository managedAssetRepository;

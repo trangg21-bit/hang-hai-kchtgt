@@ -4,7 +4,7 @@ import RejectionModal from './RejectionModal';
 import ApprovalModal from './ApprovalModal';
 import { hasPermissionFromList } from '../../store/permissionStore';
 
-export type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+export type ApprovalStatus = 'PROPOSED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
 
 interface ApprovalActionBarProps {
   currentStatus: ApprovalStatus | string;
@@ -43,8 +43,8 @@ export default function ApprovalActionBar({
   const canApproveC1 = isC1Stage && hasApprovePerm('c1');
   const canRejectAtC1 = isC1Stage && hasApprovePerm('c1');
 
-  // C2 stage: UNDER_REVIEW or PENDING_APPROVAL
-  const isC2Stage = currentStatus === 'UNDER_REVIEW' || currentStatus === 'PENDING_APPROVAL';
+  // C2 stage: PENDING_APPROVAL
+  const isC2Stage = currentStatus === 'PENDING_APPROVAL';
   const canApproveC2 = isC2Stage && hasApprovePerm('c2');
   const canRejectAtC2 =
     isC2Stage &&

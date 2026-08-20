@@ -1,6 +1,6 @@
 // NavigationChannel (Luồng hàng hải) — F-038..F-043
 
-export type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+export type ApprovalStatus = 'PROPOSED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
 
 export interface NavigationChannelAttachment {
   id: string;

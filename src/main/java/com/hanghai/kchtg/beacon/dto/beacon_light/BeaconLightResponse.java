@@ -31,6 +31,7 @@ public class BeaconLightResponse {
     private String location;
     private UUID unitId;
     private String unitName;
+    private Integer provinceId;
     private LocalDate lastRepairDate;
     private LocalDate commissionedDate;
     private Boolean isActive;
@@ -42,6 +43,7 @@ public class BeaconLightResponse {
     private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private UUID updatedBy;
 
     private String shape;
     private String structure;
@@ -52,4 +54,16 @@ public class BeaconLightResponse {
     private String powerSupply;
     private Integer staffCount;
     private Double stationArea;
+
+    private UUID seaportId;
+    private String operator;
+    private String detailedLocation;
+    private Integer operationalStatus;
+    private String region;
+    private String identifyingFeature;
+    private String note;
+    private String geometryType;
+    private UUID mapSymbolId;
+    private Integer coordinateSystem;
+    private String displayRule;
 }

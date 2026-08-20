@@ -421,7 +421,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
           (window.parent as any).kchtDetailCache[id] = res;
         }
         toast.success('Phê duyệt C1 thành công');
-        setRecord({ ...record, approvalStatus: 'UNDER_REVIEW' });
+        setRecord({ ...record, approvalStatus: 'PENDING_APPROVAL' });
       } else if (action === 'approveC2') {
         const pheDuyetData: PheDuyetRequest = {
           nguoiPheDuyet: currentUser?.username || 'unknown',
@@ -443,7 +443,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         let updatedRecord;
         if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED') {
           updatedRecord = await navigationChannelApproval.approveC1(id, pheDuyetData);
-        } else if (record.approvalStatus === 'UNDER_REVIEW') {
+        } else if (record.approvalStatus === 'PENDING_APPROVAL') {
           updatedRecord = await navigationChannelApproval.approveC2(id, pheDuyetData);
         }
         if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {

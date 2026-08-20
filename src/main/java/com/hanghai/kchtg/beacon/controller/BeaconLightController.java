@@ -5,12 +5,16 @@ import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.service.BeaconLightService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,109 +29,153 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 @DataScope
 public class BeaconLightController {
 
-        private final BeaconLightService beaconLightService;
+    private final BeaconLightService beaconLightService;
 
-        @GetMapping
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:read') or @auth.check(authentication, 'data:read')")
-        public ResponseEntity<ApiResponse<List<BeaconLightResponse>>> findAll() {
-                return ResponseEntity.ok(ApiResponse.success(beaconLightService.findAll()));
-        }
+    @GetMapping
+    @PreAuthorize("@auth.check(authentication, 'beaconlight:read') or @auth.check(authentication, 'data:read')")
+    public ResponseEntity<ApiResponse<List<BeaconLightResponse>>> findAll() {
+            return ResponseEntity.ok(ApiResponse.success(beaconLightService.findAll()));
+    }
 
-        @GetMapping("/{id}")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:read') or @auth.check(authentication, 'data:read')")
-        public ResponseEntity<ApiResponse<BeaconLightResponse>> findById(
-                        @PathVariable UUID id) {
-                return ResponseEntity.ok(ApiResponse.success(beaconLightService.findById(id)));
-        }
+    @GetMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'beaconlight:read') or @auth.check(authentication, 'data:read')")
+    public ResponseEntity<ApiResponse<BeaconLightResponse>> findById(
+                    @PathVariable UUID id) {
+            return ResponseEntity.ok(ApiResponse.success(beaconLightService.findById(id)));
+    }
 
-        @GetMapping("/search")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:read') or @auth.check(authentication, 'data:read')")
-        public ResponseEntity<ApiResponse<List<BeaconLightResponse>>> search(
-                        @RequestParam(required = false) String name,
-                        @RequestParam(required = false) String code,
-                        @RequestParam(required = false) String type,
-                        @RequestParam(required = false) String status) {
-                return ResponseEntity.ok(ApiResponse.success(
-                                beaconLightService.search(name, code, type, status)));
-        }
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<BeaconLightResponse>>> search(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) UUID seaportId,
+            @RequestParam(required = false) String operator,
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) Integer operationalStatus,
+            @RequestParam(required = false) Double stationArea,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) UUID updatedBy,
+            @RequestParam(required = false) String commissionedFrom,
+            @RequestParam(required = false) String commissionedTo,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo) {
+        return ResponseEntity.ok(ApiResponse.success(
+                beaconLightService.search(name, code, type, status,
+                        unitId, seaportId, operator, provinceId,
+                        operationalStatus, stationArea, approvalStatus, updatedBy,
+                        commissionedFrom, commissionedTo, updatedFrom, updatedTo)));
+    }
 
-        @GetMapping("/search-paged")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:read') or @auth.check(authentication, 'data:read')")
-        public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<BeaconLightResponse>>> searchPaged(
-                        @RequestParam(required = false) String name,
-                        @RequestParam(required = false) String code,
-                        @RequestParam(required = false) String type,
-                        @RequestParam(required = false) String status,
-                        @RequestParam(defaultValue = "0") int page,
-                        @RequestParam(defaultValue = "20") int size) {
-                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
-                                size);
-                return ResponseEntity.ok(ApiResponse.success(
-                                beaconLightService.searchPaged(name, code, type, status, pageable)));
-        }
+    @GetMapping("/search-paged")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<BeaconLightResponse>>> searchPaged(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) UUID seaportId,
+            @RequestParam(required = false) String operator,
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) Integer operationalStatus,
+            @RequestParam(required = false) Double stationArea,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) UUID updatedBy,
+            @RequestParam(required = false) String commissionedFrom,
+            @RequestParam(required = false) String commissionedTo,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(
+                beaconLightService.searchPaged(name, code, type, status,
+                        unitId, seaportId, operator, provinceId,
+                        operationalStatus, stationArea, approvalStatus, updatedBy,
+                        commissionedFrom, commissionedTo, updatedFrom, updatedTo,
+                        pageable)));
+    }
 
-        @PostMapping
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:create') or @auth.check(authentication, 'data:create')")
-        public ResponseEntity<ApiResponse<BeaconLightResponse>> create(
-                        @Valid @RequestBody CreateBeaconLightRequest request) {
-                BeaconLightResponse response = beaconLightService.create(request);
-                return ResponseEntity.status(HttpStatus.CREATED)
-                                .body(ApiResponse.success("Tạo đèn biển thành công", response));
-        }
+    @PostMapping
+    @PreAuthorize("@auth.check(authentication, 'beaconlight:create') or @auth.check(authentication, 'data:create')")
+    public ResponseEntity<ApiResponse<BeaconLightResponse>> create(
+                    @Valid @RequestBody CreateBeaconLightRequest request) {
+            BeaconLightResponse response = beaconLightService.create(request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                            .body(ApiResponse.success("Tạo đèn biển thành công", response));
+    }
 
-        @PutMapping("/{id}")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:update') or @auth.check(authentication, 'data:update')")
-        public ResponseEntity<ApiResponse<BeaconLightResponse>> update(
-                        @PathVariable UUID id,
-                        @Valid @RequestBody UpdateBeaconLightRequest request) {
-                return ResponseEntity.ok(ApiResponse.success(
-                                "Cập nhật đèn biển thành công",
-                                beaconLightService.update(id, request)));
-        }
+    @PutMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'beaconlight:update') or @auth.check(authentication, 'data:update')")
+    public ResponseEntity<ApiResponse<BeaconLightResponse>> update(
+                    @PathVariable UUID id,
+                    @Valid @RequestBody UpdateBeaconLightRequest request) {
+            return ResponseEntity.ok(ApiResponse.success(
+                            "Cập nhật đèn biển thành công",
+                            beaconLightService.update(id, request)));
+    }
 
-        @DeleteMapping("/{id}")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:delete') or @auth.check(authentication, 'data:delete')")
-        public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
-                beaconLightService.delete(id);
-                return ResponseEntity.ok(
-                                ApiResponse.success("Đã xóa đèn biển thành công", null));
-        }
+    @DeleteMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'beaconlight:delete') or @auth.check(authentication, 'data:delete')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+            beaconLightService.delete(id);
+            return ResponseEntity.ok(
+                            ApiResponse.success("Đã xóa đèn biển thành công", null));
+    }
 
-        @PostMapping("/{id}/submit-approval")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:create') or @auth.check(authentication, 'beaconlight:update') or @auth.check(authentication, 'data:create') or @auth.check(authentication, 'data:update')")
-        public ResponseEntity<ApiResponse<Void>> submitForApproval(
-                        @PathVariable UUID id) {
-                beaconLightService.submitForApproval(id);
-                return ResponseEntity.ok(
-                                ApiResponse.success("Đã gửi phê duyệt", null));
-        }
+    @PostMapping("/{id}/submit-approval")
+    @PreAuthorize("@auth.check(authentication, 'beaconlight:create') or @auth.check(authentication, 'beaconlight:update') or @auth.check(authentication, 'data:create') or @auth.check(authentication, 'data:update')")
+    public ResponseEntity<ApiResponse<Void>> submitForApproval(
+                    @PathVariable UUID id) {
+            beaconLightService.submitForApproval(id);
+            return ResponseEntity.ok(
+                            ApiResponse.success("Đã gửi phê duyệt", null));
+    }
 
-        @PostMapping("/{id}/approve-l1")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:approvec1') or @auth.check(authentication, 'beaconlight:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
-        public ResponseEntity<ApiResponse<BeaconLightResponse>> approveL1(
-                        @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
-                return ResponseEntity.ok(ApiResponse.success(
-                                "Phê duyệt L1 thành công",
-                                beaconLightService.approveL1(id, approverId)));
-        }
+    @PostMapping("/{id}/approve-l1")
+    @PreAuthorize("@auth.check(authentication, 'beaconlight:approvec1') or @auth.check(authentication, 'beaconlight:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
+    public ResponseEntity<ApiResponse<BeaconLightResponse>> approveL1(
+                    @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
+            return ResponseEntity.ok(ApiResponse.success(
+                            "Phê duyệt L1 thành công",
+                            beaconLightService.approveL1(id, approverId)));
+    }
 
-        @PostMapping("/{id}/approve-l2")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:approvec2') or @auth.check(authentication, 'beaconlight:approvel2') or @auth.check(authentication, 'data:approvec2') or @auth.check(authentication, 'data:approvel2')")
-        public ResponseEntity<ApiResponse<BeaconLightResponse>> approveL2(
-                        @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
-                return ResponseEntity.ok(ApiResponse.success(
-                                "Phê duyệt L2 thành công — Đã công bố",
-                                beaconLightService.approveL2(id, approverId)));
-        }
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<ApiResponse<BeaconLightResponse>> reject(
+            @PathVariable UUID id,
+            @RequestParam String rejectReason,
+            @RequestParam java.util.UUID approverId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Đã từ chối",
+                beaconLightService.reject(id, rejectReason, approverId)));
+    }
 
-        @PostMapping("/{id}/reject")
-        @PreAuthorize("@auth.check(authentication, 'beaconlight:approvec1') or @auth.check(authentication, 'beaconlight:approvec2') or @auth.check(authentication, 'beaconlight:approvel1') or @auth.check(authentication, 'beaconlight:approvel2') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvec2')")
-        public ResponseEntity<ApiResponse<BeaconLightResponse>> reject(
-                        @PathVariable UUID id,
-                        @RequestParam String rejectReason,
-                        @RequestParam java.util.UUID approverId) {
-                return ResponseEntity.ok(ApiResponse.success(
-                                "Đã từ chối",
-                                beaconLightService.reject(id, rejectReason, approverId)));
-        }
+    // ── Attachment endpoints ────────────────────────────────────────
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Tải file đính kèm thành công",
+                beaconLightService.uploadAttachments(id, files, SecurityUtils.getCurrentUserId())));
+    }
+
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Lấy danh sách file đính kèm thành công",
+                beaconLightService.listAttachments(id)));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attachmentId) {
+        beaconLightService.deleteAttachment(id, attachmentId);
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa file đính kèm", null));
+    }
 }

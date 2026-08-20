@@ -6,6 +6,7 @@ import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
+import com.hanghai.kchtg.station.dto.buoy.StationBuoySummary;
 import com.hanghai.kchtg.station.service.BuoyStationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.beacon.entity.Buoy;
 
 import java.util.List;
 import java.util.Map;
@@ -28,8 +32,9 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 @DataScope
 public class BuoyStationController {
 
-        private final BuoyStationService service;
-        private final ChangeLogRepository changeLogRepository;
+    private final BuoyStationService service;
+    private final ChangeLogRepository changeLogRepository;
+    private final BuoyRepository buoyRepository;
 
         @GetMapping
         @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'data:read')")
@@ -42,6 +47,12 @@ public class BuoyStationController {
         public ResponseEntity<ApiResponse<BuoyStationResponse>> findById(
                         @PathVariable UUID id) {
                 return ResponseEntity.ok(ApiResponse.success(service.findById(id)));
+        }
+
+        @GetMapping("/{id}/buoys")
+        @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'data:read')")
+        public ResponseEntity<ApiResponse<List<StationBuoySummary>>> getStationBuoys(@PathVariable UUID id) {
+                return ResponseEntity.ok(ApiResponse.success(service.listStationBuoys(id)));
         }
 
         @GetMapping("/search")
@@ -104,19 +115,23 @@ public class BuoyStationController {
         @PostMapping("/{id}/approve-l1")
         @PreAuthorize("@auth.check(authentication, 'buoystation:approvec1') or @auth.check(authentication, 'buoystation:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL1(
-                        @PathVariable UUID id, @RequestParam UUID approverId) {
+                        @PathVariable UUID id,
+                        @RequestParam UUID approverId,
+                        @RequestParam(required = false) String content) {
                 return ResponseEntity.ok(ApiResponse.success(
                                 "Phê duyệt L1 thành công",
-                                service.approveL1(id, approverId)));
+                                service.approveL1(id, approverId, content)));
         }
 
         @PostMapping("/{id}/approve-l2")
         @PreAuthorize("@auth.check(authentication, 'buoystation:approvec2') or @auth.check(authentication, 'buoystation:approvel2') or @auth.check(authentication, 'data:approvec2') or @auth.check(authentication, 'data:approvel2')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL2(
-                        @PathVariable UUID id, @RequestParam UUID approverId) {
+                        @PathVariable UUID id,
+                        @RequestParam UUID approverId,
+                        @RequestParam(required = false) String content) {
                 return ResponseEntity.ok(ApiResponse.success(
-                                "Phê duyệt L2 thành công — Da cong bo",
-                                service.approveL2(id, approverId)));
+                                "Phê duyệt L2 thành công — Đã công bố",
+                                service.approveL2(id, approverId, content)));
         }
 
         @PostMapping("/{id}/reject")

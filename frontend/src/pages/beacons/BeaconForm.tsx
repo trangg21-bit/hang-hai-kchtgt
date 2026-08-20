@@ -151,19 +151,7 @@ export default function BeaconForm() {
     const approverId = localStorage.getItem('user_id') || '1';
     try {
       await approval.approveL1(id, approverId);
-      toast.success('Đã phê duyệt cấp 1');
-      navigate('/beacon-lights');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-    }
-  }, [id, navigate]);
-
-  const handleApproveL2 = useCallback(async () => {
-    if (!id) return;
-    const approverId = localStorage.getItem('user_id') || '1';
-    try {
-      await approval.approveL2(id, approverId);
-      toast.success('Đã phê duyệt cấp 2');
+      toast.success('Đã phê duyệt');
       navigate('/beacon-lights');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
@@ -236,7 +224,7 @@ export default function BeaconForm() {
             label="Cấp trạm đèn"
             required
             options={BEACON_LIGHT_TYPE_OPTIONS}
-            disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
+            disabled={isEdit && entityData?.status === 'APPROVED'}
           />
 
           <FormField
@@ -351,27 +339,7 @@ export default function BeaconForm() {
                   icon={<CheckCircleOutlined />}
                   onClick={handleApproveL1}
                 >
-                  Phê duyệt L1
-                </Button>
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  loading={rejectLoading}
-                  onClick={handleReject}
-                >
-                  Từ chối
-                </Button>
-              </>
-            )}
-
-            {entityData.status === 'APPROVED_L1' && (
-              <>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleApproveL2}
-                >
-                  Phê duyệt L2
+                  Phê duyệt
                 </Button>
                 <Button
                   danger

@@ -136,7 +136,7 @@ const RESOURCE_MAP: Record<string, string> = {
   RADAR_STATION: 'trạm radar',
   VTS_SYSTEM: 'hệ thống VTS',
   STATIONS: 'nhà trạm',
-  LIGHTHOUSE_STATION: 'nhà trạm đèn biển',
+
   BUOY_STATION: 'nhà trạm phao tiêu',
   COASTAL_STATION: 'đài duyên hải',
   SPECIAL_STATION: 'đài vệ tinh',

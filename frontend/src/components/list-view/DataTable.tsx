@@ -39,7 +39,7 @@ function computeRowSetSignature(dataSource: any[], rowKey: string | ((record: an
 }
 
 export interface DataTableColumn {
-  key: string; label: string; sortable?: boolean; twoLine?: boolean;
+  key: string; label: React.ReactNode; sortable?: boolean; twoLine?: boolean;
   type?: 'text' | 'status' | 'action' | 'number' | 'date' | 'mono';
   width?: number | string;
   align?: 'left' | 'center' | 'right';
@@ -48,6 +48,8 @@ export interface DataTableColumn {
   sortOrder?: 'ascend' | 'descend' | null;
   cellTitle?: (record: any) => string;
   fixed?: 'left' | 'right';
+  /** Mặc định true (cắt chữ "..."); đặt false để header/cell wrap hiển thị đủ chữ. */
+  ellipsis?: boolean;
 }
 
 export interface DataTableProps {
@@ -299,7 +301,7 @@ const DataTable: React.FC<DataTableProps> = ({
       showSorterTooltip: false,
       align: col.align,
       fixed: col.fixed,
-      ellipsis: true,
+      ellipsis: col.ellipsis !== false,
       render: col.render ? (val: any, record: any, index: number) => col.render!(val, record, index)
         : col.type === 'mono'
           ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
@@ -318,7 +320,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 }
               : undefined,
       onHeaderCell: () => ({
-        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined },
+        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined, whiteSpace: col.ellipsis === false ? 'normal' : undefined, lineHeight: col.ellipsis === false ? 1.35 : undefined },
         onClick: col.sortable ? () => {
           if (onSort && dataKey) {
             const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';

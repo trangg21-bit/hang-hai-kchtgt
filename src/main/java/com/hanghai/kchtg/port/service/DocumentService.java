@@ -106,12 +106,10 @@ public class DocumentService {
                 .map(this::toResponse)
                 .toList();
 
-        Page<DocumentResponse> result;
-        if (responseList.isEmpty()) {
-            result = Page.empty();
-        } else {
-            result = new PageImpl<>(responseList, PageRequest.of(page, pageSize), entities.size());
-        }
+        // Không dùng Page.empty(): nó bọc Pageable.unpaged(), khi Jackson serialize sẽ
+        // gọi Unpaged.getOffset() -> UnsupportedOperationException -> HTTP 500.
+        // Luôn dùng PageImpl với PageRequest thật để JSON page luôn hợp lệ.
+        Page<DocumentResponse> result = new PageImpl<>(responseList, PageRequest.of(page, pageSize), entities.size());
 
         log.info("[DocumentService.listByEntity] entityType={}, entityId={}, page={}, size={}, total={}",
                 entityType, entityId, page, size, entities.size());

@@ -44,7 +44,11 @@ public class BeaconHistoryController {
             try {
                 uuid = UUID.fromString(entityId.trim());
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.ok(ApiResponse.success(org.springframework.data.domain.Page.empty()));
+                // Page.empty() chứa Pageable.unpaged() -> Unpaged.getOffset() ném
+                // UnsupportedOperationException khi Jackson serialize -> HTTP 500.
+                return ResponseEntity.ok(ApiResponse.success(
+                        new org.springframework.data.domain.PageImpl<>(
+                                java.util.List.of(), PageRequest.of(page, size), 0)));
             }
         }
         Pageable pageable = PageRequest.of(page, size,

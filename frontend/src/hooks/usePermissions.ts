@@ -53,7 +53,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   waterzone: 'Quản lý Vùng nước',
   navigationchannel: 'Quản lý Luồng hàng hải',
   dikerevetment: 'Quản lý Đê kè / Đê chắn cát',
-  lighthousestation: 'Quản lý Nhà trạm đèn biển',
+  lighthousestation: 'Quản lý Đèn biển',
   radarstation: 'Quản lý Trạm Radar',
   vts: 'Quản lý Hệ thống VTS',
   shiprepairfacility: 'Quản lý Cơ sở sửa chữa & đóng tàu',

@@ -186,16 +186,16 @@ class BeaconLightServiceTest {
         void search() {
             UUID id = UUID.randomUUID();
             BeaconLight entity = makeEntity(id, "DRAFT");
-            when(beaconLightRepo.searchFiltered(any(), any(), any(), any()))
+            when(beaconLightRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(List.of(entity));
 
             List<BeaconLightResponse> result = service.search(
-                    "Đèn", "DEN", "LIGHTHOUSE", "DRAFT");
+                    "Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Đèn biển test");
             verify(beaconLightRepo).searchFiltered("Đèn", "DEN",
-                    "LIGHTHOUSE", "DRAFT");
+                    "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
         }
     }
 
@@ -525,38 +525,6 @@ class BeaconLightServiceTest {
             assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L1");
-        }
-
-        @Test
-        @DisplayName("approveL2 — transitions from APPROVED_L1 to PUBLISHED")
-        void approveL2() {
-            UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, "APPROVED_L1");
-            entity.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-            when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
-            when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-            BeaconLightResponse result = service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
-
-            verify(beaconLightRepo).save(beaconLightCaptor.capture());
-            BeaconLight saved = beaconLightCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo("PUBLISHED");
-            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
-            assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
-            assertThat(result.getStatus()).isEqualTo("PUBLISHED");
-            verify(historyRepo).save(any());
-        }
-
-        @Test
-        @DisplayName("approveL2 — throws when not APPROVED_L1")
-        void approveL2WrongStatus() {
-            UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
-            when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
-
-            assertThatThrownBy(() -> service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003")))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Không ở trạng thái chờ phê duyệt L2");
         }
 
         @Test

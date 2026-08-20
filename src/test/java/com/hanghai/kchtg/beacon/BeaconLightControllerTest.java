@@ -139,7 +139,7 @@ class BeaconLightControllerTest {
     @DisplayName("GET /api/beacon-lights/search — returns 200 with filtered list")
     void testSearch() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.search(eq("Đèn"), any(), any(), any()))
+        when(beaconLightService.search(eq("Đèn"), any(), any(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(List.of(makeResponse(id)));
 
         mockMvc.perform(get("/api/beacon-lights/search")
@@ -148,13 +148,13 @@ class BeaconLightControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray());
 
-        verify(beaconLightService).search(eq("Đèn"), isNull(), isNull(), isNull());
+        verify(beaconLightService).search(eq("Đèn"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
     }
 
     @Test
     @DisplayName("GET /api/beacon-lights/search — with all params")
     void testSearchWithAllParams() throws Exception {
-        when(beaconLightService.search(any(), any(), any(), any())).thenReturn(List.of());
+        when(beaconLightService.search(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/beacon-lights/search")
                         .param("name", "Đèn")
@@ -165,7 +165,7 @@ class BeaconLightControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         verify(beaconLightService)
-                .search("Đèn", "DEN", "LIGHTHOUSE", "DRAFT");
+                .search("Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     // ── CREATE ───────────────────────────────────────────────────
@@ -373,26 +373,6 @@ class BeaconLightControllerTest {
         mockMvc.perform(post("/api/beacon-lights/{id}/approve-l1", id)
                         .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isBadRequest());
-    }
-
-    // ── APPROVE L2 ───────────────────────────────────────────────
-
-    @Test
-    @DisplayName("POST /api/beacon-lights/{id}/approve-l2 — returns 200 with published entity")
-    void testApproveL2() throws Exception {
-        UUID id = UUID.randomUUID();
-        BeaconLightResponse published = makeResponse(id, "Đã duyệt L2", "LIGHTHOUSE", "PUBLISHED");
-        published.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
-        when(beaconLightService.approveL2(eq(id), any(java.util.UUID.class))).thenReturn(published);
-
-        mockMvc.perform(post("/api/beacon-lights/{id}/approve-l2", id)
-                        .param("approverId", "00000000-0000-0000-0000-000000000003"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
-                .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000003"));
-
-        verify(beaconLightService).approveL2(eq(id), any(java.util.UUID.class));
     }
 
     // ── REJECT ───────────────────────────────────────────────────

@@ -402,10 +402,21 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           decision: 'REJECTED',
           reason: (payload?.lyDo as string) || 'Từ chối phê duyệt',
         };
-        const updated = await vtsSystemApproval.reject(id, pheDuyetData);
+        let updatedRecord: VtsSystemResponse | null = null;
+        if (record.approvalStatus === ApprovalStatus.PROPOSED || (record.approvalStatus as any) === 'proposed') {
+          updatedRecord = await vtsSystemApproval.approveC1(id, pheDuyetData);
+        } else if (record.approvalStatus === ApprovalStatus.PENDING_APPROVAL || (record.approvalStatus as any) === 'pending_approval') {
+          updatedRecord = await vtsSystemApproval.approveC2(id, pheDuyetData);
+        } else {
+          throw new Error('Chỉ được từ chối bản ghi đang chờ C1 hoặc C2');
+        }
         delete getVtsDetailCache()[id];
+        if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = updatedRecord;
+        }
+
         toast.success('Từ chối phê duyệt thành công');
-        setRecord(updated);
+        setRecord(updatedRecord);
         setHasChanges(true);
         if (onSuccess) onSuccess();
       } else if (action === 'delete') {
