@@ -28,7 +28,8 @@ import {
   BuildOutlined,
   EnvironmentOutlined,
   TruckOutlined,
-  EnvironmentOutlined,
+  AimOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
