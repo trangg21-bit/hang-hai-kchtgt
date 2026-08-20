@@ -109,6 +109,9 @@ public class BuoyStation extends BaseEntity {
     @Column(name = "is_active")
     protected Boolean isActive;
 
+    @Column(length = 100)
+    protected String condition;
+
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
     @Column(name = "status", columnDefinition = "smallint default 0")
     protected StationStatus status;
@@ -121,13 +124,25 @@ public class BuoyStation extends BaseEntity {
     protected ApprovalLevel approvalLevel;
 
     @Column(name = "approved_by")
-    protected String approvedBy;
+    protected java.util.UUID approvedBy;
 
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;
 
+    @Column(name = "level1_approved_by")
+    protected java.util.UUID level1ApprovedBy;
+
+    @Column(name = "level1_approved_date")
+    protected java.time.LocalDateTime level1ApprovedDate;
+
+    @Column(name = "level2_approved_by")
+    protected java.util.UUID level2ApprovedBy;
+
+    @Column(name = "level2_approved_date")
+    protected java.time.LocalDateTime level2ApprovedDate;
+
     @Column(name = "sent_approved_by")
-    protected String sentApprovedBy;
+    protected java.util.UUID sentApprovedBy;
 
     @Column(name = "sent_approved_date")
     protected java.time.LocalDateTime sentApprovedDate;
@@ -143,4 +158,40 @@ public class BuoyStation extends BaseEntity {
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private LocalDate lastRepairDate;
+
+    // Thông tin vận hành khai thác (read-only — CSV 39-42)
+    @Column(name = "operation_plan_code", length = 100)
+    protected String operationPlanCode;
+    @Column(name = "operation_plan_name", length = 255)
+    protected String operationPlanName;
+    @Column(name = "operation_start_date", length = 50)
+    protected String operationStartDate;
+    @Column(name = "operation_end_date", length = 50)
+    protected String operationEndDate;
+
+    // Thông tin bảo trì (read-only — CSV 43-46)
+    @Column(name = "maintenance_plan_code", length = 100)
+    protected String maintenancePlanCode;
+    @Column(name = "maintenance_plan_name", length = 255)
+    protected String maintenancePlanName;
+    @Column(name = "maintenance_start_time", length = 50)
+    protected String maintenanceStartTime;
+    @Column(name = "maintenance_end_time", length = 50)
+    protected String maintenanceEndTime;
+
+    // Thông tin sự cố (read-only — CSV 47-50)
+    @Column(name = "incident_code", length = 100)
+    protected String incidentCode;
+    @Column(name = "incident_type", length = 100)
+    protected String incidentType;
+    @Column(name = "incident_location", length = 500)
+    protected String incidentLocation;
+    @Column(name = "incident_time", length = 50)
+    protected String incidentTime;
+
+    // Nội dung phê duyệt (CSV 30, 33)
+    @Column(name = "level1_approval_content", length = 2000)
+    protected String level1ApprovalContent;
+    @Column(name = "level2_approval_content", length = 2000)
+    protected String level2ApprovalContent;
 }

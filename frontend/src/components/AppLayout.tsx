@@ -104,8 +104,9 @@ const pageTitles: Record<string, string> = {
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
   '/beacon-lights': 'Đèn biển và nhà trạm',
-  '/buoys': 'Phao tiêu',
-  '/buoy-station': 'Nhà trạm phao tiêu',
+  '/beacon-lights': 'Đèn biển',
+  '/buoys': 'Quản lý Phao, tiêu',
+  '/buoy-station': 'Nhà trạm Phao, tiêu',
   '/history': 'Lịch sử thay đổi',
   '/port': 'Quản lý cảng biển',
   '/berth': 'Quản lý bến cảng',
@@ -164,7 +165,10 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'buoy-station' || pathSegments[0] === 'documents' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
+  } else if (pathSegments[0] === 'buoy-station') {
+    // M-014: /buoy-station là submenu title, không có segment con — map về key của submenu
+    selectedKey = 'buoy-station-parent';
+  } else if (pathSegments[0] === 'documents' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'port') {
@@ -183,7 +187,11 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (selectedKey) {
-      if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/buoys' || selectedKey === '/history') {
+      if (selectedKey === 'buoy-station-parent' || selectedKey === '/buoys') {
+        // Giữ submenu "Nhà trạm phao, tiêu" mở khi đang ở /buoy-station hoặc /buoys
+        // (tương tự chuỗi cảng biển → bến cảng được giữ mở ở nhánh phía dưới)
+        setOpenKeys(['beacon', 'buoy-station-parent']);
+      } else if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/history') {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
@@ -245,10 +253,17 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Báo hiệu hàng hải',
       children: [
+        (canAccessMenu('/buoy-station') || canAccessMenu('/buoys')) ? {
+          key: 'buoy-station-parent',
+          label: 'Nhà trạm Phao, tiêu',
+          icon: <BankOutlined />,
+          onTitleClick: () => navigate('/buoy-station'),
+          className: selectedKey === 'buoy-station-parent' ? 'submenu-active' : '',
+          children: [
+            canAccessMenu('/buoys') ? { key: '/buoys', label: 'Quản lý Phao, tiêu', icon: <EnvironmentOutlined /> } : null,
+          ].filter(Boolean),
+        } : null,
         canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển và nhà trạm', icon: <EnvironmentOutlined /> } : null,
-        canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu', icon: <AimOutlined /> } : null,
-        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Nhà trạm phao tiêu', icon: <HomeOutlined /> } : null,
-        canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },

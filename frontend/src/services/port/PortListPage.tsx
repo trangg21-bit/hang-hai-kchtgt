@@ -130,13 +130,7 @@ const { confirm } = modal;
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss');
   } catch {
     return dateStr;
   }
@@ -311,7 +305,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (fn === 'portClass') { const m: Record<string, string> = { '5': 'Cấp đặc biệt', '1': 'Cấp 1', '2': 'Cấp 2', '3': 'Cấp 3', '4': 'Cấp 4' }; return m[val] || `Cấp ${val}`; }
   if (fn === 'geometryType' || fn === 'objType') { const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng', '1': 'Đối tượng điểm', '2': 'Đối tượng đường', '3': 'Đối tượng vùng' }; return m[String(val).toUpperCase()] || val; }
   if (fn === 'coordinateSystem') { const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' }; return m[String(val)] || val; }
-  if (fn === 'changedAt' || fn === 'createdAt') { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
+  if (fn === 'changedAt' || fn === 'createdAt') { try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; } }
   return val;
 }
 function getActionLabel(items: any[]): { label: string; color: string } {
@@ -3538,18 +3532,21 @@ export default function PortListPage() {
                       <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
                       </div>
-                      {detailFiles.length === 0 ? (
-                        <span style={{ color: textTertiary, fontSize: fontSizeMd, paddingLeft: 12 }}>Không có tài liệu đính kèm</span>
-                      ) : (
-                        <Table className="list-view-table" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}>
-                          <Table.Column title="STT" key="stt" width={60} align="center"
-                            render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                          <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
-                            render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
-                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                        </Table>
-                      )}
+                      <Table className="list-view-table" rowKey="key" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}
+                        locale={{ emptyText: (
+                          <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                            <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
+                            <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
+                          </div>
+                        ) }}
+                      >
+                        <Table.Column title="STT" key="stt" width={60} align="center"
+                          render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                        <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
+                          render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                      </Table>
                     </div>
                   ),
                 },

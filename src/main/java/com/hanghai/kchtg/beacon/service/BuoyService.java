@@ -58,6 +58,7 @@ public class BuoyService {
     private final OrgUnitRepository orgUnitRepo;
     private final BuoyStationRepository buoyStationRepo;
     private final ChangeHistoryService changeHistoryService;
+    private final PointObjectSyncService pointObjectSyncService;
     private final ChangeLogRepository changeLogRepository;
 
     // -- READ --
@@ -424,6 +425,15 @@ public class BuoyService {
         // Các trường bổ sung theo đặc tả CSV 'QL Phao tiêu' (form chỉnh sửa)
         if (request.getBuoyStationId() != null)
             entity.setBuoyStationId(request.getBuoyStationId());
+        // Mã phao, tiêu sinh lại khi đổi nhà trạm QLVH — vẫn đảm bảo duy nhất (BR-001)
+        if (request.getCode() != null && !request.getCode().trim().isEmpty()
+                && !request.getCode().trim().equals(entity.getCode())) {
+            String newCode = request.getCode().trim();
+            if (buoyRepo.existsByCode(newCode) || beaconLightRepo.existsByCode(newCode)) {
+                throw new IllegalArgumentException("Đã tồn tại mã phao, tiêu: " + newCode);
+            }
+            entity.setCode(newCode);
+        }
         if (request.getClassification() != null)
             entity.setClassification(request.getClassification());
         if (request.getClassificationBuoy() != null)
@@ -467,11 +477,13 @@ public class BuoyService {
         if (request.getPeriod() != null)
             entity.setPeriod(request.getPeriod());
 
-        // Status revert logic for approved states (same as BeaconLight)
+        // Status revert logic for approved states: cập nhật bản đã phê duyệt → chờ Cảng vụ duyệt (user 2026-08-20)
         if (isApprovedStatus(entity.getStatus())) {
-            entity.setStatus("DRAFT");
+            entity.setStatus("PENDING_APPROVAL");
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setApprovalLevel(1);
+            entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId());
+            entity.setSubmittedForApprovalAt(LocalDateTime.now());
         }
 
         entity = buoyRepo.save(entity);
@@ -531,6 +543,7 @@ public class BuoyService {
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
+        pointObjectSyncService.hideFromMapBuoy(entity);
     }
 
     // -- APPROVAL --
@@ -541,9 +554,10 @@ public class BuoyService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
 
-        if (!"DRAFT".equals(entity.getStatus()) && !"REJECTED".equals(entity.getStatus())) {
+        if (!"DRAFT".equals(entity.getStatus()) && !"REJECTED".equals(entity.getStatus())
+                && !"PENDING_APPROVAL".equals(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Chỉ có thể gửi phê duyệt khi status = DRAFT hoặc REJECTED");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED hoặc PENDING_APPROVAL");
         }
 
         entity.setStatus("PENDING_APPROVAL");
@@ -608,6 +622,7 @@ public class BuoyService {
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
+        pointObjectSyncService.syncToMapBuoy(entity);
 
         return toResponse(entity);
     }

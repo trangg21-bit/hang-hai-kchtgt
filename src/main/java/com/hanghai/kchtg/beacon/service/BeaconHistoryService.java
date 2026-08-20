@@ -62,7 +62,10 @@ public class BeaconHistoryService {
                         .toList();
             }
             if (entityIds.isEmpty()) {
-                return Page.empty();
+                // Không dùng Page.empty() — Unpaged.getOffset() ném UnsupportedOperationException
+                // khi Jackson serialize, gây HTTP 500. Dùng PageImpl với Pageable thật.
+                return new org.springframework.data.domain.PageImpl<>(
+                        java.util.List.of(), pageable, 0);
             }
             hasEntityIds = true;
         }

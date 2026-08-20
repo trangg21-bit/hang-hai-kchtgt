@@ -78,8 +78,8 @@ const LegalDocumentList = lazy(() => import('./pages/document/LegalDocumentList'
 const IncidentList = lazy(() => import('./pages/document/IncidentList'));
 const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
 
-// M-015: Đài duyên hải
-const BuoyStationList = lazy(() => import('./pages/beacons/BeaconList'));
+// M-014: Quản lý Nhà trạm phao tiêu
+const BuoyStationList = lazy(() => import('./services/buoy-station/BuoyStationList'));
 
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));

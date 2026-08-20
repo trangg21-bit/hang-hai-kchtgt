@@ -52,21 +52,44 @@ public class BuoyStationResponse {
     private Double latitude;
     private Double longitude;
 
+    private String condition;
     private Boolean isActive;
     private String status;
     private String approvalStatus;
     private ApprovalLevel approvalLevel;
     private UUID approvedBy;
     private LocalDateTime approvedDate;
+    private UUID level1ApprovedBy;
+    private LocalDateTime level1ApprovedDate;
+    private UUID level2ApprovedBy;
+    private LocalDateTime level2ApprovedDate;
+    private String level1ApprovalContent;
+    private String level2ApprovalContent;
     private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Thông tin vận hành khai thác (read-only — CSV 39-42)
+    private String operationPlanCode;
+    private String operationPlanName;
+    private String operationStartDate;
+    private String operationEndDate;
+    // Thông tin bảo trì (read-only — CSV 43-46)
+    private String maintenancePlanCode;
+    private String maintenancePlanName;
+    private String maintenanceStartTime;
+    private String maintenanceEndTime;
+    // Thông tin sự cố (read-only — CSV 47-50)
+    private String incidentCode;
+    private String incidentType;
+    private String incidentLocation;
+    private String incidentTime;
 
     // Additional audit fields for list display
     private String createdBy;
     private String createdByName;
     private String updatedByName;
-    private String sentApprovedBy;
+    private UUID sentApprovedBy;
     private LocalDateTime sentApprovedDate;
 
     private UUID spatialId;

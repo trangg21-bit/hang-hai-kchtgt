@@ -1,42 +1,31 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import dayjs from 'dayjs';
-import { Tabs, Form, Row, Col, InputNumber, Select, Input, Upload, DatePicker, Switch, Table, Space, Button } from 'antd';
+import { Tabs, Form, Row, Col, InputNumber, Select, Input, Upload, DatePicker, Table, Space, Button } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
-import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
+import { fmtInputNumber } from '../../utils/numFmt';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol as GisSymbol } from '../../services/symbolService';
+import { lineObjectService } from '../../services/lineObjectService';
+import { LineObject } from '../../types/lineObject';
 import { organizationService } from '../../services/organizationService';
 import { portCRUD } from '../../services/portService';
 import {
   createBuoyStation, updateBuoyStation, submitBuoyStationForApproval,
   approveBuoyStationL1, approveBuoyStationL2, generateBuoyStationCode,
 } from './api';
-import { BUOY_TYPE_OPTIONS } from '../../types/beacon';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
 import { useAuthStore } from '../../store/authStore';
-import { spaceFormField, radiusPill, radiusMd, borderDefault, textSecondary, textTertiary, spaceSm, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard } from '../../tokens';
+import { spaceFormField, radiusPill, radiusMd, borderDefault, textSecondary, textTertiary, textPrimary, spaceSm, fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, surfaceCard, uploadHintStyle } from '../../tokens';
 import { colors } from '../../theme';
 
-const COLOR_OPTIONS = [
-  { value: 'RED', label: 'Đỏ' }, { value: 'GREEN', label: 'Xanh lá' },
-  { value: 'BLACK_RED', label: 'Đen + Đỏ' }, { value: 'BLACK_YELLOW', label: 'Đen + Vàng' },
-  { value: 'WHITE', label: 'Trắng' }, { value: 'YELLOW', label: 'Vàng' }, { value: 'ORANGE', label: 'Cam' },
-];
-const SHAPE_OPTIONS = [
-  { value: 'CAN', label: 'Hình trụ' }, { value: 'CONE', label: 'Hình nón' },
-  { value: 'SPAR', label: 'Trụ' }, { value: 'BELL', label: 'Chuông' },
-  { value: 'BUCKET', label: 'Gáo' }, { value: 'TUBULAR', label: 'Ống' },
-];
-const LIGHT_CHAR_OPTIONS = [
-  { value: 'FL', label: 'FL - Chớp đơn' }, { value: 'FL(2)', label: 'FL(2) - Chớp nhóm 2' },
-  { value: 'FL(3)', label: 'FL(3) - Chớp nhóm 3' }, { value: 'Iso', label: 'Iso - Đồng pha' },
-  { value: 'Q', label: 'Q - Chớp nhanh' }, { value: 'VQ', label: 'VQ - Chớp rất nhanh' },
-  { value: 'Oc', label: 'Oc - Huyền phù' }, { value: 'F', label: 'F - Cố định' },
-];
-const GEOMETRY_OPTIONS = [{ value: 'POINT', label: 'Đối tượng điểm' }, { value: 'LINE', label: 'Đối tượng đường' }, { value: 'POLYGON', label: 'Đối tượng vùng' }];
-const COORD_SYS_OPTIONS = [{ value: 'WGS84', label: 'WGS-84' }, { value: 'VN2000', label: 'VN-2000' }];
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
+import {
+  GEOMETRY_OPTIONS, COORD_SYS_OPTIONS, GEOMETRY_POINT_COUNT,
+} from './schema';
+import { CONDITION_OPTIONS } from '../buoy/schema';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'APPROVED' | 'UPDATE';
 
@@ -56,6 +45,18 @@ const ddToDms = (v: number) => {
   const m = Math.floor(mFloat);
   const s = Math.round((mFloat - m) * 60 * 100) / 100;
   return { d, m, s };
+};
+
+// Parse WKT `coordinates` (POINT/LINESTRING/POLYGON/MULTIPOINT) về danh sách tọa độ (giống BuoyListPage.parseGisCoordinateList)
+const parseGisCoordinateList = (wkt: string | null | undefined): Array<{ latitude: number; longitude: number }> => {
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.+-]+)\s+([\d.+-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* invalid */ }
+  return [];
 };
 
 export interface ExistingFile {
@@ -94,6 +95,9 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [portOptions, setPortOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPorts, setLoadingPorts] = useState(false);
+  const [symbols, setSymbols] = useState<GisSymbol[]>([]);
+  const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [routeOptions, setRouteOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [codeLoading, setCodeLoading] = useState(false);
   const [coordinateList, setCoordinateList] = useState<Array<{ latitude: number | null; longitude: number | null }>>([]);
   const [activeTabKey, setActiveTabKey] = useState('general');
@@ -101,26 +105,43 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
 
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedPortId = Form.useWatch('portId', form);
-  const watchedObjectType = Form.useWatch('objectType', form);
+  const watchedGeometryType = Form.useWatch('geometryType', form);
 
-  const loadPortOptions = async (orgUnitId?: string) => {
+  const loadPortOptions = useCallback(async (orgUnitId?: string) => {
     setLoadingPorts(true);
     try {
-      const r = await portCRUD.findAll({ page: 1, size: 1000 });
+      const r = await portCRUD.findAll({ page: 1, size: 1000, orgUnitId });
       const list = r.data || (r as any).content || [];
       setPortOptions((orgUnitId ? list.filter((p: any) => p.orgUnitId === orgUnitId) : list).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id })));
     } catch { setPortOptions([]); }
     finally { setLoadingPorts(false); }
-  };
+  }, []);
 
   useEffect(() => {
     (async () => { try { const r = await organizationService.list({ pageSize: 1000 }); setOrgUnitOptions((r.data || []).map((o: { id: string; name: string }) => ({ value: o.id, label: o.name }))); } catch { /* */ } })();
   }, []);
 
+  // GIS symbols cho trường Biểu tượng (giống BuoyListPage)
+  useEffect(() => {
+    symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
+      .then((r: any) => setSymbols(r.data || []))
+      .catch(() => {});
+  }, []);
+
+  // Luồng hàng hải + Tuyến luồng hàng hải (LineObject GIS — WATERWAY / SHIPPING_ROUTE)
+  useEffect(() => {
+    (async () => {
+      try { const r = await lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 }); setWaterwayOptions((r.data || []).map((l) => ({ value: l.id, label: l.name || l.code }))); } catch { /* */ }
+      try { const r = await lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.SHIPPING_ROUTE, pageSize: 1000 }); setRouteOptions((r.data || []).map((l) => ({ value: l.id, label: l.name || l.code }))); } catch { /* */ }
+    })();
+  }, []);
+
+  // Chọn Đơn vị quản lý → tải danh sách cảng biển thuộc đơn vị (chế độ tạo mới)
   useEffect(() => {
     if (isEdit) return;
-    (async () => { try { const r = await api.get('/users/me'); const p = r.data?.data ?? r.data; if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId }); } catch { /* */ } })();
-  }, [form, isEdit]);
+    if (watchedOrgUnitId) void loadPortOptions(watchedOrgUnitId);
+    else setPortOptions([]);
+  }, [watchedOrgUnitId, isEdit, loadPortOptions]);
 
   // Sinh mã tự động theo cảng biển chủ (mẫu BerthForm)
   useEffect(() => {
@@ -129,15 +150,21 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     generateBuoyStationCode(watchedPortId).then((c) => { if (c) form.setFieldsValue({ code: c }); }).catch(() => { /* */ }).finally(() => setCodeLoading(false));
   }, [watchedPortId, form, isEdit]);
 
-  // Chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
+  // Chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng (giống BuoyFormContent)
   useEffect(() => {
-    if (!watchedObjectType) return;
-    if (watchedObjectType === 'POINT') form.setFieldsValue({ coordinateSystem: 'WGS84', displayFormat: 'Độ, phút, giây (DMS)' });
+    if (!watchedGeometryType) return;
+    form.setFieldsValue({ coordinateSystem: 'WGS84', displayRule: 'Độ, phút, giây (DMS)' });
+    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     if (!isEdit) {
-      const count = GEOMETRY_POINT_COUNT[watchedObjectType] ?? 1;
       setCoordinateList(Array.from({ length: count }, () => ({ latitude: null, longitude: null })));
+    } else {
+      setCoordinateList((prev) => {
+        if (prev.length >= count) return prev;
+        const added = Array.from({ length: count - prev.length }, () => ({ latitude: null, longitude: null }));
+        return [...prev, ...added];
+      });
     }
-  }, [watchedObjectType, form, isEdit]);
+  }, [watchedGeometryType, form, isEdit]);
 
   // Edit mode: prefill dữ liệu hiện tại
   useEffect(() => {
@@ -145,31 +172,31 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     const data = entityData;
     editPortIdRef.current = data.portId;
     if (data.unitId) void loadPortOptions(data.unitId);
-    setCoordinateList(data.longitude != null && data.latitude != null ? [{ latitude: data.latitude, longitude: data.longitude }] : []);
+    const parsedCoords = parseGisCoordinateList(data.coordinates);
+    setCoordinateList(parsedCoords.length > 0 ? parsedCoords : (data.longitude != null && data.latitude != null ? [{ latitude: data.latitude, longitude: data.longitude }] : []));
     form.setFieldsValue({
-      code: data.code, name: data.name, type: data.type, orgUnitId: data.unitId,
+      code: data.code, name: data.name, orgUnitId: data.unitId,
       operatingOrgId: data.operatingOrgId, portId: data.portId,
       provinceId: data.province || undefined, address: data.address,
       constructionDate: data.constructionDate ? dayjs(data.constructionDate) : undefined,
       totalArea: data.totalArea, usableArea: data.usableArea,
-      staffCount: data.staffCount, lastMaintenanceYear: data.lastMaintenanceYear,
-      note: data.note, description: data.description || undefined, isActive: data.isActive,
-      color: data.color || undefined, shape: data.shape || undefined,
-      lightCharacteristic: data.lightCharacteristic || undefined, range: data.range,
-      objectType: data.objectType || 'POINT', coordinateSystem: data.coordinateSystem || 'WGS84',
-      displayFormat: data.displayFormat || undefined,
-      lastInspectionDate: data.lastInspectionDate ? dayjs(data.lastInspectionDate) : undefined,
-      nextInspectionDate: data.nextInspectionDate ? dayjs(data.nextInspectionDate) : undefined,
-      lastRepairDate: data.lastRepairDate ? dayjs(data.lastRepairDate) : undefined,
+      staffCount: data.staffCount, lastMaintenanceYear: data.lastMaintenanceYear ? dayjs(`${data.lastMaintenanceYear}-01-01`) : undefined,
+      note: data.note, condition: data.condition, isActive: data.isActive,
+      waterwayId: data.waterwayId || undefined, waterwayRouteId: data.waterwayRouteId || undefined,
+      geometryType: data.geometryType || 'POINT', mapSymbolId: data.icon || undefined, coordinateSystem: data.coordinateSystem || 'WGS84',
+      displayRule: data.displayRule || undefined,
     });
-  }, [form, isEdit, entityData]);
+  }, [form, isEdit, entityData, loadPortOptions]);
 
-  const typeLocked = !!isEdit && !!entityData && (entityData.status === 'APPROVED_L2' || entityData.status === 'PUBLISHED');
-
-  const removeCoordinate = (i: number) => { setCoordinateList(p => p.filter((_, idx) => idx !== i)); };
+  const removeCoordinate = (i: number) => { setCoordinateList(p => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))); };
   const addGpsPoint = () => setCoordinateList(p => [...p, { latitude: null, longitude: null }]);
   const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number, mVal: number, sVal: number) => {
-    const decimal = dVal + mVal / 60 + sVal / 3600;
+    // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (giống BuoyListPage)
+    const dMax = field === 'lat' ? 90 : 180;
+    const dClamped = Math.min(dMax, Math.max(0, dVal));
+    const mClamped = Math.min(59, Math.max(0, mVal));
+    const sClamped = Math.min(59.99, Math.max(0, sVal));
+    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
     setCoordinateList(p => { const n = [...p]; n[i] = { ...n[i], [field === 'lat' ? 'latitude' : 'longitude']: decimal }; return n; });
   };
 
@@ -178,11 +205,11 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     const dms = ddToDms(v);
     const maxD = field === 'lat' ? 90 : 180;
     return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-      <InputNumber value={dms.d} min={0} max={maxD} precision={0} placeholder="Độ" controls={false} onFocus={(e) => e.currentTarget.select()} onChange={(x) => updateGpsPoint(i, field, x ?? 0, dms.m, dms.s)} style={{ flex: 1, borderRadius: radiusPill }} />
+      <InputNumber value={dms.d} min={0} max={maxD} precision={0} placeholder="Độ" controls={false} onFocus={(e) => e.currentTarget.select()} onChange={(x) => updateGpsPoint(i, field, x ?? 0, dms.m, dms.s)} style={{ flex: 1 }} />
       <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-      <InputNumber value={dms.m} min={0} max={59} precision={0} placeholder="Phút" controls={false} onFocus={(e) => e.currentTarget.select()} onChange={(x) => updateGpsPoint(i, field, dms.d, x ?? 0, dms.s)} style={{ flex: 1, borderRadius: radiusPill }} />
+      <InputNumber value={dms.m} min={0} max={59} precision={0} placeholder="Phút" controls={false} onFocus={(e) => e.currentTarget.select()} onChange={(x) => updateGpsPoint(i, field, dms.d, x ?? 0, dms.s)} style={{ flex: 1 }} />
       <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-      <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" controls={false} onFocus={(e) => e.currentTarget.select()} onChange={(x) => updateGpsPoint(i, field, dms.d, dms.m, x ?? 0)} style={{ flex: 1.2, borderRadius: radiusPill }} />
+      <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} controls={false} onFocus={(e) => e.currentTarget.select()} onChange={(x) => updateGpsPoint(i, field, dms.d, dms.m, x ?? 0)} style={{ flex: 1.2 }} />
       <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
     </Space.Compact>;
   };
@@ -196,35 +223,46 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     return false;
   };
 
-  const handleSave = async (saveAction: SaveAction) => {
+  const handleSave = useCallback(async (saveAction: SaveAction) => {
     let values: any;
-    try { values = await form.validateFields(); } catch {
+    try { values = await form.validateFields(); } catch (e: any) {
       toast.error('Vui lòng kiểm tra lại các trường bắt buộc');
+      const firstErr = e?.errorFields?.[0]?.name?.[0];
+      if (['mapSymbolId', 'coordinateSystem', 'displayRule', 'geometryType'].includes(firstErr)) {
+        setActiveTabKey('gis');
+      } else {
+        setActiveTabKey('general');
+      }
       return;
     }
     const code = String(values.code ?? '').trim();
     const name = String(values.name ?? '').trim();
     if (!name) { toast.error('Tên nhà trạm là bắt buộc'); return; }
-    if (values.range == null || values.range <= 0 || values.range > 100) { toast.error('Tầm nhìn xa phải (0,100] hải lý'); setActiveTabKey('technical'); return; }
-    if (values.lastInspectionDate && values.nextInspectionDate && dayjs(values.nextInspectionDate).isBefore(dayjs(values.lastInspectionDate))) { toast.error('Ngày KT kế tiếp phải sau ngày KT gần nhất'); setActiveTabKey('technical'); return; }
     const manualCoords = coordinateList.filter(c => c.latitude != null && c.longitude != null && !isNaN(Number(c.latitude)) && !isNaN(Number(c.longitude))).map(c => ({ latitude: Number(c.latitude), longitude: Number(c.longitude) }));
-    const objType = values.objectType || 'POINT';
-    const requiredCoords = GEOMETRY_POINT_COUNT[objType] ?? 1;
-    if (coordinateList.length === 0 || manualCoords.length < requiredCoords) { toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); setActiveTabKey('location'); return; }
+    const geomType = values.geometryType || undefined;
+    // Bỏ validate bắt buộc nhập tọa độ GPS (theo yêu cầu user 2026-08-20):
+    // không còn chặn khi thiếu tọa độ dù đã chọn loại đối tượng hay gửi/phê duyệt.
+    // Chỉ giữ kiểm tra khoảng hợp lệ (-90..90 / -180..180) khi có tọa độ.
+    if (manualCoords.length > 0) {
+      if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
+        toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); setActiveTabKey('gis'); return;
+      }
+      if (manualCoords[0].longitude < -180 || manualCoords[0].longitude > 180) {
+        toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); setActiveTabKey('gis'); return;
+      }
+    }
     try {
       const p: Record<string, unknown> = {
-        name, type: values.type, range: values.range, color: values.color || undefined, shape: values.shape || undefined,
-        lightCharacteristic: values.lightCharacteristic || undefined, description: values.description || undefined,
+        name,
         unitId: values.orgUnitId || undefined, operatingOrgId: values.operatingOrgId || undefined,
         portId: values.portId || undefined,
         province: values.provinceId || undefined, address: values.address || undefined,
         constructionDate: values.constructionDate ? (typeof values.constructionDate === 'string' ? values.constructionDate : values.constructionDate.format('YYYY-MM-DD')) : undefined,
-        totalArea: values.totalArea, usableArea: values.usableArea, staffCount: values.staffCount, lastMaintenanceYear: values.lastMaintenanceYear,
-        note: values.note || undefined, objectType: objType, coordinateSystem: values.coordinateSystem || 'WGS84',
-        displayFormat: values.displayFormat || undefined, isActive: values.isActive !== false,
-        lastInspectionDate: values.lastInspectionDate ? (typeof values.lastInspectionDate === 'string' ? values.lastInspectionDate : values.lastInspectionDate.format('YYYY-MM-DD')) : undefined,
-        nextInspectionDate: values.nextInspectionDate ? (typeof values.nextInspectionDate === 'string' ? values.nextInspectionDate : values.nextInspectionDate.format('YYYY-MM-DD')) : undefined,
-        lastRepairDate: values.lastRepairDate ? (typeof values.lastRepairDate === 'string' ? values.lastRepairDate : values.lastRepairDate.format('YYYY-MM-DD')) : undefined,
+        totalArea: values.totalArea, usableArea: values.usableArea, staffCount: values.staffCount,
+        lastMaintenanceYear: values.lastMaintenanceYear ? (typeof values.lastMaintenanceYear === 'number' ? values.lastMaintenanceYear : values.lastMaintenanceYear.year()) : undefined,
+        note: values.note || undefined, waterwayId: values.waterwayId || undefined, waterwayRouteId: values.waterwayRouteId || undefined,
+        objectType: geomType, geometryType: geomType, icon: values.mapSymbolId || undefined, coordinateSystem: values.coordinateSystem || 'WGS84',
+        displayFormat: values.displayRule || undefined, condition: values.condition, isActive: values.condition === 'Đang khai thác/vận hành',
         latitude: manualCoords[0]?.latitude, longitude: manualCoords[0]?.longitude,
         coordinates: manualCoords.length > 1 ? `MULTIPOINT(${manualCoords.map(c => `(${c.longitude} ${c.latitude})`).join(',')})` : manualCoords.length === 1 ? `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})` : undefined,
       };
@@ -254,7 +292,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       }
       onFinish(true);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra'); }
-  };
+  }, [form, isEdit, entityData, coordinateList, uploadedFiles, currentUser, onFinish]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => void handleSave(saveAction) }), [handleSave]);
 
@@ -263,100 +301,141 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     { key: 'general', label: 'Thông tin chung', children: (<div style={{ paddingTop: 16 }}>
       <Row gutter={16}>
         <Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}><Select placeholder="Chọn đơn vị quản lý" loading={orgUnitOptions.length === 0} disabled={isEdit} options={orgUnitOptions} showSearch optionFilterProp="label" onChange={() => { form.setFieldsValue({ portId: undefined, code: undefined }); setCoordinateList([]); }} style={selectStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]}><Select placeholder="Chọn đơn vị khai thác..." options={orgUnitOptions} showSearch allowClear filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} style={selectStyle} /></Form.Item></Col>
+      </Row>
+      <Row gutter={16}>
         <Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Thuộc luồng hàng hải là bắt buộc' }]}><Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="code" {...labelProps('Mã nhà trạm')} required style={{ marginBottom: spaceFormField }} tooltip="Mã nhà trạm được sinh tự động theo cảng biển"><Input disabled placeholder={codeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="name" {...labelProps('Tên nhà trạm')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên nhà trạm không được để trống' }, { max: 200, message: 'Tối đa 200 ký tự' }]}><Input placeholder="VD: Nhà trạm phao tiêu Hải Phòng" maxLength={200} style={inputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="waterwayRouteId" {...labelProps('Tuyến luồng hàng hải')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn tuyến luồng hàng hải..." options={routeOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="code" {...labelProps('Mã nhà trạm')} required style={{ marginBottom: spaceFormField }} tooltip="Mã nhà trạm được sinh tự động theo cảng biển"><Input disabled maxLength={50} placeholder={codeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="type" {...labelProps('Loại')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Loại là bắt buộc' }]}><Select placeholder="Chọn loại..." options={BUOY_TYPE_OPTIONS} disabled={typeLocked} style={selectStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn đơn vị..." options={orgUnitOptions} showSearch allowClear filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} style={selectStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="name" {...labelProps('Tên nhà trạm')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên nhà trạm không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}><Input placeholder="Nhập Tên nhà trạm quản lý vận hành phao, tiêu" maxLength={255} style={inputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}><Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label" filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}><Select placeholder="Chọn tỉnh/thành phố" showSearch optionFilterProp="label" filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}><Input placeholder="Địa chỉ chi tiết..." maxLength={500} style={inputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} style={inputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={{ marginBottom: spaceFormField }}><DatePicker popupClassName="buoy-station-date-picker" placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="isActive" {...labelProps('Trạng thái hoạt động')} style={{ marginBottom: spaceFormField }} valuePropName="checked"><Switch checkedChildren="Hoạt động" unCheckedChildren="Ngừng" /></Form.Item></Col>
+        <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }}><InputNumber min={0} max={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích sử dụng (m²)')} style={{ marginBottom: spaceFormField }}><InputNumber min={0} max={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }}><InputNumber min={0} step={1} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích SD (m²)')} style={{ marginBottom: spaceFormField }}><InputNumber min={0} step={1} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]}><InputNumber min={0} max={5} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" popupClassName="buoy-station-date-picker" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="staffCount" {...labelProps('Số nhân sự')} style={{ marginBottom: spaceFormField }}><InputNumber min={0} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><InputNumber min={2000} max={2100} precision={0} parser={parseInteger} placeholder="2026" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="condition" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={CONDITION_OPTIONS} style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000 }]}><Input.TextArea placeholder="Ghi chú..." maxLength={1000} rows={2} style={{ borderRadius: radiusPill, fontSize: fontSizeMd }} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000 }]}><Input.TextArea placeholder="Mô tả về nhà trạm..." maxLength={1000} rows={2} style={{ borderRadius: radiusPill, fontSize: fontSizeMd }} /></Form.Item></Col>
+        <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000 }]}><Input.TextArea placeholder="Ghi chú..." maxLength={1000} rows={3} style={{ borderRadius: radiusPill, fontSize: fontSizeMd, resize: 'none' }} /></Form.Item></Col>
       </Row>
     </div>) },
-    // Tab 2: Kỹ thuật & kiểm định
-    { key: 'technical', label: 'Kỹ thuật & kiểm định', children: (<div style={{ paddingTop: 16 }}>
+    // Tab 2: Thông tin vị trí (giống BuoyFormContent tab Thông tin vị trí)
+    { key: 'gis', label: 'Thông tin vị trí', children: (<div style={{ paddingTop: 16 }}>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="color" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn màu..." options={COLOR_OPTIONS} allowClear style={selectStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="shape" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn hình dạng..." options={SHAPE_OPTIONS} allowClear style={selectStyle} /></Form.Item></Col>
+        <Col span={12}>
+          <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+            <Select placeholder="Chọn Loại đối tượng" options={GEOMETRY_OPTIONS} style={selectStyle} />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}
+            rules={watchedGeometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}>
+            <Select placeholder="Chọn Biểu tượng" allowClear showSearch optionFilterProp="label"
+              disabled={!watchedGeometryType} style={selectStyle}>
+              {symbols.map((sym) => (
+                <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                  <Space>
+                    {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
+                    <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                  </Space>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="lightCharacteristic" {...labelProps('Đặc tính ánh sáng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn..." options={LIGHT_CHAR_OPTIONS} allowClear style={selectStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="range" {...labelProps('Tầm nhìn xa (HL)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tầm nhìn xa là bắt buộc' }]}><InputNumber min={1} max={100} step={1} precision={0} parser={parseInteger} placeholder="VD: 5" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}>
+          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}
+            rules={watchedGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}>
+            <Select placeholder="Chọn Hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}
+            rules={watchedGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}>
+          <Input placeholder="Nhập Quy tắc hiển thị" maxLength={255} disabled style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
+          </Form.Item>
+        </Col>
       </Row>
-      <Row gutter={16}>
-        <Col span={12}><Form.Item name="lastInspectionDate" {...labelProps('Ngày KT gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="nextInspectionDate" {...labelProps('Ngày KT kế tiếp')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-      </Row>
-      <Row gutter={16}>
-        <Col span={12}><Form.Item name="lastRepairDate" {...labelProps('Thời điểm sửa chữa gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-      </Row>
-    </div>) },
-    // Tab 3: Thông tin vị trí
-    { key: 'location', label: 'Thông tin vị trí', children: (<div style={{ paddingTop: 16 }}>
-      <Row gutter={16}>
-        <Col span={12}><Form.Item name="objectType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn loại đối tượng" options={GEOMETRY_OPTIONS} style={selectStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}><Select options={COORD_SYS_OPTIONS} style={selectStyle} /></Form.Item></Col>
-      </Row>
-      <Row gutter={16}>
-        <Col span={12}><Form.Item name="displayFormat" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}><Input placeholder="VD: Độ, phút, giây (DMS)" style={inputStyle} /></Form.Item></Col>
-      </Row>
-      <div style={{ border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard, padding: 16, marginTop: spaceSm }}>
-        {coordinateList.length === 0 ? (
-          <div style={{ padding: '24px 16px', textAlign: 'center' }}>
-            <div style={{ color: textTertiary, fontSize: fontSizeSm }}>Chưa có tọa độ GPS. Bấm "Thêm điểm" để nhập tọa độ.</div>
-          </div>
-        ) : (
-          <Table rowKey="_idx" size="small" pagination={false} dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))} scroll={{ x: 720 }} columns={[
-            { title: 'STT', key: 'stt', width: 50, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
-            { title: 'Vĩ độ (N)', key: 'lat', render: (_: any, r: any) => renderDms(r._idx, 'lat', r) },
-            { title: 'Kinh độ (E)', key: 'lng', render: (_: any, r: any) => renderDms(r._idx, 'lng', r) },
-            { title: 'Thao tác', key: 'actions', width: 70, align: 'center', render: (_: any, r: any) => <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(r._idx)} /> },
-          ]} />
+      {/* GPS Coordinates (DMS) */}
+      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>
+          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
+          {watchedGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}
+        </span>
+        {coordinateList.length > 0 && (
+          <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>
+            Thêm tọa độ
+          </Button>
         )}
-        <Button type="dashed" block icon={<PlusOutlined />} onClick={addGpsPoint} style={{ marginTop: 8, borderRadius: radiusPill, height: 40 }}>Thêm điểm tọa độ</Button>
       </div>
+      {coordinateList.length === 0 ? (
+        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+        </div>
+      ) : (
+        <Table className="list-view-table" rowKey="_idx" size="middle" bordered pagination={false} dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))} scroll={{ x: 820 }} columns={[
+          { title: 'STT', key: 'stt', width: 60, align: 'center', render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>, onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }) },
+          { title: 'Vĩ độ (N)', key: 'lat', render: (_: any, r: any) => renderDms(r._idx, 'lat', r), onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }) },
+          { title: 'Kinh độ (E)', key: 'lng', render: (_: any, r: any) => renderDms(r._idx, 'lng', r), onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }) },
+          { title: 'Thao tác', key: 'actions', width: 80, align: 'center', render: (_: any, r: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(r._idx)} />, onHeaderCell: () => ({ style: { background: colors.bodyBg, padding: '12px 6px' } }) },
+        ]} />
+      )}
     </div>) },
-    // Tab 4: File đính kèm
+    // Tab 3: File đính kèm (giống BuoyFormContent tab File đính kèm)
     { key: 'files', label: 'File đính kèm', children: (<div style={{ paddingTop: 16 }}>
-      <div style={{ border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard, padding: 16 }}>
-        <Table rowKey={(r: any) => r.uid ?? r.id} size="small" pagination={false} dataSource={[
+      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
+        {(uploadedFiles.length > 0 || existingFiles.length > 0) && (
+          <Upload beforeUpload={handleBeforeUpload} showUploadList={false} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif" multiple>
+            <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
+          </Upload>
+        )}
+      </div>
+      {uploadedFiles.length === 0 && existingFiles.length === 0 ? (
+        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có file đính kèm.</span>
+          <Upload beforeUpload={handleBeforeUpload} showUploadList={false} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif" multiple>
+            <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
+          </Upload>
+        </div>
+      ) : (
+        <Table className="list-view-table" rowKey={(r: any) => r.uid ?? r.id} size="middle" bordered pagination={false} dataSource={[
           ...uploadedFiles.map(f => ({ uid: f.uid, name: f.name, size: f.size, removable: true })),
           ...existingFiles.map(f => ({ uid: f.id, name: f.fileName || f.name, size: f.fileSize, removable: false })),
         ]} scroll={{ x: 560 }} columns={[
-          { title: 'STT', key: 'stt', width: 50, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
-          { title: 'Tên file', key: 'name', dataIndex: 'name', ellipsis: true },
-          { title: 'Kích thước', key: 'size', width: 110, align: 'right', render: (_: any, r: any) => <span style={{ fontSize: fontSizeSm, color: textSecondary }}>{r.size != null ? (r.size / 1024).toFixed(1) + ' KB' : '—'}</span> },
-          { title: 'Thao tác', key: 'actions', width: 70, align: 'center', render: (_: any, r: any) => r.removable ? <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => setUploadedFiles(p => p.filter(x => x.uid !== r.uid))} /> : null },
+          { title: 'STT', key: 'stt', width: 60, align: 'center', render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>, onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }) },
+          { title: 'Tên file', key: 'name', dataIndex: 'name', ellipsis: true, render: (name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>, onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } }) },
+          { title: 'Thao tác', key: 'actions', width: 80, align: 'center', render: (_: any, r: any) => r.removable ? <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => setUploadedFiles(p => p.filter(x => x.uid !== r.uid))} /> : null, onHeaderCell: () => ({ style: { background: colors.bodyBg, padding: '12px 6px' } }) },
         ]} />
-        <Upload beforeUpload={handleBeforeUpload} fileList={[]} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style={{ marginTop: 8 }}>
-          <Button block type="dashed" icon={<UploadOutlined />} style={{ marginTop: 8, borderRadius: radiusPill, height: 40 }}>Chọn file (tối đa 10 file, mỗi file ≤20MB)</Button>
-        </Upload>
+      )}
+      <div style={{ marginTop: spaceSm }}>
+        <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>
       </div>
     </div>) },
   ];
 
   return (
-    <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }} items={tabItems} />
+    <>
+      <style>{`.buoy-station-date-picker .ant-picker-today-btn{color:${colors.info}!important}`}</style>
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }} items={tabItems} />
+    </>
   );
 });

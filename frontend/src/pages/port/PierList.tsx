@@ -69,7 +69,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
 };
 
 function formatDate(d: string | null | undefined): string {
-  if (!d) return '—'; try { return dayjs(d).format('DD/MM/YYYY HH:mm'); } catch { return d; }
+  if (!d) return '—'; try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
 }
 
 const histLabels: Record<string, string> = {
