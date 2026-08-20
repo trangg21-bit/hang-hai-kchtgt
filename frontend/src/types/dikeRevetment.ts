@@ -1,6 +1,6 @@
 // DikeRevetment (Đê/Kè) — F-044..F-049
 
-export type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+export type ApprovalStatus = 'PROPOSED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
 
 export interface DikeRevetmentAttachment {
   id: string;

@@ -79,7 +79,7 @@ const IncidentList = lazy(() => import('./pages/document/IncidentList'));
 const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
 
 // M-015: Đài duyên hải
-const BuoyStationList = lazy(() => import('./pages/beacons/BeaconList'));
+const BuoyStationList = lazy(() => import('./services/buoy-station/BuoyStationList'));
 
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));

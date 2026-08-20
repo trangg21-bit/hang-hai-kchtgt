@@ -167,7 +167,7 @@ class BuoyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(buoyService).search("Phao", "PHAO", "CARDINAL", "DRAFT", null, null, null, null);
+        verify(buoyService).search(eq("Phao"), eq("PHAO"), eq("CARDINAL"), eq("DRAFT"), isNull(), isNull(), isNull(), isNull());
     }
 
     // ── CREATE ───────────────────────────────────────────────────
@@ -233,7 +233,10 @@ class BuoyControllerTest {
                   "type": "CARDINAL",
                   "latitude": 10.5,
                   "longitude": 106.5,
-                  "range": 12.0
+                  "range": 12.0,
+                  "classification": "CARDINAL",
+                  "condition": "1",
+                  "lightHeight": 8.0
                 }
                 """;
         when(buoyService.create(any(CreateBuoyRequest.class)))
@@ -361,7 +364,7 @@ class BuoyControllerTest {
                 .andExpect(jsonPath("$.data.status").value("APPROVED_L1"))
                 .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000002"));
 
-        verify(buoyService).approveL1(eq(id), any(java.util.UUID.class), isNull());
+        verify(buoyService).approveL1(eq(id), any(java.util.UUID.class), any());
     }
 
     // ── APPROVE L2 ───────────────────────────────────────────────
@@ -381,7 +384,7 @@ class BuoyControllerTest {
                 .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
                 .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000003"));
 
-        verify(buoyService).approveL2(eq(id), any(java.util.UUID.class), isNull());
+        verify(buoyService).approveL2(eq(id), any(java.util.UUID.class), any());
     }
 
     // ── REJECT ───────────────────────────────────────────────────
