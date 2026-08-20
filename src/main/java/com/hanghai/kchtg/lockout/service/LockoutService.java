@@ -10,6 +10,7 @@ import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.LoginAuditLogRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.security.service.UserSecurityCacheService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,13 +35,23 @@ public class LockoutService implements CommandLineRunner {
     private final LockoutPolicyRepository policyRepo;
     private final UserRepository userRepo;
     private final LoginAuditLogRepository loginAuditLogRepo;
+    private final UserSecurityCacheService userSecurityCacheService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public LockoutService(LockoutPolicyRepository policyRepo,
+                          UserRepository userRepo,
+                          LoginAuditLogRepository loginAuditLogRepo,
+                          UserSecurityCacheService userSecurityCacheService) {
+        this.policyRepo = policyRepo;
+        this.userRepo = userRepo;
+        this.loginAuditLogRepo = loginAuditLogRepo;
+        this.userSecurityCacheService = userSecurityCacheService;
+    }
 
     public LockoutService(LockoutPolicyRepository policyRepo,
                           UserRepository userRepo,
                           LoginAuditLogRepository loginAuditLogRepo) {
-        this.policyRepo = policyRepo;
-        this.userRepo = userRepo;
-        this.loginAuditLogRepo = loginAuditLogRepo;
+        this(policyRepo, userRepo, loginAuditLogRepo, null);
     }
 
     /**
@@ -74,6 +85,7 @@ public class LockoutService implements CommandLineRunner {
                 user.setStatus(UserStatus.ACTIVE);
             }
             userRepo.save(user);
+            evictSecuritySnapshot(user);
             return LockoutStatus.UNRESTRICTED;
         }
 
@@ -95,6 +107,7 @@ public class LockoutService implements CommandLineRunner {
             // BR-013: invalidate all active JWT sessions by bumping password hash version
             user.setPasswordHashVersion(user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1);
             userRepo.save(user);
+            evictSecuritySnapshot(user);
 
             log.warn("Tài khoản bị khóa due to failed attempts: user={}, count={}",
                     user.getUsername(), user.getFailedLoginCount());
@@ -141,6 +154,9 @@ public class LockoutService implements CommandLineRunner {
             user.setStatus(UserStatus.ACTIVE);
         }
         userRepo.save(user);
+        if (expiredTemporaryLock || lockedUntil != null) {
+            evictSecuritySnapshot(user);
+        }
         saveAuditLog(user, LoginAttemptResult.SUCCESS, null, httpRequest);
     }
 
@@ -157,6 +173,7 @@ public class LockoutService implements CommandLineRunner {
         // BR-013: bump password hash version to allow new login after unlock
         user.setPasswordHashVersion(user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1);
         userRepo.save(user);
+        evictSecuritySnapshot(user);
 
         log.info("Account unlocked by admin {}: user={}", adminUser, user.getUsername());
 
@@ -169,6 +186,12 @@ public class LockoutService implements CommandLineRunner {
                               String failureReason, HttpServletRequest httpRequest) {
         LoginAuditLog entry = buildAuditLog(user, result, failureReason, httpRequest);
         loginAuditLogRepo.save(entry);
+    }
+
+    private void evictSecuritySnapshot(User user) {
+        if (userSecurityCacheService != null && user != null) {
+            userSecurityCacheService.evict(user.getId());
+        }
     }
 
     private LoginAuditLog buildAuditLog(User user, LoginAttemptResult result,

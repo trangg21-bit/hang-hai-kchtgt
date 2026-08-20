@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatHistoryResponse;
 import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatRequest;
@@ -28,11 +30,18 @@ public class CoastalStationCospasSarsatService {
     private final HistoryService historyService;
 
     public CoastalStationCospasSarsat createStation(CoastalStationCospasSarsatRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (repository.findByCode(request.getStationCode()).isPresent()) {
             throw new IllegalArgumentException("Mã đã tồn tại: " + request.getStationCode());
         }
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationcospassarsat",
+                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+
         CoastalStationCospasSarsat entity = new CoastalStationCospasSarsat();
+        entity.setSecurityLevel(secLevel);
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setFrequency(request.getFrequency());
@@ -54,26 +63,43 @@ public class CoastalStationCospasSarsatService {
                 null,
                 "Cospas-Sarsat station created",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
     public CoastalStationCospasSarsat updateStation(UUID id, CoastalStationCospasSarsatUpdateRequest request) {
+        FieldWriteGuard.validateObject(request);
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Cospas-Sarsat station not found with id: " + id));
 
-        if (request.getStationName() != null) entity.setName(request.getStationName());
-        if (request.getFrequency() != null) entity.setFrequency(request.getFrequency());
-        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
-        if (request.getBeaconProtocol() != null) entity.setBeaconProtocol(request.getBeaconProtocol());
-        if (request.getEmergencyChannel() != null) entity.setEmergencyChannel(request.getEmergencyChannel());
-        if (request.getAntennaType() != null) entity.setAntennaType(request.getAntennaType());
-        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
-        if (request.getSignalRange() != null) entity.setSignalRange(request.getSignalRange());
-        if (request.getOperatingMode() != null) entity.setOperatingMode(request.getOperatingMode());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationcospassarsat",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getStationName() != null)
+            entity.setName(request.getStationName());
+        if (request.getFrequency() != null)
+            entity.setFrequency(request.getFrequency());
+        if (request.getCoverageArea() != null)
+            entity.setCoverageArea(request.getCoverageArea());
+        if (request.getBeaconProtocol() != null)
+            entity.setBeaconProtocol(request.getBeaconProtocol());
+        if (request.getEmergencyChannel() != null)
+            entity.setEmergencyChannel(request.getEmergencyChannel());
+        if (request.getAntennaType() != null)
+            entity.setAntennaType(request.getAntennaType());
+        if (request.getLocationAddress() != null)
+            entity.setLocationAddress(request.getLocationAddress());
+        if (request.getContactPerson() != null)
+            entity.setContactPerson(request.getContactPerson());
+        if (request.getContactPhone() != null)
+            entity.setContactPhone(request.getContactPhone());
+        if (request.getSignalRange() != null)
+            entity.setSignalRange(request.getSignalRange());
+        if (request.getOperatingMode() != null)
+            entity.setOperatingMode(request.getOperatingMode());
 
         CoastalStationCospasSarsat saved = repository.save(entity);
         historyService.recordHistory(
@@ -82,14 +108,14 @@ public class CoastalStationCospasSarsatService {
                 null,
                 "Cospas-Sarsat station updated",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
     public void deleteStation(UUID id) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Cospas-Sarsat station not found with id: " + id));
 
         String stationCode = entity.getCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
@@ -101,13 +127,13 @@ public class CoastalStationCospasSarsatService {
                 "Active",
                 "Cospas-Sarsat station deleted",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
     }
 
     public CoastalStationCospasSarsat getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Cospas-Sarsat station not found with id: " + id));
     }
 
     public List<CoastalStationCospasSarsat> getAllStations() {
@@ -124,7 +150,8 @@ public class CoastalStationCospasSarsatService {
 
     public CoastalStationCospasSarsat approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Cospas-Sarsat station not found with id: " + id));
 
         String creatorId = resolveCreatedBy(entity);
         if (creatorId != null && creatorId.equals(String.valueOf(userId))) {
@@ -132,7 +159,8 @@ public class CoastalStationCospasSarsatService {
         }
 
         if (approved) {
-            ApprovalLevel currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : ApprovalLevel.LEVEL_0;
+            ApprovalLevel currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel()
+                    : ApprovalLevel.LEVEL_0;
             if (currentLevel == ApprovalLevel.LEVEL_0 && AdminAutoApproval.isAutoApprover()) {
                 // Administrators clear both levels in one step.
                 entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
@@ -156,12 +184,12 @@ public class CoastalStationCospasSarsatService {
 
             historyService.recordHistory(
                     entity.getCode(),
-                    currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1 : StationHistoryActionType.APPROVE_L2,
+                    currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1
+                            : StationHistoryActionType.APPROVE_L2,
                     "Pending approval",
                     "Approved at level " + entity.getApprovalLevel(),
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         } else {
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -174,8 +202,7 @@ public class CoastalStationCospasSarsatService {
                     "Approved L1",
                     "Reset to pending",
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         }
 
         return repository.save(entity);
@@ -183,7 +210,8 @@ public class CoastalStationCospasSarsatService {
 
     public CoastalStationCospasSarsat rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Cospas-Sarsat station not found with id: " + id));
 
         if (rejectionReason == null || rejectionReason.length() < 10) {
             throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
@@ -202,15 +230,15 @@ public class CoastalStationCospasSarsatService {
                 "Approved",
                 "Rejected: " + rejectionReason,
                 String.valueOf(userId),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
 
         return repository.save(entity);
     }
 
     public List<CoastalStationCospasSarsatHistoryResponse> getHistory(UUID id) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Cospas-Sarsat station not found with id: " + id));
         return historyService.getHistory(entity.getCode()).stream()
                 .map(h -> {
                     CoastalStationCospasSarsatHistoryResponse r = new CoastalStationCospasSarsatHistoryResponse();
@@ -235,6 +263,7 @@ public class CoastalStationCospasSarsatService {
     public CoastalStationCospasSarsatResponse buildResponse(CoastalStationCospasSarsat entity) {
         return CoastalStationCospasSarsatResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .stationCode(entity.getCode())
                 .stationName(entity.getName())
                 .frequency(entity.getFrequency())
@@ -258,4 +287,3 @@ public class CoastalStationCospasSarsatService {
                 .build();
     }
 }
-

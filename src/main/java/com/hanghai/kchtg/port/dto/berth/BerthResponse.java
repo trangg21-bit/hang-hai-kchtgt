@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.BerthType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,6 +16,7 @@ import java.util.UUID;
 @Builder
 public class BerthResponse {
     private UUID id;
+    private RecordSecurityLevel securityLevel;
     private String berthCode;
     private String berthName;
     private UUID portId;
@@ -29,9 +31,9 @@ public class BerthResponse {
     private String operationalFunction;
     private OperationalStatus operationalStatus;
     private ApprovalStatus approvalStatus;
-   private UUID orgUnitId;
+    private UUID orgUnitId;
     private String orgUnitName;
-   private UUID createdBy;
+    private UUID createdBy;
     private UUID updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

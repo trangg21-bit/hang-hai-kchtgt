@@ -6,6 +6,9 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.fieldvisibility.FieldVisibilityContext;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -82,6 +85,7 @@ public class VtsSystemService {
     private final VtsZoneRepository zoneRepository;
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
+    private PermissionCacheService permissionCacheService;
 
     @Value("${app.upload.attachment-path:uploads/vts-attachments}")
     private String attachmentUploadPath;
@@ -108,8 +112,14 @@ public class VtsSystemService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPermissionCacheService(PermissionCacheService permissionCacheService) {
+        this.permissionCacheService = permissionCacheService;
+    }
+
     public VtsSystemResponse create(VtsSystemCreateRequest request, UUID userId) {
         validateCreateRequest(request);
+        validateWriteGuard(request);
         String normalizedCode = request.getCode().trim();
         if (repository.existsByCode(normalizedCode)) {
             throw new IllegalArgumentException("Mã hệ thống VTS đã tồn tại trong hệ thống");
@@ -117,6 +127,7 @@ public class VtsSystemService {
         VtsSystem entity = VtsSystem.builder()
                 .systemName(request.getSystemName())
                 .conditionStatus(request.getConditionStatus())
+                .securityLevel(RecordSecurityLevel.normalize(request.getRecordSecurityLevel()))
                 .responsibilityLevel(request.getResponsibilityLevel())
                 .source(request.getSource())
                 .partner(request.getPartner())
@@ -213,6 +224,7 @@ public class VtsSystemService {
         if (request.getConditionStatus() == null) {
             throw new IllegalArgumentException("Tình trạng không được để trống");
         }
+        validateRequestedSecurityLevel(request.getRecordSecurityLevel());
         validateReferenceScope(resolveDataScope(), request.getOrgUnitId(), request.getOwningOrgId(),
                 request.getOperatingOrgId(), request.getPortId());
     }
@@ -242,6 +254,74 @@ public class VtsSystemService {
         }
     }
 
+    private void validateWriteGuard(VtsSystemCreateRequest request) {
+        if (request == null) return;
+        if (request.getSystemName() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.systemName);
+        if (request.getConditionStatus() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.conditionStatus);
+        if (request.getRecordSecurityLevel() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.securityLevel);
+        if (request.getResponsibilityLevel() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.responsibilityLevel);
+        if (request.getSource() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.source);
+        if (request.getPartner() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.partner);
+        if (request.getOwningOrgId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.owningOrgId);
+        if (request.getOperatingOrgId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.operatingOrgId);
+        if (request.getPortId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.portId);
+        if (request.getScope() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.scope);
+        if (request.getNote() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.note);
+        if (request.getProvinceId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.provinceId);
+        if (request.getAddress() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.address);
+        if (request.getMaritimeNotice() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.maritimeNotice);
+        if (request.getOperationStartDate() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.operationStartDate);
+    }
+
+    private void validateWriteGuard(VtsSystemUpdateRequest request) {
+        if (request == null) return;
+        if (request.getSystemName() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.systemName);
+        if (request.getConditionStatus() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.conditionStatus);
+        if (request.getRecordSecurityLevel() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.securityLevel);
+        if (request.getResponsibilityLevel() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.responsibilityLevel);
+        if (request.getSource() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.source);
+        if (request.getPartner() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.partner);
+        if (request.getOwningOrgId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.owningOrgId);
+        if (request.getOperatingOrgId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.operatingOrgId);
+        if (request.getPortId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.portId);
+        if (request.getScope() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.scope);
+        if (request.getNote() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.note);
+        if (request.getProvinceId() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.provinceId);
+        if (request.getAddress() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.address);
+        if (request.getMaritimeNotice() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.maritimeNotice);
+        if (request.getOperationStartDate() != null) FieldVisibilityContext.assertWritable(VtsSystem.Fields.operationStartDate);
+    }
+
+    private void validateRequestedSecurityLevel(RecordSecurityLevel requestedLevel) {
+        RecordSecurityLevel normalized = RecordSecurityLevel.normalize(requestedLevel);
+        User currentUser = resolveCurrentUser();
+        Set<String> permissions = permissionCacheService == null
+                ? (currentUser == null ? Set.of() : currentUser.getAllPermissions())
+                : permissionCacheService.getEffectivePermissions(currentUser);
+        if (!RecordSecurityLevel.isAllowed(normalized, permissions, isElevatedAdministrator())) {
+            throw new IllegalArgumentException("Tài khoản không có quyền gán mức bảo mật " + normalized.name());
+        }
+    }
+
+    private User resolveCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return null;
+        }
+        if (authentication.getPrincipal() instanceof User principalUser) {
+            return principalUser;
+        }
+        return userRepository.findByUsernameWithRelations(authentication.getName()).orElse(null);
+    }
+
+    private boolean isElevatedAdministrator() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(authority.getAuthority())
+                        || "ROLE_SUPER_ADMIN".equalsIgnoreCase(authority.getAuthority()));
+    }
+
     public VtsSystemResponse getById(UUID id) {
         return getById(id, true, true);
     }
@@ -249,6 +329,10 @@ public class VtsSystemService {
     public VtsSystemResponse getById(UUID id, boolean includeZones, boolean includeAttachments) {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
+        DataScopeContext scope = resolveDataScope();
+        if (scope.enabled()) {
+            validateAllowedOrgUnit(scope, entity.getOrgUnitId(), "Đơn vị quản lý");
+        }
         return toResponse(entity, includeZones, includeAttachments);
     }
 
@@ -414,6 +498,11 @@ public class VtsSystemService {
                 request.getOperatingOrgId() != null ? request.getOperatingOrgId() : entity.getOperatingOrgId(),
                 request.getPortId() != null ? request.getPortId() : entity.getPortId());
 
+        validateWriteGuard(request);
+        if (request.getRecordSecurityLevel() != null) {
+            validateRequestedSecurityLevel(request.getRecordSecurityLevel());
+        }
+
         ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
         Map<String, String> previousValues = new LinkedHashMap<>();
         EntityUpdateUtils.copyPropertiesIfPresent(request, entity, previousValues,
@@ -536,6 +625,11 @@ public class VtsSystemService {
     public void delete(UUID id, UUID userId) {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
+
+        DataScopeContext scope = resolveDataScope();
+        if (scope.enabled()) {
+            validateAllowedOrgUnit(scope, entity.getOrgUnitId(), "Đơn vị quản lý");
+        }
 
         if (entity.getApprovalStatus() != ApprovalStatus.APPROVED) {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED)");
@@ -847,6 +941,7 @@ public class VtsSystemService {
                 .code(entity.getCode())
                 .systemName(entity.getSystemName())
                 .conditionStatus(entity.getConditionStatus())
+                .recordSecurityLevel(RecordSecurityLevel.normalize(entity.getSecurityLevel()))
                 .responsibilityLevel(entity.getResponsibilityLevel())
                 .source(entity.getSource())
                 .partner(entity.getPartner())

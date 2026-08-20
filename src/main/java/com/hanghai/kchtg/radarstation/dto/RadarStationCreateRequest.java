@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.radarstation.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -21,6 +22,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RadarStationCreateRequest {
+
+    private RecordSecurityLevel securityLevel;
+
     @NotBlank(message = "Tên trạm không được để trống")
     @Size(max = 255, message = "Tên trạm không được vượt quá 255 ký tự")
     private String stationName;

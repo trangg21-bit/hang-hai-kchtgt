@@ -2,6 +2,7 @@ package com.hanghai.kchtg.radarstation.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class RadarStationResponse {
     private UUID id;
     private String code;
+    private RecordSecurityLevel securityLevel;
     private String stationName;
     private String location;
     private BigDecimal longitude;

@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.experimental.FieldNameConstants;
+
 /**
  * Request DTO for creating a LegalDocument record.
  */
@@ -19,7 +22,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
 public class LegalDocumentCreateRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     @NotBlank(message = "Tên văn bản không được để trống")
     private String documentName;

@@ -18,6 +18,9 @@ import {
   Upload,
   Tabs,
   Table,
+  Tooltip,
+  Popconfirm,
+  Descriptions,
 } from 'antd';
 import {
   PlusOutlined,
@@ -55,7 +58,19 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
-import toast from '../../components/ToastNotification';
+import ErrorState from '../../components/ErrorState';
+import toast, { message } from '../../components/ToastNotification';
+import FormField from '../../components/FormField';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import RejectionModal from '../../components/shared/RejectionModal';
+import HistoryTimeline from '../../components/shared/HistoryTimeline';
+import { colors } from '../../theme';
+import { useAuthStore } from '../../store/authStore';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import { portCRUD } from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol as MapSymbol } from '../../services/symbolService';
 import {
   statusOperational,
   statusAttention,
@@ -114,12 +129,6 @@ import {
   historyNewValueStyle,
   historyArrowStyle,
 } from '../../tokens';
-import { colors } from '../../theme';
-import { useAuthStore } from '../../store/authStore';
-import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
-import { portCRUD } from '../../services/portService';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol as MapSymbol } from '../../services/symbolService';
 
 // ── Field name translation ───────────────────────────────────────────
 

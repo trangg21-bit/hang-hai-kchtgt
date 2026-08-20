@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSHistoryResponse;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSRequest;
@@ -28,13 +30,20 @@ public class CoastalStationVTSService {
     private final HistoryService historyService;
 
     public CoastalStationVTS createStation(CoastalStationVTSRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (repository.findByCode(request.getStationCode()).isPresent()) {
             throw new IllegalArgumentException("Mã đã tồn tại: " + request.getStationCode());
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationvts", SecurityUtils.getCurrentUserPermissions(),
+                SecurityUtils.isElevatedAdministrator());
+
         CoastalStationVTS entity = new CoastalStationVTS();
+        entity.setSecurityLevel(secLevel);
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setFrequencyBand(request.getFrequencyBand());
@@ -52,12 +61,12 @@ public class CoastalStationVTSService {
                 null,
                 "Station created",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
     public CoastalStationVTS updateStation(UUID id, CoastalStationVTSUpdateRequest request) {
+        FieldWriteGuard.validateObject(request);
         CoastalStationVTS entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
@@ -65,13 +74,26 @@ public class CoastalStationVTSService {
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
-        if (request.getStationName() != null) entity.setName(request.getStationName());
-        if (request.getFrequencyBand() != null) entity.setFrequencyBand(request.getFrequencyBand());
-        if (request.getTransmitPower() != null) entity.setTransmitPower(request.getTransmitPower());
-        if (request.getEquipmentType() != null) entity.setEquipmentType(request.getEquipmentType());
-        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationvts",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+
+        if (request.getStationName() != null)
+            entity.setName(request.getStationName());
+        if (request.getFrequencyBand() != null)
+            entity.setFrequencyBand(request.getFrequencyBand());
+        if (request.getTransmitPower() != null)
+            entity.setTransmitPower(request.getTransmitPower());
+        if (request.getEquipmentType() != null)
+            entity.setEquipmentType(request.getEquipmentType());
+        if (request.getLocationAddress() != null)
+            entity.setLocationAddress(request.getLocationAddress());
+        if (request.getContactPerson() != null)
+            entity.setContactPerson(request.getContactPerson());
+        if (request.getContactPhone() != null)
+            entity.setContactPhone(request.getContactPhone());
 
         CoastalStationVTS saved = repository.save(entity);
 
@@ -81,8 +103,7 @@ public class CoastalStationVTSService {
                 previousCode,
                 "Station updated",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
@@ -100,8 +121,7 @@ public class CoastalStationVTSService {
                 "Active",
                 "Deleted",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
     }
 
     public CoastalStationVTS getStationById(UUID id) {
@@ -159,8 +179,7 @@ public class CoastalStationVTSService {
                     "Pending approval",
                     "Approved at level " + entity.getApprovalLevel(),
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         } else {
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -175,8 +194,7 @@ public class CoastalStationVTSService {
                     "Approved L1",
                     "Reset to pending",
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         }
 
         return repository.save(entity);
@@ -203,8 +221,7 @@ public class CoastalStationVTSService {
                 "Approved",
                 "Rejected: " + rejectionReason,
                 String.valueOf(userId),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
 
         return repository.save(entity);
     }
@@ -236,6 +253,7 @@ public class CoastalStationVTSService {
     public CoastalStationVTSResponse buildResponse(CoastalStationVTS entity) {
         return CoastalStationVTSResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .stationCode(entity.getCode())
                 .stationName(entity.getName())
                 .frequencyBand(entity.getFrequencyBand())
@@ -255,6 +273,3 @@ public class CoastalStationVTSService {
                 .build();
     }
 }
-
-
-

@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/stations/coastal")
 @Validated
 @RequiredArgsConstructor
 @Tag(name = "Coastal Station VTS")
+@DataScope
 public class CoastalStationVTSController {
 
     private final CoastalStationVTSService service;

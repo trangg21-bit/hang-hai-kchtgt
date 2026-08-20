@@ -16,20 +16,31 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.Builder;
+import lombok.experimental.FieldNameConstants;
+
 /**
- * Entity representing an inland port / dry port (Cảng cạn) — independent, no parent FK.
+ * Entity representing an inland port / dry port (Cảng cạn) — independent, no
+ * parent FK.
  * Corresponds to table: dry_ports (renamed from cang_can).
  */
 @Entity
-@Table(name = "dry_ports",
-        uniqueConstraints = @UniqueConstraint(columnNames = "dry_port_code"))
+@Table(name = "dry_ports", uniqueConstraints = @UniqueConstraint(columnNames = "dry_port_code"))
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 public class DryPort extends BaseEntity {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
 
     @Column(name = "dry_port_code", nullable = false, unique = true, length = 50)
     private String dryPortCode;
@@ -39,8 +50,6 @@ public class DryPort extends BaseEntity {
 
     @Column(name = "province_id")
     private Integer provinceId;
-
-
 
     @Column(name = "area", precision = 15, scale = 2)
     private BigDecimal area;
@@ -108,7 +117,8 @@ public class DryPort extends BaseEntity {
     @Column(name = "announcement_org", length = 255)
     private String announcementOrg;
 
-    // GIS (coordinates + geometry_type managed by gis_spatial_objects via spatial_id)
+    // GIS (coordinates + geometry_type managed by gis_spatial_objects via
+    // spatial_id)
     @Column(name = "coordinate_system")
     private Integer coordinateSystem;
 

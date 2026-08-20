@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { message } from 'antd';
+import { message } from '../components/ToastNotification';
 import { userService } from '../services/userService';
 import type { CreateUserPayload, UpdateUserPayload } from '../types/user';
 import type { PaginatedResponse } from '../types/common';
@@ -54,7 +54,7 @@ export function useUpdateUser() {
     mutationFn: ({ id, payload }: { id: string; payload: UpdateUserPayload }) =>
       userService.update(id, payload),
     onSuccess: () => {
-      message.success('Đã cập nhật người dùng');
+      message.success('Đã cập nhật người dùng thành công');
       qc.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error: Error) => {

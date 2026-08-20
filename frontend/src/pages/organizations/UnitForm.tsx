@@ -2,13 +2,14 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, Form, Button, Space, Typography, Input, Select, Row, Col } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { organizationService } from '../../services/organizationService';
+import { organizationService, RANK_OPTIONS } from '../../services/organizationService';
 import type { CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
 import { spaceMd, spaceLg, radiusPill, fontSizeMd, fontWeightBold, borderDefault, textSecondary } from '../../tokens';
 import { colors } from '../../theme';
+import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 
 export default function UnitForm() {
   const navigate = useNavigate();
@@ -39,25 +40,23 @@ export default function UnitForm() {
           const data = await organizationService.getById(id!);
           setInitialData({
             name: data.name,
-            code: data.code || 'ORG_' + id,
             parentId: data.parentId,
             description: data.description,
-            address: data.address,
-            contactPerson: data.contactPerson,
-            contactPhone: data.contactPhone,
-            status: data.status,
+            provinceId: data.provinceId,
+            detailAddress: data.detailAddress,
+            phone: data.phone,
             operationalStatus: data.operationalStatus,
+            rank: data.rank,
           });
           form.setFieldsValue({
             name: data.name,
-            code: data.code || 'ORG_' + id,
             parentId: data.parentId,
             description: data.description,
-            address: data.address,
-            contactPerson: data.contactPerson,
-            contactPhone: data.contactPhone,
-            status: data.status,
+            provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
+            detailAddress: data.detailAddress,
+            phone: data.phone,
             operationalStatus: data.operationalStatus,
+            rank: data.rank,
           });
         } catch {
           toast.error('Không thể tải thông tin đơn vị');
@@ -101,11 +100,11 @@ export default function UnitForm() {
           name: values.name,
           parentId: targetParentId,
           description: values.description,
-          address: values.address,
+          provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
           detailAddress: values.detailAddress,
-          contactPerson: values.contactPerson,
-          contactPhone: values.contactPhone,
+          phone: values.phone,
           operationalStatus: values.operationalStatus,
+          rank: values.rank,
         };
         await organizationService.update(id!, payload);
         toast.success('Đã cập nhật đơn vị thành công');
@@ -114,12 +113,11 @@ export default function UnitForm() {
           name: values.name,
           parentId: targetParentId,
           description: values.description,
-          address: values.address,
+          provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
           detailAddress: values.detailAddress,
           phone: values.phone,
-          contactPerson: values.contactPerson,
-          contactPhone: values.contactPhone,
           operationalStatus: values.operationalStatus,
+          rank: values.rank,
         };
         await organizationService.create(payload);
         toast.success('Đã tạo đơn vị thành công');
@@ -158,19 +156,19 @@ export default function UnitForm() {
           />
 
           <FormField
-            type="text"
-            name="code"
-            label="Mã đơn vị"
-            required
-            placeholder="VD: PHONG_CNTT"
-          />
-
-          <FormField
             type="select"
             name="parentId"
             label="Đơn vị cha"
             options={[{ value: '', label: '(Không có) — đơn vị cấp cao nhất' }, ...parentOptions]}
             help="Để trống nếu đây là đơn vị cấp cao nhất"
+          />
+
+          <FormField
+            type="select"
+            name="rank"
+            label="Cấp đơn vị"
+            required
+            options={RANK_OPTIONS}
           />
 
           <FormField
@@ -181,32 +179,26 @@ export default function UnitForm() {
           />
 
           <FormField
-            type="text"
-            name="address"
-            label="Địa chỉ"
-            placeholder="Địa chỉ trụ sở..."
+            type="select"
+            name="provinceId"
+            label="Địa điểm (Tỉnh/Thành phố)"
+            required
+            options={VIETNAM_PROVINCE_OPTIONS}
           />
 
-          
+          <FormField
+            type="text"
+            name="detailAddress"
+            label="Địa điểm chi tiết"
+            placeholder="Số nhà, đường, phường/xã..."
+          />
 
-          <Row style={{ display: 'flex', gap: spaceMd }}>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="text"
-                name="contactPerson"
-                label="Người liên hệ"
-                placeholder="Họ và tên"
-              />
-            </Col>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="phone"
-                name="contactPhone"
-                label="Số điện thoại"
-                placeholder="0901234567"
-              />
-            </Col>
-          </Row>
+          <FormField
+            type="phone"
+            name="phone"
+            label="Số điện thoại"
+            placeholder="0901234567"
+          />
 
           <FormField
             type="select"

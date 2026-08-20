@@ -27,7 +27,7 @@ import lombok.Setter;
 public class Permission extends BaseEntity {
 
     @NotBlank(message = "Mã quyền hạn không được để trống")
-    @Pattern(regexp = "^[a-z][a-z0-9]*:[a-z][a-z0-9]*$", message = "Mã quyền hạn phải theo định dạng {feature}:{action} (chữ thường, không dấu, ký tự hợp lệ)")
+    @Pattern(regexp = "^[a-z][a-z0-9_]*(:[a-z][a-z0-9_]*)+$", message = "Mã quyền hạn phải theo định dạng {feature}:{action} (chữ thường, không dấu, ký tự hợp lệ)")
     @Size(max = 100, message = "Mã quyền hạn tối đa 100 ký tự")
     @Column(nullable = false, unique = true, length = 100)
     private String code;
@@ -65,7 +65,7 @@ public class Permission extends BaseEntity {
         }
         String code = this.code;
         if (code != null && code.contains(":")) {
-            return code.split(":")[0];
+            return code.substring(0, code.indexOf(':'));
         }
         return code;
     }
@@ -76,7 +76,7 @@ public class Permission extends BaseEntity {
         }
         String code = this.code;
         if (code != null && code.contains(":")) {
-            return code.split(":")[1];
+            return code.substring(code.indexOf(':') + 1);
         }
         return code;
     }

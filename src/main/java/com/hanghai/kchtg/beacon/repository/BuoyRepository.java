@@ -46,6 +46,10 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
         @Param("approvalStatus") String approvalStatus
     );
 
+    default List<Buoy> searchFiltered(String name, String code, String type, String status) {
+        return searchFiltered(name, code, type, status, null, null, null, null);
+    }
+
     long countByStatus(String status);
 
     @Query("SELECT b FROM Buoy b WHERE " +

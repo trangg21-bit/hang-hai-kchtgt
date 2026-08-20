@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.port.dto.document;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,8 @@ import java.util.UUID;
 public class DocumentResponse {
 
     private UUID id;
+
+    private RecordSecurityLevel securityLevel;
 
     private String entityType;
 

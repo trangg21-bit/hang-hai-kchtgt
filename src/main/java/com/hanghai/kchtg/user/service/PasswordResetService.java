@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.user.entity.PasswordResetToken;
+import com.hanghai.kchtg.security.service.UserSecurityCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.exception.ValidationException;
 import com.hanghai.kchtg.user.repository.PasswordResetTokenRepository;
@@ -33,17 +34,30 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
     private final PasswordPolicyValidator passwordPolicyValidator;
+    private final UserSecurityCacheService userSecurityCacheService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public PasswordResetService(PasswordResetTokenRepository tokenRepository,
+                                UserRepository userRepository,
+                                PasswordEncoder passwordEncoder,
+                                NotificationService notificationService,
+                                PasswordPolicyValidator passwordPolicyValidator,
+                                UserSecurityCacheService userSecurityCacheService) {
+        this.tokenRepository = tokenRepository;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
+        this.passwordPolicyValidator = passwordPolicyValidator;
+        this.userSecurityCacheService = userSecurityCacheService;
+    }
 
     public PasswordResetService(PasswordResetTokenRepository tokenRepository,
                                 UserRepository userRepository,
                                 PasswordEncoder passwordEncoder,
                                 NotificationService notificationService,
                                 PasswordPolicyValidator passwordPolicyValidator) {
-        this.tokenRepository = tokenRepository;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.notificationService = notificationService;
-        this.passwordPolicyValidator = passwordPolicyValidator;
+        this(tokenRepository, userRepository, passwordEncoder, notificationService,
+                passwordPolicyValidator, null);
     }
 
     /**
@@ -118,6 +132,9 @@ public class PasswordResetService {
         user.setAccountLockedUntil(null);
         user.setPasswordHashVersion((user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1));
         userRepository.save(user);
+        if (userSecurityCacheService != null) {
+            userSecurityCacheService.evict(user.getId());
+        }
 
         // Mark token as used (prevents reuse)
         resetToken.setUsed(true);

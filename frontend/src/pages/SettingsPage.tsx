@@ -13,10 +13,10 @@ import {
   Typography,
   Descriptions,
   Popconfirm,
-  message,
   Spin,
   Alert,
 } from 'antd';
+import { message } from '../components/ToastNotification';
 import {
   SaveOutlined,
   ReloadOutlined,

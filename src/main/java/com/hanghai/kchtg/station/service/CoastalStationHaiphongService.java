@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongHistoryResponse;
 import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongRequest;
@@ -27,11 +29,18 @@ public class CoastalStationHaiphongService {
     private final HistoryService historyService;
 
     public CoastalStationHaiphong createStation(CoastalStationHaiphongRequest request) {
+        FieldWriteGuard.validateObject(request);
         if (repository.findByCode(request.getStationCode()).isPresent()) {
             throw new IllegalArgumentException("Mã đã tồn tại: " + request.getStationCode());
         }
 
+        RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
+                : RecordSecurityLevel.NORMAL;
+        RecordSecurityLevel.validateAssignment(secLevel, "coastalstationhaiphong",
+                SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+
         CoastalStationHaiphong entity = new CoastalStationHaiphong();
+        entity.setSecurityLevel(secLevel);
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setPortName(request.getPortName());
@@ -58,31 +67,53 @@ public class CoastalStationHaiphongService {
                 null,
                 "Haiphong station created",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
     public CoastalStationHaiphong updateStation(UUID id, CoastalStationHaiphongUpdateRequest request) {
+        FieldWriteGuard.validateObject(request);
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Haiphong station not found with id: " + id));
 
-        if (request.getStationName() != null) entity.setName(request.getStationName());
-        if (request.getPortName() != null) entity.setPortName(request.getPortName());
-        if (request.getDistrict() != null) entity.setDistrict(request.getDistrict());
-        if (request.getWard() != null) entity.setWard(request.getWard());
-        if (request.getOperationalLicense() != null) entity.setOperationalLicense(request.getOperationalLicense());
-        if (request.getLicenseExpiry() != null) entity.setLicenseExpiry(request.getLicenseExpiry());
-        if (request.getInspectorName() != null) entity.setInspectorName(request.getInspectorName());
-        if (request.getInspectorPhone() != null) entity.setInspectorPhone(request.getInspectorPhone());
-        if (request.getLastInspectionDate() != null) entity.setLastInspectionDate(request.getLastInspectionDate());
-        if (request.getNextInspectionDate() != null) entity.setNextInspectionDate(request.getNextInspectionDate());
-        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
-        if (request.getEquipmentType() != null) entity.setEquipmentType(request.getEquipmentType());
-        if (request.getCommunicationFrequency() != null) entity.setCommunicationFrequency(request.getCommunicationFrequency());
-        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
+        if (request.getSecurityLevel() != null) {
+            RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationhaiphong",
+                    SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
+            entity.setSecurityLevel(request.getSecurityLevel());
+        }
+        if (request.getStationName() != null)
+            entity.setName(request.getStationName());
+        if (request.getPortName() != null)
+            entity.setPortName(request.getPortName());
+        if (request.getDistrict() != null)
+            entity.setDistrict(request.getDistrict());
+        if (request.getWard() != null)
+            entity.setWard(request.getWard());
+        if (request.getOperationalLicense() != null)
+            entity.setOperationalLicense(request.getOperationalLicense());
+        if (request.getLicenseExpiry() != null)
+            entity.setLicenseExpiry(request.getLicenseExpiry());
+        if (request.getInspectorName() != null)
+            entity.setInspectorName(request.getInspectorName());
+        if (request.getInspectorPhone() != null)
+            entity.setInspectorPhone(request.getInspectorPhone());
+        if (request.getLastInspectionDate() != null)
+            entity.setLastInspectionDate(request.getLastInspectionDate());
+        if (request.getNextInspectionDate() != null)
+            entity.setNextInspectionDate(request.getNextInspectionDate());
+        if (request.getCoverageArea() != null)
+            entity.setCoverageArea(request.getCoverageArea());
+        if (request.getEquipmentType() != null)
+            entity.setEquipmentType(request.getEquipmentType());
+        if (request.getCommunicationFrequency() != null)
+            entity.setCommunicationFrequency(request.getCommunicationFrequency());
+        if (request.getLocationAddress() != null)
+            entity.setLocationAddress(request.getLocationAddress());
+        if (request.getContactPerson() != null)
+            entity.setContactPerson(request.getContactPerson());
+        if (request.getContactPhone() != null)
+            entity.setContactPhone(request.getContactPhone());
 
         CoastalStationHaiphong saved = repository.save(entity);
         historyService.recordHistory(
@@ -91,14 +122,14 @@ public class CoastalStationHaiphongService {
                 null,
                 "Haiphong station updated",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return saved;
     }
 
     public void deleteStation(UUID id) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Haiphong station not found with id: " + id));
 
         String stationCode = entity.getCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
@@ -110,13 +141,13 @@ public class CoastalStationHaiphongService {
                 "Active",
                 "Haiphong station deleted",
                 "system",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
     }
 
     public CoastalStationHaiphong getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Haiphong station not found with id: " + id));
     }
 
     public List<CoastalStationHaiphong> getAllStations() {
@@ -133,7 +164,8 @@ public class CoastalStationHaiphongService {
 
     public CoastalStationHaiphong approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Haiphong station not found with id: " + id));
 
         String creatorId = resolveCreatedBy(entity);
         if (creatorId != null && creatorId.equals(String.valueOf(userId))) {
@@ -141,7 +173,8 @@ public class CoastalStationHaiphongService {
         }
 
         if (approved) {
-            ApprovalLevel currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : ApprovalLevel.LEVEL_0;
+            ApprovalLevel currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel()
+                    : ApprovalLevel.LEVEL_0;
             if (currentLevel == ApprovalLevel.LEVEL_0 && AdminAutoApproval.isAutoApprover()) {
                 // Administrators clear both levels in one step.
                 entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
@@ -165,12 +198,12 @@ public class CoastalStationHaiphongService {
 
             historyService.recordHistory(
                     entity.getCode(),
-                    currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1 : StationHistoryActionType.APPROVE_L2,
+                    currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1
+                            : StationHistoryActionType.APPROVE_L2,
                     "Pending approval",
                     "Approved at level " + entity.getApprovalLevel(),
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         } else {
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -183,8 +216,7 @@ public class CoastalStationHaiphongService {
                     "Approved L1",
                     "Reset to pending",
                     String.valueOf(userId),
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         }
 
         return repository.save(entity);
@@ -192,7 +224,8 @@ public class CoastalStationHaiphongService {
 
     public CoastalStationHaiphong rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Haiphong station not found with id: " + id));
 
         if (rejectionReason == null || rejectionReason.length() < 10) {
             throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
@@ -211,15 +244,15 @@ public class CoastalStationHaiphongService {
                 "Approved",
                 "Rejected: " + rejectionReason,
                 String.valueOf(userId),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
 
         return repository.save(entity);
     }
 
     public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
+                        "Haiphong station not found with id: " + id));
         return historyService.getHistory(entity.getCode()).stream()
                 .map(h -> {
                     CoastalStationHaiphongHistoryResponse r = new CoastalStationHaiphongHistoryResponse();
@@ -244,6 +277,7 @@ public class CoastalStationHaiphongService {
     public CoastalStationHaiphongResponse buildResponse(CoastalStationHaiphong entity) {
         return CoastalStationHaiphongResponse.builder()
                 .id(entity.getId())
+                .securityLevel(entity.getSecurityLevel())
                 .stationCode(entity.getCode())
                 .stationName(entity.getName())
                 .portName(entity.getPortName())
@@ -272,4 +306,3 @@ public class CoastalStationHaiphongService {
                 .build();
     }
 }
-

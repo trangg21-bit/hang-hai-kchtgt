@@ -1,5 +1,7 @@
 import axios from 'axios';
-import { message } from 'antd';
+import type { AxiosResponseHeaders, RawAxiosResponseHeaders, InternalAxiosRequestConfig, AxiosRequestConfig } from 'axios';
+import { message } from '../components/ToastNotification';
+import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
   baseURL: '/api',
@@ -35,10 +37,32 @@ const showUniqueError = (msg: string) => {
   message.error(msg);
 };
 
-// Response interceptor — global error handling
+const syncNewToken = (
+  headers?: AxiosResponseHeaders | RawAxiosResponseHeaders | Record<string, unknown>,
+  config?: InternalAxiosRequestConfig | AxiosRequestConfig | { headers?: Record<string, unknown> },
+) => {
+  if (!headers) return;
+  const headerRecord = headers as Record<string, unknown>;
+  const newToken = (headerRecord['x-new-token'] || headerRecord['X-New-Token']) as string | undefined;
+  if (newToken && typeof newToken === 'string') {
+    const authHeader = config?.headers
+      ? (config.headers as Record<string, unknown>)['Authorization'] || (config.headers as Record<string, unknown>)['authorization']
+      : undefined;
+    const reqToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : null;
+    useAuthStore.getState().replaceAccessToken(newToken, reqToken);
+  }
+};
+
+// Response interceptor — global error handling & token auto-sync
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    syncNewToken(response.headers, response.config);
+    return response;
+  },
   (error) => {
+    syncNewToken(error.response?.headers, error.config);
     console.error('[api] Error:', error.response?.status, error.config?.url, error.response?.data || error.message);
     const status = error.response?.status;
     let friendlyMsg = 'Có lỗi xảy ra, vui lòng thử lại.';
@@ -65,8 +89,8 @@ api.interceptors.response.use(
       friendlyMsg = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
     } else if (status === 403) {
       const token = localStorage.getItem('auth_token');
-      friendlyMsg = token 
-        ? 'Bạn không có quyền thực hiện hành động này.' 
+      friendlyMsg = token
+        ? 'Bạn không có quyền thực hiện hành động này.'
         : 'Vui lòng đăng nhập để tiếp tục.';
     } else if (status === 404) {
       friendlyMsg = error.response?.data?.message || 'Không tìm thấy tài nguyên yêu cầu (404).';

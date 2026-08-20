@@ -26,12 +26,14 @@ import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.MediaType;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/berths")
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@DataScope
 public class BerthController {
 
     private final BerthService berthService;
@@ -83,7 +85,8 @@ public class BerthController {
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo) {
-        log.info("Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, status={}, approvalStatus={}",
+        log.info(
+                "Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, search, berthCode, berthName, portId, operationalStatus, approvalStatus);
         Page<BerthResponse> result = berthService.findAll(page, size, orgUnitId,
                 berthCode, berthName, portId, waterway, berthType, operationalStatus, approvalStatus, search,

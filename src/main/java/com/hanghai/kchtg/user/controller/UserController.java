@@ -41,7 +41,7 @@ import java.util.UUID;
  * </p>
  */
 @RestController
-@RequestMapping({"/api/users", "/api/v1/users"})
+@RequestMapping({ "/api/users", "/api/v1/users" })
 public class UserController {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
@@ -53,8 +53,7 @@ public class UserController {
             "orgUnitName", "orgUnit.name",
             "lastLoginAt", "lastLoginAt",
             "status", "status",
-            "createdAt", EntityFields.CREATED_AT
-    );
+            "createdAt", EntityFields.CREATED_AT);
 
     private final UserService userService;
     private final UserPermissionService userPermissionService;
@@ -64,10 +63,10 @@ public class UserController {
     private final OrgUnitCacheService orgUnitCacheService;
 
     public UserController(UserService userService, UserPermissionService userPermissionService,
-                          @Nullable AdminAuditLogRepository adminAuditLogRepository,
-                          @Nullable PermissionCacheService permissionCacheService,
-                          UserRepository userRepository,
-                          @Nullable OrgUnitCacheService orgUnitCacheService) {
+            @Nullable AdminAuditLogRepository adminAuditLogRepository,
+            @Nullable PermissionCacheService permissionCacheService,
+            UserRepository userRepository,
+            @Nullable OrgUnitCacheService orgUnitCacheService) {
         this.userService = userService;
         this.userPermissionService = userPermissionService;
         this.adminAuditLogRepository = adminAuditLogRepository;
@@ -119,7 +118,8 @@ public class UserController {
                 .collect(java.util.stream.Collectors.toSet());
         var auditNames = userRepository.findAllById(auditIds).stream()
                 .collect(java.util.stream.Collectors.toMap(com.hanghai.kchtg.user.entity.User::getId,
-                        user -> user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername() : user.getFullName(),
+                        user -> user.getFullName() == null || user.getFullName().isBlank() ? user.getUsername()
+                                : user.getFullName(),
                         (first, second) -> first));
         UserDetailResponse user = UserDetailResponse.from(entity, orgUnitCacheService, auditNames);
         return ResponseEntity.ok(ApiResponse.success(user));
@@ -133,10 +133,6 @@ public class UserController {
     @PreAuthorize("@auth.check(authentication, 'user:create')")
     public ResponseEntity<ApiResponse<UserResponse>> create(@Valid @RequestBody CreateUserRequest request) {
         var created = userService.create(request);
-        if (request.getPermissionCodes() != null) {
-            userPermissionService.replaceDirectPermissions(created.getId(), request.getPermissionCodes());
-            created = userService.findById(created.getId());
-        }
         UserResponse user = UserResponse.from(created);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tao người dùng thành công", user));
     }
@@ -151,12 +147,8 @@ public class UserController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
         var updated = userService.update(id, request);
-        if (request.getPermissionCodes() != null) {
-            userPermissionService.replaceDirectPermissions(id, request.getPermissionCodes());
-            updated = userService.findById(id);
-        }
         UserResponse user = UserResponse.from(updated);
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat người dùng thành công", user));
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật người dùng thành công", user));
     }
 
     /**
@@ -212,7 +204,7 @@ public class UserController {
     }
 
     // =========================================================================
-    //  T-004: Self-edit endpoints
+    // T-004: Self-edit endpoints
     // =========================================================================
 
     /**
@@ -225,7 +217,8 @@ public class UserController {
     }
 
     /**
-     * T-004: PUT /users/me — cho phep nguoi dung hien tai cap nhat thong tin cua chinh minh.
+     * T-004: PUT /users/me — cho phep nguoi dung hien tai cap nhat thong tin cua
+     * chinh minh.
      */
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> updateMyProfile(@Valid @RequestBody UpdateUserRequest request) {
@@ -234,11 +227,12 @@ public class UserController {
     }
 
     // =========================================================================
-    //  T-012: Admin reset password endpoint
+    // T-012: Admin reset password endpoint
     // =========================================================================
 
     /**
-     * T-012: POST /users/{id}/reset-password — admin dat lai mat khau cho user (policy nong nhe).
+     * T-012: POST /users/{id}/reset-password — admin dat lai mat khau cho user
+     * (policy nong nhe).
      */
     @PostMapping("/{id}/reset-password")
     @AuditLog(module = "USER", action = "RESET_USER_PASSWORD")
@@ -255,11 +249,12 @@ public class UserController {
     }
 
     // =========================================================================
-    //  T-008: Pending status endpoint
+    // T-008: Pending status endpoint
     // =========================================================================
 
     /**
-     * T-008: GET /users/{id}/pending-status — tra ve trang thai dang ky dang cho phep duyet.
+     * T-008: GET /users/{id}/pending-status — tra ve trang thai dang ky dang cho
+     * phep duyet.
      */
     @GetMapping("/{id}/pending-status")
     public ResponseEntity<ApiResponse<Map<String, String>>> getPendingStatus(@PathVariable UUID id) {
@@ -305,7 +300,8 @@ public class UserController {
     // ── User Roles Sub-resource Endpoints ────────────────────────────────────────
 
     private void saveAuditLog(String action, String target, String details) {
-        if (adminAuditLogRepository == null) return;
+        if (adminAuditLogRepository == null)
+            return;
         try {
             UUID adminId = SecurityUtils.getCurrentUserId();
             String adminName = null;
@@ -313,7 +309,8 @@ public class UserController {
                 adminId = UUID.fromString("00000000-0000-0000-0000-000000000000");
                 adminName = "SYSTEM";
             }
-            AdminAuditLog log = AdminAuditLog.create(adminId, adminName, action, target, details, "127.0.0.1", "System");
+            AdminAuditLog log = AdminAuditLog.create(adminId, adminName, action, target, details, "127.0.0.1",
+                    "System");
             adminAuditLogRepository.save(log);
         } catch (Exception ignored) {
         }

@@ -26,7 +26,10 @@ public class OrgUnitSchemaMigrator implements CommandLineRunner {
                     + "ADD COLUMN IF NOT EXISTS operational_status SMALLINT NOT NULL DEFAULT 1");
             jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_org_units_operational_status "
                     + "ON org_units (operational_status)");
+            jdbcTemplate.execute("ALTER TABLE org_units DROP COLUMN IF EXISTS address");
             log.info("Đã kiểm tra cấu trúc trạng thái sử dụng của đơn vị.");
+            jdbcTemplate.execute("ALTER TABLE org_units ADD COLUMN IF NOT EXISTS rank SMALLINT NOT NULL DEFAULT 0");
+            log.info("Đã kiểm tra cấu trúc cấp đơn vị.");
         } catch (Exception exception) {
             log.error("Không thể cập nhật cấu trúc trạng thái sử dụng của đơn vị.", exception);
             throw exception;

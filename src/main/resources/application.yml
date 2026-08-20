@@ -43,11 +43,8 @@ spring:
 
 # -- JWT Configuration ------------------------------------------------
 jwt:
-  # TODO(production): drop the fallback and require JWT_SECRET.
-  # Kept only while the system is in UAT. The checked-in value is public to anyone
-  # with repository access, so any deployment that does not set JWT_SECRET can have
-  # its tokens forged. JwtProperties.validate() already refuses to start on a blank
-  # secret — removing this default is all that is needed to make that guard real.
+  # TODO(SECURITY): Remove the checked-in fallback before production. Require JWT_SECRET
+  # from a secret manager and fail fast when it is missing.
   secret: ${JWT_SECRET:aXRzLWEtc2VjcmV0LWtleS1mb3Itand0LXRva2VuLWdlbmVyYXRpb24taGFuZ2hhaS1rY2h0Zw==}
   expiration: 86400000
   access-token-expiration: 86400000
@@ -131,8 +128,13 @@ spring:
   config:
     activate:
       on-profile: prod
+  flyway:
+    enabled: true
+    out-of-order: true
+    baseline-on-migrate: true
+    validate-on-migrate: false
   datasource:
-    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_dev}}
+    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vmd_csdl_v2_dev}}
     driver-class-name: org.postgresql.Driver
     username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:admin}}
     # TODO(production): drop the fallback and require DB_PASS.

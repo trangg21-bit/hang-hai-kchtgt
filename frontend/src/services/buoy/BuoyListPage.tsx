@@ -9,7 +9,7 @@ import {
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  EyeOutlined, HistoryOutlined, ExclamationCircleOutlined,
+  EyeOutlined, HistoryOutlined, ExclamationCircleOutlined, EnvironmentOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -132,7 +132,7 @@ function parseGisCoordinateList(gisLocation: { geometryType?: string; coordinate
   if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
   try {
     if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length-1].longitude) pts.pop(); return pts; } }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
     const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
     const pm = wkt.match(/POINT\s*\(([\d.+-]+)\s+([\d.+-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
   } catch { /* invalid */ }
@@ -265,7 +265,7 @@ export default function BuoyListPage() {
   const [buoyStations, setBuoyStations] = useState<BuoyStationResponse[]>([]);
   const [loadingStations, setLoadingStations] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const actionTypeRef = useRef<'draft' | 'submit'>('submit');
+  const actionTypeRef = useRef<'draft' | 'submit' | 'approved'>('submit');
 
   // ── Danh sách nhà trạm QLVH phao tiêu (SelectKcht — nguồn sinh mã {mã nhà trạm}-PT-{seq}) ──
   useEffect(() => {
@@ -297,7 +297,7 @@ export default function BuoyListPage() {
   useEffect(() => {
     symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
       .then((r) => setSymbols(r.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Bản đồ tên + ảnh biểu tượng theo id (giống BerthList → BuoyDetailContent tab Thông tin vị trí)
@@ -1177,7 +1177,7 @@ export default function BuoyListPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('data:read') || hasPerm('admin:manage')) {
+    if (hasPerm('buoy:create') || hasPerm('buoy:manage') || hasPerm('data:create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -1348,7 +1348,7 @@ export default function BuoyListPage() {
       onClick: () => openDetailDrawer(record),
     });
 
-    if (hasPerm('data:read') || hasPerm('admin:manage')) {
+    if (hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update')) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -1357,7 +1357,18 @@ export default function BuoyListPage() {
       });
     }
 
-    if ((hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'REJECTED')) {
+    if (record.latitude != null && record.longitude != null) {
+      actions.push({
+        key: 'location',
+        label: 'Xem vị trí',
+        icon: <EnvironmentOutlined />,
+        onClick: () => {
+          window.open(`https://www.google.com/maps?q=${record.latitude},${record.longitude}`, '_blank');
+        },
+      });
+    }
+
+    if ((hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update') || hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'REJECTED')) {
       actions.push({
         key: 'submit',
         label: 'Gửi Cảng vụ phê duyệt',
@@ -1366,7 +1377,7 @@ export default function BuoyListPage() {
       });
     }
 
-    const canApprove = hasPerm('admin:manage') || hasPerm('data:read');
+    const canApprove = hasPerm('buoy:approve') || hasPerm('buoy:approvec1') || hasPerm('buoy:approvec2') || hasPerm('data:approve');
     if (canApprove && record.status === 'PENDING_APPROVAL') {
       actions.push({
         key: 'approveL1',
@@ -1400,7 +1411,7 @@ export default function BuoyListPage() {
     }
 
     const deletableStatuses = ['DRAFT', 'REJECTED'];
-    if ((hasPerm('admin:manage') || hasPerm('data:read')) && deletableStatuses.includes(record.status || '')) {
+    if ((hasPerm('buoy:delete') || hasPerm('buoy:manage') || hasPerm('data:delete')) && deletableStatuses.includes(record.status || '')) {
       actions.push({
         key: 'delete',
         label: 'Xóa',
@@ -1471,44 +1482,44 @@ export default function BuoyListPage() {
 
           {/* ── Bộ lọc nâng cao (toggle) ────────────────────────────── */}
           {filterCollapsed && (<>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
-            <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
-              options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-            <Select placeholder="Chọn tình trạng" allowClear
-              value={filterCondition || undefined}
-              onChange={(v) => { setFilterCondition(v); setPage(1); }}
-              options={CONDITION_OPTIONS}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-            <Select placeholder="Chọn trạng thái" allowClear
-              value={filterApprovalStatus || undefined}
-              onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
-              options={[
-                { value: 'DRAFT', label: 'Nháp' },
-                { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
-                { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-                { value: 'REJECTED', label: 'Từ chối' },
-              ]}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-            <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
-              placeholder={['Từ ngày', 'Đến ngày']} allowClear
-              value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-              onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD HH:mm') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD HH:mm') : undefined); setPage(1); }}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
+              <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
+                options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+              <Select placeholder="Chọn tình trạng" allowClear
+                value={filterCondition || undefined}
+                onChange={(v) => { setFilterCondition(v); setPage(1); }}
+                options={CONDITION_OPTIONS}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
+              <Select placeholder="Chọn trạng thái" allowClear
+                value={filterApprovalStatus || undefined}
+                onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
+                options={[
+                  { value: 'DRAFT', label: 'Nháp' },
+                  { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
+                  { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
+                  { value: 'PUBLISHED', label: 'Đã phê duyệt' },
+                  { value: 'REJECTED', label: 'Từ chối' },
+                ]}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+              <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
+                placeholder={['Từ ngày', 'Đến ngày']} allowClear
+                value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+                onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD HH:mm') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD HH:mm') : undefined); setPage(1); }}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
           </>)}
         </>}
         statusTabs={TAB_STATUS_LIST.map((tab) => ({

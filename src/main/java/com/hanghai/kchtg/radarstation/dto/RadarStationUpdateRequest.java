@@ -2,6 +2,7 @@ package com.hanghai.kchtg.radarstation.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.Size;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +16,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RadarStationUpdateRequest {
+
+    private RecordSecurityLevel securityLevel;
+
     @Size(max = 255, message = "Tên trạm không được vượt quá 255 ký tự")
     private String stationName;
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Typography, message, Progress, Divider } from 'antd';
+import { Card, Form, Input, Button, Typography, Progress, Divider } from 'antd';
+import { message } from '../components/ToastNotification';
 import { MailOutlined, LockOutlined, ArrowLeftOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';

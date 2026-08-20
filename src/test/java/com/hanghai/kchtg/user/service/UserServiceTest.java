@@ -47,6 +47,8 @@ class UserServiceTest {
     @Mock private UserStatusLogRepository userStatusLogRepository;
     @Mock private EntityManager entityManager;
     @Mock private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+    @Mock private com.hanghai.kchtg.orgunit.service.OrgUnitScopeService orgUnitScopeService;
+    @Mock private UserPermissionService userPermissionService;
     @Mock private Authentication authentication;
     @Mock private SecurityContext securityContext;
 
@@ -60,7 +62,8 @@ class UserServiceTest {
         userService = new UserService(
                 userRepository, orgUnitRepository, groupRepository,
                 passwordEncoder, passwordPolicyValidator, permissionCacheService,
-                passwordHistoryRepository, userStatusLogRepository, entityManager, orgUnitCacheService);
+                passwordHistoryRepository, userStatusLogRepository, entityManager,
+                orgUnitCacheService, orgUnitScopeService, userPermissionService);
 
 
         // Setup users
@@ -258,14 +261,15 @@ class UserServiceTest {
     }
 
     // =========================================================================
-    // BR-001-04: Delete guard
+    // BR-003: Delete guard — System-Admin protection
     // =========================================================================
 
     @Test
     void delete_shouldAllowWhenSystemAdminDeletesSystemAdmin() {
-        mockCurrentUserAuthorities("admin:manage");
+        // Given: current user is system-admin
+        mockCurrentUserAuthorities("ROLE_SYSTEM_ADMIN");
 
-        // Target user is also system-admin
+        // Target user is a system-admin
         when(userRepository.findById(systemAdminUser.getId())).thenReturn(Optional.of(systemAdminUser));
         when(userRepository.save(any(User.class))).thenReturn(systemAdminUser);
 
@@ -290,6 +294,258 @@ class UserServiceTest {
 
         // Then
         assertEquals(UserStatus.DELETED, regularUser.getStatus());
+    }
+
+    @Test
+    void updateMyProfile_shouldRejectPrivilegeEscalation_whenGroupIdsSupplied() {
+        mockCurrentUserAuthorities("user:update", "admin:manage");
+        when(authentication.getName()).thenReturn("regular");
+        when(userRepository.findByUsernameWithRelations("regular")).thenReturn(Optional.of(regularUser));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setGroupIds(List.of(UUID.randomUUID()));
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.updateMyProfile(request));
+    }
+
+    @Test
+    void updateMyProfile_shouldRejectPrivilegeEscalation_whenOrgUnitSupplied() {
+        mockCurrentUserAuthorities("user:update", "admin:manage");
+        when(authentication.getName()).thenReturn("regular");
+        when(userRepository.findByUsernameWithRelations("regular")).thenReturn(Optional.of(regularUser));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setOrgUnitId(UUID.randomUUID());
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.updateMyProfile(request));
+    }
+
+    @Test
+    void updateMyProfile_shouldAllowUpdatingSelfPersonalInformation() {
+        mockCurrentUserAuthorities("user:update");
+        when(authentication.getName()).thenReturn("regular");
+        when(userRepository.findByUsernameWithRelations("regular")).thenReturn(Optional.of(regularUser));
+        when(userRepository.save(any(User.class))).thenReturn(regularUser);
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setFullName("Updated Full Name");
+        request.setPhone("0987654321");
+        request.setAddress("New Address");
+
+        com.hanghai.kchtg.user.dto.UserResponse response = userService.updateMyProfile(request);
+
+        assertNotNull(response);
+        assertEquals("Updated Full Name", regularUser.getFullName());
+        assertEquals("0987654321", regularUser.getPhone());
+        assertEquals("New Address", regularUser.getAddress());
+        verify(permissionCacheService).invalidateCache(regularUser.getId());
+    }
+
+    @Test
+    void create_shouldRejectGroupAssignment_withoutGroupManagePermission() {
+        mockCurrentUserAuthorities("user:create");
+
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("newuser");
+        request.setEmail("newuser@example.com");
+        request.setPassword("Secure@123");
+        request.setGroupIds(List.of(UUID.randomUUID()));
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.create(request));
+    }
+
+    @Test
+    void create_shouldReject_whenOrgUnitOutsideScope() {
+        mockCurrentUserAuthorities("user:create");
+        UUID outsideOrgUnitId = UUID.randomUUID();
+
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.restricted(List.of(UUID.randomUUID())));
+
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("scopeuser");
+        request.setEmail("scopeuser@example.com");
+        request.setPassword("Secure@123");
+        request.setOrgUnitId(outsideOrgUnitId);
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.create(request));
+    }
+
+    @Test
+    void update_shouldReject_whenTargetUserOutsideOrgUnitScope() {
+        mockCurrentUserAuthorities("user:update");
+        UUID targetOrgUnitId = UUID.randomUUID();
+        com.hanghai.kchtg.orgunit.entity.OrgUnit targetOrgUnit = new com.hanghai.kchtg.orgunit.entity.OrgUnit();
+        targetOrgUnit.setId(targetOrgUnitId);
+        regularUser.setOrgUnit(targetOrgUnit);
+
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.restricted(List.of(UUID.randomUUID())));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setFullName("Unauthorized update");
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.update(regularUser.getId(), request));
+    }
+
+    @Test
+    void update_shouldReject_whenTargetOrgUnitOutsideOrgUnitScope() {
+        mockCurrentUserAuthorities("user:update");
+        UUID allowedOrgUnitId = UUID.randomUUID();
+        UUID targetNewOrgUnitId = UUID.randomUUID();
+
+        com.hanghai.kchtg.orgunit.entity.OrgUnit currentOrgUnit = new com.hanghai.kchtg.orgunit.entity.OrgUnit();
+        currentOrgUnit.setId(allowedOrgUnitId);
+        regularUser.setOrgUnit(currentOrgUnit);
+
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.restricted(List.of(allowedOrgUnitId)));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setOrgUnitId(targetNewOrgUnitId);
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.update(regularUser.getId(), request));
+    }
+
+    @Test
+    void update_shouldReject_clearingGroupIds_withoutGroupManagePermission() {
+        mockCurrentUserAuthorities("user:update");
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setGroupIds(Collections.emptyList());
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.update(regularUser.getId(), request));
+    }
+
+    @Test
+    void delete_shouldReject_whenTargetUserOutsideOrgUnitScope() {
+        mockCurrentUserAuthorities("user:delete");
+        UUID targetOrgUnitId = UUID.randomUUID();
+        com.hanghai.kchtg.orgunit.entity.OrgUnit targetOrgUnit = new com.hanghai.kchtg.orgunit.entity.OrgUnit();
+        targetOrgUnit.setId(targetOrgUnitId);
+        regularUser.setOrgUnit(targetOrgUnit);
+
+        when(userRepository.findById(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.restricted(List.of(UUID.randomUUID())));
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.delete(regularUser.getId()));
+    }
+
+    @Test
+    void update_whenPermissionsAndGroupAndOrgUnitChange_shouldIncrementPermissionVersionExactlyOnce() {
+        mockCurrentUserAuthorities("user:update", "group:manage", "ROLE_SUPER_ADMIN");
+        regularUser.setPermissionVersion(5);
+
+        UUID orgUnitId = UUID.randomUUID();
+        com.hanghai.kchtg.orgunit.entity.OrgUnit newOrgUnit = new com.hanghai.kchtg.orgunit.entity.OrgUnit();
+        newOrgUnit.setId(orgUnitId);
+
+        UUID groupId = UUID.randomUUID();
+        com.hanghai.kchtg.group.entity.UserGroup group = new com.hanghai.kchtg.group.entity.UserGroup();
+        group.setId(groupId);
+
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(orgUnitRepository.findById(orgUnitId)).thenReturn(Optional.of(newOrgUnit));
+        when(groupRepository.findAllById(List.of(groupId))).thenReturn(List.of(group));
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
+        when(userPermissionService.syncDirectPermissionsInternal(eq(regularUser), anyList()))
+                .thenReturn(true);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setOrgUnitId(orgUnitId);
+        request.setGroupIds(List.of(groupId));
+        request.setPermissionCodes(List.of("vtssystem:read"));
+
+        User result = userService.update(regularUser.getId(), request);
+
+        // Version MUST be oldVersion (5) + 1 = 6 exactly, not double-incremented
+        assertEquals(6, result.getPermissionVersion());
+        verify(permissionCacheService, times(1)).invalidateCache(regularUser.getId());
+        verify(permissionCacheService, never()).invalidateAndIncrementVersion(any());
+    }
+
+    @Test
+    void update_whenOnlyProfileDataChanges_shouldNotIncrementPermissionVersion() {
+        mockCurrentUserAuthorities("user:update");
+        regularUser.setPermissionVersion(5);
+
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setFullName("Updated Profile Name");
+        request.setPhone("0912345678");
+
+        User result = userService.update(regularUser.getId(), request);
+
+        // Version remains exactly 5
+        assertEquals(5, result.getPermissionVersion());
+        verify(permissionCacheService, times(1)).invalidateCache(regularUser.getId());
+        verify(permissionCacheService, never()).invalidateAndIncrementVersion(any());
+    }
+
+    @Test
+    void update_whenAssigningSystemWideGroupAndCallerIsScoped_shouldThrowAccessDeniedException() {
+        mockCurrentUserAuthorities("user:update", "group:manage");
+        UUID userOrgUnitId = UUID.randomUUID();
+        com.hanghai.kchtg.orgunit.entity.OrgUnit userOrgUnit = new com.hanghai.kchtg.orgunit.entity.OrgUnit();
+        userOrgUnit.setId(userOrgUnitId);
+        regularUser.setOrgUnit(userOrgUnit);
+
+        UUID groupId = UUID.randomUUID();
+        com.hanghai.kchtg.group.entity.UserGroup systemGroup = new com.hanghai.kchtg.group.entity.UserGroup();
+        systemGroup.setId(groupId);
+        systemGroup.setOrganizationId(null); // System-wide group
+
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(groupRepository.findAllById(List.of(groupId))).thenReturn(List.of(systemGroup));
+        // Caller has restricted unit scope containing target user, but not all-scope
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.restricted(List.of(userOrgUnitId)));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setGroupIds(List.of(groupId));
+
+        org.springframework.security.access.AccessDeniedException ex = assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
+                () -> userService.update(regularUser.getId(), request));
+        assertTrue(ex.getMessage().contains("Bạn không có quyền gán nhóm toàn hệ thống khi bị giới hạn phạm vi đơn vị"));
+    }
+
+    @Test
+    void update_whenAssigningSystemWideGroupAndCallerIsSuperAdmin_shouldAllow() {
+        mockCurrentUserAuthorities("user:update", "group:manage", "ROLE_SUPER_ADMIN");
+        UUID groupId = UUID.randomUUID();
+        com.hanghai.kchtg.group.entity.UserGroup systemGroup = new com.hanghai.kchtg.group.entity.UserGroup();
+        systemGroup.setId(groupId);
+        systemGroup.setOrganizationId(null); // System-wide group
+
+        when(userRepository.findByIdWithRelations(regularUser.getId())).thenReturn(Optional.of(regularUser));
+        when(groupRepository.findAllById(List.of(groupId))).thenReturn(List.of(systemGroup));
+        when(orgUnitScopeService.currentUserScope())
+                .thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setGroupIds(List.of(groupId));
+
+        assertDoesNotThrow(() -> userService.update(regularUser.getId(), request));
     }
 
     // =========================================================================

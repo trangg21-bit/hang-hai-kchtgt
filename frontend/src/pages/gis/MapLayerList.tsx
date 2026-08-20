@@ -13,7 +13,6 @@ import {
   Select,
   Row,
   Col,
-  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -37,7 +36,7 @@ import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
-import toast from '../../components/ToastNotification';
+import toast, { message, modal } from '../../components/ToastNotification';
 import {
   spaceMd, spaceFormField, spaceSm, spaceLg, spaceXs,
   radiusPill, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
@@ -268,7 +267,7 @@ export default function MapLayerList() {
             <Tooltip title="Xóa">
               <Button type="link" size="small" danger icon={<DeleteOutlined />}
                 onClick={() => {
-                  Modal.confirm({
+                   modal.confirm({
                     title: 'Xác nhận xóa',
                     content: `Bạn có chắc muốn xóa "${record.name}"?`,
                     okText: 'Xóa',

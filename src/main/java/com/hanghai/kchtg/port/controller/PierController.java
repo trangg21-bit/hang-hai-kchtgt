@@ -24,12 +24,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/piers")
 @RequiredArgsConstructor
 @Slf4j
 @Validated
+@DataScope
 public class PierController {
 
     private final PierService pierService;
@@ -71,10 +73,12 @@ public class PierController {
             @RequestParam(required = false) String province,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing Piers: page={}, size={}, orgUnitId={}, search={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}",
+        log.info(
+                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, search, berthId, portId, pierType, province, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
-                pierService.findAll(page, size, orgUnitId, search, berthId, portId, pierType, province, status, approvalStatus)));
+                pierService.findAll(page, size, orgUnitId, search, berthId, portId, pierType, province, status,
+                        approvalStatus)));
     }
 
     @GetMapping("/code/{pierCode}")

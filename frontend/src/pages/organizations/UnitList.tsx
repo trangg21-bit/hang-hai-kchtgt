@@ -1,28 +1,35 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, SendOutlined, CheckOutlined, CloseOutlined, EyeOutlined, MoreOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
-import { organizationService } from '../../services/organizationService';
+import type { ReactNode } from 'react';
+import { Typography, Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, EyeOutlined, MoreOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import { organizationService, RANK_OPTIONS, RANK_LABELS } from '../../services/organizationService';
+import { userService } from '../../services/userService';
 
-import type { Organization } from '../../services/organizationService';
-import { useAuthStore } from '../../store/authStore';
+import type { Organization, OrgUnitRankName } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import EmptyState from '../../components/EmptyState';
-import toast from '../../components/ToastNotification';
-import { statusOperational, statusAttention, statusCritical, actionPrimary, textPrimary, textSecondary, textTertiary, surfaceCard, borderDefault, fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, spaceFormField, spaceMd, spaceLg, spaceSm, spaceXs, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle } from '../../tokens';
+import toast, { modal } from '../../components/ToastNotification';
+import { statusOperational, statusCritical, actionPrimary, textPrimary, textSecondary, textTertiary, surfaceCard, borderDefault, fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold, radiusMd, radiusPill, spaceFormField, spaceMd, spaceLg, spaceSm, spaceXs, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailLabelColStyle, detailValueStyle } from '../../tokens';
 import { colors } from '../../theme';
 import { normalizeSearchText } from '../../components/org-unit';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 
-const { confirm } = Modal;
+const { confirm } = modal;
 
-const STATUS_COLORS: Record<string, string> = { pending: statusAttention, approved: statusOperational, inactive: statusCritical };
-const STATUS_LABELS: Record<string, string> = { pending: 'Chờ phê duyệt', approved: 'Sử dụng', inactive: 'Không sử dụng' };
+const STATUS_COLORS: Record<string, string> = { active: statusOperational, inactive: statusCritical };
+const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function fmtUser(s?: string) { if (!s) return '—'; return UUID_RE.test(s) ? 'Hệ thống' : s; }
+function fmtUser(s?: string, userMap?: Map<string, string>) {
+  if (!s) return '—';
+  const resolved = userMap?.get(s);
+  if (resolved) return resolved;
+  return UUID_RE.test(s) ? 'Hệ thống' : s;
+}
 
 function fmtDate(iso?: string) {
   if (!iso) return '—';
@@ -32,13 +39,11 @@ function fmtDate(iso?: string) {
 
 export default function UnitList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const currentUser = useAuthStore((s) => s.user);
-  const canViewUpdateMetadata = currentUser?.email?.trim().toLowerCase() === 'cuc@vimawa.gov.vn' || currentUser?.username?.trim().toLowerCase() === 'cuc@vimawa.gov.vn';
-  const [searchInput, setSearchInput] = useState('');
-  const [filterStatusInput, setFilterStatusInput] = useState<string>('');
-  const [search, setSearch] = useState('');
+  const [nameInput, setNameInput] = useState('');
+  const [searchName, setSearchName] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,6 +79,17 @@ export default function UnitList() {
     finally { setIsLoading(false); }
   }, []);
   useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
+  // UUID → tên cán bộ cho cột "Cán bộ cập nhật" (pattern giống BuoyList/BerthList)
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const map = new Map<string, string>();
+        resp.data.forEach((u) => { map.set(u.id, u.fullName || u.username || u.id); });
+        setUserMap(map);
+      } catch { /* giữ map rỗng, fallback fmtUser */ }
+    })();
+  }, []);
 
   const openCreateModal = useCallback(() => {
     setIsViewing(false);
@@ -87,12 +103,13 @@ export default function UnitList() {
     setEditingOrg(org);
     const opStatus = (org.operationalStatus || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
     form.setFieldsValue({
-      code: org.code, name: org.name,
+      name: org.name,
       parentId: org.parentId,
-      address: org.address, detailAddress: (org as any).detailAddress ?? '',
+      provinceId: org.provinceId != null ? String(org.provinceId) : undefined,
+      detailAddress: org.detailAddress ?? '',
       phone: org.phone, description: org.description,
-      status: org.status,
       operationalStatus: opStatus,
+      rank: org.rank,
     });
     setModalOpen(true);
   }, [form]);
@@ -102,35 +119,42 @@ export default function UnitList() {
     setEditingOrg(org);
     const opStatus = (org.operationalStatus || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
     form.setFieldsValue({
-      code: org.code, name: org.name,
+      name: org.name,
       parentId: org.parentId,
-      address: org.address, detailAddress: (org as any).detailAddress ?? '',
+      provinceId: org.provinceId != null ? String(org.provinceId) : undefined,
+      detailAddress: org.detailAddress ?? '',
       phone: org.phone, description: org.description,
-      status: org.status,
       operationalStatus: opStatus,
+      rank: org.rank,
+      updatedAt: fmtDate(org.updatedAt),
+      updatedBy: fmtUser(org.updatedBy, userMap),
     });
     setModalOpen(true);
-  }, [form]);
+  }, [form, userMap]);
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields(); setSubmitting(true);
       const parentId = values.parentId || undefined;
       if (editingOrg) {
         await organizationService.update(editingOrg.id, {
-          name: values.name, code: values.code,
+          name: values.name,
           parentId,
-          address: values.address, detailAddress: values.detailAddress,
+          provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
+          detailAddress: values.detailAddress,
           phone: values.phone, description: values.description,
           operationalStatus: values.operationalStatus,
+          rank: values.rank,
         });
         toast.success('Đã cập nhật');
       } else {
         await organizationService.create({
-          name: values.name, code: values.code,
+          name: values.name,
           parentId,
-          address: values.address, detailAddress: values.detailAddress,
+          provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
+          detailAddress: values.detailAddress,
           phone: values.phone, description: values.description,
           operationalStatus: values.operationalStatus,
+          rank: values.rank,
         });
         toast.success('Đã tạo mới');
       }
@@ -166,39 +190,10 @@ export default function UnitList() {
   const handleDelete = useCallback((org: Organization) => {
     confirm({ title: 'Xác nhận xóa', icon: <ExclamationCircleOutlined />, content: `Xóa "${org.name}"?`, okText: 'Xóa', okType: 'danger', cancelText: 'Hủy', onOk: async () => { try { await organizationService.delete(org.id); toast.success('Đã xóa'); fetchOrgs(); } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); } } });
   }, [fetchOrgs]);
-  const handleSubmitApproval = useCallback((org: Organization) => {
-    confirm({ title: 'Trình duyệt', icon: <ExclamationCircleOutlined />, content: `Gửi duyệt "${org.name}"?`, okText: 'Trình duyệt', cancelText: 'Hủy', onOk: async () => { try { await organizationService.submit(org.id); toast.success('Đã trình'); fetchOrgs(); } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Lỗi'); } } });
-  }, [fetchOrgs]);
-  const handleApprove = useCallback((org: Organization) => {
-    confirm({ title: 'Phê duyệt', icon: <ExclamationCircleOutlined />, content: `Duyệt "${org.name}"?`, okText: 'Phê duyệt', cancelText: 'Hủy', onOk: async () => { try { await organizationService.approve(org.id); toast.success('Đã duyệt'); fetchOrgs(); } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Lỗi'); } } });
-  }, [fetchOrgs]);
-  const handleReject = useCallback((org: Organization) => {
-    const commentsRef = { current: '' };
-    confirm({
-      title: 'Từ chối',
-      icon: <ExclamationCircleOutlined />,
-      content: (
-        <div>
-          <p>Từ chối "{org.name}"?</p>
-          <Input placeholder="Lý do" onChange={(e) => { commentsRef.current = e.target.value; }} style={{ marginTop: 10, borderRadius: radiusPill, height: 40 }} />
-        </div>
-      ),
-      okText: 'Từ chối',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk: async () => {
-        try { await organizationService.reject(org.id, commentsRef.current); toast.success('Đã từ chối'); fetchOrgs(); }
-        catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Lỗi'); }
-      },
-    });
-  }, [fetchOrgs]);
-
   const getActions = (record: Organization) => {
     const items: any[] = [];
     items.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => openViewModal(record) });
     if (hasPerm('orgunit:manage')) items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
-    if (hasPerm('orgunit:manage') && (record.status === 'draft' || record.status === 'rejected')) items.push({ key: 'submit', label: 'Trình duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
-    if (hasPerm('orgunit:approve') && record.status === 'pending') { items.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) }); items.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true }); }
     if (hasPerm('orgunit:manage')) items.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return items;
   };
@@ -233,7 +228,7 @@ export default function UnitList() {
     // Apply status filter after building tree
     if (filterStatus) {
       return rows.filter(r => {
-        const stKey = r.org.operationalStatus === 'inactive' ? 'inactive' : (r.org.status === 'pending' ? 'pending' : 'approved');
+        const stKey = r.org.operationalStatus === 'inactive' ? 'inactive' : 'active';
         return stKey === filterStatus;
       });
     }
@@ -241,31 +236,28 @@ export default function UnitList() {
   }, [allOrgs, expandedKeys, filterStatus]);
 
   const handleFilterSearch = useCallback(() => {
-    setSearch(searchInput.trim());
-    setFilterStatus(filterStatusInput);
-  }, [filterStatusInput, searchInput]);
+    setSearchName(nameInput.trim());
+  }, [nameInput]);
   const handleFilterReset = useCallback(() => {
-    setSearchInput('');
-    setFilterStatusInput('');
-    setSearch('');
+    setNameInput('');
+    setSearchName('');
     setFilterStatus('');
   }, []);
 
   const getStatusKey = useCallback((org: Organization) => (
-    org.operationalStatus === 'inactive' ? 'inactive' : (org.status === 'pending' ? 'pending' : 'approved')
+    org.operationalStatus === 'inactive' ? 'inactive' : 'active'
   ), []);
 
   // --- Search mode: flat list ---
   const searchResults = useMemo(() => {
-    const q = normalizeSearchText(search.trim());
-    const hasFilter = q || filterStatus;
+    const nameQuery = normalizeSearchText(searchName.trim());
+    const hasFilter = nameQuery || filterStatus;
     if (!hasFilter) return null;
     return allOrgs
       .filter(o => {
-        const searchable = normalizeSearchText(`${o.name} ${o.code || ''}`);
-        if (q && !searchable.includes(q)) return false;
+        if (nameQuery && !normalizeSearchText(o.name).includes(nameQuery)) return false;
         if (filterStatus) {
-          const stKey = o.operationalStatus === 'inactive' ? 'inactive' : (o.status === 'pending' ? 'pending' : 'approved');
+          const stKey = o.operationalStatus === 'inactive' ? 'inactive' : 'active';
           if (stKey !== filterStatus) return false;
         }
         return true;
@@ -277,30 +269,17 @@ export default function UnitList() {
         while (cur.parentId) { const p = allOrgs.find(o => o.id === cur.parentId); if (p) { parts.unshift(p.name); cur = p; } else break; }
         return { ...org, _path: parts.join(' › ') };
       });
-  }, [allOrgs, search, filterStatus]);
+  }, [allOrgs, filterStatus, searchName]);
 
   const filterContent = (
     <>
       <div style={{ marginBottom: 12, marginTop: 16 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tìm kiếm</div>
-        <Input placeholder="Tìm theo tên, mã..." allowClear
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tên đơn vị</div>
+        <Input placeholder="Tìm theo tên đơn vị..." allowClear
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
           onPressEnter={handleFilterSearch}
           style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Trạng thái</div>
-        <Select placeholder="Tất cả" allowClear showSearch
-          value={filterStatusInput || undefined}
-          onChange={(val) => setFilterStatusInput(val || '')}
-          filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
-          options={[
-            { value: 'approved', label: 'Sử dụng' },
-            { value: 'inactive', label: 'Không sử dụng' },
-            { value: 'pending', label: 'Chờ phê duyệt' },
-          ]}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
     </>
   );
@@ -308,17 +287,18 @@ export default function UnitList() {
   // Status counts must follow the committed keyword filter. The status tab
   // itself is only a view filter, so counts remain comparable across tabs.
   const countSource = useMemo(() => {
-    const keyword = normalizeSearchText(search.trim());
-    if (!keyword) return allOrgs;
-    return allOrgs.filter((org) => normalizeSearchText(`${org.name} ${org.code || ''}`).includes(keyword));
-  }, [allOrgs, search]);
+    const nameQuery = normalizeSearchText(searchName.trim());
+    if (!nameQuery) return allOrgs;
+    return allOrgs.filter((org) => (
+      !nameQuery || normalizeSearchText(org.name).includes(nameQuery)
+    ));
+  }, [allOrgs, searchName]);
   const countByStatus = useCallback((status: string) => countSource.filter((org) => getStatusKey(org) === status).length, [countSource, getStatusKey]);
 
   const statusTabs = [
     { key: 'all', label: 'Tất cả', count: countSource.length, color: textSecondary, active: !filterStatus },
-    { key: 'approved', label: 'Sử dụng', count: countByStatus('approved'), color: statusOperational, active: filterStatus === 'approved' },
+    { key: 'active', label: 'Sử dụng', count: countByStatus('active'), color: statusOperational, active: filterStatus === 'active' },
     { key: 'inactive', label: 'Không sử dụng', count: countByStatus('inactive'), color: statusCritical, active: filterStatus === 'inactive' },
-    { key: 'pending', label: 'Chờ phê duyệt', count: countByStatus('pending'), color: statusAttention, active: filterStatus === 'pending' },
   ];
   const headerActions = useMemo(() => {
     const actions: any[] = [];
@@ -329,6 +309,23 @@ export default function UnitList() {
   const treeRows = searchResults
     ? searchResults.map((org) => ({ org, depth: 0, hasChildren: false }))
     : visibleRows;
+
+  const unitDetailItems: Array<[string, ReactNode]> = editingOrg ? [
+    ['Tên đơn vị', editingOrg.name || '—'],
+    ['Đơn vị cha', editingOrg.parentId ? (allOrgs.find(o => o.id === editingOrg.parentId)?.name || '—') : '—'],
+    ['Cấp đơn vị', RANK_LABELS[editingOrg.rank as OrgUnitRankName] ?? '—'],
+    ['Địa điểm (Tỉnh/Thành phố)', editingOrg.provinceId != null ? (getProvinceNameById(editingOrg.provinceId) || '—') : '—'],
+    ['Địa điểm chi tiết', editingOrg.detailAddress || '—'],
+    ['Số điện thoại', editingOrg.phone || '—'],
+    ['Trạng thái', (() => {
+      const statusKey = getStatusKey(editingOrg);
+      const color = STATUS_COLORS[statusKey] || textTertiary;
+      return <span style={{ display: 'inline-flex', padding: `${spaceXs}px ${spaceSm}px`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{STATUS_LABELS[statusKey] || statusKey}</span>;
+    })()],
+    ['Ghi chú', editingOrg.description || '—'],
+    ['Ngày cập nhật', fmtDate(editingOrg.updatedAt)],
+    ['Cán bộ cập nhật', fmtUser(editingOrg.updatedBy, userMap)],
+  ] : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
@@ -345,7 +342,6 @@ export default function UnitList() {
         statusTabs={statusTabs}
         onStatusTabChange={(key) => {
           const status = key === 'all' ? '' : key;
-          setFilterStatusInput(status);
           setFilterStatus(status);
         }}
       >
@@ -358,19 +354,18 @@ export default function UnitList() {
             <div style={{ width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px` }}>
                 <div style={{ flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên đơn vị</div>
-                {canViewUpdateMetadata && <>
-                  <div style={{ width: 175, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Cán bộ cập nhật</div>
-                  <div style={{ width: 160, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ngày cập nhật</div>
-                </>}
-                <div style={{ width: 160, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textAlign: 'center' }}>Trạng thái</div>
-                <div style={{ width: 48 }} aria-hidden="true" />
+                <div style={{ width: 260, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Cấp đơn vị</div>
+                <div style={{ width: 160, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ngày cập nhật</div>
+                <div style={{ width: 175, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Cán bộ cập nhật</div>
+                <div style={{ width: 140, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textAlign: 'center' }}>Trạng thái</div>
+                <div style={{ width: 40 }} aria-hidden="true" />
               </div>
               {treeRows.map(({ org, depth, hasChildren }) => {
                 const statusKey = getStatusKey(org);
                 const color = STATUS_COLORS[statusKey] || textTertiary;
                 return (
                   <div key={org.id} style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: `0 ${spaceMd}px`, borderBottom: `1px solid ${borderDefault}` }}>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', paddingLeft: depth * spaceLg }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', paddingLeft: depth * spaceLg, paddingRight: spaceSm }}>
                       <Button
                         type="text"
                         size="small"
@@ -383,20 +378,19 @@ export default function UnitList() {
                         style={{ width: 24, minWidth: 24, height: 24, padding: 0, color: hasChildren ? actionPrimary : 'transparent', fontSize: fontSizeSm }}
                       >
                       </Button>
-                      <Typography.Text style={{ marginLeft: spaceXs, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary, fontWeight: depth === 0 ? fontWeightBold : fontWeightMedium }}>
+                      <Typography.Text style={{ flex: 1, minWidth: 0, marginLeft: spaceXs, whiteSpace: 'normal', wordBreak: 'break-word', color: textPrimary, fontWeight: depth === 0 ? fontWeightBold : fontWeightMedium }}>
                         {org.name}
                       </Typography.Text>
                     </div>
-                    {canViewUpdateMetadata && <>
-                      <div style={{ width: 175, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtUser(org.updatedBy)}</div>
-                      <div style={{ width: 160, color: textTertiary }}>{fmtDate(org.updatedAt)}</div>
-                    </>}
-                    <div style={{ width: 160, textAlign: 'center' }}>
+                    <div style={{ width: 260, color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{RANK_LABELS[org.rank as OrgUnitRankName] ?? '—'}</div>
+                    <div style={{ width: 160, color: textTertiary }}>{fmtDate(org.updatedAt)}</div>
+                    <div style={{ width: 175, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtUser(org.updatedBy, userMap)}</div>
+                    <div style={{ width: 140, textAlign: 'center' }}>
                       <span style={{ display: 'inline-flex', padding: `${spaceXs}px ${spaceSm}px`, borderRadius: radiusPill, color, background: `${color}15`, fontWeight: fontWeightMedium, whiteSpace: 'nowrap' }}>
                         {STATUS_LABELS[statusKey]}
                       </span>
                     </div>
-                    <div style={{ width: 48, textAlign: 'center' }}>
+                    <div style={{ width: 40, textAlign: 'center' }}>
                       <Dropdown menu={{ items: getActions(org) }} trigger={['click']}>
                         <Button type="text" aria-label="Thao tác" icon={<MoreOutlined />} style={{ width: 28, minWidth: 28, height: 28, padding: 0, color: textSecondary, border: `1px solid ${borderDefault}`, borderRadius: radiusPill }} />
                       </Dropdown>
@@ -429,28 +423,67 @@ export default function UnitList() {
         }
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }} disabled={isViewing}>
-            <Form.Item name="code" {...labelProps('Mã đơn vị')} style={{ marginBottom: spaceFormField }}>
-              <Input disabled placeholder={editingOrg ? undefined : 'Tự động sinh khi tạo mới'} style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="name" {...labelProps('Tên đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đơn vị' }]}>
-              <Input placeholder="Nhập tên đơn vị" style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="parentId" {...labelProps('Đơn vị cha')} style={{ marginBottom: spaceFormField }}>
-              <Select
-                placeholder="Chọn đơn vị cha (Để trống = Đơn vị cấp cao nhất)"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
-                style={{ borderRadius: radiusPill, height: 40 }}
-                options={parentOptions}
-              />
-            </Form.Item>
+          {isViewing && editingOrg ? (
+            <div style={{ paddingTop: spaceMd }}>
+              <div style={{ borderTop: `1px solid ${borderDefault}` }}>
+                {Array.from({ length: Math.ceil(unitDetailItems.length / 2) }, (_, rowIndex) => {
+                  const left = unitDetailItems[rowIndex * 2];
+                  const right = unitDetailItems[rowIndex * 2 + 1];
+                  return (
+                    <div key={`${left?.[0] || 'detail'}-${rowIndex}`} style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr) 180px minmax(0, 1fr)', borderBottom: `1px solid ${borderDefault}` }}>
+                      {[left, right].map((item, itemIndex) => item ? (
+                        <span key={item[0]} style={{ display: 'contents' }}>
+                          <span style={{ ...detailLabelColStyle, width: 'auto', padding: `${spaceSm}px ${spaceFormField}px`, whiteSpace: 'normal' }}>{item[0]}:</span>
+                          <span style={{ ...detailValueStyle, minWidth: 0, padding: `${spaceSm}px ${spaceFormField}px`, color: item[1] === '—' ? textSecondary : textPrimary, wordBreak: 'break-word' }}>{item[1]}</span>
+                        </span>
+                      ) : (
+                        <span key={`empty-${itemIndex}`} style={{ gridColumn: 'span 2' }} />
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
+            <Row gutter={spaceMd}>
+              <Col span={24}>
+                <Form.Item name="name" {...labelProps('Tên đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đơn vị' }]}>
+                  <Input placeholder="Nhập tên đơn vị" style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+            </Row>
             <Row gutter={spaceMd}>
               <Col span={12}>
-                <Form.Item name="address" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập địa điểm (Tỉnh/Thành phố)' }]}>
-                  <Input placeholder="vd: Hải Phòng" style={{ borderRadius: radiusPill, height: 40 }} />
+                <Form.Item name="parentId" {...labelProps('Đơn vị cha')} style={{ marginBottom: spaceFormField }}>
+                  <Select
+                    placeholder="Chọn đơn vị cha (Để trống = Đơn vị cấp cao nhất)"
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                    options={parentOptions}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="rank" {...labelProps('Cấp đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn cấp đơn vị' }]}>
+                  <Select placeholder="Chọn cấp đơn vị" style={{ borderRadius: radiusPill, height: 40 }} options={RANK_OPTIONS} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={spaceMd}>
+              <Col span={12}>
+                <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/Thành phố)' }]}>
+                  <Select
+                    showSearch
+                    placeholder="Chọn địa điểm"
+                    optionFilterProp="label"
+                    filterOption={(input, option) => normalizeSearchText(String(option?.label ?? '')).includes(normalizeSearchText(input))}
+                    options={VIETNAM_PROVINCE_OPTIONS}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -459,16 +492,23 @@ export default function UnitList() {
                 </Form.Item>
               </Col>
             </Row>
-            <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
-              <Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
-              <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
-            </Form.Item>
+            <Row gutter={spaceMd}>
+              <Col span={12}>
+                <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
+                  <Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
+                  <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
+                </Form.Item>
+              </Col>
+            </Row>
             <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
               <Input.TextArea rows={2} placeholder="Ghi chú thêm..." />
             </Form.Item>
-          </Form>
+            </Form>
+          )}
         </Spin>
       </Drawer>
     </div>

@@ -22,6 +22,7 @@ import type {
   LegalDocumentHistoryResponse,
 } from '../../services/document/types';
 import dayjs from 'dayjs';
+import api from '../../services/api';
 import { usePermissionStore } from '../../store/permissionStore';
 import EmptyState from '../../components/EmptyState';
 import {
@@ -30,7 +31,7 @@ import {
   DataTable,
 } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
-import type { UploadFile } from 'antd/es/upload/interface';
+import type { UploadFile, RcFile } from 'antd/es/upload/interface';
 import toast from '../../components/ToastNotification';
 import {
   actionPrimary,
@@ -279,12 +280,10 @@ export default function LegalDocumentList() {
 
   const handleExportPdf = useCallback(async (id: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const resp = await fetch(`/api/v1/legal-documents/${id}/export`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const resp = await api.get(`/v1/legal-documents/${id}/export`, {
+        responseType: 'blob',
       });
-      if (!resp.ok) throw new Error('Tải PDF thất bại');
-      const blob = await resp.blob();
+      const blob = resp.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -344,20 +343,31 @@ export default function LegalDocumentList() {
   }, []);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, align: 'center' as const, fixed: 'left' as const,
-      render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1 },
+    {
+      key: 'stt', label: 'STT', width: 60, align: 'center' as const, fixed: 'left' as const,
+      render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1
+    },
     { key: 'documentNumber', label: 'Số hiệu văn bản', dataIndex: 'documentNumber', width: 160, sortable: true },
-    { key: 'documentName', label: 'Tên văn bản pháp lý', dataIndex: 'documentName', width: 280, sortable: true,
-      render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
-    { key: 'issueDate', label: 'Ngày ban hành', dataIndex: 'issueDate', width: 130, sortable: true, align: 'center' as const,
-      render: (val: string) => formatDateShort(val) },
-    { key: 'effectiveDate', label: 'Ngày hiệu lực', dataIndex: 'effectiveDate', width: 130, sortable: true, align: 'center' as const,
-      render: (val: string) => formatDateShort(val) },
-    { key: 'documentType', label: 'Loại văn bản', dataIndex: 'documentType', width: 130, sortable: true, align: 'center' as const,
-      render: (val: string) => DOCUMENT_TYPE_MAP[val] || val || '—' },
+    {
+      key: 'documentName', label: 'Tên văn bản pháp lý', dataIndex: 'documentName', width: 280, sortable: true,
+      render: (text: string) => <Typography.Text strong>{text}</Typography.Text>
+    },
+    {
+      key: 'issueDate', label: 'Ngày ban hành', dataIndex: 'issueDate', width: 130, sortable: true, align: 'center' as const,
+      render: (val: string) => formatDateShort(val)
+    },
+    {
+      key: 'effectiveDate', label: 'Ngày hiệu lực', dataIndex: 'effectiveDate', width: 130, sortable: true, align: 'center' as const,
+      render: (val: string) => formatDateShort(val)
+    },
+    {
+      key: 'documentType', label: 'Loại văn bản', dataIndex: 'documentType', width: 130, sortable: true, align: 'center' as const,
+      render: (val: string) => DOCUMENT_TYPE_MAP[val] || val || '—'
+    },
     { key: 'issuingAuthority', label: 'Cơ quan ban hành', dataIndex: 'issuingAuthority', width: 200, sortable: true },
     { key: 'signer', label: 'Người ký', dataIndex: 'signer', width: 140 },
-    { key: 'validityStatus', label: 'Trạng thái', dataIndex: 'validityStatus', width: 150, sortable: true, align: 'center' as const,
+    {
+      key: 'validityStatus', label: 'Trạng thái', dataIndex: 'validityStatus', width: 150, sortable: true, align: 'center' as const,
       render: (val: string) => {
         const color = VALIDITY_STATUS_COLOR[val] || textSecondary;
         const label = VALIDITY_STATUS_MAP[val] || val || '';
@@ -366,9 +376,12 @@ export default function LegalDocumentList() {
           border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium,
           background: `${color}15`, color,
         }}>{label}</span>;
-      }},
-    { key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 150, sortable: true, align: 'center' as const,
-      render: (val: string) => formatDate(val) },
+      }
+    },
+    {
+      key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 150, sortable: true, align: 'center' as const,
+      render: (val: string) => formatDate(val)
+    },
   ], [page, pageSize]);
 
   const rowActions = useCallback((record: LegalDocumentResponse) => {
@@ -593,28 +606,32 @@ export default function LegalDocumentList() {
               <Col xs={24}>
                 <Form.Item label="Tệp đính kèm" style={{ marginBottom: spaceFormField }}>
                   <Dragger name="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                beforeUpload={(file) => {
-                  if (file.size > 10 * 1024 * 1024) { toast.error('Kích thước mỗi tệp không được vượt quá 10MB'); return Upload.LIST_IGNORE; }
-                  return true;
-                }}
-                fileList={attachedFileList}
-                showUploadList={{ showPreviewIcon: true, showRemoveIcon: true, showDownloadIcon: true }}
-                customRequest={async (options: any) => {
-                  const { file, onSuccess, onError } = options;
-                  if (!editingItem?.id) {
-                    setPendingAttachments((current) => [...current, {
-                      uid: String(Date.now()), name: (file as File).name, status: 'done' as const,
-                      originFileObj: file as File, size: (file as File).size,
-                    }]);
-                    onSuccess?.({}, file);
-                    return;
-                  }
-                  try {
-                    const result = await uploadLegalDocumentAttachment(editingItem.id, file as File);
-                    onSuccess?.(result, file);
-                    toast.success(`Đã tải lên: ${(file as File).name}`);
-                  } catch (err: any) { onError?.(err); toast.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`); }
-                }}
+                    beforeUpload={(file) => {
+                      if (file.size > 10 * 1024 * 1024) { toast.error('Kích thước mỗi tệp không được vượt quá 10MB'); return Upload.LIST_IGNORE; }
+                      return true;
+                    }}
+                    fileList={attachedFileList}
+                    showUploadList={{ showPreviewIcon: true, showRemoveIcon: true, showDownloadIcon: true }}
+                    customRequest={async (options: any) => {
+                      const { file, onSuccess, onError } = options;
+                      const rcFile = file as RcFile;
+                      if (!editingItem?.id) {
+                        setPendingAttachments((current) => [...current, {
+                          uid: rcFile.uid || String(Date.now()),
+                          name: rcFile.name,
+                          status: 'done' as const,
+                          originFileObj: rcFile,
+                          size: rcFile.size,
+                        }]);
+                        onSuccess?.({}, file);
+                        return;
+                      }
+                      try {
+                        const result = await uploadLegalDocumentAttachment(editingItem.id, rcFile);
+                        onSuccess?.(result, file);
+                        toast.success(`Đã tải lên: ${rcFile.name}`);
+                      } catch (err: any) { onError?.(err); toast.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`); }
+                    }}
                   >
                     <p className="ant-upload-drag-icon"><InboxOutlined /></p>
                     <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây</p>

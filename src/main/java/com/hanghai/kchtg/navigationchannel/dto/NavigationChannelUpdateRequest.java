@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class NavigationChannelUpdateRequest {
+
+    private RecordSecurityLevel securityLevel;
 
     private String channelName;
 

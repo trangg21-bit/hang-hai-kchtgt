@@ -4,10 +4,10 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 @Converter(autoApply = true)
-public class OrgUnitStatusConverter implements AttributeConverter<OrgUnitStatus, Short> {
+public class OrgUnitRankConverter implements AttributeConverter<OrgUnitRank, Short> {
 
     @Override
-    public Short convertToDatabaseColumn(OrgUnitStatus attribute) {
+    public Short convertToDatabaseColumn(OrgUnitRank attribute) {
         if (attribute == null) {
             return null;
         }
@@ -15,11 +15,11 @@ public class OrgUnitStatusConverter implements AttributeConverter<OrgUnitStatus,
     }
 
     @Override
-    public OrgUnitStatus convertToEntityAttribute(Short dbData) {
+    public OrgUnitRank convertToEntityAttribute(Short dbData) {
         if (dbData == null) {
             return null;
         }
-        OrgUnitStatus[] values = OrgUnitStatus.values();
+        OrgUnitRank[] values = OrgUnitRank.values();
         if (dbData >= 0 && dbData < values.length) {
             return values[dbData];
         }

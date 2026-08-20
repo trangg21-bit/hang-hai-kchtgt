@@ -11,10 +11,10 @@ import {
   Empty,
   Badge,
   Alert,
-  message,
   Select,
   Tooltip,
 } from 'antd';
+import { message } from '../../components/ToastNotification';
 import {
   FileTextOutlined,
   FileExcelOutlined,

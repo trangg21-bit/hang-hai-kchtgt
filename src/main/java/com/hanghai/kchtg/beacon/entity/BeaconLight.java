@@ -14,6 +14,9 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 
+import com.hanghai.kchtg.security.RecordSecurityLevel;
+import lombok.experimental.FieldNameConstants;
+
 /**
  * Entity representing nautical beacon light equipment (lighthouse, beacon light, beacon mark).
  * Extends BaseEntity for shared audit fields and soft-delete support.
@@ -21,12 +24,24 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "beacon_light")
 @SQLRestriction("deleted_at IS NULL")
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
 public class BeaconLight extends BaseEntity {
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
+
+    @Column(name = "org_unit_id")
+    private java.util.UUID orgUnitId;
+
     @Column(name = "province_id")
     private Integer provinceId;
 

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as apiClient from '../utils/apiClient';
-import * as userService from './userService';
+import api from './api';
+import { userService } from './userService';
 
-// Mock apiClient
-vi.mock('../utils/apiClient', () => ({
+// Mock api
+vi.mock('./api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
@@ -18,188 +18,136 @@ describe('userService', () => {
     vi.clearAllMocks();
   });
 
-  const mockUser = {
+  const mockUserApiData = {
     id: '550e8400-e29b-41d4-a716-446655440000',
     username: 'admin',
     email: 'admin@hanghai.vn',
-    displayName: 'Administrator',
-    role: 'user',
-    status: 'active',
+    fullName: 'Administrator',
+    phone: '0901234567',
+    status: 'ACTIVE',
     createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
   };
 
-  describe('getAllUsers', () => {
-    it('should fetch all active users', async () => {
-      const mockResponse = [mockUser];
-      vi.mocked(apiClient.default.get).mockResolvedValue(mockResponse);
+  describe('list', () => {
+    it('should fetch paginated users', async () => {
+      const mockResponse = {
+        data: {
+          data: {
+            content: [mockUserApiData],
+            totalElements: 1,
+          },
+        },
+      };
+      vi.mocked(api.get).mockResolvedValue(mockResponse);
 
-      const result = await userService.getAllUsers({ status: 'active', page: 0, size: 20 });
+      const result = await userService.list({ status: 'active', page: 1, pageSize: 20 });
 
-      expect(apiClient.default.get).toHaveBeenCalledWith('/api/users', {
-        params: { status: 'active', page: 0, size: 20 },
+      expect(api.get).toHaveBeenCalledWith('/users', {
+        params: {
+          search: undefined,
+          fullName: undefined,
+          status: 'ACTIVE',
+          orgUnitId: undefined,
+          page: 0,
+          size: 20,
+          sortField: undefined,
+          sortOrder: undefined,
+        },
       });
-      expect(result).toEqual(mockResponse);
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].username).toBe('admin');
+      expect(result.total).toBe(1);
     });
 
-    it('should handle API error', async () => {
-      vi.mocked(apiClient.default.get).mockRejectedValue(new Error('Network error'));
-
-      await expect(userService.getAllUsers()).rejects.toThrow('Network error');
+    it('should handle API error in list', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Network error'));
+      await expect(userService.list({})).rejects.toThrow('Network error');
     });
   });
 
-  describe('getUserById', () => {
+  describe('getById', () => {
     it('should fetch user by ID', async () => {
-      vi.mocked(apiClient.default.get).mockResolvedValue(mockUser);
+      vi.mocked(api.get).mockResolvedValue({ data: { data: mockUserApiData } });
 
-      const result = await userService.getUserById(mockUser.id);
+      const result = await userService.getById(mockUserApiData.id);
 
-      expect(apiClient.default.get).toHaveBeenCalledWith(`/api/users/${mockUser.id}`);
-      expect(result).toEqual(mockUser);
-    });
-
-    it('should handle 404 error', async () => {
-      const notFoundError = { response: { status: 404 } };
-      vi.mocked(apiClient.default.get).mockRejectedValue(notFoundError);
-
-      await expect(userService.getUserById('nonexistent-id')).rejects.toThrow();
+      expect(api.get).toHaveBeenCalledWith(`/users/${mockUserApiData.id}`);
+      expect(result.success).toBe(true);
+      expect(result.data.username).toBe('admin');
     });
   });
 
-  describe('createUser', () => {
+  describe('create', () => {
     it('should create a new user', async () => {
       const newUser = {
         username: 'newuser',
         email: 'newuser@hanghai.vn',
-        displayName: 'New User',
+        fullName: 'New User',
+        phone: '0912345678',
         password: 'SecurePass123!',
-        role: 'user',
+        status: 'active' as const,
       };
 
-      vi.mocked(apiClient.default.post).mockResolvedValue({ ...mockUser, id: 'new-id' });
+      vi.mocked(api.post).mockResolvedValue({ data: { data: { ...mockUserApiData, ...newUser } } });
 
-      const result = await userService.createUser(newUser);
+      const result = await userService.create(newUser);
 
-      expect(apiClient.default.post).toHaveBeenCalledWith('/api/users', newUser);
-      expect(result).toBeDefined();
+      expect(api.post).toHaveBeenCalledWith('/users', expect.objectContaining({
+        fullName: 'New User',
+        email: 'newuser@hanghai.vn',
+      }));
+      expect(result.success).toBe(true);
     });
   });
 
-  describe('updateUser', () => {
+  describe('update', () => {
     it('should update user profile', async () => {
       const updates = {
-        displayName: 'Updated Name',
+        fullName: 'Updated Name',
         email: 'updated@hanghai.vn',
+        phone: '0909999999',
       };
 
-      vi.mocked(apiClient.default.put).mockResolvedValue({ ...mockUser, ...updates });
+      vi.mocked(api.put).mockResolvedValue({ data: { data: { ...mockUserApiData, ...updates } } });
 
-      const result = await userService.updateUser(mockUser.id, updates);
+      const result = await userService.update(mockUserApiData.id, updates);
 
-      expect(apiClient.default.put).toHaveBeenCalledWith(`/api/users/${mockUser.id}`, updates);
-      expect(result.displayName).toBe('Updated Name');
+      expect(api.put).toHaveBeenCalledWith(`/users/${mockUserApiData.id}`, expect.objectContaining({
+        fullName: 'Updated Name',
+      }));
+      expect(result.data.fullName).toBe('Updated Name');
     });
   });
 
-  describe('updatePassword', () => {
-    it('should update user password', async () => {
-      vi.mocked(apiClient.default.put).mockResolvedValue({ success: true });
+  describe('delete', () => {
+    it('should delete a user', async () => {
+      vi.mocked(api.delete).mockResolvedValue({ data: { success: true } });
 
-      await userService.updatePassword(mockUser.id, 'oldPass', 'newPass');
+      const result = await userService.delete(mockUserApiData.id);
 
-      expect(apiClient.default.put).toHaveBeenCalledWith(
-        `/api/users/${mockUser.id}/password`,
-        { oldPassword: 'oldPass', newPassword: 'newPass' }
-      );
+      expect(api.delete).toHaveBeenCalledWith(`/users/${mockUserApiData.id}`);
+      expect(result.success).toBe(true);
     });
   });
 
-  describe('deleteUser', () => {
-    it('should soft delete a user', async () => {
-      vi.mocked(apiClient.default.delete).mockResolvedValue({ success: true });
+  describe('toggleLock', () => {
+    it('should call lock endpoint when active', async () => {
+      vi.mocked(api.post).mockResolvedValue({ data: { data: { ...mockUserApiData, status: 'LOCKED' } } });
 
-      await userService.deleteUser(mockUser.id);
+      const result = await userService.toggleLock(mockUserApiData.id, 'active');
 
-      expect(apiClient.default.delete).toHaveBeenCalledWith(`/api/users/${mockUser.id}`);
+      expect(api.post).toHaveBeenCalledWith(`/users/${mockUserApiData.id}/lock`);
+      expect(result.data.status).toBe('locked');
     });
 
-    it('should hard delete a user', async () => {
-      vi.mocked(apiClient.default.delete).mockResolvedValue({ success: true });
+    it('should call unlock endpoint when locked', async () => {
+      vi.mocked(api.post).mockResolvedValue({ data: { data: { ...mockUserApiData, status: 'ACTIVE' } } });
 
-      await userService.hardDeleteUser(mockUser.id);
+      const result = await userService.toggleLock(mockUserApiData.id, 'locked');
 
-      expect(apiClient.default.delete).toHaveBeenCalledWith(`/api/users/${mockUser.id}/hard`);
-    });
-  });
-
-  describe('lockAccount', () => {
-    it('should lock user account', async () => {
-      vi.mocked(apiClient.default.patch).mockResolvedValue({ ...mockUser, status: 'locked' });
-
-      const result = await userService.lockAccount(mockUser.id);
-
-      expect(apiClient.default.patch).toHaveBeenCalledWith(`/api/users/${mockUser.id}/status/lock`);
-      expect(result.status).toBe('locked');
-    });
-  });
-
-  describe('unlockAccount', () => {
-    it('should unlock user account', async () => {
-      vi.mocked(apiClient.default.patch).mockResolvedValue({ ...mockUser, status: 'active' });
-
-      const result = await userService.unlockAccount(mockUser.id);
-
-      expect(apiClient.default.patch).toHaveBeenCalledWith(`/api/users/${mockUser.id}/status/unlock`);
-      expect(result.status).toBe('active');
-    });
-  });
-
-  describe('bulkActivate', () => {
-    it('should bulk activate users', async () => {
-      const userIds = [mockUser.id, 'another-id'];
-      vi.mocked(apiClient.default.post).mockResolvedValue([{ ...mockUser, status: 'active' }]);
-
-      const result = await userService.bulkActivate(userIds);
-
-      expect(apiClient.default.post).toHaveBeenCalledWith('/api/users/bulk/activate', { ids: userIds });
-      expect(result).toBeDefined();
-    });
-  });
-
-  describe('bulkDeactivate', () => {
-    it('should bulk deactivate users', async () => {
-      const userIds = [mockUser.id];
-      vi.mocked(apiClient.default.post).mockResolvedValue([{ ...mockUser, status: 'inactive' }]);
-
-      const result = await userService.bulkDeactivate(userIds);
-
-      expect(apiClient.default.post).toHaveBeenCalledWith('/api/users/bulk/deactivate', { ids: userIds });
-      expect(result).toBeDefined();
-    });
-  });
-
-  describe('searchUsers', () => {
-    it('should search users by keyword', async () => {
-      vi.mocked(apiClient.default.get).mockResolvedValue([mockUser]);
-
-      const result = await userService.searchUsers('admin');
-
-      expect(apiClient.default.get).toHaveBeenCalledWith('/api/users', {
-        params: { keyword: 'admin', page: 0, size: 10 },
-      });
-      expect(result).toContainEqual(mockUser);
-    });
-  });
-
-  describe('getUserByRole', () => {
-    it('should filter users by role', async () => {
-      vi.mocked(apiClient.default.get).mockResolvedValue([mockUser]);
-
-      const result = await userService.findByRole('user');
-
-      expect(apiClient.default.get).toHaveBeenCalledWith('/api/users', {
-        params: { role: 'user', page: 0, size: 10 },
-      });
+      expect(api.post).toHaveBeenCalledWith(`/users/${mockUserApiData.id}/unlock`);
+      expect(result.data.status).toBe('active');
     });
   });
 });

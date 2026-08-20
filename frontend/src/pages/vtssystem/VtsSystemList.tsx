@@ -23,7 +23,7 @@ import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import VtsSystemForm from './VtsSystemForm';
-import toast from '../../components/ToastNotification';
+import toast, { modal } from '../../components/ToastNotification';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
@@ -402,7 +402,7 @@ export default function VtsSystemList() {
   };
 
   const confirmDelete = (record: VtsSystemResponse) => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Xác nhận xóa hệ thống VTS',
       icon: <ExclamationCircleOutlined />,
       content: 'Bản ghi đã phê duyệt sẽ được xóa mềm và không còn hiển thị trong danh sách.',
@@ -510,32 +510,48 @@ export default function VtsSystemList() {
   };
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, align: 'center' as const, fixed: 'left' as const,
-      render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1 },
-    { key: 'systemName', label: 'Tên hệ thống', dataIndex: 'systemName', width: 300, sortable: true,
-      render: (val: string) => <Typography.Text strong>{val || '—'}</Typography.Text> },
-    { key: 'address', label: 'Địa điểm chi tiết', dataIndex: 'address', width: 240, sortable: true,
-      render: (val: string) => val || '—' },
-    { key: 'conditionStatus', label: 'Tình trạng', dataIndex: 'conditionStatus', width: 170, sortable: true, align: 'center' as const,
+    {
+      key: 'stt', label: 'STT', width: 60, align: 'center' as const, fixed: 'left' as const,
+      render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1
+    },
+    {
+      key: 'systemName', label: 'Tên hệ thống', dataIndex: 'systemName', width: 300, sortable: true,
+      render: (val: string) => <Typography.Text strong>{val || '—'}</Typography.Text>
+    },
+    {
+      key: 'address', label: 'Địa điểm chi tiết', dataIndex: 'address', width: 240, sortable: true,
+      render: (val: string) => val || '—'
+    },
+    {
+      key: 'conditionStatus', label: 'Tình trạng', dataIndex: 'conditionStatus', width: 170, sortable: true, align: 'center' as const,
       render: (val: ConditionStatus) => {
         if (!val) return '—';
         const display = CONDITION_STATUS_MAP[val] || val;
         const color = CONDITION_COLOR[val] || textSecondary;
         return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color, whiteSpace: 'nowrap' }}>{display}</span>;
-      }},
+      }
+    },
     { key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 220 },
-    { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 170, sortable: true, align: 'center' as const,
+    {
+      key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 170, sortable: true, align: 'center' as const,
       render: (val: ApprovalStatus) => {
         const label = APPROVAL_STATUS_MAP[val] || val;
         const color = APPROVAL_COLOR[val] || textSecondary;
         return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
-      }},
+      }
+    },
+    {
+      key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 170, sortable: true,
+      render: (val: string) => formatDate(val)
+    },
   ], [page, pageSize]);
 
   const rowActions = useCallback((record: VtsSystemResponse) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
     if (hasPerm('vts:read')) {
       actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => { setEditingId(record.id); setSelectedRecord(record); setModalMode('detail'); setIsModalOpen(true); } });
+    }
+    if (hasPerm('vts:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => handleViewHistory(record) });
     }
     if (hasPerm('vts:update') && record.approvalStatus !== ApprovalStatus.APPROVED) {
@@ -637,7 +653,7 @@ export default function VtsSystemList() {
         };
         if (changes.length === 0) return null;
         return (
-        <div key={gi} style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 0.38fr) minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+          <div key={gi} style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 0.38fr) minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                 <Typography.Text style={{ display: 'block', fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5 }}>
@@ -680,8 +696,8 @@ export default function VtsSystemList() {
                   </div>
                 );
               })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
+            </div>
           </div>
-        </div>
         );
       })}</div>
     );
@@ -693,8 +709,10 @@ export default function VtsSystemList() {
         breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Hệ thống VTS' }]}
         actions={
           hasPerm('vts:create')
-            ? [{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />,
-                onClick: () => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); } }]
+            ? [{
+              key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />,
+              onClick: () => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); }
+            }]
             : []
         }
       />
@@ -821,12 +839,12 @@ export default function VtsSystemList() {
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
         <div style={{ flexShrink: 0 }}>
           {!loadingHistory && (
-          <div style={{ display: 'none' }}>
-            <Radio.Group value="current" size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}>
-              <Radio.Button value="current" style={{ flex: 1, minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRadius: 0, border: 'none', background: 'transparent', fontSize: fontSizeMd, padding: `0 ${spaceMd}px`, borderBottom: `2px solid ${actionPrimary}`, fontWeight: fontWeightBold, color: actionPrimary }}>Bản ghi hiện tại <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyGroupCount}</Tag></Radio.Button>
-              {/* ALL_TAB_HIDDEN — cần backend getAllHistory cho VTS để bật tab này */}
-            </Radio.Group>
-          </div>
+            <div style={{ display: 'none' }}>
+              <Radio.Group value="current" size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}>
+                <Radio.Button value="current" style={{ flex: 1, minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRadius: 0, border: 'none', background: 'transparent', fontSize: fontSizeMd, padding: `0 ${spaceMd}px`, borderBottom: `2px solid ${actionPrimary}`, fontWeight: fontWeightBold, color: actionPrimary }}>Bản ghi hiện tại <Tag color="blue" style={{ borderRadius: radiusPill, fontSize: 11, marginLeft: 4 }}>{historyGroupCount}</Tag></Radio.Button>
+                {/* ALL_TAB_HIDDEN — cần backend getAllHistory cho VTS để bật tab này */}
+              </Radio.Group>
+            </div>
           )}
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
             <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
@@ -842,17 +860,17 @@ export default function VtsSystemList() {
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
           {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> :
-           historyRecords.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
-            </div>
-           ) : (
-             <>
-               {renderHistoryTimeline(historyRecords)}
-               {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
-             </>
-           )}
+            historyRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+              </div>
+            ) : (
+              <>
+                {renderHistoryTimeline(historyRecords)}
+                {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
+              </>
+            )}
         </div>
       </Drawer>
 

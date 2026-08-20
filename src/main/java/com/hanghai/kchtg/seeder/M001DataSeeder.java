@@ -4,7 +4,7 @@ import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
@@ -51,12 +51,6 @@ public class M001DataSeeder implements CommandLineRunner {
         }
         log.info("📦 Seeding 15 OrgUnits...");
 
-        String[] codes = {
-            "CUC_HHVT", "CV_HH_HP", "CV_HH_HCM", "CV_HH_QN", "CV_HH_DN",
-            "CV_HH_VT", "CV_HH_NT", "CV_HH_QNhon", "CV_HH_CT", "CV_HH_QB",
-            "CV_HH_TH", "CV_HH_NA", "CV_HH_HT", "CV_HH_QT", "CV_HH_TTH"
-        };
-
         String[] names = {
             "Cục Hàng hải và Đường thủy Việt Nam", "Cảng vụ Hàng hải Hải Phòng", "Cảng vụ Hàng hải TP. Hồ Chí Minh",
             "Cảng vụ Hàng hải Quảng Ninh", "Cảng vụ Hàng hải Đà Nẵng", "Cảng vụ Hàng hải Vũng Tàu",
@@ -74,72 +68,76 @@ public class M001DataSeeder implements CommandLineRunner {
         // Save root first to get its ID for parentId
         OrgUnit root = OrgUnit.builder()
                 .name(names[0])
-                .code(codes[0])
-                .address(cities[0])
-                .phone("024" + 1234567)
-                .status(OrgUnitStatus.APPROVED)
-                .path("/" + codes[0] + "/")
+                .detailAddress(cities[0])
+                .phone("0241234567")
+                .path("/")
                 .level(1)
+                .rank(rankForLevel(1))
                 .sortOrder(1)
                 .build();
+        root = orgUnitRepo.save(root);
+        root.setPath("/" + root.getId() + "/");
         root = orgUnitRepo.save(root);
 
         // Save children with parentId pointing to root
         for (int i = 1; i < 15; i++) {
             OrgUnit u = OrgUnit.builder()
                     .name(names[i])
-                    .code(codes[i])
                     .parentId(root.getId())
-                    .address(cities[i])
+                    .detailAddress(cities[i])
                     .phone("024" + (1234567 + i))
-                    .status(OrgUnitStatus.APPROVED)
-                    .path(root.getPath() + codes[i] + "/")
+                    .path(root.getPath())
                     .level(2)
+                    .rank(rankForLevel(2))
                     .sortOrder(i + 1)
                     .build();
+            u = orgUnitRepo.save(u);
+            u.setPath(root.getPath() + u.getId() + "/");
             orgUnitRepo.save(u);
         }
 
         // --- Level 3: Đại diện under select Cảng vụ ---
-        // Nhóm đại diện dưới Cảng vụ Hải Phòng
-        OrgUnit cvHP = orgUnitRepo.findByCode("CV_HH_HP").orElse(null);
+        OrgUnit cvHP = orgUnitRepo.findByNameLike("Hải Phòng").stream().findFirst().orElse(null);
         if (cvHP != null) {
-            addChild(cvHP, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", "DD_CVHP_DV", 15);
-            addChild(cvHP, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", "DD_CVHP_BD", 16);
+            addChild(cvHP, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", 15);
+            addChild(cvHP, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", 16);
         }
-        // Nhóm đại diện dưới Cảng vụ Quảng Ninh
-        OrgUnit cvQN = orgUnitRepo.findByCode("CV_HH_QN").orElse(null);
+        OrgUnit cvQN = orgUnitRepo.findByNameLike("Quảng Ninh").stream().findFirst().orElse(null);
         if (cvQN != null) {
-            addChild(cvQN, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", "DD_CVQN_MC", 17);
-            addChild(cvQN, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", "DD_CVQN_VD", 18);
+            addChild(cvQN, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", 17);
+            addChild(cvQN, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", 18);
         }
-        // Nhóm đại diện dưới Cảng vụ TP.HCM
-        OrgUnit cvHCM = orgUnitRepo.findByCode("CV_HH_HCM").orElse(null);
+        OrgUnit cvHCM = orgUnitRepo.findByNameLike("TP. Hồ Chí Minh").stream().findFirst().orElse(null);
         if (cvHCM != null) {
-            addChild(cvHCM, "Đại diện Cảng vụ TP.HCM tại Cát Lái", "DD_CVHCM_CL", 19);
+            addChild(cvHCM, "Đại diện Cảng vụ TP.HCM tại Cát Lái", 19);
         }
-        // Nhóm đại diện dưới Cảng vụ Đà Nẵng
-        OrgUnit cvDN = orgUnitRepo.findByCode("CV_HH_DN").orElse(null);
+        OrgUnit cvDN = orgUnitRepo.findByNameLike("Đà Nẵng").stream().findFirst().orElse(null);
         if (cvDN != null) {
-            addChild(cvDN, "Đại diện Cảng vụ Đà Nẵng tại Tiên Sa", "DD_CVDN_TS", 20);
+            addChild(cvDN, "Đại diện Cảng vụ Đà Nẵng tại Tiên Sa", 20);
         }
         log.info("✅ Seeded 21 OrgUnits (15 L1+L2 + 6 L3 Đại diện)");
     }
 
-    private void addChild(OrgUnit parent, String name, String code, int sort) {
+    private void addChild(OrgUnit parent, String name, int sort) {
         OrgUnit child = OrgUnit.builder()
                 .name(name)
-                .code(code)
                 .parentId(parent.getId())
-                .parentId(parent.getId())
-                .address(parent.getAddress())
+                .detailAddress(parent.getDetailAddress())
                 .phone(parent.getPhone())
-                .status(OrgUnitStatus.APPROVED)
-                .path(parent.getPath() + code + "/")
+                .path(parent.getPath())
                 .level(parent.getLevel() + 1)
+                .rank(rankForLevel(parent.getLevel() + 1))
                 .sortOrder(sort)
                 .build();
+        child = orgUnitRepo.save(child);
+        child.setPath(parent.getPath() + child.getId() + "/");
         orgUnitRepo.save(child);
+    }
+
+    private static OrgUnitRank rankForLevel(Integer level) {
+        if (level == null || level <= 1) return OrgUnitRank.DEPARTMENT;
+        if (level == 2) return OrgUnitRank.BRANCH;
+        return OrgUnitRank.REPRESENTATIVE;
     }
 
     private void seedUserGroups() {
@@ -187,7 +185,6 @@ public class M001DataSeeder implements CommandLineRunner {
 
         log.info("📦 Seeding 15 App Users...");
 
-        // Fetch seeded OrgUnits & UserGroups
         List<OrgUnit> units = orgUnitRepo.findAll();
         List<UserGroup> groups = groupRepo.findAll();
 
@@ -218,19 +215,16 @@ public class M001DataSeeder implements CommandLineRunner {
             u.setPhone("09123456" + (78 + i));
             u.setStatus(UserStatus.ACTIVE);
 
-            // Assign OrgUnit
             if (!units.isEmpty()) {
                 u.setOrgUnit(units.get(i % units.size()));
             }
 
-            // Assign Group (Legacy list mapping for backward compatibility)
             if (!groups.isEmpty()) {
                 u.getGroups().add(groups.get(i % groups.size()));
             }
 
             userRepo.save(u);
 
-            // Assign Group (via GroupMember junction entity)
             if (!groups.isEmpty()) {
                 int[] groupOffsets = {0, 1, 2};
                 for (int offset : groupOffsets) {
@@ -259,7 +253,6 @@ public class M001DataSeeder implements CommandLineRunner {
             return;
         }
 
-        // Find GRP_ADMINS, GRP_CV_SPECIALISTS, GRP_CV_LEADERS
         UserGroup grpAdmins = allGroups.stream()
                 .filter(g -> "GRP_ADMINS".equals(g.getCode()))
                 .findFirst().orElse(null);
