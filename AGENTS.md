@@ -318,7 +318,17 @@ PMO Lead
 ## SDLC convention
 
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).
-Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/\*\*.
+Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/**.
+
+### Bắt buộc tự động cập nhật tài liệu (Auto-Sync SDLC Documentation)
+
+Mỗi khi AI thực hiện bất kỳ thay đổi nào liên quan đến:
+1. **Cấu trúc CSDL / Entity / DTO / Schema**: thêm, sửa, xóa trường, đổi kiểu dữ liệu (vd: UUID, Enum, bỏ approved_level1/2).
+2. **Luồng nghiệp vụ & Phê duyệt**: cơ chế duyệt C1/C2, popup xác nhận/lý do, quy tắc chống tự duyệt (4-eyes principle), phân quyền.
+3. **Giao diện người dùng**: bố cục layout, danh sách & thứ tự cột trên bảng danh sách, popup/modal/drawer, các trường form.
+4. **Quy ước hiển thị dữ liệu hoặc danh mục API Endpoints**.
+
+**QUY TẮC BẮT BUỘC**: AI Agent **PHẢI TỰ ĐỘNG** tìm các file tài liệu đặc tả liên quan (`docs/modules/.../feature-brief.md`, `ui-spec.md`, `DESIGN.md`, `docs/conventions/...`) để cập nhật đồng bộ ngay trong cùng lượt xử lý code, **tuyệt đối không để xảy ra tình trạng code một đằng tài liệu một nẻo (Documentation Drift)** mà không cần User phải nhắc nhở.
 
 ## Permission Registration for New Modules (MANDATORY — mọi Dev thêm module mới PHẢI đọc)
 

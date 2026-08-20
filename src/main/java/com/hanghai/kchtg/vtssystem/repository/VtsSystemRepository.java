@@ -73,12 +73,16 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.systemName AS systemName,
                t.address AS address,
                t.conditionStatus AS conditionStatus,
-               t.responsibilityLevel AS responsibilityLevel,
-               t.partner AS partner,
                t.orgUnitId AS orgUnitId,
                t.approvalStatus AS approvalStatus,
                t.approverLevel1 AS approverLevel1,
-               t.updatedAt AS updatedDate
+               t.updatedAt AS updatedDate,
+               t.updatedBy AS updatedBy,
+               t.owningOrgId AS owningOrgId,
+               t.operatingOrgId AS operatingOrgId,
+               t.portId AS portId,
+               t.provinceId AS provinceId,
+               t.operationStartDate AS operationStartDate
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
@@ -120,12 +124,16 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.systemName AS systemName,
                t.address AS address,
                t.conditionStatus AS conditionStatus,
-               t.responsibilityLevel AS responsibilityLevel,
-               t.partner AS partner,
                t.orgUnitId AS orgUnitId,
                t.approvalStatus AS approvalStatus,
                t.approverLevel1 AS approverLevel1,
-               t.updatedAt AS updatedDate
+               t.updatedAt AS updatedDate,
+               t.updatedBy AS updatedBy,
+               t.owningOrgId AS owningOrgId,
+               t.operatingOrgId AS operatingOrgId,
+               t.portId AS portId,
+               t.provinceId AS provinceId,
+               t.operationStartDate AS operationStartDate
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)

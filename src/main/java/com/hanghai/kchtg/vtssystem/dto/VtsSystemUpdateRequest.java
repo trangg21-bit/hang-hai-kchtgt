@@ -23,9 +23,6 @@ public class VtsSystemUpdateRequest {
     private String systemName;
     private ConditionStatus conditionStatus;
     private RecordSecurityLevel recordSecurityLevel;
-    private String responsibilityLevel;
-    private String source;
-    private String partner;
     private UUID orgUnitId;
     private UUID owningOrgId;
     private UUID operatingOrgId;

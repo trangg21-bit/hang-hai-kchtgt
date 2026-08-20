@@ -111,6 +111,7 @@ F-001 tuân thủ các chuẩn trên, nhưng có các **điểm khác biệt** s
 | 3 | **Form tạo** (`form-and-list-patterns.md`) | **Không có trường mật khẩu:** Không có ô nhập password tay, hệ thống tự gán mật khẩu mặc định. |
 | 4 | **Hành động xóa** | **Không có nút Xóa:** Thay vì xóa vĩnh viễn, F-001 dùng nút "Hủy kích hoạt" hoặc "Khóa" để chỉ thay đổi trạng thái. |
 | 5 | **Giao diện Modal** | **Bắt buộc nhập lý do:** Modal Khóa/Hủy kích hoạt bắt buộc phải có trường "Lý do" (tối thiểu 10 ký tự) để lưu vào `UserStatusLog`. |
+| 6 | **Nút tạo mới Header** | **Đặt tên theo thực thể:** Sử dụng nhãn **"Thêm tài khoản"** thay cho nhãn mặc định chung "Thêm mới". |
 
 ---
 
@@ -119,10 +120,12 @@ F-001 tuân thủ các chuẩn trên, nhưng có các **điểm khác biệt** s
 | Method | Đường dẫn | Mô tả | Quyền (Permission) |
 |---|---|---|---|
 | GET | `/api/users` | Danh sách người dùng (phân trang, lọc trạng thái/đơn vị, tìm kiếm 2 ô) | `user:read` |
-| POST | `/api/users` | Tạo mới tài khoản (gửi kèm 9 trường dữ liệu) | `user:manage` |
-| PUT | `/api/users/{id}` | Chỉnh sửa thông tin tài khoản | `user:manage` |
-| POST | `/api/users/{id}/lock` | Khóa/Hủy kích hoạt tài khoản (có lý do) | `user:manage` |
-| POST | `/api/users/{id}/unlock` | Mở khóa tài khoản | `user:manage` |
+| GET | `/api/users/{id}` | Xem chi tiết thông tin tài khoản người dùng | `user:read` |
+| POST | `/api/users` | Tạo mới tài khoản (gửi kèm 9 trường dữ liệu) | `user:create` hoặc `user:manage` |
+| PUT | `/api/users/{id}` | Chỉnh sửa thông tin tài khoản | `user:update` hoặc `user:manage` |
+| POST | `/api/users/{id}/lock` | Khóa tài khoản (có lý do) | `user:lock` hoặc `user:manage` |
+| POST | `/api/users/{id}/unlock` | Mở khóa tài khoản | `user:lock` hoặc `user:manage` |
+| PATCH | `/api/users/{id}/status` | Đổi trạng thái tài khoản | `user:lock`, `user:update` hoặc `user:manage` |
 | GET | `/api/users/me` | Xem/sửa thông tin cá nhân | JWT (tự quản lý) |
 | POST | `/api/users/pending` | Nộp đơn đăng ký tài khoản (F-271) | Công khai (rate-limited 5 lần/giờ/IP) |
 | POST | `/api/auth/forgot-password` | Yêu cầu link đặt lại mật khẩu | Công khai (rate-limited 3 lần/15 phút) |

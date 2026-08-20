@@ -217,10 +217,16 @@ const DataTable: React.FC<DataTableProps> = ({
       && !numericScrollNeedsOverflow,
   );
 
+  const resolvedScrollX = typeof scroll?.x === 'number'
+    ? scroll.x
+    : scroll?.x === 'max-content'
+      ? Math.max(totalDeclaredWidth, measuredTableWidth ?? layout.listTableMinWidth)
+      : (shouldStretchColumns || scroll?.x === '100%')
+        ? (measuredTableWidth ?? layout.listTableMinWidth)
+        : (scroll?.x ?? ((hasFixedColumns || hasGeneratedActionColumn) ? Math.max(totalDeclaredWidth, layout.listTableMinWidth) : undefined));
+
   const tableScroll = {
-    x: shouldStretchColumns || scroll?.x === '100%'
-      ? (measuredTableWidth ?? layout.listTableMinWidth)
-      : (scroll?.x ?? ((hasFixedColumns || hasGeneratedActionColumn) ? layout.listTableMinWidth : undefined)),
+    x: resolvedScrollX,
     y: isNumericScrollY && fitMode != null
       ? (fitMode === 'content' ? undefined : fitMode)
       : requestedScrollY,
@@ -229,7 +235,7 @@ const DataTable: React.FC<DataTableProps> = ({
   // declared columns are narrower than the viewport, one content column absorbs
   // the remainder so status/actions stay at the right edge instead of leaving a
   // blank header segment.
-  const tableLayout = dataSource.length === 0 || shouldStretchColumns ? 'fixed' as const : undefined;
+  const tableLayout = 'fixed' as const;
 
   if (children) {
     return (

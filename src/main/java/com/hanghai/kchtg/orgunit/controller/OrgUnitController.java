@@ -185,7 +185,7 @@ public class OrgUnitController {
      * Create a new organisational unit.
      */
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'orgunit:manage')")
+    @PreAuthorize("@auth.check(authentication, 'orgunit:create')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> create(
             @Valid @RequestBody CreateOrgUnitRequest request) {
         User currentUser = getCurrentUser();
@@ -201,7 +201,7 @@ public class OrgUnitController {
      * Partial update of an existing unit.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'orgunit:manage')")
+    @PreAuthorize("@auth.check(authentication, 'orgunit:edit') or @auth.check(authentication, 'orgunit:update')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrgUnitRequest request) {
@@ -217,7 +217,7 @@ public class OrgUnitController {
      * Delete a unit (soft-delete). Fails if the unit has children.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'orgunit:manage')")
+    @PreAuthorize("@auth.check(authentication, 'orgunit:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         Operator op = getOperator();

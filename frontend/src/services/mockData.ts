@@ -13,12 +13,11 @@ export const ALL_PERMISSIONS: Permission[] = [
   // Admin Account Management
   { key: 'admin:manage', name: 'Quản lý tài khoản quản trị', group: 'admin_management', description: 'Xem, tạo, sửa, xóa tài khoản quản trị viên và cấu hình hệ thống' },
 
-  // Group Management
-  { key: 'group:manage', name: 'Quản lý nhóm', group: 'group_management', description: 'Tạo, sửa, xóa nhóm người dùng' },
-
   // Organization Unit Management
   { key: 'orgunit:read', name: 'Xem đơn vị tổ chức', group: 'org_management', description: 'Xem danh sách và chi tiết đơn vị tổ chức' },
-  { key: 'orgunit:manage', name: 'Quản lý đơn vị tổ chức', group: 'org_management', description: 'Tạo, sửa, xóa đơn vị tổ chức' },
+  { key: 'orgunit:create', name: 'Thêm đơn vị tổ chức', group: 'org_management', description: 'Tạo mới đơn vị tổ chức' },
+  { key: 'orgunit:update', name: 'Cập nhật đơn vị tổ chức', group: 'org_management', description: 'Chỉnh sửa đơn vị tổ chức' },
+  { key: 'orgunit:delete', name: 'Xóa đơn vị tổ chức', group: 'org_management', description: 'Xóa đơn vị tổ chức' },
 
   // Connection Management
   { key: 'connection:read', name: 'Xem kết nối liên thông', group: 'connection', description: 'Xem danh sách và trạng thái kết nối liên thông' },
@@ -187,7 +186,7 @@ export const CURRENT_USER: User = MOCK_USERS[0];
 // GROUPS
 // ============================================================
 export const MOCK_GROUPS = [
-  { id: 'grp-001', name: 'Nhóm Quản trị viên', code: 'GRP_ADMINS', description: 'Nhóm dành cho quản trị viên hệ thống', permissions: ['user:manage', 'admin:manage', 'group:manage', 'orgunit:manage', 'log:manage'], memberCount: 3, status: 'active' as const, createdAt: '2025-01-10T00:00:00Z', updatedAt: '2026-06-01T00:00:00Z' },
+  { id: 'grp-001', name: 'Nhóm Quản trị viên', code: 'GRP_ADMINS', description: 'Nhóm dành cho quản trị viên hệ thống', permissions: ['user:manage', 'admin:manage', 'orgunit:create', 'orgunit:update', 'orgunit:delete', 'log:manage'], memberCount: 3, status: 'active' as const, createdAt: '2025-01-10T00:00:00Z', updatedAt: '2026-06-01T00:00:00Z' },
   { id: 'grp-002', name: 'Nhóm Lãnh đạo', code: 'GRP_LEADERS', description: 'Nhóm dành cho lãnh đạo các phòng ban', permissions: ['user:read', 'data:read', 'report:read'], memberCount: 5, status: 'active' as const, createdAt: '2025-02-15T00:00:00Z', updatedAt: '2026-05-20T00:00:00Z' },
   { id: 'grp-003', name: 'Nhóm Chuyên viên GIS', code: 'GRP_GIS', description: 'Nhóm chuyên viên quản lý dữ liệu GIS và bản đồ', permissions: ['data:read', 'data:create', 'data:update', 'map:manage'], memberCount: 8, status: 'active' as const, createdAt: '2025-03-01T00:00:00Z', updatedAt: '2026-06-10T00:00:00Z' },
   { id: 'grp-004', name: 'Nhóm Báo hiệu hàng hải', code: 'GRP_BEACON', description: 'Nhóm quản lý đèn biển và phao tiêu', permissions: ['data:read', 'data:create', 'data:update'], memberCount: 6, status: 'active' as const, createdAt: '2025-03-15T00:00:00Z', updatedAt: '2026-04-20T00:00:00Z' },

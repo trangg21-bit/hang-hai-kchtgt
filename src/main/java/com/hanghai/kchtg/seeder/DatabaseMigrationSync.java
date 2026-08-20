@@ -165,7 +165,49 @@ public class DatabaseMigrationSync implements CommandLineRunner {
             "ON CONFLICT (id) DO NOTHING"
         );
 
-        log.info("ðŸ Database schema synchronization process finished.");
+        // 10. approval_history <- legal_document_history
+        try {
+            jdbcTemplate.execute("ALTER TABLE approval_history DROP CONSTRAINT IF EXISTS approval_history_ref_type_check");
+            jdbcTemplate.execute("ALTER TABLE approval_history DROP CONSTRAINT IF EXISTS approval_history_status_check");
+            jdbcTemplate.execute("ALTER TABLE approval_history DROP CONSTRAINT IF EXISTS approval_history_approval_level_check");
+        } catch (Exception ignored) {
+        }
+        trySyncAndDropTable("approval_history", "legal_document_history",
+            "INSERT INTO approval_history (id, ref_id, ref_type, approval_level, status, " +
+            "    approved_by, approved_date, reason, changed_field, previous_value, new_value) " +
+            "SELECT COALESCE(id, gen_random_uuid()), legal_document_id, 23, 0, " +
+            "    CASE " +
+            "        WHEN action = 'CREATED' THEN 0 " +
+            "        WHEN action = 'UPDATED' THEN 5 " +
+            "        WHEN action = 'DELETED' THEN 6 " +
+            "        WHEN action = 'ATTACHMENT_UPLOADED' THEN 7 " +
+            "        WHEN action = 'ATTACHMENT_DELETED' THEN 8 " +
+            "        WHEN action = 'DRAFT_SAVED' THEN 9 " +
+            "        WHEN action = 'EXPIRED' THEN 10 " +
+            "        ELSE 5 " +
+            "    END, " +
+            "    changed_by, COALESCE(changed_at, CURRENT_TIMESTAMP), " +
+            "    COALESCE(description, 'Thao tác trên văn bản pháp lý'), document_name, NULL, document_number " +
+            "FROM legal_document_history " +
+            "ON CONFLICT (id) DO NOTHING"
+        );
+
+        log.info("🚀 Database schema synchronization process finished.");
+    }
+
+    private void trySyncAndDropTable(String targetTable, String sourceTable, String sql) {
+        trySyncTable(targetTable, sourceTable, sql);
+        try {
+            String checkSourceSql = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ?)";
+            Boolean sourceExists = jdbcTemplate.queryForObject(checkSourceSql, java.lang.Boolean.class, sourceTable);
+            if (Boolean.TRUE.equals(sourceExists)) {
+                log.info("Dropping obsolete table [{}] after data sync...", sourceTable);
+                jdbcTemplate.execute("DROP TABLE IF EXISTS " + sourceTable + " CASCADE");
+                log.info("Successfully dropped table [{}]", sourceTable);
+            }
+        } catch (Exception e) {
+            log.warn("Could not drop obsolete table [{}]: {}", sourceTable, e.getMessage());
+        }
     }
 
     private void trySyncTable(String targetTable, String sourceTable, String sql) {

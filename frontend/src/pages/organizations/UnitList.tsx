@@ -52,7 +52,6 @@ export default function UnitList() {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
-  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedKeys(prev => {
@@ -192,9 +191,15 @@ export default function UnitList() {
   }, [fetchOrgs]);
   const getActions = (record: Organization) => {
     const items: any[] = [];
-    items.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => openViewModal(record) });
-    if (hasPerm('orgunit:manage')) items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
-    if (hasPerm('orgunit:manage')) items.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    if (hasPerm('orgunit:read')) {
+      items.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => openViewModal(record) });
+    }
+    if (hasPerm('orgunit:update') || hasPerm('orgunit:edit')) {
+      items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    }
+    if (hasPerm('orgunit:delete')) {
+      items.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    }
     return items;
   };
 
@@ -302,7 +307,7 @@ export default function UnitList() {
   ];
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('orgunit:manage')) actions.push({ key: 'create', label: 'Thêm đơn vị', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    if (hasPerm('orgunit:create')) actions.push({ key: 'create', label: 'Thêm đơn vị', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
     return actions;
   }, [hasPerm, openCreateModal]);
 
@@ -331,8 +336,7 @@ export default function UnitList() {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý đơn vị' }]} actions={headerActions} />
       <FilterTableLayout
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        hideFilterToggle
         onFilterApply={handleFilterSearch}
         onFilterReset={handleFilterReset}
         loading={isLoading}
@@ -350,9 +354,9 @@ export default function UnitList() {
           <EmptyState description="Không tìm thấy đơn vị nào phù hợp" />
         )}
         {!isLoading && !isError && treeRows.length > 0 && (
-          <div style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceSm, background: surfaceCard }}>
+          <div style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: 0, background: surfaceCard }}>
             <div style={{ width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px` }}>
+              <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px`, position: 'sticky', top: 0, background: surfaceCard, zIndex: 2 }}>
                 <div style={{ flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên đơn vị</div>
                 <div style={{ width: 260, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Cấp đơn vị</div>
                 <div style={{ width: 160, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ngày cập nhật</div>
@@ -410,16 +414,12 @@ export default function UnitList() {
         onClose={() => setModalOpen(false)}
         extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
-            {isViewing ? (
-              <Button type="primary" onClick={() => setModalOpen(false)} style={primaryButtonStyle}>Đóng</Button>
-            ) : (
-              <>
-                <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
-                <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>
-              </>
-            )}
-          </div>
+          isViewing ? null : (
+            <div style={drawerFooterStyle}>
+              <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
+              <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>
+            </div>
+          )
         }
       >
         <Spin spinning={submitting}>

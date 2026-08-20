@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, memo, type ReactNode, type FC } from 'react';
 import { Typography, Form, Input, Spin, Button, Select, Tree, Tabs, Empty, Checkbox } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -26,9 +26,36 @@ import { PERMISSIONS } from '../../constants/permissions';
 const { confirm } = modal;
 
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
-const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['group:manage', 'admin:all', 'orgunit:scope_all', '*']);
+const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['admin:all', '*']);
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
+
+const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onSearch }) => {
+  const [value, setValue] = useState('');
+
+  return (
+    <Input
+      allowClear
+      value={value}
+      onChange={(e) => {
+        const nextVal = e.target.value;
+        setValue(nextVal);
+        if (!nextVal) {
+          onSearch('');
+        }
+      }}
+      onPressEnter={() => onSearch(value.trim())}
+      suffix={
+        <SearchOutlined
+          style={{ cursor: 'pointer', color: textSecondary, fontSize: 16 }}
+          onClick={() => onSearch(value.trim())}
+        />
+      }
+      placeholder="Tìm theo tên hoặc mã quyền"
+      style={{ borderRadius: radiusPill, height: 40, margin: `${spaceMd}px 0` }}
+    />
+  );
+});
 
 export default function GroupList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
@@ -78,7 +105,7 @@ export default function GroupList() {
   const { tree: rawPermissionTree } = usePermissions();
   const [permissionGroup, setPermissionGroup] = useState<Group | null>(null);
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
-  const [permissionSearch, setPermissionSearch] = useState('');
+  const [appliedPermissionSearch, setAppliedPermissionSearch] = useState('');
   const [permissionLoading, setPermissionLoading] = useState(false);
   const [permissionSaving, setPermissionSaving] = useState(false);
   const [orgTree, setOrgTree] = useState<OrgUnitTreeOption[]>([]);
@@ -333,7 +360,7 @@ export default function GroupList() {
 
   const openPermissionModal = useCallback(async (group: Group) => {
     setPermissionGroup(group);
-    setPermissionSearch('');
+    setAppliedPermissionSearch('');
     setPermissionLoading(true);
     try {
       const permissions = await groupService.getPermissions(group.id);
@@ -390,16 +417,28 @@ export default function GroupList() {
     });
   }, [rawPermissionTree]);
 
+  const indexedGroupPermissionTree = useMemo(() => {
+    const attachMeta = (nodes: readonly MenuTreeNode[]): any[] => nodes.map((node) => ({
+      ...node,
+      _searchStr: normalizeSearchText(`${node.title} ${node.key}`),
+      children: node.children ? attachMeta(node.children) : [],
+    }));
+    return attachMeta(assignablePermissionTree);
+  }, [assignablePermissionTree]);
+
   const permissionTreeData = useMemo(() => {
-    const keyword = normalizeSearchText(permissionSearch);
+    const keyword = normalizeSearchText(appliedPermissionSearch);
     if (!keyword) return assignablePermissionTree;
-    const filter = (nodes: readonly MenuTreeNode[]): MenuTreeNode[] => nodes.flatMap((node) => {
+    const filter = (nodes: any[]): MenuTreeNode[] => nodes.flatMap((node) => {
+      const parentMatches = node._searchStr.includes(keyword);
+      if (parentMatches) {
+        return [{ ...node, children: node.children || [] }];
+      }
       const children = filter(node.children || []);
-      const matches = normalizeSearchText(node.title).includes(keyword) || normalizeSearchText(String(node.key)).includes(keyword);
-      return matches || children.length ? [{ ...node, children }] : [];
+      return children.length ? [{ ...node, children }] : [];
     });
-    return filter(assignablePermissionTree);
-  }, [assignablePermissionTree, permissionSearch]);
+    return filter(indexedGroupPermissionTree);
+  }, [indexedGroupPermissionTree, assignablePermissionTree, appliedPermissionSearch]);
 
   const allGroupPermissionKeys = useMemo(
     () => Array.from(getPermissionTreeKeys(assignablePermissionTree)).filter((key) => !key.startsWith('group_')),
@@ -754,11 +793,22 @@ export default function GroupList() {
       <ManagementDrawer
         title={<>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</>}
         open={!!permissionGroup}
-        onClose={() => setPermissionGroup(null)}
+        onClose={() => {
+          setPermissionGroup(null);
+          setAppliedPermissionSearch('');
+        }}
         maskClosable={false}
         footer={
           <>
-            <Button onClick={() => setPermissionGroup(null)} style={outlineButtonStyle}>Đóng</Button>
+            <Button
+              onClick={() => {
+                setPermissionGroup(null);
+                setAppliedPermissionSearch('');
+              }}
+              style={outlineButtonStyle}
+            >
+              Đóng
+            </Button>
             <Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button>
           </>
         }
@@ -767,17 +817,11 @@ export default function GroupList() {
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginTop: spaceMd, marginBottom: spaceSm }}>
             Danh sách chức năng
           </div>
-          <Input.Search
-            allowClear
-            value={permissionSearch}
-            onChange={(event) => setPermissionSearch(event.target.value)}
-            placeholder="Tìm theo tên hoặc mã quyền (vd: port:read, Cảng biển...)"
-            style={{ margin: `${spaceMd}px 0` }}
-          />
+          <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
           {permissionTreeData.length === 0 && !permissionLoading ? (
             <Empty description="Không tìm thấy quyền phù hợp" />
           ) : (
-            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
+            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd }}>
               <div style={{ marginBottom: spaceMd }}>
                 <Checkbox
                   checked={allGroupPermissionsSelected}
@@ -791,6 +835,7 @@ export default function GroupList() {
               <Tree
                 checkable
                 defaultExpandAll
+                height={460}
                 treeData={permissionTreeData}
                 checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
                 onCheck={(checked) => {

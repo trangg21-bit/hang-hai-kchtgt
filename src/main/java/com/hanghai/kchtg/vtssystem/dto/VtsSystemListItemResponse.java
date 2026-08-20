@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -24,11 +25,18 @@ public class VtsSystemListItemResponse {
     private String systemName;
     private String address;
     private ConditionStatus conditionStatus;
-    private String responsibilityLevel;
-    private String partner;
     private UUID orgUnitId;
     private String orgUnitName;
     private ApprovalStatus approvalStatus;
     private UUID approverLevel1;
     private LocalDateTime updatedDate;
+    private String updatedByName;
+    private UUID owningOrgId;
+    private String owningOrgName;
+    private UUID operatingOrgId;
+    private String operatingOrgName;
+    private UUID portId;
+    private String portName;
+    private Integer provinceId;
+    private LocalDate operationStartDate;
 }

@@ -7,17 +7,28 @@ import {
 } from '../../tokens';
 import { colors } from '../../theme';
 
+export interface ScreenHeaderAction {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  variant?: 'primary' | 'outline' | 'subtle' | 'default';
+  onClick: () => void;
+  borderColor?: string;
+  color?: string;
+}
+
 export interface ScreenHeaderProps {
   title?: string;
   breadcrumb?: { label: string; href?: string; path?: string }[];
   breadcrumbs?: { label: string; href?: string; path?: string }[];
-  actions?: React.ReactNode | { key: string; label: string; icon?: React.ReactNode; variant: 'primary' | 'outline' | 'subtle'; onClick: () => void; borderColor?: string; color?: string; }[];
+  actions?: React.ReactNode | ScreenHeaderAction[];
 }
 
 const variantStyles: Record<string, React.CSSProperties> = {
   primary: { background: actionPrimary, color: '#FFFFFF', borderRadius: radiusPill, border: 'none', fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
   outline: { background: 'transparent', color: actionPrimary, border: `1px solid ${actionPrimary}`, borderRadius: radiusPill, fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
   subtle: { background: 'transparent', color: textSecondary, border: `1px solid ${borderDefault}`, borderRadius: radiusPill, fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
+  default: { background: 'transparent', color: textSecondary, border: `1px solid ${borderDefault}`, borderRadius: radiusPill, fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
 };
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({ breadcrumb, breadcrumbs, actions }) => {

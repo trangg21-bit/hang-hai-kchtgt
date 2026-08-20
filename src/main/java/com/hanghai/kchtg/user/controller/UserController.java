@@ -167,7 +167,7 @@ public class UserController {
      */
     @PatchMapping("/{id}/status")
     @AuditLog(module = "USER", action = "CHANGE_USER_STATUS")
-    @PreAuthorize("@auth.check(authentication, 'user:update')")
+    @PreAuthorize("@auth.check(authentication, 'user:lock') or @auth.check(authentication, 'user:update') or @auth.check(authentication, 'user:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> changeStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request) {
@@ -180,7 +180,7 @@ public class UserController {
      */
     @PostMapping("/{id}/lock")
     @AuditLog(module = "USER", action = "LOCK_USER")
-    @PreAuthorize("@auth.check(authentication, 'user:update')")
+    @PreAuthorize("@auth.check(authentication, 'user:lock') or @auth.check(authentication, 'user:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> lockUser(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, String> body) {
@@ -194,7 +194,7 @@ public class UserController {
      */
     @PostMapping("/{id}/unlock")
     @AuditLog(module = "USER", action = "UNLOCK_USER")
-    @PreAuthorize("@auth.check(authentication, 'user:update')")
+    @PreAuthorize("@auth.check(authentication, 'user:lock') or @auth.check(authentication, 'user:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> unlockUser(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, String> body) {

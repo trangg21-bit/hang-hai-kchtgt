@@ -69,8 +69,6 @@ class VtsSystemServiceTest {
                 .code("VTS-OLD")
                 .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
                 .approvalStatus(ApprovalStatus.PROPOSED)
-                .approvedLevel1(false)
-                .approvedLevel2(false)
                 .build();
         entity.setId(TEST_ID);
 
@@ -95,7 +93,7 @@ class VtsSystemServiceTest {
     void testCreate() {
         VtsSystem saved = VtsSystem.builder()
                 .systemName("VTS ABC").approvalStatus(ApprovalStatus.PROPOSED)
-                .approvedLevel1(false).approvedLevel2(false).build();
+                .build();
         saved.setId(TEST_ID);
 
         when(repository.save(any())).thenReturn(saved);
@@ -197,8 +195,8 @@ class VtsSystemServiceTest {
         VtsSystemResponse response = service.update(TEST_ID, updateReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
         assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
-        assertFalse(entity.getApprovedLevel1());
-        assertFalse(entity.getApprovedLevel2());
+        assertNull(entity.getApproverLevel1());
+        assertNull(entity.getApproverLevel2());
         verify(repository, times(1)).save(any());
     }
 
@@ -284,9 +282,7 @@ class VtsSystemServiceTest {
     void testUpdate_RejectedEntity_ResubmitsAsProposedAndResetsApproval() {
         entity.setApprovalStatus(ApprovalStatus.REJECTED);
         entity.setRejectionReason("Cần bổ sung thông tin");
-        entity.setApprovedLevel1(true);
         entity.setApproverLevel1(UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        entity.setApprovedLevel2(true);
         entity.setApproverLevel2(UUID.fromString("00000000-0000-0000-0000-000000000002"));
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .systemName("VTS đã bổ sung").build();
@@ -299,8 +295,6 @@ class VtsSystemServiceTest {
 
         assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
         assertNull(entity.getRejectionReason());
-        assertFalse(entity.getApprovedLevel1());
-        assertFalse(entity.getApprovedLevel2());
         assertNull(entity.getApproverLevel1());
         assertNull(entity.getApproverLevel2());
     }
@@ -309,7 +303,7 @@ class VtsSystemServiceTest {
     void testDelete_ApprovedEntity() {
         VtsSystem approvedEntity = VtsSystem.builder()
                 .systemName("ABC").approvalStatus(ApprovalStatus.APPROVED)
-                .approvedLevel1(false).approvedLevel2(false).build();
+                .build();
         approvedEntity.setId(TEST_ID);
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
@@ -336,7 +330,7 @@ class VtsSystemServiceTest {
 
         service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
-        assertTrue(entity.getApprovedLevel1());
+        assertNotNull(entity.getApproverLevel1());
     }
 
     @Test
@@ -354,7 +348,7 @@ class VtsSystemServiceTest {
                     java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
             assertEquals(ApprovalStatus.UNDER_REVIEW, entity.getApprovalStatus());
-            assertFalse(entity.getApprovedLevel2());
+            assertNull(entity.getApproverLevel2());
             verify(historyRepository, times(1)).save(any());
         } finally {
             SecurityContextHolder.clearContext();
@@ -364,7 +358,7 @@ class VtsSystemServiceTest {
     @Test
     void testApproveC2_Approve() {
         entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
-        entity.setApprovedLevel1(true);
+        entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
@@ -372,13 +366,12 @@ class VtsSystemServiceTest {
 
         service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
         assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
-        assertTrue(entity.getApprovedLevel2());
+        assertNotNull(entity.getApproverLevel2());
     }
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
         entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
-        entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
 
@@ -404,7 +397,6 @@ class VtsSystemServiceTest {
     @Test
     void testRejectC2() {
         entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
-        entity.setApprovedLevel1(true);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
         ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.REJECTED.name()).reason("Không đồng ý cấp 2").build();
@@ -455,7 +447,7 @@ class VtsSystemServiceTest {
 
         VtsSystem saved = VtsSystem.builder()
                 .systemName("VTS Trim").approvalStatus(ApprovalStatus.PROPOSED)
-                .approvedLevel1(false).approvedLevel2(false).build();
+                .build();
         saved.setId(TEST_ID);
 
         when(repository.save(any())).thenReturn(saved);
@@ -480,7 +472,7 @@ class VtsSystemServiceTest {
 
         VtsSystem saved = VtsSystem.builder()
                 .systemName("VTS No Coords").approvalStatus(ApprovalStatus.PROPOSED)
-                .approvedLevel1(false).approvedLevel2(false).build();
+                .build();
         saved.setId(TEST_ID);
 
         when(repository.save(any())).thenReturn(saved);
@@ -561,7 +553,7 @@ class VtsSystemServiceTest {
     @Test
     void testApproveC2_RejectsInvalidDecision() {
         entity.setApprovalStatus(ApprovalStatus.UNDER_REVIEW);
-        entity.setApprovedLevel1(true);
+        entity.setApproverLevel1(UUID.randomUUID());
 
         ApprovalRequest req = ApprovalRequest.builder()
                 .decision("INVALID")

@@ -34,20 +34,20 @@ class PermissionRoleServiceTest {
 
     @Test
     void aggregateManagePermissionGrantsMiddlewareActionsForSameResource() {
-        User user = userWithPermission("group:manage");
+        User user = userWithPermission("orgunit:manage");
         when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
-        assertThat(permissionRoleService.checkPermission(userId, "group", "read")).isTrue();
-        assertThat(permissionRoleService.checkPermission(userId, "group", "write")).isTrue();
-        assertThat(permissionRoleService.checkPermission(userId, "group", "delete")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "orgunit", "read")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "orgunit", "write")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "orgunit", "delete")).isTrue();
     }
 
     @Test
     void aggregateManagePermissionDoesNotGrantAnotherResource() {
-        User user = userWithPermission("group:manage");
+        User user = userWithPermission("orgunit:manage");
         when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
-        assertThat(permissionRoleService.checkPermission(userId, "orgunit", "read")).isFalse();
+        assertThat(permissionRoleService.checkPermission(userId, "group", "read")).isFalse();
     }
 
     @Test

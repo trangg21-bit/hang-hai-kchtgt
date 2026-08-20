@@ -1,6 +1,7 @@
 import { Space, Button, Tooltip } from 'antd';
 import { useState } from 'react';
 import RejectionModal from './RejectionModal';
+import ApprovalModal from './ApprovalModal';
 import { hasPermissionFromList } from '../../store/permissionStore';
 
 export type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
@@ -27,6 +28,8 @@ export default function ApprovalActionBar({
   loading = false,
 }: ApprovalActionBarProps) {
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [approveModalVisible, setApproveModalVisible] = useState(false);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
 
   const hasPermission = (perm: string): boolean => hasPermissionFromList(permissions, perm);
 
@@ -60,6 +63,16 @@ export default function ApprovalActionBar({
   // Determine which rejection handler to use
   const canReject = canRejectAtC1 || canRejectAtC2;
 
+  const handleOpenApproveModal = (level: 'c1' | 'c2') => {
+    setApproveLevel(level);
+    setApproveModalVisible(true);
+  };
+
+  const handleApproveConfirm = (content: string) => {
+    setApproveModalVisible(false);
+    onAction(approveLevel === 'c1' ? 'approveC1' : 'approveC2', { lyDo: content });
+  };
+
   const handleRejectConfirm = (reason: string) => {
     setRejectModalVisible(false);
     onAction('reject', { lyDo: reason });
@@ -69,7 +82,7 @@ export default function ApprovalActionBar({
     <>
       <Space wrap style={{ marginTop: '20px' }}>
         {canApproveC1 && (
-          <Button type="primary" style={{ background: '#52c41a' }} onClick={() => onAction('approveC1')} loading={loading}>
+          <Button type="primary" style={{ background: '#52c41a' }} onClick={() => handleOpenApproveModal('c1')} loading={loading}>
             Phê duyệt C1
           </Button>
         )}
@@ -79,7 +92,7 @@ export default function ApprovalActionBar({
             <Button
               type="primary"
               style={{ background: '#1890ff' }}
-              onClick={() => onAction('approveC2')}
+              onClick={() => handleOpenApproveModal('c2')}
               loading={loading}
               disabled={isSelfApprovalC2}
             >
@@ -100,6 +113,14 @@ export default function ApprovalActionBar({
           </Button>
         )}
       </Space>
+
+      <ApprovalModal
+        visible={approveModalVisible}
+        level={approveLevel}
+        loading={loading}
+        onConfirm={handleApproveConfirm}
+        onCancel={() => setApproveModalVisible(false)}
+      />
 
       <RejectionModal
         visible={rejectModalVisible}

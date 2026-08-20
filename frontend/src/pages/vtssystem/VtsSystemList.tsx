@@ -23,10 +23,11 @@ import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import VtsSystemForm from './VtsSystemForm';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import toast, { modal } from '../../components/ToastNotification';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
+  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd, fontSizeLg,
   radiusSm, radiusPill, spaceFormField, spaceMd, spaceSm, spaceLg,
   statusOperational, statusDraft, statusCritical, statusAttention,
   surfacePage, spaceXs, spaceXl, drawerTitleStyle, drawerCloseBtnStyle, selectStyle,
@@ -71,7 +72,7 @@ const CONDITION_COLOR: Record<string, string> = {
 const HISTORY_PAGE_SIZE = 20;
 
 // Thứ tự hiển thị field trong lịch sử theo đúng thứ tự form tạo mới VTS (VtsSystemForm.tsx)
-const HISTORY_FIELD_ORDER = ['orgUnitId', 'owningOrgId', 'operatingOrgId', 'portId', 'code', 'systemName', 'province', 'provinceId', 'address', 'operationStartDate', 'scope', 'maritimeNotice', 'conditionStatus', 'responsibilityLevel', 'source', 'partner', 'note'];
+const HISTORY_FIELD_ORDER = ['orgUnitId', 'owningOrgId', 'operatingOrgId', 'portId', 'code', 'systemName', 'province', 'provinceId', 'address', 'operationStartDate', 'scope', 'maritimeNotice', 'conditionStatus', 'note'];
 
 // ── History helpers ──────────────────────────────────────────────
 
@@ -80,8 +81,7 @@ function historyFieldName(fn: string): string {
     systemName: 'Tên hệ thống VTS', code: 'Mã hệ thống VTS', province: 'Tỉnh/Thành phố',
     provinceId: 'Mã tỉnh/thành', address: 'Địa điểm chi tiết', maritimeNotice: 'Thông báo hàng hải',
     operationStartDate: 'Thời gian bắt đầu hoạt động', scope: 'Phạm vi áp dụng',
-    note: 'Ghi chú', responsibilityLevel: 'Mức độ phụ trách', source: 'Nguồn gốc',
-    partner: 'Đối tác', approvalStatus: 'Trạng thái phê duyệt', conditionStatus: 'Tình trạng',
+    note: 'Ghi chú', approvalStatus: 'Trạng thái phê duyệt', conditionStatus: 'Tình trạng',
     orgUnitName: 'Đơn vị quản lý', owningOrgName: 'Đơn vị chủ quản',
     operatingOrgName: 'Đơn vị vận hành khai thác', portName: 'Thuộc cảng biển',
   };
@@ -200,7 +200,7 @@ function getHistoryActionAccent(items: any[], action: { color: string }): string
 }
 
 function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 }
 
 function normalizedHistoryFields(value: string): string[] {
@@ -270,6 +270,145 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
   });
 }
 
+function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
+  const item = group.items?.[0] || {};
+  const rawStatus = (item.status || item.action || '').toUpperCase();
+  const rawReason = (item.reason || item.ghiChu || item.note || '').toLowerCase();
+  const level = Number(item.approvalLevel || 0);
+
+  // If this action was creation, always display Tạo mới
+  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('tao moi')) {
+    return { label: 'Tạo mới', color: statusOperational, bg: `${statusOperational}18` };
+  }
+
+  // If this action was attachment upload / delete
+  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
+    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
+  }
+  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
+    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
+  }
+
+  // If this action was an update/modification, always display Cập nhật
+  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
+    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+  }
+
+  // Check if changes or reason contain approval status change
+  const approvalChange = changes.find((c: any) => {
+    const k = normalizeHistoryKey(c.field);
+    return k === 'approvalstatus' || k === 'trang thai phe duyet';
+  });
+
+  if (approvalChange) {
+    const nv = normalizeHistoryKey(approvalChange.newValue || '');
+    if (nv.includes('da phe duyet cap 1') || nv.includes('cap 1') || nv.includes('dang xem xet') || nv.includes('under_review')) {
+      return { label: 'Phê duyệt C1', color: statusAttention, bg: `${statusAttention}18` };
+    }
+    if (nv.includes('da phe duyet cap 2') || nv.includes('cap 2') || nv.includes('da phe duyet') || nv.includes('approved')) {
+      return { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}18` };
+    }
+    if (nv.includes('tu choi') || nv.includes('rejected')) {
+      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+    }
+    if (nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed')) {
+      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+    }
+  }
+
+  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
+    return { label: 'Phê duyệt C1', color: statusAttention, bg: `${statusAttention}18` };
+  }
+  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+    return { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}18` };
+  }
+  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
+    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+  }
+  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
+    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
+  }
+
+  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+}
+
+function renderHistoryValueTag(field: string, val: string | null) {
+  if (val === null || val === undefined || val === '—') {
+    return <span style={{ color: textTertiary }}>—</span>;
+  }
+  const normKey = normalizeHistoryKey(field);
+  const normVal = normalizeHistoryKey(val);
+
+  // Approval status
+  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
+    if (normVal.includes('dang xem xet') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${actionPrimary}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('da phe duyet') || normVal.includes('approved')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${statusOperational}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('tu choi') || normVal.includes('rejected')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${statusCritical}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusCritical}15`, color: statusCritical, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('cho phe duyet') || normVal.includes('pending') || normVal.includes('proposed')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${statusAttention}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusAttention}15`, color: statusAttention, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+  }
+
+  // Condition status
+  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
+    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${statusOperational}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${statusAttention}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusAttention}15`, color: statusAttention, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${statusCritical}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusCritical}15`, color: statusCritical, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${actionPrimary}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary, whiteSpace: 'nowrap' }}>
+          {val}
+        </span>
+      );
+    }
+  }
+
+  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
+}
+
 export default function VtsSystemList() {
   const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s) => s.hasPermission);
@@ -299,6 +438,10 @@ export default function VtsSystemList() {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
   const [rejectReason, setRejectReason] = useState('');
+
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
 
   // History drawer state
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -414,18 +557,28 @@ export default function VtsSystemList() {
     });
   };
 
-  const handleApproveC1 = async (record: VtsSystemResponse) => {
-    try {
-      await vtsSystemApproval.approveC1(record.id, { decision: 'APPROVED', reason: 'Phê duyệt cấp 1' });
-      toast.success('Phê duyệt cấp 1 thành công'); refreshList();
-    } catch (err: any) { toast.error(err?.message || 'Lỗi phê duyệt'); }
+  const openApproveModal = (id: string, level: 'c1' | 'c2') => {
+    setApproveTargetId(id);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
   };
 
-  const handleApproveC2 = async (record: VtsSystemResponse) => {
+  const handleApprove = async (content: string) => {
+    if (!approveTargetId) return;
     try {
-      await vtsSystemApproval.approveC2(record.id, { decision: 'APPROVED', reason: 'Phê duyệt cấp 2' });
-      toast.success('Phê duyệt cấp 2 thành công'); refreshList();
-    } catch (err: any) { toast.error(err?.message || 'Lỗi phê duyệt'); }
+      const payload: ApprovalRequest = { decision: 'APPROVED', reason: content };
+      if (approveLevel === 'c1') {
+        await vtsSystemApproval.approveC1(approveTargetId, payload);
+        toast.success('Phê duyệt cấp 1 thành công');
+      } else {
+        await vtsSystemApproval.approveC2(approveTargetId, payload);
+        toast.success('Phê duyệt cấp 2 thành công');
+      }
+      setApproveModalOpen(false);
+      refreshList();
+    } catch (err: any) {
+      toast.error(err?.message || 'Lỗi phê duyệt');
+    }
   };
 
   const openRejectModal = (id: string, level: 'c1' | 'c2') => {
@@ -518,12 +671,56 @@ export default function VtsSystemList() {
       render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1
     },
     {
-      key: 'systemName', label: 'Tên hệ thống', dataIndex: 'systemName', width: 300, sortable: true,
+      key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 220,
+      render: (val: string) => val || '—'
+    },
+    {
+      key: 'approvalStatus', label: 'Trạng thái phê duyệt', dataIndex: 'approvalStatus', width: 220, sortable: true, align: 'center' as const,
+      render: (val: ApprovalStatus) => {
+        const label = APPROVAL_STATUS_MAP[val] || val;
+        const color = APPROVAL_COLOR[val] || textSecondary;
+        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
+      }
+    },
+    {
+      key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 180, sortable: true,
+      render: (val: string) => formatDate(val)
+    },
+    {
+      key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName', width: 220,
+      render: (val: string) => val || '—'
+    },
+    {
+      key: 'owningOrgName', label: 'Đơn vị chủ quản', dataIndex: 'owningOrgName', width: 220,
+      render: (val: string) => val || '—'
+    },
+    {
+      key: 'operatingOrgName', label: 'Đơn vị vận hành', dataIndex: 'operatingOrgName', width: 220,
+      render: (val: string) => val || '—'
+    },
+    {
+      key: 'portName', label: 'Thuộc cảng biển', dataIndex: 'portName', width: 200,
+      render: (val: string) => val || '—'
+    },
+    {
+      key: 'code', label: 'Mã hệ thống VTS', dataIndex: 'code', width: 180, sortable: true,
+      render: (val: string) => val || '—'
+    },
+    {
+      key: 'systemName', label: 'Tên hệ thống VTS', dataIndex: 'systemName', width: 260, sortable: true,
       render: (val: string) => <Typography.Text strong>{val || '—'}</Typography.Text>
     },
     {
-      key: 'address', label: 'Địa điểm chi tiết', dataIndex: 'address', width: 240, sortable: true,
-      render: (val: string) => val || '—'
+      key: 'address', label: 'Địa điểm', dataIndex: 'address', width: 240, sortable: true,
+      render: (val: string, record: any) => {
+        const provinceName = record.provinceId ? getProvinceNameById(record.provinceId) : '';
+        if (val && provinceName) return `${val}, ${provinceName}`;
+        return val || provinceName || '—';
+      }
+    },
+    {
+      key: 'operationStartDate', label: 'Thời gian bắt đầu hoạt động', dataIndex: 'operationStartDate', width: 260, sortable: true,
+      render: (val: string) => val ? dayjs(val).format('DD/MM/YYYY') : '—'
     },
     {
       key: 'conditionStatus', label: 'Tình trạng', dataIndex: 'conditionStatus', width: 170, sortable: true, align: 'center' as const,
@@ -533,19 +730,6 @@ export default function VtsSystemList() {
         const color = CONDITION_COLOR[val] || textSecondary;
         return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color, whiteSpace: 'nowrap' }}>{display}</span>;
       }
-    },
-    { key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 220 },
-    {
-      key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 170, sortable: true, align: 'center' as const,
-      render: (val: ApprovalStatus) => {
-        const label = APPROVAL_STATUS_MAP[val] || val;
-        const color = APPROVAL_COLOR[val] || textSecondary;
-        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
-      }
-    },
-    {
-      key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 170, sortable: true,
-      render: (val: string) => formatDate(val)
     },
   ], [page, pageSize]);
 
@@ -561,12 +745,12 @@ export default function VtsSystemList() {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditingId(record.id); setSelectedRecord(record); setModalMode('edit'); setIsModalOpen(true); } });
     }
     if (hasPerm('vts:approvec1') && record.approvalStatus === ApprovalStatus.PROPOSED) {
-      actions.push({ key: 'approveC1', label: 'Phê duyệt C1', icon: <CheckOutlined />, onClick: () => handleApproveC1(record) });
+      actions.push({ key: 'approveC1', label: 'Phê duyệt C1', icon: <CheckOutlined />, onClick: () => openApproveModal(record.id, 'c1') });
       actions.push({ key: 'rejectC1', label: 'Từ chối C1', danger: true, icon: <CloseOutlined />, onClick: () => openRejectModal(record.id, 'c1') });
     }
     if (hasPerm('vts:approvec2') && record.approvalStatus === ApprovalStatus.UNDER_REVIEW) {
       const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
-      actions.push({ key: 'approveC2', label: isSelfApproval ? 'Phê duyệt C2 (không thể tự duyệt)' : 'Phê duyệt C2', icon: <CheckOutlined />, disabled: isSelfApproval, onClick: () => handleApproveC2(record) });
+      actions.push({ key: 'approveC2', label: isSelfApproval ? 'Phê duyệt C2 (không thể tự duyệt)' : 'Phê duyệt C2', icon: <CheckOutlined />, disabled: isSelfApproval, onClick: () => openApproveModal(record.id, 'c2') });
       actions.push({ key: 'rejectC2', label: isSelfApproval ? 'Từ chối C2 (không thể tự duyệt)' : 'Từ chối C2', danger: true, disabled: isSelfApproval, icon: <CloseOutlined />, onClick: () => openRejectModal(record.id, 'c2') });
     }
     if (hasPerm('vts:delete') && record.approvalStatus === ApprovalStatus.APPROVED) {
@@ -655,16 +839,18 @@ export default function VtsSystemList() {
           return historyFieldValue(fn, raw);
         };
         if (changes.length === 0) return null;
+        const actionMeta = resolveHistoryActionMeta(g, changes);
         return (
           <div key={gi} style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 0.38fr) minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                <Typography.Text style={{ display: 'block', fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5 }}>
+                <Typography.Text style={{ display: 'block', fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
                   {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
-                  {isCreate && <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${statusOperational}15`, color: statusOperational }}>Thêm mới</span>}
-                  {!isCreate && <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>Chỉnh sửa</span>}
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
+                    {actionMeta.label}
+                  </span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
@@ -677,28 +863,53 @@ export default function VtsSystemList() {
               </div>
             </div>
             <div style={{ position: 'relative', minWidth: 0, background: surfacePage, borderRadius: radiusSm, padding: spaceMd, paddingLeft: spaceLg, overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spaceXs, background: `linear-gradient(180deg, ${actionPrimary} 0%, ${actionPrimary}40 100%)` }} />
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: spaceXs, background: `linear-gradient(180deg, ${actionMeta.color} 0%, ${actionMeta.color}40 100%)` }} />
               <Typography.Text style={{ display: 'block', color: textPrimary, fontSize: fontSizeMd + 1, fontWeight: fontWeightBold, marginBottom: spaceXs }}>
                 {informationTitle}
               </Typography.Text>
-              {changes.length > 0 ? <div>{changes.map((change, ri: number) => {
-                const fn = change.field;
-                const ov = formatHistoryValue(fn, change.oldValue);
-                const nv = formatHistoryValue(fn, change.newValue);
-                return isCreate ? (
-                  <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) minmax(160px, 2fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
-                    <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{nv ?? '—'}</span>
-                  </div>
-                ) : (
-                  <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.15fr) minmax(90px, 0.85fr) 24px minmax(120px, 1.35fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
-                    <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={{ minWidth: 0, color: textSecondary, overflowWrap: 'anywhere' }}>{ov ?? '—'}</span>
-                    <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
-                    <span title={nv ?? '—'} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{nv ?? '—'}</span>
-                  </div>
-                );
-              })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
+              {(() => {
+                const validChanges = changes.filter(c => formatHistoryValue(c.field, c.oldValue) != null || formatHistoryValue(c.field, c.newValue) != null);
+                const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
+
+                if (validChanges.length > 0) {
+                  return (
+                    <div>
+                      {validChanges.map((change, ri: number) => {
+                        const fn = change.field;
+                        const ov = formatHistoryValue(fn, change.oldValue);
+                        const nv = formatHistoryValue(fn, change.newValue);
+                        return isCreate ? (
+                          <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) minmax(160px, 2fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
+                            <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                            <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{renderHistoryValueTag(fn, nv)}</div>
+                          </div>
+                        ) : (
+                          <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 1.15fr) minmax(90px, 0.85fr) 24px minmax(120px, 1.35fr)', gap: spaceSm, alignItems: 'start', paddingTop: ri > 0 ? spaceXs : 0, fontSize: fontSizeMd, lineHeight: 1.5 }}>
+                            <div style={{ minWidth: 0, fontWeight: fontWeightMedium, color: textPrimary, overflowWrap: 'anywhere' }}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                            <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{renderHistoryValueTag(fn, ov)}</div>
+                            <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
+                            <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{renderHistoryValueTag(fn, nv)}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                if (reasons.length > 0) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
+                      {reasons.map((r: string, ri: number) => (
+                        <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>
+                          {r}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+
+                return <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>;
+              })()}
             </div>
           </div>
         );
@@ -852,10 +1063,10 @@ export default function VtsSystemList() {
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
             <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
               onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
-            <DatePicker placeholder="Từ ngày" popupClassName="history-dt-popup" value={historyDateFrom ? dayjs(historyDateFrom) : null}
+            <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateFrom ? dayjs(historyDateFrom) : null}
               onChange={d => setHistoryDateFrom(d ? d.startOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" popupClassName="history-dt-popup" value={historyDateTo ? dayjs(historyDateTo) : null}
+            <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyDateTo ? dayjs(historyDateTo) : null}
               onChange={d => setHistoryDateTo(d ? d.endOf('minute').format('YYYY-MM-DDTHH:mm:ss') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
             <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
@@ -876,6 +1087,14 @@ export default function VtsSystemList() {
             )}
         </div>
       </Drawer>
+
+      {/* Approval Modal */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approveLevel}
+        onConfirm={handleApprove}
+        onCancel={() => setApproveModalOpen(false)}
+      />
 
       {/* Reject Modal */}
       <Modal title="Từ chối" open={rejectModalOpen} onOk={handleReject}

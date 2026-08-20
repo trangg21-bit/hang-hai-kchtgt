@@ -136,6 +136,7 @@ Khi người dùng click vào một mốc, hiển thị popup "Chi tiết lịch
 | BR-067-03 | Mỗi mốc lịch sử lưu snapshot đầy đủ dữ liệu tại thời điểm đó |
 | BR-067-04 | Dữ liệu lịch sử không thể sửa hoặc xóa (immutable) |
 | BR-067-05 | Lịch sử phê duyệt hiển thị riêng 2 cấp: Cảng vụ/Chi cục (C1) + Cục (C2) |
+| BR-067-06 | Khi tải lên hoặc xóa file đính kèm ở trạng thái `Đang xem xét`, lịch sử ghi nhận hành động `Cập nhật` kèm chi tiết thay đổi `Trạng thái phê duyệt: Đang xem xét ➔ Chờ phê duyệt` và thông tin tệp đính kèm |
 
 ## Roles + Permissions
 

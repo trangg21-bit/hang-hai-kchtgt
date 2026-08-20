@@ -21,8 +21,6 @@ class VtsSystemEntityTest {
     void testDefaultValues() {
         VtsSystem entity = VtsSystem.builder()
                 .systemName("ABC").build();
-        assertFalse(entity.getApprovedLevel1());
-        assertFalse(entity.getApprovedLevel2());
         // Not deleted by default → deletedAt should be null
         assertNull(entity.getDeletedAt());
     }
@@ -55,11 +53,10 @@ class VtsSystemEntityTest {
         VtsSystem entity = VtsSystem.builder()
                 .systemName("VTS ABC").build();
         assertNull(entity.getApprovalStatus());  // null before persist
-        assertFalse(entity.getApprovedLevel1());
 
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setApprovedLevel1(true);
-        entity.setApprovedLevel2(true);
+        entity.setApproverLevel1(java.util.UUID.randomUUID());
+        entity.setApproverLevel2(java.util.UUID.randomUUID());
         assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
 
         // Soft-delete via BaseEntity
