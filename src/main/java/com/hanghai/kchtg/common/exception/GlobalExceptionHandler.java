@@ -23,12 +23,12 @@ import java.util.Map;
  * <p>
  * Covered:
  * <ul>
- *   <li>{@code @Valid} request-body validation → 400</li>
- *   <li>{@code @Validated} path-variable / query-param validation → 400</li>
- *   <li>JPA entity not found → 404</li>
- *   <li>Illegal arguments → 400</li>
- *   <li>Unhandled exceptions → 500 (message hidden in production by
- *       {@code application.yml + logging}</li>
+ * <li>{@code @Valid} request-body validation → 400</li>
+ * <li>{@code @Validated} path-variable / query-param validation → 400</li>
+ * <li>JPA entity not found → 404</li>
+ * <li>Illegal arguments → 400</li>
+ * <li>Unhandled exceptions → 500 (message hidden in production by
+ * {@code application.yml + logging}</li>
  * </ul>
  */
 @RestControllerAdvice
@@ -45,8 +45,8 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex) {
 
         Map<String, String> fieldErrors = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                fieldErrors.put(error.getField(), error.getDefaultMessage()));
+        ex.getBindingResult().getFieldErrors()
+                .forEach(error -> fieldErrors.put(error.getField(), error.getDefaultMessage()));
 
         log.debug("Validation failed: {}", fieldErrors);
         return ResponseEntity
@@ -104,7 +104,7 @@ public class GlobalExceptionHandler {
      * Handles {@code IllegalArgumentException} from service-layer guard
      * clauses (dispatched as 400 Bad Request).
      */
-    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    @ExceptionHandler({ IllegalArgumentException.class, IllegalStateException.class })
     public ResponseEntity<ApiResponse<String>> handleIllegalArgumentOrState(
             Exception ex) {
 
@@ -115,8 +115,10 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Database unique constraints remain the final guard against concurrent requests.
-     * Convert the case-insensitive email constraint into the same validation response
+     * Database unique constraints remain the final guard against concurrent
+     * requests.
+     * Convert the case-insensitive email constraint into the same validation
+     * response
      * returned by {@code UserService}.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -148,16 +150,36 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("Địa điểm (Tỉnh/Thành phố) được chọn không tồn tại trong hệ thống"));
         }
 
-        if (detail != null && (detail.contains("violates foreign key constraint") || detail.contains("foreign key constraint"))) {
+        if (detail != null
+                && (detail.contains("violates foreign key constraint") || detail.contains("foreign key constraint"))) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("Dữ liệu liên kết (Đơn vị/Cảng biển/Tỉnh thành) không tồn tại trong hệ thống"));
+                    .body(ApiResponse
+                            .error("Dữ liệu liên kết (Đơn vị/Cảng biển/Tỉnh thành) không tồn tại trong hệ thống"));
         }
 
         log.warn("Data integrity violation: {}", detail);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error("Dữ liệu đã tồn tại hoặc không hợp lệ"));
+    }
+
+    @ExceptionHandler(com.hanghai.kchtg.user.exception.DuplicateResourceException.class)
+    public ResponseEntity<ApiResponse<String>> handleDuplicateResource(
+            com.hanghai.kchtg.user.exception.DuplicateResourceException ex) {
+        log.warn("Duplicate resource exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.hanghai.kchtg.user.exception.RegistrationException.class)
+    public ResponseEntity<ApiResponse<String>> handleRegistrationException(
+            com.hanghai.kchtg.user.exception.RegistrationException ex) {
+        log.warn("Registration exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(ValidationException.class)
@@ -169,21 +191,23 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles {@link org.springframework.http.converter.HttpMessageNotReadableException} - typically thrown when
-     * JSON payload is malformed, field values are out of bounds or types don't match.
+     * Handles
+     * {@link org.springframework.http.converter.HttpMessageNotReadableException} -
+     * typically thrown when
+     * JSON payload is malformed, field values are out of bounds or types don't
+     * match.
      */
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<String>> handleHttpMessageNotReadable(
             org.springframework.http.converter.HttpMessageNotReadableException ex) {
         log.debug("Http message not readable: {}", ex.getMessage());
         String msg = "Dữ liệu yêu cầu không hợp lệ hoặc sai định dạng";
-        
+
         Throwable cause = ex.getCause();
         boolean foundSpecific = false;
         while (cause != null) {
             if (cause instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException) {
-                com.fasterxml.jackson.databind.exc.InvalidFormatException ife = 
-                        (com.fasterxml.jackson.databind.exc.InvalidFormatException) cause;
+                com.fasterxml.jackson.databind.exc.InvalidFormatException ife = (com.fasterxml.jackson.databind.exc.InvalidFormatException) cause;
                 msg += ": giá trị '" + ife.getValue() + "' không đúng định dạng mong muốn";
                 foundSpecific = true;
                 break;
@@ -194,18 +218,19 @@ public class GlobalExceptionHandler {
             }
             cause = cause.getCause();
         }
-        
+
         if (!foundSpecific && ex.getCause() != null) {
             msg += ": Vui lòng kiểm tra lại kiểu dữ liệu của các trường";
         }
-        
+
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(msg));
     }
 
     /**
-     * Handles UnauthorizedIntegrationException when pre-shared token is invalid or missing.
+     * Handles UnauthorizedIntegrationException when pre-shared token is invalid or
+     * missing.
      */
     @ExceptionHandler(UnauthorizedIntegrationException.class)
     public ResponseEntity<ApiResponse<String>> handleUnauthorizedIntegration(
@@ -221,7 +246,7 @@ public class GlobalExceptionHandler {
      * security filter chain (ExceptionTranslationFilter) can handle them (e.g.
      * returning 401 Unauthorized or 403 Forbidden).
      */
-    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    @ExceptionHandler({ AccessDeniedException.class, AuthorizationDeniedException.class })
     public void handleAccessDenied(Exception ex) throws Exception {
         throw ex;
     }

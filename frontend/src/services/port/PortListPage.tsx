@@ -54,8 +54,9 @@ import {
   EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { berthCRUD, waterZoneCRUD } from '../../services/portService';
+import { berthCRUD, waterZoneCRUD, pierCRUD } from '../../services/portService';
 import BerthDetailContent from '../../pages/port/BerthDetailContent';
+import PierDetailContent from '../../pages/port/PierDetailContent';
 import { userService } from '../../services/userService';
 import { waterZoneApi } from '../../app/waterzone/api';
 import { lineObjectService } from '../../services/lineObjectService';
@@ -499,6 +500,24 @@ export default function PortListPage() {
   const [kchtDetailRecord, setKchtDetailRecord] = useState<any>(null);
   const [kchtDetailFiles, setKchtDetailFiles] = useState<any[]>([]);
   const [kchtDetailLoading, setKchtDetailLoading] = useState(false);
+  const [pierDetailOpen, setPierDetailOpen] = useState(false);
+  const [pierDetailRecord, setPierDetailRecord] = useState<any>(null);
+  const [pierDetailFiles, setPierDetailFiles] = useState<any[]>([]);
+  const [pierDetailLoading, setPierDetailLoading] = useState(false);
+
+  const openPierDetail = useCallback(async (id: string) => {
+    setPierDetailLoading(true); setPierDetailOpen(true); setPierDetailRecord(null);
+    try {
+      const [rec, fileRes] = await Promise.all([
+        pierCRUD.findById(id),
+        documentApi.listByEntity('pier', id, { page: 1, size: 20 }),
+      ]);
+      setPierDetailRecord(rec);
+      setPierDetailFiles((fileRes as any)?.data || []);
+    } catch { toast.error('Không thể tải chi tiết cầu cảng'); setPierDetailRecord(null); }
+    finally { setPierDetailLoading(false); }
+  }, []);
+
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -1589,19 +1608,6 @@ export default function PortListPage() {
       //   render: (portCode: string) => <Tag color="cyan">{portCode}</Tag>,
       // },
       {
-        key: 'orgUnitId',
-        label: 'Đơn vị quản lý',
-        dataIndex: 'orgUnitId',
-        width: 260,
-        fixed: 'left' as const,
-        sortable: true,
-        sortOrder: sortField === 'orgUnitId' ? sortOrder : null,
-        render: (_v: string | null, record: CangBienResponse) => {
-          const level2 = record.orgUnitId ? orgLevel2Map.get(record.orgUnitId) : undefined;
-          return <span style={{ fontWeight: fontWeightBold }}>{level2 || record.orgUnitName || _v || '—'}</span>;
-        },
-      },
-      {
         key: 'portName',
         label: 'Tên cảng biển',
         dataIndex: 'portName',
@@ -1631,10 +1637,22 @@ export default function PortListPage() {
         ),
       },
       {
+        key: 'orgUnitId',
+        label: 'Đơn vị quản lý',
+        dataIndex: 'orgUnitId',
+        width: 260,
+        sortable: true,
+        sortOrder: sortField === 'orgUnitId' ? sortOrder : null,
+        render: (_v: string | null, record: CangBienResponse) => {
+          const level2 = record.orgUnitId ? orgLevel2Map.get(record.orgUnitId) : undefined;
+          return <span style={{ fontWeight: fontWeightBold }}>{level2 || record.orgUnitName || _v || '—'}</span>;
+        },
+      },
+      {
         key: 'portGroup',
         label: 'Nhóm cảng biển',
         dataIndex: 'portGroup',
-        width: 150,
+        width: 170,
         sortable: true,
         sortOrder: sortField === 'portGroup' ? sortOrder : null,
         render: (v: number | null) => getPortGroupLabel(v),
@@ -1643,16 +1661,16 @@ export default function PortListPage() {
         key: 'portClass',
         label: 'Phân cấp cảng biển',
         dataIndex: 'portClass',
-        width: 180,
+        width: 200,
         sortable: true,
         sortOrder: sortField === 'portClass' ? sortOrder : null,
         render: (v: number | null) => v != null ? (v === 5 ? 'Cấp đặc biệt' : `Cấp ${v}`) : '—',
       },
       {
         key: 'province',
-        label: 'Tỉnh/Thành phố',
+        label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'province',
-        width: 150,
+        width: 250,
         sortable: true,
         sortOrder: sortField === 'province' ? sortOrder : null,
         render: (v: string | null) => v || '—',
@@ -1661,7 +1679,7 @@ export default function PortListPage() {
         key: 'updatedBy',
         label: 'Người cập nhật',
         dataIndex: 'updatedByName',
-        width: 160,
+        width: 170,
         sortable: true,
         sortOrder: sortField === 'updatedBy' ? sortOrder : null,
         render: (v: string | null) => <span style={{ fontWeight: fontWeightBold }}>{v || '—'}</span>,
@@ -1682,7 +1700,6 @@ export default function PortListPage() {
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 160,
-        fixed: 'right' as const,
         sortable: true,
         sortOrder: sortField === 'approvalStatus' ? sortOrder : null,
         render: (v: string) => {
@@ -3922,9 +3939,49 @@ export default function PortListPage() {
             approvalStyleMap={APPROVAL_STYLE_MAP}
             structureTypeOptions={STRUCTURE_TYPE_OPTIONS}
             waterwayMap={waterwayMap}
+            onViewPierDetail={openPierDetail}
           />
         ) : kchtDetailRecord && kchtDetailType === 'waterzone' ? (
           <WaterZoneDetailMini record={kchtDetailRecord} symbols={symbols as any[]} files={kchtDetailFiles} userMap={userMap} />
+        ) : null}
+      </Drawer>
+
+      {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
+      <Drawer
+        {...drawerProps}
+        size={900}
+        title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
+        open={pierDetailOpen}
+        onClose={() => setPierDetailOpen(false)}
+        extra={<Button type="text" onClick={() => setPierDetailOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {pierDetailLoading ? (
+          <div style={{ padding: 48, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải chi tiết...</div>
+        ) : pierDetailRecord ? (
+          <PierDetailContent
+            selectedRecord={pierDetailRecord}
+            orgMap={new Map((orgUnits || []).map((o: any) => [o.id, o.name]))}
+            organizations={orgUnits as any}
+            portMap={new Map([[selectedRecord?.id ?? '', selectedRecord?.portName || '']])}
+            berthOptions={kchtDetailRecord ? [{ value: kchtDetailRecord.id, label: kchtDetailRecord.berthName || kchtDetailRecord.berthCode || '' }] : []}
+            symbolMap={new Map((symbols || []).map((s: any) => [s.id, s.name]))}
+            symbolImageMap={new Map((symbols || []).filter((s: any) => s.image).map((s: any) => [s.id, s.image]))}
+            detailFiles={pierDetailFiles}
+            ddToDms={ddToDms}
+            approvalStyleMap={APPROVAL_STYLE_MAP}
+            operationalStyleMap={{
+              OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
+              NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
+              SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
+            }}
+            userMap={userMap}
+            waterwayMap={waterwayMap}
+          />
         ) : null}
       </Drawer>
 

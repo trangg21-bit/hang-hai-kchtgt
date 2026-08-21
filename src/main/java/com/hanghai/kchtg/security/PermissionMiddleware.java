@@ -57,6 +57,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/auth/",
             "/api/public/",
             "/api/health/",
+            "/api/register",
+            "/api/verify",
             "/api/v1/auth/",
             "/api/v1/dashboard/",
             "/api/v1/integration/share/",

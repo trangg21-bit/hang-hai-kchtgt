@@ -262,6 +262,12 @@ export const pierCRUD = {
     status?: string;
     orgUnitId?: string;
     approvalStatus?: string;
+    navigationChannelId?: string;
+    constructionGrade?: number;
+    structureType?: number;
+    operationalFunction?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Pier>> {
@@ -274,6 +280,12 @@ export const pierCRUD = {
       status: params?.status,
       orgUnitId: params?.orgUnitId,
       approvalStatus: params?.approvalStatus,
+      navigationChannelId: params?.navigationChannelId,
+      constructionGrade: params?.constructionGrade,
+      structureType: params?.structureType,
+      operationalFunction: params?.operationalFunction,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -491,12 +503,12 @@ export const berthApproval = {
 };
 
 export const pierApproval = {
-  async approve(id: string): Promise<void> {
-    await api.post(`/v1/piers/${id}/approve`);
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/piers/${id}/approve`, { cap, content: content?.trim() || undefined });
   },
 
-  async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/v1/piers/${id}/reject`, null, { params: { reason } });
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/piers/${id}/reject`, { cap, lyDo });
   },
 };
 

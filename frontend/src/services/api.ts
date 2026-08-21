@@ -88,12 +88,23 @@ api.interceptors.response.use(
     } else if (status === 401) {
       friendlyMsg = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
     } else if (status === 403) {
-      const token = localStorage.getItem('auth_token');
-      friendlyMsg = token
-        ? 'Bạn không có quyền thực hiện hành động này.'
-        : 'Vui lòng đăng nhập để tiếp tục.';
+      const isAuthPath =
+        error.config?.url?.includes('/auth/') ||
+        error.config?.url?.includes('/register') ||
+        error.config?.url?.includes('/forgot-password') ||
+        error.config?.url?.includes('/reset-password');
+      if (isAuthPath && error.response?.data?.message) {
+        friendlyMsg = error.response.data.message;
+      } else {
+        const token = localStorage.getItem('auth_token');
+        friendlyMsg = token
+          ? 'Bạn không có quyền thực hiện hành động này.'
+          : 'Vui lòng đăng nhập để tiếp tục.';
+      }
     } else if (status === 404) {
       friendlyMsg = error.response?.data?.message || 'Không tìm thấy tài nguyên yêu cầu (404).';
+    } else if (status === 409) {
+      friendlyMsg = error.response?.data?.message || 'Dữ liệu đã tồn tại trong hệ thống (409).';
     } else if (status === 502) {
       friendlyMsg = 'Cổng kết nối bị lỗi hoặc máy chủ đang khởi động lại (502).';
     } else if (status === 503) {
@@ -109,16 +120,27 @@ api.interceptors.response.use(
     // Override the error message property so catch blocks receive the friendly Vietnamese message
     error.message = friendlyMsg;
 
-    const isAuthRequest = error.config?.url?.includes('/auth/login');
+    const isAuthRequest =
+      error.config?.url?.includes('/auth/') ||
+      error.config?.url?.includes('/register') ||
+      error.config?.url?.includes('/verify') ||
+      error.config?.url?.includes('/forgot-password') ||
+      error.config?.url?.includes('/reset-password');
+
+    const isPublicAuthPage =
+      typeof window !== 'undefined' &&
+      (window.location.pathname === '/login' ||
+        window.location.pathname === '/register' ||
+        window.location.pathname.startsWith('/forgot-password') ||
+        window.location.pathname.startsWith('/reset-password'));
+
     const isDocumentEntityRequest = error.config?.url?.includes('/v1/documents/entity/');
     const isHistoryRequest = error.config?.url?.includes('/history');
 
     if (status === 401) {
       const isIntegrationRequest = error.config?.url?.includes('/v1/integration/share');
-      if (!isIntegrationRequest) {
-        if (!isAuthRequest) {
-          showUniqueError(friendlyMsg);
-        }
+      if (!isIntegrationRequest && !isPublicAuthPage && !isAuthRequest) {
+        showUniqueError(friendlyMsg);
         localStorage.removeItem('auth_token');
         window.location.href = '/login';
       }
@@ -134,11 +156,11 @@ api.interceptors.response.use(
 
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        if (!isAuthRequest) {
+        if (!isAuthRequest && !isPublicAuthPage) {
           showUniqueError(friendlyMsg);
+          localStorage.removeItem('auth_token');
+          window.location.href = '/login';
         }
-        localStorage.removeItem('auth_token');
-        window.location.href = '/login';
       } else {
         if (!isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest) {
           showUniqueError(friendlyMsg);

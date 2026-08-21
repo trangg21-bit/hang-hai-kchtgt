@@ -13,6 +13,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.hanghai.kchtg.security.RecordSecurityLevel;
@@ -175,4 +176,30 @@ public class Pier extends BaseEntity {
 
     @Column(name = "display_rule", length = 255)
     private String displayRule;
+
+    // ── Two-level approval tracking (mirror berths V112) ────────────
+
+    @Column(name = "submitted_for_approval_at")
+    private LocalDateTime submittedForApprovalAt;
+
+    @Column(name = "submitted_for_approval_by", length = 100)
+    private String submittedForApprovalBy;
+
+    @Column(name = "port_authority_approved_at")
+    private LocalDateTime portAuthorityApprovedAt;
+
+    @Column(name = "port_authority_approved_by", length = 100)
+    private String portAuthorityApprovedBy;
+
+    @Column(name = "department_approved_at")
+    private LocalDateTime departmentApprovedAt;
+
+    @Column(name = "department_approved_by", length = 100)
+    private String departmentApprovedBy;
+
+    @Column(name = "port_authority_approval_content", length = 1000)
+    private String portAuthorityApprovalContent;
+
+    @Column(name = "department_approval_content", length = 1000)
+    private String departmentApprovalContent;
 }

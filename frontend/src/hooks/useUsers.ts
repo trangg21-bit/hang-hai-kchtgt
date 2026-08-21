@@ -82,8 +82,8 @@ export function useToggleLockUser() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, currentStatus }: { id: string; currentStatus: string }) =>
-      userService.toggleLock(id, currentStatus),
+    mutationFn: ({ id, currentStatus, reason }: { id: string; currentStatus: string; reason?: string }) =>
+      userService.toggleLock(id, currentStatus, reason),
     onSuccess: (res) => {
       const statusText = res.data.status === 'locked' ? 'đã bị khóa' : 'đã được mở khóa';
       message.success(`Tài khoản ${statusText}`);
@@ -96,7 +96,8 @@ export function useChangeStatusUser() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => userService.changeStatus(id, status),
+    mutationFn: ({ id, status, reason }: { id: string; status: string; reason?: string }) =>
+      userService.changeStatus(id, status, reason),
     onSuccess: () => {
       message.success('Đã cập nhật trạng thái');
       qc.invalidateQueries({ queryKey: ['users'] });

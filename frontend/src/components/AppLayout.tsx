@@ -236,6 +236,7 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
+    /* ẨN MENU: Quản lý KCHT trên nền bản đồ (GIS)
     {
       key: 'gis',
       icon: <CompassOutlined />,
@@ -248,6 +249,7 @@ export default function AppLayout() {
         canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
       ].filter(Boolean),
     },
+    */
     { type: 'divider' as const },
     {
       key: 'beacon',
@@ -296,6 +298,7 @@ export default function AppLayout() {
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
     },
+    /* ẨN MENU: Biến động tài sản
     {
       key: 'asset-movement',
       icon: <ContainerOutlined />,
@@ -307,6 +310,7 @@ export default function AppLayout() {
         canAccessMenu('/asset/exploitation') ? { key: '/asset/exploitation', label: 'Khai thác tài sản' } : null,
       ].filter(Boolean),
     },
+    */
     {
       key: 'documents-incidents',
       icon: <ContainerOutlined />,
@@ -340,6 +344,7 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
+    /* ẨN MENU: BÁO CÁO THỐNG KÊ
     canAccessMenu('/reports') ? {
       key: 'reports-parent',
       icon: <BarChartOutlined />,
@@ -449,6 +454,7 @@ export default function AppLayout() {
         }
       ]
     } : null,
+    */
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
     { type: 'divider' as const },

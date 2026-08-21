@@ -19,8 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RegisterAccountRequest {
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
-    @Size(min = 3, max = 100, message = "Tên đăng nhập từ 3 đến 100 ký tự")
+    @Size(max = 100, message = "Tên đăng nhập tối đa 100 ký tự")
     private String username;
 
     @NotBlank(message = "Mật khẩu không được để trống")

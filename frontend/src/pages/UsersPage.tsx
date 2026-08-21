@@ -15,7 +15,7 @@ import { organizationService, type Organization } from '../services/organization
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
-import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceXs, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
+import { statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightBold, fontWeightMedium, radiusPill, radiusTextArea, radiusMd, borderDefault, spaceFormField, spaceMd, spaceSm, spaceXs, formFieldStyle, formRowGutter, inputStyle, selectStyle, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../tokens';
 import { colors } from '../theme';
 import toast, { modal } from '../components/ToastNotification';
 import ManagementDrawer from '../components/management/ManagementDrawer';
@@ -23,19 +23,25 @@ const { confirm } = modal;
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Hoạt động',
+  ACTIVE: 'Hoạt động',
   locked: 'Đã khóa',
+  LOCKED: 'Đã khóa',
   inactive: 'Không hoạt động',
+  INACTIVE: 'Không hoạt động',
   pending_approval: 'Chờ phê duyệt',
   PENDING_APPROVAL: 'Chờ phê duyệt',
+  pending_verification: 'Chờ xác thực',
+  PENDING_VERIFICATION: 'Chờ xác thực',
 };
 
 function getStatusBadgeClass(status: string): string {
-  switch (status) {
+  const s = (status || '').toLowerCase();
+  switch (s) {
     case 'active': return 'status-badge--active';
     case 'locked': return 'status-badge--locked';
     case 'inactive': return 'status-badge--inactive';
     case 'pending_approval':
-    case 'PENDING_APPROVAL': return 'status-badge--pending';
+    case 'pending_verification': return 'status-badge--pending';
     default: return '';
   }
 }
@@ -181,14 +187,36 @@ export default function UsersPage() {
     }
   }, [editingUser, form, createUser, updateUser]);
 
+  const [lockTargetUser, setLockTargetUser] = useState<User | null>(null);
+  const [lockReason, setLockReason] = useState('');
+  const [lockSubmitting, setLockSubmitting] = useState(false);
+
   const handleDelete = useCallback((user: User) => {
     confirm({ title: 'Xác nhận xóa người dùng', icon: <ExclamationCircleOutlined />, content: `Bạn có chắc chắn muốn xóa người dùng "${user.fullName}"? Hành động này không thể hoàn tác.`, okText: 'Xóa', okType: 'danger', cancelText: 'Hủy', onOk: () => deleteUser.mutateAsync(user.id) });
   }, [deleteUser]);
 
   const handleToggleLock = useCallback((user: User) => {
-    const willBeLocked = user.status !== 'locked';
-    confirm({ title: willBeLocked ? 'Xác nhận khóa tài khoản' : 'Xác nhận mở khóa tài khoản', icon: <ExclamationCircleOutlined />, content: willBeLocked ? `Tài khoản "${user.fullName}" sẽ bị khóa và không thể đăng nhập. Tiếp tục?` : `Tài khoản "${user.fullName}" sẽ được mở khóa. Tiếp tục?`, okText: willBeLocked ? 'Khóa' : 'Mở khóa', okType: willBeLocked ? 'danger' : 'primary', cancelText: 'Hủy', onOk: () => toggleLock.mutateAsync({ id: user.id, currentStatus: user.status }) });
-  }, [toggleLock]);
+    setLockTargetUser(user);
+    setLockReason('');
+  }, []);
+
+  const handleConfirmToggleLock = useCallback(async () => {
+    if (!lockTargetUser) return;
+    setLockSubmitting(true);
+    try {
+      await toggleLock.mutateAsync({
+        id: lockTargetUser.id,
+        currentStatus: lockTargetUser.status,
+        reason: lockReason.trim() || undefined,
+      });
+      setLockTargetUser(null);
+      setLockReason('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
+    } finally {
+      setLockSubmitting(false);
+    }
+  }, [lockTargetUser, lockReason, toggleLock]);
 
   const handleResetPassword = useCallback((user: User) => {
     resetPasswordForm.resetFields();
@@ -347,7 +375,8 @@ export default function UsersPage() {
       actions.push({ key: 'permissions', label: 'Phân quyền', icon: <KeyOutlined />, onClick: () => openPermissionModal(record) });
     }
 
-    if (record.status === 'PENDING_APPROVAL') {
+    const s = (record.status || '').toUpperCase();
+    if (s === 'PENDING_APPROVAL' || s === 'PENDING_VERIFICATION') {
       if (hasPerm('user:approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
       if (hasPerm('user:approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
     } else {
@@ -473,7 +502,7 @@ export default function UsersPage() {
             labelCol={{ style: { padding: 0, marginBottom: 4 } }}
             initialValues={{ status: 'active' }}
           >
-            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng chọn đơn vị' }]}>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={formFieldStyle} rules={[{ required: !editingUser, message: 'Vui lòng chọn đơn vị' }]}>
               <OrgUnitTreeSelect
                 organizations={organizations}
                 placeholder="Chọn đơn vị"
@@ -728,6 +757,53 @@ export default function UsersPage() {
           </div>
         )}
       </Drawer>
+
+      <Modal
+        open={Boolean(lockTargetUser)}
+        title={
+          <span style={{ fontSize: fontSizeLg, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+            {lockTargetUser?.status === 'locked' ? 'Xác nhận mở khóa tài khoản' : 'Xác nhận khóa tài khoản'}
+          </span>
+        }
+        onCancel={() => { if (!lockSubmitting) setLockTargetUser(null); }}
+        footer={[
+          <Button key="cancel" onClick={() => setLockTargetUser(null)} style={outlineButtonStyle} disabled={lockSubmitting}>
+            Hủy
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            danger={lockTargetUser?.status !== 'locked'}
+            loading={lockSubmitting}
+            onClick={handleConfirmToggleLock}
+            style={lockTargetUser?.status === 'locked' ? primaryButtonStyle : { borderRadius: radiusPill, height: 40 }}
+          >
+            {lockTargetUser?.status === 'locked' ? 'Mở khóa' : 'Khóa'}
+          </Button>,
+        ]}
+      >
+        <div style={{ padding: `${spaceSm}px 0` }}>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceMd }}>
+            {lockTargetUser?.status === 'locked'
+              ? `Bạn có chắc chắn muốn mở khóa cho tài khoản "${lockTargetUser?.fullName}" (${lockTargetUser?.email})?`
+              : `Tài khoản "${lockTargetUser?.fullName}" (${lockTargetUser?.email}) sẽ bị khóa và không thể đăng nhập. Tiếp tục?`}
+          </p>
+          <div style={{ marginBottom: spaceSm }}>
+            <label style={{ display: 'block', fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg, marginBottom: spaceXs }}>
+              Lý do:
+            </label>
+            <Input.TextArea
+              rows={3}
+              placeholder={lockTargetUser?.status !== 'locked' ? "Nhập lý do khóa tài khoản" : "Nhập lý do mở khóa tài khoản"}
+              value={lockReason}
+              onChange={(e) => setLockReason(e.target.value)}
+              style={{ borderRadius: radiusTextArea || radiusMd }}
+              maxLength={500}
+              showCount
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -39,3 +39,7 @@ logging:
     org.hibernate: ERROR
     org.springframework.security: WARN
     com.hanghai.kchtg: INFO
+
+app:
+  frontend-url: ${APP_FRONTEND_URL:http://10.0.229.20:30008}
+

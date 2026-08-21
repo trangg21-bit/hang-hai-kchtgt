@@ -127,6 +127,27 @@ public class TotpAuthService {
             throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
+        if (user.getStatus() == UserStatus.PENDING_APPROVAL) {
+            auditLogService.logAttempt(user.getId(), user.getUsername(),
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
+                    "Tài khoản đang chờ phê duyệt", request);
+            throw new IllegalArgumentException("Tài khoản đang chờ Quản trị viên phê duyệt. Vui lòng thử lại sau.");
+        }
+
+        if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
+            auditLogService.logAttempt(user.getId(), user.getUsername(),
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
+                    "Tài khoản chưa xác minh email", request);
+            throw new IllegalArgumentException("Tài khoản chưa được xác minh email. Vui lòng kiểm tra hộp thư.");
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            auditLogService.logAttempt(user.getId(), user.getUsername(),
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
+                    "Tài khoản không hoạt động", request);
+            throw new IllegalArgumentException("Tài khoản chưa được kích hoạt hoặc đã bị vô hiệu hóa.");
+        }
+
         if (!passwordValid) {
             LockoutStatus failureStatus = lockoutService.recordFailure(
                     user, "Mật khẩu không hợp lệ", request);
@@ -189,10 +210,14 @@ public class TotpAuthService {
             throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
-        if (!Boolean.TRUE.equals(user.getTotpEnabled())) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
-                    "Xác thực hai lớp (TOTP) chưa được kích hoạt cho tài khoản này", requestHttp);
+                    "Tài khoản không hoạt động", requestHttp);
+            throw new IllegalArgumentException("Tài khoản chưa được kích hoạt hoặc đang chờ phê duyệt.");
+        }
+
+        if (!Boolean.TRUE.equals(user.getTotpEnabled())) {
             throw new IllegalArgumentException("Xác thực hai lớp (TOTP) chưa được kích hoạt cho tài khoản này");
         }
 

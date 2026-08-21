@@ -25,10 +25,4 @@ public class GlobalPasswordExceptionHandler {
         log.warn("Password complexity violation: {}", ex.getMessage());
         return ApiResponse.error(ex.getMessage());
     }
-
-    @ExceptionHandler(Exception.class)
-    public ApiResponse<Void> handleGeneric(Exception ex) {
-        log.error("Unexpected password error", ex);
-        return ApiResponse.error("Đổi mật khẩu không thành công");
-    }
 }
