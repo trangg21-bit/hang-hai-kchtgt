@@ -68,8 +68,9 @@ Người dùng đăng nhập vào hệ thống, thực hiện đăng ký văn b�
 
 ## Entities
 
-- **VanBanPhapLy**: id, tenVanBan, soHieu, coQuanBanHanh, ngayBanHanh, ngayCoHieuLuc, ngayHetHieuLuc, loaiVanBan, lVinhVucApDung, tinhTrangHieuLuc, nguoiTao, ngayTao, nguoiSuaDoi, ngaySuaDoi
-- **TaiLieuDinhKem**: id, vanBanId, tenTaiLieu, duongDan, kichThuoc, ngayTaiLên
+- **LegalDocument (legal_documents)**: id, documentName, documentNumber, issuingAuthority, issueDate, effectiveDate, expirationDate, documentType, applicationArea, validityStatus, signer, securityLevel, createdBy, createdAt, updatedBy, updatedAt, deletedAt
+- **AttachedDocument (attached_documents)**: id, legalDocument (FK), documentName, filePath, fileSize, uploadedAt
+- **ApprovalHistory (approval_history)**: Lưu trữ lịch sử đa hình dùng chung toàn hệ thống (`ref_type = LEGAL_DOCUMENT (23)`, `ref_id = legal_document_id`). Ghi nhận đầy đủ hành động, người thực hiện, thời gian, chi tiết thay đổi và tệp đính kèm.
 
 ## Business Rules
 
@@ -77,7 +78,8 @@ Người dùng đăng nhập vào hệ thống, thực hiện đăng ký văn b�
 2. Trường ngày có hiệu lực phải lớn hơn hoặc bằng ngày ban hành
 3. Văn bản có trạng thái "Đã hết hiệu lực" không được phép chỉnh sửa nội dung chính
 4. Chỉ Admin mới được phép xóa hoặc thay đổi trạng thái cơ bản của văn bản
-5. Mọi thay đổi về ngày hết hiệu lực phải được ghi nhận trong lịch sử sửa đổi
+5. Mọi thay đổi (tạo mới, cập nhật thông tin, tải lên/xóa tệp đính kèm, hết hiệu lực, xóa) đều được tự động ghi nhận vào bảng lịch sử dùng chung `approval_history` với `ref_type = LEGAL_DOCUMENT`
+6. Thao tác chỉ tải lên hoặc xóa tệp đính kèm chỉ sinh đúng 1 bản ghi lịch sử tương ứng (Tải lên tệp / Xóa tệp), không sinh thừa bản ghi Cập nhật trống khi thông tin văn bản không thay đổi
 
 ## Testing Strategy
 

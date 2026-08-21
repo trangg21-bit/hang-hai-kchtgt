@@ -65,6 +65,8 @@ public class UpdateBuoyStationRequest {
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private LocalDate lastRepairDate;
+    @Size(max = 100, message = "Tình trạng không được vượt quá 100 ký tự")
+    private String condition;
     private Boolean isActive;
     private Double latitude;
     private Double longitude;

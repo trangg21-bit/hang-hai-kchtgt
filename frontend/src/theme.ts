@@ -424,13 +424,28 @@ export const globalCssVars = `
   scrollbar-gutter: stable;
 }
 
+/* Cột bảng không bị tràn text đè lên nhau */
+.list-view-table .ant-table-thead > tr > th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Gắn icon sort ngay sau title của cột (antd mặc định đẩy icon ra mép phải,
    tạo khoảng trống lớn khi cột thừa chiều rộng). */
 .list-view-table .ant-table-thead .ant-table-column-sorters {
   justify-content: flex-start;
+  max-width: 100%;
+}
+.list-view-table .ant-table-thead th.ant-table-cell-align-center .ant-table-column-sorters,
+.list-view-table .ant-table-thead th[align="center"] .ant-table-column-sorters {
+  justify-content: center;
 }
 .list-view-table .ant-table-thead .ant-table-column-title {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* --- Navigation zone (BLUE — đồng nhất) --- */

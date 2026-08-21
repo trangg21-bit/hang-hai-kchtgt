@@ -46,7 +46,7 @@ const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
 const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm'));
 
-const BerthList = lazy(() => import('./pages/port/BerthList'));
+const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 
 const PierList = lazy(() => import('./pages/port/PierList'));
 const PierForm = lazy(() => import('./pages/port/PierForm'));
@@ -78,6 +78,7 @@ const LegalDocumentList = lazy(() => import('./pages/document/LegalDocumentList'
 const IncidentList = lazy(() => import('./pages/document/IncidentList'));
 const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
 
+// M-014: Quản lý Nhà trạm phao tiêu
 // M-015: Đài duyên hải
 const BuoyStationList = lazy(() => import('./services/buoy-station/BuoyStationList'));
 

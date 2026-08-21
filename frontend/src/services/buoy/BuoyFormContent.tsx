@@ -60,6 +60,12 @@ export interface BuoyFormContentProps {
   loadingOrgs?: boolean;
   buoyStations: Array<{ id: string; name: string; code: string }>;
   loadingStations?: boolean;
+  /**
+   * Nhà trạm QLVH hiện tại của phao tiêu (chế độ chỉnh sửa).
+   * Chỉ cho phép đổi khi phao tiêu CHƯA có nhà trạm (currentStationId rỗng);
+   * phao đã thuộc nhà trạm thì khóa không cho đổi.
+   */
+  currentStationId?: string | null;
   /** Sinh mã tự động {mã nhà trạm}-PT-{seq} khi chọn nhà trạm (chỉ chế độ thêm mới). */
   onStationChange?: (stationId: string | undefined) => void;
   /** For create mode: code auto-generation in-flight (mã sinh tự động). */
@@ -94,6 +100,7 @@ export default function BuoyFormContent({
   buoyStations,
   loadingStations,
   onStationChange,
+  currentStationId,
 }: BuoyFormContentProps) {
   const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
     if (file.size > MAX_FILE_SIZE) {
@@ -155,11 +162,15 @@ export default function BuoyFormContent({
               <Form.Item
                 name="buoyStationId"
                 {...labelProps('Thuộc nhà trạm quản lý vận hành phao, tiêu')}
+                required={!isEdit}
                 style={{ marginBottom: spaceFormField }}
+                tooltip={isEdit && !!currentStationId ? 'Phao tiêu đã thuộc nhà trạm này — không thể đổi nhà trạm quản lý vận hành' : undefined}
+                rules={!isEdit ? [{ required: true, message: 'Thuộc nhà trạm quản lý vận hành phao, tiêu là bắt buộc' }] : []}
               >
                 <Select
                   placeholder="Chọn Thuộc nhà trạm quản lý vận hành phao, tiêu"
                   loading={loadingStations}
+                  disabled={isEdit && !!currentStationId}
                   options={buoyStations.map((s) => ({ value: s.id, label: s.name }))}
                   showSearch
                   filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
@@ -220,7 +231,7 @@ export default function BuoyFormContent({
                 style={{ marginBottom: spaceFormField }}
                 rules={[{ required: true, message: 'Tên phao tiêu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
               >
-                <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} showCount style={inputStyle} />
+                <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -232,36 +243,36 @@ export default function BuoyFormContent({
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
+                <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="shape" {...labelProps('Hình dáng')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Hình dáng" maxLength={500} showCount style={inputStyle} />
+                <Input placeholder="Nhập Hình dáng" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Kết cấu" maxLength={2000} showCount style={inputStyle} />
+                <Input placeholder="Nhập Kết cấu" maxLength={2000} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} step={1} precision={0} placeholder="Nhập Diện tích (m2)" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0} max={20} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} step={1} precision={0} placeholder="Nhập Chiều cao thân phao (m)" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0} max={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} step={1} precision={0} placeholder="Nhập Đường kính phao (m)" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0} max={20} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -291,19 +302,19 @@ export default function BuoyFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} showCount style={inputStyle} />
+                <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} showCount style={inputStyle} />
+                <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} showCount style={inputStyle} />
+                <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -355,19 +366,19 @@ export default function BuoyFormContent({
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Màu sắc" maxLength={50} showCount style={inputStyle} />
+                <Input placeholder="Nhập Màu sắc" maxLength={50} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Kiểu chớp" maxLength={50} showCount style={inputStyle} />
+                <Input placeholder="Nhập Kiểu chớp" maxLength={50} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập Chu kỳ" maxLength={50} showCount style={inputStyle} />
+                <Input placeholder="Nhập Chu kỳ" maxLength={50} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>

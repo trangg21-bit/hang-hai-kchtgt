@@ -1,10 +1,16 @@
 package com.hanghai.kchtg.document.service;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.util.H2Functions;
+import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.*;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;
@@ -46,7 +52,7 @@ public class LegalDocumentService {
     private final SearchLogRepository searchLogRepository;
     private final SearchResultRepository searchResultRepository;
     private final SearchSuggestionRepository searchSuggestionRepository;
-    private final LegalDocumentHistoryRepository legalDocumentHistoryRepository;
+    private final ApprovalHistoryRepository approvalHistoryRepository;
     private final UserRepository userRepository;
 
     @Value("${app.upload.legal-document-path:uploads/legal-documents}")
@@ -201,12 +207,16 @@ public class LegalDocumentService {
             vb.setDescription(request.getDescription());
         }
 
-        if (Boolean.TRUE.equals(request.getDraft()))
+        if (Boolean.TRUE.equals(request.getDraft()) && vb.getValidityStatus() != ValidityStatus.DRAFT) {
             vb.setValidityStatus(ValidityStatus.DRAFT);
+            changes.add("Trạng thái lưu tạm");
+        }
         LegalDocument saved = Objects.requireNonNull(legalDocumentRepository.save(vb));
-        String note = changes.isEmpty() ? "Cập nhật thông tin văn bản" : "Cập nhật: " + String.join(", ", changes);
-        recordHistory(saved, Boolean.TRUE.equals(request.getDraft()) ? LegalDocumentHistoryAction.DRAFT_SAVED
-                : LegalDocumentHistoryAction.UPDATED, note);
+        if (!changes.isEmpty()) {
+            String note = "Cập nhật: " + String.join(", ", changes);
+            recordHistory(saved, Boolean.TRUE.equals(request.getDraft()) ? LegalDocumentHistoryAction.DRAFT_SAVED
+                    : LegalDocumentHistoryAction.UPDATED, note);
+        }
         return toResponse(saved);
     }
 
@@ -222,21 +232,21 @@ public class LegalDocumentService {
 
     @Transactional(readOnly = true)
     public List<LegalDocumentHistoryResponse> getHistory(UUID id) {
-        legalDocumentRepository.findById(id)
+        LegalDocument doc = legalDocumentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy văn bản với id: " + id));
-        List<LegalDocumentHistory> histories = legalDocumentHistoryRepository
-                .findByLegalDocumentIdOrderByChangedAtDesc(id);
+        List<ApprovalHistory> histories = approvalHistoryRepository
+                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.LEGAL_DOCUMENT, id);
         List<UUID> userIds = histories.stream()
-                .map(LegalDocumentHistory::getChangedBy)
+                .map(ApprovalHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<UUID, String> displayNames = userIds.isEmpty() ? Map.of()
+        Map<UUID, User> userMap = userIds.isEmpty() ? Map.of()
                 : userRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(User::getId, this::getDisplayName, (first, ignored) -> first));
+                        .collect(Collectors.toMap(User::getId, u -> u, (first, ignored) -> first));
 
         return histories.stream()
-                .map(h -> toHistoryResponse(h, displayNames))
+                .map(h -> toHistoryResponse(h, doc, userMap))
                 .collect(Collectors.toList());
     }
 
@@ -289,16 +299,17 @@ public class LegalDocumentService {
                 ? ValidityStatus.valueOf(status)
                 : null;
 
-        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty())
+                ? "%" + H2Functions.unaccent(keyword.trim().toLowerCase()) + "%"
                 : null;
         String documentNumberLike = (documentNumber != null && !documentNumber.trim().isEmpty())
-                ? "%" + documentNumber.trim().toLowerCase() + "%"
+                ? "%" + H2Functions.unaccent(documentNumber.trim().toLowerCase()) + "%"
                 : null;
         String issuingAuthorityPattern = (issuingAuthority != null && !issuingAuthority.trim().isEmpty())
-                ? "%" + issuingAuthority.trim().toLowerCase() + "%"
+                ? "%" + H2Functions.unaccent(issuingAuthority.trim().toLowerCase()) + "%"
                 : null;
         String applicationAreaPattern = (applicationArea != null && !applicationArea.trim().isEmpty())
-                ? "%" + applicationArea.trim().toLowerCase() + "%"
+                ? "%" + H2Functions.unaccent(applicationArea.trim().toLowerCase()) + "%"
                 : null;
 
         Page<LegalDocument> result = legalDocumentRepository.searchDocuments(
@@ -445,22 +456,17 @@ public class LegalDocumentService {
     }
 
     private void recordHistory(LegalDocument document, LegalDocumentHistoryAction action, String note) {
-        legalDocumentHistoryRepository.save(LegalDocumentHistory.builder()
-                .legalDocument(document)
-                .action(action)
-                .changedBy(SecurityUtils.getCurrentUserId())
-                .changedAt(LocalDateTime.now())
-                .documentName(document.getDocumentName())
-                .documentNumber(document.getDocumentNumber())
-                .issuingAuthority(document.getIssuingAuthority())
-                .issueDate(document.getIssueDate())
-                .effectiveDate(document.getEffectiveDate())
-                .expirationDate(document.getExpirationDate())
-                .documentType(document.getDocumentType())
-                .applicationArea(document.getApplicationArea())
-                .validityStatus(document.getValidityStatus())
-                .signer(document.getSigner())
-                .description(note != null ? note : document.getDescription())
+        ApprovalHistoryStatus status = mapActionToStatus(action);
+        approvalHistoryRepository.save(ApprovalHistory.builder()
+                .refId(document.getId())
+                .refType(InfrastructureType.LEGAL_DOCUMENT)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(status)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
+                .reason(note != null ? note : action.name())
+                .changedField(document.getDocumentName())
+                .newValue(document.getDocumentNumber())
                 .build());
     }
 
@@ -472,26 +478,58 @@ public class LegalDocumentService {
         recordHistory(document, action, null);
     }
 
-    private LegalDocumentHistoryResponse toHistoryResponse(LegalDocumentHistory history,
-            Map<UUID, String> displayNames) {
+    private ApprovalHistoryStatus mapActionToStatus(LegalDocumentHistoryAction action) {
+        if (action == null) return ApprovalHistoryStatus.UPDATED;
+        return switch (action) {
+            case CREATED -> ApprovalHistoryStatus.CREATED;
+            case DELETED -> ApprovalHistoryStatus.DELETED;
+            case ATTACHMENT_UPLOADED -> ApprovalHistoryStatus.ATTACHMENT_UPLOADED;
+            case ATTACHMENT_DELETED -> ApprovalHistoryStatus.ATTACHMENT_DELETED;
+            case DRAFT_SAVED -> ApprovalHistoryStatus.DRAFT_SAVED;
+            case EXPIRED -> ApprovalHistoryStatus.EXPIRED;
+            case STATUS_CHANGED, UPDATED -> ApprovalHistoryStatus.UPDATED;
+        };
+    }
+
+    private LegalDocumentHistoryAction mapStatusToAction(ApprovalHistoryStatus status) {
+        if (status == null) return LegalDocumentHistoryAction.UPDATED;
+        return switch (status) {
+            case CREATED -> LegalDocumentHistoryAction.CREATED;
+            case DELETED -> LegalDocumentHistoryAction.DELETED;
+            case ATTACHMENT_UPLOADED -> LegalDocumentHistoryAction.ATTACHMENT_UPLOADED;
+            case ATTACHMENT_DELETED -> LegalDocumentHistoryAction.ATTACHMENT_DELETED;
+            case DRAFT_SAVED -> LegalDocumentHistoryAction.DRAFT_SAVED;
+            case EXPIRED -> LegalDocumentHistoryAction.EXPIRED;
+            default -> LegalDocumentHistoryAction.UPDATED;
+        };
+    }
+
+    private LegalDocumentHistoryResponse toHistoryResponse(ApprovalHistory history, LegalDocument doc,
+            Map<UUID, User> userMap) {
+        User actorUser = history.getApprovedBy() != null ? userMap.get(history.getApprovedBy()) : null;
+        String changedByName = actorUser != null ? getDisplayName(actorUser) : null;
+        String orgUnitName = actorUser != null && actorUser.getOrgUnit() != null ? actorUser.getOrgUnit().getName() : null;
+
         return LegalDocumentHistoryResponse.builder()
                 .id(history.getId())
-                .action(history.getAction())
-                .changedBy(history.getChangedBy())
-                .changedByName(history.getChangedBy() == null ? null : displayNames.get(history.getChangedBy()))
-                .changedAt(history.getChangedAt())
-                .documentName(history.getDocumentName())
-                .documentNumber(history.getDocumentNumber())
-                .issuingAuthority(history.getIssuingAuthority())
-                .issueDate(history.getIssueDate())
-                .effectiveDate(history.getEffectiveDate())
-                .expirationDate(history.getExpirationDate())
-                .documentType(history.getDocumentType())
-                .applicationArea(history.getApplicationArea())
-                .validityStatus(history.getValidityStatus())
-                .signer(history.getSigner())
-                .description(history.getDescription())
-                .note(history.getDescription())
+                .action(mapStatusToAction(history.getStatus()))
+                .changedBy(history.getApprovedBy())
+                .changedByName(changedByName)
+                .orgUnitName(orgUnitName)
+                .unitName(orgUnitName)
+                .changedAt(history.getApprovedDate())
+                .documentName(doc != null ? doc.getDocumentName() : history.getChangedField())
+                .documentNumber(doc != null ? doc.getDocumentNumber() : history.getNewValue())
+                .issuingAuthority(doc != null ? doc.getIssuingAuthority() : null)
+                .issueDate(doc != null ? doc.getIssueDate() : null)
+                .effectiveDate(doc != null ? doc.getEffectiveDate() : null)
+                .expirationDate(doc != null ? doc.getExpirationDate() : null)
+                .documentType(doc != null ? doc.getDocumentType() : null)
+                .applicationArea(doc != null ? doc.getApplicationArea() : null)
+                .validityStatus(doc != null ? doc.getValidityStatus() : null)
+                .signer(doc != null ? doc.getSigner() : null)
+                .description(history.getReason())
+                .note(history.getReason())
                 .build();
     }
 

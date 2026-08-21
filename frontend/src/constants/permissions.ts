@@ -26,7 +26,9 @@ export const PERMISSIONS = {
   /** Quản lý đơn vị tổ chức */
   ORGUNIT: {
     READ: 'orgunit:read',
-    MANAGE: 'orgunit:manage',
+    CREATE: 'orgunit:create',
+    UPDATE: 'orgunit:update',
+    DELETE: 'orgunit:delete',
   },
 
   /** Quản lý nhóm người dùng */
@@ -213,7 +215,9 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.GROUP.MANAGE, title: 'Quản lý Nhóm' },
       { key: PERMISSIONS.GROUP.PERMISSION, title: 'Phân quyền Nhóm' },
       { key: PERMISSIONS.ORGUNIT.READ, title: 'Xem Đơn vị' },
-      { key: PERMISSIONS.ORGUNIT.MANAGE, title: 'Quản lý Đơn vị' },
+      { key: PERMISSIONS.ORGUNIT.CREATE, title: 'Thêm Đơn vị' },
+      { key: PERMISSIONS.ORGUNIT.UPDATE, title: 'Sửa Đơn vị' },
+      { key: PERMISSIONS.ORGUNIT.DELETE, title: 'Xóa Đơn vị' },
     ],
   },
   {

@@ -102,30 +102,33 @@ source-paths:
 | HeThongVTSAttachment | he_thong_vts_attachment | File đính kèm (1-N) |
 | PheDuyetLichSu | phe_duyet_lich_su | Lịch sử phê duyệt (1-N) |
 
-### HeThongVTS fields (20 fields)
+### HeThongVTS fields (Bảng `vts_system`)
 
 | Field | Type | Required | Default | Note |
 |---|---|---|---|---|
-| id | Long (PK) | — | Auto | |
-| organizationId | Long (FK) | Có | — | Đơn vị quản lý |
-| owningOrgId | Long (FK) | Có | — | Đơn vị chủ quản |
-| operatingOrgId | Long (FK) | Có | — | Đơn vị vận hành |
-| portId | Long (FK) | Không | null | Thuộc cảng biển |
+| id | UUID (PK) | — | Auto | |
+| orgUnitId | UUID (FK) | Có | — | Đơn vị quản lý (`org_unit_id`) |
+| owningOrgId | UUID (FK) | Có | — | Đơn vị chủ quản (`owning_org_id`) |
+| operatingOrgId | UUID (FK) | Có | — | Đơn vị vận hành (`operating_org_id`) |
+| portId | UUID (FK) | Không | null | Thuộc cảng biển (`port_id`) |
 | code | String | Có | — | Mã hệ thống VTS, max 50, unique |
-| tenHeThong | String | Có | — | Tên hệ thống, max 255 |
-| province | String | Có | — | Địa điểm Tỉnh/TP |
+| systemName | String | Có | — | Tên hệ thống, max 255 |
+| provinceId | Integer | Có | — | Địa điểm Tỉnh/TP (Mã tỉnh 1..63) |
 | address | String | Không | null | Địa điểm chi tiết, max 500 |
-| viTri | String | Không | null | Vị trí, max 500 (giữ từ entity cũ) |
 | operationStartDate | LocalDate | Không | null | Thời gian bắt đầu hoạt động |
 | scope | String | Không | null | Phạm vi áp dụng, max 2000 |
 | maritimeNotice | String | Không | null | Thông báo hàng hải, max 2000 |
-| tinhTrang | String | Có | "Đang hoạt động" | Tình trạng, max 50 |
-| mucDoPhuTrach | String | Không | null | Mức độ phụ trách, max 255 |
-| nguonGoc | String | Không | null | Nguồn gốc, max 255 |
-| doiTac | String | Không | null | Đối tác, max 255 |
+| conditionStatus | Enum | Có | OPERATIONAL | Tình trạng: OPERATIONAL, STOPPED, MAINTENANCE, UNDER_CONSTRUCTION |
 | note | String | Không | null | Ghi chú, max 2000 |
-| trangThai | Enum | — | PROPOSED | Trạng thái phê duyệt |
-| isDeleted | Boolean | — | false | Soft delete |
+| approvalStatus | Enum | — | PROPOSED | Trạng thái phê duyệt (PROPOSED, UNDER_REVIEW, APPROVED, REJECTED) |
+| approverLevel1 | UUID | Không | null | Người duyệt C1 |
+| approvedDateLevel1 | LocalDateTime | Không | null | Ngày duyệt C1 |
+| approverLevel2 | UUID | Không | null | Người duyệt C2 |
+| approvedDateLevel2 | LocalDateTime | Không | null | Ngày duyệt C2 |
+| rejectionReason | String | Không | null | Lý do từ chối |
+| ~~approved_level1~~ | ~~Boolean~~ | — | — | ~~Loại bỏ: Đã chuẩn hóa qua approverLevel1 & approvalStatus~~ |
+| ~~approved_level2~~ | ~~Boolean~~ | — | — | ~~Loại bỏ: Đã chuẩn hóa qua approverLevel2 & approvalStatus~~ |
+| deletedAt | LocalDateTime | — | null | Soft delete |
 
 ### VungVTS fields
 

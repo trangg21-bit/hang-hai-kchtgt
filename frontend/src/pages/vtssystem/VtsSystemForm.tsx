@@ -20,9 +20,10 @@ import {
   Upload,
   Tag,
 } from 'antd';
-import { MinusCircleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined } from '@ant-design/icons';
+import { MinusCircleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast, { message } from '../../components/ToastNotification';
+import api from '../../services/api';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
@@ -108,16 +109,13 @@ const isCompleteVtsDetail = (data?: VtsSystemResponse | null): data is VtsSystem
 
 const loadVtsDetail = (
   id: string,
-  options: { includeZones?: boolean; includeAttachments?: boolean } = {},
 ): Promise<VtsSystemResponse> => {
-  const includeZones = options.includeZones ?? true;
-  const includeAttachments = options.includeAttachments ?? true;
-  const requestKey = `${id}:${includeZones}:${includeAttachments}`;
+  const requestKey = `${id}:true:true`;
   const pending = pendingVtsDetailRequests.get(requestKey);
   if (pending) return pending;
 
-  const request = vtsSystemCRUD.getById(id, { includeZones, includeAttachments }).then((data) => {
-    if (includeZones && includeAttachments && isCompleteVtsDetail(data)) {
+  const request = vtsSystemCRUD.getById(id, { includeZones: true, includeAttachments: true }).then((data) => {
+    if (data && isCompleteVtsDetail(data)) {
       getVtsDetailCache()[id] = data;
     }
     return data;
@@ -213,10 +211,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         setIsLoading(!localData);
         setFormError(null);
         try {
-          const data = localData || await loadVtsDetail(id, {
-            includeZones: !isDetailMode,
-            includeAttachments: !isDetailMode,
-          });
+          const data = localData || await loadVtsDetail(id);
           if (cancelled) return;
           if (!data) throw new Error('Không tìm thấy dữ liệu Hệ thống VTS');
           setRecord(data);
@@ -232,9 +227,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
               location: data.address || data.province || '',
               conditionStatus: data.conditionStatus || ConditionStatus.OPERATIONAL,
               recordSecurityLevel: data.recordSecurityLevel || RecordSecurityLevel.NORMAL,
-              responsibilityLevel: data.responsibilityLevel,
-              source: data.source,
-              partner: data.partner,
               scope: data.scope,
               note: data.note,
               orgUnitId: data.orgUnitId,
@@ -318,9 +310,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         systemName: values.systemName,
         conditionStatus: values.conditionStatus,
         recordSecurityLevel: values.recordSecurityLevel || RecordSecurityLevel.NORMAL,
-        responsibilityLevel: values.responsibilityLevel,
-        source: values.source,
-        partner: values.partner,
         scope: values.scope,
         orgUnitId: values.orgUnitId,
         owningOrgId: values.owningOrgId,
@@ -360,10 +349,8 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           navigate('/vts-system');
         }
       } else if (id && isEditMode) {
-        const res = await vtsSystemCRUD.update(id, payload as UpdateVtsSystemRequest);
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = res;
-        }
+        await vtsSystemCRUD.update(id, payload as UpdateVtsSystemRequest);
+        delete getVtsDetailCache()[id];
         toast.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
@@ -391,11 +378,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       if (action === 'approveC1') {
         const pheDuyetData: ApprovalRequest = {
           decision: 'APPROVED',
+          reason: (payload?.lyDo as string) || 'Đã phê duyệt cấp 1',
         };
         const updated = await vtsSystemApproval.approveC1(id, pheDuyetData);
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = updated;
-        }
+        delete getVtsDetailCache()[id];
         toast.success('Phê duyệt C1 thành công');
         setRecord(updated);
         setHasChanges(true);
@@ -403,11 +389,10 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       } else if (action === 'approveC2') {
         const pheDuyetData: ApprovalRequest = {
           decision: 'APPROVED',
+          reason: (payload?.lyDo as string) || 'Đã phê duyệt cấp 2',
         };
         const updated = await vtsSystemApproval.approveC2(id, pheDuyetData);
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = updated;
-        }
+        delete getVtsDetailCache()[id];
         toast.success('Phê duyệt C2 thành công');
         setRecord(updated);
         setHasChanges(true);
@@ -415,30 +400,31 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       } else if (action === 'reject') {
         const pheDuyetData: ApprovalRequest = {
           decision: 'REJECTED',
-          reason: payload?.lyDo as string,
+          reason: (payload?.lyDo as string) || 'Từ chối phê duyệt',
         };
-
         let updatedRecord: VtsSystemResponse | null = null;
-        if (record.approvalStatus === ApprovalStatus.PROPOSED) {
+        if (record.approvalStatus === ApprovalStatus.PROPOSED || (record.approvalStatus as any) === 'proposed') {
           updatedRecord = await vtsSystemApproval.approveC1(id, pheDuyetData);
-        } else if (record.approvalStatus === ApprovalStatus.PENDING_APPROVAL) {
+        } else if (record.approvalStatus === ApprovalStatus.PENDING_APPROVAL || (record.approvalStatus as any) === 'pending_approval') {
           updatedRecord = await vtsSystemApproval.approveC2(id, pheDuyetData);
         } else {
           throw new Error('Chỉ được từ chối bản ghi đang chờ C1 hoặc C2');
         }
+        delete getVtsDetailCache()[id];
         if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
-        toast.success('Từ chối thành công');
+        toast.success('Từ chối phê duyệt thành công');
         setRecord(updatedRecord);
         setHasChanges(true);
         if (onSuccess) onSuccess();
       } else if (action === 'delete') {
         await vtsSystemCRUD.delete(id);
+        delete getVtsDetailCache()[id];
         toast.success('Xóa thành công');
-        if (isModalMode && onSuccess) {
-          onSuccess();
+        if (isModalMode) {
+          onSuccess?.();
         } else if (isIframe) {
           window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
@@ -459,7 +445,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     }
     if (!id) throw new Error('Cần lưu hệ thống VTS trước khi tải tài liệu lên');
     const uploaded = await vtsSystemApproval.uploadAttachment(id, file);
-    setRecord((prev) => prev ? { ...prev, attachments: [...(prev.attachments || []), uploaded] } : prev);
+    setRecord((prev) => {
+      const next = prev ? { ...prev, attachments: [...(prev.attachments || []), uploaded] } : prev;
+      if (next) getVtsDetailCache()[id] = next;
+      return next;
+    });
+    setHasChanges(true);
+    toast.success('Tải tệp lên thành công');
   };
 
   const handleDeleteAttachment = async (attachmentId: string) => {
@@ -469,7 +461,47 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     }
     if (!id) return;
     await vtsSystemApproval.deleteAttachment(id, attachmentId);
-    setRecord((prev) => prev ? { ...prev, attachments: (prev.attachments || []).filter((a) => a.id !== attachmentId) } : prev);
+    setRecord((prev) => {
+      const next = prev ? { ...prev, attachments: (prev.attachments || []).filter((a) => a.id !== attachmentId) } : prev;
+      if (next) getVtsDetailCache()[id] = next;
+      return next;
+    });
+    setHasChanges(true);
+    toast.success('Xóa tệp thành công');
+  };
+
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
+
+  const handleDownloadAttachment = async (att: any) => {
+    if (!att?.filePath) {
+      toast.error('Không tìm thấy đường dẫn tệp');
+      return;
+    }
+    setDownloadingAttachmentId(att.id);
+    try {
+      const url = att.filePath.startsWith('/api')
+        ? att.filePath.replace(/^\/api/, '')
+        : att.filePath;
+      const resp = await api.get(url, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([resp.data], {
+        type: resp.headers['content-type'] || 'application/octet-stream',
+      });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = att.fileName || 'tai-lieu';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      console.error('Lỗi tải tệp:', err);
+      toast.error('Không thể tải xuống tệp đính kèm');
+    } finally {
+      setDownloadingAttachmentId(null);
+    }
   };
 
   const handleCloseModal = () => {
@@ -511,7 +543,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   if (isDetailMode) {
     const detailContent = (
       <div style={{ paddingTop: 16 }}>
-        <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .detail-value .ant-tag { margin-left: -6px !important; }`}</style>
+        <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-row--full { grid-column: 1 / -1; } .detail-label { width: 230px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; min-width: 0; overflow-wrap: anywhere; } .detail-value .ant-tag { margin-left: -6px !important; }`}</style>
         {record && (
           <Tabs
             defaultActiveKey="general"
@@ -532,8 +564,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         ['Đơn vị quản lý', record.orgUnitName || '—'],
                         ['Ghi chú', record.note || '—'],
                         ['Trạng thái', <ApprovalStatusBadge status={record.approvalStatus} />],
-                        ['Ngày cập nhật', record.updatedDate ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss') : '—'],
-                        ['Cán bộ cập nhật', record.updatedByName || '—'],
                       ].map(([label, value], i) => (
                         <div key={i} className="detail-row">
                           <span className="detail-label">{label}</span>
@@ -549,6 +579,63 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                       </div>
                     )}
 
+                  </div>
+                ),
+              },
+              {
+                key: 'update_log',
+                label: 'Thông tin log cập nhật',
+                children: (
+                  <div style={{ paddingTop: 16 }}>
+                    <div className="detail-grid">
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày cập nhật</span>
+                        <span className="detail-value">{record.updatedDate ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ cập nhật</span>
+                        <span className="detail-value">{record.updatedByName || '—'}</span>
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày gửi phê duyệt</span>
+                        <span className="detail-value">{(record.submittedDate || record.createdDate) ? dayjs(record.submittedDate || record.createdDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ gửi phê duyệt</span>
+                        <span className="detail-value">{record.submittedByName || record.createdByName || '—'}</span>
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="detail-value">{record.approverLevel1Name || '—'}</span>
+                      </div>
+                      <div className="detail-row detail-row--full">
+                        <span className="detail-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="detail-value">
+                          {record.approvalContentLevel1 || (record.approverLevel1 || record.approverLevel1Name ? 'Đã phê duyệt' : (record.approvalStatus === ApprovalStatus.REJECTED && !record.approverLevel2 ? record.rejectionReason : '—')) || '—'}
+                        </span>
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày phê duyệt cấp Cục</span>
+                        <span className="detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ phê duyệt cấp Cục</span>
+                        <span className="detail-value">{record.approverLevel2Name || '—'}</span>
+                      </div>
+                      <div className="detail-row detail-row--full">
+                        <span className="detail-label">Nội dung phê duyệt cấp Cục</span>
+                        <span className="detail-value">
+                          {record.approvalContentLevel2 || (record.approverLevel2 || record.approverLevel2Name || record.approvalStatus === ApprovalStatus.APPROVED ? 'Đã phê duyệt' : (record.approvalStatus === ApprovalStatus.REJECTED && record.approverLevel1 ? record.rejectionReason : '—')) || '—'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 ),
               },
@@ -920,36 +1007,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={12}>
-                      <Form.Item
-                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mức độ phụ trách</span>}
-                        name="responsibilityLevel"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input placeholder="Nhập mức độ phụ trách" maxLength={255} style={{ borderRadius: radiusPill, height: 40 }} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-
-                  <Row gutter={16}>
-                    <Col span={12}>
-                      <Form.Item
-                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Nguồn gốc</span>}
-                        name="source"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input placeholder="Nhập nguồn gốc" maxLength={255} style={{ borderRadius: radiusPill, height: 40 }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item
-                        label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đối tác</span>}
-                        name="partner"
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Input placeholder="Nhập đối tác" maxLength={255} style={{ borderRadius: radiusPill, height: 40 }} />
-                      </Form.Item>
-                    </Col>
                   </Row>
                 </div>,
               },
@@ -1040,10 +1097,51 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                           render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
                           onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                         <Table.Column title="Tên file" key="fileName" dataIndex="fileName"
-                          render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
+                          render={(name: string, record: any) => (
+                            <a
+                              style={{
+                                fontSize: fontSizeMd,
+                                color: actionPrimary,
+                                cursor: record.filePath ? 'pointer' : 'default',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                              }}
+                              onClick={(e) => {
+                                if (record.filePath) {
+                                  e.preventDefault();
+                                  handleDownloadAttachment(record);
+                                }
+                              }}
+                              title={record.filePath ? 'Nhấn để tải tệp xuống' : undefined}
+                            >
+                              <FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />
+                              {name}
+                            </a>
+                          )}
                           onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                        <Table.Column title="" key="actions" width={44} align="center"
-                          render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteAttachment(record.id)} />}
+                        <Table.Column title="" key="actions" width={80} align="center"
+                          render={(_: any, record: any) => (
+                            <Space size="small">
+                              {record.filePath && (
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  icon={<DownloadOutlined />}
+                                  loading={downloadingAttachmentId === record.id}
+                                  onClick={() => handleDownloadAttachment(record)}
+                                  title="Tải xuống"
+                                />
+                              )}
+                              <Button
+                                type="link"
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleDeleteAttachment(record.id)}
+                                title="Xóa"
+                              />
+                            </Space>
+                          )}
                           onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
                       </Table>
                     )}
@@ -1101,27 +1199,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
               placeholder="Chọn tình trạng"
               options={CONDITION_STATUS_OPTIONS}
             />
-          </Form.Item>
-
-          <Form.Item
-            label="Mức độ phủ trách"
-            name="responsibilityLevel"
-          >
-            <Input placeholder="Nhập mức độ phủ trách" />
-          </Form.Item>
-
-          <Form.Item
-            label="Nguồn gốc"
-            name="source"
-          >
-            <Input placeholder="Nhập nguồn gốc" />
-          </Form.Item>
-
-          <Form.Item
-            label="Đối tác"
-            name="partner"
-          >
-            <Input placeholder="Nhập đối tác" />
           </Form.Item>
 
           <Form.Item label="Phạm vi áp dụng" name="scope">

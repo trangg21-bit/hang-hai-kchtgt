@@ -4,15 +4,17 @@ import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
-  fontSizeSm, fontSizeMd, fontWeightMedium, fontWeightBold,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   spaceSm, spaceMd, spaceXs,
 } from '../../tokens';
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import { resolveOrgFullPath } from '../../components/org-unit';
 
 export interface BerthDetailContentProps {
   selectedRecord: Berth;
   orgMap: Map<string, string>;
+  organizations: Array<{ id: string; name: string; parentId?: string }>;
   symbolMap: Map<string, string>;
   symbolImageMap: Map<string, string>;
   portOptions: Array<{ value: string; label: string }>;
@@ -63,6 +65,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 export default function BerthDetailContent({
   selectedRecord,
   orgMap,
+  organizations,
   symbolMap,
   symbolImageMap,
   portOptions,
@@ -84,10 +87,21 @@ export default function BerthDetailContent({
               <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1}.detail-value .ant-tag{margin-left:-6px!important}.system-collapse .ant-collapse-header{gap:0!important;padding:4px 0!important}.system-collapse .ant-collapse-content-box{padding:0!important}.ant-tabs-content-holder{padding-top:0!important}.ant-tabs-tabpane{padding-top:0!important}.ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
               <div className="detail-grid">
                 {[
-                  ['Đơn vị quản lý', orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—'],
-                  ['Cảng biển', portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'],
+                  ['Đơn vị quản lý', (() => {
+                    const orgPathNames = resolveOrgFullPath(organizations, r.orgUnitId);
+                    if (!orgPathNames || orgPathNames.length === 0) return orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                    const levelColors = [textPrimary, textSecondary, textTertiary];
+                    return (
+                      <span style={{ fontWeight: fontWeightBold }}>
+                        {orgPathNames.map((n, i) => (
+                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)] }}>{n}</span>
+                        ))}
+                      </span>
+                    );
+                  })(),],
+                  ['Cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}</span>],
                   ['Mã bến cảng', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: '#1677ff15', color: '#1677ff' }}>{r.berthCode || '—'}</span>],
-                  ['Tên bến cảng', r.berthName || '—'],
+                  ['Tên bến cảng', <span style={{ fontWeight: fontWeightBold }}>{r.berthName || '—'}</span>],
                   ['Tuyến đường thủy', r.waterway || '—'],
                   ['Đơn vị vận hành', r.operator || '—'],
                   ['Tỉnh/Thành phố', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
@@ -212,18 +226,21 @@ export default function BerthDetailContent({
               <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
-              {detailFiles.length === 0 ? (
-                <span style={{ color: textTertiary, fontSize: fontSizeMd, paddingLeft: 12 }}>Không có tài liệu đính kèm</span>
-              ) : (
-                <Table className="list-view-table" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}>
-                  <Table.Column title="STT" key="stt" width={60} align="center"
-                    render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
-                    render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                </Table>
-              )}
+              <Table className="list-view-table" rowKey="key" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}
+                locale={{ emptyText: (
+                  <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                    <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
+                    <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
+                  </div>
+                ) }}
+              >
+                <Table.Column title="STT" key="stt" width={60} align="center"
+                  render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
+                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
+                  render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
+                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+              </Table>
             </div>
           ),
         },

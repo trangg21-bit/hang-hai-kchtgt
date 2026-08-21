@@ -2,11 +2,16 @@ package com.hanghai.kchtg.config;
 
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.lang.Nullable;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +21,24 @@ import java.util.Map;
 @Component
 @Order(1)
 @Profile({ "local", "local-h2", "prod" })
-@RequiredArgsConstructor
 @Slf4j
 public class PermissionSeeder implements CommandLineRunner {
 
         private final PermissionRepository permissionRepository;
+        private final UserRepository userRepository;
+        private final JdbcTemplate jdbcTemplate;
+
+        public PermissionSeeder(PermissionRepository permissionRepository, UserRepository userRepository) {
+                this(permissionRepository, userRepository, null);
+        }
+
+        @Autowired
+        public PermissionSeeder(PermissionRepository permissionRepository, UserRepository userRepository,
+                        @Nullable JdbcTemplate jdbcTemplate) {
+                this.permissionRepository = permissionRepository;
+                this.userRepository = userRepository;
+                this.jdbcTemplate = jdbcTemplate;
+        }
 
         @Override
         @Transactional
@@ -30,37 +48,30 @@ public class PermissionSeeder implements CommandLineRunner {
 
                 Map<String, Permission> definitions = new LinkedHashMap<>();
 
-                // 1. Quản trị người dùng (User Management)
-                seedPermission(definitions, "user", "manage", "Quản lý người dùng",
+                // 1. Quản lý tài khoản người dùng (User Account Management)
+                seedPermission(definitions, "user", "manage", "Quản lý tài khoản người dùng",
                                 "Toàn quyền quản lý tài khoản người dùng");
-                seedPermission(definitions, "user", "read", "Xem người dùng", "Xem danh sách và chi tiết người dùng");
-                seedPermission(definitions, "user", "create", "Thêm người dùng", "Tạo mới tài khoản người dùng");
-                seedPermission(definitions, "user", "update", "Cập nhật người dùng",
+                seedPermission(definitions, "user", "read", "Xem tài khoản người dùng",
+                                "Xem danh sách và chi tiết tài khoản người dùng");
+                seedPermission(definitions, "user", "create", "Thêm mới tài khoản người dùng",
+                                "Tạo mới tài khoản người dùng");
+                seedPermission(definitions, "user", "update", "Cập nhật tài khoản người dùng",
                                 "Chỉnh sửa thông tin tài khoản người dùng");
-                seedPermission(definitions, "user", "delete", "Xóa người dùng",
-                                "Xóa hoặc vô hiệu hóa tài khoản người dùng");
-                seedPermission(definitions, "user", "approve", "Phê duyệt đăng ký tài khoản",
-                                "Phê duyệt hoặc từ chối yêu cầu đăng ký tài khoản");
-                seedPermission(definitions, "user", "lock", "Khóa tài khoản", "Khóa hoặc mở khóa tài khoản người dùng");
-                seedPermission(definitions, "user", "edit", "Chỉnh sửa người dùng", "Chỉnh sửa thông tin người dùng");
+                seedPermission(definitions, "user", "lock", "Khóa / Mở khóa tài khoản người dùng",
+                                "Khóa hoặc mở khóa tài khoản người dùng");
+                seedPermission(definitions, "user", "approve", "Phê duyệt tài khoản người dùng",
+                                "Phê duyệt hoặc từ chối yêu cầu đăng ký tài khoản người dùng");
 
                 // 2. Quản lý cơ cấu tổ chức & đơn vị (Org Unit Management)
-                seedPermission(definitions, "orgunit", "manage", "Quản lý đơn vị",
-                                "Toàn quyền quản lý danh mục đơn vị");
                 seedPermission(definitions, "orgunit", "read", "Xem đơn vị", "Xem danh mục và cơ cấu tổ chức đơn vị");
                 seedPermission(definitions, "orgunit", "create", "Thêm đơn vị", "Tạo mới đơn vị, phòng ban");
                 seedPermission(definitions, "orgunit", "update", "Cập nhật đơn vị", "Chỉnh sửa thông tin đơn vị");
                 seedPermission(definitions, "orgunit", "delete", "Xóa đơn vị", "Xóa đơn vị, phòng ban");
-                seedPermission(definitions, "orgunit", "scope_all", "Phạm vi toàn quốc",
-                                "Quyền tra cứu và truy cập dữ liệu toàn bộ các đơn vị trên toàn quốc");
 
                 // 3. Quản lý nhóm người dùng & phân quyền (User Group Management)
-                seedPermission(definitions, "group", "manage", "Quản lý nhóm", "Toàn quyền quản trị nhóm người dùng");
                 seedPermission(definitions, "group", "read", "Xem nhóm", "Xem danh sách nhóm người dùng");
                 seedPermission(definitions, "group", "create", "Thêm nhóm", "Tạo mới nhóm người dùng");
-                seedPermission(definitions, "group", "edit", "Sửa nhóm", "Chỉnh sửa thông tin nhóm người dùng");
                 seedPermission(definitions, "group", "update", "Cập nhật nhóm", "Chỉnh sửa thông tin nhóm người dùng");
-                seedPermission(definitions, "group", "delete", "Xóa nhóm", "Xóa nhóm người dùng");
                 seedPermission(definitions, "group", "lock", "Khóa nhóm", "Khóa hoặc mở khóa nhóm người dùng");
                 seedPermission(definitions, "group", "permission", "Phân quyền nhóm",
                                 "Cấu hình cây quyền hạn cho nhóm người dùng");
@@ -649,6 +660,54 @@ public class PermissionSeeder implements CommandLineRunner {
                                 }
                         }
                 }
+                // Clean up deprecated / redundant permissions safely
+                if (jdbcTemplate != null) {
+                        try {
+                                jdbcTemplate.execute("""
+                                        DO $$
+                                        BEGIN
+                                            IF to_regclass('public.user_permission_override') IS NOT NULL THEN
+                                                DELETE FROM user_permission_override
+                                                WHERE permission_code IN (
+                                                    'user:edit', 'group:edit', 'user:delete', 'group:delete',
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                );
+                                            END IF;
+
+                                            IF to_regclass('public.user_group_permissions') IS NOT NULL THEN
+                                                DELETE FROM user_group_permissions
+                                                WHERE permission IN (
+                                                    'user:edit', 'group:edit', 'user:delete', 'group:delete',
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                );
+                                            END IF;
+
+                                            IF to_regclass('public.role_permissions') IS NOT NULL AND to_regclass('public.permissions') IS NOT NULL THEN
+                                                DELETE FROM role_permissions
+                                                WHERE permission_id IN (
+                                                    SELECT id
+                                                    FROM permissions
+                                                    WHERE code IN (
+                                                        'user:edit', 'group:edit', 'user:delete', 'group:delete',
+                                                        'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                    )
+                                                );
+                                            END IF;
+
+                                            IF to_regclass('public.permissions') IS NOT NULL THEN
+                                                DELETE FROM permissions
+                                                WHERE code IN (
+                                                    'user:edit', 'group:edit', 'user:delete', 'group:delete',
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                );
+                                            END IF;
+                                        END $$;
+                                        """);
+                        } catch (Exception ex) {
+                                log.debug("Native DB permission cleanup notice: {}", ex.getMessage());
+                        }
+                }
+
                 if (inserted > 0 || updated > 0) {
                         log.info("Permissions sync complete: inserted={}, updated={}", inserted, updated);
                 }

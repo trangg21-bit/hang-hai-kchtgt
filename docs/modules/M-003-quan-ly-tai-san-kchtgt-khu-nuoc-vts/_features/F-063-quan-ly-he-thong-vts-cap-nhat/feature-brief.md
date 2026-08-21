@@ -105,9 +105,10 @@ Form Cập nhật giống hệt form Tạo mới (F-062), gồm 4 nhóm:
 | BR-063-01 | Chỉ cập nhật bản ghi PROPOSED / UNDER_REVIEW / REJECTED | HeThongVTS.trangThai |
 | BR-063-02 | Bản ghi APPROVED không cho phép cập nhật trực tiếp | HeThongVTS.trangThai |
 | BR-063-03 | Mã hệ thống VTS (code) immutable — không cho sửa sau khi tạo | HeThongVTS.code |
-| BR-063-04 | Sau cập nhật → trạng thái chuyển UNDER_REVIEW, chờ phê duyệt lại | HeThongVTS.trangThai |
-| BR-063-05 | Phê duyệt 2 cấp: Trưởng phòng (C1) → Cục trưởng (C2) | HeThongVTS |
-| BR-063-06 | Mọi thay đổi được ghi vào HeThongVTSChangeLog (old_value → new_value) | ChangeLog |
+| BR-063-04 | Sau cập nhật thông tin/vùng VTS/file đính kèm khi bản ghi đang ở `Đang xem xét` (UNDER_REVIEW) hoặc sau C1 → trạng thái chuyển về PROPOSED (Chờ phê duyệt), yêu cầu phê duyệt lại 2 cấp từ C1 | HeThongVTS.trangThai |
+| BR-063-05 | Phê duyệt 2 cấp: Trưởng phòng/Chi cục/Cảng vụ (C1) → Cục trưởng/Lãnh đạo Cục (C2) | HeThongVTS |
+| BR-063-06 | Mọi thay đổi được ghi vào HeThongVTSChangeLog / ApprovalHistory (old_value → new_value) | ChangeLog |
+| BR-063-07 | Thêm mới hoặc xóa file đính kèm tại bản ghi đang ở `Đang xem xét` (UNDER_REVIEW) sẽ tự động reset trạng thái về `Chờ phê duyệt` (PROPOSED) để đảm bảo tính toàn vẹn của hồ sơ trình duyệt | HeThongVTSAttachment |
 
 ## Roles + Permissions
 

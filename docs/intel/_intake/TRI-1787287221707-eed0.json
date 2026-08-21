@@ -1,0 +1,80 @@
+{
+  "triage_id": "TRI-1787287221707-eed0",
+  "created_at": 1787287221707,
+  "request_summary": "Form bến cảng: thêm allowClear cho Loại đối tượng, bỏ rule required Biểu tượng (mapSymbolId); Form cảng biển: thêm disabled cho nút Thêm tọa độ khi chưa chọn Loại đối tượng",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/port/PortListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tab 'Thông tin vị trí' trong form thêm mới/chỉnh sửa Bến cảng (/berth) và Cảng biển (/port)",
+  "blast_radius": 3,
+  "done_oracle": "Trên form bến cảng: Loại đối tượng có nút xóa lựa chọn (allowClear), Biểu tượng không còn required; trên form cảng biển (tạo mới + sửa): nút 'Thêm tọa độ' disabled khi chưa chọn Loại đối tượng; npm run build pass",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/port/BerthForm.tsx",
+    "frontend/src/pages/port/BerthList.tsx",
+    "frontend/src/services/port/PortListPage.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/BerthForm.tsx",
+      "line": 264,
+      "quote": "rules={watchedGeometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}",
+      "source_hash": "0ef1a4f676b54bd5413809894b50a6c5fda29674688d3a7c98b1b07bcef77148",
+      "quote_hash": "08154c1cd8e8e5e3e9f71a8badec286c93f961fcc615eba269c00bb0ffc89ba2",
+      "note": "Rule required mapSymbolId của bến cảng — cần bỏ để đồng bộ cảng biển"
+    },
+    {
+      "file": "frontend/src/services/port/PortListPage.tsx",
+      "line": 2466,
+      "quote": "<Button type=\"dashed\" size=\"small\" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>",
+      "source_hash": "7f72e0afb5af8dcb641e458d549e4d67786cd73413bafefa460b715eca1c0131",
+      "quote_hash": "2a3d56f687bb42e7dd8a94ad5931c40943058f6f1f531e86b305c850832a2679",
+      "note": "Nút Thêm tọa độ (header) form tạo mới cảng biển — chưa có disabled"
+    },
+    {
+      "file": "frontend/src/services/port/PortListPage.tsx",
+      "line": 3216,
+      "quote": "<Button type=\"dashed\" size=\"small\" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>",
+      "source_hash": "7f72e0afb5af8dcb641e458d549e4d67786cd73413bafefa460b715eca1c0131",
+      "quote_hash": "2a3d56f687bb42e7dd8a94ad5931c40943058f6f1f531e86b305c850832a2679",
+      "note": "Nút Thêm tọa độ (header) form chỉnh sửa cảng biển — chưa có disabled"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "408aed6b04f5db87cf21279b24d1c1c1cc368c51",
+    "dirty": true,
+    "captured_at": 1787287221975
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "triage_id": "TRI-1787281651506-9143",
+  "created_at": 1787281651506,
+  "request_summary": "Sửa lỗi compile do đổi searchPorts sang Collection<UUID>: cập nhật caller thứ 2 KchtGis155Service truyền danh sách orgUnitIds mở rộng subtree (resolveSubtreeIds)",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/gis/search/service/KchtGis155Service.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/PortRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/gis/search/service/KchtGis155Service.java",
+      "src/main/java/com/hanghai/kchtg/port/repository/PortRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Lọc cảng biển theo Đơn vị quản lý (danh sách + tìm kiếm GIS) phải gồm cả đơn vị con",
+  "blast_radius": 3,
+  "done_oracle": "Không còn lỗi biên dịch 'UUID cannot be converted to Collection<UUID>': KchtGis155Service gọi searchPorts với Collection (mở rộng subtree qua OrgUnitScopeService.resolveSubtreeIds); PortService và PortRepository đã sửa; mvn clean compile pass (trừ lỗi assetmovement có sẵn)",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q -DskipTests",
+      "cwd": ".",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "business_rule",
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/gis/search/service/KchtGis155Service.java",
+    "src/main/java/com/hanghai/kchtg/port/repository/PortRepository.java",
+    "src/main/java/com/hanghai/kchtg/port/service/PortService.java"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "408aed6b04f5db87cf21279b24d1c1c1cc368c51",
+    "dirty": true,
+    "captured_at": 1787281651729
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

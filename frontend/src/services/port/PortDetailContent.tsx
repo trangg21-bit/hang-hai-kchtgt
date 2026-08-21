@@ -2,6 +2,7 @@ import React from 'react';
 import { Descriptions, Table, InputNumber, Space, Tabs } from 'antd';
 import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
+import { resolveOrgLevel2Name } from '../../components/org-unit';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault,
   statusOperational, statusAttention, statusCritical, actionPrimary,
@@ -13,7 +14,7 @@ import { fmtNum } from '../../utils/numFmt';
 
 export interface PortDetailContentProps {
   selectedRecord: any;
-  orgUnits: Array<{ id: string; name: string }>;
+  orgUnits: Array<{ id: string; name: string; parentId?: string }>;
   symbols: Array<{ id: string; name: string; code?: string; image?: string }>;
   detailFiles: any[];
   trangThaiPheDuyetBadge: (status: string) => { label: string; color: string };
@@ -40,7 +41,7 @@ export default function PortDetailContent({
               <style>{`.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.detail-row{display:flex;padding:10px 12px;border-bottom:1px solid ${borderDefault}}.detail-label{width:200px;flex-shrink:0;color:${colors.sidebarBg};font-weight:${fontWeightBold};font-size:${fontSizeMd}px}.detail-label::after{content:':';margin-left:2px}.detail-value{color:${textPrimary};font-size:${fontSizeMd}px;flex:1}.detail-value .ant-tag{margin-left:-6px!important}`}</style>
               <div className="detail-grid">
                 {[
-                  ['Đơn vị quản lý', selectedRecord.orgUnitId ? (orgUnits.find((o) => o.id === selectedRecord.orgUnitId)?.name || '—') : '—'],
+                  ['Đơn vị quản lý', resolveOrgLevel2Name(orgUnits, selectedRecord.orgUnitId) || '—'],
                   ['Nhóm cảng biển', selectedRecord.portGroup ? 'Nhóm ' + selectedRecord.portGroup : '—'],
                   ['Mã cảng biển', selectedRecord.portCode],
                   ['Tên cảng biển', selectedRecord.portName],

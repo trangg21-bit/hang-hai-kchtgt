@@ -96,13 +96,15 @@ export default function FilterTableLayout({
           >
             Tìm kiếm
           </Button>
-          {!hideFilterToggle && (
+          {!hideFilterToggle ? (
             <Button
               icon={<FilterOutlined />}
               onClick={onToggleCollapse}
               shape="circle"
               style={{ color: filterCollapsed ? actionPrimary : textSecondary, borderColor: filterCollapsed ? actionPrimary : borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
             />
+          ) : (
+            <div style={{ width: 38, height: 38 }} aria-hidden="true" />
           )}
         </div>
       </div>
@@ -118,14 +120,14 @@ export default function FilterTableLayout({
 
         {/* DataTable card */}
         <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          <Spin spinning={loading ?? false} classNames={{ root: 'filter-table-spin' }} style={{ height: '100%' }}>
+          <Spin spinning={loading ?? false} classNames={{ root: 'filter-table-spin' }} style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
             {error ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
                 <p>Đã xảy ra lỗi khi tải danh sách.</p>
                 {onRetry && <Button onClick={onRetry}>Thử lại</Button>}
               </div>
             ) : (
-              <div className="filter-table-content" style={{ height: '100%' }}>
+              <div className="filter-table-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                 {children}
               </div>
             )}
@@ -135,9 +137,10 @@ export default function FilterTableLayout({
 
       <style>
         {`
-          .filter-table-spin { height: 100%; }
-          .filter-table-spin .ant-spin-container { height: 100%; }
-          .filter-table-content { height: 100%; }
+          .filter-table-spin { height: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+          .filter-table-spin .ant-spin-nested-loading { height: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+          .filter-table-spin .ant-spin-container { height: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+          .filter-table-content { height: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0; }
         `}
       </style>
     </div>

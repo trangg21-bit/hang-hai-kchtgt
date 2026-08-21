@@ -30,14 +30,17 @@ import {
 } from '../../services/portService';
 import type { Berth } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
+import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
+import { lineObjectService } from '../../services/lineObjectService';
+import { LineObject } from '../../types/lineObject';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { ScreenHeader, StatusTabs, DataTable } from '../../components/list-view';
+import { ScreenHeader, StatusTabs, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -146,7 +149,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm'); } catch { return dateStr; }
+  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
 // ── History helpers ───────────────────────────────────────────────────
@@ -212,10 +215,9 @@ export default function BerthList() {
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
-  const [filterBerthName, setFilterBerthName] = useState('');
+  const [filterKeyword, setFilterKeyword] = useState('');
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
-  const [filterWaterway, setFilterWaterway] = useState('');
-  const [filterBerthCode, setFilterBerthCode] = useState('');
+  const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
   const [filterOperationalFunction, setFilterOperationalFunction] = useState('');
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
@@ -244,6 +246,13 @@ export default function BerthList() {
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
+  const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
+      .then((r) => { const m = new Map<string, string>(); (r.data || []).forEach((l: any) => { m.set(l.id, l.name || l.code); }); setWaterwayMap(m); })
+      .catch(() => {});
+  }, []);
   const orgMap = useMemo(() => {
     const map = new Map<string, string>();
     organizations.forEach((o) => map.set(o.id, o.name));
@@ -269,6 +278,10 @@ export default function BerthList() {
   const [updateForm] = Form.useForm();
   const berthFormRef = useRef<any>(null);
   const editBerthFormRef = useRef<any>(null);
+  // ── Submit loading — nút được bấm mới hiện loading tròn (tham chiếu màn Cảng biển) ──
+  const [submitting, setSubmitting] = useState(false);
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('submit');
+  const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('submit');
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Berth | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -289,6 +302,7 @@ export default function BerthList() {
   const [submittingRecord, setSubmittingRecord] = useState<Berth | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<Berth | null>(null);
+  const [approvalContent, setApprovalContent] = useState('');
 
   // ── History modal ───────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -552,10 +566,9 @@ export default function BerthList() {
     try {
       const res = await berthCRUD.search({
         orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
-        berthName: filterBerthName || undefined,
-        berthCode: filterBerthCode || undefined,
+        search: filterKeyword.trim() || undefined,
         portId: filterPortId,
-        waterway: filterWaterway || undefined,
+        waterwayId: filterWaterwayId,
         operationalFunction: filterOperationalFunction || undefined,
         structureType: filterStructureType,
         operationalStatus: filterOperationalStatus,
@@ -570,7 +583,7 @@ export default function BerthList() {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách bến cảng'));
     } finally { setIsLoading(false); }
-  }, [managingUnitId, filterBerthName, filterPortId, filterWaterway, filterBerthCode,
+  }, [managingUnitId, filterKeyword, filterPortId, filterWaterwayId,
     filterOperationalFunction, filterOperationalStatus, filterApprovalStatus,
     filterStructureType, filterProvince, filterUpdatedFrom, filterUpdatedTo,
     activeTab, page, pageSize]);
@@ -587,8 +600,8 @@ export default function BerthList() {
     // Reset về đơn vị quản lý mặc định (bắt buộc — giống Cảng biển)
     const defaultOrg = defaultOrgUnitId.current;
     setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
-    setFilterBerthName(''); setFilterPortId(undefined); setFilterWaterway('');
-    setFilterBerthCode(''); setFilterOperationalFunction('');
+    setFilterKeyword(''); setFilterPortId(undefined); setFilterWaterwayId(undefined);
+    setFilterOperationalFunction('');
     setFilterStructureType(undefined); setFilterOperationalStatus(undefined);
     setFilterApprovalStatus(undefined); setFilterProvince('');
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
@@ -646,12 +659,12 @@ export default function BerthList() {
   const handleApprove = useCallback(async (record: Berth) => {
     try {
       const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-      await berthApproval.approve(record.id, cap);
+      await berthApproval.approve(record.id, cap, approvalContent);
       toast.success('Đã phê duyệt bến cảng');
-      setApproveModalOpen(false); setApprovingRecord(null);
+      setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent('');
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, managingUnitId]);
+  }, [fetchData, fetchCounts, managingUnitId, approvalContent]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
@@ -687,7 +700,7 @@ export default function BerthList() {
 
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
-    const actions: Array<{ key: string; label: string; variant?: 'primary' | 'default'; icon: React.ReactNode; onClick: () => void }> = [];
+    const actions: ScreenHeaderAction[] = [];
     if (hasPerm('berth:create')) {
       actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: () => setCreateDrawerVisible(true) });
     }
@@ -703,19 +716,30 @@ export default function BerthList() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
         </div>
-        <Select placeholder="Chọn đơn vị" allowClear showSearch optionFilterProp="label"
-          value={managingUnitId} onChange={(v) => { setManagingUnitId(v); setPage(1); }}
-          options={[{ label: 'Tất cả', value: '__all__' }, ...organizations.map((o) => ({ label: o.name, value: o.id }))]}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+        <OrgUnitTreeSelect
+          organizations={organizations}
+          placeholder="Chọn đơn vị..."
+          allowClear
+          showPath
+          allLabel="Tất cả"
+          treeDefaultExpandAll={false}
+          value={managingUnitId}
+          onChange={(v) => { setManagingUnitId(v); setPage(1); }}
+        />
       </div>
-      {/* TODO: Bỏ comment khi backend hỗ trợ lọc theo tên cảng biển
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng biển</div>
-        <Input placeholder="Tìm theo tên cảng biển..." allowClear value={filterBerthName}
-          onChange={(e) => { setFilterBerthName(e.target.value); setPage(1); }}
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã bến cảng</div>
+        <Input placeholder="Tìm theo tên hoặc mã bến cảng" allowClear value={filterKeyword}
+          onChange={(e) => { setFilterKeyword(e.target.value); setPage(1); }}
           onPressEnter={handleFilterApply} style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
-      */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu</div>
+        <Select placeholder="Chọn loại kết cấu" allowClear value={filterStructureType}
+          onChange={(v) => { setFilterStructureType(v); setPage(1); }}
+          options={STRUCTURE_TYPE_OPTIONS}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </div>
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
         <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
@@ -737,37 +761,13 @@ export default function BerthList() {
 
       {/* ── Nâng cao: toggle 8 trường ──────────────────────────── */}
       {filterCollapsed && (<>
-      {/* TODO: Đổi thành dropdown khi có API danh sách luồng hàng hải
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-        <Input placeholder="Tìm theo luồng HH..." allowClear value={filterWaterway}
-          onChange={(e) => { setFilterWaterway(e.target.value); setPage(1); }}
-          style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên bến cảng</div>
-        <Input placeholder="Tìm theo tên bến..." allowClear value={filterBerthName}
-          onChange={(e) => { setFilterBerthName(e.target.value); setPage(1); }}
-          style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      {/* TODO: Bật khi cần lọc theo mã bến cảng
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã bến cảng</div>
-        <Input placeholder="Tìm theo mã bến..." allowClear value={filterBerthCode}
-          onChange={(e) => { setFilterBerthCode(e.target.value); setPage(1); }}
-          style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      */}
-      {/* Ẩn filter Loại kết cấu theo yêu cầu
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu</div>
-        <Select placeholder="Chọn loại" allowClear value={filterStructureType}
-          onChange={(v) => { setFilterStructureType(v); setPage(1); }}
-          options={STRUCTURE_TYPE_OPTIONS}
+        <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
+          value={filterWaterwayId} onChange={(v) => { setFilterWaterwayId(v); setPage(1); }}
+          options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
-      */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
         <Input placeholder="Tìm theo công năng..." allowClear value={filterOperationalFunction}
@@ -783,15 +783,6 @@ export default function BerthList() {
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-        <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
-          placeholder={['Từ ngày', 'Đến ngày']} allowClear
-          value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-          onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD HH:mm') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD HH:mm') : undefined); setPage(1); }}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-      </div>
-      {/* TODO: Bỏ comment khi cần lọc theo trạng thái phê duyệt
-      <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
         <Select placeholder="Chọn trạng thái" allowClear value={filterApprovalStatus}
           onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
@@ -804,7 +795,14 @@ export default function BerthList() {
           ]}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
       </div>
-      */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+        <DatePicker.RangePicker format="DD/MM/YYYY"
+          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
+          value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+          onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </div>
       </>)}
     </>
   );
@@ -825,7 +823,7 @@ export default function BerthList() {
       if (hasPerm('berth:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); } });
       if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
       if (['DRAFT','NHAP'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      if (hasPerm('berth:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
+      if (hasPerm('berth:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) }); }
       if (hasPerm('berth:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
       return actions;
     },
@@ -837,60 +835,26 @@ export default function BerthList() {
     const baseColumns: any[] = [
       { key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span> },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 200, fixed: 'left' as const, sortable: true, sortOrder,
-        render: (_v: string | null, record: Berth) => orgMap.get(record.orgUnitId || '') || _v || '—' },
-      { key: 'berthName', label: <span>Tên bến cảng/Loại kết cấu</span>, dataIndex: 'berthName', width: 200, fixed: 'left' as const, sortable: true, sortOrder,
-        render: (v: string, record: Berth) => {
-          const structureLabel = STRUCTURE_TYPE_OPTIONS.find(o => o.value === record.structureType)?.label || '—';
-          return (
-            <div>
-              <a onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{v}</a>
-              <span style={{ opacity: 0.85 }}>{structureLabel}</span>
-            </div>
-          );
-        } },
-      { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 140,
+      { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, fixed: 'left' as const, sortable: true, sortOrder,
+        render: (_v: string | null, record: Berth) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}</span> },
+      { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 200, fixed: 'left' as const, sortable: true, sortOrder,
+        render: (v: string, record: Berth) => (
+          <div>
+            <a onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{v}</a>
+            <span style={{ opacity: 0.85 }}>{record.berthCode || '—'}</span>
+          </div>
+        ) },
+      { key: 'structureType', label: 'Loại kết cấu', dataIndex: 'structureType', width: 130,
+        render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—') },
+      { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 160,
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
+      { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 240, ellipsis: true,
+        render: (v?: string) => (v ? (waterwayMap.get(v) || v) : '—') },
       { key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 150, sortable: true, sortOrder,
         render: (v: number | null) => v ? VIETNAM_PROVINCES[v - 1] : '—' },
       { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 200,
         render: (v: string | null) => v || '—' },
-    ];
-
-    // Audit columns — only for Admin Cục / admin-operation (BR-018-05)
-    const auditColumns: any[] = isAuditViewer ? [
-      { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 190, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 200, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ Phê duyệt Cảng vụ</span>, dataIndex: 'portAuthorityApprovedAt', width: 210, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-      { key: 'departmentApprovedAt', label: <span>Cán bộ Phê duyệt Cục</span>, dataIndex: 'departmentApprovedAt', width: 200, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-    ] : [];
-
-    const tailColumns: any[] = [
-      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 200, sortable: true, sortOrder,
+      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 190, sortable: true, sortOrder,
         render: (v: string | null) => {
           const m: Record<string, { color: string; label: string }> = {
             OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
@@ -900,7 +864,46 @@ export default function BerthList() {
           const s = m[v || ''] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
         } },
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 150, sortable: true, sortOrder,
+    ];
+
+    // Audit columns — only for Admin Cục / admin-operation (BR-018-05)
+    const auditColumns: any[] = isAuditViewer ? [
+      { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
+        render: (v: string | null, record: Berth) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
+      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
+        render: (v: string | null, record: Berth) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
+      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 320, sortable: true, sortOrder,
+        render: (v: string | null, record: Berth) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
+      { key: 'portAuthorityApprovalContent', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovalContent', width: 260,
+        render: (v: string | null) => v || '—' },
+      { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
+        render: (v: string | null, record: Berth) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
+      { key: 'departmentApprovalContent', label: 'Nội dung phê duyệt cấp Cục', dataIndex: 'departmentApprovalContent', width: 240,
+        render: (v: string | null) => v || '—' },
+    ] : [];
+
+    const tailColumns: any[] = [
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 180, fixed: 'right' as const, sortable: true, sortOrder,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
@@ -912,7 +915,7 @@ export default function BerthList() {
       ...col,
       sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
     }));
-  }, [page, pageSize, portOptions, orgMap, userMap, sortField, sortOrder, isAuditViewer, openDetailDrawer]);
+  }, [page, pageSize, portOptions, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, isAuditViewer, openDetailDrawer]);
 
   // ── Detail drawer content ────────────────────────────────────────
   const renderDetailContent = () => {
@@ -922,6 +925,7 @@ export default function BerthList() {
       <BerthDetailContent
         selectedRecord={detailRecord}
         orgMap={orgMap}
+        organizations={organizations}
         symbolMap={symbolMap}
         symbolImageMap={symbolImageMap}
         portOptions={portOptions}
@@ -946,6 +950,7 @@ export default function BerthList() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+      <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <ScreenHeader
         breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến cảng' }]}
         actions={headerActions}
@@ -991,9 +996,9 @@ export default function BerthList() {
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button onClick={() => berthFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button>
-            <Button type="primary" onClick={() => berthFormRef.current?.submit('SUBMIT')} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-            <Button type="primary" onClick={() => berthFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button>
+            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); berthFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); berthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button>
           </div>
         }
         styles={{
@@ -1004,7 +1009,7 @@ export default function BerthList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" initialValues={{}}>
-          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} />
+          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
         </Form>
       </Drawer>
 
@@ -1017,7 +1022,7 @@ export default function BerthList() {
         extra={<Button type="text" onClick={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => editBerthFormRef.current?.submit('UPDATE')} style={primaryButtonStyle}>Cập nhật</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); editBerthFormRef.current?.submit('UPDATE'); }} loading={submitting && actionType === 'update'} style={primaryButtonStyle}>Cập nhật</Button>
           </div>
         }
         styles={{
@@ -1028,7 +1033,7 @@ export default function BerthList() {
         {editBerthId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { setEditBerthId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} />
+            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { setEditBerthId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </Drawer>
@@ -1138,6 +1143,12 @@ export default function BerthList() {
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
             {approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'Cục' : 'Cảng vụ'} phê duyệt <strong>{approvingRecord?.berthCode} — {approvingRecord?.berthName}</strong>?
           </p>
+          <div style={{ marginTop: spaceMd }}>
+            <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
+            <Input.TextArea rows={3} placeholder="Nhập nội dung phê duyệt (không bắt buộc)..." value={approvalContent}
+              onChange={(e) => setApprovalContent(e.target.value)}
+              style={{ fontSize: fontSizeMd }} />
+          </div>
         </div>
       </Modal>
 
@@ -1185,10 +1196,10 @@ export default function BerthList() {
               filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
               style={{ width: 200, borderRadius: radiusPill, height: 40 }}
               options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
-            <DatePicker placeholder="Từ ngày" popupClassName="history-dt-popup" value={historyFrom ? dayjs(historyFrom) : null}
+            <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyFrom ? dayjs(historyFrom) : null}
               onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" popupClassName="history-dt-popup" value={historyTo ? dayjs(historyTo) : null}
+            <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyTo ? dayjs(historyTo) : null}
               onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
             <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>

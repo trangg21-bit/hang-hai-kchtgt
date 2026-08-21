@@ -280,12 +280,18 @@ export default function BuoyListPage() {
 
   // Chọn nhà trạm → sinh mã tự động {mã nhà trạm}-PT-{seq} (chỉ chế độ thêm mới)
   const handleStationChange = useCallback((stationId: string | undefined) => {
+    if (!stationId) {
+      // Bỏ chọn nhà trạm → xóa mã, không sinh mã dự phòng PT-xxxxxx
+      createForm.setFieldsValue({ code: undefined });
+      return;
+    }
     setCodeLoading(true);
     generateBuoyCode(stationId)
       .then((code) => { createForm.setFieldsValue({ code }); })
       .catch(() => { toast.error('Không thể sinh mã tự động, vui lòng thử lại'); })
       .finally(() => { setCodeLoading(false); });
   }, [createForm]);
+
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [createCoords, setCreateCoords] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
@@ -859,7 +865,7 @@ export default function BuoyListPage() {
       Object.keys(payload).forEach((key) => { if (payload[key] === undefined) delete payload[key]; });
 
       await updateBuoy(editingRecord.id, payload as any);
-      toast.success('Lưu nháp thành công');
+      toast.success('Cập nhật thành công');
 
       if (uploadFileList.length > 0) {
         await uploadFilesAfterSave(editingRecord.id, uploadFileList);
@@ -1208,7 +1214,7 @@ export default function BuoyListPage() {
       key: 'unitId',
       label: 'Đơn vị quản lý',
       dataIndex: 'unitId',
-      width: 180,
+      width: 240,
       fixed: 'left' as const,
       render: (v: string) => (v ? (orgMap.get(v) || v) : '—'),
     },
@@ -1216,12 +1222,13 @@ export default function BuoyListPage() {
       key: 'name',
       label: 'Tên/Mã phao tiêu',
       dataIndex: 'name',
-      width: 120,
+      width: 170,
       fixed: 'left' as const,
       sortable: true,
+      ellipsis: false,
       render: (name: string, record: Buoy) => (
         <div>
-          <a onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{name}</a>
+          <Button type="link" onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', padding: 0, height: 'auto' }}>{name}</Button>
           <span style={{ opacity: 0.85 }}>{record.code}</span>
         </div>
       ),
@@ -1230,21 +1237,24 @@ export default function BuoyListPage() {
       key: 'buoyStationId',
       label: 'Thuộc nhà trạm QLVH phao, tiêu',
       dataIndex: 'buoyStationName',
-      width: 170,
+      width: 300,
+      ellipsis: false,
       render: (v: string, rec: Buoy) => (v || (rec?.buoyStationId ? (buoyStations.find((s) => s.id === rec.buoyStationId)?.name || '—') : '—')),
     },
     {
       key: 'provinceId',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
-      width: 120,
+      width: 170,
+      ellipsis: false,
       render: (v: number) => (v != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(v))?.label || String(v)) : '—'),
     },
     {
       key: 'condition',
       label: 'Tình trạng',
       dataIndex: 'condition',
-      width: 120,
+      width: 220,
+      ellipsis: false,
       render: (v: string) => {
         const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' };
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
@@ -1253,52 +1263,56 @@ export default function BuoyListPage() {
     {
       key: 'updatedAt',
       label: 'Cán bộ cập nhật',
-      dataIndex: 'updatedBy',
-      width: 120,
-      sortable: true,
-      render: (_v: string | null, record: Buoy) => (
-        <div>
-          <span style={{ fontWeight: fontWeightBold }}>{record.updatedBy != null ? (userMap.get(String(record.updatedBy)) || String(record.updatedBy)) : '—'}</span><br />
-          <span style={{ opacity: 0.85 }}>{formatDateTime(record.updatedAt)}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'submittedForApprovalBy',
-      label: 'Cán bộ gửi phê duyệt',
-      dataIndex: 'submittedForApprovalBy',
-      width: 140,
-      sortable: true,
-      render: (_v: string | null, record: Buoy) => (
-        <div>
-          <span style={{ fontWeight: fontWeightBold }}>{record.submittedForApprovalBy != null ? (userMap.get(String(record.submittedForApprovalBy)) || String(record.submittedForApprovalBy)) : '—'}</span><br />
-          <span style={{ opacity: 0.85 }}>{formatDateTime(record.submittedForApprovalAt)}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'level1ApprovedBy',
-      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
-      dataIndex: 'level1ApprovedBy',
+      dataIndex: 'updatedAt',
       width: 200,
       sortable: true,
-      render: (_v: string | null, record: Buoy) => (
+      ellipsis: false,
+      render: (v: string | null, record: Buoy) => (
         <div>
-          <span style={{ fontWeight: fontWeightBold }}>{record.level1ApprovedBy != null ? (userMap.get(String(record.level1ApprovedBy)) || String(record.level1ApprovedBy)) : '—'}</span><br />
-          <span style={{ opacity: 0.85 }}>{formatDateTime(record.level1ApprovedDate)}</span>
+          <span style={{ fontWeight: fontWeightBold }}>{record.updatedBy != null ? (userMap.get(String(record.updatedBy)) || String(record.updatedBy)) : '—'}</span><br />
+          <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
         </div>
       ),
     },
     {
-      key: 'level2ApprovedBy',
-      label: 'Cán bộ phê duyệt cấp Cục',
-      dataIndex: 'level2ApprovedBy',
-      width: 150,
+      key: 'submittedForApprovalAt',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'submittedForApprovalAt',
+      width: 210,
       sortable: true,
-      render: (_v: string | null, record: Buoy) => (
+      ellipsis: false,
+      render: (v: string | null, record: Buoy) => (
+        <div>
+          <span style={{ fontWeight: fontWeightBold }}>{record.submittedForApprovalBy != null ? (userMap.get(String(record.submittedForApprovalBy)) || String(record.submittedForApprovalBy)) : '—'}</span><br />
+          <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'level1ApprovedDate',
+      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+      dataIndex: 'level1ApprovedDate',
+      width: 320,
+      sortable: true,
+      ellipsis: true,
+      render: (v: string | null, record: Buoy) => (
+        <div>
+          <span style={{ fontWeight: fontWeightBold }}>{record.level1ApprovedBy != null ? (userMap.get(String(record.level1ApprovedBy)) || String(record.level1ApprovedBy)) : '—'}</span><br />
+          <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'level2ApprovedDate',
+      label: 'Cán bộ phê duyệt cấp Cục',
+      dataIndex: 'level2ApprovedDate',
+      width: 240,
+      sortable: true,
+      ellipsis: true,
+      render: (v: string | null, record: Buoy) => (
         <div>
           <span style={{ fontWeight: fontWeightBold }}>{record.level2ApprovedBy != null ? (userMap.get(String(record.level2ApprovedBy)) || String(record.level2ApprovedBy)) : '—'}</span><br />
-          <span style={{ opacity: 0.85 }}>{formatDateTime(record.level2ApprovedDate)}</span>
+          <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
         </div>
       ),
     },
@@ -1306,8 +1320,7 @@ export default function BuoyListPage() {
       key: 'status',
       label: 'Trạng thái',
       dataIndex: 'status',
-      width: 120,
-      align: 'center' as const,
+      width: 180,
       render: (status: string | null | undefined) => {
         const b = buoyStatusBadge(status);
         return (
@@ -1438,9 +1451,10 @@ export default function BuoyListPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+      <style>{`.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }`}</style>
       <style>{`.list-view-table .ant-table-thead > tr > th { white-space: normal !important; line-height: 1.4 !important; }`}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý phao tiêu' }]}
+        breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý Phao, tiêu' }]}
         actions={headerActions}
       />
 
@@ -1464,6 +1478,13 @@ export default function BuoyListPage() {
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã Phao, tiêu</div>
+            <Input placeholder="Nhập tên hoặc mã phao tiêu..." allowClear
+              value={filterQuery}
+              onChange={(e) => { setFilterQuery(e.target.value); setPage(1); }}
+              style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm QLVH phao, tiêu</div>
             <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
               value={filterStationId || undefined}
@@ -1471,13 +1492,6 @@ export default function BuoyListPage() {
               options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
               loading={loadingStations}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã phao tiêu</div>
-            <Input placeholder="Nhập tên hoặc mã phao tiêu..." allowClear
-              value={filterQuery}
-              onChange={(e) => { setFilterQuery(e.target.value); setPage(1); }}
-              style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
 
           {/* ── Bộ lọc nâng cao (toggle) ────────────────────────────── */}
@@ -1514,10 +1528,10 @@ export default function BuoyListPage() {
             </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-              <DatePicker.RangePicker showTime={{ format: 'HH:mm' }} format="DD/MM/YYYY HH:mm"
+              <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']} allowClear
                 value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-                onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD HH:mm') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD HH:mm') : undefined); setPage(1); }}
+                onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
           </>)}
@@ -1535,6 +1549,7 @@ export default function BuoyListPage() {
           <DataTable dataSource={[]} rowKey="id"
             emptyState={
               <div style={{ padding: '40px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div>
                 <div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy phao tiêu nào phù hợp</div>
               </div>
             }
@@ -1559,7 +1574,7 @@ export default function BuoyListPage() {
             rowActions={rowActions}
             loading={false}
             onSort={handleSortChange}
-            scroll={{ x: 2900, y: 'calc(100vh - 450px)' }}
+            scroll={{ x: 2200, y: 'calc(100vh - 450px)' }}
           />
         ) : null}
         <Pagination
@@ -1573,7 +1588,7 @@ export default function BuoyListPage() {
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới phao tiêu</span>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới thông tin phao, tiêu</span>}
         open={createDrawerOpen}
         onClose={closeCreateDrawer}
         extra={<Button type="text" onClick={closeCreateDrawer} style={drawerCloseBtnStyle}>✕</Button>}
@@ -1643,7 +1658,7 @@ export default function BuoyListPage() {
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editingRecord ? editingRecord.name : 'Phao tiêu'}</span>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin phao, tiêu — {editingRecord ? editingRecord.name : 'Phao, tiêu'}</span>}
         open={editDrawerOpen}
         onClose={closeEditDrawer}
         extra={<Button type="text" onClick={closeEditDrawer} style={drawerCloseBtnStyle}>✕</Button>}
@@ -1670,6 +1685,7 @@ export default function BuoyListPage() {
         >
           <BuoyFormContent
             isEdit
+            currentStationId={editingRecord?.buoyStationId ?? null}
             activeTabKey={editTabKey}
             onTabChange={setEditTabKey}
             buoyStations={buoyStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
@@ -1693,7 +1709,7 @@ export default function BuoyListPage() {
         {...drawerProps}
         size={1000}
         title={<span style={drawerTitleStyle}>
-          {detailRecord ? `Chi tiết phao tiêu - ${detailRecord.name}` : 'Chi tiết phao tiêu'}
+          {detailRecord ? `Chi tiết thông tin phao, tiêu - ${detailRecord.name}` : 'Chi tiết thông tin phao, tiêu'}
         </span>}
         open={detailDrawerOpen}
         onClose={closeDetailDrawer}
@@ -1766,10 +1782,10 @@ export default function BuoyListPage() {
                 style={{ width: 200, borderRadius: radiusPill, height: 40 }}
                 options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />
             )}
-            <DatePicker placeholder="Từ ngày" popupClassName="history-dt-popup" value={historyFrom ? dayjs(historyFrom) : null}
+            <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyFrom ? dayjs(historyFrom) : null}
               onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-            <DatePicker placeholder="Đến ngày" popupClassName="history-dt-popup" value={historyTo ? dayjs(historyTo) : null}
+            <DatePicker placeholder="Đến ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyTo ? dayjs(historyTo) : null}
               onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
               style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
             <Button type="primary" icon={<SearchOutlined />} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>

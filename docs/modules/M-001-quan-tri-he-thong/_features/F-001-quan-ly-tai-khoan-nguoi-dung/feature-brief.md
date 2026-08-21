@@ -7,18 +7,20 @@ status: done
 classification: local
 priority: high
 created: 2024-06-01
-last-updated: 2026-08-19
+last-updated: 2026-08-20
 locked-fields: []
 consumed_by_modules: []
 ---
 
-# Đặc tả nghiệp vụ: F-001 Quản lý tài khoản người dùng
+# Đặc tả nghiệp vụ: Quản lý tài khoản người dùng
 
-**Tài liệu:** BA Feature Brief  
-**Feature:** F-001  
-**Module:** M-001 — Quản trị hệ thống  
-**Người viết:** Business Analyst  
-**Ngày cập nhật:** 2026-08-19  
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-001
+**Module:** M-001 — Quản trị hệ thống
+**Loại:** chức năng có bước phê duyệt (tài khoản tự đăng ký F-271)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + tài liệu yêu cầu gốc (TKCT)
+
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
 ---
 
@@ -96,21 +98,18 @@ Hệ thống **không sử dụng Vai trò cố định (Role-based)** nữa. Qu
 
 ---
 
-## 5. Điểm khác biệt so với mẫu chung
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-Các màn hình chuẩn của hệ thống được quy định tại 2 file:
-*   📂 **Màn hình danh sách:** `docs/conventions/list-screen-ui-standard.md`
-*   📂 **Form & Popup:** `docs/conventions/form-and-list-patterns.md`
-
-F-001 tuân thủ các chuẩn trên, nhưng có các **điểm khác biệt** sau Dev cần lưu ý:
-
-| STT | Chuẩn hệ thống (Reference) | Điểm khác biệt tại F-001 |
+| # | Điểm cần khai báo | Khai báo của chức năng này |
 |---|---|---|
-| 1 | **Màn hình danh sách** (`list-screen-ui-standard.md`) | **Tìm kiếm tách đôi:** Khác với 1 ô tìm kiếm chuẩn, F-001 có 2 ô tìm kiếm riêng biệt (1 ô cho Email/Username, 1 ô cho Họ tên). |
-| 2 | **Form tạo** (`form-and-list-patterns.md`) | **Thay đổi thứ tự trường:** Chuyển "Đơn vị trực thuộc" lên đầu (STT 1) và "Email" lên STT 2. |
-| 3 | **Form tạo** (`form-and-list-patterns.md`) | **Không có trường mật khẩu:** Không có ô nhập password tay, hệ thống tự gán mật khẩu mặc định. |
-| 4 | **Hành động xóa** | **Không có nút Xóa:** Thay vì xóa vĩnh viễn, F-001 dùng nút "Hủy kích hoạt" hoặc "Khóa" để chỉ thay đổi trạng thái. |
-| 5 | **Giao diện Modal** | **Bắt buộc nhập lý do:** Modal Khóa/Hủy kích hoạt bắt buộc phải có trường "Lý do" (tối thiểu 10 ký tự) để lưu vào `UserStatusLog`. |
+| 1 | Trạng thái riêng | Có — ACTIVE / INACTIVE / LOCKED / PENDING_APPROVAL |
+| 2 | Có bước phê duyệt không | Có — tài khoản tự đăng ký (F-271) cần `user:approve`; Admin tạo thì ACTIVE ngay |
+| 3 | Lọc cha-con / theo đơn vị | Có — lọc theo đơn vị trực thuộc (orgUnitId, TreeSelect) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — trường "Lý do" chỉ hiện khi Khóa/Hủy kích hoạt; không có trường mật khẩu (hệ thống tự gán) |
+| 5 | Quyền riêng | `user:read`, `user:create`, `user:update`, `user:lock`, `user:approve`, `user:manage` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Có — POST `/api/users/pending`, `/api/auth/forgot-password`, `/api/auth/reset-password/{token}` (rate-limited) |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Có — 2 ô tìm kiếm, không có nút Xóa (thay bằng Hủy kích hoạt/Khóa), modal Khóa bắt buộc lý do |
 
 ---
 
@@ -119,10 +118,12 @@ F-001 tuân thủ các chuẩn trên, nhưng có các **điểm khác biệt** s
 | Method | Đường dẫn | Mô tả | Quyền (Permission) |
 |---|---|---|---|
 | GET | `/api/users` | Danh sách người dùng (phân trang, lọc trạng thái/đơn vị, tìm kiếm 2 ô) | `user:read` |
-| POST | `/api/users` | Tạo mới tài khoản (gửi kèm 9 trường dữ liệu) | `user:manage` |
-| PUT | `/api/users/{id}` | Chỉnh sửa thông tin tài khoản | `user:manage` |
-| POST | `/api/users/{id}/lock` | Khóa/Hủy kích hoạt tài khoản (có lý do) | `user:manage` |
-| POST | `/api/users/{id}/unlock` | Mở khóa tài khoản | `user:manage` |
+| GET | `/api/users/{id}` | Xem chi tiết thông tin tài khoản người dùng | `user:read` |
+| POST | `/api/users` | Tạo mới tài khoản (gửi kèm 9 trường dữ liệu) | `user:create` hoặc `user:manage` |
+| PUT | `/api/users/{id}` | Chỉnh sửa thông tin tài khoản | `user:update` hoặc `user:manage` |
+| POST | `/api/users/{id}/lock` | Khóa tài khoản (có lý do) | `user:lock` hoặc `user:manage` |
+| POST | `/api/users/{id}/unlock` | Mở khóa tài khoản | `user:lock` hoặc `user:manage` |
+| PATCH | `/api/users/{id}/status` | Đổi trạng thái tài khoản | `user:lock`, `user:update` hoặc `user:manage` |
 | GET | `/api/users/me` | Xem/sửa thông tin cá nhân | JWT (tự quản lý) |
 | POST | `/api/users/pending` | Nộp đơn đăng ký tài khoản (F-271) | Công khai (rate-limited 5 lần/giờ/IP) |
 | POST | `/api/auth/forgot-password` | Yêu cầu link đặt lại mật khẩu | Công khai (rate-limited 3 lần/15 phút) |

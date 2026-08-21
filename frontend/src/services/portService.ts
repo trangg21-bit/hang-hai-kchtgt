@@ -169,12 +169,13 @@ export const berthCRUD = {
     portId?: string;
     berthType?: string;
     waterway?: string;
+    waterwayId?: string;
     operationalFunction?: string;
     operationalStatus?: string;
     approvalStatus?: string;
     orgUnitId?: string;
     structureType?: number;
-    provinceId?: string;
+    provinceId?: number | string;
     updatedFrom?: string;
     updatedTo?: string;
     page?: number;
@@ -187,6 +188,7 @@ export const berthCRUD = {
       portId: params?.portId,
       berthType: params?.berthType,
       waterway: params?.waterway,
+      waterwayId: params?.waterwayId,
       operationalFunction: params?.operationalFunction,
       operationalStatus: params?.operationalStatus,
       approvalStatus: params?.approvalStatus,
@@ -479,8 +481,8 @@ export const portApproval = {
 };
 
 export const berthApproval = {
-  async approve(id: string, cap: string): Promise<void> {
-    await api.post(`/v1/berths/${id}/approve`, { cap });
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/approve`, { cap, content: content?.trim() || undefined });
   },
 
   async reject(id: string, cap: string, lyDo: string): Promise<void> {

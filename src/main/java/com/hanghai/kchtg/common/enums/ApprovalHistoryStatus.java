@@ -12,7 +12,10 @@ public enum ApprovalHistoryStatus {
     UPDATED(5, "UPDATED"),
     DELETED(6, "DELETED"),
     ATTACHMENT_UPLOADED(7, "ATTACHMENT_UPLOADED"),
-    ATTACHMENT_DELETED(8, "ATTACHMENT_DELETED");
+    ATTACHMENT_DELETED(8, "ATTACHMENT_DELETED"),
+    DRAFT_SAVED(9, "DRAFT_SAVED"),
+    EXPIRED(10, "EXPIRED"),
+    STATUS_CHANGED(11, "STATUS_CHANGED");
 
     private final int value;
     private final String code;

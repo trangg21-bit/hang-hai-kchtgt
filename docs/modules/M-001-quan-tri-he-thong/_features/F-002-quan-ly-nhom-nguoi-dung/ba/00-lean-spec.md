@@ -2,14 +2,25 @@
 feature-id: F-002
 document: lean-spec
 output-mode: lean
-last-updated: "2026-06-28"
+last-updated: "2026-08-20"
 ---
+
+> ## ⚠️ TÀI LIỆU LỖI THỜI — KHÔNG CÒN LÀ NGUỒN SỰ THẬT
+>
+> **Tài liệu này mô tả mô hình cũ của F-002 và đã lỗi thời (superseded).** Nguồn sự thật duy nhất hiện hành là [`../feature-brief.md`](../feature-brief.md) (cập nhật 2026-08-20) — chứa toàn bộ quy tắc nghiệp vụ **BR-002-01..BR-002-12**, phân quyền dạng `<resource>:<action>`, trường dữ liệu và cấu trúc bảng hiện hành của F-002.
+>
+> Các nội dung bên dưới **chỉ giữ lại để ghi chép lịch sử, không được dùng làm căn cứ triển khai**, đặc biệt:
+> - Mô hình vai trò cũ **Admin / Lãnh đạo / Cán bộ / Cá nhân** — hệ thống đã chuyển sang phân quyền động theo nhóm/tài khoản (quyền `<resource>:<action>` đăng ký trong `PermissionSeeder.java`); bảng `Role` và trường `roleId` đã được gỡ bỏ toàn hệ thống.
+> - Chức năng **Xóa nhóm**, **Sao chép nhóm** — đã bỏ; vô hiệu hóa nhóm bằng khóa/mở khóa (trạng thái Sử dụng / Không sử dụng — BR-002-08).
+> - Bảng **`GroupHistory`** và chức năng lịch sử nhóm — đã bỏ (brief AC-002-14: không có chức năng lịch sử nhóm).
+> - Bảng `UserGroup` **thiếu `organizationId`** — hiện hành nhóm bắt buộc thuộc một đơn vị (`organizationId` FK → org_units, NOT NULL — BR-002-09).
+> - Trường **`groupType`** (department/project/custom) — không còn trong brief hiện hành.
 
 # Lean Spec — F-002: Quản lý nhóm người dùng
 
 ## 1. Summary
 
-Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ thống), xây dựng trên Spring Boot + Spring Security + JWT + ReactJS. Tính năng cho phép quản lý tập trung các nhóm người dùng: tạo, sửa, xóa nhóm; thêm/bớt thành viên; sao chép nhóm; tìm kiếm, lọc và phân trang danh sách nhóm. Phân quyền theo vai trò (Admin, Lanh dao, Can bo, Ca nhan) với RBAC qua JWT.
+Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ thống), xây dựng trên Spring Boot + Spring Security + JWT + ReactJS. Tính năng cho phép quản lý tập trung các nhóm người dùng: tạo, sửa, khóa/mở khóa nhóm theo đơn vị trực thuộc; thêm/bớt thành viên; gán quyền cho nhóm; tìm kiếm, lọc và phân trang danh sách nhóm. Phân quyền động theo nhóm/tài khoản với quyền dạng <resource>:<action> (xem feature-brief.md mục 4).
 
 **Complexity:** Medium (5 business rules, 4 actors)
 
@@ -21,23 +32,25 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 |---|---|---|
 | 1 | Tạo nhóm | Tạo nhóm mới với tên, mã, loại nhóm (department/project/custom), mô tả |
 | 2 | Chỉnh sửa nhóm | Cập nhật tên, mô tả, loại nhóm |
-| 3 | Xóa nhóm | Xóa nhóm (chỉ khi không còn thành viên, chỉ Admin) |
+| 3 | ~~Xóa nhóm~~ | ~~Xóa nhóm (chỉ khi không còn thành viên, chỉ Admin)~~ — đã bỏ; thay bằng khóa/mở khóa nhóm (BR-002-08) |
 | 4 | Thêm thành viên | Thêm người dùng vào nhóm, ghi nhận joinedBy và joinedAt |
 | 5 | Xóa thành viên | Loại bỏ người dùng khỏi nhóm |
-| 6 | Sao chép nhóm | Duplicate nhóm với toàn bộ thành viên gốc |
+| 6 | ~~Sao chép nhóm~~ | ~~Duplicate nhóm với toàn bộ thành viên gốc~~ — đã bỏ |
 | 7 | Danh sách nhóm | Phân trang, tìm kiếm theo tên, lọc theo loại nhóm và số lượng thành viên |
 | 8 | Chi tiết nhóm | Xem thông tin nhóm và danh sách thành viên |
-| 9 | Lịch sử thay đổi | Ghi nhận lịch sử hành động trên nhóm (GroupHistory) |
+| 9 | ~~Lịch sử thay đổi~~ | ~~Ghi nhận lịch sử hành động trên nhóm (GroupHistory)~~ — đã bỏ (brief AC-002-14) |
 
 ### Out of Scope
 
 | # | Capability | Rationale |
 |---|---|---|
-| 1 | Phân quyền tĩnh theo nhóm | F-001 Roles đảm nhận |
+| 1 | ~~Phân quyền tĩnh theo nhóm~~ | ~~F-001 Roles đảm nhận~~ — mô hình Role đã gỡ bỏ; phân quyền động qua nhóm/tài khoản |
 | 2 | Tự động thêm thành viên theo điều kiện | Rule-based membership không thuộc phạm vi |
 | 3 | Phân cấp nhóm cha/con | Không hỗ trợ nested/chồng nhóm |
 
 ## 3. Actors & Permissions
+
+> *(LỖI THỜI — mô hình vai trò cũ đã được thay thế; phân quyền hiện hành của F-002 xem feature-brief.md mục 4.5.)*
 
 | Actor | Role Slug | Permissions |
 |---|---|---|
@@ -82,6 +95,8 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 
 ## 6. Business Rules
 
+> *(LỖI THỜI — bảng quy tắc cũ (BR-008..BR-015); quy tắc hiện hành là BR-002-01..BR-002-12 tại feature-brief.md mục 4.1.)*
+
 | ID | Rule | Applies-to | Source | Exception |
 |---|---|---|---|---|
 | BR-008 | Tên nhóm phải unique trong toàn hệ thống; không cho phép trùng tên khi tạo mới hoặc sửa | Create/Update Group | UC-008 | Không có |
@@ -97,13 +112,15 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 
 | Entity | Key Fields | FK References | Notes |
 |---|---|---|---|
-| **UserGroup** | id (BIGINT PK), name (VARCHAR 100 NOT NULL), code (VARCHAR 30 UNIQUE NOT NULL), description (TEXT), groupType (VARCHAR 30), status (VARCHAR 20), createdAt, updatedAt | — | Bảng chính quản lý nhóm |
+| **UserGroup** | id (BIGINT PK), **organizationId (UUID FK→org_units, NOT NULL — BR-002-09)**, name (VARCHAR 100 NOT NULL), code (VARCHAR 30 UNIQUE NOT NULL), description (TEXT), ~~groupType (VARCHAR 30 — đã bỏ)~~, status (INT: 0=Không sử dụng, 1=Sử dụng; default 1), createdBy, createdAt, updatedBy, updatedAt | org_units | Bảng chính quản lý nhóm; đơn vị không đổi sau khi tạo (BR-002-10) |
 | **GroupMember** | id (BIGINT PK), groupId (BIGINT FK→UserGroup), userId (BIGINT FK→UserAccount), joinedBy (BIGINT FK→UserAccount), joinedAt | UserGroup, UserAccount | Bảng trung gian |
-| **GroupHistory** | id (BIGINT PK), groupId (BIGINT FK→UserGroup), action (VARCHAR 30), performedBy (BIGINT FK→UserAccount), performedAt, notes (TEXT) | UserGroup, UserAccount | Lịch sử thay đổi nhóm |
-| **UserAccount** | id (BIGINT PK), username, email, passwordHash, roleId, organizationId, status, createdAt, updatedAt, deletedAt, lastLoginAt | Role, Organization | Tham chiếu từ GroupMember |
-| **Role** | id (BIGINT PK), name, code, description, permissions (JSON), isSystem | — | Tham chiếu từ UserAccount |
+| ~~GroupHistory~~ | ~~id, groupId, action, performedBy, performedAt, notes~~ | — | ~~Lịch sử thay đổi nhóm~~ — đã bỏ (brief AC-002-14) |
+| **UserAccount** | id (BIGINT PK), username, email, passwordHash, ~~roleId (đã gỡ bỏ)~~, organizationId, status, createdAt, updatedAt, deletedAt, lastLoginAt | Organization | Tham chiếu từ GroupMember |
+| ~~Role~~ | ~~id, name, code, description, permissions (JSON), isSystem~~ | — | ~~Tham chiếu từ UserAccount~~ — mô hình Role đã gỡ bỏ toàn hệ thống |
 
 ## 8. API Endpoints
+
+> *(LỖI THỜI — endpoint và cột Role Required theo mô hình cũ. Đường dẫn hiện hành xem feature-brief.md mục 6: không còn DELETE /groups/{id}, POST /groups/{id}/copy, GET /groups/{id}/history; thay bằng PATCH /groups/{id}/lock và GET/PUT /groups/{id}/permissions.)*
 
 | Method | Endpoint | Description | Auth | Role Required |
 |---|---|---|---|---|
@@ -142,6 +159,8 @@ Feature F-002 (Quan ly nhom nguoi dung) thuộc module M-001 (Quản trị hệ 
 | **Scalability** | Hỗ trợ tối thiểu 10.000 nhóm, 50.000 thành viên; index trên name, code, groupType, status | DB index strategy defined |
 
 ## 11. Pipeline Triage
+
+> *(LỖI THỜI — mục triage cũ; cụm "3 new aggregates" gồm GroupHistory không còn đúng — xem banner đầu file.)*
 
 | Question | Answer | Rationale |
 |---|---|---|

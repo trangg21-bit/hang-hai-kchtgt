@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, memo, type ReactNode, type FC } from 'react';
 import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Empty, Tree, Checkbox } from 'antd';
-import { PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { usePermissionStore } from '../store/permissionStore';
@@ -42,6 +42,33 @@ function getStatusBadgeClass(status: string): string {
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
+const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onSearch }) => {
+  const [value, setValue] = useState('');
+
+  return (
+    <Input
+      allowClear
+      value={value}
+      onChange={(e) => {
+        const nextVal = e.target.value;
+        setValue(nextVal);
+        if (!nextVal) {
+          onSearch('');
+        }
+      }}
+      onPressEnter={() => onSearch(value.trim())}
+      suffix={
+        <SearchOutlined
+          style={{ cursor: 'pointer', color: textSecondary, fontSize: 16 }}
+          onClick={() => onSearch(value.trim())}
+        />
+      }
+      placeholder="Tìm theo tên hoặc mã quyền"
+      style={{ borderRadius: radiusPill, height: 40, margin: `${spaceMd}px 0` }}
+    />
+  );
+});
+
 export default function UsersPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -63,12 +90,11 @@ export default function UsersPage() {
   const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const { tree: rawPermissionTree, allKeys: allPermissionKeys, isLoading: permissionCatalogLoading } = usePermissions();
   const [permissionUser, setPermissionUser] = useState<User | null>(null);
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
-  const [permissionSearch, setPermissionSearch] = useState('');
+  const [appliedPermissionSearch, setAppliedPermissionSearch] = useState('');
   const [permissionLoading, setPermissionLoading] = useState(false);
   const [permissionSaving, setPermissionSaving] = useState(false);
 
@@ -252,7 +278,7 @@ export default function UsersPage() {
 
   const openPermissionModal = useCallback(async (user: User) => {
     setPermissionUser(user);
-    setPermissionSearch('');
+    setAppliedPermissionSearch('');
     setPermissionLoading(true);
     try {
       const grants = await userService.getUserPermissions(user.id);
@@ -280,16 +306,28 @@ export default function UsersPage() {
     }
   }, [permissionUser, selectedPermissionKeys, refetch]);
 
+  const indexedPermissionTree = useMemo(() => {
+    const attachMeta = (nodes: typeof rawPermissionTree): any[] => nodes.map((node) => ({
+      ...node,
+      _searchStr: normalizeSearchText(`${node.title} ${node.key}`),
+      children: node.children ? attachMeta(node.children) : [],
+    }));
+    return attachMeta(rawPermissionTree);
+  }, [rawPermissionTree]);
+
   const permissionTreeData = useMemo(() => {
-    const keyword = normalizeSearchText(permissionSearch);
+    const keyword = normalizeSearchText(appliedPermissionSearch);
     if (!keyword) return rawPermissionTree;
-    const filter = (nodes: typeof rawPermissionTree): typeof rawPermissionTree => nodes.flatMap((node) => {
+    const filter = (nodes: any[]): any[] => nodes.flatMap((node) => {
+      const parentMatches = node._searchStr.includes(keyword);
+      if (parentMatches) {
+        return [{ ...node, children: node.children || [] }];
+      }
       const children = filter(node.children || []);
-      const matches = normalizeSearchText(node.title).includes(keyword) || normalizeSearchText(node.key).includes(keyword);
-      return matches || children.length ? [{ ...node, children }] : [];
+      return children.length ? [{ ...node, children }] : [];
     });
-    return filter(rawPermissionTree);
-  }, [rawPermissionTree, permissionSearch]);
+    return filter(indexedPermissionTree);
+  }, [indexedPermissionTree, rawPermissionTree, appliedPermissionSearch]);
 
   const allPermissionsSelected = allPermissionKeys.length > 0
     && allPermissionKeys.every((key) => selectedPermissionKeys.includes(key));
@@ -313,8 +351,8 @@ export default function UsersPage() {
       if (hasPerm('user:approve')) actions.push({ key: 'approve', label: 'Phê duyệt tài khoản', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
       if (hasPerm('user:approve')) actions.push({ key: 'reject', label: 'Từ chối tài khoản', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
     } else {
-      if (hasPerm('user.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
-      if (hasPerm('user.lock')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
+      if (hasPerm('user:update') || hasPerm('user:manage')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+      if (hasPerm('user:lock') || hasPerm('user:manage')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
       // Intentionally hidden per TRI-1786688745847-4d03: reset-password, forgot-password, delete row actions.
       // Handlers/modals/hooks (handleResetPassword, handleForgotPassword, handleDelete) remain intact.
     }
@@ -397,7 +435,7 @@ export default function UsersPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('user.create')) actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    if (hasPerm('user:create') || hasPerm('user.create')) actions.push({ key: 'create', label: 'Thêm tài khoản', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
     return actions;
   }, [hasPerm, openCreateModal]);
 
@@ -405,8 +443,7 @@ export default function UsersPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý tài khoản người dùng' }]} actions={headerActions} />
       <FilterTableLayout
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        hideFilterToggle
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
         loading={isLoading}
@@ -421,7 +458,7 @@ export default function UsersPage() {
 
       <ManagementDrawer
         size={760}
-        title={<span style={drawerTitleStyle}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>}
+        title={<span style={drawerTitleStyle}>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm mới người dùng'}</span>}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         footer={
@@ -441,13 +478,14 @@ export default function UsersPage() {
                 organizations={organizations}
                 placeholder="Chọn đơn vị"
                 allowClear
+                disabled={Boolean(editingUser)}
                 style={selectStyle}
               />
             </Form.Item>
             <Row gutter={formRowGutter}>
               <Col xs={24} md={12}>
                 <Form.Item name="email" {...labelProps('Email')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}>
-                  <Input placeholder="email@example.com" autoComplete="email" style={inputStyle} />
+                  <Input placeholder="email@example.com" autoComplete="email" disabled={Boolean(editingUser)} style={inputStyle} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
@@ -475,7 +513,7 @@ export default function UsersPage() {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="position" {...labelProps('Chức vụ')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng nhập chức vụ' }, { max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
+                <Form.Item name="position" {...labelProps('Chức vụ')} style={formFieldStyle} rules={[{ max: 100, message: 'Chức vụ tối đa 100 ký tự' }]}>
                   <Input placeholder="Ví dụ: Chuyên viên" style={inputStyle} />
                 </Form.Item>
               </Col>
@@ -596,28 +634,33 @@ export default function UsersPage() {
       <ManagementDrawer
         title={<>Phân quyền chức năng cho người dùng{permissionUser ? `: ${permissionUser.fullName}` : ''}</>}
         open={Boolean(permissionUser)}
-        onClose={() => setPermissionUser(null)}
+        onClose={() => {
+          setPermissionUser(null);
+          setAppliedPermissionSearch('');
+        }}
         destroyOnHidden
         maskClosable={false}
         footer={
           <>
-            <Button onClick={() => setPermissionUser(null)} style={outlineButtonStyle}>Đóng</Button>
+            <Button
+              onClick={() => {
+                setPermissionUser(null);
+                setAppliedPermissionSearch('');
+              }}
+              style={outlineButtonStyle}
+            >
+              Đóng
+            </Button>
             <Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button>
           </>
         }
       >
         <Spin spinning={permissionLoading || permissionCatalogLoading}>
-          <Input.Search
-            allowClear
-            value={permissionSearch}
-            onChange={(event) => setPermissionSearch(event.target.value)}
-            placeholder="Tìm theo tên hoặc mã quyền..."
-            style={{ margin: `${spaceMd}px 0` }}
-          />
+          <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
           {permissionTreeData.length === 0 && !permissionLoading ? (
             <Empty description="Không tìm thấy quyền phù hợp" />
           ) : (
-            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, maxHeight: 'calc(100vh - 230px)', overflowY: 'auto' }}>
+            <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd }}>Danh sách chức năng</div>
               <div style={{ marginBottom: spaceMd }}>
                 <Checkbox
@@ -632,6 +675,7 @@ export default function UsersPage() {
               <Tree
                 checkable
                 defaultExpandAll
+                height={460}
                 treeData={permissionTreeData}
                 checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
                 onCheck={(checked) => {
@@ -653,11 +697,7 @@ export default function UsersPage() {
         open={detailUserId !== null}
         onClose={() => setDetailUserId(null)}
         extra={<Button type="text" onClick={() => setDetailUserId(null)} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={
-          <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => setDetailUserId(null)} style={primaryButtonStyle}>Đóng</Button>
-          </div>
-        }
+        footer={null}
       >
         {detailLoading ? <Spin /> : detailUser && (
           <div style={{ paddingTop: spaceMd }}>

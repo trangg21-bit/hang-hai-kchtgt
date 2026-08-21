@@ -33,7 +33,7 @@ public class BerthApprovalService {
     private final ApprovalLogRepository approvalLogRepository;
 
     @Transactional
-    public void approve(UUID id, String userId, String cap) {
+    public void approve(UUID id, String userId, String cap, String content) {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
 
@@ -45,6 +45,9 @@ public class BerthApprovalService {
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
             entity.setPortAuthorityApprovedBy(userId);
             entity.setRejectionReason(null);
+            if (content != null && !content.isBlank()) {
+                entity.setPortAuthorityApprovalContent(content.trim());
+            }
         } else if ("CUC".equals(cap)) {
             if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Cảng vụ trước");
@@ -52,6 +55,9 @@ public class BerthApprovalService {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setDepartmentApprovedAt(LocalDateTime.now());
             entity.setDepartmentApprovedBy(userId);
+            if (content != null && !content.isBlank()) {
+                entity.setDepartmentApprovalContent(content.trim());
+            }
         } else {
             throw new IllegalArgumentException("Cấp phê duyệt không hợp lệ: " + cap);
         }

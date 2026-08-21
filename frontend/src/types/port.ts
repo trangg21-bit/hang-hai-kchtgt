@@ -155,6 +155,9 @@ export interface UpdateCangBienRequest {
   remarks?: string;
 }
 
+export type CreatePortRequest = CreateCangBienRequest;
+export type UpdatePortRequest = UpdateCangBienRequest;
+
 // ── 2. Bến Cảng (Berth) ───────────────────────────────────────────────
 // All field names match BE exactly (Berth.java, BerthResponse.java).
 
@@ -165,6 +168,7 @@ export interface Berth {
   portId: string;
   portName?: string;
   waterway?: string;
+  waterwayId?: string;
   latitude?: number;
   longitude?: number;
   length?: number;
@@ -207,6 +211,8 @@ export interface Berth {
   portAuthorityApprovedBy?: string;
   departmentApprovedAt?: string;
   departmentApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovalContent?: string;
   rejectionReason?: string;
 }
 
@@ -215,6 +221,7 @@ export interface CreateBerthRequest {
   berthName: string;
   portId: string;
   waterway?: string;
+  waterwayId?: string;
   latitude?: number;
   longitude?: number;
   length?: number;
@@ -249,6 +256,7 @@ export interface UpdateBerthRequest {
   berthName?: string;
   portId?: string;
   waterway?: string;
+  waterwayId?: string;
   latitude?: number;
   longitude?: number;
   length?: number;
@@ -526,4 +534,10 @@ export interface UpdateVungNuocRequest {
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
 }
+
+export type CreatePierRequest = CreateCauCangRequest;
+export type UpdatePierRequest = UpdateCauCangRequest;
+
+export type CreateWaterZoneRequest = CreateVungNuocRequest;
+export type UpdateWaterZoneRequest = UpdateVungNuocRequest;
 

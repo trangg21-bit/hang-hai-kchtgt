@@ -43,7 +43,7 @@ public class UserGroupService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final UUID UNRESTRICTED_SCOPE_PLACEHOLDER = new UUID(0L, 0L);
     private static final Set<String> NON_INHERITABLE_PERMISSIONS = Set.of(
-            "group:manage", "admin:all", "admin:manage", "orgunit:scope_all", "*");
+            "admin:all", "admin:manage", "*");
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -322,7 +322,7 @@ public class UserGroupService {
         UserGroup group = groupRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + id));
         if (!currentUserScope().allows(group.getOrganizationId())) {
-            throw new AccessDeniedException("Group is outside the permitted organisation scope");
+            throw new AccessDeniedException("Bạn không có quyền truy cập nhóm ngoài phạm vi đơn vị được phân quyền");
         }
         return group;
     }

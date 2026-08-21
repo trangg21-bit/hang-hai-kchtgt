@@ -33,6 +33,10 @@ Python/
 # Local AI Customizations (Workspace Rules)
 .agents/
 
+# User uploads & file attachments
+uploads/
+
+
 # One-off refactor/codemod scripts kept at the repo root during the
 # Vietnamese -> English standardisation. Throwaway tooling, not part of the build.
 /fix*.js

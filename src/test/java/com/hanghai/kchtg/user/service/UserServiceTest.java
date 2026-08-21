@@ -445,7 +445,7 @@ class UserServiceTest {
 
     @Test
     void update_whenPermissionsAndGroupAndOrgUnitChange_shouldIncrementPermissionVersionExactlyOnce() {
-        mockCurrentUserAuthorities("user:update", "group:manage", "ROLE_SUPER_ADMIN");
+        mockCurrentUserAuthorities("user:update", "groupmember:manage", "ROLE_SUPER_ADMIN");
         regularUser.setPermissionVersion(5);
 
         UUID orgUnitId = UUID.randomUUID();
@@ -502,7 +502,7 @@ class UserServiceTest {
 
     @Test
     void update_whenAssigningSystemWideGroupAndCallerIsScoped_shouldThrowAccessDeniedException() {
-        mockCurrentUserAuthorities("user:update", "group:manage");
+        mockCurrentUserAuthorities("user:update", "groupmember:manage");
         UUID userOrgUnitId = UUID.randomUUID();
         com.hanghai.kchtg.orgunit.entity.OrgUnit userOrgUnit = new com.hanghai.kchtg.orgunit.entity.OrgUnit();
         userOrgUnit.setId(userOrgUnitId);
@@ -530,7 +530,7 @@ class UserServiceTest {
 
     @Test
     void update_whenAssigningSystemWideGroupAndCallerIsSuperAdmin_shouldAllow() {
-        mockCurrentUserAuthorities("user:update", "group:manage", "ROLE_SUPER_ADMIN");
+        mockCurrentUserAuthorities("user:update", "groupmember:manage", "ROLE_SUPER_ADMIN");
         UUID groupId = UUID.randomUUID();
         com.hanghai.kchtg.group.entity.UserGroup systemGroup = new com.hanghai.kchtg.group.entity.UserGroup();
         systemGroup.setId(groupId);
