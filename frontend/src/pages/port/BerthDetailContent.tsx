@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, Table, Space, InputNumber, Collapse, Select, Button, Tooltip, Drawer } from 'antd';
+import { Tabs, Table, Space, InputNumber, Collapse, Select, Button, Tooltip } from 'antd';
 import { FileOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../theme';
@@ -7,16 +7,12 @@ import {
   textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   spaceSm, spaceMd, spaceXs, actionPrimary, radiusPill,
-  statusDraft, statusAttention, statusOperational, statusCritical, drawerProps,
 } from '../../tokens';
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { resolveOrgFullPath } from '../../components/org-unit';
 import Pagination from '../../components/list-view/Pagination';
 import { pierCRUD } from '../../services/portService';
-import { documentApi } from '../../app/document/api';
-import PierDetailContent from './PierDetailContent';
-import toast from '../../components/ToastNotification';
 
 export interface BerthDetailContentProps {
   selectedRecord: Berth;
@@ -35,26 +31,10 @@ export interface BerthDetailContentProps {
   operationPlanList?: any[];
   maintenancePlanList?: any[];
   incidentList?: any[];
+  onViewPierDetail?: (pierId: string) => void;
 }
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
-
-// Bản đồ màu trạng thái cầu cảng (khớp PierList) — dùng cho drawer chi tiết cầu cảng lồng
-const PIER_APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Nháp' }, DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING: { color: statusAttention, label: 'Chờ phê duyệt' },
-  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
-};
-const PIER_OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
-  NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
-  SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
-};
 
 // Loại kết cấu hạ tầng thuộc bến cảng: bến cảng chỉ có 1 loại KCHT con — cầu cảng
 const BERTH_INFRA_TYPE_OPTIONS = [{ value: 'Pier', label: 'Cầu cảng' }];
@@ -145,15 +125,12 @@ export default function BerthDetailContent({
   operationPlanList = [],
   maintenancePlanList = [],
   incidentList = [],
+  onViewPierDetail,
 }: BerthDetailContentProps) {
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('Pier');
   const [loadedInfra, setLoadedInfra] = useState<any[]>([]);
-  const [pierDetailOpen, setPierDetailOpen] = useState(false);
-  const [pierDetailRecord, setPierDetailRecord] = useState<any>(null);
-  const [pierDetailFiles, setPierDetailFiles] = useState<any[]>([]);
-  const [pierDetailLoading, setPierDetailLoading] = useState(false);
 
   // Tải danh sách KCHT khác thuộc bến cảng (cầu cảng) — logic giống mẫu Cảng biển: tải theo cha qua API
   useEffect(() => {
@@ -171,25 +148,6 @@ export default function BerthDetailContent({
       .catch(() => { if (!cancelled) setLoadedInfra([]); });
     return () => { cancelled = true; };
   }, [selectedRecord?.id]);
-
-  const openPierDetail = useCallback(async (id: string) => {
-    setPierDetailLoading(true);
-    setPierDetailOpen(true);
-    setPierDetailRecord(null);
-    try {
-      const [rec, fileRes] = await Promise.all([
-        pierCRUD.findById(id),
-        documentApi.listByEntity('pier', id, { page: 1, size: 20 }),
-      ]);
-      setPierDetailRecord(rec);
-      setPierDetailFiles((fileRes as any)?.data || []);
-    } catch {
-      toast.error('Không thể tải chi tiết cầu cảng');
-      setPierDetailRecord(null);
-    } finally {
-      setPierDetailLoading(false);
-    }
-  }, []);
 
   const infraRows = [...loadedInfra, ...infrastructureList].filter((it: any) => {
     if (!infraTypeFilter || infraTypeFilter === 'ALL') return true;
@@ -382,13 +340,13 @@ export default function BerthDetailContent({
               columns={(
                 <>
                   <Table.Column title="Tên kết cấu hạ tầng" key="name" dataIndex="infraName" align="center"
-                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => openPierDetail(rec.id)}>{v || rec.name || '—'}</span>}
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => onViewPierDetail?.(rec.id)}>{v || rec.name || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Thao tác" key="actions" width={100} align="center"
                     render={(_: any, rec: any) => (
                       <Tooltip title="Xem chi tiết">
                         <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }}
-                          onClick={() => openPierDetail(rec.id)} />
+                          onClick={() => onViewPierDetail?.(rec.id)} />
                       </Tooltip>
                     )}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
@@ -501,33 +459,6 @@ export default function BerthDetailContent({
         },
       ]}
     />
-    <Drawer
-      {...drawerProps}
-      title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
-      open={pierDetailOpen}
-      onClose={() => setPierDetailOpen(false)}
-      extra={<Button type="text" onClick={() => setPierDetailOpen(false)} style={{ color: textTertiary, fontSize: fontSizeLg, padding: 0, width: 32, height: 32 }}>✕</Button>}
-      footer={null}
-    >
-      {pierDetailLoading ? (
-        <div style={{ padding: 48, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải chi tiết...</div>
-      ) : pierDetailRecord ? (
-        <PierDetailContent
-          selectedRecord={pierDetailRecord}
-          orgMap={orgMap}
-          portMap={new Map(portOptions.map((o) => [o.value, o.label]))}
-          berthOptions={[{ value: r.id, label: r.berthName || r.berthCode || '' }]}
-          symbolMap={symbolMap}
-          symbolImageMap={symbolImageMap}
-          detailFiles={pierDetailFiles}
-          ddToDms={ddToDms}
-          approvalStyleMap={PIER_APPROVAL_STYLE_MAP}
-          operationalStyleMap={PIER_OPERATIONAL_STYLE_MAP}
-          pierTypeMap={{} as any}
-          userMap={userMap}
-        />
-      ) : null}
-    </Drawer>
     </>
   );
 }

@@ -188,6 +188,7 @@ export default function PierList() {
   const editPierFormRef = useRef<any>(null);
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Pier | null>(null);
+  const [berthDetail, setBerthDetail] = useState<{ berthCode?: string; berthName?: string } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -456,9 +457,10 @@ export default function PierList() {
   const handleTabChange = useCallback((key: string) => { setActiveTab(key); setFilterApprovalStatus(undefined); appliedFiltersRef.current.approvalStatus = undefined; setPage(1); }, []);
 
   const openDetailDrawer = useCallback(async (record: Pier) => {
-    setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setDetailLoading(true);
+    setDetailDrawerVisible(true); setDetailRecord(record); setDetailFiles([]); setDetailLoading(true); setBerthDetail(null);
     try { const r = await api.get(`/v1/piers/${record.id}/attachments`); setDetailFiles(r.data?.data || []); } catch { setDetailFiles([]); }
     try { setDetailRecord(await pierCRUD.findById(record.id)); } catch {} finally { setDetailLoading(false); }
+    if (record.berthId) { try { const b = await berthCRUD.findById(record.berthId); setBerthDetail(b); } catch { setBerthDetail(null); } }
   }, []);
 
   const dd2dms = (dd: number) => { if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 }; const a = Math.abs(dd); return { d: Math.floor(a), m: Math.floor((a - Math.floor(a)) * 60), s: +((a - Math.floor(a) - Math.floor((a - Math.floor(a)) * 60) / 60) * 3600).toFixed(2) }; };
@@ -724,10 +726,10 @@ export default function PierList() {
       </Drawer>
 
       <Drawer {...drawerProps} title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-        extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
+        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }}
+        extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
-        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} />}
+        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} />}
       </Drawer>
 
       <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cầu cảng</span>} open={deleteModalOpen}
