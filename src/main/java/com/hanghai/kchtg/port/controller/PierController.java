@@ -7,7 +7,9 @@ import com.hanghai.kchtg.port.dto.pier.UpdatePierRequest;
 import com.hanghai.kchtg.port.entity.PierType;
 import com.hanghai.kchtg.port.service.PierApprovalService;
 import com.hanghai.kchtg.port.service.PierService;
+import com.hanghai.kchtg.port.dto.berth.ApproveRequest;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.dto.berth.RejectRequest;
 import com.hanghai.kchtg.port.service.BerthService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.validation.Valid;
@@ -72,13 +74,21 @@ public class PierController {
             @RequestParam(required = false) PierType pierType,
             @RequestParam(required = false) String province,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String approvalStatus) {
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) UUID navigationChannelId,
+            @RequestParam(required = false) Integer constructionGrade,
+            @RequestParam(required = false) Integer structureType,
+            @RequestParam(required = false) String operationalFunction,
+            @RequestParam(required = false) String updatedFrom,
+            @RequestParam(required = false) String updatedTo) {
         log.info(
-                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, berthId, portId, pierType, province, status, approvalStatus);
+                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}, navigationChannelId={}, constructionGrade={}, structureType={}, operationalFunction={}, updatedFrom={}, updatedTo={}",
+                page, size, orgUnitId, search, berthId, portId, pierType, province, status, approvalStatus,
+                navigationChannelId, constructionGrade, structureType, operationalFunction, updatedFrom, updatedTo);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
                 pierService.findAll(page, size, orgUnitId, search, berthId, portId, pierType, province, status,
-                        approvalStatus)));
+                        approvalStatus, navigationChannelId, constructionGrade, structureType,
+                        operationalFunction, updatedFrom, updatedTo)));
     }
 
     @GetMapping("/code/{pierCode}")
@@ -106,10 +116,11 @@ public class PierController {
     @PreAuthorize("@auth.check(authentication, 'pier:approve')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
+            @Valid @RequestBody ApproveRequest request,
             Authentication authentication) {
         String userId = authentication.getName();
-        log.info("Approving Pier: id={}, userId={}", id, userId);
-        pierApprovalService.approve(id, userId, null);
+        log.info("Approving Pier: id={}, cap={}, userId={}", id, request.getCap(), userId);
+        pierApprovalService.approve(id, userId, request.getCap(), request.getContent());
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt cầu cảng thành công", null));
     }
 
@@ -117,11 +128,11 @@ public class PierController {
     @PreAuthorize("@auth.check(authentication, 'pier:approve')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,
+            @Valid @RequestBody RejectRequest request,
             Authentication authentication) {
         String userId = authentication.getName();
-        log.info("Rejecting Pier: id={}, userId={}", id, userId);
-        pierApprovalService.approve(id, userId, reason);
+        log.info("Rejecting Pier: id={}, cap={}, userId={}", id, request.getCap(), userId);
+        pierApprovalService.reject(id, userId, request.getCap(), request.getLyDo());
         return ResponseEntity.ok(ApiResponse.success("Từ chối cầu cảng thành công", null));
     }
 

@@ -12,12 +12,16 @@ import dayjs from 'dayjs';
 import { pierCRUD, pierApproval, berthCRUD, portCRUD } from '../../services/portService';
 import type { Pier } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
+import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { lineObjectService } from '../../services/lineObjectService';
+import { LineObject } from '../../types/lineObject';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { trangThaiPheDuyetBadge } from '../../services/port/schema';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, StatusTabs, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -47,6 +51,8 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   PENDING: { color: statusAttention, label: 'Chờ phê duyệt' },
   CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
   PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
+  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục duyệt' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
@@ -60,13 +66,24 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING', label: 'Chờ phê duyệt', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cảng vụ duyệt', color: actionPrimary },
+  { key: 'APPROVED_LEVEL2', label: 'Chờ Cục duyệt', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
-  all: undefined, DRAFT: 'DRAFT', PENDING: 'PENDING', APPROVED: 'APPROVED', REJECTED: 'REJECTED',
+  all: undefined, DRAFT: 'DRAFT', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
+  APPROVED_LEVEL2: 'APPROVED_LEVEL2', APPROVED: 'APPROVED', REJECTED: 'REJECTED',
 };
+
+const STRUCTURE_TYPE_OPTIONS = [
+  { value: 1, label: 'Kết cấu bệ cọc cao' }, { value: 2, label: 'Kết cấu cường từ' },
+  { value: 3, label: 'Kết cấu trọng lực' }, { value: 4, label: 'Kết cấu khác' },
+];
+const CONSTRUCTION_GRADE_OPTIONS = [
+  { value: 1, label: 'Cấp đặc biệt' }, { value: 2, label: 'Cấp 1' },
+  { value: 3, label: 'Cấp 2' }, { value: 4, label: 'Cấp 3' }, { value: 5, label: 'Cấp 4' },
+];
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return '—'; try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
@@ -119,6 +136,8 @@ function actLabel(items: any[]): { label: string; color: string } {
 
 export default function PierList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
+  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
   const [searchInput, setSearchInput] = useState('');
@@ -129,6 +148,12 @@ export default function PierList() {
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
+  const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
+  const [filterConstructionGrade, setFilterConstructionGrade] = useState<number | undefined>();
+  const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
+  const [filterOperationalFunction, setFilterOperationalFunction] = useState('');
+  const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
+  const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('all');
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(20);
@@ -143,6 +168,7 @@ export default function PierList() {
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
   const orgMap = useMemo(() => { const m = new Map<string, string>(); organizations.forEach(o => m.set(o.id, o.name)); return m; }, [organizations]);
   const [berthOptions, setBerthOptions] = useState<{ value: string; label: string }[]>([]);
+  const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
   const portMap = useMemo(() => {
     const m = new Map<string, string>();
     portOptions.forEach((o) => m.set(o.value, o.label));
@@ -173,8 +199,11 @@ export default function PierList() {
   const [rejectError, setRejectError] = useState('');
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submittingRecord, setSubmittingRecord] = useState<Pier | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<Pier | null>(null);
+  const [approvalContent, setApprovalContent] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<Pier | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
@@ -357,6 +386,12 @@ export default function PierList() {
   }, [orgUnit, filterPortId]);
 
   useEffect(() => {
+    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
+      .then((r: any) => { const m = new Map<string, string>(); (r.data || []).forEach((l: any) => { m.set(l.id, l.name || l.code); }); setWaterwayMap(m); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     (async () => { try { const p: any = { page: 1, pageSize: 1000 }; if (orgUnit && orgUnit !== '__all__') p.orgUnitId = orgUnit; const r = await portCRUD.search(p); setPortOptions((r.data || []).map((x: any) => ({ value: x.id, label: x.portName }))); } catch {} })();
   }, [orgUnit]);
 
@@ -381,6 +416,12 @@ export default function PierList() {
         province: f.province || undefined,
         status: f.operationalStatus,
         approvalStatus: f.approvalStatus || TAB_QUERY_MAP[activeTab],
+        navigationChannelId: f.waterwayId,
+        constructionGrade: f.constructionGrade,
+        structureType: f.structureType,
+        operationalFunction: f.operationalFunction || undefined,
+        updatedFrom: f.updatedFrom,
+        updatedTo: f.updatedTo,
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
@@ -395,16 +436,21 @@ export default function PierList() {
     appliedFiltersRef.current = {
       orgUnit, search: searchInput, berthId: filterBerthId, portId: filterPortId, pierType: filterPierType,
       province: filterProvince, operationalStatus: filterOperationalStatus, approvalStatus: filterApprovalStatus,
+      waterwayId: filterWaterwayId, constructionGrade: filterConstructionGrade, structureType: filterStructureType,
+      operationalFunction: filterOperationalFunction, updatedFrom: filterUpdatedFrom, updatedTo: filterUpdatedTo,
     };
     setPage(1);
     setRefreshKey(k => k + 1);
-  }, [searchInput, orgUnit, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus, filterApprovalStatus]);
+  }, [searchInput, orgUnit, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus, filterApprovalStatus,
+    filterWaterwayId, filterConstructionGrade, filterStructureType, filterOperationalFunction, filterUpdatedFrom, filterUpdatedTo]);
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
-    appliedFiltersRef.current = { orgUnit: oid, search: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined };
+    appliedFiltersRef.current = { orgUnit: oid, search: '', berthId: undefined, portId: undefined, pierType: undefined, province: undefined, operationalStatus: undefined, approvalStatus: undefined, waterwayId: undefined, constructionGrade: undefined, structureType: undefined, operationalFunction: '', updatedFrom: undefined, updatedTo: undefined };
     setOrgUnit(oid); setSearchInput('');
     setFilterPortId(undefined); setFilterBerthId(undefined); setFilterPierType(undefined);
     setFilterProvince(undefined); setFilterOperationalStatus(undefined); setFilterApprovalStatus(undefined);
+    setFilterWaterwayId(undefined); setFilterConstructionGrade(undefined); setFilterStructureType(undefined);
+    setFilterOperationalFunction(''); setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1); setRefreshKey(k => k + 1);
   }, []);
   const handleTabChange = useCallback((key: string) => { setActiveTab(key); setFilterApprovalStatus(undefined); appliedFiltersRef.current.approvalStatus = undefined; setPage(1); }, []);
@@ -428,9 +474,10 @@ export default function PierList() {
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, orgUnit]);
 
   const handleApprove = useCallback(async (record: Pier) => {
-    try { await pierApproval.approve(record.id); toast.success('Đã phê duyệt'); setApproveModalOpen(false); setApprovingRecord(null); void fetchData(); void fetchCounts(orgUnit); }
+    const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
+    try { await pierApproval.approve(record.id, cap, approvalContent); toast.success(cap === 'CUC' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ'); setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent(''); void fetchData(); void fetchCounts(orgUnit); }
     catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, orgUnit]);
+  }, [fetchData, fetchCounts, orgUnit, approvalContent]);
 
   const handleSubmitApproval = useCallback((record: Pier) => { setSubmittingRecord(record); setSubmitModalOpen(true); }, []);
   const confirmSubmitApproval = useCallback(async () => {
@@ -447,7 +494,7 @@ export default function PierList() {
       return;
     }
     try {
-      await pierApproval.reject(rejectingRecord.id, rejectReason.trim());
+      await pierApproval.reject(rejectingRecord.id, rejectingRecord.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU', rejectReason.trim());
       toast.success('Từ chối thành công');
       setRejectModalOpen(false);
       setRejectingRecord(null);
@@ -465,31 +512,56 @@ export default function PierList() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
         </div>
-        <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn đơn vị" allowClear
-          value={orgUnit} onChange={v => setOrgUnit(v)}
-          options={[{ value: '__all__', label: 'Tất cả' }, ...organizations.map(o => ({ value: o.id, label: o.name }))]}
-          showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+        <OrgUnitTreeSelect
+          organizations={organizations}
+          placeholder="Chọn đơn vị..."
+          allowClear
+          showPath
+          allLabel="Tất cả"
+          treeDefaultExpandAll={false}
+          value={orgUnit}
+          onChange={(v) => { setOrgUnit(v); setPage(1); }}
+        />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tìm kiếm</div>
-        <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm mã hoặc tên cầu cảng"
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã cầu cảng</div>
+        <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm theo tên hoặc mã cầu cảng"
           value={searchInput} onChange={e => setSearchInput(e.target.value)}
           onPressEnter={handleFilterApply}
           allowClear prefix={<SearchOutlined style={{ color: textTertiary }} />} />
       </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu cầu cảng</div>
+        <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn loại kết cấu" allowClear
+          value={filterStructureType} onChange={v => setFilterStructureType(v)}
+          options={STRUCTURE_TYPE_OPTIONS} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+        <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn cảng biển" allowClear
+          value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); }}
+          options={portOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến</div>
+        <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn bến cảng" allowClear
+          value={filterBerthId} onChange={v => setFilterBerthId(v)}
+          options={berthOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
+        <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn luồng hàng hải" allowClear showSearch
+          value={filterWaterwayId} onChange={v => setFilterWaterwayId(v)}
+          options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+          filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+        <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tình trạng" allowClear
+          value={filterOperationalStatus} onChange={v => setFilterOperationalStatus(v)}
+          options={[{ value: 'OPERATIONAL', label: 'Đang khai thác/Vận hành' }, { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/Vận hành' }, { value: 'SUSPENDED', label: 'Dừng khai thác/Vận hành' }]} />
+      </div>
       {filterCollapsed && (<>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn cảng biển" allowClear
-            value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); }}
-            options={portOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn bến cảng" allowClear
-            value={filterBerthId} onChange={v => setFilterBerthId(v)}
-            options={berthOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
-        </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tỉnh/thành phố" allowClear showSearch
@@ -498,16 +570,28 @@ export default function PierList() {
             options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tình trạng" allowClear
-            value={filterOperationalStatus} onChange={v => setFilterOperationalStatus(v)}
-            options={[{ value: 'OPERATIONAL', label: 'Đang khai thác/Vận hành' }, { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/Vận hành' }, { value: 'SUSPENDED', label: 'Dừng khai thác/Vận hành' }]} />
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp công trình</div>
+          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn phân cấp" allowClear
+            value={filterConstructionGrade} onChange={v => setFilterConstructionGrade(v)}
+            options={CONSTRUCTION_GRADE_OPTIONS} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
+          <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm theo công năng..." allowClear
+            value={filterOperationalFunction} onChange={e => setFilterOperationalFunction(e.target.value)} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn trạng thái" allowClear
             value={filterApprovalStatus} onChange={v => { setFilterApprovalStatus(v); setActiveTab('all'); }}
-            options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]} />
+            options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'APPROVED_LEVEL1', label: 'Chờ Cảng vụ duyệt' }, { value: 'APPROVED_LEVEL2', label: 'Chờ Cục duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+          <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Từ ngày', 'Đến ngày']} allowClear
+            value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+            onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); }}
+            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
         </div>
       </>)}
     </>
@@ -518,42 +602,86 @@ export default function PierList() {
     const st = record.approvalStatus || '';
     if (hasPerm('pier:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
     if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
-    if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: <CheckCircleOutlined />, onClick: () => handleSubmitApproval(record) });
-    if (hasPerm('pier:approve') && ['PENDING','CHO_PHE_DUYET','PENDING_APPROVAL'].includes(st)) {
-      actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+    if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => handleSubmitApproval(record) });
+    if (hasPerm('pier:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) {
+      actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => { setApprovingRecord(record); setApprovalContent(''); setApproveModalOpen(true); } });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
     }
     if (hasPerm('pier:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
     return actions;
   }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
 
+  const auditColumns = useMemo(() => {
+    if (!isAuditViewer) return [];
+    return [
+      { label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230,
+        render: (v: string | null, record: Pier) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
+      { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovedAt', key: 'portAuthorityApprovedAt', width: 350,
+        render: (v: string | null, record: Pier) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
+      { label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'departmentApprovedAt', key: 'departmentApprovedAt', width: 260,
+        render: (v: string | null, record: Pier) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
+    ];
+  }, [isAuditViewer, userMap]);
+
   const columns = useMemo(() => [
     { label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span> },
-    { label: 'Mã cầu cảng', dataIndex: 'pierCode', key: 'pierCode', width: 220, fixed: 'left' as const, sortable: true,
-      render: (v: string, record: Pier) => <span onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ whiteSpace: 'nowrap', display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: '#1677ff15', color: '#1677ff', cursor: 'pointer' }}>{v || '—'}</span> },
-    { label: 'Tên cầu cảng', dataIndex: 'pierName', key: 'pierName', width: 200, fixed: 'left' as const, sortable: true,
-      render: (v: string, record: Pier) => <a onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer' }}>{v || '—'}</a> },
-    { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 170,
+    { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, fixed: 'left' as const, sortable: true,
+      render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || '—'}</span> },
+    { label: <span>Tên/Mã cầu cảng</span>, dataIndex: 'pierName', key: 'pierName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
+      render: (v: string, record: Pier) => (
+        <div>
+          <a title={v || '—'} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v || '—'}</a>
+          <span style={{ opacity: 0.85 }}>{record.pierCode || '—'}</span>
+        </div>
+      ) },
+    { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 200,
+      render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
+    { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 160,
       render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || '—'}</span> },
     { label: 'Thuộc bến cảng', dataIndex: 'berthName', key: 'berthName', width: 170,
       render: (v: string, r: Pier) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || r.tenBenCang || berthOptions.find(b => b.value === r.berthId)?.label || r.berthId || '—'}</span> },
-    { label: 'Địa điểm', dataIndex: 'province', key: 'province', width: 150,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-    { label: 'Kích thước', key: 'size', width: 130,
-      render: (_: any, r: Pier) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{r.length != null || r.width != null ? `${r.length ?? '—'} × ${r.width ?? '—'} m` : '—'}</span> },
-    { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 200,
+    { label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 240, ellipsis: true,
+      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : '—'}</span> },
+    { label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', key: 'province', width: 250, sortable: true,
+      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+    { label: 'Phân cấp công trình', dataIndex: 'constructionGrade', key: 'constructionGrade', width: 180,
+      render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
+    { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 200, ellipsis: true,
+      render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
+    { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 190, sortable: true,
       render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>{b.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; } },
-    { label: 'Ngày cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 160, sortable: true,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{formatDate(v)}</span> },
-    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 170,
+    { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 200, sortable: true,
+      render: (v: string, record: Pier) => (
+        <div>
+          <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span><br />
+          <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+        </div>
+      ) },
+    ...auditColumns,
+    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 180, fixed: 'right' as const, sortable: true,
       render: (v: string) => {
         const badge = v ? trangThaiPheDuyetBadge(v) : null;
         if (!badge || badge.color === 'default') { const s = v && APPROVAL_STYLE_MAP[v]; return s ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; }
         const bc = badge.color === 'green' ? statusOperational : badge.color === 'red' ? statusCritical : badge.color === 'orange' ? statusAttention : textTertiary;
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${bc}15`, color: bc }}>{badge.label}</span>;
       } },
-  ].map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined })), [page, pageSize, orgMap, berthOptions, portMap, sortField, sortOrder, openDetailDrawer]);
+  ].map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined })), [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
@@ -587,11 +715,11 @@ export default function PierList() {
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         afterOpenChange={(open) => { if (!open) setEditPierId(undefined); }}
         extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={<div style={drawerFooterStyle}>{editPierId ? <Button htmlType="button" type="primary" onClick={() => pierFormRef.current?.submit('UPDATE')} style={primaryButtonStyle}>Cập nhật</Button> : <><Button htmlType="button" onClick={() => pierFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => pierFormRef.current?.submit('SUBMIT')} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => pierFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button></>}</div>}
+        footer={<div style={drawerFooterStyle}>{editPierId ? <Button htmlType="button" type="primary" onClick={() => { setActionType('update'); pierFormRef.current?.submit('UPDATE'); }} loading={submitting && actionType === 'update'} style={primaryButtonStyle}>Cập nhật</Button> : <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button></>}</div>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>
-          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(orgUnit); }} />
+          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
         </Form>
       </Drawer>
 
@@ -599,7 +727,7 @@ export default function PierList() {
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
         extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
-        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} pierTypeMap={{} as any} userMap={userMap} />}
+        {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} />}
       </Drawer>
 
       <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa cầu cảng</span>} open={deleteModalOpen}
@@ -670,7 +798,7 @@ export default function PierList() {
       </Modal>
 
       <Modal maskStyle={{ background: 'rgba(0, 0, 0, 0.4)' }}
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận phê duyệt</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'Xác nhận Cục phê duyệt' : 'Xác nhận Cảng vụ phê duyệt'}</span>}
         open={approveModalOpen} onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
         footer={[
           <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
@@ -681,8 +809,14 @@ export default function PierList() {
         width={480}>
         <div style={{ padding: '8px 0' }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Phê duyệt <strong>{approvingRecord?.pierCode} — {approvingRecord?.pierName}</strong>?
+            Phê duyệt <strong>{approvingRecord?.pierCode} — {approvingRecord?.pierName}</strong>?{approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? ' (cấp Cục)' : ' (cấp Cảng vụ)'}
           </p>
+          <div style={{ marginTop: spaceMd }}>
+            <div style={{ marginBottom: spaceXs, color: textSecondary, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>Nội dung phê duyệt</div>
+            <Input.TextArea rows={3} placeholder="Nhập nội dung phê duyệt (không bắt buộc)..." value={approvalContent}
+              onChange={(e) => setApprovalContent(e.target.value)}
+              style={{ fontSize: fontSizeMd }} />
+          </div>
         </div>
       </Modal>
 

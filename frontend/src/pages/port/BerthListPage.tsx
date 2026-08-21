@@ -840,20 +840,20 @@ export default function BerthList() {
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span> },
       { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, fixed: 'left' as const, sortable: true, sortOrder,
         render: (_v: string | null, record: Berth) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}</span> },
-      { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 200, fixed: 'left' as const, sortable: true, sortOrder,
+      { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 210, fixed: 'left' as const, sortable: true, sortOrder, ellipsis: false,
         render: (v: string, record: Berth) => (
           <div>
-            <a onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{v}</a>
+            <a title={v} onClick={() => openDetailDrawer(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v}</a>
             <span style={{ opacity: 0.85 }}>{record.berthCode || '—'}</span>
           </div>
         ) },
-      { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 150,
+      { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 200,
         render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—') },
       { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 160,
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
       { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 240, ellipsis: true,
         render: (v?: string) => (v ? (waterwayMap.get(v) || v) : '—') },
-      { key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 150, sortable: true, sortOrder,
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 250, sortable: true, sortOrder,
         render: (v: number | null) => v ? VIETNAM_PROVINCES[v - 1] : '—' },
       { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 200,
         render: (v: string | null) => v || '—' },
@@ -885,14 +885,14 @@ export default function BerthList() {
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 320, sortable: true, sortOrder,
+      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 330, sortable: true, sortOrder,
         render: (v: string | null, record: Berth) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { key: 'portAuthorityApprovalContent', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovalContent', width: 260,
+      { key: 'portAuthorityApprovalContent', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovalContent', width: 310,
         render: (v: string | null) => v || '—' },
       { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
         render: (v: string | null, record: Berth) => (
