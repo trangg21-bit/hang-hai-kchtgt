@@ -14,5 +14,5 @@ public interface MapSymbolService {
     MapSymbolResponse findById(UUID id);
     MapSymbolResponse create(CreateMapSymbolRequest request, java.util.UUID createdBy);
     MapSymbolResponse update(UUID id, UpdateMapSymbolRequest request);
-    void delete(UUID id);
+    void delete(UUID id, java.util.UUID deletedBy);
 }

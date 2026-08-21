@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -98,10 +97,10 @@ public class MapSymbolServiceImpl implements MapSymbolService {
 
     @Override
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, java.util.UUID deletedBy) {
         MapSymbol symbol = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ký hiệu không tồn tại: " + id));
-        symbol.setDeletedAt(LocalDateTime.now());
+        symbol.softDelete(deletedBy);
         repository.save(symbol);
     }
 }

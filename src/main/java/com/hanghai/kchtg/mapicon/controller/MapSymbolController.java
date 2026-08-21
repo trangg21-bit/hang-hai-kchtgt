@@ -67,8 +67,9 @@ public class MapSymbolController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
-        service.delete(id);
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id, Authentication authentication) {
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        service.delete(id, userId);
         return ResponseEntity.ok(ApiResponse.success("Ký hiệu bản đồ đã được xóa thành công", null));
     }
 }

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { Button, Modal, Form, Input, Select, Upload, Row, Col, Typography, Alert, Drawer, Tabs } from 'antd';
+import { Button, Modal, Form, Input, Select, Upload, Row, Col, Typography, Alert, Drawer } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol, CreateSymbolPayload, UpdateSymbolPayload } from '../../services/symbolService';
@@ -12,13 +12,14 @@ import ErrorState from '../../components/ErrorState';
 import toast, { modal } from '../../components/ToastNotification';
 import {
   statusOperational, statusDraft, statusCritical, textSecondary, textPrimary, textTertiary,
-  fontSizeMd, fontWeightBold,
-  radiusSm, radiusMd, radiusPill, borderDefault, surfaceCard, surfacePage, spaceMd, spaceSm, spaceXs, spaceLg, spaceFormField,
+  fontSizeMd,
+  radiusSm, radiusMd, radiusPill, borderDefault, surfacePage, spaceMd, spaceSm, spaceXs, spaceLg, spaceFormField,
   badgeBaseStyle, primaryButtonStyle, outlineButtonStyle, formFieldStyle, inputStyle, selectStyle, formRowGutter,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   requiredMarkStyle,
+  filterLabelStyle, filterInputStyle, uploadAreaStyle,
+  detailLabelStyle, detailRowStyle, detailLabelColStyle, detailValueStyle,
 } from '../../tokens';
-import { colors } from '../../theme';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
   active: { color: statusOperational, label: 'Sử dụng' },
@@ -31,7 +32,7 @@ const STATUS_OPTIONS = [
 ];
 
 const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
+  label: <span style={detailLabelStyle}>{text}</span>,
 });
 
 interface UploadImageInputProps {
@@ -95,7 +96,7 @@ const UploadImageInput: React.FC<UploadImageInputProps> = ({ value, onChange }) 
   return (
     <div>
       {!value ? (
-        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+        <div style={uploadAreaStyle}>
           <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có hình ảnh.</span>
           <Upload accept="image/png, image/jpeg" beforeUpload={handleUpload} showUploadList={false}>
             <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn hình ảnh</Button>
@@ -136,7 +137,6 @@ export default function SymbolList() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [systemOpen, setSystemOpen] = useState(false);
   const [editingSymbol, setEditingSymbol] = useState<Symbol | null>(null);
   const [previewSymbol, setPreviewSymbol] = useState<Symbol | null>(null);
   const [form] = Form.useForm();
@@ -279,15 +279,15 @@ export default function SymbolList() {
       ),
     },
     {
-      key: 'code', label: 'Mã biểu tượng', dataIndex: 'code', width: 110,
+      key: 'code', label: 'Mã biểu tượng', dataIndex: 'code', width: 160,
       render: (text?: string) => <span style={{ fontSize: fontSizeMd }}>{text || '—'}</span>,
     },
     {
-      key: 'name', label: 'Tên biểu tượng', dataIndex: 'name',
+      key: 'name', label: 'Tên biểu tượng', dataIndex: 'name', width: 180,
       render: (text: string) => <Typography.Text strong>{text}</Typography.Text>,
     },
     {
-      key: 'image', label: 'Hình ảnh', dataIndex: 'image', width: 120, align: 'center' as const,
+      key: 'image', label: 'Hình ảnh', dataIndex: 'image', width: 130, align: 'center' as const,
       render: (src?: string) =>
         src ? (
           <img src={src} alt="Biểu tượng" style={{ maxHeight: 30, maxWidth: 60, objectFit: 'contain' }} />
@@ -321,8 +321,8 @@ export default function SymbolList() {
 
   const filterContent = (
     <>
-      <div style={{ marginBottom: spaceMd }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+      <div style={{ marginBottom: spaceMd, marginTop: 22 }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>
           Mã biểu tượng
         </div>
         <Input
@@ -331,11 +331,11 @@ export default function SymbolList() {
           value={filterCode}
           onChange={(e) => setFilterCode(e.target.value)}
           onPressEnter={handleFilterApply}
-          style={{ borderRadius: radiusPill, height: 40 }}
+          style={filterInputStyle}
         />
       </div>
       <div style={{ marginBottom: spaceMd }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>
           Tên biểu tượng
         </div>
         <Input
@@ -344,11 +344,11 @@ export default function SymbolList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onPressEnter={handleFilterApply}
-          style={{ borderRadius: radiusPill, height: 40 }}
+          style={filterInputStyle}
         />
       </div>
       <div style={{ marginBottom: spaceMd }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>
           Trạng thái
         </div>
         <Select
@@ -357,7 +357,7 @@ export default function SymbolList() {
           value={filterStatus || undefined}
           onChange={(val) => setFilterStatus(val || undefined)}
           options={STATUS_OPTIONS}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          style={filterInputStyle}
         />
       </div>
     </>
@@ -372,7 +372,7 @@ export default function SymbolList() {
     ) : undefined;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} fill scroll={{ x: 800, y: 550 }} emptyState={emptyState} />
+        <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} fill scroll={{ x: 770, y: 550 }} emptyState={emptyState} />
         <div style={{ paddingBottom: 6 /* căn mép dưới bảng thẳng hàng mép trên khối nút filter */ }}>
           <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
         </div>
@@ -461,80 +461,68 @@ export default function SymbolList() {
         {previewSymbol && (() => {
           const s = STATUS_MAP[previewSymbol.status] || { color: textTertiary, label: previewSymbol.status };
           return (
-            <Tabs
-              defaultActiveKey="general"
-              tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
-              items={[
-                {
-                  key: 'general', label: 'Thông tin chung',
-                  children: (
-                    <div style={{ paddingTop: 3 }}>
-                      <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-row--full { grid-column: 1 / -1; } .detail-label { width: 200px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
-                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: spaceLg }}>
-                        <div
-                          style={{
-                            width: 96,
-                            height: 96,
-                            background: surfacePage,
-                            border: `1px solid ${borderDefault}`,
-                            borderRadius: radiusMd,
-                            padding: spaceXs,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {previewSymbol.image ? (
-                            <img src={previewSymbol.image} alt={previewSymbol.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                          ) : (
-                            <span style={{ color: textTertiary, fontSize: fontSizeMd }}>Trống</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="detail-grid">
-                        {[
-                          ['Mã biểu tượng', previewSymbol.code || '—'],
-                          ['Tên biểu tượng', previewSymbol.name],
-                          ['Trạng thái', (
-                            <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, background: surfacePage, color: s.color }}>
-                              {s.label}
-                            </span>
-                          )],
-                        ].map(([label, value], i) => (
-                          <div key={i} className="detail-row">
-                            <span className="detail-label">{label}</span>
-                            <span className="detail-value">{value}</span>
-                          </div>
-                        ))}
-                        <div className="detail-row detail-row--full">
-                          <span className="detail-label">Ghi chú</span>
-                          <span className="detail-value">{previewSymbol.description || '—'}</span>
-                        </div>
-                      </div>
-                      <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
-                        <span style={{ color: systemOpen ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
-                      </div>
-                      {systemOpen && (
-                        <div className="detail-grid" style={{ marginTop: 4 }}>
-                          {[
-                            ['Người tạo', previewSymbol.createdByName || previewSymbol.createdBy || '—'],
-                            ['Ngày tạo', previewSymbol.createdAt ? new Date(previewSymbol.createdAt).toLocaleString('vi-VN') : '—'],
-                            ['Người cập nhật', previewSymbol.updatedByName || previewSymbol.updatedBy || '—'],
-                            ['Ngày cập nhật', previewSymbol.updatedAt ? new Date(previewSymbol.updatedAt).toLocaleString('vi-VN') : '—'],
-                          ].map(([label, value], i) => (
-                            <div key={i} className="detail-row">
-                              <span className="detail-label">{label}</span>
-                              <span className="detail-value">{value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ),
-                },
-              ]}
-            />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: spaceLg, marginBottom: spaceLg }}>
+                <div
+                  style={{
+                    width: 96,
+                    height: 96,
+                    background: surfacePage,
+                    border: `1px solid ${borderDefault}`,
+                    borderRadius: radiusMd,
+                    padding: spaceXs,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {previewSymbol.image ? (
+                    <img src={previewSymbol.image} alt={previewSymbol.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ color: textTertiary, fontSize: fontSizeMd }}>Trống</span>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+                <div style={detailRowStyle}>
+                  <span style={detailLabelColStyle}>Mã biểu tượng</span>
+                  <span style={detailValueStyle}>{previewSymbol.code || '—'}</span>
+                </div>
+                <div style={detailRowStyle}>
+                  <span style={detailLabelColStyle}>Trạng thái</span>
+                  <span style={detailValueStyle}>
+                    <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, background: surfacePage, color: s.color }}>
+                      {s.label}
+                    </span>
+                  </span>
+                </div>
+                <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
+                  <span style={detailLabelColStyle}>Tên biểu tượng</span>
+                  <span style={detailValueStyle}>{previewSymbol.name}</span>
+                </div>
+                <div style={detailRowStyle}>
+                  <span style={detailLabelColStyle}>Người tạo</span>
+                  <span style={detailValueStyle}>{previewSymbol.createdByName || previewSymbol.createdBy || '—'}</span>
+                </div>
+                <div style={detailRowStyle}>
+                  <span style={detailLabelColStyle}>Ngày tạo</span>
+                  <span style={detailValueStyle}>{previewSymbol.createdAt ? new Date(previewSymbol.createdAt).toLocaleString('vi-VN') : '—'}</span>
+                </div>
+                <div style={detailRowStyle}>
+                  <span style={detailLabelColStyle}>Người cập nhật</span>
+                  <span style={detailValueStyle}>{previewSymbol.updatedByName || previewSymbol.updatedBy || '—'}</span>
+                </div>
+                <div style={detailRowStyle}>
+                  <span style={detailLabelColStyle}>Ngày cập nhật</span>
+                  <span style={detailValueStyle}>{previewSymbol.updatedAt ? new Date(previewSymbol.updatedAt).toLocaleString('vi-VN') : '—'}</span>
+                </div>
+                <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
+                  <span style={detailLabelColStyle}>Ghi chú</span>
+                  <span style={detailValueStyle}>{previewSymbol.description || '—'}</span>
+                </div>
+              </div>
+            </div>
           );
         })()}
       </Drawer>
