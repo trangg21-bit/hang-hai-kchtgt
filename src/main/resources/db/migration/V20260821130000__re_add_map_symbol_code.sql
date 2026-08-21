@@ -11,7 +11,7 @@ ALTER TABLE map_symbols ADD COLUMN IF NOT EXISTS code VARCHAR(10);
 
 -- Backfill các dòng code NULL / rỗng / không khớp 'BT-XXXX' tuần tự.
 WITH numbered AS (
-    SELECT id, 'BT-' || LPAD((ROW_NUMBER() OVER (ORDER BY created_at NULLS LAST, id::text))::text, 4, '0') AS new_code
+    SELECT id, 'BT-' || LPAD((ROW_NUMBER() OVER (ORDER BY id::text))::text, 4, '0') AS new_code
     FROM map_symbols
     WHERE code IS NULL OR code = '' OR code !~ '^BT-[0-9]{4}$'
 )

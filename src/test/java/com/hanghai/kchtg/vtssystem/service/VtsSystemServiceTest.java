@@ -60,6 +60,8 @@ class VtsSystemServiceTest {
     @Mock
     private VtsZoneRepository zoneRepository;
 
+    private com.hanghai.kchtg.common.service.InfrastructureApprovalService approvalService;
+
     @InjectMocks
     private VtsSystemService service;
 
@@ -68,11 +70,14 @@ class VtsSystemServiceTest {
 
     @BeforeEach
     void setUp() {
+        approvalService = new com.hanghai.kchtg.common.service.InfrastructureApprovalService(historyRepository, userRepository);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "approvalService", approvalService);
+
         entity = VtsSystem.builder()
                 .systemName("VTS ABC")
                 .code("VTS-OLD")
                 .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
-                .approvalStatus(ApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
                 .build();
         entity.setId(TEST_ID);
 
@@ -319,13 +324,13 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC1_Approve() {
-        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED_LEVEL1, entity.getApprovalStatus());
         assertNotNull(entity.getApproverLevel1());
     }
 
@@ -335,7 +340,7 @@ class VtsSystemServiceTest {
                 new UsernamePasswordAuthenticationToken(
                         "admin", null, List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
         try {
-            ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
+            ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
             when(repository.save(any())).thenReturn(entity);
             when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
@@ -343,7 +348,7 @@ class VtsSystemServiceTest {
             service.approveC1(TEST_ID, req,
                     java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-            assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
+            assertEquals(ApprovalStatus.APPROVED_LEVEL1, entity.getApprovalStatus());
             assertNull(entity.getApproverLevel2());
             verify(historyRepository, times(1)).save(any());
         } finally {
@@ -353,9 +358,9 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_Approve() {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
@@ -367,42 +372,42 @@ class VtsSystemServiceTest {
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.APPROVED.name()).build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
-        assertTrue(ex.getMessage().contains("Nguoi phe duyet C2 khong duoc trung"));
+        assertTrue(ex.getMessage().contains("4-eyes principle"));
     }
 
     @Test
     void testRejectC1() {
-        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.REJECTED.name()).reason("Không đủ điều kiện").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("REJECTED").reason("Không đủ điều kiện hợp lệ").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
-        assertEquals("Không đủ điều kiện", entity.getRejectionReason());
+        assertEquals(ApprovalStatus.REJECTED_LEVEL1, entity.getApprovalStatus());
+        assertEquals("Không đủ điều kiện hợp lệ", entity.getRejectionReason());
     }
 
     @Test
     void testRejectC2() {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-        ApprovalRequest req = ApprovalRequest.builder().decision(ApprovalStatus.REJECTED.name()).reason("Không đồng ý cấp 2").build();
+        ApprovalRequest req = ApprovalRequest.builder().decision("REJECTED").reason("Không đồng ý cấp 2 thẩm định").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
-        assertEquals("Không đồng ý cấp 2", entity.getRejectionReason());
+        assertEquals(ApprovalStatus.REJECTED_LEVEL2, entity.getApprovalStatus());
+        assertEquals("Không đồng ý cấp 2 thẩm định", entity.getRejectionReason());
     }
 
     @Test

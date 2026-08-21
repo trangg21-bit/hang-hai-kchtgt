@@ -48,6 +48,8 @@ import java.util.ArrayList;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -55,6 +57,7 @@ public class NavigationChannelService {
 
     private final NavigationChannelRepository repo;
     private final ApprovalHistoryRepository approvalHistoryRepo;
+    private final InfrastructureApprovalService approvalService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitRepository orgUnitRepository;
     private final OrgUnitCacheService orgUnitCacheService;
@@ -279,38 +282,10 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        if (nc.getApprovalStatus() != ApprovalStatus.PROPOSED
-                && nc.getApprovalStatus() != ApprovalStatus.REJECTED) {
-            throw new IllegalStateException("Chi co the phe duyet C1 khi trang thai la PROPOSED hoac REJECTED");
-        }
-
-        nc.setIsApprovedLevel1(true);
-        nc.setApproverLevel1(approvedBy);
-        nc.setApprovedDateLevel1(LocalDate.now());
-
-        String actor = approvedBy != null ? approvedBy.toString() : null;
-        boolean autoApproved = false;
-
-        if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
-            if (AdminAutoApproval.isAutoApprover()) {
-                nc.setIsApprovedLevel2(true);
-                nc.setApproverLevel2(approvedBy);
-                nc.setApprovedDateLevel2(LocalDate.now());
-                nc.setApprovalStatus(ApprovalStatus.APPROVED);
-                autoApproved = true;
-            } else {
-                nc.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-            }
-        } else {
-            nc.setApprovalStatus(ApprovalStatus.REJECTED);
-            nc.setRejectionReason(req.getReason());
-        }
-
-        saveApprovalHistory(nc, 1, req.getStatus(), actor, req.getReason());
-        if (autoApproved) {
-            saveApprovalHistory(nc, 2, req.getStatus(), actor, req.getReason());
-        }
-        return buildApprovalResponse(nc, autoApproved ? 2 : 1);
+        approvalService.approveC1(nc, InfrastructureType.NAVIGATION_CHANNEL, req.getStatus(), req.getReason(), approvedBy);
+        nc.setIsApprovedLevel1(nc.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1);
+        repo.save(nc);
+        return buildApprovalResponse(nc, 1);
     }
 
     @Transactional
@@ -318,27 +293,9 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        if (nc.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
-        }
-
-        UUID c1Actor = nc.getApproverLevel1();
-        if (c1Actor != null && c1Actor.equals(approvedBy)) {
-            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
-        }
-
-        nc.setIsApprovedLevel2(true);
-        nc.setApproverLevel2(approvedBy);
-        nc.setApprovedDateLevel2(LocalDate.now());
-
-        if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
-            nc.setApprovalStatus(ApprovalStatus.APPROVED);
-        } else {
-            nc.setApprovalStatus(ApprovalStatus.REJECTED);
-            nc.setRejectionReason(req.getReason());
-        }
-
-        saveApprovalHistory(nc, 2, req.getStatus(), approvedBy != null ? approvedBy.toString() : null, req.getReason());
+        approvalService.approveC2(nc, InfrastructureType.NAVIGATION_CHANNEL, req.getStatus(), req.getReason(), approvedBy);
+        nc.setIsApprovedLevel2(nc.getApprovalStatus() == ApprovalStatus.APPROVED);
+        repo.save(nc);
         return buildApprovalResponse(nc, 2);
     }
 
@@ -347,11 +304,13 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        nc.setApprovalStatus(ApprovalStatus.REJECTED);
-        nc.setRejectionReason(req.getReason());
-
         Integer cap = req.getApprovalLevel() != null ? req.getApprovalLevel().getValue() : 1;
-        saveApprovalHistory(nc, cap, "REJECTED", approvedBy != null ? approvedBy.toString() : null, req.getReason());
+        if (cap == 2) {
+            approvalService.approveC2(nc, InfrastructureType.NAVIGATION_CHANNEL, "REJECTED", req.getReason(), approvedBy);
+        } else {
+            approvalService.approveC1(nc, InfrastructureType.NAVIGATION_CHANNEL, "REJECTED", req.getReason(), approvedBy);
+        }
+        repo.save(nc);
         return buildApprovalResponse(nc, cap);
     }
 
@@ -375,7 +334,7 @@ public class NavigationChannelService {
                 .approvalLevel(ApprovalLevel.fromInt(cap))
                 .status(nc.getApprovalStatus().name())
                 .approvedBy(cap == 1 ? nc.getApproverLevel1() : nc.getApproverLevel2())
-                .approvedDate(toDateTime(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2()))
+                .approvedDate(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2())
                 .reason(nc.getRejectionReason())
                 .build();
     }
@@ -578,10 +537,10 @@ public class NavigationChannelService {
                 .approvalStatus(nc.getApprovalStatus())
                 .isApprovedLevel1(nc.getIsApprovedLevel1())
                 .approverLevel1(nc.getApproverLevel1())
-                .approvedDateLevel1(nc.getApprovedDateLevel1())
+                .approvedDateLevel1(nc.getApprovedDateLevel1() != null ? nc.getApprovedDateLevel1().toLocalDate() : null)
                 .isApprovedLevel2(nc.getIsApprovedLevel2())
                 .approverLevel2(nc.getApproverLevel2())
-                .approvedDateLevel2(nc.getApprovedDateLevel2())
+                .approvedDateLevel2(nc.getApprovedDateLevel2() != null ? nc.getApprovedDateLevel2().toLocalDate() : null)
                 .rejectionReason(nc.getRejectionReason())
                 .createdAt(nc.getCreatedAt())
                 .updatedAt(nc.getUpdatedAt())

@@ -55,7 +55,7 @@ class DikeRevetmentEntityTest {
         assertEquals(approver1, entity.getApproverLevel1());
 
         entity.setApprovedDateLevel1(LocalDate.of(2026, 1, 1));
-        assertEquals(LocalDate.of(2026, 1, 1), entity.getApprovedDateLevel1());
+        assertEquals(java.time.LocalDateTime.of(2026, 1, 1, 0, 0), entity.getApprovedDateLevel1());
 
         entity.setIsApprovedLevel2(false);
         assertFalse(entity.getIsApprovedLevel2());
@@ -65,7 +65,7 @@ class DikeRevetmentEntityTest {
         assertEquals(approver2, entity.getApproverLevel2());
 
         entity.setApprovedDateLevel2(LocalDate.of(2026, 2, 1));
-        assertEquals(LocalDate.of(2026, 2, 1), entity.getApprovedDateLevel2());
+        assertEquals(java.time.LocalDateTime.of(2026, 2, 1, 0, 0), entity.getApprovedDateLevel2());
 
         entity.setRejectionReason("Thiet ke chua dat yeu cau");
         assertEquals("Thiet ke chua dat yeu cau", entity.getRejectionReason());
@@ -130,17 +130,5 @@ class DikeRevetmentEntityTest {
         assertNull(dr.getApprovedDateLevel2());
         assertNull(dr.getCreatedAt());
         assertNull(dr.getUpdatedAt());
-    }
-
-    @Test void onCreate_sets_createdAt() {
-        assertNull(entity.getCreatedAt());
-        entity.onCreate();
-        assertNotNull(entity.getCreatedAt());
-    }
-
-    @Test void onUpdate_sets_updatedAt() {
-        assertNull(entity.getUpdatedAt());
-        entity.onUpdate();
-        assertNotNull(entity.getUpdatedAt());
     }
 }

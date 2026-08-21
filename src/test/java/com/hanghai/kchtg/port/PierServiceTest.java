@@ -108,8 +108,8 @@ class PierServiceTest {
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.create(request));
-        assertTrue(ex.getMessage().contains("HIEN_HANH"),
-                "Exception message should mention HIEN_HANH, was: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("hiện hành") || ex.getMessage().contains("HIEN_HANH"),
+                "Exception message should mention hiện hành, was: " + ex.getMessage());
         verify(pierRepository, never()).save(any());
     }
 
