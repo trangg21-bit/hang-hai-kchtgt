@@ -21,7 +21,6 @@ export interface PierDetailContentProps {
   ddToDms: (dd: number) => { d: number; m: number; s: number };
   approvalStyleMap: Record<string, { color: string; label: string }>;
   operationalStyleMap: Record<string, { color: string; label: string }>;
-  pierTypeMap: Record<string, string>;
   userMap: Map<string, string>;
 }
 
@@ -32,15 +31,11 @@ function formatDateOnly(d: string | null | undefined): string {
   try { return dayjs(d).format('DD/MM/YYYY'); } catch { return d; }
 }
 
-const LOAI_CAU_LABELS: Record<string, string> = {
-  CONTAINER: 'Container', TONG_HOP: 'Tổng hợp', HANH_KHACH: 'Hành khách',
-  CHUYEN_DUNG_XANG_DAU: 'Chuyên dùng xăng dầu', CHUYEN_DUNG_ROI_QUANG: 'Chuyên dùng rời/quặng', KHAC: 'Khác',
-};
 
 export default function PierDetailContent({
   selectedRecord, orgMap, portMap, berthOptions, symbolMap, symbolImageMap,
   detailFiles, ddToDms, approvalStyleMap, operationalStyleMap,
-  pierTypeMap, userMap,
+  userMap,
 }: PierDetailContentProps) {
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
@@ -83,12 +78,11 @@ export default function PierDetailContent({
                   ['Tên cầu cảng', r.pierName || '—'],
                   ['Địa điểm (Tỉnh/Thành phố)', r.province || '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
-                  ['Loại cầu', pierTypeMap[r.pierType || r.loaiCau || ''] || LOAI_CAU_LABELS[r.pierType || r.loaiCau || ''] || r.pierType || r.loaiCau || '—'],
                   ['Chiều dài (m)', r.length != null ? r.length : '—'],
                   ['Chiều rộng (m)', r.width != null ? r.width : '—'],
                   ['Tải trọng thiết kế (T/m²)', r.designLoad != null ? r.designLoad : '—'],
-                  ['Phân cấp công trình', r.constructionGrade != null ? r.constructionGrade : '—'],
-                  ['Loại kết cấu', r.structureType != null ? (r.structureType === 1 ? 'Bến liền bờ' : r.structureType === 2 ? 'Bến phao' : r.structureType === 3 ? 'Bến nổi' : String(r.structureType)) : '—'],
+                  ['Phân cấp công trình', r.constructionGrade != null ? (r.constructionGrade === 1 ? 'Cấp đặc biệt' : r.constructionGrade === 2 ? 'Cấp 1' : r.constructionGrade === 3 ? 'Cấp 2' : r.constructionGrade === 4 ? 'Cấp 3' : r.constructionGrade === 5 ? 'Cấp 4' : String(r.constructionGrade)) : '—'],
+                  ['Loại kết cấu', r.structureType != null ? (r.structureType === 1 ? 'Kết cấu bệ cọc cao' : r.structureType === 2 ? 'Kết cấu cường từ' : r.structureType === 3 ? 'Kết cấu trọng lực' : r.structureType === 4 ? 'Kết cấu khác' : String(r.structureType)) : '—'],
                   ['Công năng khai thác', r.operationalFunction || '—'],
                   ['Tình trạng', (() => { const s = r.operationalStatus; const b = s && operationalStyleMap[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],
                   ['Trạng thái phê duyệt', (() => { const s = r.approvalStatus; const b = s && approvalStyleMap[s]; return b ? <span style={{ display:'inline-flex',padding:'2px 10px',borderRadius:999,fontSize:fontSizeMd,fontWeight:fontWeightMedium,background:`${b.color}15`,color:b.color }}>{b.label}</span> : '—'; })(),],

@@ -79,4 +79,14 @@ public class PierResponse {
     private String waterAreaNeutralScope;
     private Integer coordinateSystem;
     private String displayRule;
+
+    // ── Two-level approval tracking (mirror BerthResponse) ────────
+    private LocalDateTime submittedForApprovalAt;
+    private String submittedForApprovalBy;
+    private LocalDateTime portAuthorityApprovedAt;
+    private String portAuthorityApprovedBy;
+    private LocalDateTime departmentApprovedAt;
+    private String departmentApprovedBy;
+    private String portAuthorityApprovalContent;
+    private String departmentApprovalContent;
 }
