@@ -369,7 +369,7 @@ export default function BerthDetailContent({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
                   <Select value={infraTypeFilter} onChange={(v: string) => setInfraTypeFilter(v)}
-                    options={BERTH_INFRA_TYPE_OPTIONS} style={{ width: 170, borderRadius: radiusPill, height: 32 }} />
+                    options={BERTH_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
                 </div>
               )}
               dataSource={infraRows}
