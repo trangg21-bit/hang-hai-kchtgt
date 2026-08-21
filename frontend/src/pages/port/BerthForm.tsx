@@ -37,8 +37,8 @@ const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40,
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 const STRUCTURE_TYPE_OPTIONS = [
-  { value: 1, label: 'Bến nước' }, { value: 2, label: 'Bến bờ' },
-  { value: 3, label: 'Bến phao' }, { value: 4, label: 'Bến chuyên dùng' },
+  { value: 1, label: 'Kết cấu bệ cọc cao' }, { value: 2, label: 'Kết cấu cường từ' },
+  { value: 3, label: 'Kết cấu trọng lực' }, { value: 4, label: 'Kết cấu khác' },
 ];
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' }, { value: 'LINE', label: 'Đối tượng đường' }, { value: 'POLYGON', label: 'Đối tượng vùng' },

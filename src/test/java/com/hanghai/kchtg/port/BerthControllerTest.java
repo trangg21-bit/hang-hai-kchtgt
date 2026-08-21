@@ -123,7 +123,7 @@ class BerthControllerTest {
         UUID id = UUID.randomUUID();
         UUID parentId = UUID.randomUUID();
         Page<BerthResponse> page = new PageImpl<>(List.of(makeResponse(id, parentId)));
-        when(berthService.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
+        when(berthService.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/berths")
                         .param("page", "0")
@@ -139,7 +139,7 @@ class BerthControllerTest {
         UUID someUuid = UUID.randomUUID();
         String uuidStr = someUuid.toString();
         Page<BerthResponse> page = new PageImpl<>(List.of());
-        when(berthService.findAll(1, 5, someUuid, null, null, null, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
+        when(berthService.findAll(1, 5, someUuid, null, null, null, null, null, null, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/berths")
                         .param("page", "1")
@@ -147,7 +147,7 @@ class BerthControllerTest {
                         .param("orgUnitId", uuidStr))
                 .andExpect(status().isOk());
 
-        verify(berthService).findAll(1, 5, someUuid, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        verify(berthService).findAll(1, 5, someUuid, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/berths/{id} ────────────────────────────────────────
@@ -245,7 +245,7 @@ class BerthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(berthApprovalService).approve(id, "test-approver", "CUC_DUONG_THUY");
+        verify(berthApprovalService).approve(id, "test-approver", "CUC_DUONG_THUY", null);
     }
 
     // ── GET /api/v1/berths/{id}/history ─────────────────────────────────

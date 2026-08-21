@@ -58,6 +58,8 @@ import { berthCRUD, waterZoneCRUD } from '../../services/portService';
 import BerthDetailContent from '../../pages/port/BerthDetailContent';
 import { userService } from '../../services/userService';
 import { waterZoneApi } from '../../app/waterzone/api';
+import { lineObjectService } from '../../services/lineObjectService';
+import { LineObject } from '../../types/lineObject';
 import {
   fetchCangBienList,
   deleteCangBien,
@@ -509,6 +511,13 @@ export default function PortListPage() {
         setUserMap(map);
       } catch { /* silent — hiển thị raw id */ }
     })();
+  }, []);
+
+  const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
+      .then((r: any) => { const m = new Map<string, string>(); (r.data || []).forEach((l: any) => { m.set(l.id, l.name || l.code); }); setWaterwayMap(m); })
+      .catch(() => {});
   }, []);
 
   const openKchtDetail = useCallback(async (type: 'berth' | 'waterzone', id: string) => {
@@ -3912,6 +3921,7 @@ export default function PortListPage() {
             ddToDms={ddToDms}
             approvalStyleMap={APPROVAL_STYLE_MAP}
             structureTypeOptions={STRUCTURE_TYPE_OPTIONS}
+            waterwayMap={waterwayMap}
           />
         ) : kchtDetailRecord && kchtDetailType === 'waterzone' ? (
           <WaterZoneDetailMini record={kchtDetailRecord} symbols={symbols as any[]} files={kchtDetailFiles} userMap={userMap} />
