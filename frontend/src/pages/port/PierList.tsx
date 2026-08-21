@@ -643,8 +643,6 @@ export default function PierList() {
   const columns = useMemo(() => [
     { label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span> },
-    { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, fixed: 'left' as const, sortable: true,
-      render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || '—'}</span> },
     { label: <span>Tên/Mã cầu cảng</span>, dataIndex: 'pierName', key: 'pierName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
       render: (v: string, record: Pier) => (
         <div>
@@ -652,6 +650,8 @@ export default function PierList() {
           <span style={{ opacity: 0.85 }}>{record.pierCode || '—'}</span>
         </div>
       ) },
+    { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
+      render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || '—'}</span> },
     { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 200,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
     { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 160,
@@ -676,7 +676,7 @@ export default function PierList() {
         </div>
       ) },
     ...auditColumns,
-    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 180, fixed: 'right' as const, sortable: true,
+    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 180, sortable: true,
       render: (v: string) => {
         const badge = v ? trangThaiPheDuyetBadge(v) : null;
         if (!badge || badge.color === 'default') { const s = v && APPROVAL_STYLE_MAP[v]; return s ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; }

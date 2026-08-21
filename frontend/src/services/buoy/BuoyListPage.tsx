@@ -1247,17 +1247,6 @@ export default function BuoyListPage() {
       ),
     },
     {
-      key: 'unitId',
-      label: 'Đơn vị quản lý',
-      dataIndex: 'unitId',
-      width: 260,
-      fixed: 'left' as const,
-      render: (v: string) => {
-        const level2 = v ? orgLevel2Map.get(v) : undefined;
-        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
-      },
-    },
-    {
       key: 'name',
       label: 'Tên/Mã phao tiêu',
       dataIndex: 'name',
@@ -1271,6 +1260,16 @@ export default function BuoyListPage() {
           <span style={{ opacity: 0.85 }}>{record.code}</span>
         </div>
       ),
+    },
+    {
+      key: 'unitId',
+      label: 'Đơn vị quản lý',
+      dataIndex: 'unitId',
+      width: 260,
+      render: (v: string) => {
+        const level2 = v ? orgLevel2Map.get(v) : undefined;
+        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
+      },
     },
     {
       key: 'buoyStationId',
@@ -1359,8 +1358,7 @@ export default function BuoyListPage() {
       key: 'status',
       label: 'Trạng thái',
       dataIndex: 'status',
-      width: 170,
-      fixed: 'right' as const,
+      width: 180,
       render: (status: string | null | undefined) => {
         const b = buoyStatusBadge(status);
         return (

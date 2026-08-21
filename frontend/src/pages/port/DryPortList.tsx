@@ -995,10 +995,6 @@ export default function DryPortList() {
       render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
     },
     {
-      key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
-      render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
-    },
-    {
       key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 215, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
       render: (_: unknown, record: DryPort) => (
         <div>
@@ -1006,6 +1002,10 @@ export default function DryPortList() {
           <span style={{ opacity: 0.85, fontSize: fontSizeMd }}>{record.dryPortCode}</span>
         </div>
       )
+    },
+    {
+      key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
+      render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
     },
     {
       key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 200,

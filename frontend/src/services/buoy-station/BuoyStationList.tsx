@@ -737,13 +737,6 @@ export default function BuoyStationList() {
       ),
     },
     {
-      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, fixed: 'left' as const, ellipsis: true,
-      render: (v: string) => {
-        const level2 = v ? orgLevel2Map.get(v) : undefined;
-        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
-      },
-    },
-    {
       key: 'name', label: 'Tên/Mã nhà trạm Phao, tiêu', dataIndex: 'name', width: 280, fixed: 'left' as const, ellipsis: false, sortable: true,
       render: (name: string, record: BuoyStationResponse) => (
         <div>
@@ -751,6 +744,13 @@ export default function BuoyStationList() {
           <span style={{ opacity: 0.85 }}>{record.code}</span>
         </div>
       ),
+    },
+    {
+      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true,
+      render: (v: string) => {
+        const level2 = v ? orgLevel2Map.get(v) : undefined;
+        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
+      },
     },
     {
       key: 'classifications', label: 'Phân loại', width: 140, ellipsis: true, sortable: true,
@@ -811,7 +811,7 @@ export default function BuoyStationList() {
       ),
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 170, fixed: 'right' as const,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 180,
       render: (s: string) => {
         if (!s) return <span style={{ color: textTertiary }}>—</span>;
         const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };

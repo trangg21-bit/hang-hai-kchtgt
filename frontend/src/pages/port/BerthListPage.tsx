@@ -844,8 +844,6 @@ export default function BerthList() {
     const baseColumns: any[] = [
       { key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span> },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, fixed: 'left' as const, sortable: true, sortOrder,
-        render: (_v: string | null, record: Berth) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}</span> },
       { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 210, fixed: 'left' as const, sortable: true, sortOrder, ellipsis: false,
         render: (v: string, record: Berth) => (
           <div>
@@ -853,6 +851,8 @@ export default function BerthList() {
             <span style={{ opacity: 0.85 }}>{record.berthCode || '—'}</span>
           </div>
         ) },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, sortable: true, sortOrder,
+        render: (_v: string | null, record: Berth) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}</span> },
       { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 200,
         render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—') },
       { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 160,
@@ -912,7 +912,7 @@ export default function BerthList() {
     ] : [];
 
     const tailColumns: any[] = [
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 180, fixed: 'right' as const, sortable: true, sortOrder,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 180, sortable: true, sortOrder,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
