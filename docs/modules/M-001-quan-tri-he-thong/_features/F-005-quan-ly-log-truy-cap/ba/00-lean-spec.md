@@ -96,7 +96,7 @@ last-updated: 2026-07-27T00:00:00Z
 
 | ID | Acceptance Criterion | Linked BR | Negative Path |
 |---|---|---|---|
-| AC-005-01 | Hệ thống hiển thị đầy đủ 5 nhóm log với 8 cột: STT, Đơn vị, Chức năng, Địa chỉ IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác | BR-005-01 | Nếu database trống → hiển thị empty state với hướng dẫn filter |
+| AC-005-01 | Hệ thống hiển thị đầy đủ 5 nhóm log với 9 cột: STT, Đơn vị, Email, Chức năng, Địa chỉ IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác | BR-005-01 | Nếu database trống → hiển thị empty state với hướng dẫn filter |
 | AC-005-02 | Người dùng có thể lọc log theo khoảng thời gian (ngày bắt đầu — ngày kết thúc) với kết quả phân trang chính xác | BR-005-01 | Nếu ngày bắt đầu > ngày kết thúc → hiển thị lỗi validation "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" |
 | AC-005-03 | Người dùng có thể lọc log theo đơn vị, email và từ khóa | BR-005-01 | Nếu không có kết quả phù hợp → hiển thị empty state "Không có log nào phù hợp với bộ lọc" |
 | AC-005-04 | Tìm kiếm theo keyword trả về kết quả chính xác, không phân biệt hoa/thường | BR-005-01 | Nếu keyword rỗng → trả về toàn bộ kết quả (theo filter khác) |
@@ -293,7 +293,7 @@ Màn danh sách log PHẢI dùng 5 component share từ `frontend/src/components
 | `ScreenHeader` | Breadcrumb "Quản trị hệ thống > Quản lý log truy cập" |
 | `FilterBar` | DateRangePicker, dropdown chọn đơn vị, ô tìm kiếm email, ô tìm kiếm từ khóa + nút Tìm kiếm/Reload |
 | `StatusTabs` | 5 tab: Thao tác, Đăng nhập, Lỗi hệ thống, Tài khoản, Cấu hình — mỗi tab kèm số lượng |
-| `DataTable` | Sticky header, hover row, 8 cột: STT, Đơn vị, Chức năng, Địa chỉ IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác (icon xem chi tiết). **Không có cột Sửa/Xóa.** |
+| `DataTable` | Sticky header, hover row, 9 cột: STT, Đơn vị, Email, Chức năng, Địa chỉ IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác (icon xem chi tiết). **Không có cột Sửa/Xóa.** |
 | `Pagination` | Điều hướng trang, hiển thị tổng số record |
 
 ### 11.7 Form/Modal — tuân thủ Form & List UI Convention

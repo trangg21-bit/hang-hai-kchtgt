@@ -34,7 +34,7 @@ Tra cứu, quản lý và phân tích nhật ký hoạt động hệ thống g�
 
 | # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| 1 | Khoảng thời gian | Không | Date range (Từ ngày — Đến ngày) | Ngày bắt đầu > ngày kết thúc → lỗi validation |
+| 1 | Ngày truy cập | Không | Date range (Từ ngày — Đến ngày) | Ngày bắt đầu > ngày kết thúc → lỗi validation |
 | 2 | Đơn vị | Không | TreeSelect dạng cây (orgUnitId) | Lọc theo đơn vị/phòng ban của người dùng |
 | 3 | Email | Không | Text (email) | Lọc theo email người dùng |
 | 4 | Từ khóa | Không | Text | Tìm kiếm không phân biệt hoa/thường trong nội dung log; rỗng → trả về toàn bộ theo filter khác |
@@ -45,13 +45,14 @@ Tra cứu, quản lý và phân tích nhật ký hoạt động hệ thống g�
 |---|---|---|
 | 1 | STT | Số thứ tự theo trang |
 | 2 | Đơn vị | donVi (denormalized tại thời điểm ghi log) |
-| 3 | Chức năng | targetResource/action |
-| 4 | Địa chỉ IP | ipAddress |
-| 5 | Trình duyệt | userAgent |
-| 6 | Phiên đăng nhập | sessionId |
-| 7 | Ngày truy cập | createdAt |
-| 8 | Thao tác | Xem chi tiết |
-| Chi tiết (popup) | timestamp, type (5 nhóm), severity, userId, username, donVi, IP, userAgent, sessionId, action, endpoint (requestPath + method), responseCode, duration_ms, message, metadata (JSON view) | metadata null → hiển thị "N/A" |
+| 3 | Email | email |
+| 4 | Chức năng | targetResource/action |
+| 5 | Địa chỉ IP | ipAddress |
+| 6 | Trình duyệt | userAgent |
+| 7 | Phiên đăng nhập | sessionId |
+| 8 | Ngày truy cập | createdAt |
+| 9 | Thao tác | Xem chi tiết |
+| Chi tiết (popup) | timestamp, type (5 nhóm), severity, userId, username, email, donVi, IP, userAgent, sessionId, action, endpoint (requestPath + method), responseCode, duration_ms, message, metadata (JSON view) | metadata null → hiển thị "N/A" |
 
 ## 3. Trạng thái và phê duyệt
 
@@ -80,7 +81,7 @@ Theo tài liệu nền (mục 3.7) — các giá trị phân loại lưu dạng 
 
 ### 4.2. Acceptance criteria kế thừa (AC-005-01..AC-005-17)
 
-- AC-005-01 — Danh sách đầy đủ 5 nhóm log, 8 cột (STT, Đơn vị, Chức năng, IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác); DB trống → empty state.
+- AC-005-01 — Danh sách đầy đủ 5 nhóm log, 9 cột (STT, Đơn vị, Email, Chức năng, IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác); DB trống → empty state.
 - AC-005-02 — Lọc theo khoảng thời gian với phân trang chính xác; ngày bắt đầu > ngày kết thúc → lỗi "Ngày bắt đầu phải nhỏ hơn ngày kết thúc".
 - AC-005-03 — Lọc theo đơn vị, email và từ khóa; không có kết quả → "Không có log nào phù hợp với bộ lọc".
 - AC-005-04 — Tìm kiếm keyword không phân biệt hoa/thường; keyword rỗng → trả về toàn bộ theo filter khác.

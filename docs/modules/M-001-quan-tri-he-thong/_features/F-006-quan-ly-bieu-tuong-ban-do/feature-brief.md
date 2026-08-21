@@ -30,6 +30,8 @@ Thư viện biểu tượng tập trung dùng chung toàn hệ thống. Tài kho
 
 ## 2. Trường dữ liệu
 
+### 2.1. Form Tạo mới biểu tượng (4 trường)
+
 | # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | 1 | Tên biểu tượng | Có | Text, max 255 | — |
@@ -37,11 +39,17 @@ Thư viện biểu tượng tập trung dùng chung toàn hệ thống. Tài kho
 | 3 | Trạng thái | Có | Select 2 lựa chọn; default "Sử dụng" | ACTIVE/INACTIVE (BR-006-02) |
 | 4 | Ghi chú | Không | Textarea, max 500 | — |
 
+### 2.2. Form Chỉnh sửa / Xem chi tiết
+
+Cùng 4 trường như mục 2.1 (Tên biểu tượng, Hình ảnh, Trạng thái, Ghi chú). **Chỉnh sửa:** form điền sẵn (AC-006-03). **Xem chi tiết:** toàn bộ field read-only, chỉ có nút Đóng (AC-006-05).
+
 ## 3. Trạng thái và phê duyệt
 
 Theo tài liệu nền (mục 3.7) — trạng thái lưu dạng **số** (INT): 0=INACTIVE, 1=ACTIVE. **Không có bước phê duyệt.** Trạng thái riêng: **ACTIVE** (Sử dụng — hiển thị) / **INACTIVE** (Không sử dụng — ẩn khỏi danh sách dùng chung). Đã rút gọn từ 3 trạng thái (bỏ DEPRECATED).
 
 ## 4. Quy tắc và phân quyền riêng
+
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
 | ID | Quy tắc |
 |---|---|
@@ -50,6 +58,11 @@ Theo tài liệu nền (mục 3.7) — trạng thái lưu dạng **số** (INT):
 | BR-006-03 | Nên kiểm tra tham chiếu trước khi xóa (biểu tượng đang được module khác dùng) — hiện chưa implement (Could, US-006-08) |
 | BR-006-04 | Ảnh lưu base64 trong DB (không lưu file/ổ đĩa) |
 | BR-006-05 | Validate ảnh: PNG/JPEG/JPG, ≤500KB, ≤128×128px, tỉ lệ 1:1 — thông báo lỗi tiếng Việt cụ thể theo từng điều kiện (validate client + server) |
+
+### 4.2. Acceptance Criteria kế thừa
+
+| ID | Quy tắc |
+|---|---|
 | AC-006-01 | Danh sách: STT, Tên, Thumbnail 30px, Trạng thái (tag xanh/xám), Thao tác (Xem/Sửa/Xóa) — rỗng → "Chưa có biểu tượng nào" |
 | AC-006-02 | Tạo mới popup "Thêm mới thông tin biểu tượng trên bản đồ": Tên + Ảnh bắt buộc; lỗi validate ảnh báo đỏ dưới field |
 | AC-006-03 | Sửa popup điền sẵn; thành công → toast "Đã cập nhật biểu tượng" |
@@ -60,6 +73,12 @@ Theo tài liệu nền (mục 3.7) — trạng thái lưu dạng **số** (INT):
 | AC-006-08 | Nút Thêm/Sửa/Xóa ẩn theo permission; menu chỉ hiện khi có `data:read` |
 | AC-006-09 | Validate ảnh: PNG/JPEG/JPG, ≤500KB, ≤128×128px, 1:1 — từ chối upload + thông báo lỗi cụ thể |
 | AC-006-10 | GET /api/symbols?status=ACTIVE — không yêu cầu quyền admin (công khai cho module khác) |
+
+### 4.3. User Stories kế thừa
+
+Không có User Stories được khai báo trong brief này — chỉ US-006-08 được tham chiếu trong BR-006-03 (priority Could).
+
+### 4.4. Phân quyền riêng
 
 **Phân quyền riêng:** quyền theo mẫu `<resource>:<action>`, gán động qua nhóm/tài khoản (tài liệu nền mục 3.2); quyền mới phải đăng ký trong `PermissionSeeder.java`.
 
