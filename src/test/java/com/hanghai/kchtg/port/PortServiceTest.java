@@ -33,6 +33,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
@@ -162,23 +163,23 @@ class PortServiceTest {
     @DisplayName("F-012: findAll — pagination honored, defaults max 100")
     void findAll_paginationHonored() {
         Page<Port> mockPage = new PageImpl<>(List.of(testEntity));
-        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(portRepository.searchPorts(anyBoolean(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         Page<PortResponse> result = service.findAll(0, 20, null);
 
         assertEquals(1, result.getTotalElements());
-        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(portRepository).searchPorts(anyBoolean(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("F-012: findAll — size capped at 5000")
     void findAll_sizeCappedAt5000() {
         Page<Port> mockPage = new PageImpl<>(List.of());
-        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(portRepository.searchPorts(anyBoolean(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         service.findAll(0, 9999, null);
 
-        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
+        verify(portRepository).searchPorts(anyBoolean(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
     }
 
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────

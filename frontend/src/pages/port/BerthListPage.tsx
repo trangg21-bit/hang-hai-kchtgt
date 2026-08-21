@@ -94,7 +94,7 @@ import { colors } from '../../theme';
 const FIELD_LABELS: Record<string, string> = {
   berthCode: 'Mã bến cảng', berthName: 'Tên bến cảng', portId: 'Cảng biển chủ',
   waterway: 'Tuyến đường thủy', operator: 'Đơn vị vận hành', provinceId: 'Tỉnh/Thành phố',
-  detailedLocation: 'Địa điểm chi tiết', structureType: 'Loại kết cấu',
+  detailedLocation: 'Địa điểm chi tiết', structureType: 'Loại kết cấu bến cảng',
   operationalFunction: 'Công năng khai thác', totalArea: 'Tổng diện tích',
   designThroughput: 'Năng lực thiết kế', currentThroughput: 'Năng lực hiện tại',
   maxVesselSize: 'Cỡ tàu tối đa', plannedThroughput: 'Năng lực quy hoạch',
@@ -127,8 +127,8 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
-  { value: 1, label: 'Bến nước' }, { value: 2, label: 'Bến bờ' },
-  { value: 3, label: 'Bến phao' }, { value: 4, label: 'Khác' },
+  { value: 1, label: 'Kết cấu bệ cọc cao' }, { value: 2, label: 'Kết cấu cường từ' },
+  { value: 3, label: 'Kết cấu trọng lực' }, { value: 4, label: 'Kết cấu khác' },
 ];
 
 const TAB_STATUS_LIST = [
@@ -155,29 +155,32 @@ function formatDate(dateStr: string | null | undefined): string {
 // ── History helpers ───────────────────────────────────────────────────
 
 const historyFieldLabels: Record<string, string> = {
-  berthCode: 'Mã bến cảng', berthName: 'Tên bến cảng', portId: 'Cảng biển chủ',
-  waterway: 'Tuyến đường thủy', operator: 'Đơn vị vận hành', provinceId: 'Tỉnh/Thành phố',
-  detailedLocation: 'Địa điểm chi tiết', structureType: 'Loại kết cấu',
+  berthCode: 'Mã bến cảng', berthName: 'Tên bến cảng', portId: 'Thuộc cảng biển',
+  waterway: 'Thuộc luồng hàng hải', waterwayId: 'Thuộc luồng hàng hải', operator: 'Đơn vị khai thác', provinceId: 'Tỉnh/Thành phố',
+  detailedLocation: 'Địa điểm chi tiết', structureType: 'Loại kết cấu bến cảng',
   operationalFunction: 'Công năng khai thác', totalArea: 'Tổng diện tích',
-  designThroughput: 'Năng lực thiết kế', currentThroughput: 'Năng lực hiện tại',
-  maxVesselSize: 'Cỡ tàu tối đa', plannedThroughput: 'Năng lực quy hoạch',
-  latestCargoVolume: 'Sản lượng gần nhất', openingAnnouncementDate: 'Ngày công bố mở',
-  openingDecision: 'Quyết định mở', investmentAgreement: 'Thỏa thuận đầu tư',
+  designThroughput: 'Năng lực thông qua thiết kế', currentThroughput: 'Năng lực thông qua hiện trạng',
+  maxVesselSize: 'Cỡ tàu tiếp nhận lớn nhất (DWT)', plannedThroughput: 'Quy hoạch năng lực thông qua',
+  latestCargoVolume: 'Sản lượng thực tế năm gần nhất', openingAnnouncementDate: 'Thời điểm công bố',
+  openingDecision: 'Quyết định công bố', investmentAgreement: 'Văn bản thỏa thuận',
   length: 'Chiều dài', width: 'Chiều rộng',
   operationalStatus: 'Tình trạng', approvalStatus: 'Trạng thái',
-  orgUnitId: 'Đơn vị quản lý', mapSymbolId: 'Biểu tượng bản đồ',
+  orgUnitId: 'Đơn vị quản lý', mapSymbolId: 'Biểu tượng',
   spatialId: 'Vị trí không gian', coordinateSystem: 'Hệ quy chiếu',
+  departmentApprovalContent: 'Nội dung phê duyệt cấp Cục',
+  portAuthorityApprovalContent: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
   'Trạng thái': 'Hành động',
 };
 function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
-function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>): string {
+function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
+  if ((fn === 'waterwayId' || fn === 'waterway') && waterwayMap) return waterwayMap.get(val) || val;
   if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', APPROVED_LEVEL1:'Chờ Cảng vụ duyệt', APPROVED_LEVEL2:'Chờ Cục duyệt', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối' }; return m[val.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/Vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/Vận hành', SUSPENDED:'Dừng khai thác/Vận hành', DANG_KHAI_THAC:'Đang khai thác/Vận hành', CHUA_KHAI_THAC:'Chưa khai thác/Vận hành', DUNG_KHAI_THAC:'Dừng khai thác/Vận hành' }; return m[val.toUpperCase()] || val; }
-  if (fn === 'structureType') { const m: Record<string,string> = { '1':'Bến liền bờ', '2':'Bến phao', '3':'Bến nổi' }; return m[val] || val; }
+  if (fn === 'structureType') { const opt = STRUCTURE_TYPE_OPTIONS.find(o => o.value === Number(val)); return opt ? opt.label : val; }
   if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val)-1] || val;
   if (fn === 'coordinateSystem') { const m: Record<string,string> = { '1':'WGS-84', '2':'VN-2000' }; return m[val] || val; }
   if (fn === 'openingAnnouncementDate' || fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
@@ -353,8 +356,8 @@ export default function BerthList() {
         const ov = (r.oldValue || '').toLowerCase();
         const nv = (r.newValue || '').toLowerCase();
         const lb = historyFieldName(r.fieldName || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap).toLowerCase();
+        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap, waterwayMap).toLowerCase();
+        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap, waterwayMap).toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
       if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
@@ -403,7 +406,7 @@ export default function BerthList() {
             const n = Number(t);
             return Number.isInteger(n) ? String(n) : t;
           }
-          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
+          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap, waterwayMap);
         };
         if (orderedChanges.length === 0) return null;
         return (
@@ -734,7 +737,7 @@ export default function BerthList() {
           onPressEnter={handleFilterApply} style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu</div>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu bến cảng</div>
         <Select placeholder="Chọn loại kết cấu" allowClear value={filterStructureType}
           onChange={(v) => { setFilterStructureType(v); setPage(1); }}
           options={STRUCTURE_TYPE_OPTIONS}
@@ -844,7 +847,7 @@ export default function BerthList() {
             <span style={{ opacity: 0.85 }}>{record.berthCode || '—'}</span>
           </div>
         ) },
-      { key: 'structureType', label: 'Loại kết cấu', dataIndex: 'structureType', width: 130,
+      { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 150,
         render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—') },
       { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 160,
         render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
@@ -934,6 +937,11 @@ export default function BerthList() {
         ddToDms={ddToDms}
         approvalStyleMap={APPROVAL_STYLE_MAP}
         structureTypeOptions={STRUCTURE_TYPE_OPTIONS}
+        waterwayMap={waterwayMap}
+        infrastructureList={(detailRecord as any)?.infrastructureList}
+        operationPlanList={(detailRecord as any)?.operationPlanList}
+        maintenancePlanList={(detailRecord as any)?.maintenancePlanList}
+        incidentList={(detailRecord as any)?.incidentList}
       />
     );
   };

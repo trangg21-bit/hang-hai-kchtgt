@@ -16,6 +16,7 @@ import {
   spaceSm, spaceXs,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { resolveOrgFullPath, type OrgUnitTreeOption } from '../../components/org-unit';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -28,7 +29,7 @@ const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWei
 
 export interface BuoyStationDetailContentProps {
   selectedRecord: BuoyStationResponse;
-  orgUnits: Array<{ id: string; name: string }>;
+  orgUnits: OrgUnitTreeOption[];
   portMap: Map<string, string>;
   waterwayMap: Map<string, string>;
   routeMap: Map<string, string>;
@@ -160,10 +161,21 @@ export default function BuoyStationDetailContent({
             <div style={{ paddingTop: 3 }}>
               {detailGrid}
               {gridRows([
+                ['Đơn vị quản lý', (() => {
+                    const orgPath = resolveOrgFullPath(orgUnits, r.unitId);
+                    if (!orgPath || orgPath.length === 0) return '—';
+                    const levelColors = [textPrimary, textSecondary, textTertiary];
+                    return (
+                      <span>
+                        {orgPath.map((n, i) => (
+                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)], fontWeight: fontWeightBold }}>{n}</span>
+                        ))}
+                      </span>
+                    );
+                  })()],
+                ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{orgName(r.operatingOrgId)}</span>],
                 ['Mã nhà trạm', <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.code || '—'}</span>],
                 ['Tên nhà trạm', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
-                ['Đơn vị quản lý', orgName(r.unitId)],
-                ['Đơn vị khai thác', orgName(r.operatingOrgId)],
                 ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || r.portId) : '—'],
                 ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || r.waterwayId) : '—'],
                 ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || r.waterwayRouteId) : '—'],
@@ -184,19 +196,18 @@ export default function BuoyStationDetailContent({
               {systemOpen && (
                 <div style={{ marginTop: 4 }}>
                   {gridRows([
-                    ['Người tạo', userName(r.createdBy)],
+                    ['Người tạo', <span style={{ fontWeight: fontWeightBold }}>{userName(r.createdBy)}</span>],
                     ['Ngày tạo', formatDateTime(r.createdAt)],
-                    ['Người cập nhật', userName(r.updatedByName)],
+                    ['Người cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedByName)}</span>],
                     ['Ngày cập nhật', formatDateTime(r.updatedAt)],
-                    ['Người gửi phê duyệt', userName(r.sentApprovedBy)],
+                    ['Người gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy)}</span>],
                     ['Ngày gửi phê duyệt', formatDateTime(r.sentApprovedDate)],
-                    ['Người phê duyệt cấp Cảng vụ/Chi cục', userName(r.level1ApprovedBy)],
+                    ['Người phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
                     ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDateTime(r.level1ApprovedDate)],
-                    ['Người phê duyệt cấp Cục', userName(r.level2ApprovedBy)],
+                    ['Người phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
                     ['Ngày phê duyệt cấp Cục', formatDateTime(r.level2ApprovedDate)],
                     ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
                     ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                    ['Lý do từ chối', r.rejectionReason || '—'],
                   ])}
                 </div>
               )}

@@ -9,6 +9,7 @@ import {
 import type { UploadFile, UploadProps } from 'antd';
 import { UploadOutlined, DeleteOutlined, FileOutlined, PlusOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
+import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import {
   textTertiary, textPrimary, textSecondary,
   fontSizeMd, fontSizeSm, fontWeightBold, fontWeightMedium,
@@ -56,7 +57,7 @@ export interface BuoyFormContentProps {
   activeTabKey?: string;
   /** For create mode: tab change handler */
   onTabChange?: (key: string) => void;
-  orgUnits: Array<{ id: string; name: string }>;
+  orgUnits: OrgUnitTreeOption[];
   loadingOrgs?: boolean;
   buoyStations: Array<{ id: string; name: string; code: string }>;
   loadingStations?: boolean;
@@ -147,14 +148,12 @@ export default function BuoyFormContent({
                 style={{ marginBottom: spaceFormField }}
                 rules={!isEdit ? [{ required: true, message: 'Đơn vị quản lý là bắt buộc khi thêm mới' }] : []}
               >
-                <Select
+                <OrgUnitTreeSelect
+                  organizations={orgUnits}
                   placeholder="Chọn Đơn vị quản lý"
                   loading={loadingOrgs}
-                  options={orgUnits.map((o) => ({ value: o.id, label: o.name }))}
-                  showSearch
-                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                  showPath
                   allowClear
-                  style={selectStyle}
                 />
               </Form.Item>
             </Col>
