@@ -1608,19 +1608,6 @@ export default function PortListPage() {
       //   render: (portCode: string) => <Tag color="cyan">{portCode}</Tag>,
       // },
       {
-        key: 'orgUnitId',
-        label: 'Đơn vị quản lý',
-        dataIndex: 'orgUnitId',
-        width: 260,
-        fixed: 'left' as const,
-        sortable: true,
-        sortOrder: sortField === 'orgUnitId' ? sortOrder : null,
-        render: (_v: string | null, record: CangBienResponse) => {
-          const level2 = record.orgUnitId ? orgLevel2Map.get(record.orgUnitId) : undefined;
-          return <span style={{ fontWeight: fontWeightBold }}>{level2 || record.orgUnitName || _v || '—'}</span>;
-        },
-      },
-      {
         key: 'portName',
         label: 'Tên cảng biển',
         dataIndex: 'portName',
@@ -1648,6 +1635,18 @@ export default function PortListPage() {
             {v}
           </a>
         ),
+      },
+      {
+        key: 'orgUnitId',
+        label: 'Đơn vị quản lý',
+        dataIndex: 'orgUnitId',
+        width: 260,
+        sortable: true,
+        sortOrder: sortField === 'orgUnitId' ? sortOrder : null,
+        render: (_v: string | null, record: CangBienResponse) => {
+          const level2 = record.orgUnitId ? orgLevel2Map.get(record.orgUnitId) : undefined;
+          return <span style={{ fontWeight: fontWeightBold }}>{level2 || record.orgUnitName || _v || '—'}</span>;
+        },
       },
       {
         key: 'portGroup',
@@ -1701,7 +1700,6 @@ export default function PortListPage() {
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 160,
-        fixed: 'right' as const,
         sortable: true,
         sortOrder: sortField === 'approvalStatus' ? sortOrder : null,
         render: (v: string) => {
