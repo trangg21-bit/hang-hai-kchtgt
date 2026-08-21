@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { Tabs, Form, Row, Col, InputNumber, Select, Input, Upload, DatePicker, Table, Space, Button } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
@@ -11,6 +11,7 @@ import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import { organizationService } from '../../services/organizationService';
+import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { portCRUD } from '../../services/portService';
 import {
   createBuoyStation, updateBuoyStation, submitBuoyStationForApproval,
@@ -78,6 +79,8 @@ export interface BuoyStationFormContentProps {
   uploadedFiles: UploadFile[];
   setUploadedFiles: (f: UploadFile[] | ((p: UploadFile[]) => UploadFile[])) => void;
   existingFiles: ExistingFile[];
+  /** Danh sách đơn vị đầy đủ (id/name/code/parentId) từ parent — dùng cho OrgUnitTreeSelect; bỏ trống sẽ fallback tự fetch */
+  organizations?: OrgUnitTreeOption[];
   /** Gọi khi lưu thành công (đóng drawer + reload danh sách) */
   onFinish: (saved: boolean) => void;
 }
@@ -89,10 +92,17 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   uploadedFiles,
   setUploadedFiles,
   existingFiles,
+  organizations,
   onFinish,
 }, ref) {
   const currentUser = useAuthStore((s) => s.user);
   const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
+
+  // Dữ liệu cây đơn vị cho OrgUnitTreeSelect: ưu tiên organizations từ parent, fallback danh sách tự fetch
+  const orgUnitTreeData = useMemo<OrgUnitTreeOption[]>(() => {
+    if (organizations && organizations.length > 0) return organizations;
+    return orgUnitOptions.map((o) => ({ id: o.value, name: o.label }));
+  }, [organizations, orgUnitOptions]);
   const [portOptions, setPortOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPorts, setLoadingPorts] = useState(false);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
@@ -300,7 +310,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     // Tab 1: Thông tin chung
     { key: 'general', label: 'Thông tin chung', children: (<div style={{ paddingTop: 16 }}>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}><Select placeholder="Chọn đơn vị quản lý" loading={orgUnitOptions.length === 0} disabled={isEdit} options={orgUnitOptions} showSearch optionFilterProp="label" onChange={() => { form.setFieldsValue({ portId: undefined, code: undefined }); setCoordinateList([]); }} style={selectStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}><OrgUnitTreeSelect organizations={orgUnitTreeData} placeholder="Chọn đơn vị quản lý" loading={orgUnitOptions.length === 0 && !(organizations && organizations.length > 0)} disabled={isEdit} showPath onChange={() => { form.setFieldsValue({ portId: undefined, code: undefined }); setCoordinateList([]); }} /></Form.Item></Col>
         <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]}><Select placeholder="Chọn đơn vị khai thác..." options={orgUnitOptions} showSearch allowClear filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>

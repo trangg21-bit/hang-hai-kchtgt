@@ -20,7 +20,7 @@ import lombok.Setter;
 public class PasswordPolicy extends BaseEntity {
 
     @Column(nullable = false)
-    private int minLength = 12;
+    private int minLength = 8;
 
     @Column(nullable = false)
     private boolean requireUppercase = true;

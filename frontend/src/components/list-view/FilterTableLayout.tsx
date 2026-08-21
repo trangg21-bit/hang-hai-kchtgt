@@ -76,7 +76,7 @@ export default function FilterTableLayout({
         }}
       >
         {/* Scrollable filter fields */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '10px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '12px 16px' }}>
           {filterContent}
         </div>
 

@@ -1,10 +1,14 @@
 package com.hanghai.kchtg.dikerevetment.entity;
 
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,30 +16,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
-import lombok.experimental.FieldNameConstants;
-
 @Entity
 @Table(name = "dike_revetment")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder
 @FieldNameConstants
-public class DikeRevetment {
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
-
-    @Column(name = "province_id")
-    private Integer provinceId;
-
-
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
+@EqualsAndHashCode(callSuper = true)
+public class DikeRevetment extends BaseApprovableEntity {
 
     @Column(name = "dike_revetment_type")
     @Convert(converter = DikeRevetmentTypeConverter.class)
@@ -46,6 +37,12 @@ public class DikeRevetment {
 
     @Column(name = "dike_revetment_name", length = 255)
     private String dikeRevetmentName;
+
+    @Column(name = "code", length = 100)
+    private String code;
+
+    @Column(name = "seaport_id")
+    private UUID seaportId;
 
     @Column(name = "length")
     private Double length;
@@ -68,69 +65,26 @@ public class DikeRevetment {
     @Column(name = "note", length = 500)
     private String note;
 
-    @Column(name = "org_unit_id")
-    private UUID orgUnitId;
-
-    @Column(name = "approval_status", nullable = false)
-    @Enumerated(EnumType.ORDINAL)
-    private ApprovalStatus approvalStatus;
-
     @Column(name = "is_approved_level1", nullable = false)
     @Builder.Default
     private Boolean isApprovedLevel1 = false;
-
-    @Column(name = "approver_level1")
-    private UUID approverLevel1;
-
-    @Column(name = "approved_date_level1")
-    private LocalDate approvedDateLevel1;
 
     @Column(name = "is_approved_level2", nullable = false)
     @Builder.Default
     private Boolean isApprovedLevel2 = false;
 
-    @Column(name = "approver_level2")
-    private UUID approverLevel2;
-
-    @Column(name = "approved_date_level2")
-    private LocalDate approvedDateLevel2;
-
-    @Column(name = "rejection_reason", length = 500)
-    private String rejectionReason;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "created_by")
-    private UUID createdBy;
-
-    @Column(name = "updated_by")
-    private UUID updatedBy;
-
-    @Column(name = "spatial_id")
-    private UUID spatialId;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-
-    @Column(name = "deleted_by")
-    private UUID deletedBy;
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
     @OneToMany(mappedBy = "dikeRevetment", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<DikeRevetmentAttachment> attachments = new ArrayList<>();
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        if (this.approvalStatus == null) this.approvalStatus = ApprovalStatus.PROPOSED;
+    public void setApprovedDateLevel1(LocalDate date) {
+        setApprovedDateLevel1(date != null ? date.atStartOfDay() : null);
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    public void setApprovedDateLevel2(LocalDate date) {
+        setApprovedDateLevel2(date != null ? date.atStartOfDay() : null);
     }
 }

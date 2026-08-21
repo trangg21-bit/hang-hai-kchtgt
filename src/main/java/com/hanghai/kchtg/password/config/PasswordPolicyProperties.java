@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "app.password-policy")
 public class PasswordPolicyProperties {
 
-    private int minLength = 12;
+    private int minLength = 8;
     private boolean requireUppercase = true;
     private boolean requireLowercase = true;
     private boolean requireDigit = true;

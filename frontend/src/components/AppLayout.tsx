@@ -25,6 +25,7 @@ import {
   SearchOutlined,
   GlobalOutlined,
   BankOutlined,
+  BlockOutlined,
   BuildOutlined,
   EnvironmentOutlined,
   TruckOutlined,
@@ -114,7 +115,7 @@ const pageTitles: Record<string, string> = {
   '/dry-port': 'Quản lý cảng cạn',
   '/water-zone': 'Quản lý vùng nước',
   '/navigation-channel': 'Luồng hàng hải',
-  '/dike-revetment': 'Đê/Kè',
+  '/dike-revetment': 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ',
   '/ship-repair-facility': 'Cơ sở sửa chữa & đóng tàu',
   '/radar-station': 'Trạm Radar',
   '/vts-system': 'Hệ thống VTS',
@@ -235,6 +236,7 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
+    /* ẨN MENU: Quản lý KCHT trên nền bản đồ (GIS)
     {
       key: 'gis',
       icon: <CompassOutlined />,
@@ -247,6 +249,7 @@ export default function AppLayout() {
         canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
       ].filter(Boolean),
     },
+    */
     { type: 'divider' as const },
     {
       key: 'beacon',
@@ -295,6 +298,7 @@ export default function AppLayout() {
         canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
     },
+    /* ẨN MENU: Biến động tài sản
     {
       key: 'asset-movement',
       icon: <ContainerOutlined />,
@@ -306,6 +310,7 @@ export default function AppLayout() {
         canAccessMenu('/asset/exploitation') ? { key: '/asset/exploitation', label: 'Khai thác tài sản' } : null,
       ].filter(Boolean),
     },
+    */
     {
       key: 'documents-incidents',
       icon: <ContainerOutlined />,
@@ -323,7 +328,7 @@ export default function AppLayout() {
       label: 'Khu nước & VTS',
       children: [
         canAccessMenu('/navigation-channel') ? { key: '/navigation-channel', label: 'Luồng hàng hải' } : null,
-        canAccessMenu('/dike-revetment') ? { key: '/dike-revetment', label: 'Đê/Kè' } : null,
+        canAccessMenu('/dike-revetment') ? { key: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: <BlockOutlined /> } : null,
         canAccessMenu('/ship-repair-facility') ? { key: '/ship-repair-facility', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Trạm Radar' } : null,
         canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Hệ thống VTS' } : null,
@@ -339,6 +344,7 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
+    /* ẨN MENU: BÁO CÁO THỐNG KÊ
     canAccessMenu('/reports') ? {
       key: 'reports-parent',
       icon: <BarChartOutlined />,
@@ -448,6 +454,7 @@ export default function AppLayout() {
         }
       ]
     } : null,
+    */
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
     { type: 'divider' as const },

@@ -23,8 +23,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +57,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/auth/",
             "/api/public/",
             "/api/health/",
+            "/api/register",
+            "/api/verify",
             "/api/v1/auth/",
             "/api/v1/dashboard/",
             "/api/v1/integration/share/",
@@ -72,6 +78,15 @@ public class PermissionMiddleware extends OncePerRequestFilter {
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+    /**
+     * Cache ánh xạ resource -> tồn tại trong DB (TTL 5 phút) để tránh COUNT query
+     * chạy mỗi request khi normalize resource từ URL.
+     */
+    private final Cache<String, Boolean> knownResourceCache = Caffeine.newBuilder()
+            .maximumSize(1000)
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .build();
 
     public PermissionMiddleware(PermissionRoleService permissionRoleService,
             @Nullable PermissionRepository permissionRepository) {
@@ -207,7 +222,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (permissionRepository == null)
             return false;
         try {
-            return permissionRepository.countByResource(resource) > 0;
+            return knownResourceCache.get(resource,
+                    r -> permissionRepository.countByResource(r) > 0);
         } catch (Exception e) {
             return false;
         }

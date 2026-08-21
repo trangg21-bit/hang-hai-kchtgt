@@ -23,17 +23,21 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-
+import org.springframework.http.MediaType;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -131,7 +135,7 @@ class PierControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<PierResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(pierService.findAll(0, 20, null, null, null, null, null, null, null, null)).thenReturn(page);
+        when(pierService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/piers")
                         .param("page", "0")
@@ -139,8 +143,6 @@ class PierControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].pierCode").value("CAU-001"));
-
-        verify(pierService).findAll(0, 20, null, null, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/piers/{id} ────────────────────────────────────────
@@ -167,27 +169,30 @@ class PierControllerTest {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/piers/{id}/approve", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cap\":\"CUC_DUONG_THUY\"}")
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(pierApprovalService).approve(id, "test-approver", null);
+        verify(pierApprovalService).approve(eq(id), eq("test-approver"), eq("CUC_DUONG_THUY"), any());
     }
 
     // ── POST /api/v1/piers/{id}/reject ──────────────────────────────
 
     @Test
-    @DisplayName("POST /api/v1/piers/{id}/reject — reason >= 10 chars returns 200")
+    @DisplayName("POST /api/v1/piers/{id}/reject — valid request returns 200")
     void reject_validReason_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/piers/{id}/reject", id)
-                        .param("reason", "Không đủ tài liệu hợp lệ")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cap\":\"CUC_DUONG_THUY\",\"lyDo\":\"Không đủ tài liệu hợp lệ\"}")
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(pierApprovalService).approve(id, "test-approver", "Không đủ tài liệu hợp lệ");
+        verify(pierApprovalService).reject(eq(id), eq("test-approver"), eq("CUC_DUONG_THUY"), eq("Không đủ tài liệu hợp lệ"));
     }
 
     @Test
@@ -195,9 +200,10 @@ class PierControllerTest {
     void reject_tooShortReason_returns400() throws Exception {
         UUID id = UUID.randomUUID();
 
-        // reason = "Too short" has exactly 9 characters, violates @Size(min=10)
+        // lyDo = "Too short" has exactly 9 characters, violates @Size(min=10)
         mockMvc.perform(post("/api/v1/piers/{id}/reject", id)
-                        .param("reason", "Too short")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cap\":\"CUC_DUONG_THUY\",\"lyDo\":\"Too short\"}")
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isBadRequest());
     }

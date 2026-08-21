@@ -59,6 +59,7 @@ import {
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 
 // ── Helpers (moved verbatim from BuoyList.tsx / BuoyForm.tsx) ────────
 
@@ -69,6 +70,29 @@ function formatDateOnly(dateStr: string | null | undefined): string {
   } catch {
     return dateStr;
   }
+}
+
+// Tập hợp id đơn vị con (subtree) của một đơn vị — bộ lọc Đơn vị quản lý theo chuẩn Cảng biển:
+// chọn đơn vị cha → thấy cả dữ liệu của đơn vị con.
+function collectOrgSubtreeIds(organizations: Organization[], orgUnitId: string): Set<string> {
+  const childrenByParent = new Map<string, string[]>();
+  organizations.forEach((o) => {
+    if (o.parentId) {
+      const arr = childrenByParent.get(o.parentId) ?? [];
+      arr.push(o.id);
+      childrenByParent.set(o.parentId, arr);
+    }
+  });
+  const set = new Set<string>();
+  const stack = [orgUnitId];
+  while (stack.length) {
+    const cur = stack.pop();
+    if (!cur || set.has(cur)) continue;
+    set.add(cur);
+    const kids = childrenByParent.get(cur);
+    if (kids) stack.push(...kids);
+  }
+  return set;
 }
 
 // ── Nhãn tiếng Việt bổ sung cho các trường phao tiêu trong lịch sử thay đổi ──
@@ -232,6 +256,16 @@ export default function BuoyListPage() {
   const orgMap = useMemo(() => {
     const map = new Map<string, string>();
     organizations.forEach((o) => { map.set(o.id, o.name); });
+    return map;
+  }, [organizations]);
+
+  // Tên đơn vị cấp 2 trong chuỗi phân cấp — cột Đơn vị quản lý (chuẩn Cảng biển).
+  const orgLevel2Map = useMemo(() => {
+    const map = new Map<string, string>();
+    organizations.forEach((o) => {
+      const name = resolveOrgLevel2Name(organizations, o.id);
+      if (name) map.set(o.id, name);
+    });
     return map;
   }, [organizations]);
 
@@ -463,7 +497,9 @@ export default function BuoyListPage() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
       });
-      const unitFiltered = managingUnitId ? all.filter((d) => d.unitId === managingUnitId) : all;
+      // Lọc theo đơn vị quản lý (subtree — đơn vị cha thấy cả đơn vị con, chuẩn Cảng biển)
+      const unitSubtree = managingUnitId ? collectOrgSubtreeIds(organizations, managingUnitId) : null;
+      const unitFiltered = unitSubtree ? all.filter((d) => d.unitId && unitSubtree.has(d.unitId)) : all;
       const stationFiltered = filterStationId ? unitFiltered.filter((d) => d.buoyStationId === filterStationId) : unitFiltered;
 
       // Tab counts từ FULL dataset (không lọc theo tab đang chọn — giống BerthList fetchCounts)
@@ -486,7 +522,7 @@ export default function BuoyListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterQuery, filterCondition, filterProvince, filterApprovalStatus, managingUnitId, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [filterQuery, filterCondition, filterProvince, filterApprovalStatus, managingUnitId, organizations, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
 
@@ -1211,14 +1247,6 @@ export default function BuoyListPage() {
       ),
     },
     {
-      key: 'unitId',
-      label: 'Đơn vị quản lý',
-      dataIndex: 'unitId',
-      width: 240,
-      fixed: 'left' as const,
-      render: (v: string) => (v ? (orgMap.get(v) || v) : '—'),
-    },
-    {
       key: 'name',
       label: 'Tên/Mã phao tiêu',
       dataIndex: 'name',
@@ -1232,6 +1260,16 @@ export default function BuoyListPage() {
           <span style={{ opacity: 0.85 }}>{record.code}</span>
         </div>
       ),
+    },
+    {
+      key: 'unitId',
+      label: 'Đơn vị quản lý',
+      dataIndex: 'unitId',
+      width: 260,
+      render: (v: string) => {
+        const level2 = v ? orgLevel2Map.get(v) : undefined;
+        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
+      },
     },
     {
       key: 'buoyStationId',
@@ -1341,7 +1379,7 @@ export default function BuoyListPage() {
   ].map((col) => ({
     ...col,
     sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
-  })), [page, pageSize, orgMap, userMap, buoyStations, openDetailDrawer, sortField, sortOrder]);
+  })), [page, pageSize, orgLevel2Map, userMap, buoyStations, openDetailDrawer, sortField, sortOrder]);
 
   // ── Row actions with RBAC (moved from BuoyList.tsx) ─────────────
 
@@ -1472,10 +1510,16 @@ export default function BuoyListPage() {
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
               Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
             </div>
-            <Select placeholder="Chọn đơn vị" allowClear showSearch optionFilterProp="label"
-              value={managingUnitId} onChange={(v) => { setManagingUnitId(v); setPage(1); }}
-              options={[{ label: 'Tất cả', value: '__all__' }, ...organizations.map((o) => ({ label: o.name, value: o.id }))]}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            <OrgUnitTreeSelect
+              organizations={organizations}
+              placeholder="Chọn đơn vị..."
+              allowClear
+              showPath
+              allLabel="Tất cả"
+              treeDefaultExpandAll={false}
+              value={managingUnitId || undefined}
+              onChange={(v) => { setManagingUnitId(v === '__all__' ? undefined : v); setPage(1); }}
+            />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã Phao, tiêu</div>
@@ -1638,7 +1682,7 @@ export default function BuoyListPage() {
             codeLoading={codeLoading}
             activeTabKey={createTabKey}
             onTabChange={setCreateTabKey}
-            orgUnits={organizations.map((o) => ({ id: o.id, name: o.name }))}
+            orgUnits={organizations}
             buoyStations={buoyStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
             loadingStations={loadingStations}
             onStationChange={handleStationChange}
@@ -1690,7 +1734,7 @@ export default function BuoyListPage() {
             onTabChange={setEditTabKey}
             buoyStations={buoyStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
             loadingStations={loadingStations}
-            orgUnits={organizations.map((o) => ({ id: o.id, name: o.name }))}
+            orgUnits={organizations}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             symbols={symbols}
@@ -1725,7 +1769,7 @@ export default function BuoyListPage() {
         {detailLoading ? <LoadingSkeleton rows={6} /> : detailRecord ? (
           <BuoyDetailContent
             selectedRecord={detailRecord}
-            orgUnits={organizations.map((o) => ({ id: o.id, name: o.name }))}
+            orgUnits={organizations}
             userMap={userMap}
             detailFiles={detailFiles}
             buoyStatusBadge={buoyStatusBadge}

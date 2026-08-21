@@ -23,7 +23,7 @@ public class PermissionCacheService {
     private static final Logger log = LoggerFactory.getLogger(PermissionCacheService.class);
     private static final String CACHE_KEY_PREFIX = "user_perms:";
     private static final String EMPTY_SENTINEL = "__EMPTY_PERMS__";
-    private static final long CACHE_TTL_MINUTES = 10;
+    private static final long CACHE_TTL_MINUTES = 5;
 
     private final RedisTemplate<String, String> redisTemplate;
     private final UserRepository userRepository;

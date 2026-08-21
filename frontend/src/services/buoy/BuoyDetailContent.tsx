@@ -7,6 +7,7 @@ import { Table, Tabs, Space, InputNumber } from 'antd';
 import { FileOutlined, ScheduleOutlined, ToolOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../theme';
+import { resolveOrgFullPath, type OrgUnitTreeOption } from '../../components/org-unit';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   actionPrimary, statusOperational, statusAttention, statusCritical,
@@ -21,7 +22,7 @@ import type { Buoy } from './types';
 
 export interface BuoyDetailContentProps {
   selectedRecord: Buoy;
-  orgUnits: Array<{ id: string; name: string }>;
+  orgUnits: OrgUnitTreeOption[];
   userMap: Map<string, string>;
   detailFiles: any[];
   buoyStatusBadge: (status: string) => { color: string; label: string };
@@ -93,8 +94,6 @@ export default function BuoyDetailContent({
 }: BuoyDetailContentProps) {
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
-  const orgName = (id: string | undefined) =>
-    id ? (orgUnits.find((o) => o.id === id)?.name || id) : '—';
   const userName = (id: number | string | undefined | null) =>
     id != null ? (userMap.get(String(id)) || String(id)) : '—';
   const provinceName = (id: number | undefined | null) =>
@@ -140,7 +139,18 @@ export default function BuoyDetailContent({
               {detailGrid}
               <div className="detail-grid">
                 {[
-                  ['Đơn vị quản lý', orgName(r.unitId)],
+                  ['Đơn vị quản lý', (() => {
+                    const orgPath = resolveOrgFullPath(orgUnits, r.unitId);
+                    if (!orgPath || orgPath.length === 0) return '—';
+                    const levelColors = [textPrimary, textSecondary, textTertiary];
+                    return (
+                      <span>
+                        {orgPath.map((n, i) => (
+                          <span key={i} style={{ display: 'block', color: levelColors[Math.min(i, levelColors.length - 1)], fontWeight: fontWeightBold }}>{n}</span>
+                        ))}
+                      </span>
+                    );
+                  })()],
                   ['Thuộc nhà trạm QLVH phao, tiêu', r.buoyStationName || '—'],
                   ['Phân loại', r.classification || '—'],
                   ['Phân loại phao', r.classificationBuoy || '—'],
@@ -178,19 +188,18 @@ export default function BuoyDetailContent({
               {systemOpen && (
                 <div className="detail-grid" style={{ marginTop: 4 }}>
                   {[
-                    ['Người tạo', userName(r.createdBy)],
+                    ['Người tạo', <span style={{ fontWeight: fontWeightBold }}>{userName(r.createdBy)}</span>],
                     ['Ngày tạo', formatDate(r.createdAt)],
-                    ['Người cập nhật', userName(r.updatedBy)],
+                    ['Người cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy)}</span>],
                     ['Ngày cập nhật', formatDate(r.updatedAt)],
-                    ['Người gửi phê duyệt', userName(r.submittedForApprovalBy)],
+                    ['Người gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.submittedForApprovalBy)}</span>],
                     ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
-                    ['Người phê duyệt cấp Cảng vụ/Chi cục', userName(r.level1ApprovedBy)],
+                    ['Người phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy)}</span>],
                     ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
-                    ['Người phê duyệt cấp Cục', userName(r.level2ApprovedBy)],
+                    ['Người phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy)}</span>],
                     ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
                     ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
                     ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                    ['Lý do từ chối', r.rejectionReason || '—'],
                   ].map(([label, value]) => (
                     <div key={String(label)} className="detail-row">
                       <span className="detail-label">{label}</span>

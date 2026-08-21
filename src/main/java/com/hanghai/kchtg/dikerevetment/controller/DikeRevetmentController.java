@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import com.hanghai.kchtg.security.annotation.DataScope;
 
 /**
@@ -26,6 +27,13 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 public class DikeRevetmentController {
 
     private final DikeRevetmentService service;
+
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:create')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
+        String code = service.generateDikeRevetmentCode();
+        return ResponseEntity.ok(ApiResponse.success("Sinh mã đê kè thành công", Map.of("code", code)));
+    }
 
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'dikerevetment:create')")
@@ -93,6 +101,41 @@ public class DikeRevetmentController {
                 ? ((User) authentication.getPrincipal()).getId()
                 : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
+    }
+
+    @PostMapping("/{id}/submit-approval")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:update')")
+    public ResponseEntity<ApiResponse<Void>> submitForApproval(
+            @PathVariable java.util.UUID id,
+            Authentication authentication) {
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
+        service.submitForApproval(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi phê duyệt", null));
+    }
+
+    @PostMapping("/{id}/approve-l1")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:approvec1')")
+    public ResponseEntity<ApiResponse<ApprovalResponse>> approveL1(
+            @PathVariable java.util.UUID id,
+            Authentication authentication) {
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt thành công", service.approveL1(id, userId)));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:approvec1')")
+    public ResponseEntity<ApiResponse<ApprovalResponse>> reject(
+            @PathVariable java.util.UUID id,
+            @RequestBody @Valid ApprovalRequest req,
+            Authentication authentication) {
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User
+                ? ((User) authentication.getPrincipal()).getId()
+                : null;
+        return ResponseEntity.ok(ApiResponse.success("Đã từ chối", service.reject(id, req, userId)));
     }
 
     @GetMapping("/{id}/history")

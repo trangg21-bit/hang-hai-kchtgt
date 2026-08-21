@@ -304,7 +304,9 @@ export interface Pier {
   operationalStatus: string;
   approvalStatus: string;
   orgUnitId: string;
+  orgUnitName?: string;
   portId?: string;
+  navigationChannelId?: string;
   province?: string;
   detailedLocation?: string;
   constructionGrade?: number;
@@ -336,6 +338,12 @@ export interface Pier {
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+  submittedForApprovalAt?: string;
+  submittedForApprovalBy?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovedBy?: string;
+  departmentApprovedAt?: string;
+  departmentApprovedBy?: string;
 }
 
 export interface CreateCauCangRequest {

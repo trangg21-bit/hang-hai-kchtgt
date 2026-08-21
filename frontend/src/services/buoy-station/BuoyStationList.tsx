@@ -63,6 +63,7 @@ import {
   historyBadgeStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -70,6 +71,29 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
   'Chưa khai thác/vận hành': { color: statusAttention, label: 'Chưa khai thác/vận hành' },
   'Dừng khai thác/vận hành': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
 };
+
+// Tập hợp id đơn vị con (subtree) của một đơn vị — bộ lọc Đơn vị quản lý theo chuẩn Cảng biển:
+// chọn đơn vị cha → thấy cả dữ liệu của đơn vị con.
+function collectOrgSubtreeIds(organizations: Organization[], orgUnitId: string): Set<string> {
+  const childrenByParent = new Map<string, string[]>();
+  organizations.forEach((o) => {
+    if (o.parentId) {
+      const arr = childrenByParent.get(o.parentId) ?? [];
+      arr.push(o.id);
+      childrenByParent.set(o.parentId, arr);
+    }
+  });
+  const set = new Set<string>();
+  const stack = [orgUnitId];
+  while (stack.length) {
+    const cur = stack.pop();
+    if (!cur || set.has(cur)) continue;
+    set.add(cur);
+    const kids = childrenByParent.get(cur);
+    if (kids) stack.push(...kids);
+  }
+  return set;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -153,6 +177,16 @@ export default function BuoyStationList() {
     const m = new Map<string, string>();
     organizations.forEach((o) => { m.set(o.id, o.name); });
     return m;
+  }, [organizations]);
+
+  // Tên đơn vị cấp 2 trong chuỗi phân cấp — cột Đơn vị quản lý (chuẩn Cảng biển).
+  const orgLevel2Map = useMemo(() => {
+    const map = new Map<string, string>();
+    organizations.forEach((o) => {
+      const name = resolveOrgLevel2Name(organizations, o.id);
+      if (name) map.set(o.id, name);
+    });
+    return map;
   }, [organizations]);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [stationBuoys, setStationBuoys] = useState<Record<string, { classifications: string[]; classificationBuoys: string[] }>>({});
@@ -309,7 +343,6 @@ export default function BuoyStationList() {
       const res = await fetchBuoyStationList({
         name: filterKeyword || undefined,
         code: filterKeyword || undefined,
-        unitId: managingUnitId || undefined,
         province: filterProvince || undefined,
         status: filterStatus || undefined,
         portId: filterPortId || undefined,
@@ -317,11 +350,14 @@ export default function BuoyStationList() {
         updatedTo: filterUpdatedTo,
       });
       const all = res.content || [];
-      const counts: Record<string, number> = { all: all.length };
-      TAB_STATUS_LIST.slice(1).forEach((t) => { counts[t.key] = all.filter((d) => d.status === t.key).length; });
+      // Lọc theo đơn vị quản lý (subtree — đơn vị cha thấy cả đơn vị con, chuẩn Cảng biển)
+      const unitSubtree = managingUnitId ? collectOrgSubtreeIds(organizations, managingUnitId) : null;
+      const scoped = unitSubtree ? all.filter((d) => d.unitId && unitSubtree.has(d.unitId)) : all;
+      const counts: Record<string, number> = { all: scoped.length };
+      TAB_STATUS_LIST.slice(1).forEach((t) => { counts[t.key] = scoped.filter((d) => d.status === t.key).length; });
       setTabCounts(counts);
       const sf = activeTab !== 'all' ? activeTab : undefined;
-      let filtered = sf ? all.filter((d) => d.status === sf) : all;
+      let filtered = sf ? scoped.filter((d) => d.status === sf) : scoped;
       if (filterWaterwayId) filtered = filtered.filter((d) => d.waterwayId === filterWaterwayId);
       if (filterCondition) filtered = filtered.filter((d) => d.condition === filterCondition);
       if (filterClassification && filterClassification.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classifications?.some((c) => filterClassification.includes(c)));
@@ -329,7 +365,7 @@ export default function BuoyStationList() {
       setAllData(filtered); setTotal(filtered.length);
     } catch { setIsError(true); }
     finally { setIsLoading(false); }
-  }, [filterKeyword, managingUnitId, filterProvince, filterStatus, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterUpdatedFrom, filterUpdatedTo, activeTab, stationBuoys]);
+  }, [filterKeyword, managingUnitId, organizations, filterProvince, filterStatus, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterUpdatedFrom, filterUpdatedTo, activeTab, stationBuoys]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
 
@@ -363,7 +399,7 @@ export default function BuoyStationList() {
   }, []);
 
   const handleFilterApply = useCallback(() => {
-    setManagingUnitId(filterValues.managingUnitId || undefined);
+    setManagingUnitId(filterValues.managingUnitId === '__all__' ? undefined : filterValues.managingUnitId || undefined);
     setFilterKeyword(filterValues.keyword || '');
     setFilterProvince(filterValues.province || undefined);
     setFilterStatus(filterValues.status || undefined);
@@ -701,10 +737,6 @@ export default function BuoyStationList() {
       ),
     },
     {
-      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 240, fixed: 'left' as const, ellipsis: true,
-      render: (v: string) => (v ? (orgMap.get(v) || v) : '—'),
-    },
-    {
       key: 'name', label: 'Tên/Mã nhà trạm Phao, tiêu', dataIndex: 'name', width: 280, fixed: 'left' as const, ellipsis: false, sortable: true,
       render: (name: string, record: BuoyStationResponse) => (
         <div>
@@ -712,6 +744,13 @@ export default function BuoyStationList() {
           <span style={{ opacity: 0.85 }}>{record.code}</span>
         </div>
       ),
+    },
+    {
+      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true,
+      render: (v: string) => {
+        const level2 = v ? orgLevel2Map.get(v) : undefined;
+        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
+      },
     },
     {
       key: 'classifications', label: 'Phân loại', width: 140, ellipsis: true, sortable: true,
@@ -782,7 +821,7 @@ export default function BuoyStationList() {
   ].map((col) => ({
     ...col,
     sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
-  })), [page, pageSize, orgMap, portMap, waterwayMap, actorName, openDetail, stationBuoys, sortField, sortOrder]);
+  })), [page, pageSize, orgMap, orgLevel2Map, portMap, waterwayMap, actorName, openDetail, stationBuoys, sortField, sortOrder]);
 
   const rowActions = useCallback((r: BuoyStationResponse) => {
     const a: any[] = [];
@@ -824,11 +863,16 @@ export default function BuoyStationList() {
         filterContent={<>
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý <span style={{ color: statusCritical }}>*</span></div>
-            <Select placeholder="Chọn đơn vị" allowClear showSearch optionFilterProp="label"
+            <OrgUnitTreeSelect
+              organizations={organizations}
+              placeholder="Chọn đơn vị..."
+              allowClear
+              showPath
+              allLabel="Tất cả"
+              treeDefaultExpandAll={false}
               value={filterValues.managingUnitId || undefined}
               onChange={(val) => setFilterValues((prev) => ({ ...prev, managingUnitId: val }))}
-              options={organizations.map((o) => ({ label: o.name, value: o.id }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã nhà trạm Phao, tiêu</div>
@@ -969,7 +1013,7 @@ export default function BuoyStationList() {
         {detailLoading ? <LoadingSkeleton rows={6} /> : detailRecord ? (
           <BuoyStationDetailContent
             selectedRecord={detailRecord}
-            orgUnits={organizations.map((o) => ({ id: o.id, name: o.name }))}
+            orgUnits={organizations}
             portMap={portMap}
             userMap={userMap}
             detailFiles={detailFiles}
@@ -998,7 +1042,7 @@ export default function BuoyStationList() {
         {viewBuoyRecord ? (
           <BuoyDetailContent
             selectedRecord={viewBuoyRecord}
-            orgUnits={organizations.map((o) => ({ id: o.id, name: o.name }))}
+            orgUnits={organizations}
             userMap={userMap}
             detailFiles={viewBuoyFiles}
             buoyStatusBadge={buoyStatusBadge}
@@ -1170,7 +1214,7 @@ export default function BuoyStationList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" scrollToFirstError>
-          <BuoyStationFormContent ref={createFormRef} form={createForm} isEdit={false} uploadedFiles={createUploaded} setUploadedFiles={setCreateUploaded} existingFiles={createExisting} onFinish={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); void fetchData(); }} />
+          <BuoyStationFormContent ref={createFormRef} form={createForm} isEdit={false} uploadedFiles={createUploaded} setUploadedFiles={setCreateUploaded} existingFiles={createExisting} organizations={organizations} onFinish={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); void fetchData(); }} />
         </Form>
       </Drawer>
 
@@ -1189,7 +1233,7 @@ export default function BuoyStationList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={editForm} layout="vertical" scrollToFirstError>
-          <BuoyStationFormContent ref={editFormRef} form={editForm} isEdit entityData={editRecord} uploadedFiles={editUploaded} setUploadedFiles={setEditUploaded} existingFiles={editExisting} onFinish={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); void fetchData(); }} />
+          <BuoyStationFormContent ref={editFormRef} form={editForm} isEdit entityData={editRecord} uploadedFiles={editUploaded} setUploadedFiles={setEditUploaded} existingFiles={editExisting} organizations={organizations} onFinish={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); void fetchData(); }} />
         </Form>
       </Drawer>
     </div>

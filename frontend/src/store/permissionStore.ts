@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
 
+/** WeakMap memoize: tái sử dụng Set quyền theo reference mảng gốc, tránh tạo lại mỗi lần gọi. */
+const permissionSetCache = new WeakMap<object, Set<string>>();
+const EMPTY_PERMISSIONS: string[] = [];
+
 interface PermissionState {
   permissions: string[];
   hasPermission: (key: string) => boolean;
@@ -52,11 +56,16 @@ export function hasPermissionFromList(grantedPermissions: string[] | undefined, 
   const normalizedKey = normalizePermissionKey(key);
   if (!normalizedKey) return false;
 
-  const permissions = new Set(
-    (grantedPermissions || [])
-      .map((permission) => normalizePermissionKey(permission.trim()))
-      .filter(Boolean),
-  );
+  const source: object = grantedPermissions ?? EMPTY_PERMISSIONS;
+  let permissions = permissionSetCache.get(source);
+  if (!permissions) {
+    permissions = new Set(
+      (grantedPermissions || [])
+        .map((permission) => normalizePermissionKey(permission.trim()))
+        .filter(Boolean),
+    );
+    permissionSetCache.set(source, permissions);
+  }
 
   if (permissions.has('*') || permissions.has('admin:all') || permissions.has(normalizedKey)) {
     return true;

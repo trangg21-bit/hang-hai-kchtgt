@@ -1,0 +1,53 @@
+{
+  "triage_id": "TRI-1787298054098-92a3",
+  "created_at": 1787298054098,
+  "request_summary": "Sửa form thêm mới/chỉnh sửa cầu cảng (PierForm) cho đúng logic form bến cảng: Đơn vị quản lý auto-fill + TreeSelect + cascade, Thuộc luồng hàng hải đổi từ Input text sang Select GIS waterway gửi navigationChannelId, Loại kết cấu cầu cảng dùng cùng danh mục loại kết cấu bến cảng; đồng bộ list + detail pier.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/pages/port/PierList.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/pages/port/PierList.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Route /pier/create và /pier/:id/edit — form Tạo mới/Chỉnh sửa Cầu cảng",
+  "blast_radius": 3,
+  "done_oracle": "Mở form Tạo mới Cầu cảng: Đơn vị quản lý tự điền đơn vị của user (cây đơn vị, admin được đổi), Cảng biển lọc theo đơn vị; Thuộc luồng hàng hải là dropdown chọn luồng GIS (giống bến cảng) và lưu được; dropdown Loại kết cấu cầu cảng hiển thị Kết cấu bệ cọc cao/Cường từ/Trọng lực/Khác (giống bến cảng); lưu tạm + cập nhật thành công, danh sách + chi tiết hiển thị đúng nhãn.",
+  "verification_commands": [
+    {
+      "command": "bun run build",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "declared_write_scope": [
+    "frontend/src/pages/port/PierDetailContent.tsx",
+    "frontend/src/pages/port/PierForm.tsx",
+    "frontend/src/pages/port/PierList.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "4d045c5e1a47d0ee7fe97fca55d0485b73fa7ea4",
+    "dirty": true,
+    "captured_at": 1787298054380
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

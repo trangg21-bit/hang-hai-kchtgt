@@ -23,6 +23,7 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -37,6 +38,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,6 +56,7 @@ public class PierService {
     private final UserRepository userRepository;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
 
     @Transactional
     public PierResponse create(CreatePierRequest request) {
@@ -68,9 +71,9 @@ public class PierService {
         Berth parent = berthRepository.findById(request.getBerthId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBerthId()));
-        if (parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
-            throw new IllegalArgumentException(
-                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
+
+        if (parent.getOperationalStatus() != null && parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
+            throw new IllegalArgumentException("Bến cảng cha phải ở trạng thái hiện hành");
         }
 
         // BR-020-02: Port must be APPROVED and OPERATIONAL if provided
@@ -194,27 +197,49 @@ public class PierService {
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
             String search, UUID berthId,
             String status, String approvalStatus) {
-        return findAll(page, size, orgUnitId, search, berthId, null, (PierType) null, null, status, approvalStatus);
+        return findAll(page, size, orgUnitId, search, berthId, null, (PierType) null, null, status, approvalStatus,
+                null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
             String search, UUID berthId, UUID portId, PierType pierType, String province,
-            String status, String approvalStatus) {
+            String status, String approvalStatus, UUID navigationChannelId,
+            Integer constructionGrade, Integer structureType, String operationalFunction,
+            String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
                 Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
-        Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, portId, pierType, province,
-                statusEnum, approvalEnum, pageable);
+        LocalDateTime updatedFromDt = null;
+        if (updatedFrom != null && !updatedFrom.trim().isEmpty()) {
+            try {
+                updatedFromDt = LocalDateTime.parse(updatedFrom.replace(" ", "T"));
+            } catch (Exception e) {
+                /* ignore */ }
+        }
+        LocalDateTime updatedToDt = null;
+        if (updatedTo != null && !updatedTo.trim().isEmpty()) {
+            try {
+                updatedToDt = LocalDateTime.parse(updatedTo.replace(" ", "T"));
+            } catch (Exception e) {
+                /* ignore */ }
+        }
+        boolean includeAll = orgUnitId == null;
+        List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
+        Page<Pier> pageResult = pierRepository.searchPiers(includeAll, orgUnitIds, search, berthId, portId, pierType,
+                province,
+                statusEnum, approvalEnum, navigationChannelId, constructionGrade, structureType,
+                operationalFunction, updatedFromDt, updatedToDt, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(Pier::getBerthId)
@@ -325,6 +350,14 @@ public class PierService {
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
                 .spatialId(entity.getSpatialId())
+                .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .portAuthorityApprovedAt(entity.getPortAuthorityApprovedAt())
+                .portAuthorityApprovedBy(entity.getPortAuthorityApprovedBy())
+                .departmentApprovedAt(entity.getDepartmentApprovedAt())
+                .departmentApprovedBy(entity.getDepartmentApprovedBy())
+                .portAuthorityApprovalContent(entity.getPortAuthorityApprovalContent())
+                .departmentApprovalContent(entity.getDepartmentApprovalContent())
                 .build();
 
         if (request.getSecurityLevel() != null) {
@@ -513,6 +546,14 @@ public class PierService {
                 .coordinateSystem(entity.getCoordinateSystem())
                 .displayRule(entity.getDisplayRule())
                 .spatialId(entity.getSpatialId())
+                .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .portAuthorityApprovedAt(entity.getPortAuthorityApprovedAt())
+                .portAuthorityApprovedBy(entity.getPortAuthorityApprovedBy())
+                .departmentApprovedAt(entity.getDepartmentApprovedAt())
+                .departmentApprovedBy(entity.getDepartmentApprovedBy())
+                .portAuthorityApprovalContent(entity.getPortAuthorityApprovalContent())
+                .departmentApprovalContent(entity.getDepartmentApprovalContent())
                 .build();
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
@@ -615,6 +656,14 @@ public class PierService {
                 .waterAreaNeutralScope(e.getWaterAreaNeutralScope())
                 .coordinateSystem(e.getCoordinateSystem())
                 .displayRule(e.getDisplayRule())
+                .submittedForApprovalAt(e.getSubmittedForApprovalAt())
+                .submittedForApprovalBy(e.getSubmittedForApprovalBy())
+                .portAuthorityApprovedAt(e.getPortAuthorityApprovedAt())
+                .portAuthorityApprovedBy(e.getPortAuthorityApprovedBy())
+                .departmentApprovedAt(e.getDepartmentApprovedAt())
+                .departmentApprovedBy(e.getDepartmentApprovedBy())
+                .portAuthorityApprovalContent(e.getPortAuthorityApprovalContent())
+                .departmentApprovalContent(e.getDepartmentApprovalContent())
                 .build();
     }
 
@@ -634,11 +683,23 @@ public class PierService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
+                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
+                entity.setPortAuthorityApprovedAt(LocalDateTime.now());
+                entity.setPortAuthorityApprovedBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
+                entity.setDepartmentApprovedAt(LocalDateTime.now());
+                entity.setDepartmentApprovedBy(
+                        SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : null);
                 break;
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);

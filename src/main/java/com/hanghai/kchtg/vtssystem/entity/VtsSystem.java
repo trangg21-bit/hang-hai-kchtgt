@@ -1,9 +1,7 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,8 +10,8 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
+
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,14 +26,7 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
-public class VtsSystem extends BaseEntity {
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private RecordSecurityLevel securityLevel = RecordSecurityLevel.NORMAL;
-
-    @Column(name = "province_id")
-    private Integer provinceId;
+public class VtsSystem extends BaseApprovableEntity {
 
     @Column(name = "system_name", nullable = false, length = 255)
     private String systemName;
@@ -43,9 +34,6 @@ public class VtsSystem extends BaseEntity {
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
     private ConditionStatus conditionStatus;
-
-    @Column(name = "org_unit_id")
-    private UUID orgUnitId;
 
     @Column(name = "scope", length = 2000)
     private String scope;
@@ -65,9 +53,6 @@ public class VtsSystem extends BaseEntity {
     @Column(name = "operation_start_date")
     private LocalDate operationStartDate;
 
-    @Column(name = "spatial_id")
-    private UUID spatialId;
-
     @Column(name = "owning_org_id")
     private UUID owningOrgId;
 
@@ -77,25 +62,6 @@ public class VtsSystem extends BaseEntity {
     @Column(name = "port_id")
     private UUID portId;
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "approval_status", nullable = false, columnDefinition = "SMALLINT")
-    private ApprovalStatus approvalStatus;
-
-    @Column(name = "approver_level1")
-    private UUID approverLevel1;
-
-    @Column(name = "approved_date_level1")
-    private LocalDateTime approvedDateLevel1;
-
-    @Column(name = "approver_level2")
-    private UUID approverLevel2;
-
-    @Column(name = "approved_date_level2")
-    private LocalDateTime approvedDateLevel2;
-
-    @Column(name = "rejection_reason", length = 500)
-    private String rejectionReason;
-
     @OneToMany(mappedBy = "vtsSystem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<VtsZone> zones = new ArrayList<>();
@@ -103,12 +69,4 @@ public class VtsSystem extends BaseEntity {
     @OneToMany(mappedBy = "vtsSystem")
     @Builder.Default
     private List<RadarStation> radarStations = new ArrayList<>();
-
-    @PrePersist
-    protected void onCreate() {
-        if (securityLevel == null)
-            securityLevel = RecordSecurityLevel.NORMAL;
-        if (approvalStatus == null)
-            approvalStatus = ApprovalStatus.PROPOSED;
-    }
 }

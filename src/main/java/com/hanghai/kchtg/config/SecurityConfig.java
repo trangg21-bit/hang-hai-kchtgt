@@ -136,9 +136,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/search/**").authenticated()
                         .requestMatchers("/api/v1/integration/share/**").permitAll()
                         .requestMatchers("/api/org-units/options", "/api/v1/org-units/options").permitAll()
-                        // Registration and TOTP setup must be public so new users can register and first-time users can setup MFA
-                        .requestMatchers("/api/register").permitAll()
+                        // Registration, password reset, and TOTP setup must be public
+                        .requestMatchers("/api/register", "/api/register/**", "/api/verify").permitAll()
                         .requestMatchers("/api/auth/register/**").permitAll()
+                        .requestMatchers("/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/reset-password/**").permitAll()
                         .requestMatchers("/api/auth/totp/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated();

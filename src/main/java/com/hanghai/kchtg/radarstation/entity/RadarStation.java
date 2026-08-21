@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.radarstation.entity;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -25,12 +24,9 @@ import java.util.UUID;
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-public class RadarStation extends BaseEntity {
+public class RadarStation extends BaseApprovableEntity {
     @Column(name = "code", nullable = false, unique = true, length = 50)
     private String code;
-
-    @Column(name = "province_id")
-    private Integer provinceId;
 
     @Column(name = "station_name", nullable = false, length = 255)
     private String stationName;
@@ -52,9 +48,6 @@ public class RadarStation extends BaseEntity {
 
     @Column(name = "condition_status", length = 50)
     private String conditionStatus;
-
-    @Column(name = "org_unit_id")
-    private UUID orgUnitId;
 
     @Column(name = "seaport_id")
     private UUID seaportId;
@@ -84,35 +77,13 @@ public class RadarStation extends BaseEntity {
     @Column(name = "submitted_for_approval_at")
     private LocalDateTime submittedForApprovalAt;
 
-    @Column(name = "approval_status", nullable = false)
-    @Enumerated(EnumType.ORDINAL)
-    private ApprovalStatus approvalStatus;
-
     @Column(name = "approved_level1")
     @Builder.Default
     private Boolean approvedLevel1 = false;
 
-    @Column(name = "approver_level1")
-    private UUID approverLevel1;
-
-    @Column(name = "approved_date_level1")
-    private LocalDateTime approvedDateLevel1;
-
     @Column(name = "approved_level2")
     @Builder.Default
     private Boolean approvedLevel2 = false;
-
-    @Column(name = "approver_level2")
-    private UUID approverLevel2;
-
-    @Column(name = "approved_date_level2")
-    private LocalDateTime approvedDateLevel2;
-
-    @Column(name = "rejection_reason", length = 500)
-    private String rejectionReason;
-
-    @Column(name = "spatial_id")
-    private UUID spatialId;
 
     @Column(name = "vts_system_id")
     private UUID vtsSystemId;
@@ -130,7 +101,7 @@ public class RadarStation extends BaseEntity {
     @PrePersist
     protected void onCreate() {
         if (status == null || status.isBlank()) status = "DRAFT";
-        if (approvalStatus == null) approvalStatus = ApprovalStatus.PROPOSED;
+        if (getApprovalStatus() == null) setApprovalStatus(com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED);
         if (approvedLevel1 == null) approvedLevel1 = false;
         if (approvedLevel2 == null) approvedLevel2 = false;
     }

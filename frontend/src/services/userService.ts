@@ -129,14 +129,14 @@ export const userService = {
     return { success: true, data: null };
   },
 
-  async toggleLock(id: string, currentStatus: string): Promise<ApiResponse<User>> {
+  async toggleLock(id: string, currentStatus: string, reason?: string): Promise<ApiResponse<User>> {
     const endpoint = currentStatus.toLowerCase() === 'locked' ? `/users/${id}/unlock` : `/users/${id}/lock`;
-    const response = await api.post(endpoint);
+    const response = reason ? await api.post(endpoint, { reason: reason.trim() }) : await api.post(endpoint);
     return { success: true, data: mapUser(extractData(response)) };
   },
 
-  async changeStatus(id: string, status: string): Promise<ApiResponse<User>> {
-    const response = await api.patch(`/users/${id}/status`, { status });
+  async changeStatus(id: string, status: string, reason?: string): Promise<ApiResponse<User>> {
+    const response = await api.patch(`/users/${id}/status`, { status, ...(reason ? { reason: reason.trim() } : {}) });
     return { success: true, data: mapUser(extractData(response)) };
   },
 
