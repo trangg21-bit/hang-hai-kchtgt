@@ -168,6 +168,7 @@ export interface Berth {
   portId: string;
   portName?: string;
   waterway?: string;
+  waterwayId?: string;
   latitude?: number;
   longitude?: number;
   length?: number;
@@ -210,6 +211,8 @@ export interface Berth {
   portAuthorityApprovedBy?: string;
   departmentApprovedAt?: string;
   departmentApprovedBy?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovalContent?: string;
   rejectionReason?: string;
 }
 
@@ -218,6 +221,7 @@ export interface CreateBerthRequest {
   berthName: string;
   portId: string;
   waterway?: string;
+  waterwayId?: string;
   latitude?: number;
   longitude?: number;
   length?: number;
@@ -252,6 +256,7 @@ export interface UpdateBerthRequest {
   berthName?: string;
   portId?: string;
   waterway?: string;
+  waterwayId?: string;
   latitude?: number;
   longitude?: number;
   length?: number;

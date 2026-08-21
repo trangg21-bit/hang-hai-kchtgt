@@ -23,6 +23,7 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
@@ -84,6 +85,7 @@ public class PortService {
     private final PortAttachmentRepository portAttachmentRepository;
     private final PortCacheService portCacheService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
 
     @Value("${app.upload.attachment-path:uploads/port-attachments}")
     private String uploadPath;
@@ -309,8 +311,11 @@ public class PortService {
                 updatedToDt = LocalDateTime.parse(updatedTo.replace(" ", "T"));
             } catch (Exception e) { /* ignore */ }
         }
+        // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả cảng biển của toàn bộ đơn vị con (hậu duệ)
+        boolean includeAll = orgUnitId == null;
+        List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
         Page<Port> results = portRepository.searchPorts(
-                orgUnitId, portCode, portName, province, statusEnum, approvalEnum, portGroup, portClass, updatedFromDt, updatedToDt, search, pageable);
+                includeAll, orgUnitIds, portCode, portName, province, statusEnum, approvalEnum, portGroup, portClass, updatedFromDt, updatedToDt, search, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         results.getContent().forEach(e -> {

@@ -77,6 +77,7 @@ public class BerthController {
             @RequestParam(required = false) String berthName,
             @RequestParam(required = false) UUID portId,
             @RequestParam(required = false) String waterway,
+            @RequestParam(required = false) UUID waterwayId,
             @RequestParam(required = false) String berthType,
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus,
@@ -89,7 +90,7 @@ public class BerthController {
                 "Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, status={}, approvalStatus={}",
                 page, size, orgUnitId, search, berthCode, berthName, portId, operationalStatus, approvalStatus);
         Page<BerthResponse> result = berthService.findAll(page, size, orgUnitId,
-                berthCode, berthName, portId, waterway, berthType, operationalStatus, approvalStatus, search,
+                berthCode, berthName, portId, waterway, waterwayId, berthType, operationalStatus, approvalStatus, search,
                 structureType, operationalFunction, provinceId, updatedFrom, updatedTo);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bến cảng thành công", result));
     }
@@ -118,7 +119,7 @@ public class BerthController {
             @Valid @RequestBody ApproveRequest request,
             Authentication authentication) {
         log.info("Approving Berth: id={}, cap={}", id, request.getCap());
-        berthApprovalService.approve(id, authentication.getName(), request.getCap());
+        berthApprovalService.approve(id, authentication.getName(), request.getCap(), request.getContent());
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt bến cảng thành công", null));
     }
 

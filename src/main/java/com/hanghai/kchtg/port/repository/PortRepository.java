@@ -57,7 +57,7 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
     List<Port> findAllActiveForCache();
 
     @Query("SELECT p FROM Port p WHERE p.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId) " +
+            "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:portCode AS string) IS NULL OR LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:portCode AS string), '%'))) " +
             "AND (CAST(:portName AS string) IS NULL OR LOWER(p.portName) LIKE LOWER(CONCAT('%', CAST(:portName AS string), '%'))) " +
             "AND (CAST(:province AS string) IS NULL OR LOWER(p.province) LIKE LOWER(CONCAT('%', CAST(:province AS string), '%'))) " +
@@ -69,7 +69,8 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR p.updatedAt <= :updatedTo) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(p.portName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))))")
     Page<Port> searchPorts(
-            @Param("orgUnitId") UUID orgUnitId,
+            @Param("includeAll") boolean includeAll,
+            @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("portCode") String portCode,
             @Param("portName") String portName,
             @Param("province") String province,

@@ -33,6 +33,7 @@ public class BerthResponse {
     private ApprovalStatus approvalStatus;
     private UUID orgUnitId;
     private String orgUnitName;
+    private UUID waterwayId;
     private UUID createdBy;
     private UUID updatedBy;
     private LocalDateTime createdAt;
@@ -68,5 +69,7 @@ public class BerthResponse {
     private String portAuthorityApprovedBy;
     private LocalDateTime departmentApprovedAt;
     private String departmentApprovedBy;
+    private String portAuthorityApprovalContent;
+    private String departmentApprovalContent;
     private String rejectionReason;
 }
