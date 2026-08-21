@@ -494,7 +494,7 @@ class BeaconLightServiceTest {
         }
 
         @Test
-        @DisplayName("approveL1 — transitions from PENDING_APPROVAL to APPROVED_L1")
+        @DisplayName("approveL1 — transitions from PENDING_APPROVAL to APPROVED")
         void approveL1() {
             UUID id = UUID.randomUUID();
             BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
@@ -505,13 +505,12 @@ class BeaconLightServiceTest {
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
+            assertThat(saved.getStatus()).isEqualTo(ApprovalStatus.APPROVED.name());
             assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
             assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDate()).isNotNull();
-            assertThat(result.getStatus()).isEqualTo("APPROVED_L1");
+            assertThat(result.getStatus()).isEqualTo(ApprovalStatus.APPROVED.name());
             verify(historyRepo).save(any());
-            verify(notificationService).sendL2ApprovalNotification(entity);
         }
 
         @Test

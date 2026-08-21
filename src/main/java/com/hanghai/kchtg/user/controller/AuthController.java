@@ -5,6 +5,7 @@ import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.*;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.TotpAuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -78,6 +79,13 @@ public class AuthController {
                 // User does NOT have TOTP enabled - proceed with single-phase login
                 User user = userRepository.findByIdWithRelations(challenge.getUserId())
                         .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
+
+                if (user.getStatus() != UserStatus.ACTIVE) {
+                    String msg = user.getStatus() == UserStatus.PENDING_APPROVAL
+                            ? "Tài khoản đang chờ Quản trị viên phê duyệt. Vui lòng thử lại sau."
+                            : "Tài khoản chưa được kích hoạt hoặc đã bị vô hiệu hóa.";
+                    throw new IllegalArgumentException(msg);
+                }
 
                 // Update last login
                 user.setLastLoginAt(LocalDateTime.now());

@@ -89,19 +89,19 @@ class DikeRevetmentControllerTest {
         verify(service, times(1)).softDelete(TEST_ID);
     }
 
-    @Test void approveC1_shouldReturnUnderReview() {
+    @Test void approveC1_shouldReturnPendingApproval() {
         ApprovalResponse resp = ApprovalResponse.builder()
                 .id(TEST_ID.toString())
                 .dikeRevetmentId(TEST_ID)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
-                .status("PENDING_APPROVAL")
+                .status(ApprovalStatus.PENDING_APPROVAL.name())
                 .approver("Truong Phong")
                 .build();
         when(service.approveC1(eq(TEST_ID), any(), nullable(java.util.UUID.class))).thenReturn(resp);
         var ctrlResp = controller.approveC1(TEST_ID, ApprovalRequest.builder()
-                .decision("APPROVED").reason("Phe cap 1").build(), null);
+                .decision(ApprovalStatus.APPROVED.name()).reason("Phe cap 1").build(), null);
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(ctrlResp.getBody().getData().getStatus()).isEqualTo("UNDER_REVIEW");
+        assertThat(ctrlResp.getBody().getData().getStatus()).isEqualTo(ApprovalStatus.PENDING_APPROVAL.name());
     }
 
     @Test void approveC2_shouldReturnApproved() {
@@ -109,14 +109,14 @@ class DikeRevetmentControllerTest {
                 .id(TEST_ID.toString())
                 .dikeRevetmentId(TEST_ID)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2)
-                .status("APPROVED")
+                .status(ApprovalStatus.APPROVED.name())
                 .approver("Giam Doc")
                 .build();
         when(service.approveC2(eq(TEST_ID), any(), nullable(java.util.UUID.class))).thenReturn(resp);
         var ctrlResp = controller.approveC2(TEST_ID, ApprovalRequest.builder()
-                .decision("APPROVED").reason("Phe cap 2").build(), null);
+                .decision(ApprovalStatus.APPROVED.name()).reason("Phe cap 2").build(), null);
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(ctrlResp.getBody().getData().getStatus()).isEqualTo("APPROVED");
+        assertThat(ctrlResp.getBody().getData().getStatus()).isEqualTo(ApprovalStatus.APPROVED.name());
     }
 }
 

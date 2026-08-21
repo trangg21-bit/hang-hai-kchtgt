@@ -18,11 +18,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.UUID;
+
 /**
  * Core service for account registration.
  * <p>
- * Orchestrates: validation ->’ dedup ->’ encryption ->’ password hashing ->’ entity creation
- * ->’ token generation ->’ notification ->’ audit.
+ * Orchestrates: validation -> dedup -> encryption -> password hashing -> entity creation
+ * -> token generation -> notification -> audit.
  * </p>
  */
 @Service
@@ -137,8 +139,12 @@ public class RegistrationService {
     }
 
     private void validateRequest(RegisterAccountRequest request) {
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new ValidationException("Email không được để trống");
+        }
         if (request.getUsername() == null || request.getUsername().isBlank()) {
-            throw new ValidationException("Tên đăng nhập không được để trống");
+            String derived = request.getEmail().split("@")[0].replaceAll("[^a-zA-Z0-9_]", "_");
+            request.setUsername(derived.isBlank() ? "user_" + UUID.randomUUID().toString().substring(0, 8) : derived);
         }
         if (request.getPassword() == null || request.getPassword().isBlank()) {
             throw new ValidationException("Mật khẩu không được để trống");
@@ -153,9 +159,12 @@ public class RegistrationService {
                 && userRepository.existsByEmailIgnoreCase(request.getEmail().trim())) {
             throw new DuplicateResourceException("email", request.getEmail());
         }
-        if (request.getPhone() != null && !request.getPhone().isBlank()
-                && userRepository.existsByPhone(request.getPhone())) {
-            throw new DuplicateResourceException("số điện thoại", request.getPhone());
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            java.util.List<String> variants = com.hanghai.kchtg.common.util.PhoneUtils.getVariants(request.getPhone());
+            boolean phoneExists = variants.stream().anyMatch(userRepository::existsByPhone);
+            if (phoneExists) {
+                throw new DuplicateResourceException("số điện thoại", request.getPhone());
+            }
         }
     }
 
@@ -187,10 +196,10 @@ public class RegistrationService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(plainPassword));
-        user.setEmail(request.getEmail());
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
-        user.setStatus(UserStatus.PENDING_VERIFICATION);
+        user.setEmail(request.getEmail().trim());
+        user.setFullName(request.getFullName().trim());
+        user.setPhone(com.hanghai.kchtg.common.util.PhoneUtils.normalize(request.getPhone()));
+        user.setStatus(UserStatus.PENDING_APPROVAL);
         return user;
     }
 
@@ -206,4 +215,3 @@ public class RegistrationService {
         return response;
     }
 }
-

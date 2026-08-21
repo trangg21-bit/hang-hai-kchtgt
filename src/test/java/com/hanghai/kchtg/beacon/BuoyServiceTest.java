@@ -11,6 +11,7 @@ import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.beacon.service.BuoyService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
+import com.hanghai.kchtg.beacon.service.PointObjectSyncService;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
@@ -69,6 +70,12 @@ class BuoyServiceTest {
 
     @Mock
     private com.hanghai.kchtg.port.repository.ChangeLogRepository changeLogRepository;
+
+    @Mock
+    private com.hanghai.kchtg.station.repository.BuoyStationRepository buoyStationRepo;
+
+    @Mock
+    private PointObjectSyncService pointObjectSyncService;
 
     @InjectMocks
     private BuoyService service;
@@ -390,8 +397,8 @@ class BuoyServiceTest {
 
             BuoyResponse result = service.update(id, request);
 
-            assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
+            assertThat(result.getStatus()).isEqualTo(ApprovalStatus.PENDING_APPROVAL.name());
+            assertThat(result.getApprovalStatus()).isEqualTo(ApprovalStatus.PROPOSED.name());
             assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
         }
 
@@ -501,15 +508,15 @@ class BuoyServiceTest {
         }
 
         @Test
-        @DisplayName("submitForApproval — throws when not DRAFT")
+        @DisplayName("submitForApproval — throws when not DRAFT/REJECTED/PENDING_APPROVAL")
         void submitForApprovalNotDraft() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
+            Buoy entity = makeEntity(id, "PUBLISHED");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.submitForApproval(id))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Chỉ có thể gửi phê duyệt khi status = DRAFT");
+                    .hasMessageContaining("Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED hoặc PENDING_APPROVAL");
 
             verify(buoyRepo, never()).save(any());
         }

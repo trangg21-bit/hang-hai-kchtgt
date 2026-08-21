@@ -28,6 +28,23 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
+  # Mail configuration (SMTP)
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:son98hn@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:gmqfwvocvvhooiue}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: "*"
+    default-encoding: UTF-8
+
   # Redis (TOTP enrollment sessions)
   data:
     redis:
@@ -79,7 +96,9 @@ registration:
     public-key: ${REGISTRATION_RSA_PUBLIC_KEY:MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy0AHB7MhgHcTz6sE2I2GqO8nOJxL1q4bN3kF5C7y6F5G6H7I8J9K0L1M2N3O4P5Q6R7S8T9U0V1W2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S4T5U6V7W8X9Y0Z1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3W4X5Y6Z7A8B9C0D1E2F3G4H5I6J7K8L9M0N1O2P3Q4R5S6T7U8V9W0X1Y2Z3A4B5C6D7E8F9G0H1I2J3K4L5M6N7O8P9Q0R1S2T3U4V5W6X7Y8Z9A0B1C2D3E4F5G6H7I8J9K0L1M2N3O4P5Q6R7S8T9U0V1W2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S4T5U6V7W8X9Y0Z1IDAQAB}
     # Private key — server-only, used for decryption (Base64-encoded PKCS#8)
     # TODO: Set REGISTRATION_RSA_PRIVATE_KEY env var. Remove this default before production.
-#    private-key: ${REGISTRATION_RSA_PRIVATE_KEY:<your-base64-pkcs8-private-key-here>}
+# -- Application Configuration ------------------------------------------------
+app:
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3001}
 
 ---
 # -- DEV profile (H2 in-memory) ------------------------------------------------

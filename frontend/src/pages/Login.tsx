@@ -86,20 +86,10 @@ const labelProps = (text: string) => ({
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
-  const bgRef = useRef<HTMLDivElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showTotp, setShowTotp] = useState(false);
   const [userId, setUserId] = useState('');
   const [totpCode, setTotpCode] = useState('');
-
-  // ---- Parallax ----
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    setMouse({
-      x: (e.clientX / window.innerWidth - 0.5) * 6,
-      y: (e.clientY / window.innerHeight - 0.5) * 6,
-    });
-  }, []);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -188,8 +178,6 @@ export default function LoginPage() {
 
   return (
     <div
-      ref={bgRef}
-      onMouseMove={handleMouseMove}
       style={{
         position: 'relative',
         minHeight: '100vh',
@@ -439,6 +427,27 @@ export default function LoginPage() {
                 >
                   Đăng nhập
                 </Button>
+
+                <div
+                  style={{
+                    textAlign: 'center',
+                    marginTop: spaceMd,
+                    fontSize: fontSizeMd,
+                    color: textSecondary,
+                  }}
+                >
+                  Chưa có tài khoản?{' '}
+                  <span
+                    onClick={() => navigate('/register')}
+                    style={{
+                      color: actionPrimary,
+                      fontWeight: fontWeightBold,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Đăng ký ngay
+                  </span>
+                </div>
               </Form>
             )}
           </div>
