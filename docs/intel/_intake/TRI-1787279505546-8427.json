@@ -1,0 +1,72 @@
+{
+  "triage_id": "TRI-1787279505546-8427",
+  "created_at": 1787279505546,
+  "request_summary": "Thêm 5 tab vào drawer chi tiết cảng biển theo CSV: Danh sách kết cấu hạ tầng khác (kèm dropdown lọc Loại KCHT 16 giá trị + nút mắt xem chi tiết), Thông tin quy hoạch, Thông tin vận hành khai thác, Thông tin bảo trì, Thông tin sự cố",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/port/api.ts",
+      "frontend/src/services/port/PortListPage.tsx",
+      "frontend/src/services/port/types.ts"
+    ],
+    "impact_files": [
+      "frontend/src/services/port/api.ts",
+      "frontend/src/services/port/PortListPage.tsx",
+      "frontend/src/services/port/types.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý cảng biển (route /port) → Drawer 'Xem chi tiết cảng biển' trong PortListPage.tsx → thêm 5 tab sau tab File đính kèm",
+  "blast_radius": 3,
+  "done_oracle": "Drawer Xem chi tiết cảng biển có 5 tab mới đúng tên và cột theo CSV: (1) Danh sách kết cấu hạ tầng khác thuộc cảng biển - bảng STT/Tên kết cấu hạ tầng/Thao tác + dropdown lọc Loại kết cấu hạ tầng (16 giá trị user cung cấp) + nút mắt điều hướng xem chi tiết; (2) Thông tin quy hoạch - STT/Số QĐ/Ngày QĐ/Thao tác; (3) Thông tin vận hành khai thác - STT/Mã KH/Tên KH/Ngày bắt đầu/Ngày kết thúc/Thao tác; (4) Thông tin bảo trì - tương tự; (5) Thông tin sự cố - STT/Mã/Loại/Địa điểm/Thời gian/Thao tác. Bảng rỗng hiển thị empty state có icon như các tab khác. npx tsc --noEmit (frontend) sạch.",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "scope_expansion",
+  "declared_write_scope": [
+    "frontend/src/services/port/api.ts",
+    "frontend/src/services/port/PortListPage.tsx",
+    "frontend/src/services/port/types.ts"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/port/PortListPage.tsx",
+      "line": 3516,
+      "quote": "key: 'infra', label: 'Công trình KCHT trực thuộc',",
+      "source_hash": "e19428b9d4243b8e414d45afae3c9a424d03b94e27c80ca92e82cc8d8224ad5f",
+      "quote_hash": "bb051f73ddd1e45af75787876ef31901c122638e7bec0cd477017be4fbd39a16",
+      "note": "Mảng items của Tabs trong drawer chi tiết cảng biển — nơi 5 tab mới được thêm vào"
+    },
+    {
+      "file": "frontend/src/pages/gis/GISChartView.tsx",
+      "line": 3732,
+      "quote": "<Form.Item name=\"kchtType\" label=\"Loại kết cấu hạ tầng\">",
+      "source_hash": "be6e5e03109c97137b8167408474b7c4961619126d0990b1ac501bf8019050f5",
+      "quote_hash": "deb2b62d15e286f8cce8266bfd6f3eb51398219d249a1e95ab0ba2f3793116e8",
+      "note": "Dropdown Loại kết cấu hạ tầng hiện có — tham chiếu danh sách giá trị cho bộ lọc tab mới"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "408aed6b04f5db87cf21279b24d1c1c1cc368c51",
+    "dirty": true,
+    "captured_at": 1787279505804
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

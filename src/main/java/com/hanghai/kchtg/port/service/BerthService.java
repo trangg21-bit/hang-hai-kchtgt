@@ -22,6 +22,7 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
@@ -64,6 +65,7 @@ public class BerthService {
     private final UserRepository userRepository;
     private final PortCacheService portCacheService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final AttachmentRepository attachmentRepository;
 
@@ -91,6 +93,7 @@ public class BerthService {
                 .securityLevel(secLevel)
                 .berthCode(code).berthName(request.getBerthName())
                 .portId(request.getPortId()).waterway(request.getWaterway())
+                .waterwayId(request.getWaterwayId())
                 .length(request.getLength()).width(request.getWidth())
                 .berthType(request.getBerthType()).channelDepth(request.getChannelDepth())
                 .operationalFunction(request.getOperationalFunction())
@@ -161,13 +164,13 @@ public class BerthService {
     @Transactional(readOnly = true)
     public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId) {
         return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null, null, null, null, null,
-                null);
+                null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId,
             String berthCode, String berthName, UUID portId,
-            String waterway, String berthType,
+            String waterway, UUID waterwayId, String berthType,
             String operationalStatus, String approvalStatus, String search,
             Integer structureType, String operationalFunction,
             Integer provinceId, String updatedFrom, String updatedTo) {
@@ -200,8 +203,12 @@ public class BerthService {
             } catch (Exception e) {
                 /* ignore */ }
         }
-        Page<Berth> pageResult = berthRepository.searchBerths(orgUnitId, search, berthCode, berthName, portId,
-                waterway, berthTypeEnum, approvalEnum, statusEnum, false,
+        // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả bến cảng của toàn bộ đơn vị con (hậu duệ)
+        boolean includeAll = orgUnitId == null;
+        List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
+        String searchTrim = search != null ? search.trim() : null;
+        Page<Berth> pageResult = berthRepository.searchBerths(includeAll, orgUnitIds, searchTrim, berthCode, berthName, portId,
+                waterway, waterwayId, berthTypeEnum, approvalEnum, statusEnum, false,
                 structureType, operationalFunction, provinceId, updatedFromDt, updatedToDt, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
@@ -273,6 +280,7 @@ public class BerthService {
                 .berthCode(entity.getBerthCode())
                 .berthName(entity.getBerthName()).portId(entity.getPortId())
                 .waterway(entity.getWaterway())
+                .waterwayId(entity.getWaterwayId())
                 .length(entity.getLength())
                 .width(entity.getWidth()).berthType(entity.getBerthType())
                 .channelDepth(entity.getChannelDepth()).operationalFunction(entity.getOperationalFunction())
@@ -336,6 +344,8 @@ public class BerthService {
         }
         if (request.getWaterway() != null)
             entity.setWaterway(request.getWaterway());
+        if (request.getWaterwayId() != null)
+            entity.setWaterwayId(request.getWaterwayId());
         if (request.getLength() != null)
             entity.setLength(request.getLength());
         if (request.getWidth() != null)
@@ -431,6 +441,7 @@ public class BerthService {
                 .berthCode(entity.getBerthCode())
                 .berthName(entity.getBerthName()).portId(entity.getPortId())
                 .waterway(entity.getWaterway())
+                .waterwayId(entity.getWaterwayId())
                 .length(entity.getLength())
                 .width(entity.getWidth()).berthType(entity.getBerthType())
                 .channelDepth(entity.getChannelDepth()).operationalFunction(entity.getOperationalFunction())
@@ -513,6 +524,7 @@ public class BerthService {
                 .portId(e.getPortId())
                 .portName(portName)
                 .waterway(e.getWaterway())
+                .waterwayId(e.getWaterwayId())
                 .length(e.getLength())
                 .width(e.getWidth())
                 .berthType(e.getBerthType())
@@ -552,6 +564,8 @@ public class BerthService {
                 .portAuthorityApprovedBy(e.getPortAuthorityApprovedBy())
                 .departmentApprovedAt(e.getDepartmentApprovedAt())
                 .departmentApprovedBy(e.getDepartmentApprovedBy())
+                .portAuthorityApprovalContent(e.getPortAuthorityApprovalContent())
+                .departmentApprovalContent(e.getDepartmentApprovalContent())
                 .rejectionReason(e.getRejectionReason());
 
         if (e.getSpatialId() != null) {

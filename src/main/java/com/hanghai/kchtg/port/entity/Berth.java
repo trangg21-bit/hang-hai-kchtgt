@@ -5,6 +5,7 @@ import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -53,6 +54,9 @@ public class Berth extends BaseEntity {
 
     @Column(name = "waterway", length = 255)
     private String waterway;
+
+    @Column(name = "waterway_id")
+    private UUID waterwayId;
 
 
 
@@ -153,11 +157,19 @@ public class Berth extends BaseEntity {
     @Column(name = "port_authority_approved_by", length = 100)
     private String portAuthorityApprovedBy;
 
+    @Size(max = 1000)
+    @Column(name = "port_authority_approval_content")
+    private String portAuthorityApprovalContent;
+
     @Column(name = "department_approved_at")
     private LocalDateTime departmentApprovedAt;
 
     @Column(name = "department_approved_by", length = 100)
     private String departmentApprovedBy;
+
+    @Size(max = 1000)
+    @Column(name = "department_approval_content")
+    private String departmentApprovalContent;
 
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;

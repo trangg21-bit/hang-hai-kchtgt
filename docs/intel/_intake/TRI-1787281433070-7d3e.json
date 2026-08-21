@@ -1,0 +1,45 @@
+{
+  "triage_id": "TRI-1787281433070-7d3e",
+  "created_at": 1787281433070,
+  "request_summary": "Lọc cảng biển theo orgUnitId phải bao gồm đơn vị hậu duệ: PortService.findAll mở rộng orgUnitId qua OrgUnitScopeService.resolveSubtreeIds, PortRepository.searchPorts đổi p.orgUnitId = :orgUnitId thành p.orgUnitId IN :orgUnitIds",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/repository/PortRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/repository/PortRepository.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Bộ lọc Đơn vị quản lý trên trang Quản lý cảng biển — chọn đơn vị cha phải gồm cả cảng của đơn vị con",
+  "blast_radius": 2,
+  "done_oracle": "GET /v1/ports?orgUnitId=X trả về cảng biển của X và TẤT CẢ đơn vị con/hậu duệ của X (mở rộng cây qua OrgUnitScopeService.resolveSubtreeIds); không truyền orgUnitId thì vẫn trả toàn bộ; mvn clean compile pass",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q -DskipTests",
+      "cwd": ".",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "business_rule",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "408aed6b04f5db87cf21279b24d1c1c1cc368c51",
+    "dirty": true,
+    "captured_at": 1787281433405
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

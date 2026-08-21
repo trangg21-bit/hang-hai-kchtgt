@@ -1,0 +1,144 @@
+{
+  "triage_id": "TRI-1787289446165-cc52",
+  "created_at": 1787289446165,
+  "request_summary": "Màn hình Quản lý bến cảng (/berth): gộp mã bến vào cột Tên/Mã, tách cột Loại kết cấu, thêm cột Thuộc luồng hàng hải (kèm select trong form), đổi tên 2 cột cán bộ phê duyệt theo CSV, luồng phê duyệt lưu + hiển thị Nội dung phê duyệt (theo mẫu Buoy level1/level2ApprovalContent), xóa file chết app/berth/BerthListPage.tsx",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/app/berth/BerthListPage.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/port/controller/BerthController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/BerthResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/CreateBerthRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/UpdateBerthRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/Berth.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "src/main/resources/db/migration/V20260821100000__berth_add_navigation_channel_and_approval_content.sql"
+    ],
+    "impact_files": [
+      "frontend/src/app/berth/BerthListPage.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthList.tsx",
+      "frontend/src/services/portService.ts",
+      "frontend/src/types/port.ts",
+      "src/main/java/com/hanghai/kchtg/port/controller/BerthController.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/ApproveRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/BerthResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/CreateBerthRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/berth/UpdateBerthRequest.java",
+      "src/main/java/com/hanghai/kchtg/port/entity/Berth.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "src/main/resources/db/migration/V20260821100000__berth_add_navigation_channel_and_approval_content.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260821100000__berth_add_navigation_channel_and_approval_content.sql"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260821100000__berth_add_navigation_channel_and_approval_content.sql — floors at C3 regardless of size (14 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình Quản lý bến cảng (route /berth) — bảng danh sách + modal phê duyệt",
+  "blast_radius": 14,
+  "done_oracle": "Trên /berth: cột 'Tên/Mã bến cảng' hiển thị tên + mã; cột 'Loại kết cấu' tách riêng sau cột Tên/Mã; cột 'Thuộc luồng hàng hải' xuất hiện sau 'Thuộc cảng biển' và có dữ liệu (form Thêm/Sửa có select luồng); 2 cột cán bộ đổi tên thành 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục' và 'Cán bộ phê duyệt cấp Cục'; modal phê duyệt có ô nhập 'Nội dung phê duyệt', lưu xuống DB (migration mới) và hiển thị cột 'Nội dung phê duyệt' (cấp Cảng vụ/Chi cục + cấp Cục); file frontend/src/app/berth/BerthListPage.tsx đã bị xóa; mvn clean compile + npx tsc --noEmit + npm run build (frontend) pass.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile",
+      "cwd": ".",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    },
+    {
+      "command": "npm run build",
+      "cwd": "frontend",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "business_rule",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/BerthList.tsx",
+      "line": 853,
+      "quote": "      { key: 'berthName', label: <span>Tên bến cảng/Loại kết cấu</span>, dataIndex: 'berthName', width: 200, fixed: 'left' as const, sortable: true, sortOrder,",
+      "source_hash": "b02100ad229af17c1620c97c39248489e8c6e75b4abc065f7d04c8939c77024c",
+      "quote_hash": "1d92bffdc5543f14e1019c2f7120d530ebe55cc0861791d100cabdb67b5538ed",
+      "note": "Cột Tên/Loại kết cấu — sẽ tách: tên+mã gộp 1 cột, Loại kết cấu tách cột riêng"
+    },
+    {
+      "file": "frontend/src/pages/port/BerthList.tsx",
+      "line": 897,
+      "quote": "      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ Phê duyệt Cảng vụ</span>, dataIndex: 'portAuthorityApprovedAt', width: 210, sortable: true, sortOrder,",
+      "source_hash": "b02100ad229af17c1620c97c39248489e8c6e75b4abc065f7d04c8939c77024c",
+      "quote_hash": "adeea6db85829a5efe45f6ba6cf8e43ac86bcbfcd87ce59dd77c09a45e792312",
+      "note": "Cột cán bộ duyệt Cảng vụ — đổi tên thành 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục' theo CSV #33"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/controller/BerthController.java",
+      "line": 121,
+      "quote": "        berthApprovalService.approve(id, authentication.getName(), request.getCap());",
+      "source_hash": "b1aac3902bb9cde38c2a9270ab4477c1a4f428ef144762704c6b6c4e8fb4e3f8",
+      "quote_hash": "23a95b45408644deafec143ac7ce51b5291ef81f2a5cabc2e1815f45773c7c45",
+      "note": "Endpoint phê duyệt — cần truyền thêm content vào approve"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "line": 36,
+      "quote": "    public void approve(UUID id, String userId, String cap) {",
+      "source_hash": "1cc2e0424d360b7f8c14aad4bff984dabd5eada2bb17799ad881659e5686feaa",
+      "quote_hash": "fcba9e360598923755859d16ec9d13d6dba6d053adac2259d25288d501d1b8d7",
+      "note": "Luồng duyệt 2 cấp — thêm tham số content + set trường lưu nội dung theo từng cấp"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "line": 591,
+      "quote": "        if (content != null && !content.isBlank()) {",
+      "source_hash": "edbda809ab427b6a92c6f37fd9399490ee2525c8d59ba38bc42dff0e8c5e0e75",
+      "quote_hash": "cb21d3b6790050a06fe21b95535f29600a432dd8ae22992fa87cd628aca4af6b",
+      "note": "Pattern mẫu từ module Nhà trạm Phao, tiêu (Buoy) — user yêu cầu tham khảo"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/entity/Pier.java",
+      "line": 89,
+      "quote": "    @Column(name = \"navigation_channel_id\")",
+      "source_hash": "21fd12bd9553df0c692ba6141c77a9e45d03ed2159047595ee9ed30e26421ca8",
+      "quote_hash": "7f6930e1608f281d67658d19313e9a5bb73500dc1cb3380c2d10416a769551e4",
+      "note": "Pier (con của Berth) đã có luồng hàng hải — Berth chưa có, cần thêm cột + migration"
+    },
+    {
+      "file": "frontend/src/pages/port/BerthForm.tsx",
+      "line": 103,
+      "quote": "  // useEffect(() => { navigationChannelCRUD.search({ page: 1, pageSize: 1000 }).then(r => setChannelOptions((r.data || []).map((c: any) => ({ value: c.id, label: c.channelName || c.name || c.id })))).catch(() => {}); }, []);",
+      "source_hash": "48b62a0efde4ed1bc27e53a7e88332dc1eeefaed0a530fb46728379dc9967337",
+      "quote_hash": "125a6b57adf54eb0381b70d453b306816d737fe40f6bad1d398614d6081c27c9",
+      "note": "Select luồng hàng hải trong form đang bị comment — bật lại và nối vào payload"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "408aed6b04f5db87cf21279b24d1c1c1cc368c51",
+    "dirty": true,
+    "captured_at": 1787289446430
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

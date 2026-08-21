@@ -46,7 +46,7 @@ const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
 const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm'));
 
-const BerthList = lazy(() => import('./pages/port/BerthList'));
+const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 
 const PierList = lazy(() => import('./pages/port/PierList'));
 const PierForm = lazy(() => import('./pages/port/PierForm'));
