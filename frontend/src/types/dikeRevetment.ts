@@ -12,6 +12,7 @@ export type DikeRevetmentType = 'RIVER_DIKE' | 'SAND_DIKE' | 'FLOW_GUIDE_REVETME
 
 export interface DikeRevetmentResponse {
   id: string;
+  code?: string;
   dikeRevetmentType: DikeRevetmentType;
   location: string;
   dikeRevetmentName?: string;
@@ -19,11 +20,36 @@ export interface DikeRevetmentResponse {
   crestElevation?: number;
   commissioningDate?: string;
   height?: number;
-  surfaceMaterial?: string;
   status?: string;
   note?: string;
   orgUnitId?: string;
   orgUnitName?: string;
+  // Sheet QL đê kè — trường bổ sung theo đặc tả (optional, chờ backend tích hợp)
+  seaportId?: string;
+  seaportName?: string;
+  donViVanHanhId?: string;
+  donViVanHanhName?: string;
+  locationDetail?: string;
+  constructionDate?: string;
+  lastMaintenanceYear?: string;
+  submittedAt?: string;
+  submittedByName?: string;
+  approvedByNameLevel1?: string;
+  approvedByNameLevel2?: string;
+  approvalNoteLevel1?: string;
+  approvalNoteLevel2?: string;
+  operationPlanCode?: string;
+  operationPlanName?: string;
+  operationStartDate?: string;
+  operationEndDate?: string;
+  maintenancePlanCode?: string;
+  maintenancePlanName?: string;
+  maintenanceStartDate?: string;
+  maintenanceEndDate?: string;
+  incidentCode?: string;
+  incidentType?: string;
+  incidentLocation?: string;
+  incidentTime?: string;
   approvalStatus: ApprovalStatus;
   isApprovedLevel1?: boolean;
   approverLevel1?: string;
@@ -43,26 +69,30 @@ export interface DikeRevetmentResponse {
   approvalHistory?: ApprovalResponse[];
   history?: HistoryEntry[];
   khongGianId?: string;
-  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
-  toaDo?: string;
-  bieuTuongId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  symbolId?: string;
 }
 
 export interface CreateDikeRevetmentRequest {
   dikeRevetmentType: DikeRevetmentType;
   location: string;
   dikeRevetmentName: string;
+  seaportId?: string;
+  donViVanHanhName?: string;
+  locationDetail?: string;
+  constructionDate?: string;
+  lastMaintenanceYear?: string;
   length?: number;
   crestElevation?: number;
   commissioningDate?: string;
   height?: number;
-  surfaceMaterial?: string;
   status?: string;
   note?: string;
   orgUnitId?: string;
-  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
-  toaDo?: string;
-  bieuTuongId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
+  symbolId?: string;
 }
 
 export interface UpdateDikeRevetmentRequest extends CreateDikeRevetmentRequest {
@@ -98,10 +128,16 @@ export interface ListParams {
   page?: number;
   size?: number;
   orgUnitId?: string;
+  code?: string;
   keyword?: string;
+  seaportId?: string;
+  location?: string;
   dikeRevetmentType?: DikeRevetmentType;
   status?: string;
   approvalStatus?: ApprovalStatus;
+  commissioningYear?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
 }
 
 export interface SearchResponse<T> {

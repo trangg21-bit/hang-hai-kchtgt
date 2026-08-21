@@ -202,10 +202,10 @@ export const metronicTheme: ThemeConfig = {
 
     Table: {
       borderRadius: radius.md,
-      headerBg: '#F9FAFB',
+      headerBg: colors.bodyBg,
       headerColor: colors.textSecondary,
       rowHoverBg: '#F5F8FA',
-      cellPaddingBlock: 10,
+      cellPaddingBlock: 9,
     },
 
     Dropdown: {
@@ -419,6 +419,7 @@ export const globalCssVars = `
 
 /* Bảng list-view: dành chỗ scrollbar dọc ổn định để header và body của cột ghim (fixed right)
    luôn thẳng hàng — kể cả khi chưa đủ dữ liệu tạo thanh cuộn. */
+.list-view-table .ant-table-header,
 .list-view-table .ant-table-body {
   scrollbar-gutter: stable;
 }

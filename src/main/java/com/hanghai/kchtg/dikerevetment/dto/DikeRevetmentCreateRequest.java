@@ -34,6 +34,9 @@ public class DikeRevetmentCreateRequest {
     @NotBlank(message = "Tên đê kè không được để trống")
     private String dikeRevetmentName;
 
+    private String code;
+    private UUID seaportId;
+
     private Double length;
     private Double crestElevation;
     private LocalDate commissioningDate;

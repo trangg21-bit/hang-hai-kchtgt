@@ -18,6 +18,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
@@ -49,6 +51,8 @@ public class DikeRevetmentService {
     private final ApprovalHistoryRepository approvalHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final PortCacheService portCacheService;
+    private final UserResolverService userResolverService;
 
     @Transactional
     public DikeRevetmentResponse create(DikeRevetmentCreateRequest req, java.util.UUID userId) {
@@ -58,11 +62,17 @@ public class DikeRevetmentService {
         RecordSecurityLevel.validateAssignment(secLevel, "dikerevetment", SecurityUtils.getCurrentUserPermissions(),
                 SecurityUtils.isElevatedAdministrator());
 
+        String code = req.getCode() != null && !req.getCode().trim().isEmpty()
+                ? req.getCode().trim()
+                : generateDikeRevetmentCode();
+
         DikeRevetment dr = DikeRevetment.builder()
                 .securityLevel(secLevel)
                 .dikeRevetmentType(req.getDikeRevetmentType())
                 .location(req.getLocation())
                 .dikeRevetmentName(req.getDikeRevetmentName())
+                .code(code)
+                .seaportId(req.getSeaportId())
                 .length(req.getLength())
                 .crestElevation(req.getCrestElevation())
                 .commissioningDate(req.getCommissioningDate())
@@ -71,6 +81,7 @@ public class DikeRevetmentService {
                 .status(req.getStatus())
                 .note(req.getNote())
                 .orgUnitId(req.getOrgUnitId())
+                .symbolId(req.getSymbolId())
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
@@ -113,6 +124,23 @@ public class DikeRevetmentService {
         }
 
         return toResponse(dr);
+    }
+
+    @Transactional(readOnly = true)
+    public String generateDikeRevetmentCode() {
+        String maxCode = repo.findMaxCode();
+        int nextNumber = 1;
+        if (maxCode != null && maxCode.startsWith("DK-")) {
+            try {
+                String numPart = maxCode.substring(3);
+                nextNumber = Integer.parseInt(numPart) + 1;
+            } catch (NumberFormatException e) {
+                log.debug("Mã đê kè không đúng định dạng DK-XXXXXX: {}, bắt đầu từ 1", maxCode);
+            }
+        }
+        String code = String.format("DK-%06d", nextNumber);
+        log.info("Sinh mã đê kè: {}", code);
+        return code;
     }
 
     @Transactional(readOnly = true)
@@ -192,6 +220,8 @@ public class DikeRevetmentService {
             dr.setNote(req.getNote());
         if (req.getOrgUnitId() != null)
             dr.setOrgUnitId(req.getOrgUnitId());
+        if (req.getSymbolId() != null)
+            dr.setSymbolId(req.getSymbolId());
         dr.setUpdatedBy(userId);
 
         if (req.getCoordinates() != null) {
@@ -325,9 +355,53 @@ public class DikeRevetmentService {
     }
 
     @Transactional
+    public void submitForApproval(UUID id, java.util.UUID submittedBy) {
+        DikeRevetment dr = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+
+        if (dr.getApprovalStatus() != ApprovalStatus.PROPOSED
+                && dr.getApprovalStatus() != ApprovalStatus.REJECTED) {
+            throw new IllegalStateException("Chi co the gui phe duyet khi trang thai la NHAP hoac TU_CHOI");
+        }
+
+        dr.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        repo.save(dr);
+
+        saveApprovalHistory(dr, 1, "PROPOSED", submittedBy != null ? submittedBy.toString() : null, "Gửi phê duyệt");
+    }
+
+    @Transactional
+    public ApprovalResponse approveL1(UUID id, java.util.UUID approvedBy) {
+        DikeRevetment dr = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+
+        if (dr.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("Chi co the phe duyet khi trang thai la CHO_PHE_DUYET");
+        }
+
+        UUID creatorId = dr.getCreatedBy();
+        if (creatorId != null && creatorId.equals(approvedBy)) {
+            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
+        }
+
+        dr.setIsApprovedLevel1(true);
+        dr.setApproverLevel1(approvedBy);
+        dr.setApprovedDateLevel1(LocalDate.now());
+        dr.setApprovalStatus(ApprovalStatus.APPROVED);
+        repo.save(dr);
+
+        saveApprovalHistory(dr, 1, "APPROVED", approvedBy != null ? approvedBy.toString() : null, "Phê duyệt");
+        return buildApprovalResponse(dr, 1);
+    }
+
+    @Transactional
     public ApprovalResponse reject(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+
+        if (dr.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("Chi co the tu choi khi trang thai la CHO_PHE_DUYET");
+        }
 
         dr.setApprovalStatus(ApprovalStatus.REJECTED);
         dr.setRejectionReason(req.getReason());
@@ -462,6 +536,9 @@ public class DikeRevetmentService {
                 .dikeRevetmentType(dr.getDikeRevetmentType())
                 .location(dr.getLocation())
                 .dikeRevetmentName(dr.getDikeRevetmentName())
+                .code(dr.getCode())
+                .seaportId(dr.getSeaportId())
+                .seaportName(portCacheService.getName(dr.getSeaportId()))
                 .length(dr.getLength())
                 .crestElevation(dr.getCrestElevation())
                 .commissioningDate(dr.getCommissioningDate())
@@ -483,11 +560,13 @@ public class DikeRevetmentService {
                 .updatedAt(dr.getUpdatedAt())
                 .createdBy(dr.getCreatedBy())
                 .updatedBy(dr.getUpdatedBy())
+                .updatedByName(userResolverService.resolveName(dr.getUpdatedBy()))
                 .deletedAt(dr.getDeletedAt())
                 .deletedBy(dr.getDeletedBy())
                 .attachments(atts)
                 .approvalHistory(hist)
                 .spatialId(dr.getSpatialId())
+                .symbolId(dr.getSymbolId())
                 .geometryType(geomType)
                 .coordinates(coords)
                 .build();

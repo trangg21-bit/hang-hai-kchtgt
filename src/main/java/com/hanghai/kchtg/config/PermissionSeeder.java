@@ -1,15 +1,12 @@
 package com.hanghai.kchtg.config;
 
 import com.hanghai.kchtg.user.entity.Permission;
-import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,23 +21,12 @@ import java.util.Map;
 public class PermissionSeeder implements CommandLineRunner {
 
         private final PermissionRepository permissionRepository;
-        private final UserRepository userRepository;
 
         @Override
         @Transactional
         public void run(String... args) {
-                // TODO(SECURITY): Do not reset the admin password on every startup. Create the
-                // bootstrap account only when absent, load the initial secret securely, and
-                // force
-                // a password change before allowing normal administration.
-                userRepository.findByUsername("admin").ifPresent(adminUser -> {
-                        adminUser.setPassword(new BCryptPasswordEncoder().encode("admin123"));
-                        adminUser.setStatus(UserStatus.ACTIVE);
-                        adminUser.setAccountLockedUntil(null);
-                        adminUser.setFailedLoginCount(0);
-                        adminUser.setFailedTotpCount(0);
-                        userRepository.save(adminUser);
-                });
+                // SECURITY: Không reset mật khẩu admin mỗi lần khởi động — mật khẩu
+                // do quản trị viên đặt và được giữ nguyên giữa các lần boot.
 
                 Map<String, Permission> definitions = new LinkedHashMap<>();
 

@@ -28,6 +28,9 @@ public class DikeRevetmentResponse {
     private DikeRevetmentType dikeRevetmentType;
     private String location;
     private String dikeRevetmentName;
+    private String code;
+    private UUID seaportId;
+    private String seaportName;
     private Double length;
     private Double crestElevation;
     private LocalDate commissioningDate;
@@ -50,6 +53,7 @@ public class DikeRevetmentResponse {
     private LocalDateTime updatedAt;
     private UUID createdBy;
     private UUID updatedBy;
+    private String updatedByName;
     private LocalDateTime deletedAt;
     private UUID deletedBy;
     private List<DikeRevetmentAttachmentResponse> attachments;

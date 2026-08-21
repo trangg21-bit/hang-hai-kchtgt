@@ -6,6 +6,7 @@ import { colors } from '../../theme';
 interface GisLocationSelectorValue {
   geometryType: string;
   coordinates: string;
+  symbolId?: string;
 }
 
 interface GisLocationSelectorProps {
@@ -319,6 +320,7 @@ export default function GisLocationSelector({
         onChange({
           geometryType: newGeom,
           coordinates: newWkt,
+          symbolId: newSym,
         });
       }
     },

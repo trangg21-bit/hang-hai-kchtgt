@@ -246,7 +246,7 @@ export default function HistoryTimeline({ history, loading, error, onRetry }: Hi
     const reason = entry.reason || entry.lyDo || '';
 
     const statusColor = STATUS_COLOR_MAP[status] || 'gray';
-    const formattedDate = date ? dayjs(date).format('DD/MM/YYYY HH:mm') : 'N/A';
+    const formattedDate = date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : 'N/A';
     const displayStatus = STATUS_LABEL_MAP[status] || status;
 
     const translatedChangedField = translateFieldText(entry.changedField);

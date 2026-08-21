@@ -2,7 +2,6 @@ package com.hanghai.kchtg.config;
 
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -26,18 +25,14 @@ class PermissionSeederTest {
     @Mock
     private PermissionRepository permissionRepository;
 
-    @Mock
-    private UserRepository userRepository;
-
     private PermissionSeeder permissionSeeder;
     private Validator validator;
 
     @BeforeEach
     void setUp() {
-        permissionSeeder = new PermissionSeeder(permissionRepository, userRepository);
+        permissionSeeder = new PermissionSeeder(permissionRepository);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.empty());
     }
 
     @Test

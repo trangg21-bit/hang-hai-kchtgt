@@ -4,7 +4,7 @@ import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import {
-  textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeMd, fontWeightBold,
+  textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeSm, fontSizeMd, fontWeightBold,
   statusOperational, statusCritical, statusDraft, statusAttention,
   radiusPill, borderDefault,
 } from '../../tokens';
@@ -20,6 +20,15 @@ const actionColumnCellStyle: React.CSSProperties = {
   paddingInline: 0,
   textAlign: 'center',
   verticalAlign: 'middle',
+};
+
+// Header cột action phải có cùng nền với header cột dữ liệu (tableHeaderBg).
+// AntD v6 set nền cell cố định (`.ant-table-cell-fix`) = tableBg (trắng) — nếu
+// không override, header action thành khối trắng đè lên hàng header xám và
+// "chắn đè" cột dữ liệu (vd cột Trạng thái) khi bảng cuộn ngang.
+const actionColumnHeaderCellStyle: React.CSSProperties = {
+  ...actionColumnCellStyle,
+  background: tableHeaderBg,
 };
 
 
@@ -59,6 +68,8 @@ export interface DataTableProps {
   /** Khi true (và scroll.y là số): thân bảng LUÔN lấp đầy chiều cao khả dụng,
       scrollbar ngang nằm sát mép dưới bảng, kể cả khi ít bản ghi. */
   fill?: boolean;
+  /** Dense: thu nhỏ chữ cell + header xuống fontSizeSm (10px) để bảng nhiều cột vừa màn hình. */
+  dense?: boolean;
   rowActions?: (record: any) => {
     key: string; label: string; icon?: React.ReactNode;
     onClick: () => void; danger?: boolean; disabled?: boolean;
@@ -100,7 +111,7 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource, rowKey, loading, emptyState, fill, onSort, rowActions, children, scroll, ...rest
+  columns, dataSource, rowKey, loading, emptyState, fill, dense, onSort, rowActions, children, scroll, ...rest
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
   const dataSignatureRef = useRef<string | null>(null);
@@ -312,7 +323,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 }
               : undefined,
       onHeaderCell: () => ({
-        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined },
+        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: dense ? fontSizeSm : fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined },
         onClick: col.sortable ? () => {
           if (onSort && dataKey) {
             const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';
@@ -326,7 +337,7 @@ const DataTable: React.FC<DataTableProps> = ({
         </Tooltip>
       ) : col.label,
       onCell: (record: any) => ({
-        style: { fontSize: fontSizeMd, color: textPrimary },
+        style: { fontSize: dense ? fontSizeSm : fontSizeMd, color: textPrimary },
       }),
     };
 
@@ -349,7 +360,7 @@ const DataTable: React.FC<DataTableProps> = ({
       width: ACTION_COLUMN_WIDTH,
       fixed: 'right' as const,
       align: 'center',
-      onHeaderCell: () => ({ style: actionColumnCellStyle }),
+      onHeaderCell: () => ({ style: actionColumnHeaderCellStyle }),
       onCell: () => ({ style: actionColumnCellStyle }),
       render: (_: unknown, record: any) => {
         const items = rowActions(record).map((a) => ({
