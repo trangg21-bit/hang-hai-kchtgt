@@ -54,8 +54,9 @@ import {
   EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { berthCRUD, waterZoneCRUD } from '../../services/portService';
+import { berthCRUD, waterZoneCRUD, pierCRUD } from '../../services/portService';
 import BerthDetailContent from '../../pages/port/BerthDetailContent';
+import PierDetailContent from '../../pages/port/PierDetailContent';
 import { userService } from '../../services/userService';
 import { waterZoneApi } from '../../app/waterzone/api';
 import { lineObjectService } from '../../services/lineObjectService';
@@ -499,6 +500,24 @@ export default function PortListPage() {
   const [kchtDetailRecord, setKchtDetailRecord] = useState<any>(null);
   const [kchtDetailFiles, setKchtDetailFiles] = useState<any[]>([]);
   const [kchtDetailLoading, setKchtDetailLoading] = useState(false);
+  const [pierDetailOpen, setPierDetailOpen] = useState(false);
+  const [pierDetailRecord, setPierDetailRecord] = useState<any>(null);
+  const [pierDetailFiles, setPierDetailFiles] = useState<any[]>([]);
+  const [pierDetailLoading, setPierDetailLoading] = useState(false);
+
+  const openPierDetail = useCallback(async (id: string) => {
+    setPierDetailLoading(true); setPierDetailOpen(true); setPierDetailRecord(null);
+    try {
+      const [rec, fileRes] = await Promise.all([
+        pierCRUD.findById(id),
+        documentApi.listByEntity('pier', id, { page: 1, size: 20 }),
+      ]);
+      setPierDetailRecord(rec);
+      setPierDetailFiles((fileRes as any)?.data || []);
+    } catch { toast.error('Không thể tải chi tiết cầu cảng'); setPierDetailRecord(null); }
+    finally { setPierDetailLoading(false); }
+  }, []);
+
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -3922,9 +3941,49 @@ export default function PortListPage() {
             approvalStyleMap={APPROVAL_STYLE_MAP}
             structureTypeOptions={STRUCTURE_TYPE_OPTIONS}
             waterwayMap={waterwayMap}
+            onViewPierDetail={openPierDetail}
           />
         ) : kchtDetailRecord && kchtDetailType === 'waterzone' ? (
           <WaterZoneDetailMini record={kchtDetailRecord} symbols={symbols as any[]} files={kchtDetailFiles} userMap={userMap} />
+        ) : null}
+      </Drawer>
+
+      {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
+      <Drawer
+        {...drawerProps}
+        size={900}
+        title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
+        open={pierDetailOpen}
+        onClose={() => setPierDetailOpen(false)}
+        extra={<Button type="text" onClick={() => setPierDetailOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {pierDetailLoading ? (
+          <div style={{ padding: 48, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải chi tiết...</div>
+        ) : pierDetailRecord ? (
+          <PierDetailContent
+            selectedRecord={pierDetailRecord}
+            orgMap={new Map((orgUnits || []).map((o: any) => [o.id, o.name]))}
+            organizations={orgUnits as any}
+            portMap={new Map([[selectedRecord?.id ?? '', selectedRecord?.portName || '']])}
+            berthOptions={kchtDetailRecord ? [{ value: kchtDetailRecord.id, label: kchtDetailRecord.berthName || kchtDetailRecord.berthCode || '' }] : []}
+            symbolMap={new Map((symbols || []).map((s: any) => [s.id, s.name]))}
+            symbolImageMap={new Map((symbols || []).filter((s: any) => s.image).map((s: any) => [s.id, s.image]))}
+            detailFiles={pierDetailFiles}
+            ddToDms={ddToDms}
+            approvalStyleMap={APPROVAL_STYLE_MAP}
+            operationalStyleMap={{
+              OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
+              NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
+              SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
+            }}
+            userMap={userMap}
+            waterwayMap={waterwayMap}
+          />
         ) : null}
       </Drawer>
 

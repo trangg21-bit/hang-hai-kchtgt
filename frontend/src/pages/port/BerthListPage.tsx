@@ -27,6 +27,7 @@ import {
   berthCRUD,
   berthApproval,
   portCRUD,
+  pierCRUD,
 } from '../../services/portService';
 import type { Berth } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
@@ -49,6 +50,7 @@ import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import BerthForm from './BerthForm';
 import BerthDetailContent from './BerthDetailContent';
+import PierDetailContent from './PierDetailContent';
 import {
   statusOperational,
   statusAttention,
@@ -289,6 +291,10 @@ export default function BerthList() {
   const [detailRecord, setDetailRecord] = useState<Berth | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
+  const [pierDetailOpen, setPierDetailOpen] = useState(false);
+  const [pierDetailRecord, setPierDetailRecord] = useState<any>(null);
+  const [pierDetailFiles, setPierDetailFiles] = useState<any[]>([]);
+  const [pierDetailLoading, setPierDetailLoading] = useState(false);
 
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -921,6 +927,19 @@ export default function BerthList() {
   }, [page, pageSize, portOptions, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, isAuditViewer, openDetailDrawer]);
 
   // ── Detail drawer content ────────────────────────────────────────
+  const openPierDetail = useCallback(async (id: string) => {
+    setPierDetailLoading(true); setPierDetailOpen(true); setPierDetailRecord(null);
+    try {
+      const [rec, fileRes] = await Promise.all([
+        pierCRUD.findById(id),
+        api.get(`/v1/piers/${id}/attachments`),
+      ]);
+      setPierDetailRecord(rec);
+      setPierDetailFiles(fileRes.data?.data || []);
+    } catch { toast.error('Không thể tải chi tiết cầu cảng'); setPierDetailRecord(null); }
+    finally { setPierDetailLoading(false); }
+  }, []);
+
   const renderDetailContent = () => {
     if (!detailRecord) return null;
     if (detailLoading) return <LoadingSkeleton rows={6} />;
@@ -942,6 +961,7 @@ export default function BerthList() {
         operationPlanList={(detailRecord as any)?.operationPlanList}
         maintenancePlanList={(detailRecord as any)?.maintenancePlanList}
         incidentList={(detailRecord as any)?.incidentList}
+        onViewPierDetail={openPierDetail}
       />
     );
   };
@@ -1159,6 +1179,45 @@ export default function BerthList() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
+      <Drawer
+        {...drawerProps}
+        size={950}
+        title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
+        open={pierDetailOpen}
+        onClose={() => setPierDetailOpen(false)}
+        extra={<Button type="text" onClick={() => setPierDetailOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {pierDetailLoading ? (
+          <div style={{ padding: 48, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải chi tiết...</div>
+        ) : pierDetailRecord ? (
+          <PierDetailContent
+            selectedRecord={pierDetailRecord}
+            orgMap={orgMap}
+            organizations={organizations}
+            portMap={new Map(portOptions.map((o: any) => [o.value, o.label]))}
+            berthOptions={detailRecord ? [{ value: detailRecord.id, label: detailRecord.berthName || detailRecord.berthCode || '' }] : []}
+            symbolMap={symbolMap}
+            symbolImageMap={symbolImageMap}
+            detailFiles={pierDetailFiles}
+            ddToDms={ddToDms}
+            approvalStyleMap={APPROVAL_STYLE_MAP}
+            operationalStyleMap={{
+              OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
+              NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
+              SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
+            }}
+            userMap={userMap}
+            waterwayMap={waterwayMap}
+          />
+        ) : null}
+      </Drawer>
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <Drawer
