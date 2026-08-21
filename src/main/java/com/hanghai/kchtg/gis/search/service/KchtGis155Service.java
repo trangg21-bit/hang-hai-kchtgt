@@ -18,6 +18,7 @@ import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.entity.*;
 import com.hanghai.kchtg.port.repository.*;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
@@ -47,6 +48,7 @@ public class KchtGis155Service {
     private final BerthRepository berthRepository;
     private final PierRepository pierRepository;
     private final DryPortRepository dryPortRepository;
+    private final OrgUnitScopeService orgUnitScopeService;
     private final WaterZoneRepository waterZoneRepository;
     private final NavigationChannelRepository navigationChannelRepository;
     private final DikeRevetmentRepository dikeRevetmentRepository;
@@ -388,10 +390,10 @@ public class KchtGis155Service {
 
             switch (type) {
                 case SEAPORT:
+                    List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
                     List<Port> ports = portRepository.searchPorts(
-                            orgUnitId, null, null, provinceLocal, OperationalStatus.OPERATIONAL,
-                            ApprovalStatus.APPROVED, null, null, null, null, searchLower, PageRequest.of(0, 10000))
-                            .getContent();
+                            orgUnitId == null, orgUnitIds, null, null, provinceLocal, OperationalStatus.OPERATIONAL,
+                            ApprovalStatus.APPROVED, null, null, null, null, searchLower, PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
                     if (!ports.isEmpty()) {
                         List<UUID> cbIds = ports.stream().map(Port::getId).collect(Collectors.toList());

@@ -25,6 +25,7 @@ public class UpdateBerthRequest {
     private UUID portId;
     private UUID orgUnitId;
     private String waterway;
+    private UUID waterwayId;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private BigDecimal length;

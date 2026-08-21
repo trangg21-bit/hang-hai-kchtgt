@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,12 +50,13 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
      * For operationalStatus null-check (NHAP status), pass operationalStatusNull=true.
      */
     @Query("SELECT b FROM Berth b WHERE b.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR b.orgUnitId = :orgUnitId) " +
+            "AND (:includeAll = true OR b.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(b.berthCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(b.berthName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
             "AND (CAST(:berthCode AS string) IS NULL OR LOWER(b.berthCode) LIKE LOWER(CONCAT('%', CAST(:berthCode AS string), '%'))) " +
             "AND (CAST(:berthName AS string) IS NULL OR LOWER(b.berthName) LIKE LOWER(CONCAT('%', CAST(:berthName AS string), '%'))) " +
             "AND (:portId IS NULL OR b.portId = :portId) " +
             "AND (CAST(:waterway AS string) IS NULL OR LOWER(b.waterway) LIKE LOWER(CONCAT('%', CAST(:waterway AS string), '%'))) " +
+            "AND (:waterwayId IS NULL OR b.waterwayId = :waterwayId) " +
             "AND (:berthType IS NULL OR b.berthType = :berthType) " +
             "AND (:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) " +
             "AND ((:operationalStatusNull = true AND b.operationalStatus IS NULL) OR (:operationalStatusNull = false AND (:operationalStatus IS NULL OR b.operationalStatus = :operationalStatus))) " +
@@ -64,12 +66,14 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR b.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR b.updatedAt <= :updatedTo) ")
     Page<Berth> searchBerths(
-            @Param("orgUnitId") UUID orgUnitId,
+            @Param("includeAll") boolean includeAll,
+            @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("search") String search,
             @Param("berthCode") String berthCode,
             @Param("berthName") String berthName,
             @Param("portId") UUID portId,
             @Param("waterway") String waterway,
+            @Param("waterwayId") UUID waterwayId,
             @Param("berthType") BerthType berthType,
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("operationalStatus") OperationalStatus operationalStatus,
@@ -90,7 +94,7 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
                                       UUID portId, String waterway, BerthType berthType,
                                       OperationalStatus operationalStatus, ApprovalStatus approvalStatus,
                                       Pageable pageable) {
-        return searchBerths(orgUnitId, search, berthCode, berthName, portId, waterway, berthType,
+        return searchBerths(orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(), search, berthCode, berthName, portId, waterway, null, berthType,
                 approvalStatus, operationalStatus, false, null, null, null, null, null, pageable);
     }
 }
