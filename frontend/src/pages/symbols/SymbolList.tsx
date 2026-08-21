@@ -124,6 +124,7 @@ export default function SymbolList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
+  const [filterCode, setFilterCode] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -151,6 +152,7 @@ export default function SymbolList() {
         page,
         pageSize,
         search: search || undefined,
+        code: filterCode || undefined,
         status: filterStatus,
       });
       setDataSource(res.data);
@@ -161,7 +163,7 @@ export default function SymbolList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterStatus]);
+  }, [page, pageSize, search, filterCode, filterStatus]);
 
   useEffect(() => { void fetchSymbols(); }, [fetchSymbols]);
 
@@ -250,6 +252,7 @@ export default function SymbolList() {
 
   const handleFilterReset = useCallback(() => {
     setSearch('');
+    setFilterCode('');
     setFilterStatus(undefined);
     setPage(1);
   }, []);
@@ -274,6 +277,10 @@ export default function SymbolList() {
       render: (_: unknown, __: unknown, idx: number) => (
         <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span>
       ),
+    },
+    {
+      key: 'code', label: 'Mã biểu tượng', dataIndex: 'code', width: 110,
+      render: (text?: string) => <span style={{ fontSize: fontSizeMd }}>{text || '—'}</span>,
     },
     {
       key: 'name', label: 'Tên biểu tượng', dataIndex: 'name',
@@ -316,6 +323,19 @@ export default function SymbolList() {
     <>
       <div style={{ marginBottom: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Mã biểu tượng
+        </div>
+        <Input
+          placeholder="Tìm theo mã biểu tượng..."
+          allowClear
+          value={filterCode}
+          onChange={(e) => setFilterCode(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+      <div style={{ marginBottom: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Tên biểu tượng
         </div>
         <Input
@@ -347,13 +367,12 @@ export default function SymbolList() {
     if (isLoading) return <LoadingSkeleton rows={8} />;
     if (isError)
       return <ErrorState message={error?.message || 'Không thể tải danh sách biểu tượng'} onRetry={fetchSymbols} />;
-    if (dataSource.length === 0) {
-      if (search || filterStatus) return <EmptyState description="Không tìm thấy biểu tượng" />;
-      return <EmptyState description="Chưa có biểu tượng nào" />;
-    }
+    const emptyState = dataSource.length === 0 ? (
+      <EmptyState description={search || filterCode || filterStatus ? 'Không tìm thấy biểu tượng' : 'Chưa có biểu tượng nào'} />
+    ) : undefined;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} fill scroll={{ x: 800, y: 550 }} />
+        <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} fill scroll={{ x: 800, y: 550 }} emptyState={emptyState} />
         <div style={{ paddingBottom: 6 /* căn mép dưới bảng thẳng hàng mép trên khối nút filter */ }}>
           <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
         </div>
@@ -475,6 +494,7 @@ export default function SymbolList() {
                       </div>
                       <div className="detail-grid">
                         {[
+                          ['Mã biểu tượng', previewSymbol.code || '—'],
                           ['Tên biểu tượng', previewSymbol.name],
                           ['Trạng thái', (
                             <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, background: surfacePage, color: s.color }}>

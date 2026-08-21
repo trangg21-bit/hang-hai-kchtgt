@@ -10,7 +10,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface MapSymbolService {
-    Page<MapSymbolResponse> search(String search, MapSymbolStatus status, Pageable pageable);
+    Page<MapSymbolResponse> search(String search, String code, MapSymbolStatus status, Pageable pageable);
     MapSymbolResponse findById(UUID id);
     MapSymbolResponse create(CreateMapSymbolRequest request, java.util.UUID createdBy);
     MapSymbolResponse update(UUID id, UpdateMapSymbolRequest request);

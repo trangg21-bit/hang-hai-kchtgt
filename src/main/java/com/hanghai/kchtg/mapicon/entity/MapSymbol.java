@@ -27,6 +27,10 @@ public class MapSymbol extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String name;
 
+    @Size(max = 10, message = "Mã biểu tượng tối đa 10 ký tự")
+    @Column(name = "code", nullable = false, length = 10, unique = true)
+    private String code;
+
     @Size(max = 500)
     @Column(columnDefinition = "TEXT")
     private String description;

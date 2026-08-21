@@ -56,16 +56,6 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
                 log.info("Successfully renamed map_symbols.hinh_anh to image.");
             }
 
-            // Drop code column if it exists (removed from entity)
-            String checkCodeSql = "SELECT count(*) FROM information_schema.columns " +
-                    "WHERE table_name = 'map_symbols' AND column_name = 'code' " +
-                    "AND table_schema = current_schema()";
-            Integer codeCount = jdbcTemplate.queryForObject(checkCodeSql, Integer.class);
-            if (codeCount != null && codeCount > 0) {
-                log.info("Found map_symbols.code column. Dropping...");
-                jdbcTemplate.execute("ALTER TABLE map_symbols DROP COLUMN code");
-                log.info("Successfully dropped map_symbols.code column.");
-            }
         } catch (Exception e) {
             log.error("Failed to migrate map_symbols schema", e);
         }

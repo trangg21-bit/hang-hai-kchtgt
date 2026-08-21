@@ -13,6 +13,7 @@ import java.util.UUID;
 public class MapSymbolResponse {
     private UUID id;
     private String name;
+    private String code;
     private String description;
     private String image;
     private MapSymbolStatus status;
@@ -28,6 +29,7 @@ public class MapSymbolResponse {
         return MapSymbolResponse.builder()
                 .id(symbol.getId())
                 .name(symbol.getName())
+                .code(symbol.getCode())
                 .description(symbol.getDescription())
                 .image(symbol.getImage())
                 .status(symbol.getStatus())
