@@ -18,6 +18,8 @@ public class LegalDocumentHistoryResponse {
     private LegalDocumentHistoryAction action;
     private UUID changedBy;
     private String changedByName;
+    private String orgUnitName;
+    private String unitName;
     private LocalDateTime changedAt;
     private String documentName;
     private String documentNumber;

@@ -44,15 +44,6 @@ public class VtsSystem extends BaseEntity {
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
     private ConditionStatus conditionStatus;
 
-    @Column(name = "responsibility_level", length = 255)
-    private String responsibilityLevel;
-
-    @Column(name = "source", length = 255)
-    private String source;
-
-    @Column(name = "partner", length = 255)
-    private String partner;
-
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
 
@@ -64,8 +55,6 @@ public class VtsSystem extends BaseEntity {
 
     @Column(name = "code", length = 50, unique = true)
     private String code;
-
-
 
     @Column(name = "address", length = 500)
     private String address;
@@ -92,19 +81,11 @@ public class VtsSystem extends BaseEntity {
     @Column(name = "approval_status", nullable = false, columnDefinition = "SMALLINT")
     private ApprovalStatus approvalStatus;
 
-    @Column(name = "approved_level1")
-    @Builder.Default
-    private Boolean approvedLevel1 = false;
-
     @Column(name = "approver_level1")
     private UUID approverLevel1;
 
     @Column(name = "approved_date_level1")
     private LocalDateTime approvedDateLevel1;
-
-    @Column(name = "approved_level2")
-    @Builder.Default
-    private Boolean approvedLevel2 = false;
 
     @Column(name = "approver_level2")
     private UUID approverLevel2;
@@ -129,9 +110,5 @@ public class VtsSystem extends BaseEntity {
             securityLevel = RecordSecurityLevel.NORMAL;
         if (approvalStatus == null)
             approvalStatus = ApprovalStatus.PROPOSED;
-        if (approvedLevel1 == null)
-            approvedLevel1 = false;
-        if (approvedLevel2 == null)
-            approvedLevel2 = false;
     }
 }

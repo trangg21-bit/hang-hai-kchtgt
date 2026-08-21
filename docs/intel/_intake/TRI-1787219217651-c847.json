@@ -1,0 +1,44 @@
+{
+  "triage_id": "TRI-1787219217651-c847",
+  "created_at": 1787219217651,
+  "request_summary": "Chuyển feature-brief F-003 (Quản lý đơn vị) từ template cũ 10 mục sang template mới 7 section + đồng bộ hết mâu thuẫn với lean-spec (Cấp đơn vị rank, operational_status) + khai báo data scope theo quy ước mới",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/ba/00-lean-spec.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/ba/00-lean-spec.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn Quản lý đơn vị (F-003) — cây tổ chức đơn vị, tạo/sửa/xóa mềm đơn vị",
+  "blast_radius": 2,
+  "done_oracle": "feature-brief.md F-003 chuyển sang template mới 7 section (1 Mô tả ngắn, 2 Trường dữ liệu, 3 Trạng thái và phê duyệt, 4 Quy tắc và phân quyền riêng, 5 Điểm khác biệt 8 dòng kèm khai báo data scope, 6 Đường dẫn gọi dữ liệu, 7 Cấu trúc bảng); không mâu thuẫn với ba/00-lean-spec.md (rank, operational_status); không file code bị sửa",
+  "verification_commands": [
+    {
+      "command": "git diff --stat -- docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 60000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "fa683309863f5a0d0523ee36df1729e91afce54d",
+    "dirty": true,
+    "captured_at": 1787219217841
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

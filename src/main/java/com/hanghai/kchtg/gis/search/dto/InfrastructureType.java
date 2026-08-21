@@ -23,5 +23,6 @@ public enum InfrastructureType {
     COSPAS_SARSAT_STATION,
     LRIT_STATION,
     HANOI_STATION,
-    BUOY_STATION
+    BUOY_STATION,
+    LEGAL_DOCUMENT
 }

@@ -218,15 +218,11 @@ class VtsSystemRepositoryTest {
         vts.setCode(code);
         vts.setSystemName(name);
         vts.setConditionStatus(ConditionStatus.OPERATIONAL);
-        vts.setResponsibilityLevel("Cục");
-        vts.setSource("Test");
         vts.setOrgUnitId(testOrgUnitId);
         vts.setOwningOrgId(testOwningOrgId);
         vts.setOperatingOrgId(testOperatingOrgId);
         vts.setProvinceId(1);
         vts.setApprovalStatus(ApprovalStatus.PROPOSED);
-        vts.setApprovedLevel1(false);
-        vts.setApprovedLevel2(false);
         return vts;
     }
 }

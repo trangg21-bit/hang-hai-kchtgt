@@ -25,9 +25,6 @@ public class VtsSystemResponse {
 
     private ConditionStatus conditionStatus;
     private RecordSecurityLevel recordSecurityLevel;
-    private String responsibilityLevel;
-    private String source;
-    private String partner;
     private UUID orgUnitId;
     private String orgUnitName;
     private UUID owningOrgId;
@@ -45,16 +42,20 @@ public class VtsSystemResponse {
     private String scope;
     private String note;
     private ApprovalStatus approvalStatus;
-    private Boolean approvedLevel1;
     private UUID approverLevel1;
+    private String approverLevel1Name;
     private LocalDateTime approvedDateLevel1;
-    private Boolean approvedLevel2;
+    private String approvalContentLevel1;
     private UUID approverLevel2;
+    private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
+    private String approvalContentLevel2;
     private String rejectionReason;
     private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdDate;
+    private String submittedByName;
+    private LocalDateTime submittedDate;
     private UUID updatedBy;
     private String updatedByName;
     private LocalDateTime updatedDate;

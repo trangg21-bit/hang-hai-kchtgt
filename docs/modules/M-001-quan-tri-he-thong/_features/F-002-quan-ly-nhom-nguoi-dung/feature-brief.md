@@ -65,7 +65,7 @@ Theo tài liệu nền (mục 3.7) — trạng thái lưu dạng **số** (INT):
 
 ## 4. Quy tắc và phân quyền riêng
 
-### 4.1. Quy tắc nghiệp vụ (BR-002-01..BR-002-08 — kế thừa nguyên vẹn từ brief cũ)
+### 4.1. Quy tắc nghiệp vụ (BR-002-01..BR-002-12)
 
 - BR-002-01 — Tên nhóm (name) duy nhất toàn hệ thống; trùng khi tạo/sửa → từ chối, hiển thị "Tên nhóm đã tồn tại".
 - BR-002-02 — Một người dùng có thể là thành viên của nhiều nhóm cùng lúc; không giới hạn số lượng. Không được thêm trùng vào cùng một nhóm.
@@ -74,6 +74,10 @@ Theo tài liệu nền (mục 3.7) — trạng thái lưu dạng **số** (INT):
 - BR-002-06 — Khi thành viên rời khỏi nhóm (bị xóa khỏi nhóm), quyền thừa hưởng từ nhóm bị thu hồi; quyền gán trực tiếp cho người dùng (từ F-001) không bị ảnh hưởng.
 - BR-002-07 — Khi thêm thành viên mới vào nhóm, thành viên tự động có quyền sử dụng các chức năng đã gán cho nhóm (kế thừa ngay).
 - BR-002-08 — Khi nhóm bị khóa (chuyển "Không sử dụng"), toàn bộ thành viên bị tạm ngưng quyền thừa hưởng từ nhóm; quyền gán trực tiếp không bị ảnh hưởng. Khi mở khóa (chuyển "Sử dụng"), quyền thừa hưởng được khôi phục.
+- BR-002-09 — Nhóm bắt buộc thuộc một đơn vị: khi tạo phải chọn đơn vị trực thuộc trên cây đơn vị (TreeSelect, `organizationId`); trường Đơn vị bắt buộc (NOT NULL — enforce qua `CreateUserGroupRequest` `@NotNull`).
+- BR-002-10 — Đơn vị của nhóm không được đổi sau khi tạo: khi sửa, trường Đơn vị read-only (chỉ đổi Tên, Mô tả, Trạng thái).
+- BR-002-11 — Người thao tác chỉ được tạo/sửa/khóa nhóm trong phạm vi đơn vị được phân quyền (OrgUnitScopeService); ngoài phạm vi → 403 Forbidden. Đơn vị của nhóm KHÔNG mở rộng phạm vi dữ liệu của thành viên — view dữ liệu theo đơn vị của tài khoản + `orgunit:scope_all` (tài liệu nền mục 3.3).
+- BR-002-12 — `orgunit:scope_all`, `admin:all`, `admin:manage`, `group:manage`, `*` chỉ được gán trực tiếp cho tài khoản; nhóm KHÔNG thừa kế (khớp `User.getAllPermissions()`, tài liệu nền mục 3.2).
 - Quy tắc chung bổ sung (tài liệu nền mục 3.2): quyền mới phải đăng ký trong `PermissionSeeder.java`; nhóm là động — thêm/sửa/xóa/đổi quyền bất kỳ lúc nào; tài khoản có quyền đặc biệt ROLE_SYSTEM_ADMIN / ROLE_SUPER_ADMIN vượt qua mọi kiểm tra quyền.
 
 ### 4.2. Acceptance criteria kế thừa (AC-002-01..AC-002-16)

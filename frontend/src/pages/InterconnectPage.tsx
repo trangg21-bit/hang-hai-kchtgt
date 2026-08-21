@@ -1313,11 +1313,7 @@ export default function InterconnectPage() {
         open={sharingDetailDrawerOpen}
         onClose={() => setSharingDetailDrawerOpen(false)}
         extra={<Button type="text" onClick={() => setSharingDetailDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={
-          <div style={drawerFooterStyle}>
-            <Button onClick={() => setSharingDetailDrawerOpen(false)} style={outlineButtonStyle}>Đóng</Button>
-          </div>
-        }
+        footer={null}
       >
         <Spin spinning={sharingDetailLoading}>
           {sharingDetail ? (

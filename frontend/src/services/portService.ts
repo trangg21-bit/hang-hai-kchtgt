@@ -175,7 +175,7 @@ export const berthCRUD = {
     approvalStatus?: string;
     orgUnitId?: string;
     structureType?: number;
-    provinceId?: string;
+    provinceId?: number | string;
     updatedFrom?: string;
     updatedTo?: string;
     page?: number;

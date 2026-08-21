@@ -1,9 +1,15 @@
+import { useState } from 'react';
 import { Upload, Table, Empty, Button, Space } from 'antd';
-import { message } from '../ToastNotification';
-import { DeleteOutlined, DownloadOutlined, EyeOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, FileOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { useState } from 'react';
+import { message } from '../ToastNotification';
+import api from '../../services/api';
+import {
+  actionPrimary, textPrimary, textSecondary, textTertiary,
+  spaceSm, fontSizeMd, fontWeightMedium, fontWeightBold,
+} from '../../tokens';
+import { colors } from '../../theme';
 
 interface Attachment {
   id: string;
@@ -20,8 +26,17 @@ interface AttachmentListProps {
   entityId?: string;
 }
 
-const ALLOWED_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/jpeg', 'image/png', 'image/gif'];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+];
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export default function AttachmentList({
   attachments = [],
@@ -33,6 +48,7 @@ export default function AttachmentList({
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleBeforeUpload: UploadProps['beforeUpload'] = (file: RcFile) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -40,7 +56,7 @@ export default function AttachmentList({
       return false;
     }
     if (file.size > MAX_FILE_SIZE) {
-      message.error('Tệp không được vượt quá 10MB');
+      message.error('Tệp không được vượt quá 20MB');
       return false;
     }
     return true;
@@ -76,6 +92,39 @@ export default function AttachmentList({
     }
   };
 
+  const handleDownload = async (record: Attachment) => {
+    if (!record.filePath) {
+      message.error('Không tìm thấy đường dẫn tệp');
+      return;
+    }
+    setDownloadingId(record.id);
+    try {
+      const url = record.filePath.startsWith('/api')
+        ? record.filePath.replace(/^\/api/, '')
+        : record.filePath;
+
+      const resp = await api.get(url, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([resp.data], {
+        type: resp.headers['content-type'] || 'application/octet-stream',
+      });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = record.fileName || 'tai-lieu';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      console.error('Lỗi tải tệp:', err);
+      message.error('Không thể tải xuống tệp đính kèm');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   if (!attachments || attachments.length === 0) {
     if (readonly) {
       return <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />;
@@ -88,7 +137,11 @@ export default function AttachmentList({
       key: 'stt',
       width: 60,
       align: 'center' as const,
-      render: (_: unknown, __: unknown, index: number) => index + 1,
+      render: (_: unknown, __: unknown, index: number) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>
+          {index + 1}
+        </span>
+      ),
     },
     {
       title: 'Tên file',
@@ -96,35 +149,55 @@ export default function AttachmentList({
       key: 'fileName',
       render: (text: string, record: Attachment) => (
         <a
-          style={{ color: '#1890ff', cursor: 'pointer' }}
-          onClick={() => {
-            const link = document.createElement('a');
-            link.href = record.filePath;
-            link.download = record.fileName;
-            link.click();
+          style={{
+            color: actionPrimary,
+            cursor: 'pointer',
+            fontSize: fontSizeMd,
+            fontWeight: fontWeightMedium,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: spaceSm,
           }}
+          onClick={(e) => {
+            e.preventDefault();
+            handleDownload(record);
+          }}
+          title="Nhấn để tải tệp xuống"
         >
-          {text || '—'}
+          <FileOutlined style={{ color: textTertiary }} />
+          <span>{text || '—'}</span>
         </a>
       ),
     },
-    ...(!readonly ? [
-      {
-        title: 'Thao tác',
-        key: 'action',
-        width: 100,
-        render: (_: unknown, record: Attachment) => (
+    {
+      title: 'Thao tác',
+      key: 'action',
+      width: readonly ? 80 : 120,
+      align: 'center' as const,
+      render: (_: unknown, record: Attachment) => (
+        <Space size="small">
           <Button
             type="link"
-            danger
             size="small"
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-            loading={deleting}
+            icon={<DownloadOutlined />}
+            loading={downloadingId === record.id}
+            onClick={() => handleDownload(record)}
+            title="Tải xuống"
           />
-        ),
-      },
-    ] : []),
+          {!readonly && (
+            <Button
+              type="link"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.id)}
+              loading={deleting}
+              title="Xóa"
+            />
+          )}
+        </Space>
+      ),
+    },
   ];
 
   return (
@@ -142,22 +215,25 @@ export default function AttachmentList({
         >
           <p className="ant-upload-drag_icon">📁</p>
           <p className="ant-upload-text">Kéo tệp vào đây hoặc nhấp để chọn</p>
-          <p className="ant-upload-hint">Hỗ trợ PDF, DOC, DOCX, XLS, XLSX, hình ảnh (tối đa 10MB)</p>
+          <p className="ant-upload-hint">Hỗ trợ PDF, DOC, DOCX, XLS, XLSX, hình ảnh (tối đa 20MB)</p>
         </Upload.Dragger>
       )}
 
       {!readonly && !hasUploadEndpoint && (
-        <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+        <div style={{ padding: '16px', textAlign: 'center', color: textTertiary }}>
           Chức năng tải lên chưa được kích hoạt
         </div>
       )}
 
       {attachments.length > 0 && (
         <Table<Attachment>
+          className="list-view-table"
           columns={columns}
           dataSource={attachments.map((a) => ({ ...a, key: a.id }))}
           pagination={false}
-          size="small"
+          size="middle"
+          bordered
+          scroll={{ x: 400 }}
         />
       )}
 

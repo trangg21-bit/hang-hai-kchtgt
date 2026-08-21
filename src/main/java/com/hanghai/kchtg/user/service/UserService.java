@@ -958,14 +958,13 @@ public class UserService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean hasGroupPerm = auth != null && auth.getAuthorities() != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "groupmember:manage".equals(a.getAuthority())
-                        || "group:manage".equals(a.getAuthority())
                         || "admin:all".equals(a.getAuthority())
                         || "*".equals(a.getAuthority())
                         || "ROLE_SYSTEM_ADMIN".equals(a.getAuthority())
                         || "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
         if (!hasGroupPerm) {
             throw new AccessDeniedException(
-                    "Cần quyền groupmember:manage hoặc group:manage để gán hoặc thay đổi nhóm người dùng");
+                    "Bạn cần có quyền 'Quản lý thành viên nhóm' để gán hoặc thay đổi nhóm người dùng");
         }
         if (groupIds.isEmpty()) {
             return;

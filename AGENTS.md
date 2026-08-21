@@ -318,7 +318,17 @@ PMO Lead
 ## SDLC convention
 
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).
-Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/\*\*.
+Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/**.
+
+### Bắt buộc tự động cập nhật tài liệu (Auto-Sync SDLC Documentation)
+
+Mỗi khi AI thực hiện bất kỳ thay đổi nào liên quan đến:
+1. **Cấu trúc CSDL / Entity / DTO / Schema**: thêm, sửa, xóa trường, đổi kiểu dữ liệu (vd: UUID, Enum, bỏ approved_level1/2).
+2. **Luồng nghiệp vụ & Phê duyệt**: cơ chế duyệt C1/C2, popup xác nhận/lý do, quy tắc chống tự duyệt (4-eyes principle), phân quyền.
+3. **Giao diện người dùng**: bố cục layout, danh sách & thứ tự cột trên bảng danh sách, popup/modal/drawer, các trường form.
+4. **Quy ước hiển thị dữ liệu hoặc danh mục API Endpoints**.
+
+**QUY TẮC BẮT BUỘC**: AI Agent **PHẢI TỰ ĐỘNG** tìm các file tài liệu đặc tả liên quan (`docs/modules/.../feature-brief.md`, `ui-spec.md`, `DESIGN.md`, `docs/conventions/...`) để cập nhật đồng bộ ngay trong cùng lượt xử lý code, **tuyệt đối không để xảy ra tình trạng code một đằng tài liệu một nẻo (Documentation Drift)** mà không cần User phải nhắc nhở.
 
 ## Permission Registration for New Modules (MANDATORY — mọi Dev thêm module mới PHẢI đọc)
 
@@ -359,6 +369,35 @@ PMO Lead
          thêm seedPermission(definitions, resource, action) cho từng permission mới
          trong run(). Lưu ý: phân quyền thực tế là động qua nhóm/tài khoản —
          không còn bước gán role."
+```
+
+## Data Scope Convention (MANDATORY — mọi Dev/BA làm entity nghiệp vụ PHẢI đọc)
+
+Mô hình phân quyền dữ liệu theo đơn vị (quyết định nghiệp vụ chốt 2026-08-20, rà soát cross-module): **đơn vị nào chỉ xem dữ liệu đơn vị đó; đơn vị cha xem được đơn vị con (subtree); Cục xem full** (qua `orgunit:scope_all` / `admin:all` / `*`). Cơ chế chuẩn duy nhất: `DataScopeAspect` (`security/aspect/DataScopeAspect.java`) + Hibernate global filter `orgUnitFilter` (`@FilterDef` ở `common/entity/BaseEntity.java`).
+
+### Quy tắc bắt buộc cho entity nghiệp vụ MỚI
+
+1. **Entity nghiệp vụ mới BẮT BUỘC có trường đơn vị** (`orgUnitId` / `unitId` / `owningOrgId` UUID) + khai `@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")` (nếu cột tên khác thì đổi condition tương ứng — vd `unit_id IN (...)`).
+2. **Controller BẮT BUỘC khai `@DataScope`** (class-level) để aspect bật filter — nếu không, filter không bao giờ được kích hoạt (no-op).
+3. **Khi tạo/sửa PHẢI gán đơn vị** (từ request hoặc fallback đơn vị của user thao tác) — **cấm để cột đơn vị NULL** khi bản ghi là dữ liệu nghiệp vụ (NULL → user cấp đơn vị thấy 0 bản ghi: lỗi đã gặp ở Buoy/BeaconLight/Coastal station).
+4. **Chiều GHI phải validate đơn vị trong phạm vi user** (`OrgUnitScopeService.Scope.allows(...)` / `requireOrganizationInScope` kiểu `UserGroupService.java:78`) — không cho gán dữ liệu vào đơn vị ngoài phạm vi (lỗ hổng đã gặp ở ShipRepairFacility).
+5. **Migration thay đổi schema BẮT BUỘC kèm backfill** cho dữ liệu cũ (`org_unit_id` NULL → gán từ `created_by`), không chỉ thêm cột.
+6. **Ngoại lệ đã chốt** (không cần scope): Dashboard trang chủ (lãnh đạo xem con số tổng hợp). Mọi ngoại lệ khác phải được BA/SA chốt và ghi rõ trong feature-brief.
+
+### Quy tắc cho BA viết feature-brief
+
+- **Bảng "Điểm khác biệt so với mẫu chung" (mục 5, dòng 3 — "Lọc cha-con / theo đơn vị") PHẢI được BA khai báo đầy đủ** (có/không, cơ chế: trường đơn vị nào, filter, ngoại lệ) và **SA chốt cơ chế** khi duyệt — không được để trống hoặc ghi chung chung.
+- Feature-brief mô tả dữ liệu nghiệp vụ theo đơn vị PHẢI khai báo: trường đơn vị bắt buộc/không, nguồn gán đơn vị khi tạo, chiều ghi có validate phạm vi không.
+
+### Agent workflow
+
+```
+PMO Lead
+  └── Dispatch Dev làm module/entity mới → PHẢI chép constraints sau vào prompt:
+        "Entity nghiệp vụ mới PHẢI có orgUnitId + @Filter(orgUnitFilter) + controller @DataScope.
+         Khi create/update PHẢI gán đơn vị (không để NULL) và validate đơn vị trong phạm vi
+         OrgUnitScopeService. Migration thay đổi schema phải kèm backfill dữ liệu cũ.
+         Đọc docs/intel/data-scope-gap-report.md để biết lỗ hổng đã gặp."
 ```
 
 ## AI Checklist for Reports & Gaps (BẮT BUỘC TUÂN THỦ)
