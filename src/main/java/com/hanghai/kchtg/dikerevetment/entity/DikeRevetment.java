@@ -47,6 +47,12 @@ public class DikeRevetment {
     @Column(name = "dike_revetment_name", length = 255)
     private String dikeRevetmentName;
 
+    @Column(name = "code", length = 100)
+    private String code;
+
+    @Column(name = "seaport_id")
+    private UUID seaportId;
+
     @Column(name = "length")
     private Double length;
 
@@ -112,6 +118,9 @@ public class DikeRevetment {
 
     @Column(name = "spatial_id")
     private UUID spatialId;
+
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

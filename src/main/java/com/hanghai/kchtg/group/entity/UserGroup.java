@@ -2,6 +2,7 @@ package com.hanghai.kchtg.group.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -45,6 +46,7 @@ public class UserGroup extends BaseEntity {
 
     /** Danh sach ma quyen (permission keys) ma nhom nay so huu. */
     @ElementCollection(fetch = FetchType.EAGER)
+    @BatchSize(size = 20)
     @CollectionTable(name = "user_group_permissions", joinColumns = @JoinColumn(name = "user_group_id"))
     @Column(name = "permission", nullable = false)
     private List<String> permissions = new ArrayList<>();

@@ -12,6 +12,8 @@ import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentReposit
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +46,8 @@ class DikeRevetmentServiceTest {
     @Mock ApprovalHistoryRepository approvalHistoryRepo;
     @Mock com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
     @Mock OrgUnitCacheService orgUnitCacheService;
+    @Mock PortCacheService portCacheService;
+    @Mock UserResolverService userResolverService;
     DikeRevetmentService service;
 
     private DikeRevetment testEntity;
@@ -51,7 +55,8 @@ class DikeRevetmentServiceTest {
 
     @BeforeEach void setUp() {
         service = new DikeRevetmentService(
-                repo, attachmentRepo, approvalHistoryRepo, gisSpatialObjectService, orgUnitCacheService);
+                repo, attachmentRepo, approvalHistoryRepo, gisSpatialObjectService, orgUnitCacheService,
+                portCacheService, userResolverService);
         testEntity = DikeRevetment.builder()
                 .id(TEST_ID)
                 .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)

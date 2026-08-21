@@ -37,7 +37,6 @@ class PermissionSeederTest {
         permissionSeeder = new PermissionSeeder(permissionRepository, userRepository);
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.empty());
     }
 
     @Test

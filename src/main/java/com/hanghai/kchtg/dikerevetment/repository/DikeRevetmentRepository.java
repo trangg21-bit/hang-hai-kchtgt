@@ -26,10 +26,13 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
 
     List<DikeRevetment> findByLocationContainingAndDeletedAtIsNull(String location);
 
+    @Query("SELECT MAX(d.code) FROM DikeRevetment d WHERE d.code IS NOT NULL")
+    String findMaxCode();
+
     @Query("SELECT d FROM DikeRevetment d WHERE " +
             "d.deletedAt IS NULL AND " +
             "(:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) AND " +
-            "(:keyword IS NULL OR LOWER(d.location) LIKE :keyword) AND " +
+            "(:keyword IS NULL OR LOWER(d.dikeRevetmentName) LIKE :keyword OR LOWER(d.code) LIKE :keyword) AND " +
             "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +
             "(:status IS NULL OR d.status = :status) AND " +
             "(:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus)")

@@ -52,7 +52,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   waterarea: 'Quản lý Vùng nước',
   waterzone: 'Quản lý Vùng nước',
   navigationchannel: 'Quản lý Luồng hàng hải',
-  dikerevetment: 'Quản lý Đê kè / Đê chắn cát',
+  dikerevetment: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ',
   lighthousestation: 'Quản lý Đèn biển',
   radarstation: 'Quản lý Trạm Radar',
   vts: 'Quản lý Hệ thống VTS',

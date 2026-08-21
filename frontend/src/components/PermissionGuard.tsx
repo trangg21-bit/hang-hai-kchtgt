@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Result, Button } from 'antd';
+import { Result, Button, Spin } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import { usePermissionStore } from '../store/permissionStore';
 import { useAuthStore } from '../store/authStore';
@@ -15,6 +15,7 @@ export default function PermissionGuard({ permission, children, fallback, disabl
   const hasPermission = usePermissionStore((s) => s.hasPermission);
   const hasAnyPermission = usePermissionStore((s) => s.hasAnyPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   
   const checkPermission = () => {
     if (Array.isArray(permission)) {
@@ -24,6 +25,16 @@ export default function PermissionGuard({ permission, children, fallback, disabl
   };
 
   const isAllowed = userPermissions !== undefined && checkPermission();
+
+  // Session đang được khôi phục (quyền chưa hydrate xong) — hiển thị loading
+  // thay vì vội vàng kết luận 403.
+  if (userPermissions === undefined && isAuthenticated) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+        <Spin tip="Đang tải quyền truy cập..." />
+      </div>
+    );
+  }
 
   if (!isAllowed) {
     if (disableOnly) {

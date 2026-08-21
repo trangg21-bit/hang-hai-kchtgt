@@ -4,7 +4,6 @@ import type {
   DikeRevetmentResponse,
   CreateDikeRevetmentRequest,
   UpdateDikeRevetmentRequest,
-  ApprovalRequest,
   HistoryEntry,
   ListParams,
   SearchResponse,
@@ -28,10 +27,16 @@ export const dikeRevetmentCRUD = {
     const res = await api.get('/v1/dike-revetment/search', {
       params: {
         orgUnitId: params?.orgUnitId,
+        code: params?.code,
         keyword: params?.keyword,
+        seaportId: params?.seaportId,
+        location: params?.location,
         dikeRevetmentType: params?.dikeRevetmentType,
         status: params?.status,
         approvalStatus: params?.approvalStatus,
+        commissioningYear: params?.commissioningYear,
+        updatedFrom: params?.updatedFrom,
+        updatedTo: params?.updatedTo,
         page: params?.page || 0,
         size: params?.size || 20,
       },
@@ -72,13 +77,17 @@ export const dikeRevetmentCRUD = {
 };
 
 export const dikeRevetmentApproval = {
-  async approveC1(id: string, data: ApprovalRequest): Promise<DikeRevetmentResponse> {
-    const res = await api.post(`/v1/dike-revetment/${id}/approve/c1`, data);
+  async submitForApproval(id: string): Promise<void> {
+    await api.post(`/v1/dike-revetment/${id}/submit-approval`);
+  },
+
+  async approveL1(id: string): Promise<DikeRevetmentResponse> {
+    const res = await api.post(`/v1/dike-revetment/${id}/approve-l1`);
     return toSingle<DikeRevetmentResponse>(res.data) || {} as DikeRevetmentResponse;
   },
 
-  async approveC2(id: string, data: ApprovalRequest): Promise<DikeRevetmentResponse> {
-    const res = await api.post(`/v1/dike-revetment/${id}/approve/c2`, data);
+  async reject(id: string, reason: string): Promise<DikeRevetmentResponse> {
+    const res = await api.post(`/v1/dike-revetment/${id}/reject`, { decision: 'REJECTED', reason });
     return toSingle<DikeRevetmentResponse>(res.data) || {} as DikeRevetmentResponse;
   },
 
