@@ -65,12 +65,13 @@ function mapSymbol(item: any): Symbol {
 }
 
 export const symbolService = {
-  async list(params?: { page?: number; pageSize?: number; search?: string; status?: string }): Promise<PaginatedResponse<Symbol>> {
+  async list(params?: { page?: number; pageSize?: number; search?: string; status?: string; code?: string }): Promise<PaginatedResponse<Symbol>> {
     const backendPage = params?.page ? params.page - 1 : 0;
 
     const resp = await api.get('/symbols', {
       params: {
         search: params?.search,
+        code: params?.code,
         status: params?.status ? params.status.toUpperCase() : undefined,
         page: backendPage,
         size: params?.pageSize || 10,
