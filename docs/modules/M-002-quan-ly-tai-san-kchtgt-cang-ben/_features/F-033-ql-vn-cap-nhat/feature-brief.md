@@ -7,221 +7,100 @@ status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-04
+last-updated: 2026-08-21
 locked-fields: []
 consumed_by_modules: []
-merged-from: [F-033-BE, F-091-UI]
 ---
 # Đặc tả nghiệp vụ: Quản lý Vùng nước - Cập nhật
 
-**Tài liệu:** BA Feature Brief (merged BE+UI)
-**Feature:** F-033 — Quản lý Vùng nước - Cập nhật
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-033 — Quản lý Vùng nước - Cập nhật
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-08-04
+**Loại:** chức năng có bước phê duyệt (thay đổi độ sâu → phê duyệt lại)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
 
-> Tài liệu merge từ F-033 (BE) + F-091 (UI) + designer spec 04-update.
-
----
-
-## 1. Tổng quan
-
-### 1.1. Tính năng này làm gì?
-
-Cập nhật thông tin Vùng nước qua modal form pre-populated từ GET API. `maVungNuoc` readonly (bất biến). `trangThaiPheDuyet` hiển thị Badge không sửa được. Mọi thay đổi ghi vào lịch sử tự động. Thay đổi độ sâu kích hoạt phê duyệt lại.
-
-### 1.2. Tại sao cần?
-
-Cập nhật khi có thay đổi điều kiện tự nhiên, mở rộng năng lực. Dữ liệu luôn chính xác, hỗ trợ kiểm toán.
-
-### 1.3. Luồng chính
-
-F-036 → "Chỉnh sửa" → modal mở pre-filled từ `GET /api/v1/vung-nuoc/{id}` → chỉnh sửa → Submit → `PUT /api/v1/vung-nuoc` → toast "Cập nhật thành công" → đóng modal, refresh.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung. (Nội dung merge từ F-033 BE + F-091 UI.)
 
 ---
 
-## 2. Ai dùng? Dùng như thế nào?
+## 1. Mô tả ngắn
 
-### 2.1. Phân quyền
+Cho phép người dùng có thẩm quyền (`waterzone:update`) cập nhật thông tin Vùng nước qua modal form pre-populated từ GET API. `waterZoneCode` bất biến (read-only); trạng thái phê duyệt hiển thị dạng badge không sửa được. Mọi thay đổi ghi vào lịch sử tự động. **Thay đổi độ sâu (maxDepth/avgDepth) kích hoạt phê duyệt lại** — hồ sơ vào quy trình phê duyệt (F-035). Không cập nhật được bản ghi đã xóa mềm.
 
-| Permission | Mô tả |
-|---|---|
-| `vungnuoc:update` | Cập nhật Vùng nước |
+## 2. Trường dữ liệu
 
-> Phân quyền do M-001 quản lý.
+Cấu trúc theo entity `WaterZone` (bảng `water_zones`) — danh sách trường giống F-032 (mục 2). Điểm khác biệt:
 
-| Vai trò | Update |
-|---|---|
-| system-admin | ✅ |
-| LeDuan | ✅ |
-| Chuyên viên Cục/Cảng vụ | ✅ |
-| Doanh nghiệp cảng | ✅ |
-| Nhân viên vận hành | ❌ |
-
-### 2.2. Logic Admin Cục
-
-Admin Cục cập nhật không giới hạn đơn vị.
-
----
-
-## 3. User Stories
-
-### Must
-- **US-033-01:** Cập nhật thông tin Vùng nước với dữ liệu cũ pre-filled. (`vungnuoc:update`)
-- **US-033-02:** Cảnh báo khi Vùng nước đang CHỜ_PHÊ_DUYỆT trước khi cập nhật.
-
-### Should
-- **US-033-03:** Thay đổi độ sâu → tự động phê duyệt lại.
-
-### Could
-- **US-033-04:** Cảnh báo unsaved changes khi đóng modal nếu form dirty.
-
----
-
-## 4. Yêu cầu chức năng (Acceptance Criteria)
-
-### Nhóm 1: Form
-
-**AC-033-01:** Form pre-populated từ `GET /api/v1/vung-nuoc/{id}`. `maVungNuoc` readonly (gray bg, `aria-readonly="true"`, skip tab order).
-**AC-033-02:** `trangThaiPheDuyet` hiển thị Badge readonly.
-**AC-033-03:** Các trường editable: tenVungNuoc, cangBienId, dienTich, doSauMax, doSauTrungBinh, loaiVungNuoc, trangThaiHoatDong.
-
-### Nhóm 2: Submit
-
-**AC-033-04:** Submit → `PUT /api/v1/vung-nuoc` (chỉ gửi các trường thay đổi + id) → toast "Cập nhật vùng nước thành công".
-**AC-033-05:** Không có thay đổi → toast "Không có thay đổi nào được thực hiện", không gọi API.
-**AC-033-06:** `trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT` → cảnh báo nhưng cho phép tiếp tục sau xác nhận.
-
-### Nhóm 3: Chặn
-
-**AC-033-07:** `deletedAt != null` → chặn cập nhật, toast "Vùng nước đã bị xóa, không thể cập nhật".
-**AC-033-08:** 404 → "Không tìm thấy vùng nước để cập nhật" + back.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| BR-033-01 | `maVungNuoc` bất biến sau khi tạo | PUT | Entity | Không |
-| BR-033-02 | Chỉ Vùng nước CHỜ_PHÊ_DUYỆT, TỪ_CHỐI, hoặc HIỆN_HÀNH mới được cập nhật | PUT | State machine | Không |
-| BR-033-03 | Thay đổi `doSau` → kích hoạt phê duyệt lại | PUT | Business | Không |
-| BR-033-04 | `deletedAt != null` → không được cập nhật | PUT | Soft-delete | Không |
-| BR-033-05 | Mọi cập nhật ghi LichSuThayDoi tự động | PUT | Audit | Không |
+| 1 | waterZoneCode | Có | Text (VARCHAR 50) | **Read-only — bất biến** (gray bg, skip tab order) |
+| 2 | approvalStatus | Có (hiển thị) | Enum `ApprovalStatus` | **Badge read-only** — không sửa được trên form |
+| 3 | waterZoneName, portId, area, maxDepth, avgDepth, waterZoneType, operationalStatus | Có* | Theo entity | Editable; validation giống F-032 |
+| 4 | orgUnitId | Có | TreeSelect (UUID) | Theo tài liệu nền mục 3.3 — gán khi tạo, không đổi |
 
----
+## 3. Trạng thái và phê duyệt
 
-## 6. Mô hình dữ liệu
+- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
+- Chỉ cập nhật được hồ sơ ở trạng thái cho phép sửa (theo file chuẩn); cảnh báo khi hồ sơ đang trong quá trình phê duyệt trước khi cập nhật (cho phép tiếp tục sau xác nhận).
+- **Thay đổi độ sâu → kích hoạt phê duyệt lại** (hồ sơ vào quy trình phê duyệt tại F-035).
+- Bản ghi đã xóa mềm (`deletedAt != null`) → chặn cập nhật.
+- Mọi cập nhật: ghi lịch sử thay đổi (từng trường: old → new) + thông tin kiểm toán (operatorId, updatedBy, updatedAt).
 
-> Kế thừa F-036 Section 6. Các trường editable khi cập nhật:
+## 4. Quy tắc và phân quyền riêng
 
-| # | Tên trường | Kiểu | Edit | Status |
-|---|---|---|---|---|
-| 1 | id | UUID | ❌ (internal) | ✅ |
-| 2 | ma_vung_nuoc | NVARCHAR(50) | ❌ (readonly) | ✅ |
-| 3 | ten_vung_nuoc | NVARCHAR(255) | ✅ | ✅ |
-| 4 | cang_bien_id | UUID | ✅ | ✅ |
-| 5 | dien_tich | DECIMAL(15,2) | ✅ | ✅ |
-| 6 | do_sau_max | DECIMAL(10,2) | ✅ | ✅ |
-| 7 | do_sau_trung_binh | DECIMAL(10,2) | ✅ | ✅ |
-| 8 | loai_vung_nuoc | NVARCHAR(100) | ✅ | ✅ |
-| 9 | trang_thai_hoat_dong | NVARCHAR(50) | ✅ | ✅ |
-| 10 | trang_thai_phe_duyet | NVARCHAR(50) | ❌ (badge) | ✅ |
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
----
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## 7. API Endpoints
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-033-01 | `waterZoneCode` bất biến sau khi tạo | Update |
+| BR-033-02 | Chỉ cập nhật được hồ sơ ở trạng thái cho phép sửa (theo file chuẩn) | Update |
+| BR-033-03 | Thay đổi maxDepth / avgDepth → kích hoạt phê duyệt lại | Update |
+| BR-033-04 | `deletedAt != null` → không được cập nhật | Update |
+| BR-033-05 | Mọi cập nhật ghi lịch sử thay đổi tự động | Update |
 
-| Method | Endpoint | Mô tả | Quyền |
+### 4.2. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem vùng nước (pre-fill) | `waterzone:read` |
+| Cập nhật Vùng nước | `waterzone:update` |
+
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền |
+| Lãnh đạo (LeDuan) | Cập nhật |
+| Chuyên viên Cục / Cảng vụ | Cập nhật trong phạm vi đơn vị |
+| Doanh nghiệp cảng | Cập nhật trong phạm vi đơn vị |
+| Nhân viên vận hành | Không cập nhật |
+
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — cập nhật không giới hạn đơn vị + xem metadata người tạo/người sửa/thời gian.
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung |
+| 2 | Có bước phê duyệt không | Có — thay đổi độ sâu kích hoạt phê duyệt lại |
+| 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + theo Cảng biển mẹ (portId) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — waterZoneCode + approvalStatus read-only |
+| 5 | Quyền riêng | `waterzone:update` (kèm `waterzone:read`) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không (đính kèm quản lý tại F-032/F-036) |
+| 8 | Giao diện khác mẫu chung | Không |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| GET | `/api/v1/vung-nuoc/{id}` | Pre-populate form | `vungnuoc:update` |
-| PUT | `/api/v1/vung-nuoc` | Cập nhật (partial) | `vungnuoc:update` |
+| GET | `/api/v1/water-zones/{id}` | Pre-populate form | `waterzone:read` |
+| PUT | `/api/v1/water-zones/{id}` | Cập nhật (partial — chỉ gửi trường thay đổi + id) | `waterzone:update` |
 
----
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-## 8. Chi tiết nghiệp vụ
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-### 8.1. Mở form
+**Bảng `water_zones`:** cấu trúc giống F-032 (mục 7) — F-033 không thêm trường; waterZoneCode bất biến.
 
-F-036 → "Chỉnh sửa" → `GET /api/v1/vung-nuoc/{id}` → pre-fill toàn bộ trường. `maVungNuoc` readonly, gray bg, skip tab. `trangThaiPheDuyet` Badge readonly. Layout giống form Tạo mới.
-
-### 8.2. Submit
-
-Zod validate → chỉ gửi các trường thay đổi + id → `PUT /api/v1/vung-nuoc`. Backend ghi LichSuThayDoi. Nếu không có trường nào thay đổi → toast "Không có thay đổi nào", không gọi API.
-
-### 8.3. Cảnh báo
-
-Nếu `trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT` → hiển thị warning "Vùng nước đang trong quá trình phê duyệt" trước khi cho phép chỉnh sửa. Unsaved changes → confirm khi đóng modal.
-
----
-
-## 9. Yêu cầu phi chức năng
-
-- Modal max-width 600px
-- Change tracking: cảnh báo unsaved changes
-- Toast "Cập nhật vùng nước thành công"
-
----
-
-## 10. Yêu cầu giao diện
-
-> Token: `theme.ts` + `tokens.ts`.
-
-### 10.1. Form fields (giống Create, khác biệt được đánh dấu)
-
-| STT | Trường | Loại | Edit | Bắt buộc | Default | Mô tả |
-|---|---|---|---|---|---|---|
-| 1 | Mã vùng nước | Input (readonly) | ❌ | Có | Pre-filled | Gray bg, skip tab |
-| 2 | Tên vùng nước | Input text | ✅ | Không | Pre-filled | |
-| 3 | Cảng biển chủ | Select | ✅ | Không | Pre-filled | |
-| 4 | Loại vùng nước | Input text | ✅ | Không | Pre-filled | |
-| 5 | Diện tích | Input number | ✅ | Không | Pre-filled | |
-| 6 | Độ sâu tối đa | Input number | ✅ | Không | Pre-filled | |
-| 7 | Độ sâu TB | Input number | ✅ | Không | Pre-filled | |
-| 8 | Trạng thái HĐ | Select | ✅ | Không | Pre-filled | |
-| 9 | Trạng thái phê duyệt | Badge (readonly) | ❌ | — | Pre-filled | Không editable |
-
-### 10.2. Zod Schema
-
-```typescript
-const schema = z.object({
-  id: z.string().uuid(),
-  tenVungNuoc: z.string().max(255).optional().or(z.literal("")),
-  cangBienId: z.string().uuid().optional(),
-  dienTich: z.coerce.number().optional(),
-  doSauMax: z.coerce.number().optional(),
-  doSauTrungBinh: z.coerce.number().optional(),
-  loaiVungNuoc: z.string().max(100).optional().or(z.literal("")),
-  trangThaiHoatDong: z.enum(["HIỆN_HÀNH", "TẠM_NGƯNG"]).optional(),
-});
-```
-
-### 10.3. UX
-
-- `marginBottom: spaceFormField`, `borderRadius: radiusPill`, `height: 40`
-- Readonly fields: gray bg, `aria-readonly="true"`
-- Unsaved-changes warning on unload
-
----
-
-## 11. Xử lý lỗi
-
-| Tình huống | Xử lý |
-|---|---|
-| 404 | "Không tìm thấy vùng nước để cập nhật" + back |
-| 422 | Map BE errors → inline fields |
-| No changes | Toast "Không có thay đổi nào được thực hiện" |
-| Đã xóa mềm | Toast "Vùng nước đã bị xóa, không thể cập nhật" |
-
-## Testing Strategy
-
-Unit: Form validation, immutable maVungNuoc. Integration: PUT API partial data. E2E: Mở modal, sửa field, submit, toast + refresh.
-
----
-
-## Implementation Status
-
-| Layer | Status |
-|---|---|
-| Backend | Done |
-| Frontend | Pending |
+**Bảng `change_log` / `lich_su_thay_doi` (nhật ký thay đổi — dùng chung module):** id (UUID PK), entityType, entityId (UUID), action (CREATE / UPDATE), field, oldValue, newValue, changedBy (UUID), changedAt (TIMESTAMP) — ghi tự động, bất biến.

@@ -7,210 +7,99 @@ status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-04
+last-updated: 2026-08-21
 locked-fields: []
 consumed_by_modules: []
-merged-from: [F-034-BE, F-101-UI]
 ---
 # Đặc tả nghiệp vụ: Quản lý Vùng nước - Xóa
 
-**Tài liệu:** BA Feature Brief (merged BE+UI)
-**Feature:** F-034 — Quản lý Vùng nước - Xóa
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-034 — Quản lý Vùng nước - Xóa
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-08-04
+**Loại:** chức năng thường (xóa mềm, không có bước phê duyệt)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
 
-> Tài liệu merge từ F-034 (BE) + F-101 (UI) + designer spec 06-delete.
-
----
-
-## 1. Tổng quan
-
-### 1.1. Tính năng này làm gì?
-
-Xóa mềm (soft-delete) Vùng nước qua modal xác nhận với checkbox confirm. **Chỉ Vùng nước đã được phê duyệt (`ĐƯỢC_PHÊ_DUYỆT`) mới có thể xóa.** VungNuoc là leaf entity — **không cần child guard check**. Sau khi xóa: `deletedAt = now()`, ẩn khỏi danh sách mặc định, dữ liệu vẫn lưu trữ để truy xuất.
-
-### 1.2. Tại sao cần?
-
-Loại bỏ Vùng nước không còn hoạt động khỏi danh sách khai thác. Soft-delete đảm bảo dữ liệu không mất vĩnh viễn, hỗ trợ kiểm toán và khôi phục.
-
-### 1.3. Luồng chính
-
-F-036 → "Xóa" → hệ thống kiểm tra `trangThaiPheDuyet = ĐƯỢC_PHÊ_DUYỆT` → nếu không đạt, toast "Chỉ xóa được Vùng nước đã được phê duyệt" → nếu đạt, modal xác nhận (info + warning amber + checkbox) → check confirm → `DELETE /api/v1/vung-nuoc/{id}` → soft-delete → toast "Xóa thành công" → refresh.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung. (Nội dung merge từ F-034 BE + F-101 UI.)
 
 ---
 
-## 2. Ai dùng? Dùng như thế nào?
+## 1. Mô tả ngắn
 
-### 2.1. Phân quyền
+Cho phép người dùng có thẩm quyền (`waterzone:delete`) xóa mềm một Vùng nước qua modal xác nhận với checkbox confirm: đánh dấu `deletedAt`/`deletedBy`, bản ghi không bị xóa vật lý, ẩn khỏi danh sách mặc định nhưng vẫn lưu trữ để truy xuất và kiểm toán. Vùng nước là **leaf entity — không cần child guard check**. Xác nhận có chủ đích (checkbox "Tôi xác nhận muốn xóa vùng nước này").
 
-| Permission | Mô tả |
-|---|---|
-| `vungnuoc:delete` | Xóa Vùng nước |
+> **⚠️ Điểm chốt cần SA xác nhận:** brief merge cũ (F-034 BE + F-101 UI) quy định **chỉ xóa được Vùng nước đã được phê duyệt (APPROVED)**. Quy trình chung tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (mục 1) quy định **chỉ xóa được hồ sơ ở trạng thái Lưu tạm**. Tài liệu này tuân theo quy trình chung (tài liệu nền mục 3.4/3.5 + file chuẩn) — **SA chốt** quy tắc cuối cùng và cập nhật 2 tài liệu cho đồng bộ.
 
-> Phân quyền do M-001 quản lý.
+## 2. Trường dữ liệu
 
-| Vai trò | Delete |
-|---|---|
-| system-admin | ✅ |
-| LeDuan | ✅ |
-| Chuyên viên Cục/Cảng vụ | ❌ |
-| Doanh nghiệp cảng | ❌ |
-| Nhân viên vận hành | ❌ |
+Không có form nhập liệu mới — thao tác trên bản ghi `WaterZone` hiện có.
 
-### 2.2. Logic Admin Cục
-
-Admin Cục toàn quyền xóa.
-
----
-
-## 3. User Stories
-
-### Must
-- **US-034-01:** Xóa Vùng nước không còn sử dụng với xác nhận an toàn. (`vungnuoc:delete`)
-- **US-034-02:** Dữ liệu đã xóa vẫn lưu trữ để truy xuất (soft-delete).
-
----
-
-## 4. Yêu cầu chức năng (Acceptance Criteria)
-
-### Nhóm 1: Hiển thị
-
-**AC-034-01:** Nút "Xóa" chỉ hiển thị cho system-admin và LeDuan, và chỉ khi `trangThaiPheDuyet = ĐƯỢC_PHÊ_DUYỆT`.
-**AC-034-02:** Modal: maVungNuoc, tenVungNuoc, tenCang, createdBy, createdAt + warning amber "Dữ liệu sẽ được ẩn nhưng vẫn lưu trữ" + checkbox "Tôi xác nhận muốn xóa vùng nước này".
-
-### Nhóm 2: Pre-check
-
-**AC-034-03:** Click "Xóa" → backend kiểm tra `trangThaiPheDuyet`. Nếu không phải `ĐƯỢC_PHÊ_DUYỆT` → HTTP 409 + toast "Chỉ có thể xóa Vùng nước đã được phê duyệt". Nếu `ĐƯỢC_PHÊ_DUYỆT` → mở modal xác nhận.
-**AC-034-04:** Không child guard check — VungNuoc leaf entity.
-
-### Nhóm 3: Xác nhận & Xóa
-
-**AC-034-05:** Checkbox chưa check → nút "Xác nhận xóa" disabled.
-**AC-034-06:** Check → enable → click → `DELETE /api/v1/vung-nuoc/{id}` → `deletedAt = now()` → toast "Xóa thành công" → refresh.
-**AC-034-07:** Đã xóa → không hiển thị trong danh sách, không cho phép xóa lại.
-
-### Nhóm 4: Hủy
-
-**AC-034-08:** Hủy/Esc → đóng modal, không gọi API.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| BR-034-01 | Soft-delete: `deletedAt = now()`, không xóa vật lý | DELETE | Soft-delete | Không |
-| BR-034-02 | Không child guard — VungNuoc leaf entity | DELETE | Entity model | Không |
-| BR-034-03 | Chỉ system-admin và LeDuan được xóa | DELETE | RBAC | Không |
-| BR-034-04 | Chỉ Vùng nước `ĐƯỢC_PHÊ_DUYỆT` mới được xóa | DELETE | State machine | Không |
-| BR-034-05 | `deletedAt != null` → không hiển thị, không xóa lại | List, DELETE | Soft-delete | Không |
+| 1 | id | Có | UUID | Khóa chính của vùng nước cần xóa |
+| 2 | waterZoneCode, waterZoneName, portId (tên cảng) | Có (hiển thị) | Text / UUID | Hiển thị trong modal xác nhận |
+| 3 | approvalStatus | Có (kiểm tra) | Enum `ApprovalStatus` | Điều kiện xóa theo SA chốt (xem ghi chú mục 1) |
+| 4 | deletedBy, deletedAt | Có (hệ thống) | UUID / TIMESTAMP | Ghi nhận người xóa, thời gian xóa |
 
----
+## 3. Trạng thái và phê duyệt
 
-## 6. Mô hình dữ liệu
+- Theo tài liệu nền mục 3.4 (xóa mềm, ghi `deletedAt`/`deletedBy`) và mục 3.5 (trạng thái hồ sơ; quy trình 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`).
+- Theo quy trình chung (file chuẩn mục 1): **chỉ xóa được hồ sơ ở trạng thái Lưu tạm**; sau khi xóa, hồ sơ chuyển trạng thái "Đã xóa (lịch sử)" — lưu để đối chiếu, không hiển thị trên màn hình. *(Brief merge cũ quy định chỉ xóa bản ghi Đã duyệt — SA chốt, xem ghi chú mục 1.)*
+- Không có bước phê duyệt cho thao tác xóa; xóa là xóa mềm (không xóa cứng); Vùng nước là leaf entity — không child guard.
 
-> Liên quan đến xóa:
+## 4. Quy tắc và phân quyền riêng
 
-| # | Tên trường | Kiểu | Status |
-|---|---|---|---|
-| 1 | id | UUID | ✅ |
-| 2 | ma_vung_nuoc | NVARCHAR(50) | ✅ |
-| 3 | ten_vung_nuoc | NVARCHAR(255) | ✅ |
-| 4 | trang_thai_phe_duyet | NVARCHAR(50) | ✅ |
-| 5 | deleted_at | TIMESTAMP (nullable) | ✅ |
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
----
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## 7. API Endpoints
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-034-01 | Xóa mềm: `deletedAt = now()` + `deletedBy` (operatorId), không xóa vật lý | Delete |
+| BR-034-02 | Không child guard — Vùng nước là leaf entity | Delete |
+| BR-034-03 | Chỉ người có `waterzone:delete` được xóa (nút hiển thị theo quyền) | RBAC |
+| BR-034-04 | Điều kiện trạng thái khi xóa theo SA chốt (quy trình chung: chỉ Lưu tạm — xem ghi chú mục 1) | Delete |
+| BR-034-05 | Bản ghi đã xóa (`deletedAt != null`) → không hiển thị, không xóa lại | Delete |
+| BR-034-06 | Xác nhận có chủ đích: checkbox confirm trong modal | Delete |
 
-| Method | Endpoint | Mô tả | Quyền |
-|---|---|---|---|
-| GET | `/api/v1/vung-nuoc/{id}` | Pre-check trạng thái phê duyệt trước khi xóa | `vungnuoc:delete` |
-| DELETE | `/api/v1/vung-nuoc/{id}` | Soft-delete | `vungnuoc:delete` |
+### 4.2. Phân quyền riêng
 
----
-
-## 8. Chi tiết nghiệp vụ
-
-### 8.1. Pre-check
-
-F-036 → "Xóa" → `GET /api/v1/vung-nuoc/{id}` kiểm tra `trangThaiPheDuyet`. Nếu ≠ `ĐƯỢC_PHÊ_DUYỆT` → 409 + toast. Nếu OK → mở modal.
-
-### 8.2. Modal xác nhận
-
-Modal `role="alertdialog"`, max-width 480px. Hiển thị: mã, tên, cảng, người tạo, ngày tạo. Warning amber callout. Checkbox confirm.
-
-### 8.3. Xác nhận & Xóa
-
-Checkbox "Tôi xác nhận muốn xóa vùng nước này" → enable nút [Xác nhận xóa] (màu đỏ). Click → `DELETE /api/v1/vung-nuoc/{id}` → backend set `deletedAt = now()` → 200 → toast → refresh.
-
-### 8.4. Hủy
-
-Cancel/Esc → đóng modal, không thay đổi.
-
----
-
-## 9. Yêu cầu phi chức năng
-
-- Modal `role="alertdialog"`, focus trap, Esc đóng
-- Screen reader: warning `aria-live="assertive"`
-- Nút Delete màu `statusDanger`, disabled đến khi checkbox checked
-
----
-
-## 10. Yêu cầu giao diện
-
-> Token: `theme.ts` + `tokens.ts`.
-
-### 10.1. Layout
-
-```
-VungNuocDeleteModal (role="alertdialog", max-width 480px)
-├── Header: "Xác nhận xóa" + icon 🗑
-├── Info: Mã, Tên, Cảng, Người tạo, Ngày tạo
-├── WarningCallout (amber): "Dữ liệu sẽ được ẩn... vẫn được lưu trữ."
-├── Checkbox: "Tôi xác nhận muốn xóa vùng nước này"
-└── Footer: [Hủy] outlined + [Xác nhận xóa] danger (disabled)
-```
-
-### 10.2. Zod Schema
-
-```typescript
-const deleteSchema = z.object({
-  confirmed: z.boolean().refine(val => val === true, {
-    message: "Bạn cần xác nhận để xóa",
-  }),
-});
-```
-
-### 10.3. UX
-
-- `borderRadius: radiusPill`, `height: 40` cho nút
-- Nút Delete màu `statusDanger`, disabled mặc định
-- Toast "Xóa vùng nước thành công"
-
----
-
-## 11. Xử lý lỗi
-
-| Tình huống | Xử lý |
+| Thao tác | Quyền (`<resource>:<action>`) |
 |---|---|
-| 403 | "Bạn không có quyền xóa vùng nước này" |
-| 404 | "Không tìm thấy vùng nước để xóa" |
-| 409 (chưa phê duyệt) | "Chỉ có thể xóa Vùng nước đã được phê duyệt" |
-| 409 (đã xóa) | "Vùng nước này đã bị xóa trước đó" |
-| Network error | Toast "Kết nối thất bại. Vui lòng thử lại" |
+| Xem vùng nước | `waterzone:read` |
+| Xóa mềm Vùng nước | `waterzone:delete` |
 
-## Testing Strategy
-
-Unit: Soft-delete logic, pre-check state machine. Integration: DELETE API, verify deletedAt, verify 409 when not APPROVED. E2E: Modal, checkbox enable/disable, xóa thành công, refresh, chặn xóa khi chưa duyệt.
-
----
-
-## Implementation Status
-
-| Layer | Status |
+| Vai trò điển hình | Thao tác |
 |---|---|
-| Backend | Done |
-| Frontend | Pending |
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền |
+| Lãnh đạo (LeDuan) | Xóa |
+| Chuyên viên Cục / Cảng vụ | Không xóa |
+| Doanh nghiệp cảng | Không xóa |
+| Nhân viên vận hành | Không xóa |
+
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — toàn quyền xóa + xem metadata người tạo, người xóa, thời gian xóa.
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng trạng thái chung; điều kiện trạng thái khi xóa theo SA chốt (xem ghi chú mục 1) |
+| 2 | Có bước phê duyệt không | Không — xóa mềm trực tiếp, không qua phê duyệt |
+| 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + theo Cảng biển mẹ (portId); leaf entity, không child guard |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `waterzone:delete` (kèm `waterzone:read`) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Không |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/api/v1/water-zones/{id}` | Pre-check trạng thái trước khi xóa | `waterzone:delete` |
+| DELETE | `/api/v1/water-zones/{id}` | Xóa mềm: set `deletedAt = now()`, ghi nhật ký | `waterzone:delete` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `water_zones`:** không thêm/sửa trường ở F-034 — sử dụng cột xóa mềm từ `BaseEntity`: `deleted_at` (TIMESTAMP, nullable) + `deleted_by` (UUID, nullable); `@SQLRestriction("deleted_at IS NULL")` tự loại bản ghi đã xóa khỏi truy vấn mặc định. Ghi nhận thao tác xóa vào change log.
