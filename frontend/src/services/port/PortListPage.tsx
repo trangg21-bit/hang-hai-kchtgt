@@ -1060,7 +1060,7 @@ export default function PortListPage() {
       if (values.geometryType) {
         const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
         if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
-          setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
+          setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.\nVui lòng nhập đầy đủ thông tin.`);
           return;
         }
         // Check for incomplete entries (has some DMS fields but not all)
@@ -1207,7 +1207,7 @@ export default function PortListPage() {
     if (values.geometryType) {
       const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
       if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
-        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
+        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.\nVui lòng nhập đầy đủ thông tin.`);
         return;
       }
     }
@@ -2539,6 +2539,7 @@ export default function PortListPage() {
                     <PagedTable
                       dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
                       tableProps={{ scroll: { x: 820 } }}
+                      errorText={gpsError ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></span> : undefined}
                     >
                       <Table.Column
                         title="Vĩ độ (N)"
@@ -2629,13 +2630,13 @@ export default function PortListPage() {
                           style: { background: colors.bodyBg, padding: '12px 6px' },
                         })}
                       />
-                    </PagedTable>
-                  )}
-                  {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
-                </div>)
-              },
-              {
-                key: 'infra', label: 'Công trình KCHT trực thuộc',
+                        </PagedTable>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'infra', label: 'Công trình KCHT trực thuộc',
                 children: (<div style={{ paddingTop: 16 }}>
                   {/* Infra label + add button */}
                   <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3238,6 +3239,7 @@ export default function PortListPage() {
                         <PagedTable
                           dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
                           tableProps={{ scroll: { x: 820 } }}
+                          errorText={gpsError ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></span> : undefined}
                         >
                           <Table.Column
                             title="Vĩ độ (N)"
@@ -3330,7 +3332,6 @@ export default function PortListPage() {
                           />
                         </PagedTable>
                       )}
-                      {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
                     </div>
                   ),
                 },

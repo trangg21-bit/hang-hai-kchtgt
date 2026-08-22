@@ -13,6 +13,8 @@ export interface PagedTableProps {
   pageSizeOptions?: number[];
   defaultPageSize?: number;
   emptyText?: React.ReactNode;
+  /** Thông báo lỗi hiển thị ngay dưới bảng (trước thanh phân trang) — dùng cho lỗi validation tọa độ GPS. */
+  errorText?: React.ReactNode;
   children: React.ReactNode;
   /** Props thêm truyền xuống Table (scroll, size, bordered...). */
   tableProps?: Record<string, unknown>;
@@ -26,7 +28,7 @@ export interface PagedTableProps {
  */
 export default function PagedTable({
   dataSource, pageSizeOptions = [10, 20, 50], defaultPageSize = PAGED_TABLE_PAGE_SIZE,
-  emptyText, children, tableProps = {}, style,
+  emptyText, errorText, children, tableProps = {}, style,
 }: PagedTableProps) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
@@ -46,11 +48,22 @@ export default function PagedTable({
           onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
         {children}
       </Table>
-      <div style={{ marginTop: spaceSm }}>
-        <Pagination total={dataSource.length} current={cur} pageSize={pageSize}
-          pageSizeOptions={pageSizeOptions}
-          onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
-      </div>
+      {errorText ? (
+        <div style={{ marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: colors.error, fontSize: fontSizeMd, flex: 1, minWidth: 120, lineHeight: 1.4, whiteSpace: 'pre-line' }}>{errorText}</span>
+          <span style={{ flexShrink: 0 }}>
+            <Pagination total={dataSource.length} current={cur} pageSize={pageSize}
+              pageSizeOptions={pageSizeOptions}
+              onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+          </span>
+        </div>
+      ) : (
+        <div style={{ marginTop: spaceSm }}>
+          <Pagination total={dataSource.length} current={cur} pageSize={pageSize}
+            pageSizeOptions={pageSizeOptions}
+            onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+        </div>
+      )}
     </div>
   );
 }
