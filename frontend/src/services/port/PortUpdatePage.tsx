@@ -714,7 +714,7 @@ export default function PortUpdatePage() {
               marginBottom: spaceSm,
             }}
           >
-            Thêm ít nhất 1 tọa độ GPS (WGS-84)
+            Thêm tọa độ GPS (WGS-84)
           </Text>
           <Table
             columns={gpsColumns}

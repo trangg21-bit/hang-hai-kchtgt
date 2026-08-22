@@ -35,11 +35,11 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
     @Query("SELECT d FROM DryPort d WHERE d.deletedAt IS NULL " +
             "AND (:includeAll = true OR d.orgUnitId IN :orgUnitIds) " +
             "AND (:provinceId IS NULL OR d.provinceId = :provinceId) " +
-            "AND (CAST(:search AS string) IS NULL OR (LOWER(d.dryPortCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(d.dryPortName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(d.detailedLocation) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
+            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(d.dryPortCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(d.dryPortName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(d.detailedLocation)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
             "AND (:operationalStatus IS NULL OR d.operationalStatus = :operationalStatus) " +
             "AND (:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) " +
-            "AND (CAST(:code AS string) IS NULL OR LOWER(d.dryPortCode) LIKE LOWER(CONCAT('%', CAST(:code AS string), '%'))) " +
-            "AND (CAST(:transportCorridor AS string) IS NULL OR LOWER(d.transportCorridor) LIKE LOWER(CONCAT('%', CAST(:transportCorridor AS string), '%'))) " +
+            "AND (CAST(:code AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dryPortCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:code AS string), '%'))) AS string)) " +
+            "AND (CAST(:transportCorridor AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.transportCorridor)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:transportCorridor AS string), '%'))) AS string)) " +
             "AND (:region IS NULL OR d.region = :region) " +
             "AND (:portStatus IS NULL OR d.portStatus = :portStatus) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR d.updatedAt >= :updatedFrom) " +

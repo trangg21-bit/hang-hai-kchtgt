@@ -223,12 +223,6 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       if (!values.operationalStatus) { toast.error('Tình trạng là bắt buộc khi gửi duyệt'); setActiveTabKey('general'); return; }
     }
     const manualCoords = coordinateList.filter(c => c.latitude != null && c.longitude != null && !isNaN(Number(c.latitude)) && !isNaN(Number(c.longitude))).map(c => ({ latitude: Number(c.latitude), longitude: Number(c.longitude) }));
-    if (isSubmitOrApprove && manualCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setActiveTabKey('location');
-      return;
-    }
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {

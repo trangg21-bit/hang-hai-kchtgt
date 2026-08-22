@@ -289,12 +289,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); setActiveTabKey('gis'); return;
       }
     }
-    if ((saveAction === 'SUBMIT' || saveAction === 'APPROVED') && manualCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setActiveTabKey('gis');
-      return;
-    }
     setGpsError(null);
     try {
       const p: Record<string, unknown> = {

@@ -913,14 +913,6 @@ export default function DryPortListPage() {
       .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
       .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
 
-    // ── Submit/Approve validation ──
-    if ((saveAction === 'SUBMIT' || saveAction === 'SAVE_AND_APPROVE') && manualCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setSubmitting(false);
-      return;
-    }
-
     setSubmitting(true);
     try {
       const actionMap: Partial<Record<SaveAction, string>> = { DRAFT: 'draft', SUBMIT: 'submit', SAVE_AND_APPROVE: 'approve' };
