@@ -1,0 +1,43 @@
+{
+  "triage_id": "TRI-1787366753124-85ab",
+  "created_at": 1787366753124,
+  "request_summary": "Fix root cause: ChangeLog rows của cùng 1 lần save phải cùng changedAt (1 timestamp) — tránh vỡ group theo giây gây nhầm 'Thêm mới' khi chỉnh sửa",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/shared/ChangeHistoryService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/shared/ChangeHistoryService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Lịch sử thay đổi cầu cảng (drawer Lịch sử) — nhãn Thêm mới/Chỉnh sửa",
+  "blast_radius": 1,
+  "done_oracle": "ChangeHistoryService dùng 1 timestamp duy nhất (LocalDateTime.now() chụp 1 lần) cho mọi ChangeLog row trong cùng 1 lần ghi → 1 lần save = 1 group trong lịch sử frontend → chỉnh sửa hiển thị 'Chỉnh sửa' đúng; mvn clean compile pass",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile -q -DskipTests",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "12b257386c237d3798adcabb58074d236c0072e3",
+    "dirty": true,
+    "captured_at": 1787366753377
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}
