@@ -184,8 +184,7 @@ export const createSchema = z.object({
   lightCharacteristic: z.string().optional().or(z.literal('')),
   range: z.coerce
     .number()
-    .min(0.01, 'Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý')
-    .max(20, 'Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý'),
+    .min(0.01, 'Phạm vi chiếu sáng phải lớn hơn 0 hải lý'),
   unitId: z.string().optional().or(z.literal('')),
   latitude: z.coerce
     .number()
@@ -206,12 +205,12 @@ export const createSchema = z.object({
   locationDetail: z.string().max(500, 'Địa điểm chi tiết tối đa 500 ký tự').optional().or(z.literal('')),
   condition: z.string().min(1, 'Vui lòng chọn tình trạng'),
   structure: z.string().max(2000, 'Kết cấu tối đa 2000 ký tự').optional().or(z.literal('')),
-  area: z.coerce.number().min(0, 'Diện tích không được âm').max(20, 'Diện tích tối đa 20').optional(),
-  bodyHeight: z.coerce.number().min(0, 'Chiều cao thân phao không được âm').max(20, 'Chiều cao thân phao tối đa 20').optional(),
-  diameter: z.coerce.number().min(0, 'Đường kính phao không được âm').max(20, 'Đường kính phao tối đa 20').optional(),
+  area: z.coerce.number().min(0, 'Diện tích không được âm').optional(),
+  bodyHeight: z.coerce.number().min(0, 'Chiều cao thân phao không được âm').optional(),
+  diameter: z.coerce.number().min(0, 'Đường kính phao không được âm').optional(),
   beaconLight: z.string().optional().or(z.literal('')),
-  towerHeight: z.coerce.number().min(0, 'Chiều cao tháp đèn không được âm').max(20, 'Chiều cao tháp đèn tối đa 20').optional(),
-  lightHeight: z.coerce.number().min(0.01, 'Chiều cao tâm sáng (hải đồ) là bắt buộc và phải lớn hơn 0').max(20, 'Chiều cao tâm sáng tối đa 20'),
+  towerHeight: z.coerce.number().min(0, 'Chiều cao tháp đèn không được âm').optional(),
+  lightHeight: z.coerce.number().min(0.01, 'Chiều cao tâm sáng (hải đồ) là bắt buộc và phải lớn hơn 0'),
   lightModel: z.string().max(100, 'Chủng loại đèn tối đa 100 ký tự').optional().or(z.literal('')),
   towerColor: z.string().max(200, 'Màu sắc tháp đèn tối đa 200 ký tự').optional().or(z.literal('')),
   powerSupply: z.string().max(500, 'Nguồn năng lượng tối đa 500 ký tự').optional().or(z.literal('')),
@@ -235,8 +234,7 @@ export const updateSchema = z.object({
   lightCharacteristic: z.string().optional().or(z.literal('')),
   range: z.coerce
     .number()
-    .min(0.01, 'Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý')
-    .max(20, 'Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý'),
+    .min(0.01, 'Phạm vi chiếu sáng phải lớn hơn 0 hải lý'),
   unitId: z.string().optional().nullable().or(z.literal('')),
   latitude: z.coerce
     .number()
@@ -257,12 +255,12 @@ export const updateSchema = z.object({
   locationDetail: z.string().max(500, 'Địa điểm chi tiết tối đa 500 ký tự').optional().or(z.literal('')),
   condition: z.string().min(1, 'Vui lòng chọn tình trạng'),
   structure: z.string().max(2000, 'Kết cấu tối đa 2000 ký tự').optional().or(z.literal('')),
-  area: z.coerce.number().min(0, 'Diện tích không được âm').max(20, 'Diện tích tối đa 20').optional(),
-  bodyHeight: z.coerce.number().min(0, 'Chiều cao thân phao không được âm').max(20, 'Chiều cao thân phao tối đa 20').optional(),
-  diameter: z.coerce.number().min(0, 'Đường kính phao không được âm').max(20, 'Đường kính phao tối đa 20').optional(),
+  area: z.coerce.number().min(0, 'Diện tích không được âm').optional(),
+  bodyHeight: z.coerce.number().min(0, 'Chiều cao thân phao không được âm').optional(),
+  diameter: z.coerce.number().min(0, 'Đường kính phao không được âm').optional(),
   beaconLight: z.string().optional().or(z.literal('')),
-  towerHeight: z.coerce.number().min(0, 'Chiều cao tháp đèn không được âm').max(20, 'Chiều cao tháp đèn tối đa 20').optional(),
-  lightHeight: z.coerce.number().min(0.01, 'Chiều cao tâm sáng (hải đồ) là bắt buộc và phải lớn hơn 0').max(20, 'Chiều cao tâm sáng tối đa 20'),
+  towerHeight: z.coerce.number().min(0, 'Chiều cao tháp đèn không được âm').optional(),
+  lightHeight: z.coerce.number().min(0.01, 'Chiều cao tâm sáng (hải đồ) là bắt buộc và phải lớn hơn 0'),
   lightModel: z.string().max(100, 'Chủng loại đèn tối đa 100 ký tự').optional().or(z.literal('')),
   towerColor: z.string().max(200, 'Màu sắc tháp đèn tối đa 200 ký tự').optional().or(z.literal('')),
   powerSupply: z.string().max(500, 'Nguồn năng lượng tối đa 500 ký tự').optional().or(z.literal('')),

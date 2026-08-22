@@ -4,6 +4,8 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,7 +26,7 @@ public class UpdateBuoyStationRequest {
 
     private RecordSecurityLevel securityLevel;
 
-    @Size(max = 200)
+    @Size(max = 255, message = "Tên nhà trạm không được vượt quá 255 ký tự")
     private String name;
 
     private String type;
@@ -51,12 +53,17 @@ public class UpdateBuoyStationRequest {
     private UUID waterwayId;
     private UUID waterwayRouteId;
     private String province;
+    @Size(max = 500, message = "Địa điểm chi tiết không được vượt quá 500 ký tự")
     private String address;
     private LocalDate constructionDate;
+    @Digits(integer = 20, fraction = 2, message = "Tổng diện tích không được vượt quá 20 chữ số")
     private Double totalArea;
+    @Digits(integer = 20, fraction = 2, message = "Diện tích sử dụng không được vượt quá 20 chữ số")
     private Double usableArea;
+    @Max(value = 99999, message = "Số lượng nhân sự bố trí không được vượt quá 5 chữ số")
     private Integer staffCount;
     private Integer lastMaintenanceYear;
+    @Size(max = 2000, message = "Ghi chú không được vượt quá 2000 ký tự")
     private String note;
     private String objectType;
     private String icon;

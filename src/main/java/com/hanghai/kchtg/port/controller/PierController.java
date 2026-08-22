@@ -69,6 +69,8 @@ public class PierController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String pierCode,
+            @RequestParam(required = false) String pierName,
             @RequestParam(required = false) UUID berthId,
             @RequestParam(required = false) UUID portId,
             @RequestParam(required = false) PierType pierType,
@@ -82,11 +84,11 @@ public class PierController {
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo) {
         log.info(
-                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}, navigationChannelId={}, constructionGrade={}, structureType={}, operationalFunction={}, updatedFrom={}, updatedTo={}",
-                page, size, orgUnitId, search, berthId, portId, pierType, province, status, approvalStatus,
+                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, pierCode={}, pierName={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}, navigationChannelId={}, constructionGrade={}, structureType={}, operationalFunction={}, updatedFrom={}, updatedTo={}",
+                page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province, status, approvalStatus,
                 navigationChannelId, constructionGrade, structureType, operationalFunction, updatedFrom, updatedTo);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
-                pierService.findAll(page, size, orgUnitId, search, berthId, portId, pierType, province, status,
+                pierService.findAll(page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province, status,
                         approvalStatus, navigationChannelId, constructionGrade, structureType,
                         operationalFunction, updatedFrom, updatedTo)));
     }

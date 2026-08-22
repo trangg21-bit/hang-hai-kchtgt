@@ -91,7 +91,18 @@ public class BuoyStationService {
     public List<BuoyStationResponse> search(
             String name, String code, String type, String status,
             UUID unitId, String province, UUID portId, UUID operatingOrgId) {
-        return phaoRepo.searchFiltered(name, code, type, status, unitId, province, portId, operatingOrgId).stream()
+        // Frontend gửi status dạng String (DRAFT/PENDING_APPROVAL/APPROVED_L1/PUBLISHED/REJECTED) —
+        // convert sang StationStatus enum trước khi bind (cột status là smallint enum, Hibernate từ chối String)
+        StationStatus statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                statusEnum = StationStatus.valueOf(status.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // Giá trị không hợp lệ → bỏ lọc trạng thái, tránh lỗi bind
+                statusEnum = null;
+            }
+        }
+        return phaoRepo.searchFiltered(name, code, type, statusEnum, unitId, province, portId, operatingOrgId).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -101,8 +112,10 @@ public class BuoyStationService {
      * Format: {portCode}-NTPT{2 số} (mẫu BerthService.generateBerthCode).
      */
     public String generateCode(UUID portId) {
-        portRepository.findById(portId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
+        if (portId != null) {
+            portRepository.findById(portId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
+        }
         // CSV: mã tự sinh NT-{seq} — đếm toàn bộ nhà trạm (không phụ thuộc prefix cảng)
         int maxNum = 0;
         for (BuoyStation b : phaoRepo.findAll()) {
@@ -122,6 +135,9 @@ public class BuoyStationService {
     @Transactional
     public BuoyStationResponse create(CreateBuoyStationRequest request) {
         FieldWriteGuard.validateObject(request);
+        if (request.getCode() == null || request.getCode().isBlank()) {
+            request.setCode(generateCode(request.getPortId()));
+        }
         if (phaoRepo.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã nhà trạm phao tiêu đã tồn tại: " + request.getCode());
         }

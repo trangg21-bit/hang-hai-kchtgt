@@ -1,0 +1,45 @@
+{
+  "triage_id": "TRI-1787366400831-630a",
+  "created_at": 1787366400831,
+  "request_summary": "Sửa mapping lịch sử cầu cảng: thêm waterwayMap (navigationChannelId), structureType, constructionGrade, berthMap đầy đủ",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/PierListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/PierListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Trang /pier → drawer Lịch sử thay đổi (renderPierHistoryTimeline)",
+  "blast_radius": 1,
+  "done_oracle": "Lịch sử cầu cảng map đúng: navigationChannelId → tên luồng (waterwayMap), structureType → nhãn kết cấu, constructionGrade → nhãn cấp, berthId → tên bến (historyBerthMap đầy đủ, không lọc APPROVED); tsc --noEmit pass",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "12b257386c237d3798adcabb58074d236c0072e3",
+    "dirty": false,
+    "captured_at": 1787366401098
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

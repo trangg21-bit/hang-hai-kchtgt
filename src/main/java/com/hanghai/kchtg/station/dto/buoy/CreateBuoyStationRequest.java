@@ -22,12 +22,11 @@ public class CreateBuoyStationRequest {
 
     private RecordSecurityLevel securityLevel;
 
-    @NotBlank(message = "Mã nhà trạm phao không được để trống")
     @Size(max = 50)
     private String code;
 
     @NotBlank(message = "Tên nhà trạm phao không được để trống")
-    @Size(max = 200)
+    @Size(max = 255, message = "Tên nhà trạm không được vượt quá 255 ký tự")
     private String name;
 
     private String type;
@@ -54,12 +53,17 @@ public class CreateBuoyStationRequest {
     private UUID waterwayId;
     private UUID waterwayRouteId;
     private String province;
+    @Size(max = 500, message = "Địa điểm chi tiết không được vượt quá 500 ký tự")
     private String address;
     private LocalDate constructionDate;
+    @Digits(integer = 20, fraction = 2, message = "Tổng diện tích không được vượt quá 20 chữ số")
     private Double totalArea;
+    @Digits(integer = 20, fraction = 2, message = "Diện tích sử dụng không được vượt quá 20 chữ số")
     private Double usableArea;
+    @Max(value = 99999, message = "Số lượng nhân sự bố trí không được vượt quá 5 chữ số")
     private Integer staffCount;
     private Integer lastMaintenanceYear;
+    @Size(max = 2000, message = "Ghi chú không được vượt quá 2000 ký tự")
     private String note;
     private String objectType;
     private String icon;

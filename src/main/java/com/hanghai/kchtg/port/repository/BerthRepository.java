@@ -51,17 +51,17 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
      */
     @Query("SELECT b FROM Berth b WHERE b.deletedAt IS NULL " +
             "AND (:includeAll = true OR b.orgUnitId IN :orgUnitIds) " +
-            "AND (CAST(:search AS string) IS NULL OR (LOWER(b.berthCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(b.berthName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
-            "AND (CAST(:berthCode AS string) IS NULL OR LOWER(b.berthCode) LIKE LOWER(CONCAT('%', CAST(:berthCode AS string), '%'))) " +
-            "AND (CAST(:berthName AS string) IS NULL OR LOWER(b.berthName) LIKE LOWER(CONCAT('%', CAST(:berthName AS string), '%'))) " +
+            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(b.berthCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(b.berthName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
+            "AND (CAST(:berthCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.berthCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:berthCode AS string), '%'))) AS string)) " +
+            "AND (CAST(:berthName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.berthName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:berthName AS string), '%'))) AS string)) " +
             "AND (:portId IS NULL OR b.portId = :portId) " +
-            "AND (CAST(:waterway AS string) IS NULL OR LOWER(b.waterway) LIKE LOWER(CONCAT('%', CAST(:waterway AS string), '%'))) " +
+            "AND (CAST(:waterway AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.waterway)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:waterway AS string), '%'))) AS string)) " +
             "AND (:waterwayId IS NULL OR b.waterwayId = :waterwayId) " +
             "AND (:berthType IS NULL OR b.berthType = :berthType) " +
             "AND (:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) " +
             "AND ((:operationalStatusNull = true AND b.operationalStatus IS NULL) OR (:operationalStatusNull = false AND (:operationalStatus IS NULL OR b.operationalStatus = :operationalStatus))) " +
             "AND (:structureType IS NULL OR b.structureType = :structureType) " +
-            "AND (CAST(:operationalFunction AS string) IS NULL OR LOWER(b.operationalFunction) LIKE LOWER(CONCAT('%', CAST(:operationalFunction AS string), '%'))) " +
+            "AND (CAST(:operationalFunction AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.operationalFunction)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:operationalFunction AS string), '%'))) AS string)) " +
             "AND (:provinceId IS NULL OR b.provinceId = :provinceId) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR b.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR b.updatedAt <= :updatedTo) ")

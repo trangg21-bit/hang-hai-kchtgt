@@ -757,6 +757,11 @@ textarea.ant-input {
 /* ---------- Required mark (*) bên phải label ---------- */
 .ant-form-item-required::before { display: inline-block; margin-left: 4px; order: 1; }
 .ant-form-item-required::after { display: none; }
+
+/* ---------- Select đã chọn giá trị: ẩn con trỏ nhấp nháy (caret) trong ô select ---------- */
+.ant-select:has(.ant-select-selection-item) .ant-select-selection-search-input {
+  caret-color: transparent;
+}
 `;
 
 // ============================================================

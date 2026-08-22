@@ -28,13 +28,13 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
 
     @Query("SELECT b FROM Buoy b WHERE " +
            "((cast(:name as string) IS NULL AND cast(:code as string) IS NULL) OR " +
-           "(cast(:name as string) IS NOT NULL AND LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) OR " +
-           "(cast(:code as string) IS NOT NULL AND LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%')))) AND " +
+           "(cast(:name as string) IS NOT NULL AND CAST(function('immutable_unaccent', LOWER(b.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:name as string), '%'))) AS string)) OR " +
+           "(cast(:code as string) IS NOT NULL AND CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:code as string), '%'))) AS string))) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
            "(:status IS NULL OR b.status = :status) AND " +
            "(:condition IS NULL OR b.condition = :condition) AND " +
            "(:provinceId IS NULL OR b.provinceId = :provinceId) AND " +
-           "(cast(:locationDetail as string) IS NULL OR LOWER(b.locationDetail) LIKE LOWER(CONCAT('%', cast(:locationDetail as string), '%'))) AND " +
+           "(cast(:locationDetail as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.locationDetail)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:locationDetail as string), '%'))) AS string)) AND " +
            "(:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) ORDER BY b.updatedAt DESC")
     List<Buoy> searchFiltered(
         @Param("name") String name,
@@ -57,7 +57,7 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
             "b.deletedAt IS NULL AND " +
             "b.approvalStatus = 'APPROVED' AND " +
             "(:orgUnitId IS NULL OR b.unitId = :orgUnitId) AND " +
-            "(:search IS NULL OR LOWER(b.name) LIKE :search OR LOWER(b.code) LIKE :search)")
+            "(:search IS NULL OR CAST(function('immutable_unaccent', LOWER(b.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string) OR CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CAST(:search AS string))) AS string))")
     List<Buoy> searchGis(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
