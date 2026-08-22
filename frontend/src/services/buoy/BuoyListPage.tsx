@@ -139,7 +139,7 @@ const COORD_SYS_LABELS: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000'
 const APPROVAL_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Nháp', PROPOSED: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
   APPROVED_LEVEL1: 'Chờ Cục duyệt', APPROVED_LEVEL2: 'Đã duyệt L2', APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối', PENDING_APPROVAL: 'Chờ phê duyệt',
+  REJECTED: 'Từ chối',
 };
 
 function formatDateTime(dateStr: string | null | undefined): string {
@@ -303,18 +303,20 @@ export default function BuoyListPage() {
   const [editTabKey, setEditTabKey] = useState('general');
   const [codeLoading, setCodeLoading] = useState(false);
   const [buoyStations, setBuoyStations] = useState<BuoyStationResponse[]>([]);
-  const [loadingStations, setLoadingStations] = useState(false);
+  // Nhà trạm cho form Thêm mới / Chỉnh sửa — load theo Đơn vị quản lý đã chọn, chỉ nhà trạm Đã phê duyệt (PUBLISHED)
+  const [createStations, setCreateStations] = useState<BuoyStationResponse[]>([]);
+  const [editStations, setEditStations] = useState<BuoyStationResponse[]>([]);
+  const [loadingCreateStations, setLoadingCreateStations] = useState(false);
+  const [loadingEditStations, setLoadingEditStations] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const actionTypeRef = useRef<'draft' | 'submit' | 'approved'>('submit');
 
   // ── Danh sách nhà trạm QLVH phao tiêu (SelectKcht — nguồn sinh mã {mã nhà trạm}-PT-{seq}) ──
   useEffect(() => {
     let cancelled = false;
-    setLoadingStations(true);
     fetchBuoyStationList({})
       .then((res) => { if (!cancelled) setBuoyStations(res.content || []); })
-      .catch(() => { if (!cancelled) toast.error('Không thể tải danh sách nhà trạm quản lý vận hành'); })
-      .finally(() => { if (!cancelled) setLoadingStations(false); });
+      .catch(() => { if (!cancelled) toast.error('Không thể tải danh sách nhà trạm quản lý vận hành'); });
     return () => { cancelled = true; };
   }, []);
 
@@ -331,6 +333,52 @@ export default function BuoyListPage() {
       .catch(() => { toast.error('Không thể sinh mã tự động, vui lòng thử lại'); })
       .finally(() => { setCodeLoading(false); });
   }, [createForm]);
+
+  // Đơn vị quản lý đang chọn trong form Thêm mới / Chỉnh sửa (pattern BerthForm: load Cảng biển theo orgUnit)
+  const createUnitId = Form.useWatch('unitId', createForm);
+  const editUnitId = Form.useWatch('unitId', updateForm);
+
+  // Form Thêm mới: đổi Đơn vị quản lý → reset nhà trạm + mã, load nhà trạm thuộc đơn vị (chỉ Đã phê duyệt)
+  useEffect(() => {
+    let cancelled = false;
+    if (createUnitId) {
+      createForm.setFieldsValue({ buoyStationId: undefined, code: undefined });
+      setLoadingCreateStations(true);
+      fetchBuoyStationList({ unitId: createUnitId, status: 'PUBLISHED' })
+        .then((res) => { if (!cancelled) setCreateStations(res.content || []); })
+        .catch(() => { if (!cancelled) setCreateStations([]); })
+        .finally(() => { if (!cancelled) setLoadingCreateStations(false); });
+    } else {
+      setCreateStations([]);
+    }
+    return () => { cancelled = true; };
+  }, [createUnitId, createForm]);
+
+  // Form Chỉnh sửa: load nhà trạm theo đơn vị của bản ghi (chỉ Đã phê duyệt); giữ nhà trạm hiện tại để hiển thị đúng label khi field bị khóa
+  useEffect(() => {
+    let cancelled = false;
+    if (editUnitId) {
+      // Đổi Đơn vị quản lý (phao chưa có nhà trạm) → reset nhà trạm đã chọn (pattern BerthForm)
+      if (!editingRecord?.buoyStationId) updateForm.setFieldsValue({ buoyStationId: undefined });
+      setLoadingEditStations(true);
+      fetchBuoyStationList({ unitId: editUnitId, status: 'PUBLISHED' })
+        .then((res) => {
+          if (cancelled) return;
+          let list = res.content || [];
+          const curId = editingRecord?.buoyStationId;
+          if (curId && !list.some((s) => s.id === curId)) {
+            const cur = buoyStations.find((s) => s.id === curId);
+            if (cur) list = [cur, ...list];
+          }
+          setEditStations(list);
+        })
+        .catch(() => { if (!cancelled) setEditStations([]); })
+        .finally(() => { if (!cancelled) setLoadingEditStations(false); });
+    } else {
+      setEditStations([]);
+    }
+    return () => { cancelled = true; };
+  }, [editUnitId, editingRecord?.buoyStationId, buoyStations, updateForm]);
 
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
@@ -713,12 +761,6 @@ export default function BuoyListPage() {
     const manualCoords = createCoords
       .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
       .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
-    if (values.geometryType) {
-      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      if (createCoords.length === 0 || manualCoords.length < requiredCoords) {
-        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
-      }
-    }
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -728,6 +770,7 @@ export default function BuoyListPage() {
       }
     }
     if ((action === 'submit' || action === 'approved') && manualCoords.length === 0) {
+      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
       setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt'); return;
     }
 
@@ -831,12 +874,6 @@ export default function BuoyListPage() {
     const manualCoords = editCoords
       .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
       .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
-    if (values.geometryType) {
-      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      if (editCoords.length === 0 || manualCoords.length < requiredCoords) {
-        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
-      }
-    }
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -1565,7 +1602,6 @@ export default function BuoyListPage() {
                 value={filterStationId || undefined}
                 onChange={(val) => { setFilterStationId(val); setPage(1); }}
                 options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
-                loading={loadingStations}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
@@ -1712,8 +1748,9 @@ export default function BuoyListPage() {
             activeTabKey={createTabKey}
             onTabChange={setCreateTabKey}
             orgUnits={organizations}
-            buoyStations={buoyStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
-            loadingStations={loadingStations}
+            selectedUnitId={createUnitId}
+            buoyStations={createStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
+            loadingStations={loadingCreateStations}
             onStationChange={handleStationChange}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
@@ -1760,10 +1797,11 @@ export default function BuoyListPage() {
           <BuoyFormContent
             isEdit
             currentStationId={editingRecord?.buoyStationId ?? null}
+            selectedUnitId={editUnitId}
             activeTabKey={editTabKey}
             onTabChange={setEditTabKey}
-            buoyStations={buoyStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
-            loadingStations={loadingStations}
+            buoyStations={editStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
+            loadingStations={loadingEditStations}
             orgUnits={organizations}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}

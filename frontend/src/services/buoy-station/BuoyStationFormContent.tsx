@@ -21,7 +21,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
 import { useAuthStore } from '../../store/authStore';
-import { spaceFormField, radiusPill, radiusMd, borderDefault, textSecondary, textTertiary, textPrimary, spaceSm, fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, surfaceCard, uploadHintStyle } from '../../tokens';
+import { spaceFormField, radiusPill, radiusMd, borderDefault, textTertiary, textPrimary, spaceSm, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard, uploadHintStyle } from '../../tokens';
 import { colors } from '../../theme';
 
 import {
@@ -39,6 +39,13 @@ const parseInteger = (v: string | undefined): number => {
   const intPart = (v ?? '').replace(/,/g, '').split('.')[0];
   return intPart === '' ? 0 : Number(intPart);
 };
+
+/** true khi giá trị field đã đạt đủ max ký tự — dùng để bật viền đỏ ô nhập + message cảnh báo bên dưới. */
+function useMaxReached(form: FormInstance, name: string, max: number): boolean {
+  const raw = Form.useWatch(name, form) ?? '';
+  const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
+  return len >= max;
+}
 
 const ddToDms = (v: number | null | undefined): { d: number | null; m: number | null; s: number | null } => {
   if (v == null || isNaN(v)) return { d: null, m: null, s: null };
@@ -116,6 +123,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const [routeOptions, setRouteOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [codeLoading, setCodeLoading] = useState(false);
   const [coordinateList, setCoordinateList] = useState<Array<{ latitude: number | null; longitude: number | null }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [activeTabKey, setActiveTabKey] = useState('general');
   const editPortIdRef = useRef<string | undefined>(undefined);
 
@@ -123,12 +131,24 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const watchedPortId = Form.useWatch('portId', form);
   const watchedGeometryType = Form.useWatch('geometryType', form);
 
+  const atMax = {
+    name: useMaxReached(form, 'name', 255),
+    address: useMaxReached(form, 'address', 500),
+    totalArea: useMaxReached(form, 'totalArea', 20),
+    usableArea: useMaxReached(form, 'usableArea', 20),
+    staffCount: useMaxReached(form, 'staffCount', 5),
+    note: useMaxReached(form, 'note', 2000),
+  };
+
   const loadPortOptions = useCallback(async (orgUnitId?: string) => {
     setLoadingPorts(true);
     try {
-      const r = await portCRUD.findAll({ page: 1, size: 1000, orgUnitId });
+      // Chỉ load cảng biển đã được phê duyệt (approvalStatus = APPROVED) — đồng bộ BerthForm
+      const r = await portCRUD.findAll({ page: 1, size: 1000, orgUnitId, approvalStatus: 'APPROVED' });
       const list = r.data || (r as any).content || [];
-      setPortOptions((orgUnitId ? list.filter((p: any) => p.orgUnitId === orgUnitId) : list).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id })));
+      const ports = (orgUnitId ? list.filter((p: any) => p.orgUnitId === orgUnitId) : list).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
+      setPortOptions(ports);
+      if (ports.length === 0) toast.warning('Đơn vị quản lý chưa có cảng biển được phê duyệt');
     } catch { setPortOptions([]); }
     finally { setLoadingPorts(false); }
   }, []);
@@ -171,6 +191,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     if (!watchedGeometryType) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
       setCoordinateList([]);
+      setGpsError(null);
       return;
     }
     form.setFieldsValue({ coordinateSystem: 'WGS84', displayRule: 'Độ, phút, giây (DMS)' });
@@ -208,8 +229,8 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     });
   }, [form, isEdit, entityData, loadPortOptions]);
 
-  const removeCoordinate = (i: number) => { setCoordinateList(p => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))); };
-  const addGpsPoint = () => setCoordinateList(p => [...p, { latitude: null, longitude: null }]);
+  const removeCoordinate = (i: number) => { setCoordinateList(p => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))); setGpsError(null); };
+  const addGpsPoint = () => { setCoordinateList(p => [...p, { latitude: null, longitude: null }]); setGpsError(null); };
   const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
     // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (giống BuoyListPage)
     const dMax = field === 'lat' ? 90 : 180;
@@ -260,9 +281,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     if (!name) { toast.error('Tên nhà trạm là bắt buộc'); return; }
     const manualCoords = coordinateList.filter(c => c.latitude != null && c.longitude != null && !isNaN(Number(c.latitude)) && !isNaN(Number(c.longitude))).map(c => ({ latitude: Number(c.latitude), longitude: Number(c.longitude) }));
     const geomType = values.geometryType || undefined;
-    // Bỏ validate bắt buộc nhập tọa độ GPS (theo yêu cầu user 2026-08-20):
-    // không còn chặn khi thiếu tọa độ dù đã chọn loại đối tượng hay gửi/phê duyệt.
-    // Chỉ giữ kiểm tra khoảng hợp lệ (-90..90 / -180..180) khi có tọa độ.
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); setActiveTabKey('gis'); return;
@@ -271,6 +289,13 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); setActiveTabKey('gis'); return;
       }
     }
+    if ((saveAction === 'SUBMIT' || saveAction === 'APPROVED') && manualCoords.length === 0) {
+      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
+      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
+      setActiveTabKey('gis');
+      return;
+    }
+    setGpsError(null);
     try {
       const p: Record<string, unknown> = {
         name,
@@ -332,26 +357,26 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         <Col span={12}><Form.Item name="code" {...labelProps('Mã nhà trạm')} style={{ marginBottom: spaceFormField }} tooltip="Mã nhà trạm được sinh tự động khi lưu"><Input disabled maxLength={50} placeholder={codeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="name" {...labelProps('Tên nhà trạm')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên nhà trạm không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}><Input placeholder="Nhập Tên nhà trạm quản lý vận hành phao, tiêu" maxLength={255} style={inputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="name" {...labelProps('Tên nhà trạm')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên nhà trạm không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]} validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}><Input placeholder="Nhập Tên nhà trạm quản lý vận hành phao, tiêu" maxLength={255} style={inputStyle} /></Form.Item></Col>
         <Col span={12}><Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}><Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label" filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} style={inputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]} validateStatus={atMax.address ? 'error' : undefined} help={atMax.address ? 'Đã đạt tối đa 500 ký tự' : undefined}><Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} style={inputStyle} /></Form.Item></Col>
         <Col span={12}><Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={{ marginBottom: spaceFormField }}><DatePicker popupClassName="buoy-station-date-picker" placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }}><InputNumber min={0} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-        <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích sử dụng (m²)')} style={{ marginBottom: spaceFormField }}><InputNumber min={0} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.totalArea ? 'error' : undefined} help={atMax.totalArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích sử dụng (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.usableArea ? 'error' : undefined} help={atMax.usableArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]}><InputNumber min={0} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+        <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]} validateStatus={atMax.staffCount ? 'error' : undefined} help={atMax.staffCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} maxLength={5} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
         <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" popupClassName="buoy-station-date-picker" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
         <Col span={12}><Form.Item name="condition" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="Chưa khai thác/vận hành" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={CONDITION_OPTIONS} style={selectStyle} /></Form.Item></Col>
       </Row>
       <Row gutter={16}>
-        <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000 }]}><Input.TextArea placeholder="Ghi chú..." maxLength={1000} rows={3} style={{ borderRadius: radiusPill, fontSize: fontSizeMd, resize: 'none' }} /></Form.Item></Col>
+        <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]} validateStatus={atMax.note ? 'error' : undefined} help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}><Input.TextArea placeholder="Ghi chú..." maxLength={2000} rows={3} style={{ borderRadius: radiusPill, fontSize: fontSizeMd, resize: 'none' }} /></Form.Item></Col>
       </Row>
     </div>) },
     // Tab 2: Thông tin vị trí (giống BuoyFormContent tab Thông tin vị trí)
@@ -410,7 +435,8 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
           <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
         </div>
       ) : (
-        <PagedTable dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}>
+        <PagedTable dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}
+          errorText={gpsError ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></span> : undefined}>
           <Table.Column title="Vĩ độ (N)" key="lat" render={(_: any, r: any) => renderDms(r._idx, 'lat', r)} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
           <Table.Column title="Kinh độ (E)" key="lng" render={(_: any, r: any) => renderDms(r._idx, 'lng', r)} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
           <Table.Column title="Thao tác" key="actions" width={80} align="center" render={(_: any, r: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(r._idx)} />} onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />

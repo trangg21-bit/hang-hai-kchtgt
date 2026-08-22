@@ -1019,6 +1019,41 @@ export default function PortListPage() {
   const createGeometryType = Form.useWatch('geometryType', createForm);
   const updateGeometryType = Form.useWatch('geometryType', updateForm);
 
+  /** true khi field đã đạt giới hạn — 'chars': đủ max ký tự; 'value': giá trị >= max. Bật viền đỏ + message bên dưới. */
+  const useAtMax = (form: any, name: string, max: number, mode: 'chars' | 'value' = 'chars'): boolean => {
+    const raw = Form.useWatch(name, form) ?? '';
+    if (mode === 'value') {
+      const n = typeof raw === 'number' ? raw : Number(raw ?? NaN);
+      return !Number.isNaN(n) && n >= max;
+    }
+    const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
+    return len >= max;
+  };
+  const atMaxCreate = {
+    portName: useAtMax(createForm, 'portName', 255), detailedLocation: useAtMax(createForm, 'detailedLocation', 500),
+    waterAreaScope: useAtMax(createForm, 'waterAreaScope', 2000), otherWaterAreas: useAtMax(createForm, 'otherWaterAreas', 2000),
+    remarks: useAtMax(createForm, 'remarks', 2000),
+    totalBerths: useAtMax(createForm, 'totalBerths', 5), totalAnchoragesTransshipment: useAtMax(createForm, 'totalAnchoragesTransshipment', 5),
+    totalPublicChannels: useAtMax(createForm, 'totalPublicChannels', 5), totalDedicatedChannels: useAtMax(createForm, 'totalDedicatedChannels', 5),
+    totalPublicChannelLength: useAtMax(createForm, 'totalPublicChannelLength', 20), totalDedicatedChannelLength: useAtMax(createForm, 'totalDedicatedChannelLength', 20),
+    totalBuoysBeacons: useAtMax(createForm, 'totalBuoysBeacons', 5), totalDikes: useAtMax(createForm, 'totalDikes', 5),
+    totalDikeLength: useAtMax(createForm, 'totalDikeLength', 20), totalLighthouses: useAtMax(createForm, 'totalLighthouses', 5),
+    buoyBerthCount: useAtMax(createForm, 'buoyBerthCount', 5), anchorageCount: useAtMax(createForm, 'anchorageCount', 5),
+    transshipmentCount: useAtMax(createForm, 'transshipmentCount', 5),
+  };
+  const atMaxUpdate = {
+    portName: useAtMax(updateForm, 'portName', 255), detailedLocation: useAtMax(updateForm, 'detailedLocation', 500),
+    waterAreaScope: useAtMax(updateForm, 'waterAreaScope', 2000), otherWaterAreas: useAtMax(updateForm, 'otherWaterAreas', 2000),
+    remarks: useAtMax(updateForm, 'remarks', 2000),
+    totalBerths: useAtMax(updateForm, 'totalBerths', 5), totalAnchoragesTransshipment: useAtMax(updateForm, 'totalAnchoragesTransshipment', 5),
+    totalPublicChannels: useAtMax(updateForm, 'totalPublicChannels', 5), totalDedicatedChannels: useAtMax(updateForm, 'totalDedicatedChannels', 5),
+    totalPublicChannelLength: useAtMax(updateForm, 'totalPublicChannelLength', 20), totalDedicatedChannelLength: useAtMax(updateForm, 'totalDedicatedChannelLength', 20),
+    totalBuoysBeacons: useAtMax(updateForm, 'totalBuoysBeacons', 5), totalDikes: useAtMax(updateForm, 'totalDikes', 5),
+    totalDikeLength: useAtMax(updateForm, 'totalDikeLength', 20), totalLighthouses: useAtMax(updateForm, 'totalLighthouses', 5),
+    buoyBerthCount: useAtMax(updateForm, 'buoyBerthCount', 5), anchorageCount: useAtMax(updateForm, 'anchorageCount', 5),
+    transshipmentCount: useAtMax(updateForm, 'transshipmentCount', 5),
+  };
+
   // Khi chọn loại đối tượng → tự set hệ quy chiếu & quy tắc hiển thị
   useEffect(() => {
     if (!createGeometryType) return;
@@ -1055,22 +1090,12 @@ export default function PortListPage() {
     // Validate required fields for submit/approve — GPS bắt buộc theo loại đối tượng khi gửi duyệt, không bắt buộc khi lưu nháp
     const currentAction = actionTypeRef.current;
     if (currentAction === 'submit' || currentAction === 'approve') {
-      // Validate GPS coordinates (required only when Loại đối tượng is selected)
+      // Validate GPS coordinates — bắt buộc ≥1 tọa độ khi gửi duyệt/phê duyệt; lưu nháp không cần
       const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
-      if (values.geometryType) {
-        const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-        if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
-          setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.\nVui lòng nhập đầy đủ thông tin.`);
-          return;
-        }
-        // Check for incomplete entries (has some DMS fields but not all)
-        for (let i = 0; i < gpsCoordList.length; i++) {
-          const c = gpsCoordList[i];
-          if (c.lat == null || c.lng == null || isNaN(c.lat) || isNaN(c.lng)) {
-            setGpsError(`Tọa độ thứ ${i + 1} chưa nhập đầy đủ thông tin Độ/Phút/Giây.`);
-            return;
-          }
-        }
+      if (gpsComplete.length === 0) {
+        toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
+        setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
+        return;
       }
       const fieldErrors: Array<{ name: Array<string | number>; errors: string[] }> = [];
       if (!values.orgUnitId) fieldErrors.push({ name: ['orgUnitId'], errors: ['Đơn vị quản lý là bắt buộc khi gửi phê duyệt'] });
@@ -1204,13 +1229,6 @@ export default function PortListPage() {
   const handleUpdateFinish = async (values: Record<string, unknown>) => {
     if (!selectedRecord) return;
     const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
-    if (values.geometryType) {
-      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
-        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.\nVui lòng nhập đầy đủ thông tin.`);
-        return;
-      }
-    }
     setSubmitting(true);
     try {
       const n = (v: unknown): number | undefined =>
@@ -2202,6 +2220,7 @@ export default function PortListPage() {
                           { required: true, message: 'Tên cảng không được để trống' },
                           { max: 255, message: 'Tên cảng tối đa 255 ký tự' },
                         ]}
+                        validateStatus={atMaxCreate.portName ? 'error' : undefined} help={atMaxCreate.portName ? 'Đã đạt tối đa 255 ký tự' : undefined}
                       >
                         <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} style={inputStyle} />
                       </Form.Item>
@@ -2232,6 +2251,7 @@ export default function PortListPage() {
                         name="detailedLocation"
                         {...labelProps('Địa điểm chi tiết')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.detailedLocation ? 'error' : undefined} help={atMaxCreate.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}
                       >
                         <Input placeholder="VD: Xã Đình Vũ, Quận Hải An" maxLength={500} style={inputStyle} />
                       </Form.Item>
@@ -2262,6 +2282,7 @@ export default function PortListPage() {
                         name="waterAreaScope"
                         {...labelProps('Phạm vi vùng nước cảng biển')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.waterAreaScope ? 'error' : undefined} help={atMaxCreate.waterAreaScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                       >
                         <Input placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} style={inputStyle} />
                       </Form.Item>
@@ -2273,8 +2294,9 @@ export default function PortListPage() {
                         name="totalBerths"
                         {...labelProps('Tổng số bến cảng')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalBerths ? 'error' : undefined} help={atMaxCreate.totalBerths ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -2282,8 +2304,9 @@ export default function PortListPage() {
                         name="totalAnchoragesTransshipment"
                         {...labelProps('Tổng số khu neo đậu, khu chuyển tải')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalAnchoragesTransshipment ? 'error' : undefined} help={atMaxCreate.totalAnchoragesTransshipment ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -2293,8 +2316,9 @@ export default function PortListPage() {
                         name="totalPublicChannels"
                         {...labelProps('Tổng số tuyến luồng hàng hải công cộng')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalPublicChannels ? 'error' : undefined} help={atMaxCreate.totalPublicChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -2302,8 +2326,9 @@ export default function PortListPage() {
                         name="totalDedicatedChannels"
                         {...labelProps('Tổng số tuyến luồng hàng hải chuyên dùng')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalDedicatedChannels ? 'error' : undefined} help={atMaxCreate.totalDedicatedChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -2313,8 +2338,9 @@ export default function PortListPage() {
                         name="totalPublicChannelLength"
                         {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalPublicChannelLength ? 'error' : undefined} help={atMaxCreate.totalPublicChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                        <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -2322,8 +2348,9 @@ export default function PortListPage() {
                         name="totalDedicatedChannelLength"
                         {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalDedicatedChannelLength ? 'error' : undefined} help={atMaxCreate.totalDedicatedChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                        <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -2333,8 +2360,9 @@ export default function PortListPage() {
                         name="totalBuoysBeacons"
                         {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalBuoysBeacons ? 'error' : undefined} help={atMaxCreate.totalBuoysBeacons ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -2342,8 +2370,9 @@ export default function PortListPage() {
                         name="totalDikes"
                         {...labelProps('Tổng số đê, kè')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalDikes ? 'error' : undefined} help={atMaxCreate.totalDikes ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -2353,8 +2382,9 @@ export default function PortListPage() {
                         name="totalDikeLength"
                         {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalDikeLength ? 'error' : undefined} help={atMaxCreate.totalDikeLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                        <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -2362,8 +2392,9 @@ export default function PortListPage() {
                         name="totalLighthouses"
                         {...labelProps('Tổng số đèn biển, đăng, tiêu độc lập')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.totalLighthouses ? 'error' : undefined} help={atMaxCreate.totalLighthouses ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -2373,8 +2404,9 @@ export default function PortListPage() {
                         name="buoyBerthCount"
                         {...labelProps('Số lượng bến phao')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.buoyBerthCount ? 'error' : undefined} help={atMaxCreate.buoyBerthCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -2382,8 +2414,9 @@ export default function PortListPage() {
                         name="anchorageCount"
                         {...labelProps('Số lượng khu neo đậu')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.anchorageCount ? 'error' : undefined} help={atMaxCreate.anchorageCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -2393,8 +2426,9 @@ export default function PortListPage() {
                         name="transshipmentCount"
                         {...labelProps('Số lượng khu chuyển tải')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.transshipmentCount ? 'error' : undefined} help={atMaxCreate.transshipmentCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
                       >
-                        <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                        <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -2402,6 +2436,7 @@ export default function PortListPage() {
                         name="otherWaterAreas"
                         {...labelProps('Các khu nước, vùng nước khác')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.otherWaterAreas ? 'error' : undefined} help={atMaxCreate.otherWaterAreas ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                       >
                         <Input placeholder="Mô tả" maxLength={2000} style={inputStyle} />
                       </Form.Item>
@@ -2413,6 +2448,7 @@ export default function PortListPage() {
                         name="remarks"
                         {...labelProps('Ghi chú')}
                         style={{ marginBottom: spaceFormField }}
+                        validateStatus={atMaxCreate.remarks ? 'error' : undefined} help={atMaxCreate.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                       >
                         <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
                           styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
@@ -2927,6 +2963,7 @@ export default function PortListPage() {
                               { required: true, message: 'Tên cảng không được để trống' },
                               { max: 255, message: 'Tên cảng tối đa 255 ký tự' },
                             ]}
+                            validateStatus={atMaxUpdate.portName ? 'error' : undefined} help={atMaxUpdate.portName ? 'Đã đạt tối đa 255 ký tự' : undefined}
                           >
                             <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} style={inputStyle} />
                           </Form.Item>
@@ -2957,6 +2994,7 @@ export default function PortListPage() {
                             name="detailedLocation"
                             {...labelProps('Địa điểm chi tiết')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.detailedLocation ? 'error' : undefined} help={atMaxUpdate.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}
                           >
                             <Input placeholder="VD: Xã Đình Vũ, Quận Hải An" maxLength={500} style={inputStyle} />
                           </Form.Item>
@@ -2987,6 +3025,7 @@ export default function PortListPage() {
                             name="waterAreaScope"
                             {...labelProps('Phạm vi vùng nước cảng biển')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.waterAreaScope ? 'error' : undefined} help={atMaxUpdate.waterAreaScope ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                           >
                             <Input placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} style={inputStyle} />
                           </Form.Item>
@@ -2998,8 +3037,9 @@ export default function PortListPage() {
                             name="totalBerths"
                             {...labelProps('Tổng số bến cảng')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalBerths ? 'error' : undefined} help={atMaxUpdate.totalBerths ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -3007,8 +3047,9 @@ export default function PortListPage() {
                             name="totalAnchoragesTransshipment"
                             {...labelProps('Tổng số khu neo đậu, khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalAnchoragesTransshipment ? 'error' : undefined} help={atMaxUpdate.totalAnchoragesTransshipment ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -3018,8 +3059,9 @@ export default function PortListPage() {
                             name="totalPublicChannels"
                             {...labelProps('Tổng số tuyến luồng hàng hải công cộng')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalPublicChannels ? 'error' : undefined} help={atMaxUpdate.totalPublicChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -3027,8 +3069,9 @@ export default function PortListPage() {
                             name="totalDedicatedChannels"
                             {...labelProps('Tổng số tuyến luồng hàng hải chuyên dùng')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalDedicatedChannels ? 'error' : undefined} help={atMaxUpdate.totalDedicatedChannels ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -3038,8 +3081,9 @@ export default function PortListPage() {
                             name="totalPublicChannelLength"
                             {...labelProps('Tổng chiều dài luồng hàng hải công cộng (km)')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalPublicChannelLength ? 'error' : undefined} help={atMaxUpdate.totalPublicChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                            <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -3047,8 +3091,9 @@ export default function PortListPage() {
                             name="totalDedicatedChannelLength"
                             {...labelProps('Tổng chiều dài luồng hàng hải chuyên dùng (km)')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalDedicatedChannelLength ? 'error' : undefined} help={atMaxUpdate.totalDedicatedChannelLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                            <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -3058,8 +3103,9 @@ export default function PortListPage() {
                             name="totalBuoysBeacons"
                             {...labelProps('Tổng số phao tiêu, báo hiệu hàng hải trên luồng')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalBuoysBeacons ? 'error' : undefined} help={atMaxUpdate.totalBuoysBeacons ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -3067,8 +3113,9 @@ export default function PortListPage() {
                             name="totalDikes"
                             {...labelProps('Tổng số đê, kè')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalDikes ? 'error' : undefined} help={atMaxUpdate.totalDikes ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -3078,8 +3125,9 @@ export default function PortListPage() {
                             name="totalDikeLength"
                             {...labelProps('Tổng chiều dài hệ thống đê, kè (km)')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalDikeLength ? 'error' : undefined} help={atMaxUpdate.totalDikeLength ? 'Đã đạt tối đa 20 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                            <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -3087,8 +3135,9 @@ export default function PortListPage() {
                             name="totalLighthouses"
                             {...labelProps('Tổng số đèn biển, đăng, tiêu độc lập')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.totalLighthouses ? 'error' : undefined} help={atMaxUpdate.totalLighthouses ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -3098,8 +3147,9 @@ export default function PortListPage() {
                             name="buoyBerthCount"
                             {...labelProps('Số lượng bến phao')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.buoyBerthCount ? 'error' : undefined} help={atMaxUpdate.buoyBerthCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -3107,8 +3157,9 @@ export default function PortListPage() {
                             name="anchorageCount"
                             {...labelProps('Số lượng khu neo đậu')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.anchorageCount ? 'error' : undefined} help={atMaxUpdate.anchorageCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -3118,8 +3169,9 @@ export default function PortListPage() {
                             name="transshipmentCount"
                             {...labelProps('Số lượng khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.transshipmentCount ? 'error' : undefined} help={atMaxUpdate.transshipmentCount ? 'Đã đạt tối đa 5 ký tự' : undefined}
                           >
-                            <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                            <InputNumber min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
@@ -3127,6 +3179,7 @@ export default function PortListPage() {
                             name="otherWaterAreas"
                             {...labelProps('Các khu nước, vùng nước khác')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.otherWaterAreas ? 'error' : undefined} help={atMaxUpdate.otherWaterAreas ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                           >
                             <Input placeholder="Mô tả" maxLength={2000} style={inputStyle} />
                           </Form.Item>
@@ -3138,6 +3191,7 @@ export default function PortListPage() {
                             name="remarks"
                             {...labelProps('Ghi chú')}
                             style={{ marginBottom: spaceFormField }}
+                            validateStatus={atMaxUpdate.remarks ? 'error' : undefined} help={atMaxUpdate.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                           >
                             <Input.TextArea rows={3} placeholder="Ghi chú" maxLength={2000}
                               styles={{ textarea: { borderRadius: radiusPill, resize: 'none', padding: '12px 16px' } }}
