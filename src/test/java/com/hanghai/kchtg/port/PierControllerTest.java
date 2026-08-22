@@ -135,7 +135,7 @@ class PierControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<PierResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(pierService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(page);
+        when(pierService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/piers")
                         .param("page", "0")
