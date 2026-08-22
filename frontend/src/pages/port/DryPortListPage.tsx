@@ -250,7 +250,7 @@ function getActionLabel(items: any[]): { label: string; color: string } {
 /* ───────────────────────────────────────────────
    Component
    ─────────────────────────────────────────────── */
-export default function DryPortList() {
+export default function DryPortListPage() {
   const hasPerm = usePermissionStore((s: { hasPermission: (key: string) => boolean }) => s.hasPermission);
 
   const [search, setSearch] = useState('');
