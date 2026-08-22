@@ -101,8 +101,10 @@ public class BuoyStationService {
      * Format: {portCode}-NTPT{2 số} (mẫu BerthService.generateBerthCode).
      */
     public String generateCode(UUID portId) {
-        portRepository.findById(portId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
+        if (portId != null) {
+            portRepository.findById(portId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
+        }
         // CSV: mã tự sinh NT-{seq} — đếm toàn bộ nhà trạm (không phụ thuộc prefix cảng)
         int maxNum = 0;
         for (BuoyStation b : phaoRepo.findAll()) {
@@ -122,6 +124,9 @@ public class BuoyStationService {
     @Transactional
     public BuoyStationResponse create(CreateBuoyStationRequest request) {
         FieldWriteGuard.validateObject(request);
+        if (request.getCode() == null || request.getCode().isBlank()) {
+            request.setCode(generateCode(request.getPortId()));
+        }
         if (phaoRepo.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã nhà trạm phao tiêu đã tồn tại: " + request.getCode());
         }

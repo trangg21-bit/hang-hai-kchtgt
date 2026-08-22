@@ -43,6 +43,8 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
     @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL " +
             "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(p.pierCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(p.pierName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
+            "AND (CAST(:pierCode AS string) IS NULL OR LOWER(p.pierCode) LIKE LOWER(CONCAT('%', CAST(:pierCode AS string), '%'))) " +
+            "AND (CAST(:pierName AS string) IS NULL OR LOWER(p.pierName) LIKE LOWER(CONCAT('%', CAST(:pierName AS string), '%'))) " +
             "AND (:berthId IS NULL OR p.berthId = :berthId) " +
             "AND (:portId IS NULL OR p.portId = :portId) " +
             "AND (:pierType IS NULL OR p.pierType = :pierType) " +
@@ -59,6 +61,8 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
             @Param("includeAll") boolean includeAll,
             @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("search") String search,
+            @Param("pierCode") String pierCode,
+            @Param("pierName") String pierName,
             @Param("berthId") UUID berthId,
             @Param("portId") UUID portId,
             @Param("pierType") PierType pierType,
@@ -77,7 +81,7 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
     default Page<Pier> searchPiers(UUID orgUnitId, String search, UUID berthId, PierType pierType,
             OperationalStatus operationalStatus, ApprovalStatus approvalStatus, Pageable pageable) {
         return searchPiers(orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),
-                search, berthId, null, pierType, null, operationalStatus, approvalStatus,
+                search, null, null, berthId, null, pierType, null, operationalStatus, approvalStatus,
                 null, null, null, null, null, null, pageable);
     }
 }

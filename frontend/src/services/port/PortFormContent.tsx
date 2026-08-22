@@ -14,6 +14,7 @@ import {
   surfaceCard, surfacePage, uploadHintStyle,
 } from '../../tokens';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import PagedTable from '../../components/list-view/PagedTable';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -41,7 +42,7 @@ export interface PortFormContentProps {
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
   updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => void;
-  ddToDms: (dd: number) => { d: number; m: number; s: number };
+  ddToDms: (dd: number) => { d: number | null; m: number | null; s: number | null };
   // Infra state
   infraList: Array<{ stt: number; infraName: string; quantity: number | null }>;
   addInfra: () => void;
@@ -103,7 +104,7 @@ export default function PortFormContent({
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="portCode" {...labelProps('Mã cảng biển')} required style={{ marginBottom: spaceFormField }}
+              <Form.Item name="portCode" {...labelProps('Mã cảng biển')} style={{ marginBottom: spaceFormField }}
                 tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa">
                 <Input disabled placeholder={portCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} maxLength={50}
                   style={{ ...inputStyle, color: '#8c8c8c', cursor: 'not-allowed' }} />
@@ -303,11 +304,8 @@ export default function PortFormContent({
               <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
             </div>
           ) : (
-            <Table className="list-view-table" dataSource={gpsCoordList.map((c, i) => ({ ...c, key: i, _idx: i }))}
-              pagination={false} size="middle" bordered scroll={{ x: 820 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+              tableProps={{ scroll: { x: 820 } }}>
               <Table.Column title="Vĩ độ (N)" key="lat"
                 render={(_: any, record: any) => {
                   const dms = ddToDms(record.lat);
@@ -337,7 +335,7 @@ export default function PortFormContent({
               <Table.Column title="" key="actions" width={44} align="center"
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
         </div>
       ),
@@ -358,11 +356,8 @@ export default function PortFormContent({
               <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>Thêm công trình</Button>
             </div>
           ) : (
-            <Table className="list-view-table" dataSource={infraList.map((inf, i) => ({ ...inf, key: i, _idx: i }))}
-              pagination={false} size="middle" bordered scroll={{ x: 600 }}>
-              <Table.Column title="STT" dataIndex="stt" key="stt" width={60} align="center"
-                render={(val: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{val}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable dataSource={infraList.map((inf, i) => ({ ...inf, _idx: i }))}
+              tableProps={{ scroll: { x: 600 } }}>
               <Table.Column title="Tên Công Trình" key="name"
                 render={(_: any, record: any) => <Input value={record.infraName} onChange={(e) => updateInfraName(record._idx, e.target.value)} placeholder="Tên công trình" maxLength={500} showCount style={{ borderRadius: radiusPill, height: 40 }} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
@@ -372,7 +367,7 @@ export default function PortFormContent({
               <Table.Column title="" key="actions" width={44} align="center"
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeInfra(record._idx)} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
         </div>
       ),
@@ -410,18 +405,15 @@ export default function PortFormContent({
               </Upload>
             </div>
           ) : (
-            <Table className="list-view-table" dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i }))}
-              pagination={false} size="middle" bordered scroll={{ x: 400 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
+              tableProps={{ scroll: { x: 400 } }}>
               <Table.Column title="Tên file" key="name" dataIndex="name"
                 render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               <Table.Column title="" key="actions" width={44} align="center"
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => setUploadFileList(uploadFileList.filter(x => x.uid !== record.uid))} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
           <div style={{ marginTop: spaceSm }}>
             <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>

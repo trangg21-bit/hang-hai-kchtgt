@@ -22,7 +22,6 @@ public class CreateBuoyStationRequest {
 
     private RecordSecurityLevel securityLevel;
 
-    @NotBlank(message = "Mã nhà trạm phao không được để trống")
     @Size(max = 50)
     private String code;
 

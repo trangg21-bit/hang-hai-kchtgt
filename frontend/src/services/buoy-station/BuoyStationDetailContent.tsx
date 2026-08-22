@@ -13,10 +13,11 @@ import {
   actionPrimary, statusOperational, statusAttention, statusCritical, surfaceCard,
   textPrimary, textSecondary, textTertiary, borderDefault,
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
-  spaceSm, spaceXs,
+  spaceSm,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { resolveOrgFullPath, type OrgUnitTreeOption } from '../../components/org-unit';
+import PagedTable from '../../components/list-view/PagedTable';
 import Pagination from '../../components/list-view/Pagination';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
@@ -261,12 +262,9 @@ export default function BuoyStationDetailContent({
               ])}
               <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                 <span style={detailLabelStyle}>Tọa độ GPS</span>
-                <Table className="list-view-table" dataSource={coords.map((c, i) => ({ ...c, key: i, _idx: i }))} pagination={false} size="middle" bordered style={{ marginTop: spaceXs }}
-                  locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div> }}
+                <PagedTable dataSource={coords.map((c) => ({ ...c }))}
+                  emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
                 >
-                  <Table.Column title="STT" key="stt" width={60} align="center"
-                    render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                     render={(_: any, rec: any) => {
                       const dms = ddToDms(rec.lat);
@@ -279,7 +277,7 @@ export default function BuoyStationDetailContent({
                       return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                     }}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, padding: '12px 12px' } })} />
-                </Table>
+                </PagedTable>
               </div>
             </div>
           ),
@@ -292,16 +290,14 @@ export default function BuoyStationDetailContent({
               <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
-              <Table className="list-view-table" rowKey="key" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}
-                locale={{ emptyText: emptyBox('Không có tài liệu đính kèm', <FileOutlined />) }}
+              <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
+                emptyText={emptyBox('Không có tài liệu đính kèm', <FileOutlined />)}
+                tableProps={{ style: { marginLeft: 12, marginRight: 12 } }}
               >
-                <Table.Column title="STT" key="stt" width={60} align="center"
-                  render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
                   render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
                   onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </Table>
+              </PagedTable>
             </div>
           ),
         },

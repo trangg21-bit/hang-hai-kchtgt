@@ -84,6 +84,7 @@ import { symbolService } from '../symbolService';
 import type { Symbol } from '../symbolService';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, StatusTabs, DataTable } from '../../components/list-view';
+import PagedTable from '../../components/list-view/PagedTable';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import PortFormContent from './PortFormContent';
@@ -462,7 +463,8 @@ export default function PortListPage() {
   const canSubmitForApproval = hasPerm?.('port:update') || hasPerm?.('port:approve') || hasPerm?.('port:manage');
 
   // ── State ───────────────────────────────────────────────────────
-  const [search, setSearch] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterCode, setFilterCode] = useState('');
   const [filterTinh, setFilterTinh] = useState('');
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
   const [filterPortGroup, setFilterPortGroup] = useState<number | undefined>();
@@ -475,7 +477,8 @@ export default function PortListPage() {
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedName, setDebouncedName] = useState('');
+  const [debouncedCode, setDebouncedCode] = useState('');
   const [sortField, setSortField] = useState('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -637,22 +640,27 @@ export default function PortListPage() {
   const [gpsCoordList, setGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
 
   // DMS ↔ DD conversion helpers
-  const ddToDms = (dd: number): { d: number; m: number; s: number } => {
-    if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-    const abs = Math.abs(dd);
-    const d = Math.floor(abs);
-    const m = Math.floor((abs - d) * 60);
-    const s = parseFloat(((abs - d - m / 60) * 3600).toFixed(2));
-    return { d, m, s };
+  const ddToDms = (dd: number): { d: number | null; m: number | null; s: number | null } => {
+    if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
+    let abs = Math.abs(dd);
+    let d = Math.floor(abs);
+    let mFloat = (abs - d) * 60;
+    if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
+    let m = Math.floor(mFloat);
+    let sFloat = (mFloat - m) * 60;
+    if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
+    let s = Math.round(sFloat * 100) / 100;
+    if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
+    return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
   };
-  const dmToDd = (d: number, m: number, s: number): number => d + m / 60 + s / 3600;
+  const dmToDd = (d: number | null, m: number | null, s: number | null): number => (d ?? 0) + (m ?? 0) / 60 + (s ?? 0) / 3600;
 
   const addGpsPoint = () => setGpsCoordList([...gpsCoordList, { lat: NaN, lng: NaN }]);
   const removeGpsPoint = (i: number) => {
     const next = gpsCoordList.filter((_, idx) => idx !== i);
     setGpsCoordList(next);
   };
-  const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => {
+  const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     const next = [...gpsCoordList];
     next[i] = { ...next[i], [field]: dmToDd(d, m, s) };
     setGpsCoordList(next);
@@ -675,12 +683,15 @@ export default function PortListPage() {
     setInfraList(next);
   };
 
-  // Debounce search 300ms (F-012 AC-012-02)
+  // Debounce search 300ms (F-012 AC-012-02) — tên và mã tách riêng
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedName(filterName);
+      setDebouncedCode(filterCode);
+    }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search]);
+  }, [filterName, filterCode]);
 
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
@@ -719,7 +730,8 @@ export default function PortListPage() {
   }, [orgUnits]);
 
   const handleFilterApply = useCallback(() => {
-    setSearch((filterValues.search || '').trim());
+    setFilterName((filterValues.portName || '').trim());
+    setFilterCode((filterValues.portCode || '').trim());
     setFilterOrgUnitId(filterValues.orgUnitId === '__all__' ? undefined : filterValues.orgUnitId || undefined);
     setFilterPortClass(filterValues.portClass ? Number(filterValues.portClass) : undefined);
     setFilterPortGroup(filterValues.portGroup ? Number(filterValues.portGroup) : undefined);
@@ -733,7 +745,8 @@ export default function PortListPage() {
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
     setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
-    setSearch('');
+    setFilterName('');
+    setFilterCode('');
     setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg || undefined);
     setFilterTinh('');
     setFilterPortGroup(undefined);
@@ -1275,7 +1288,8 @@ export default function PortListPage() {
         page: page - 1,
         size: pageSize,
         orgUnitId: filterOrgUnitId,
-        search: debouncedSearch || undefined,
+        portName: debouncedName || undefined,
+        portCode: debouncedCode || undefined,
         province: filterTinh || undefined,
         operationalStatus: filterStatus,
         approvalStatus: filterApprovalStatus,
@@ -1293,7 +1307,7 @@ export default function PortListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus]);
+  }, [page, pageSize, debouncedName, debouncedCode, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus]);
 
   const fetchTabCounts = useCallback(async () => {
     const statuses = ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'];
@@ -1440,6 +1454,22 @@ export default function PortListPage() {
     return `Nhóm ${val}`;
   };
 
+  // ── Detail drawer (giống BerthListPage.openDetailDrawer: mở ngay với dòng hiện tại,
+  //    fetch dữ liệu mới ở nền — KHÔNG bật isLoading để tránh load lại/remount danh sách) ──
+  const openDetail = useCallback(async (record: CangBienResponse) => {
+    setSelectedRecord(record);
+    setDetailModalVisible(true);
+    try {
+      const data = await fetchCangBienById(record.id);
+      setSelectedRecord(data);
+    } catch {
+      toast.error('Không thể tải thông tin chi tiết cảng biển');
+    }
+    documentApi.listByEntity('port', record.id, { page: 1, size: 20 })
+      .then((res) => setDetailFiles(res.data || []))
+      .catch(() => setDetailFiles([]));
+  }, []);
+
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: CangBienResponse) => {
@@ -1448,20 +1478,7 @@ export default function PortListPage() {
           key: 'view',
           label: 'Chi tiết',
           icon: <EyeOutlined />,
-          onClick: async () => {
-            try {
-              setIsLoading(true);
-              const data = await fetchCangBienById(record.id);
-              setSelectedRecord(data);
-              const fileRes = await documentApi.listByEntity('port', record.id, { page: 1, size: 20 });
-              setDetailFiles(fileRes.data || []);
-              setDetailModalVisible(true);
-            } catch (err) {
-              toast.error('Không thể tải thông tin chi tiết cảng biển');
-            } finally {
-              setIsLoading(false);
-            }
-          },
+          onClick: () => openDetail(record),
         },
       ];
       if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
@@ -1480,8 +1497,11 @@ export default function PortListPage() {
           label: 'Chỉnh sửa',
           icon: <EditOutlined />,
           onClick: async () => {
+            // Giống Bến cảng: mở modal NGAY với dòng hiện tại, fetch dữ liệu ở nền —
+            // KHÔNG bật setIsLoading để tránh load lại/remount danh sách
+            setSelectedRecord(record);
+            setUpdateModalVisible(true);
             try {
-              setIsLoading(true);
               const data = await fetchCangBienById(record.id);
               setSelectedRecord(data);
               updateForm.setFieldsValue({
@@ -1548,11 +1568,9 @@ export default function PortListPage() {
                 pts2.push({ lat: Number(data.latitude), lng: Number(data.longitude) });
               }
               setGpsCoordList(pts2);
-              setUpdateModalVisible(true);
             } catch (err) {
               toast.error('Không thể tải thông tin chỉnh sửa cảng biển');
-            } finally {
-              setIsLoading(false);
+              setUpdateModalVisible(false);
             }
           },
         });
@@ -1594,7 +1612,7 @@ export default function PortListPage() {
       }
       return actions;
     },
-    [hasPerm, updateForm, handleApprove, handleDelete, handleReject, historyHandler, handleSubmitDraft],
+    [hasPerm, updateForm, handleApprove, handleDelete, handleReject, historyHandler, handleSubmitDraft, openDetail],
   );
 
   // ── Columns (DataTable format) ───────────────────────────────────
@@ -1629,19 +1647,7 @@ export default function PortListPage() {
         sortOrder: sortField === 'portName' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => (
           <a
-            onClick={async () => {
-              try {
-                setIsLoading(true);
-                const data = await fetchCangBienById(record.id);
-                setSelectedRecord(data);
-                documentApi.listByEntity('port', record.id, { page: 1, size: 20 }).then(res => setDetailFiles(res.data || [])).catch(() => setDetailFiles([]));
-                setDetailModalVisible(true);
-              } catch {
-                toast.error('Không thể tải thông tin chi tiết cảng biển');
-              } finally {
-                setIsLoading(false);
-              }
-            }}
+            onClick={() => openDetail(record)}
             style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer' }}
           >
             {v}
@@ -1688,26 +1694,6 @@ export default function PortListPage() {
         render: (v: string | null) => v || '—',
       },
       {
-        key: 'updatedBy',
-        label: 'Người cập nhật',
-        dataIndex: 'updatedByName',
-        width: 170,
-        sortable: true,
-        sortOrder: sortField === 'updatedBy' ? sortOrder : null,
-        render: (v: string | null) => <span style={{ fontWeight: fontWeightBold }}>{v || '—'}</span>,
-      },
-      {
-        key: 'updatedAt',
-        label: 'Ngày cập nhật',
-        dataIndex: 'updatedAt',
-        width: 170,
-        sortable: true,
-        sortOrder: sortField === 'updatedAt' ? sortOrder : null,
-        render: (v: string | null) => (
-          <span>{formatDate(v)}</span>
-        ),
-      },
-      {
         key: 'approvalStatus',
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
@@ -1744,8 +1730,28 @@ export default function PortListPage() {
           );
         },
       },
+      {
+        key: 'updatedBy',
+        label: 'Người cập nhật',
+        dataIndex: 'updatedByName',
+        width: 170,
+        sortable: true,
+        sortOrder: sortField === 'updatedBy' ? sortOrder : null,
+        render: (v: string | null) => <span style={{ fontWeight: fontWeightBold }}>{v || '—'}</span>,
+      },
+      {
+        key: 'updatedAt',
+        label: 'Ngày cập nhật',
+        dataIndex: 'updatedAt',
+        width: 170,
+        sortable: true,
+        sortOrder: sortField === 'updatedAt' ? sortOrder : null,
+        render: (v: string | null) => (
+          <span>{formatDate(v)}</span>
+        ),
+      },
     ],
-    [page, pageSize, getPortGroupLabel, orgLevel2Map, sortField, sortOrder],
+    [page, pageSize, getPortGroupLabel, orgLevel2Map, sortField, sortOrder, openDetail],
   );
 
   // ── Form field style ─────────────────────────────────────────────
@@ -1965,20 +1971,12 @@ export default function PortListPage() {
                 />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã cảng biển</div>
-                <Input placeholder="Tìm theo tên hoặc mã cảng..." allowClear
-                  value={filterValues.search || ''}
-                  onChange={(e) => setFilterValues((prev) => ({ ...prev, search: e.target.value }))}
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng biển</div>
+                <Input placeholder="Tìm theo tên cảng biển..." allowClear
+                  value={filterValues.portName || ''}
+                  onChange={(e) => setFilterValues((prev) => ({ ...prev, portName: e.target.value }))}
                   onPressEnter={handleFilterApply}
                   style={{ borderRadius: radiusPill, height: 40 }} />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Nhóm cảng biển</div>
-                <Select placeholder="Chọn nhóm" allowClear
-                  value={filterValues.portGroup || undefined}
-                  onChange={(val) => setFilterValues((prev) => ({ ...prev, portGroup: val }))}
-                  options={[{ value: '1', label: 'Nhóm 1' }, { value: '2', label: 'Nhóm 2' }, { value: '3', label: 'Nhóm 3' }, { value: '4', label: 'Nhóm 4' }, { value: '5', label: 'Nhóm 5' }]}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
                 <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân cấp</div>
@@ -1989,6 +1987,22 @@ export default function PortListPage() {
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
               {filterCollapsed && (<>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Nhóm cảng biển</div>
+                  <Select placeholder="Chọn nhóm" allowClear
+                    value={filterValues.portGroup || undefined}
+                    onChange={(val) => setFilterValues((prev) => ({ ...prev, portGroup: val }))}
+                    options={[{ value: '1', label: 'Nhóm 1' }, { value: '2', label: 'Nhóm 2' }, { value: '3', label: 'Nhóm 3' }, { value: '4', label: 'Nhóm 4' }, { value: '5', label: 'Nhóm 5' }]}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cảng biển</div>
+                  <Input placeholder="Tìm theo mã cảng biển..." allowClear
+                    value={filterValues.portCode || ''}
+                    onChange={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value }))}
+                    onPressEnter={handleFilterApply}
+                    style={{ borderRadius: radiusPill, height: 40 }} />
+                </div>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tỉnh/Thành phố</div>
                   <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
@@ -2027,7 +2041,7 @@ export default function PortListPage() {
             onStatusTabChange={(key) => {
               setActiveStatusTab(key === 'all' ? '' : key);
               setFilterApprovalStatus(key === 'all' ? undefined : key);
-              if (key === 'all') { setFilterStatus(undefined); setFilterTinh(undefined); setSearch(''); }
+              if (key === 'all') { setFilterStatus(undefined); setFilterTinh(undefined); setFilterName(''); setFilterCode(''); }
               setPage(1);
             }}
           >
@@ -2166,10 +2180,8 @@ export default function PortListPage() {
                       <Form.Item
                         name="portCode"
                         {...labelProps('Mã cảng biển')}
-                        required
                         style={{ marginBottom: spaceFormField }}
                         tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa"
-                        rules={[{ required: true, message: 'Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.' }]}
                       >
                         <Input
                           disabled
@@ -2522,27 +2534,10 @@ export default function PortListPage() {
                       </Button>
                     </div>
                   ) : (
-                    <Table
-                      className="list-view-table"
-                      dataSource={gpsCoordList.map((c, i) => ({ ...c, key: i, _idx: i }))}
-                      pagination={false}
-                      size="middle"
-                      bordered
-                      scroll={{ x: 820 }}
+                    <PagedTable
+                      dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+                      tableProps={{ scroll: { x: 820 } }}
                     >
-                      <Table.Column
-                        title="STT"
-                        dataIndex="_idx"
-                        key="stt"
-                        width={60}
-                        align="center"
-                        render={(_: any, __: any, i: number) => (
-                          <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-                        )}
-                        onHeaderCell={() => ({
-                          style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                        })}
-                      />
                       <Table.Column
                         title="Vĩ độ (N)"
                         key="lat"
@@ -2632,7 +2627,7 @@ export default function PortListPage() {
                           style: { background: colors.bodyBg, padding: '12px 6px' },
                         })}
                       />
-                    </Table>
+                    </PagedTable>
                   )}
                 </div>)
               },
@@ -2661,27 +2656,10 @@ export default function PortListPage() {
                       </Button>
                     </div>
                   ) : (
-                    <Table
-                      className="list-view-table"
-                      dataSource={infraList.map((inf, i) => ({ ...inf, key: i, _idx: i }))}
-                      pagination={false}
-                      size="middle"
-                      bordered
-                      scroll={{ x: 600 }}
+                    <PagedTable
+                      dataSource={infraList.map((inf, i) => ({ ...inf, _idx: i }))}
+                      tableProps={{ scroll: { x: 600 } }}
                     >
-                      <Table.Column
-                        title="STT"
-                        dataIndex="stt"
-                        key="stt"
-                        width={60}
-                        align="center"
-                        render={(val: number) => (
-                          <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{val}</span>
-                        )}
-                        onHeaderCell={() => ({
-                          style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                        })}
-                      />
                       <Table.Column
                         title="Tên Công Trình"
                         key="name"
@@ -2741,7 +2719,7 @@ export default function PortListPage() {
                           style: { background: colors.bodyBg, padding: '12px 6px' },
                         })}
                       />
-                    </Table>
+                    </PagedTable>
                   )}
                 </div>)
               },
@@ -2797,26 +2775,10 @@ export default function PortListPage() {
                       </Upload>
                     </div>
                   ) : (
-                    <Table
-                      className="list-view-table"
-                      dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i }))}
-                      pagination={false}
-                      size="middle"
-                      bordered
-                      scroll={{ x: 400 }}
+                    <PagedTable
+                      dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
+                      tableProps={{ scroll: { x: 400 } }}
                     >
-                      <Table.Column
-                        title="STT"
-                        key="stt"
-                        width={60}
-                        align="center"
-                        render={(_: any, __: any, i: number) => (
-                          <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-                        )}
-                        onHeaderCell={() => ({
-                          style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                        })}
-                      />
                       <Table.Column
                         title="Tên file"
                         key="name"
@@ -2844,7 +2806,7 @@ export default function PortListPage() {
                           style: { background: colors.bodyBg, padding: '12px 6px' },
                         })}
                       />
-                    </Table>
+                    </PagedTable>
                   )}
                   <div style={{ marginTop: spaceSm }}>
                     <span style={uploadHintStyle}>
@@ -2941,10 +2903,8 @@ export default function PortListPage() {
                           <Form.Item
                             name="portCode"
                             {...labelProps('Mã cảng biển')}
-                            required
                             style={{ marginBottom: spaceFormField }}
                             tooltip="Mã cảng được sinh tự động, không thể chỉnh sửa"
-                            rules={[{ required: true, message: 'Mã cảng chưa được sinh tự động. Vui lòng đóng và mở lại form.' }]}
                           >
                             <Input
                               disabled
@@ -3272,27 +3232,10 @@ export default function PortListPage() {
                           </Button>
                         </div>
                       ) : (
-                        <Table
-                          className="list-view-table"
-                          dataSource={gpsCoordList.map((c, i) => ({ ...c, key: i, _idx: i }))}
-                          pagination={false}
-                          size="middle"
-                          bordered
-                          scroll={{ x: 820 }}
+                        <PagedTable
+                          dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+                          tableProps={{ scroll: { x: 820 } }}
                         >
-                          <Table.Column
-                            title="STT"
-                            dataIndex="_idx"
-                            key="stt"
-                            width={60}
-                            align="center"
-                            render={(_: any, __: any, i: number) => (
-                              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-                            )}
-                            onHeaderCell={() => ({
-                              style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                            })}
-                          />
                           <Table.Column
                             title="Vĩ độ (N)"
                             key="lat"
@@ -3382,7 +3325,7 @@ export default function PortListPage() {
                               style: { background: colors.bodyBg, padding: '12px 6px' },
                             })}
                           />
-                        </Table>
+                        </PagedTable>
                       )}
                     </div>
                   ),
@@ -3414,27 +3357,10 @@ export default function PortListPage() {
                           </Button>
                         </div>
                       ) : (
-                        <Table
-                          className="list-view-table"
-                          dataSource={infraList.map((inf, i) => ({ ...inf, key: i, _idx: i }))}
-                          pagination={false}
-                          size="middle"
-                          bordered
-                          scroll={{ x: 600 }}
+                        <PagedTable
+                          dataSource={infraList.map((inf, i) => ({ ...inf, _idx: i }))}
+                          tableProps={{ scroll: { x: 600 } }}
                         >
-                          <Table.Column
-                            title="STT"
-                            dataIndex="stt"
-                            key="stt"
-                            width={60}
-                            align="center"
-                            render={(val: number) => (
-                              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{val}</span>
-                            )}
-                            onHeaderCell={() => ({
-                              style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                            })}
-                          />
                           <Table.Column
                             title="Tên Công Trình"
                             key="name"
@@ -3494,7 +3420,7 @@ export default function PortListPage() {
                               style: { background: colors.bodyBg, padding: '12px 6px' },
                             })}
                           />
-                        </Table>
+                        </PagedTable>
                       )}
                     </div>
                   ),
@@ -3553,26 +3479,10 @@ export default function PortListPage() {
                           </Upload>
                         </div>
                       ) : (
-                        <Table
-                          className="list-view-table"
-                          dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i }))}
-                          pagination={false}
-                          size="middle"
-                          bordered
-                          scroll={{ x: 400 }}
+                        <PagedTable
+                          dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
+                          tableProps={{ scroll: { x: 400 } }}
                         >
-                          <Table.Column
-                            title="STT"
-                            key="stt"
-                            width={60}
-                            align="center"
-                            render={(_: any, __: any, i: number) => (
-                              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-                            )}
-                            onHeaderCell={() => ({
-                              style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
-                            })}
-                          />
                           <Table.Column
                             title="Tên file"
                             key="name"
@@ -3600,7 +3510,7 @@ export default function PortListPage() {
                               style: { background: colors.bodyBg, padding: '12px 6px' },
                             })}
                           />
-                        </Table>
+                        </PagedTable>
                       )}
                       <div style={{ marginTop: spaceSm }}>
                         <span style={uploadHintStyle}>
@@ -3760,12 +3670,9 @@ export default function PortListPage() {
                             pts.push({ lat: selectedRecord.latitude, lng: selectedRecord.longitude });
                           }
                           return (
-                            <Table className="list-view-table" dataSource={pts.map((p, i) => ({ ...p, key: i }))} pagination={false} size="middle" bordered style={{ marginTop: spaceXs }}
-                              locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div> }}
+                            <PagedTable dataSource={pts.map((p, i) => ({ ...p }))}
+                              emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
                             >
-                              <Table.Column title="STT" key="stt" width={60} align="center"
-                                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
-                                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                               <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                                 render={(_: any, record: any) => {
                                   const dms = ddToDms(record.lat);
@@ -3778,7 +3685,7 @@ export default function PortListPage() {
                                   return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                                 }}
                                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                            </Table>
+                            </PagedTable>
                           );
                         })()}
                       </div>
@@ -3792,16 +3699,14 @@ export default function PortListPage() {
                       <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT trực thuộc</span>
                       </div>
-                      <Table className="list-view-table" dataSource={((selectedRecord as any).infrastructureList || []).map((i: any, idx: number) => ({ ...i, key: idx }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}
-                        locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><ApartmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có công trình KCHT</span></div> }}
+                      <PagedTable dataSource={((selectedRecord as any).infrastructureList || []).map((i: any, idx: number) => ({ ...i }))}
+                        emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><ApartmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có công trình KCHT</span></div>}
                       >
-                          <Table.Column title="STT" dataIndex="stt" key="stt" width={60} align="center"
-                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                           <Table.Column title="Tên Công Trình" dataIndex="infraName" key="name" align="center"
                             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                           <Table.Column title="Số Lượng" dataIndex="quantity" key="qty" width={100} align="center"
                             onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      </Table>
+                      </PagedTable>
                     </div>
                   ),
                 },
@@ -3812,21 +3717,18 @@ export default function PortListPage() {
                       <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
                       </div>
-                      <Table className="list-view-table" rowKey="key" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}
-                        locale={{ emptyText: (
+                      <PagedTable dataSource={detailFiles.map((f, i) => ({ ...f }))}
+                        emptyText={(
                           <div style={{ padding: '32px 0', textAlign: 'center' }}>
                             <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
                             <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
                           </div>
-                        ) }}
+                        )}
                       >
-                        <Table.Column title="STT" key="stt" width={60} align="center"
-                          render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                         <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
                           render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
                           onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                      </Table>
+                      </PagedTable>
                     </div>
                   ),
                 },
@@ -3987,9 +3889,9 @@ export default function PortListPage() {
             ddToDms={ddToDms}
             approvalStyleMap={APPROVAL_STYLE_MAP}
             operationalStyleMap={{
-              OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
-              NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
-              SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
+              OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+              NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+              SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
             }}
             userMap={userMap}
             waterwayMap={waterwayMap}

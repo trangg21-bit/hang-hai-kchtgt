@@ -14,6 +14,7 @@ import api from '../../services/api';
 import { dryPortCRUD, dryPortApproval, dryPortHistory } from '../../services/portService';
 import type { DryPort } from '../../types/port';
 import DryPortDetailContent from './DryPortDetailContent';
+import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { userService } from '../../services/userService';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
@@ -22,10 +23,12 @@ import type { Symbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, FilterTableLayout, DataTable } from '../../components/list-view';
+import PagedTable from '../../components/list-view/PagedTable';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
+import { fmtInputNumber } from '../../utils/numFmt';
 import {
   statusOperational, statusAttention, statusCritical, statusDraft,
   actionPrimary,
@@ -83,6 +86,8 @@ const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGO
 
 const PORT_STATUS_OPTIONS = [
   { value: 0, label: 'Chưa khai thác/vận hành' },
+  { value: 1, label: 'Đang khai thác/vận hành' },
+  { value: 2, label: 'Dừng khai thác/vận hành' },
 ];
 
 const REGION_OPTIONS = [
@@ -99,13 +104,18 @@ const MAX_FILE_COUNT = 10;
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'UPDATE';
 
 /* ── Chuyển độ thập phân → DMS (Độ/Phút/Giây) ── */
-const ddToDms = (dd: number): { d: number; m: number; s: number } => {
-  if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-  const abs = Math.abs(dd);
-  const d = Math.floor(abs);
-  const m = Math.floor((abs - d) * 60);
-  const s = parseFloat(((abs - d - m / 60) * 3600).toFixed(2));
-  return { d, m, s };
+const ddToDms = (dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } => {
+  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
+  let abs = Math.abs(dd);
+  let d = Math.floor(abs);
+  let mFloat = (abs - d) * 60;
+  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
+  let m = Math.floor(mFloat);
+  let sFloat = (mFloat - m) * 60;
+  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
+  let s = Math.round(sFloat * 100) / 100;
+  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
+  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
 };
 
 /* ── Dựng WKT từ danh sách tọa độ theo loại đối tượng ── */
@@ -257,7 +267,14 @@ export default function DryPortListPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [filterProvince, setFilterProvince] = useState<number | undefined>();
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
+  const [filterRegion, setFilterRegion] = useState<string | undefined>();
+  const [filterCode, setFilterCode] = useState<string | undefined>();
+  const [filterTransportCorridor, setFilterTransportCorridor] = useState<string | undefined>();
+  const [filterStatus, setFilterStatus] = useState<number | undefined>();
+  const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
+  const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
@@ -470,11 +487,11 @@ export default function DryPortListPage() {
   const [codeLoading, setCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*') || false;
+  const isAuditViewer = currentUser?.permissions?.includes('admin:manage') || currentUser?.permissions?.includes('admin:operation') || false;
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const editCodeRef = useRef<string | undefined>(undefined);
 
   // ── Org unit options (create/update form) ──
-  const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
   // ── GPS sub-table state ──
@@ -505,7 +522,6 @@ export default function DryPortListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const orgs = r.data || [];
         setOrganizations(orgs);
-        setOrgUnitOptions(orgs.map((org: any) => ({ value: org.id, label: org.name })));
         if (orgs.length > 0 && !defaultOrgApplied.current) {
           defaultOrgApplied.current = true;
           try {
@@ -514,7 +530,7 @@ export default function DryPortListPage() {
             const userOrgId = profile?.orgUnitId;
             const defaultId = userOrgId ? (orgs.find((o: any) => o.id === userOrgId) ? userOrgId : orgs[0].id) : '__all__';
             defaultOrgUnitId.current = defaultId;
-            setFilterOrgUnitId(defaultId);
+            setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
           } catch {
             defaultOrgUnitId.current = orgs[0].id;
             setFilterOrgUnitId(orgs[0].id);
@@ -540,13 +556,13 @@ export default function DryPortListPage() {
     }).catch(() => { });
   }, []);
 
-  const fetchCounts = useCallback(async () => {
+  const fetchCounts = useCallback(async (orgId: string | undefined) => {
     try {
       const results = await Promise.allSettled(
         TAB_STATUS_LIST.map(tab =>
           tab.key === 'all'
-            ? dryPortCRUD.findAll({ page: 1, size: 1 })
-            : dryPortCRUD.findAll({ page: 1, size: 1, approvalStatus: tab.key }),
+            ? dryPortCRUD.findAll({ page: 1, size: 1, orgUnitId: orgId && orgId !== '__all__' ? orgId : undefined })
+            : dryPortCRUD.findAll({ page: 1, size: 1, approvalStatus: tab.key, orgUnitId: orgId && orgId !== '__all__' ? orgId : undefined }),
         ),
       );
       const counts: Record<string, number> = {};
@@ -570,6 +586,12 @@ export default function DryPortListPage() {
         search: debouncedSearch || undefined,
         orgUnitId: filterOrgUnitId === '__all__' ? undefined : filterOrgUnitId,
         provinceId: filterProvince,
+        region: filterRegion,
+        portStatus: filterStatus,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+        code: filterCode,
+        transportCorridor: filterTransportCorridor,
         approvalStatus: activeTab === 'all' ? undefined : activeTab,
       });
       setDataSource(res.data); setTotal(res.total);
@@ -577,10 +599,10 @@ export default function DryPortListPage() {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách cảng cạn'));
     } finally { setIsLoading(false); }
-  }, [page, pageSize, debouncedSearch, filterOrgUnitId, filterProvince, activeTab]);
+  }, [page, pageSize, debouncedSearch, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterCode, filterTransportCorridor, activeTab]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(filterOrgUnitId); }, [filterOrgUnitId, fetchCounts, orgUnitReady]);
 
   // ── Non-admin auto-fill orgUnit from user profile (create form only; chạy khi mở drawer vì resetFields xóa giá trị) ──
   const autoFillOrgUnit = useCallback(async () => {
@@ -598,7 +620,11 @@ export default function DryPortListPage() {
 
   // ── Khi chọn loại đối tượng (create) → tự set hệ quy chiếu & quy tắc hiển thị, reset số tọa độ ──
   useEffect(() => {
-    if (!createGeometryType) return;
+    if (!createGeometryType) {
+      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      setCoordinateList([]);
+      return;
+    }
     createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
     setCoordinateList(Array.from({ length: count }, () => ({ lat: null, lng: null })));
@@ -606,7 +632,10 @@ export default function DryPortListPage() {
 
   // ── Khi chọn loại đối tượng (update) → chỉ set hệ quy chiếu & quy tắc hiển thị, không reset tọa độ ──
   useEffect(() => {
-    if (!updateGeometryType) return;
+    if (!updateGeometryType) {
+      updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      return;
+    }
     updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
   }, [updateGeometryType, updateForm]);
 
@@ -685,7 +714,13 @@ export default function DryPortListPage() {
     const defaultOrg = defaultOrgUnitId.current;
     setSearch('');
     setFilterProvince(undefined);
-    setFilterOrgUnitId(defaultOrg);
+    setFilterRegion(undefined);
+    setFilterStatus(undefined);
+    setFilterUpdatedFrom(undefined);
+    setFilterUpdatedTo(undefined);
+    setFilterCode(undefined);
+    setFilterTransportCorridor(undefined);
+    setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setActiveTab('all');
     setPage(1);
   }, []);
@@ -721,9 +756,9 @@ export default function DryPortListPage() {
       await dryPortCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa cảng cạn');
       setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
-      void fetchData(); void fetchCounts();
+      void fetchData(); void fetchCounts(filterOrgUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts]);
+  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts, filterOrgUnitId]);
 
   const openApproveModal = useCallback((record: DryPort) => {
     setApprovingRecord(record); setApproveModalOpen(true);
@@ -731,10 +766,10 @@ export default function DryPortListPage() {
 
   const handleConfirmApprove = useCallback(async () => {
     if (!approvingRecord) return;
-    try { await dryPortApproval.approve(approvingRecord.id); toast.success('Đã phê duyệt'); void fetchData(); void fetchCounts(); }
+    try { await dryPortApproval.approve(approvingRecord.id); toast.success('Đã phê duyệt'); void fetchData(); void fetchCounts(filterOrgUnitId); }
     catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
     finally { setApproveModalOpen(false); setApprovingRecord(null); }
-  }, [approvingRecord, fetchData, fetchCounts]);
+  }, [approvingRecord, fetchData, fetchCounts, filterOrgUnitId]);
 
   const openRejectModal = useCallback((record: DryPort) => {
     setRejectingRecord(record); setRejectReason(''); setRejectError(''); setRejectModalOpen(true);
@@ -749,9 +784,9 @@ export default function DryPortListPage() {
       await dryPortApproval.reject(rejectingRecord.id, reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); setRejectError('');
-      void fetchData(); void fetchCounts();
+      void fetchData(); void fetchCounts(filterOrgUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
-  }, [rejectingRecord, rejectReason, fetchData, fetchCounts]);
+  }, [rejectingRecord, rejectReason, fetchData, fetchCounts, filterOrgUnitId]);
 
   const MANDATORY_FIELDS: { key: keyof DryPort; label: string }[] = [
     { key: 'orgUnitId', label: 'Đơn vị quản lý' },
@@ -785,9 +820,9 @@ export default function DryPortListPage() {
       await dryPortCRUD.submit(submittingRecord.id);
       toast.success('Đã gửi phê duyệt');
       setSubmittingRecord(null);
-      void fetchData(); void fetchCounts();
+      void fetchData(); void fetchCounts(filterOrgUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại'); }
-  }, [submittingRecord, fetchData, fetchCounts]);
+  }, [submittingRecord, fetchData, fetchCounts, filterOrgUnitId]);
 
   /* ── File upload handler (shared by both drawers) ── */
   const handleAddFile = (file: File): false => {
@@ -812,16 +847,17 @@ export default function DryPortListPage() {
     setCoordinateList((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateGpsPoint = (index: number, field: 'lat' | 'lng', d: number, m: number, s: number) => {
+  const updateGpsPoint = (index: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     setCoordinateList((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: d + m / 60 + s / 3600 };
+      next[index] = { ...next[index], [field]: (d ?? 0) + (m ?? 0) / 60 + (s ?? 0) / 3600 };
       return next;
     });
   };
 
   const handleFormFailed = () => {
     // Lỗi validation được hiển thị trực tiếp viền đỏ + message dưới từng trường (AntD), không popup toast
+    setSubmitting(false);
   };
 
   /* ── Save logic shared by create + update (payload giữ nguyên handleSave cũ) ── */
@@ -833,6 +869,7 @@ export default function DryPortListPage() {
     // ── Tên cảng cạn: luôn bắt buộc ──
     if (!dryPortName) {
       toast.error('Tên cảng cạn là bắt buộc');
+      setSubmitting(false);
       return;
     }
 
@@ -846,6 +883,7 @@ export default function DryPortListPage() {
       if (values.portStatus == null) missing.push('Tình trạng');
       if (missing.length > 0) {
         toast.error(`Vui lòng hoàn thiện thông tin trước khi lưu. Thiếu: ${missing.join(', ')}`);
+        setSubmitting(false);
         return;
       }
     }
@@ -859,6 +897,7 @@ export default function DryPortListPage() {
       const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
       if (manualCoords.length < requiredCoords) {
         toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
+        setSubmitting(false);
         return;
       }
     }
@@ -866,6 +905,7 @@ export default function DryPortListPage() {
     // ── Submit/Approve validation ──
     if ((saveAction === 'SUBMIT' || saveAction === 'SAVE_AND_APPROVE') && manualCoords.length === 0) {
       toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
+      setSubmitting(false);
       return;
     }
 
@@ -947,7 +987,7 @@ export default function DryPortListPage() {
       }
 
       void fetchData();
-      void fetchCounts();
+      void fetchCounts(filterOrgUnitId);
 
       // Sau khi lưu thành công (Lưu tạm hoặc Lưu và phê duyệt): đóng form
       if (isEdit) {
@@ -989,49 +1029,60 @@ export default function DryPortListPage() {
     return actions;
   }, [hasPerm]);
 
-  const columns = useMemo(() => [
-    {
-      key: 'sequenceNo', label: 'STT', width: 70, type: 'mono' as const, align: 'center' as const,
-      render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
-    },
-    {
-      key: 'dryPortName', label: 'Mã/Tên cảng cạn', dataIndex: 'dryPortName', width: 215, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
-      render: (_: unknown, record: DryPort) => (
-        <div>
-          <a onClick={() => openDetailModal(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{record.dryPortName || '—'}</a>
-          <span style={{ opacity: 0.85, fontSize: fontSizeMd }}>{record.dryPortCode}</span>
-        </div>
-      )
-    },
-    {
-      key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
-      render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
-    },
-    {
-      key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 200,
-      render: (v: number | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceName(v)}</span>
-    },
-    {
-      key: 'updatedAt',
-      label: 'Ngày cập nhật',
-      dataIndex: 'updatedAt',
-      width: 160,
-      sortable: true,
-      sortOrder: sortField === 'updatedAt' ? sortOrder : undefined,
-      render: (v: string | null | undefined) => (
-        <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
-          {formatDate(v)}
-        </span>
-      ),
-    },
-    {
-      key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 130, align: 'center' as const,
-      render: (status: string) => {
-        const s = APPROVAL_STYLE_MAP[status || ''] || { color: textTertiary, label: status || '—' };
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
-      }
-    },
-  ], [page, pageSize, sortField, sortOrder]);
+  const columns = useMemo(() => {
+    const base: any[] = [
+      {
+        key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
+        render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
+      },
+      {
+        key: 'dryPortName', label: 'Tên/Mã Cảng cạn', dataIndex: 'dryPortName', width: 210, fixed: 'left' as const, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined, ellipsis: false,
+        render: (_: unknown, record: DryPort) => (
+          <div>
+            <a onClick={() => openDetailModal(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block' }}>{record.dryPortName || '—'}</a>
+            <span style={{ opacity: 0.85, fontSize: fontSizeMd }}>{record.dryPortCode}</span>
+          </div>
+        )
+      },
+      {
+        key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
+        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || '—'}</span>
+      },
+      {
+        key: 'operatingUnit', label: 'Đơn vị khai thác', dataIndex: 'operatingUnit', width: 180,
+        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
+      },
+      {
+        key: 'region', label: 'Khu vực', dataIndex: 'region', width: 140,
+        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
+      },
+      {
+        key: 'transportCorridor', label: 'Hành lang vận tải', dataIndex: 'transportCorridor', width: 170,
+        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
+      },
+      {
+        key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 130, align: 'center' as const,
+        render: (status: string) => {
+          const s = APPROVAL_STYLE_MAP[status || ''] || { color: textTertiary, label: status || '—' };
+          return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+        }
+      },
+    ];
+    // Cột kiểm toán — chỉ Admin Cục (BR-018-05, giống bến cảng)
+    if (isAuditViewer) {
+      base.push(
+        {
+          key: 'updatedBy', label: 'Người cập nhật', width: 160,
+          render: (_: unknown, record: DryPort) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span>
+        },
+        {
+          key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 160, sortable: true, sortOrder: sortField === 'updatedAt' ? sortOrder : undefined,
+          render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatDate(v)}</span>
+        },
+      );
+    }
+    return base;
+  }, [page, pageSize, sortField, sortOrder, isAuditViewer, userMap]);
 
   const rowActions = useCallback((record: DryPort) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
@@ -1075,8 +1126,8 @@ export default function DryPortListPage() {
     setCoordinateList([]);
     setUploadFileList([]);
     fetchData();
-    fetchCounts();
-  }, [fetchData, fetchCounts, createForm]);
+    fetchCounts(filterOrgUnitId);
+  }, [fetchData, fetchCounts, filterOrgUnitId, createForm]);
 
   const closeUpdateDrawer = useCallback(() => {
     setUpdateDrawerOpen(false);
@@ -1085,8 +1136,8 @@ export default function DryPortListPage() {
     setCoordinateList([]);
     setUploadFileList([]);
     fetchData();
-    fetchCounts();
-  }, [fetchData, fetchCounts, updateForm]);
+    fetchCounts(filterOrgUnitId);
+  }, [fetchData, fetchCounts, filterOrgUnitId, updateForm]);
 
   /* ── Form tabs (5 tabs, shared by create + update drawers; fields giữ nguyên form cũ) ── */
   const buildFormTabs = (isEdit: boolean, geometryType: string | undefined) => ([
@@ -1098,7 +1149,7 @@ export default function DryPortListPage() {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} options={orgUnitOptions} showSearch filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} style={selectStyle} />
+                <OrgUnitTreeSelect organizations={organizations} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -1109,32 +1160,37 @@ export default function DryPortListPage() {
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="region" {...labelProps('Khu vực')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn khu vực..." allowClear options={REGION_OPTIONS} style={selectStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="dryPortCode" {...labelProps('Mã cảng cạn')} required style={{ marginBottom: spaceFormField }} tooltip="Mã cảng cạn được sinh tự động, không thể chỉnh sửa">
+              <Form.Item name="dryPortCode" {...labelProps('Mã cảng cạn')} style={{ marginBottom: spaceFormField }} tooltip="Mã cảng cạn được sinh tự động, không thể chỉnh sửa">
                 <Input disabled placeholder={codeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
               </Form.Item>
             </Col>
-          </Row>
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="dryPortName" {...labelProps('Tên cảng cạn')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên cảng cạn không được để trống' }, { max: 255, message: 'Tên cảng cạn tối đa 255 ký tự' }]}>
                 <Input placeholder="Nhập Tên cảng cạn" maxLength={255} style={inputStyle} />
               </Form.Item>
             </Col>
+          </Row>
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
                 <Select showSearch placeholder="Chọn tỉnh/thành phố..." filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))} style={selectStyle} />
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required rules={[{ required: true, message: 'Địa điểm chi tiết là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
+                <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} style={inputStyle} />
+              </Form.Item>
+            </Col>
           </Row>
           <Row gutter={16}>
-            <Col span={24}>
-              <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required rules={[{ required: true, message: 'Địa điểm chi tiết là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                <Input.TextArea placeholder="Nhập địa điểm chi tiết" maxLength={500} rows={3} style={{ borderRadius: radiusPill, resize: 'none' }} />
+            <Col span={12}>
+              <Form.Item name="region" {...labelProps('Khu vực')} style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Chọn khu vực..." allowClear options={REGION_OPTIONS} style={selectStyle} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="connectionMode" {...labelProps('Phương thức kết nối giao thông với cảng')} style={{ marginBottom: spaceFormField }}>
+                <Input placeholder="Nhập phương thức kết nối giao thông với cảng" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -1146,38 +1202,31 @@ export default function DryPortListPage() {
             </Col>
             <Col span={12}>
               <Form.Item name="teuCapacity" {...labelProps('Công suất khai thác')} required rules={[{ required: true, message: 'Công suất khai thác là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} />
+                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="area" {...labelProps('Tổng diện tích cảng (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} />
+                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="warehouseArea" {...labelProps('Diện tích kho (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} />
+                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="yardArea" {...labelProps('Diện tích bãi (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} />
+                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="portStatus" {...labelProps('Tình trạng')} required rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="portStatus" {...labelProps('Tình trạng')} required rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]} style={{ marginBottom: spaceFormField }} initialValue={0}>
                 <Select options={PORT_STATUS_OPTIONS} style={selectStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col span={24}>
-              <Form.Item name="connectionMode" {...labelProps('Phương thức kết nối giao thông với cảng')} style={{ marginBottom: spaceFormField }}>
-                <Input.TextArea placeholder="Nhập phương thức kết nối giao thông với cảng" maxLength={500} rows={3} style={{ borderRadius: radiusPill, resize: 'none' }} />
               </Form.Item>
             </Col>
           </Row>
@@ -1211,7 +1260,7 @@ export default function DryPortListPage() {
           <Row gutter={16}>
             <Col span={24}>
               <Form.Item name="announcementOrg" {...labelProps('Đơn vị ra quyết định công bố')} style={{ marginBottom: spaceFormField }}>
-                <Input.TextArea placeholder="Nhập đơn vị ra quyết định công bố" maxLength={255} rows={3} style={{ borderRadius: radiusPill, resize: 'none' }} />
+                <Input placeholder="Nhập đơn vị ra quyết định công bố" maxLength={255} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -1226,11 +1275,11 @@ export default function DryPortListPage() {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng bản đồ')} style={{ marginBottom: spaceFormField }} rules={geometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}>
+              <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!geometryType} style={selectStyle}>
                   {symbols.map((sym) => (
                     <Select.Option key={sym.id} value={sym.id} label={(sym as any).code ? `${sym.name} (${(sym as any).code})` : sym.name}>
@@ -1274,12 +1323,11 @@ export default function DryPortListPage() {
               <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
             </div>
           ) : (
-            <Table className="list-view-table" dataSource={coordinateList.map((c, i) => ({ ...c, key: i, _idx: i }))} pagination={false} size="middle" bordered scroll={{ x: 820 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center" render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="Vĩ độ (N)" key="lat" render={(_: any, record: any) => { const dms = ddToDms(record.lat); return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} min={0} max={90} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>; }} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              <Table.Column title="Kinh độ (E)" key="lng" render={(_: any, record: any) => { const dms = ddToDms(record.lng); return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} min={0} max={180} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>; }} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}>
+              <Table.Column title="Vĩ độ (N)" key="lat" render={(_: any, record: any) => { const dms = ddToDms(record.lat); return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} min={0} max={90} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>; }} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+              <Table.Column title="Kinh độ (E)" key="lng" render={(_: any, record: any) => { const dms = ddToDms(record.lng); return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} min={0} max={180} placeholder="Độ" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} min={0} max={59} placeholder="Phút" onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)} style={{ flex: 1 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber} onFocus={(e) => e.currentTarget.select()} onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)} style={{ flex: 1.2 }} controls={false} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>; }} onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               <Table.Column title="Thao tác" key="actions" width={80} align="center" render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />} onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
           <Form.Item name="_gisCoordinates" style={{ marginBottom: 0 }} rules={[{ validator: () => { const hasCoord = coordinateList.some((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng))); return geometryType && !hasCoord ? Promise.reject(new Error('Vui lòng thêm ít nhất một tọa độ GPS')) : Promise.resolve(); } }]}>
             <Input style={{ display: 'none' }} />
@@ -1308,22 +1356,10 @@ export default function DryPortListPage() {
               </Upload>
             </div>
           ) : (
-            <Table
-              className="list-view-table"
-              dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i }))}
-              pagination={false}
-              size="middle"
-              bordered
-              scroll={{ x: 400 }}
+            <PagedTable
+              dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
+              tableProps={{ scroll: { x: 400 } }}
             >
-              <Table.Column
-                title="STT"
-                key="stt"
-                width={60}
-                align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
-              />
               <Table.Column
                 title="Tên file"
                 key="name"
@@ -1339,7 +1375,7 @@ export default function DryPortListPage() {
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => setUploadFileList(uploadFileList.filter((x) => x.uid !== record.uid))} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })}
               />
-            </Table>
+            </PagedTable>
           )}
           <div style={{ marginTop: spaceSm }}>
             <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>
@@ -1353,7 +1389,8 @@ export default function DryPortListPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cảng cạn' }]} actions={headerActions} />
       <FilterTableLayout
-        hideFilterToggle
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
         loading={isLoading}
@@ -1364,11 +1401,16 @@ export default function DryPortListPage() {
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
               Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
             </div>
-            <Select placeholder="Chọn đơn vị" allowClear showSearch optionFilterProp="label"
+            <OrgUnitTreeSelect
+              organizations={organizations}
+              placeholder="Chọn đơn vị..."
+              allowClear
+              showPath
+              allLabel="Tất cả"
+              treeDefaultExpandAll={false}
               value={filterOrgUnitId}
               onChange={(val) => { setFilterOrgUnitId(val); setPage(1); }}
-              options={[{ label: 'Tất cả', value: '__all__' }, ...organizations.map((o) => ({ label: o.name, value: o.id }))]}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng cạn</div>
@@ -1379,7 +1421,40 @@ export default function DryPortListPage() {
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tỉnh/Thành phố</div>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+            <Select placeholder="Chọn tình trạng" allowClear
+              value={filterStatus}
+              onChange={(val) => { setFilterStatus(val); setPage(1); }}
+              options={PORT_STATUS_OPTIONS}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          {filterCollapsed && (<>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cảng cạn</div>
+            <Input placeholder="Tìm theo mã cảng cạn" allowClear
+              value={filterCode}
+              onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+              onPressEnter={handleFilterApply}
+              style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Khu vực</div>
+            <Select placeholder="Chọn khu vực" allowClear
+              value={filterRegion}
+              onChange={(val) => { setFilterRegion(val); setPage(1); }}
+              options={REGION_OPTIONS}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Hành lang vận tải</div>
+            <Input placeholder="Tìm theo hành lang vận tải" allowClear
+              value={filterTransportCorridor}
+              onChange={(e) => { setFilterTransportCorridor(e.target.value); setPage(1); }}
+              onPressEnter={handleFilterApply}
+              style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
             <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
               filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
               value={filterProvince}
@@ -1387,6 +1462,27 @@ export default function DryPortListPage() {
               options={VIETNAM_PROVINCES.map((p, i) => ({ value: i + 1, label: p }))}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+            <DatePicker.RangePicker
+              value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+              onChange={(dates) => {
+                setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
+                setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
+                setPage(1);
+              }}
+              format="DD/MM/YYYY"
+              style={{ width: '100%', borderRadius: radiusPill }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
+            <Select placeholder="Chọn trạng thái" allowClear
+              value={activeTab}
+              onChange={(val) => { setActiveTab(val || 'all'); setPage(1); }}
+              options={[{ value: 'all', label: 'Tất cả' }, { value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          </>)}
         </>}
         statusTabs={TAB_STATUS_LIST.map(t => ({ ...t, count: tabCounts[t.key] ?? 0, active: t.key === activeTab }))}
         onStatusTabChange={handleTabChange}
@@ -1396,7 +1492,7 @@ export default function DryPortListPage() {
             emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{search || activeTab !== 'all' ? 'Không tìm thấy cảng cạn nào phù hợp' : 'Chưa có cảng cạn nào'}</div></div>}
           />
         ) : (
-          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = a[sortField] ?? ''; const bVal = b[sortField] ?? ''; const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 900 }}
+          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = a[sortField] ?? ''; const bVal = b[sortField] ?? ''; const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: isAuditViewer ? 1900 : 1500, y: 550 }}
             onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }} />
         )}
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
@@ -1566,10 +1662,10 @@ export default function DryPortListPage() {
         extra={<Button type="text" onClick={closeCreateDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; createForm.submit(); }} loading={submitting} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; createForm.submit(); }} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
+            <Button onClick={() => { actionTypeRef.current = 'draft'; setSubmitting(true); createForm.submit(); }} loading={submitting} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setSubmitting(true); createForm.submit(); }} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
             {isSystemAdmin && (
-              <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; createForm.submit(); }} loading={submitting} disabled={submitting} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+              <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setSubmitting(true); createForm.submit(); }} loading={submitting} disabled={submitting} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
             )}
           </div>
         }
@@ -1612,7 +1708,7 @@ export default function DryPortListPage() {
         extra={<Button type="text" onClick={closeUpdateDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'update'; updateForm.submit(); }} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Cập nhật</Button>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'update'; setSubmitting(true); updateForm.submit(); }} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Cập nhật</Button>
           </div>
         }
         styles={{

@@ -255,6 +255,8 @@ export const pierCRUD = {
 
   async search(params?: {
     search?: string;
+    pierCode?: string;
+    pierName?: string;
     berthId?: string;
     portId?: string;
     pierType?: string;
@@ -273,6 +275,8 @@ export const pierCRUD = {
   }): Promise<PaginatedResponse<Pier>> {
     const sp = buildSearchParams({
       search: params?.search,
+      pierCode: params?.pierCode,
+      pierName: params?.pierName,
       berthId: params?.berthId,
       portId: params?.portId,
       pierType: params?.pierType,
@@ -328,6 +332,7 @@ export const dryPortCRUD = {
     orgUnitId?: string;
     provinceId?: number;
     search?: string;
+    code?: string;
     status?: string;
     approvalStatus?: string;
     region?: string;
@@ -342,6 +347,7 @@ export const dryPortCRUD = {
       orgUnitId: params?.orgUnitId,
       provinceId: params?.provinceId,
       search: params?.search,
+      code: params?.code,
       status: params?.status,
       approvalStatus: params?.approvalStatus,
       region: params?.region,
