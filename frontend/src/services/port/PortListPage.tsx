@@ -348,7 +348,7 @@ const KCHT_TYPE_OPTIONS = [
 const hdrCell = () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px', whiteSpace: 'nowrap' as const } });
 
 // Bảng tham chiếu (Thông tin quy hoạch / Vận hành khai thác / Bảo trì / Sự cố) — đồng bộ giao diện PagedTabTable bến/cầu cảng
-const TAB_PAGE_SIZE = 5;
+const TAB_PAGE_SIZE = 20;
 function PortRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
   const [page, setPage] = useState(1);
   const maxPage = Math.max(1, Math.ceil(dataSource.length / TAB_PAGE_SIZE));
@@ -382,7 +382,7 @@ function PortRefTable({ title, emptyText, columns, dataSource = [] }: { title: s
       </Table>
       <div style={{ margin: '0 12px' }}>
         <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[5, 10, 20]} onChange={setPage} />
+          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
       </div>
     </div>
   );
@@ -638,6 +638,7 @@ export default function PortListPage() {
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   // GPS coordinates for create modal (DMS per point, stored as decimal degrees)
   const [gpsCoordList, setGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   // DMS ↔ DD conversion helpers
   const ddToDms = (dd: number): { d: number | null; m: number | null; s: number | null } => {
@@ -655,15 +656,17 @@ export default function PortListPage() {
   };
   const dmToDd = (d: number | null, m: number | null, s: number | null): number => (d ?? 0) + (m ?? 0) / 60 + (s ?? 0) / 3600;
 
-  const addGpsPoint = () => setGpsCoordList([...gpsCoordList, { lat: NaN, lng: NaN }]);
+  const addGpsPoint = () => { setGpsCoordList([...gpsCoordList, { lat: NaN, lng: NaN }]); setGpsError(null); };
   const removeGpsPoint = (i: number) => {
     const next = gpsCoordList.filter((_, idx) => idx !== i);
     setGpsCoordList(next);
+    setGpsError(null);
   };
   const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     const next = [...gpsCoordList];
     next[i] = { ...next[i], [field]: dmToDd(d, m, s) };
     setGpsCoordList(next);
+    setGpsError(null);
   };
 
   // Infra helpers
@@ -1024,7 +1027,18 @@ export default function PortListPage() {
     const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
     setGpsCoordList(Array.from({ length: count }, () => ({ lat: NaN, lng: NaN })));
   }, [createGeometryType]);
-  useEffect(() => { if (updateGeometryType) updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' }); }, [updateGeometryType]);
+  useEffect(() => {
+    if (updateGeometryType) {
+      updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+      // Chỉnh sửa: giữ tọa độ đã có, tự thêm dòng trống cho đủ số lượng theo loại đối tượng (điểm → 1, đường → 2, vùng → 3)
+      const count = GEOMETRY_POINT_COUNT[updateGeometryType] ?? 1;
+      setGpsCoordList((prev) => {
+        if (prev.length >= count) return prev;
+        const added = Array.from({ length: count - prev.length }, () => ({ lat: NaN, lng: NaN }));
+        return [...prev, ...added];
+      });
+    }
+  }, [updateGeometryType]);
 
   const handleCreateFinish = async (values: Record<string, unknown>) => {
     const portCode = String(values.portCode || '').trim();
@@ -1046,14 +1060,14 @@ export default function PortListPage() {
       if (values.geometryType) {
         const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
         if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
-          toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
+          setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
           return;
         }
         // Check for incomplete entries (has some DMS fields but not all)
         for (let i = 0; i < gpsCoordList.length; i++) {
           const c = gpsCoordList[i];
           if (c.lat == null || c.lng == null || isNaN(c.lat) || isNaN(c.lng)) {
-            toast.error(`Tọa độ thứ ${i + 1} chưa nhập đầy đủ thông tin Độ/Phút/Giây.`);
+            setGpsError(`Tọa độ thứ ${i + 1} chưa nhập đầy đủ thông tin Độ/Phút/Giây.`);
             return;
           }
         }
@@ -1193,7 +1207,7 @@ export default function PortListPage() {
     if (values.geometryType) {
       const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
       if (gpsCoordList.length === 0 || gpsComplete.length < requiredCoords) {
-        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
+        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
         return;
       }
     }
@@ -1786,20 +1800,8 @@ export default function PortListPage() {
   // Thứ tự hiển thị field trong lịch sử theo đúng thứ tự form tạo mới cảng biển (PortFormContent.tsx)
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portGroup', 'portCode', 'portName', 'province', 'detailedLocation', 'portClass', 'waterAreaScope', 'totalBerths', 'totalAnchoragesTransshipment', 'totalPublicChannels', 'totalDedicatedChannels', 'totalPublicChannelLength', 'totalDedicatedChannelLength', 'totalBuoysBeacons', 'totalDikes', 'totalDikeLength', 'totalLighthouses', 'buoyBerthCount', 'anchorageCount', 'transshipmentCount', 'otherWaterAreas', 'remarks', 'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'];
 
-  // Số nhóm bản ghi lịch sử (gom theo giây + người cập nhật — giống logic timeline)
-  const historyGroupCount = useMemo(() => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...historyRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
-    let count = 0;
-    let prevKey = '';
-    for (const r of sorted) {
-      const ts = r.changedAt || r.createdAt || '';
-      const sec = ts ? toSec(ts) : 0;
-      const key = `${sec}-${r.changedBy || ''}`;
-      if (key !== prevKey) { count += 1; prevKey = key; }
-    }
-    return count;
-  }, [historyRecords]);
+  // Tổng số trường thay đổi = số bản ghi changeHistory (backend ghi 1 dòng/trường thay đổi)
+  const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
 
   // ── Render lịch sử theo chuẩn Hệ thống VTS ─────────────────────────
   const renderPortHistoryTimeline = (records: any[]) => {
@@ -2629,6 +2631,7 @@ export default function PortListPage() {
                       />
                     </PagedTable>
                   )}
+                  {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
                 </div>)
               },
               {
@@ -3327,6 +3330,7 @@ export default function PortListPage() {
                           />
                         </PagedTable>
                       )}
+                      {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
                     </div>
                   ),
                 },
@@ -3911,7 +3915,7 @@ export default function PortListPage() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Cảng biển' : (selectedRecord ? `Lịch sử thay đổi — ${selectedRecord.portName}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
           </div>
         }

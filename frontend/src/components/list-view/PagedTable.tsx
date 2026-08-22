@@ -4,7 +4,7 @@ import Pagination from './Pagination';
 import { spaceSm, textSecondary, fontSizeMd, fontWeightBold, fontWeightMedium } from '../../tokens';
 import { colors } from '../../theme';
 
-export const PAGED_TABLE_PAGE_SIZE = 5;
+export const PAGED_TABLE_PAGE_SIZE = 20;
 
 export interface PagedTableProps {
   /** Dữ liệu gốc đầy đủ (component tự slice theo trang). */
@@ -25,7 +25,7 @@ export interface PagedTableProps {
  * Đặt `pagination={false}` cho Table bên trong.
  */
 export default function PagedTable({
-  dataSource, pageSizeOptions = [5, 10, 20], defaultPageSize = PAGED_TABLE_PAGE_SIZE,
+  dataSource, pageSizeOptions = [10, 20, 50], defaultPageSize = PAGED_TABLE_PAGE_SIZE,
   emptyText, children, tableProps = {}, style,
 }: PagedTableProps) {
   const [page, setPage] = useState(1);

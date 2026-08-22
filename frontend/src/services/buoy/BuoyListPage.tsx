@@ -98,7 +98,7 @@ function collectOrgSubtreeIds(organizations: Organization[], orgUnitId: string):
 // ── Nhãn tiếng Việt bổ sung cho các trường phao tiêu trong lịch sử thay đổi ──
 // (BUOY_FIELD_MAP trong schema.ts không sửa vì là one-way-door — bổ sung local)
 const EXTRA_HISTORY_FIELD_LABELS: Record<string, string> = {
-  buoyStationId: 'Nhà trạm QLVH', locationDetail: 'Địa điểm chi tiết',
+  buoyStationId: 'Nhà trạm quản lý vận hành', locationDetail: 'Địa điểm chi tiết',
   condition: 'Tình trạng', structure: 'Kết cấu', area: 'Diện tích',
   bodyHeight: 'Chiều cao thân', diameter: 'Đường kính', beaconLight: 'Đèn hiệu',
   towerHeight: 'Chiều cao tháp', lightHeight: 'Chiều cao đèn', lightModel: 'Mẫu đèn',
@@ -313,7 +313,7 @@ export default function BuoyListPage() {
     setLoadingStations(true);
     fetchBuoyStationList({})
       .then((res) => { if (!cancelled) setBuoyStations(res.content || []); })
-      .catch(() => { if (!cancelled) toast.error('Không thể tải danh sách nhà trạm QLVH'); })
+      .catch(() => { if (!cancelled) toast.error('Không thể tải danh sách nhà trạm quản lý vận hành'); })
       .finally(() => { if (!cancelled) setLoadingStations(false); });
     return () => { cancelled = true; };
   }, []);
@@ -336,6 +336,7 @@ export default function BuoyListPage() {
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [createCoords, setCreateCoords] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
   const [editCoords, setEditCoords] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const createGeomType = Form.useWatch('geometryType', createForm);
   const editGeomType = Form.useWatch('geometryType', updateForm);
 
@@ -391,9 +392,10 @@ export default function BuoyListPage() {
     const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
     const decimal = dClamped + mClamped / 60 + sClamped / 3600;
     setCreateCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
+    setGpsError(null);
   }, []);
-  const addCreateGps = useCallback(() => setCreateCoords((p) => [...p, { lat: null, lng: null }]), []);
-  const removeCreateGps = useCallback((i: number) => setCreateCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))), []);
+  const addCreateGps = useCallback(() => { setCreateCoords((p) => [...p, { lat: null, lng: null }]); setGpsError(null); }, []);
+  const removeCreateGps = useCallback((i: number) => { setCreateCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))); setGpsError(null); }, []);
   const updateEditGps = useCallback((i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (tránh hiển thị mấy trăm)
     const dMax = field === 'lat' ? 90 : 180;
@@ -402,6 +404,7 @@ export default function BuoyListPage() {
     const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
     const decimal = dClamped + mClamped / 60 + sClamped / 3600;
     setEditCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
+    setGpsError(null);
   }, []);
   const addEditGps = useCallback(() => setEditCoords((p) => [...p, { lat: null, lng: null }]), []);
   const removeEditGps = useCallback((i: number) => setEditCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))), []);
@@ -430,14 +433,7 @@ export default function BuoyListPage() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyGroupCount = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of historyData) {
-      const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime() / 1000);
-      seen.add(`${s}|${r.changedBy || ''}`);
-    }
-    return seen.size;
-  }, [historyData]);
+  const historyFieldCount = useMemo(() => historyData.length, [historyData]);
 
   // ── Submit approval modal ───────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -720,7 +716,7 @@ export default function BuoyListPage() {
     if (values.geometryType) {
       const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
       if (createCoords.length === 0 || manualCoords.length < requiredCoords) {
-        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
+        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
       }
     }
     if (manualCoords.length > 0) {
@@ -732,7 +728,7 @@ export default function BuoyListPage() {
       }
     }
     if ((action === 'submit' || action === 'approved') && manualCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt'); return;
+      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt'); return;
     }
 
     // Kiểm tra trùng tên/mã phao tiêu (chặn lưu — không cho thêm mới trùng)
@@ -838,7 +834,7 @@ export default function BuoyListPage() {
     if (values.geometryType) {
       const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
       if (editCoords.length === 0 || manualCoords.length < requiredCoords) {
-        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
+        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
       }
     }
     if (manualCoords.length > 0) {
@@ -1263,7 +1259,7 @@ export default function BuoyListPage() {
       key: 'name',
       label: 'Tên/Mã phao tiêu',
       dataIndex: 'name',
-      width: 170,
+      width: 220,
       fixed: 'left' as const,
       sortable: true,
       ellipsis: false,
@@ -1279,6 +1275,7 @@ export default function BuoyListPage() {
       label: 'Đơn vị quản lý',
       dataIndex: 'unitId',
       width: 260,
+      sortable: true,
       render: (v: string) => {
         const level2 = v ? orgLevel2Map.get(v) : undefined;
         return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
@@ -1286,26 +1283,29 @@ export default function BuoyListPage() {
     },
     {
       key: 'buoyStationId',
-      label: 'Thuộc nhà trạm QLVH phao, tiêu',
+      label: 'Thuộc nhà trạm quản lý vận hành phao, tiêu',
       dataIndex: 'buoyStationName',
-      width: 300,
+      width: 460,
       ellipsis: false,
+      sortable: true,
       render: (v: string, rec: Buoy) => (v || (rec?.buoyStationId ? (buoyStations.find((s) => s.id === rec.buoyStationId)?.name || '—') : '—')),
     },
     {
       key: 'provinceId',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
-      width: 170,
+      width: 200,
       ellipsis: false,
+      sortable: true,
       render: (v: number) => (v != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(v))?.label || String(v)) : '—'),
     },
     {
       key: 'condition',
       label: 'Tình trạng',
       dataIndex: 'condition',
-      width: 220,
+      width: 250,
       ellipsis: false,
+      sortable: true,
       render: (v: string) => {
         const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' };
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
@@ -1315,7 +1315,8 @@ export default function BuoyListPage() {
       key: 'status',
       label: 'Trạng thái',
       dataIndex: 'status',
-      width: 180,
+      width: 220,
+      sortable: true,
       render: (status: string | null | undefined) => {
         const b = buoyStatusBadge(status);
         return (
@@ -1559,7 +1560,7 @@ export default function BuoyListPage() {
           {/* ── Bộ lọc nâng cao (toggle) ────────────────────────────── */}
           {filterCollapsed && (<>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm QLVH phao, tiêu</div>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm quản lý vận hành phao, tiêu</div>
               <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
                 value={filterStationId || undefined}
                 onChange={(val) => { setFilterStationId(val); setPage(1); }}
@@ -1628,8 +1629,16 @@ export default function BuoyListPage() {
                 return sortOrder === 'descend' ? arr.reverse() : arr;
               }
               return [...dataSource].sort((a: any, b: any) => {
-                const aVal = a[sortField] ?? '';
-                const bVal = b[sortField] ?? '';
+                const resolve = (r: any) => {
+                  if (sortField === 'unitId') return orgLevel2Map.get(r.unitId) ?? r.unitId ?? '';
+                  if (sortField === 'buoyStationId') return r.buoyStationName || (r.buoyStationId ? (buoyStations.find((s) => s.id === r.buoyStationId)?.name || '') : '') || '';
+                  if (sortField === 'provinceId') return (r.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label || String(r.provinceId)) : '') || '';
+                  if (sortField === 'condition') return CONDITION_STYLE[r.condition || '']?.label ?? r.condition ?? '';
+                  if (sortField === 'status') return buoyStatusBadge(r.status).label;
+                  return r[sortField] ?? '';
+                };
+                const aVal = resolve(a);
+                const bVal = resolve(b);
                 const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
                 return sortOrder === 'ascend' ? cmp : -cmp;
               });
@@ -1711,6 +1720,7 @@ export default function BuoyListPage() {
             symbols={symbols}
             geometryType={createGeomType}
             gpsCoordList={createCoords}
+            gpsError={gpsError}
             addGpsPoint={addCreateGps}
             removeGpsPoint={removeCreateGps}
             updateGpsPoint={updateCreateGps}
@@ -1760,6 +1770,7 @@ export default function BuoyListPage() {
             symbols={symbols}
             geometryType={editGeomType}
             gpsCoordList={editCoords}
+            gpsError={gpsError}
             addGpsPoint={addEditGps}
             removeGpsPoint={removeEditGps}
             updateGpsPoint={updateEditGps}
@@ -1811,7 +1822,7 @@ export default function BuoyListPage() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Phao tiêu' : (historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
           </div>
         }

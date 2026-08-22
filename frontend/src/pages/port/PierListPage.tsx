@@ -218,14 +218,7 @@ export default function PierListPage() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyGroupCount = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of historyRecords) {
-      const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime() / 1000);
-      seen.add(`${s}|${r.changedBy || ''}`);
-    }
-    return seen.size;
-  }, [historyRecords]);
+  const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const appliedFiltersRef = useRef<{
@@ -603,7 +596,7 @@ export default function PierListPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn trạng thái" allowClear
+          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tất cả" allowClear
             value={filterApprovalStatus} onChange={v => { setFilterApprovalStatus(v); setActiveTab('all'); }}
             options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'APPROVED_LEVEL1', label: 'Chờ Cảng vụ duyệt' }, { value: 'APPROVED_LEVEL2', label: 'Chờ Cục duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]} />
         </div>
@@ -628,21 +621,21 @@ export default function PierListPage() {
   const auditColumns = useMemo(() => {
     if (!isAuditViewer) return [];
     return [
-      { label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230,
+      { label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230, sortable: true,
         render: (v: string | null, record: Pier) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovedAt', key: 'portAuthorityApprovedAt', width: 350,
+      { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovedAt', key: 'portAuthorityApprovedAt', width: 350, sortable: true,
         render: (v: string | null, record: Pier) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
             <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
           </div>
         ) },
-      { label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'departmentApprovedAt', key: 'departmentApprovedAt', width: 260,
+      { label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'departmentApprovedAt', key: 'departmentApprovedAt', width: 260, sortable: true,
         render: (v: string | null, record: Pier) => (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
@@ -652,7 +645,18 @@ export default function PierListPage() {
     ];
   }, [isAuditViewer, userMap]);
 
-  const columns = useMemo(() => [
+  // Giá trị sort theo cột hiển thị (map id → label) để click header cột nào cũng sort đúng thứ tự nhìn thấy
+  const getSortValue = useCallback((r: any, field: string): string | number => {
+    if (field === 'structureType') return STRUCTURE_TYPE_OPTIONS.find(o => o.value === r.structureType)?.label ?? '';
+    if (field === 'portId') return portMap.get(r.portId) ?? r.portId ?? '';
+    if (field === 'berthName') return berthOptions.find(b => b.value === r.berthId)?.label ?? r.berthName ?? r.tenBenCang ?? r.berthId ?? '';
+    if (field === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
+    if (field === 'constructionGrade') return CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === r.constructionGrade)?.label ?? '';
+    return r[field] ?? '';
+  }, [portMap, berthOptions, waterwayMap]);
+
+  const columns = useMemo(() => {
+    return [
     { label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span> },
     { label: <span>Tên/Mã cầu cảng</span>, dataIndex: 'pierName', key: 'pierName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
@@ -664,19 +668,19 @@ export default function PierListPage() {
       ) },
     { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
       render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || '—'}</span> },
-    { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 200,
+    { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 240, sortable: true,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
-    { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 160,
+    { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,
       render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || '—'}</span> },
-    { label: 'Thuộc bến cảng', dataIndex: 'berthName', key: 'berthName', width: 170,
+    { label: 'Thuộc bến cảng', dataIndex: 'berthName', key: 'berthName', width: 210, sortable: true,
       render: (v: string, r: Pier) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || r.tenBenCang || berthOptions.find(b => b.value === r.berthId)?.label || r.berthId || '—'}</span> },
-    { label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 240, ellipsis: true,
+    { label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : '—'}</span> },
     { label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', key: 'province', width: 250, sortable: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
-    { label: 'Phân cấp công trình', dataIndex: 'constructionGrade', key: 'constructionGrade', width: 180,
+    { label: 'Phân cấp công trình', dataIndex: 'constructionGrade', key: 'constructionGrade', width: 220, sortable: true,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—'}</span> },
-    { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 200, ellipsis: true,
+    { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 240, ellipsis: true, sortable: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span> },
     { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 190, sortable: true,
       render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>{b.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; } },
@@ -695,7 +699,8 @@ export default function PierListPage() {
         </div>
       ) },
     ...auditColumns,
-  ].map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined })), [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
+    ].map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined }));
+  }, [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
@@ -718,7 +723,7 @@ export default function PierListPage() {
         {isError ? null : !isLoading && dataSource.length === 0 ? (
           <DataTable dataSource={[]} rowKey="id" emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>Không tìm thấy cầu cảng nào phù hợp</div></div>} />
         ) : !isLoading && !isError && dataSource.length > 0 ? (
-          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const av = a[sortField] ?? ''; const bv = b[sortField] ?? ''; const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
+          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? arr.reverse() : arr; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
             rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
             scroll={{ x: 1900, y: 500 }} />
         ) : null}
@@ -845,7 +850,7 @@ export default function PierListPage() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Cầu cảng' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.pierName}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
           </div>
         }

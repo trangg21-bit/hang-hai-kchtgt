@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { Tabs, Table, Space, InputNumber, Button } from 'antd';
-import { FileOutlined, EnvironmentOutlined, EyeOutlined } from '@ant-design/icons';
+import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import type { BuoyStationResponse, StationBuoySummary } from './types';
 import {
   GEO_MAP, COORD_MAP, APPROVAL_STYLE_MAP,
@@ -30,7 +30,7 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
 
 // Bảng con trong tab chi tiết: thanh phân trang dùng chung (chuẩn bến/cầu cảng)
-const TAB_PAGE_SIZE = 5;
+const TAB_PAGE_SIZE = 20;
 function PagedTabTable({ title, dataSource, columns, emptyText }: {
   title: React.ReactNode;
   dataSource: any[];
@@ -55,7 +55,7 @@ function PagedTabTable({ title, dataSource, columns, emptyText }: {
       </Table>
       <div style={{ margin: '0 12px' }}>
         <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[5, 10, 20]} onChange={setPage} />
+          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
       </div>
     </div>
   );
@@ -326,11 +326,6 @@ export default function BuoyStationDetailContent({
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Phân loại tiêu" key="classificationMark" dataIndex="classificationMark" render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={(_: any, rec: any) => onViewBuoy ? (
-                      <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }} onClick={() => onViewBuoy(rec.id)} />
-                    ) : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 </>
               )}
             />
@@ -362,9 +357,6 @@ export default function BuoyStationDetailContent({
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Ngày kết thúc" key="operationEndDate" dataIndex="operationEndDate"
                     render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 </>
               )}
@@ -398,9 +390,6 @@ export default function BuoyStationDetailContent({
                   <Table.Column title="Thời gian kết thúc" key="maintenanceEndTime" dataIndex="maintenanceEndTime"
                     render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 </>
               )}
             />
@@ -432,9 +421,6 @@ export default function BuoyStationDetailContent({
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Thời gian" key="incidentTime" dataIndex="incidentTime"
                     render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 </>
               )}

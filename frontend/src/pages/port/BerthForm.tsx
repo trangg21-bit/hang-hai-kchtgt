@@ -102,6 +102,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latitude: number | null; longitude: number | null }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [existingFiles, setExistingFiles] = useState<any[]>([]);
 
@@ -132,10 +133,16 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   useEffect(() => {
     if (!watchedGeometryType) return;
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    // Form thêm mới: điểm → 1 tọa độ, đường → 2 tọa độ, vùng → 3 tọa độ
+    // Điểm → 1 tọa độ, đường → 2 tọa độ, vùng → 3 tọa độ (cả thêm mới lẫn chỉnh sửa; chỉnh sửa giữ nguyên tọa độ đã có, thêm dòng trống cho đủ)
+    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     if (!isEdit) {
-      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 0;
       setCoordinateList(Array.from({ length: count }, () => ({ latitude: null, longitude: null })));
+    } else {
+      setCoordinateList((prev) => {
+        if (prev.length >= count) return prev;
+        const added = Array.from({ length: count - prev.length }, () => ({ latitude: null, longitude: null }));
+        return [...prev, ...added];
+      });
     }
   }, [watchedGeometryType]);
 
@@ -174,11 +181,12 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     setUploadedFiles(p => [...p, { uid: `${Date.now()}`, name: file.name, status: 'done', originFileObj: file as any }]);
     return false;
   };
-  const removeCoordinate = (i: number) => { setCoordinateList(p => p.filter((_, idx) => idx !== i)); };
-  const addGpsPoint = () => setCoordinateList(p => [...p, { latitude: null, longitude: null }]);
+  const removeCoordinate = (i: number) => { setCoordinateList(p => p.filter((_, idx) => idx !== i)); setGpsError(null); };
+  const addGpsPoint = () => { setCoordinateList(p => [...p, { latitude: null, longitude: null }]); setGpsError(null); };
   const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
     const decimal = (dVal ?? 0) + (mVal ?? 0) / 60 + (sVal ?? 0) / 3600;
     setCoordinateList(p => { const n = [...p]; n[i] = { ...n[i], [field === 'lat' ? 'latitude' : 'longitude']: decimal }; return n; });
+    setGpsError(null);
   };
 
   const handleSave = async (saveAction: SaveAction) => {
@@ -198,7 +206,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     const manualCoords = coordinateList.filter(c => c.latitude != null && c.longitude != null && !isNaN(Number(c.latitude)) && !isNaN(Number(c.longitude))).map(c => ({ latitude: Number(c.latitude), longitude: Number(c.longitude) }));
     if (isSubmitOrApprove && values.geometryType) {
       const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
-      if (coordinateList.length === 0 || manualCoords.length < requiredCoords) { toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS khi gửi duyệt.`); setActiveTabKey('location'); return; }
+      if (coordinateList.length === 0 || manualCoords.length < requiredCoords) { setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS khi gửi duyệt.`); setActiveTabKey('location'); return; }
     }
     setSubmitting(true);
     onSubmittingChange?.(true);
@@ -292,6 +300,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
         </PagedTable>
       )}
+      {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
     </div>) },
     // Tab 4: File đính kèm
     { key: 'files', label: 'File đính kèm', children: (<div style={{ paddingTop: 16 }}>

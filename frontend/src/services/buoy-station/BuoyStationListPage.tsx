@@ -229,14 +229,7 @@ export default function BuoyStationListPage() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyGroupCount = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of historyData) {
-      const ts = r.changedAt || r.createdAt || '';
-      seen.add(`${ts}|${r.changedBy || ''}`);
-    }
-    return seen.size;
-  }, [historyData]);
+  const historyFieldCount = useMemo(() => historyData.length, [historyData]);
 
   // ── Create / Edit Drawers ─────────────────────────────────────────
   const [createOpen, setCreateOpen] = useState(false);
@@ -388,6 +381,24 @@ export default function BuoyStationListPage() {
       } else if (sortField === 'classificationMarks') {
         aVal = (stationBuoys[a.id]?.classificationMarks || []).join(', ');
         bVal = (stationBuoys[b.id]?.classificationMarks || []).join(', ');
+      } else if (sortField === 'unitId') {
+        aVal = orgLevel2Map.get(a.unitId) ?? a.unitId ?? '';
+        bVal = orgLevel2Map.get(b.unitId) ?? b.unitId ?? '';
+      } else if (sortField === 'operatingOrgId') {
+        aVal = orgMap.get(a.operatingOrgId) ?? a.operatingOrgId ?? '';
+        bVal = orgMap.get(b.operatingOrgId) ?? b.operatingOrgId ?? '';
+      } else if (sortField === 'portId') {
+        aVal = portMap.get(a.portId) ?? a.portId ?? '';
+        bVal = portMap.get(b.portId) ?? b.portId ?? '';
+      } else if (sortField === 'waterwayId') {
+        aVal = waterwayMap.get(a.waterwayId) ?? a.waterwayId ?? '';
+        bVal = waterwayMap.get(b.waterwayId) ?? b.waterwayId ?? '';
+      } else if (sortField === 'condition') {
+        aVal = CONDITION_STYLE[a.condition || '']?.label ?? a.condition ?? '';
+        bVal = CONDITION_STYLE[b.condition || '']?.label ?? b.condition ?? '';
+      } else if (sortField === 'status') {
+        aVal = APPROVAL_STYLE_MAP[a.status || '']?.label ?? a.status ?? '';
+        bVal = APPROVAL_STYLE_MAP[b.status || '']?.label ?? b.status ?? '';
       } else {
         aVal = a[sortField] ?? '';
         bVal = b[sortField] ?? '';
@@ -395,7 +406,7 @@ export default function BuoyStationListPage() {
       const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
       return sortOrder === 'ascend' ? cmp : -cmp;
     });
-  }, [allData, sortField, sortOrder, stationBuoys]);
+  }, [allData, sortField, sortOrder, stationBuoys, orgLevel2Map, orgMap, portMap, waterwayMap]);
 
   useEffect(() => { setDataSource(sortedAll.slice((page - 1) * pageSize, page * pageSize)); }, [sortedAll, page, pageSize]);
 
@@ -747,7 +758,7 @@ export default function BuoyStationListPage() {
       ),
     },
     {
-      key: 'name', label: 'Tên/Mã nhà trạm Phao, tiêu', dataIndex: 'name', width: 280, fixed: 'left' as const, ellipsis: false, sortable: true,
+      key: 'name', label: 'Tên/Mã nhà trạm', dataIndex: 'name', width: 280, fixed: 'left' as const, ellipsis: false, sortable: true,
       render: (name: string, record: BuoyStationResponse) => (
         <div>
           <Button type="link" onClick={() => void openDetail(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', padding: 0, height: 'auto' }}>{name}</Button>
@@ -756,7 +767,7 @@ export default function BuoyStationListPage() {
       ),
     },
     {
-      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true,
+      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true, sortable: true,
       render: (v: string) => {
         const level2 = v ? orgLevel2Map.get(v) : undefined;
         return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
@@ -784,27 +795,27 @@ export default function BuoyStationListPage() {
       },
     },
     {
-      key: 'operatingOrgId', label: 'Đơn vị khai thác', dataIndex: 'operatingOrgId', width: 180, ellipsis: true,
+      key: 'operatingOrgId', label: 'Đơn vị khai thác', dataIndex: 'operatingOrgId', width: 220, ellipsis: true, sortable: true,
       render: (v: string) => (v ? (orgMap.get(v) || v) : '—'),
     },
     {
-      key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 180, ellipsis: true,
+      key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 220, ellipsis: true, sortable: true,
       render: (v: string) => (v ? (portMap.get(v) || v) : '—'),
     },
     {
-      key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 240, ellipsis: true,
+      key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true,
       render: (v: string) => (v ? (waterwayMap.get(v) || v) : '—'),
     },
     {
-      key: 'province', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', width: 170,
+      key: 'province', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', width: 200, sortable: true,
       render: (v: string) => (v || '—'),
     },
     {
-      key: 'condition', label: 'Tình trạng', dataIndex: 'condition', width: 190,
+      key: 'condition', label: 'Tình trạng', dataIndex: 'condition', width: 230, sortable: true,
       render: (v: string) => { const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' }; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>; },
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 180,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 220, sortable: true,
       render: (s: string) => {
         if (!s) return <span style={{ color: textTertiary }}>—</span>;
         const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };
@@ -892,8 +903,8 @@ export default function BuoyStationListPage() {
             />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên nhà trạm Phao, tiêu</div>
-            <Input placeholder="Tìm theo tên nhà trạm Phao, tiêu..." allowClear
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên nhà trạm</div>
+            <Input placeholder="Tìm theo tên nhà trạm..." allowClear
               value={filterValues.name || ''}
               onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
               onPressEnter={handleFilterApply}
@@ -931,8 +942,8 @@ export default function BuoyStationListPage() {
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhà trạm Phao, tiêu</div>
-              <Input placeholder="Tìm theo mã nhà trạm Phao, tiêu..." allowClear
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhà trạm</div>
+              <Input placeholder="Tìm theo mã nhà trạm..." allowClear
                 value={filterValues.code || ''}
                 onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
                 onPressEnter={handleFilterApply}
@@ -1099,7 +1110,7 @@ export default function BuoyStationListPage() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Nhà trạm Phao, tiêu' : (historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
           </div>
         }

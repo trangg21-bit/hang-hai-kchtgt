@@ -85,7 +85,7 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
 };
 
 // Bảng con trong tab chi tiết: thanh phân trang dùng chung (chuẩn bến/cầu cảng)
-const TAB_PAGE_SIZE = 5;
+const TAB_PAGE_SIZE = 20;
 function PagedTabTable({ title, dataSource, columns, emptyText }: {
   title: React.ReactNode;
   dataSource: any[];
@@ -110,7 +110,7 @@ function PagedTabTable({ title, dataSource, columns, emptyText }: {
       </Table>
       <div style={{ margin: '0 12px' }}>
         <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[5, 10, 20]} onChange={setPage} />
+          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
       </div>
     </div>
   );
@@ -185,7 +185,7 @@ export default function BuoyDetailContent({
                       </span>
                     );
                   })()],
-                  ['Thuộc nhà trạm QLVH phao, tiêu', r.buoyStationName || '—'],
+                  ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || '—'],
                   ['Phân loại', r.classification || '—'],
                   ['Phân loại phao', r.classificationBuoy || '—'],
                   ['Phân loại tiêu', r.classificationMark || '—'],
@@ -345,9 +345,6 @@ export default function BuoyDetailContent({
                   <Table.Column title="Ngày kết thúc" key="operationEndDate" dataIndex="operationEndDate"
                     render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 </>
               )}
             />
@@ -379,9 +376,6 @@ export default function BuoyDetailContent({
                   <Table.Column title="Thời gian kết thúc" key="maintenanceEndTime" dataIndex="maintenanceEndTime"
                     render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 </>
               )}
             />
@@ -412,9 +406,6 @@ export default function BuoyDetailContent({
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                   <Table.Column title="Thời gian" key="incidentTime" dataIndex="incidentTime"
                     render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
-                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
-                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
                     onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 </>
               )}
