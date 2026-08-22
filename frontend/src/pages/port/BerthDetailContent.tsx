@@ -39,7 +39,7 @@ const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWei
 
 // Loại kết cấu hạ tầng thuộc bến cảng: bến cảng chỉ có 1 loại KCHT con — cầu cảng
 const BERTH_INFRA_TYPE_OPTIONS = [{ value: 'Pier', label: 'Cầu cảng' }];
-const TAB_PAGE_SIZE = 5;
+const TAB_PAGE_SIZE = 20;
 
 // Bảng con trong tab chi tiết: thanh phân trang dùng chung (luôn hiển thị, kể cả khi chưa có dữ liệu)
 function PagedTabTable({ title, dataSource, columns, emptyText }: {
@@ -66,7 +66,7 @@ function PagedTabTable({ title, dataSource, columns, emptyText }: {
       </Table>
       <div style={{ margin: '0 12px' }}>
         <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[5, 10, 20]} onChange={setPage} />
+          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
       </div>
     </div>
   );
@@ -130,7 +130,7 @@ export default function BerthDetailContent({
 }: BerthDetailContentProps) {
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
-  const [infraTypeFilter, setInfraTypeFilter] = useState<string>('Pier');
+  const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
   const [loadedInfra, setLoadedInfra] = useState<any[]>([]);
 
   // Tải danh sách KCHT khác thuộc bến cảng (cầu cảng) — logic giống mẫu Cảng biển: tải theo cha qua API
@@ -322,7 +322,8 @@ export default function BerthDetailContent({
               title={(
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
-                  <Select value={infraTypeFilter} onChange={(v: string) => setInfraTypeFilter(v)}
+                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter}
+                    onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
                     options={BERTH_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
                 </div>
               )}

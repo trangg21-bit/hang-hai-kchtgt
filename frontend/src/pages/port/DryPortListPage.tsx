@@ -234,7 +234,7 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if ((fn === 'mapSymbolId' || fn === 'symbolId') && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string, string> = { DRAFT: 'Nháp', PENDING: 'Chờ phê duyệt', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối' }; return m[val] || val; }
+  if (fn === 'approvalStatus') { const m: Record<string, string> = { NHAP: 'Nháp', DRAFT: 'Nháp', PENDING: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ phê duyệt', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối' }; return m[val] || val; }
   if (fn === 'operationalStatus') { const m: Record<string, string> = { OPERATIONAL: 'Đang hoạt động', SUSPENDED: 'Tạm ngừng' }; return m[val] || val; }
   if (fn === 'portStatus') { const m: Record<string, string> = { '0': 'Chưa khai thác', '1': 'Vận hành' }; return m[val] || val; }
   if (fn === 'announcementTime' || fn === 'changedAt' || fn === 'createdAt') { try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; } }
@@ -250,7 +250,7 @@ function getActionLabel(items: any[]): { label: string; color: string } {
     const newStatus = newVals[fields.indexOf('approvalStatus')];
     if (newStatus === 'APPROVED') return { label: 'Phê duyệt', color: 'green' };
     if (newStatus === 'REJECTED') return { label: 'Từ chối', color: 'red' };
-    if (newStatus === 'PENDING') return { label: 'Gửi phê duyệt', color: 'orange' };
+    if (newStatus === 'PENDING' || newStatus === 'PENDING_APPROVAL') return { label: 'Gửi phê duyệt', color: 'orange' };
   }
   const nullCount = oldVals.filter(v => v === '(null)' || v === 'null').length;
   if (nullCount > items.length / 2) return { label: 'Tạo mới', color: 'blue' };
@@ -323,14 +323,7 @@ export default function DryPortListPage() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyGroupCount = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of historyRecords) {
-      const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime() / 1000);
-      seen.add(`${s}|${r.changedBy || ''}`);
-    }
-    return seen.size;
-  }, [historyRecords]);
+  const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
 
   const openHistory = useCallback(async (r: DryPort) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
@@ -496,6 +489,7 @@ export default function DryPortListPage() {
 
   // ── GPS sub-table state ──
   const [coordinateList, setCoordinateList] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   // ── Symbol state (form select) ──
   const [symbols, setSymbols] = useState<Symbol[]>([]);
@@ -630,13 +624,19 @@ export default function DryPortListPage() {
     setCoordinateList(Array.from({ length: count }, () => ({ lat: null, lng: null })));
   }, [createGeometryType, createForm]);
 
-  // ── Khi chọn loại đối tượng (update) → chỉ set hệ quy chiếu & quy tắc hiển thị, không reset tọa độ ──
+  // ── Khi chọn loại đối tượng (update) → set hệ quy chiếu & quy tắc hiển thị; chỉnh sửa giữ tọa độ đã có, tự thêm dòng trống cho đủ số lượng ──
   useEffect(() => {
     if (!updateGeometryType) {
       updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
       return;
     }
     updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    const count = GEOMETRY_POINT_COUNT[updateGeometryType] ?? 1;
+    setCoordinateList((prev) => {
+      if (prev.length >= count) return prev;
+      const added = Array.from({ length: count - prev.length }, () => ({ lat: null, lng: null }));
+      return [...prev, ...added];
+    });
   }, [updateGeometryType, updateForm]);
 
   // ── Update mode: load existing dry port into updateForm ──
@@ -841,7 +841,7 @@ export default function DryPortListPage() {
   };
 
   /* ── GPS handlers ── */
-  const addGpsPoint = () => setCoordinateList((prev) => [...prev, { lat: null, lng: null }]);
+  const addGpsPoint = () => { setCoordinateList((prev) => [...prev, { lat: null, lng: null }]); setGpsError(null); };
 
   const removeCoordinate = (index: number) => {
     setCoordinateList((prev) => prev.filter((_, i) => i !== index));
@@ -896,7 +896,7 @@ export default function DryPortListPage() {
     if (values.geometryType) {
       const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
       if (manualCoords.length < requiredCoords) {
-        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
+        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS. Vui lòng nhập đầy đủ thông tin.`);
         setSubmitting(false);
         return;
       }
@@ -904,7 +904,7 @@ export default function DryPortListPage() {
 
     // ── Submit/Approve validation ──
     if ((saveAction === 'SUBMIT' || saveAction === 'SAVE_AND_APPROVE') && manualCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
+      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
       setSubmitting(false);
       return;
     }
@@ -1029,6 +1029,13 @@ export default function DryPortListPage() {
     return actions;
   }, [hasPerm]);
 
+  // Giá trị sort theo cột hiển thị (map id → label) để click header cột nào cũng sort đúng thứ tự nhìn thấy
+  const getSortValue = useCallback((r: any, field: string): string | number => {
+    if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus || '']?.label ?? r.approvalStatus ?? '';
+    if (field === 'updatedBy') return userMap.get(r.updatedBy || '') ?? r.updatedBy ?? '';
+    return r[field] ?? '';
+  }, [userMap]);
+
   const columns = useMemo(() => {
     const base: any[] = [
       {
@@ -1045,23 +1052,23 @@ export default function DryPortListPage() {
         )
       },
       {
-        key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 210,
+        key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 260, sortable: true, sortOrder: sortField === 'orgUnitName' ? sortOrder : undefined,
         render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || '—'}</span>
       },
       {
-        key: 'operatingUnit', label: 'Đơn vị khai thác', dataIndex: 'operatingUnit', width: 180,
+        key: 'operatingUnit', label: 'Đơn vị khai thác', dataIndex: 'operatingUnit', width: 220, sortable: true,
         render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
       },
       {
-        key: 'region', label: 'Khu vực', dataIndex: 'region', width: 140,
+        key: 'region', label: 'Khu vực', dataIndex: 'region', width: 200, sortable: true,
         render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
       },
       {
-        key: 'transportCorridor', label: 'Hành lang vận tải', dataIndex: 'transportCorridor', width: 170,
+        key: 'transportCorridor', label: 'Hành lang vận tải', dataIndex: 'transportCorridor', width: 220, sortable: true,
         render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
       },
       {
-        key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 130, align: 'center' as const,
+        key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 200, sortable: true,
         render: (status: string) => {
           const s = APPROVAL_STYLE_MAP[status || ''] || { color: textTertiary, label: status || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
@@ -1072,11 +1079,11 @@ export default function DryPortListPage() {
     if (isAuditViewer) {
       base.push(
         {
-          key: 'updatedBy', label: 'Người cập nhật', width: 160,
+          key: 'updatedBy', label: 'Người cập nhật', width: 170, sortable: true,
           render: (_: unknown, record: DryPort) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || '—'}</span>
         },
         {
-          key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 160, sortable: true, sortOrder: sortField === 'updatedAt' ? sortOrder : undefined,
+          key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 170, sortable: true, sortOrder: sortField === 'updatedAt' ? sortOrder : undefined,
           render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatDate(v)}</span>
         },
       );
@@ -1108,7 +1115,7 @@ export default function DryPortListPage() {
     return (
       <DryPortDetailContent
         selectedRecord={detailRecord}
-        orgMap={orgMap}
+        organizations={organizations}
         symbolMap={symbolMap}
         symbolImageMap={symbolImageMap}
         userMap={userMap}
@@ -1329,6 +1336,7 @@ export default function DryPortListPage() {
               <Table.Column title="Thao tác" key="actions" width={80} align="center" render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />} onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
             </PagedTable>
           )}
+          {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
           <Form.Item name="_gisCoordinates" style={{ marginBottom: 0 }} rules={[{ validator: () => { const hasCoord = coordinateList.some((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng))); return geometryType && !hasCoord ? Promise.reject(new Error('Vui lòng thêm ít nhất một tọa độ GPS')) : Promise.resolve(); } }]}>
             <Input style={{ display: 'none' }} />
           </Form.Item>
@@ -1476,10 +1484,10 @@ export default function DryPortListPage() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-            <Select placeholder="Chọn trạng thái" allowClear
-              value={activeTab}
+            <Select placeholder="Tất cả" allowClear
+              value={activeTab === 'all' ? undefined : activeTab}
               onChange={(val) => { setActiveTab(val || 'all'); setPage(1); }}
-              options={[{ value: 'all', label: 'Tất cả' }, { value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
+              options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'PENDING', label: 'Chờ phê duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
           </>)}
@@ -1492,7 +1500,7 @@ export default function DryPortListPage() {
             emptyState={<div style={{ padding: '40px 0', textAlign: 'center' }}><div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4 }}>📭</div><div style={{ fontSize: fontSizeLg, color: textSecondary, marginBottom: 8 }}>{search || activeTab !== 'all' ? 'Không tìm thấy cảng cạn nào phù hợp' : 'Chưa có cảng cạn nào'}</div></div>}
           />
         ) : (
-          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = a[sortField] ?? ''; const bVal = b[sortField] ?? ''; const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: isAuditViewer ? 1900 : 1500, y: 550 }}
+          <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'sequenceNo') { const arr = [...dataSource]; return sortOrder === 'descend' ? arr.reverse() : arr; } const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })} rowKey="id" rowActions={rowActions} loading={false} scroll={{ x: 'max-content', y: 550 }}
             onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }} />
         )}
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
@@ -1602,7 +1610,7 @@ export default function DryPortListPage() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Cảng cạn' : (historyTarget ? `Lịch sử thay đổi — ${historyTarget.dryPortName}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
           </div>
         }

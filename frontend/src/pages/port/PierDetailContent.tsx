@@ -49,7 +49,7 @@ function fmtDateTime(d: string | null | undefined): string {
 
 // Loại kết cấu hạ tầng thuộc cầu cảng (đọc-only, dữ liệu từ infrastructureList)
 const PIER_INFRA_TYPE_OPTIONS = [{ value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' }];
-const TAB_PAGE_SIZE = 5;
+const TAB_PAGE_SIZE = 20;
 
 // Bảng con trong tab chi tiết: thanh phân trang dùng chung (luôn hiển thị, kể cả khi chưa có dữ liệu)
 function PagedTabTable({ title, dataSource, columns, emptyText }: {
@@ -76,7 +76,7 @@ function PagedTabTable({ title, dataSource, columns, emptyText }: {
       </Table>
       <div style={{ margin: '0 12px' }}>
         <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
-          pageSizeOptions={[5, 10, 20]} onChange={setPage} />
+          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
       </div>
     </div>
   );
@@ -95,7 +95,7 @@ export default function PierDetailContent({
 }: PierDetailContentProps) {
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
-  const [infraTypeFilter, setInfraTypeFilter] = useState<string>('COSO_SUACHUA');
+  const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
   const infraRows = [...infrastructureList].filter((it: any) => {
     if (!infraTypeFilter || infraTypeFilter === 'ALL') return true;
     const t = it?.infraType ?? it?.structureType ?? it?.type;
@@ -298,7 +298,8 @@ export default function PierDetailContent({
               title={(
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
-                  <Select value={infraTypeFilter} onChange={(v: string) => setInfraTypeFilter(v)}
+                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter}
+                    onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
                     options={PIER_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
                 </div>
               )}

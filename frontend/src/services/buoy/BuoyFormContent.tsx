@@ -77,6 +77,7 @@ export interface BuoyFormContentProps {
   symbols: Array<{ id: string; name: string; code?: string; image?: string }>;
   geometryType?: string;
   gpsCoordList: Array<{ lat: number | null; lng: number | null }>;
+  gpsError?: string | null;
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
   updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
@@ -95,6 +96,7 @@ export default function BuoyFormContent({
   symbols,
   geometryType,
   gpsCoordList,
+  gpsError,
   addGpsPoint,
   removeGpsPoint,
   updateGpsPoint,
@@ -476,6 +478,7 @@ export default function BuoyFormContent({
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
             </PagedTable>
           )}
+          {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
         </div>
       ),
     },

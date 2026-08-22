@@ -76,6 +76,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   const [pierCodeLoading, setPierCodeLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = (currentUser?.permissions?.includes('admin:all') || currentUser?.permissions?.includes('*')) ?? false;
@@ -107,12 +108,13 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       setCoordinateList(Array.from({ length: count }, () => ({ lat: null, lng: null })));
     } else {
       if (form.getFieldValue('coordinateSystem') == null) form.setFieldsValue({ coordinateSystem: 1 });
-      // Chỉnh sửa: bản ghi chưa có tọa độ → tạo sẵn 1/2/3 dòng theo loại đối tượng (giống thêm mới); có tọa độ đã lưu → giữ nguyên
-      const hasData = coordinateList.some((c) => c.lat != null || c.lng != null);
-      if (!hasData) {
-        const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 0;
-        setCoordinateList(Array.from({ length: count }, () => ({ lat: null, lng: null })));
-      }
+      // Chỉnh sửa: giữ tọa độ đã nhập, tự thêm dòng trống cho đủ số lượng theo loại đối tượng (điểm → 1, đường → 2, vùng → 3)
+      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+      setCoordinateList((prev) => {
+        if (prev.length >= count) return prev;
+        const added = Array.from({ length: count - prev.length }, () => ({ lat: null, lng: null }));
+        return [...prev, ...added];
+      });
     }
   }, [watchedGeometryType]);
   useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d: Pier = await pierCRUD.findById(id); form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, navigationChannelId: d.navigationChannelId, pierCode: d.pierCode, pierName: d.pierName, length: d.length, width: d.width, operationalFunction: d.operationalFunction, operationalStatus: d.operationalStatus, province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: d.currentWaterDepth, designBedElevation: d.designBedElevation, publishedVesselDWT: d.publishedVesselDWT, maintenanceApprovalDate: parseMonthYear(d.maintenanceApprovalDate), safetyAssessmentDate: parseMonthYear(d.safetyAssessmentDate), lastInspectionDate: parseMonthYear(d.lastInspectionDate), operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: d.cargoThroughput, receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || undefined, mapSymbolId: d.mapSymbolId || d.bieuTuongId, gisLocation: d.coordinates ? { geometryType: d.geometryType, coordinates: d.coordinates } : undefined, coordinateSystem: d.geometryType ? d.coordinateSystem : undefined, displayRule: d.displayRule });
@@ -125,9 +127,9 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   const handleRemoveFile = (file: UploadFile) => { setUploadedFiles(prev => prev.filter(x => x.uid !== file.uid)); };
 
   const ddToDms = (dd: number): { d: number | null; m: number | null; s: number | null } => { if (dd == null || isNaN(dd)) return { d: null, m: null, s: null }; let abs = Math.abs(dd); let d = Math.floor(abs); let mFloat = (abs - d) * 60; if (mFloat > 59.999999999) { d += 1; mFloat = 0; } let m = Math.floor(mFloat); let sFloat = (mFloat - m) * 60; if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } } let s = Math.round(sFloat * 100) / 100; if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } } return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s }; };
-  const addGpsPoint = () => setCoordinateList([...coordinateList, { lat: null, lng: null }]);
-  const removeCoordinate = (i: number) => setCoordinateList(coordinateList.filter((_, idx) => idx !== i));
-  const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => { const next = [...coordinateList]; next[i] = { ...next[i], [field]: (d ?? 0) + (m ?? 0) / 60 + (s ?? 0) / 3600 }; setCoordinateList(next); };
+  const addGpsPoint = () => { setCoordinateList([...coordinateList, { lat: null, lng: null }]); setGpsError(null); };
+  const removeCoordinate = (i: number) => { setCoordinateList(coordinateList.filter((_, idx) => idx !== i)); setGpsError(null); };
+  const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => { const next = [...coordinateList]; next[i] = { ...next[i], [field]: (d ?? 0) + (m ?? 0) / 60 + (s ?? 0) / 3600 }; setCoordinateList(next); setGpsError(null); };
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     const vals = form.getFieldsValue();
@@ -140,7 +142,8 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     if (vals.geometryType) {
       const requiredCoords = GEOMETRY_POINT_COUNT[vals.geometryType] ?? 1;
       if (coordinateList.length === 0 || validCoords.length < requiredCoords) {
-        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`);
+        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`);
+        setActiveTabKey('location');
         return;
       }
     }
@@ -216,6 +219,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
           <Table.Column title="Thao tác" key="actions" width={80} align="center" render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />} onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
         </PagedTable>
       )}
+      {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
       </div>)},
       { key: 'files', label: 'File đính kèm', children: (<div style={{ paddingTop: 16 }}>
       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
