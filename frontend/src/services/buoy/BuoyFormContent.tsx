@@ -446,7 +446,8 @@ export default function BuoyFormContent({
               <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
             </div>
           ) : (
-            <PagedTable dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}>
+            <PagedTable dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}
+              errorText={gpsError ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></span> : undefined}>
               <Table.Column title="Vĩ độ (N)" key="lat"
                 render={(_: any, record: any) => {
                   const dms = ddToDms(record.lat);
@@ -478,7 +479,6 @@ export default function BuoyFormContent({
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
             </PagedTable>
           )}
-          {gpsError && <div style={{ color: colors.error, fontSize: fontSizeMd, marginTop: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></div>}
         </div>
       ),
     },
