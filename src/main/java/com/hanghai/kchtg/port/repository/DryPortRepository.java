@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,18 +33,44 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
     Optional<String> findMaxCode();
 
     @Query("SELECT d FROM DryPort d WHERE d.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) " +
+            "AND (:includeAll = true OR d.orgUnitId IN :orgUnitIds) " +
             "AND (:provinceId IS NULL OR d.provinceId = :provinceId) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(d.dryPortCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(d.dryPortName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(d.detailedLocation) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
             "AND (:operationalStatus IS NULL OR d.operationalStatus = :operationalStatus) " +
-            "AND (:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus)")
+            "AND (:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) " +
+            "AND (CAST(:code AS string) IS NULL OR LOWER(d.dryPortCode) LIKE LOWER(CONCAT('%', CAST(:code AS string), '%'))) " +
+            "AND (CAST(:transportCorridor AS string) IS NULL OR LOWER(d.transportCorridor) LIKE LOWER(CONCAT('%', CAST(:transportCorridor AS string), '%'))) " +
+            "AND (:region IS NULL OR d.region = :region) " +
+            "AND (:portStatus IS NULL OR d.portStatus = :portStatus) " +
+            "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR d.updatedAt >= :updatedFrom) " +
+            "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR d.updatedAt <= :updatedTo)")
     Page<DryPort> searchDryPorts(
-            @Param("orgUnitId") UUID orgUnitId,
+            @Param("includeAll") boolean includeAll,
+            @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("provinceId") Integer provinceId,
             @Param("search") String search,
             @Param("operationalStatus") OperationalStatus operationalStatus,
             @Param("approvalStatus") ApprovalStatus approvalStatus,
+            @Param("code") String code,
+            @Param("transportCorridor") String transportCorridor,
+            @Param("region") String region,
+            @Param("portStatus") Integer portStatus,
+            @Param("updatedFrom") java.time.LocalDateTime updatedFrom,
+            @Param("updatedTo") java.time.LocalDateTime updatedTo,
             Pageable pageable);
+
+    /**
+     * @deprecated Chỉ dùng cho tìm kiếm GIS legacy (KchtGis155Service) — khớp đúng đơn vị, không mở rộng đơn vị con.
+     * Giữ tương thích ngược như BerthRepository.searchBerths.
+     */
+    @Deprecated
+    default Page<DryPort> searchDryPorts(UUID orgUnitId, Integer provinceId, String search,
+                                          OperationalStatus operationalStatus, ApprovalStatus approvalStatus,
+                                          Pageable pageable) {
+        return searchDryPorts(orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),
+                provinceId, search, operationalStatus, approvalStatus,
+                null, null, null, null, null, null, pageable);
+    }
 
     /**
      * Native query to find a deleted dry port's id and deleted_at timestamp.

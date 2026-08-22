@@ -23,6 +23,7 @@ import {
   BEACON_LIGHT_OPTIONS,
 } from './schema';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import PagedTable from '../../components/list-view/PagedTable';
 import { fmtInputNumber } from '../../utils/numFmt';
 
 const GEOMETRY_TYPE_OPTIONS = [
@@ -78,8 +79,8 @@ export interface BuoyFormContentProps {
   gpsCoordList: Array<{ lat: number | null; lng: number | null }>;
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
-  updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => void;
-  ddToDms: (dd: number) => { d: number; m: number; s: number };
+  updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
+  ddToDms: (dd: number | null | undefined) => { d: number | null; m: number | null; s: number | null };
 }
 
 export default function BuoyFormContent({
@@ -207,10 +208,9 @@ export default function BuoyFormContent({
               <Form.Item
                 name="code"
                 {...labelProps('Mã phao, tiêu')}
-                required={!isEdit}
                 style={{ marginBottom: spaceFormField }}
                 tooltip={!isEdit ? 'Mã tự sinh theo {mã nhà trạm}-PT-{seq}, không thể chỉnh sửa' : undefined}
-                rules={!isEdit ? [{ required: true, message: 'Mã phao tiêu không được để trống' }, { max: 50, message: 'Tối đa 50 ký tự' }] : []}
+                rules={!isEdit ? [{ max: 50, message: 'Tối đa 50 ký tự' }] : []}
               >
                 <Input
                   disabled
@@ -259,19 +259,19 @@ export default function BuoyFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
+                <InputNumber min={0} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
+                <InputNumber min={0} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
+                <InputNumber min={0} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -283,7 +283,7 @@ export default function BuoyFormContent({
             </Col>
             <Col span={12}>
               <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} step={1} precision={0} placeholder="Nhập Chiều cao tháp đèn" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0} step={1} precision={0} placeholder="Nhập Chiều cao tháp đèn" parser={parseInteger} style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -296,7 +296,7 @@ export default function BuoyFormContent({
                 style={{ marginBottom: spaceFormField }}
                 rules={[{ required: true, message: 'Chiều cao tâm sáng là bắt buộc' }]}
               >
-                <InputNumber min={1} max={20} step={1} precision={0} placeholder="Nhập Chiều cao tâm sáng (hải đồ)" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0.01} step={1} precision={0} placeholder="Nhập Chiều cao tâm sáng (hải đồ)" parser={parseInteger} style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -325,9 +325,9 @@ export default function BuoyFormContent({
                 required
                 style={{ marginBottom: spaceFormField }}
                 rules={[{ required: true, message: 'Phạm vi chiếu sáng là bắt buộc' }]}
-                tooltip="Từ 1 đến 20 hải lý"
+                tooltip="Phạm vi chiếu sáng (hải lý)"
               >
-                <InputNumber min={1} max={20} step={1} precision={0} placeholder="Nhập Phạm vi chiếu sáng" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0.01} step={1} precision={0} placeholder="Nhập Phạm vi chiếu sáng" parser={parseInteger} style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -348,6 +348,7 @@ export default function BuoyFormContent({
                 {...labelProps('Tình trạng')}
                 required
                 style={{ marginBottom: spaceFormField }}
+                initialValue="Chưa khai thác/vận hành"
                 rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
               >
                 <Select placeholder="Chọn Tình trạng" options={CONDITION_OPTIONS} style={selectStyle} />
@@ -392,12 +393,11 @@ export default function BuoyFormContent({
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn Loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                <Select placeholder="Chọn Loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}
-                rules={geometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}>
+              <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn Biểu tượng" allowClear showSearch optionFilterProp="label"
                   disabled={!geometryType} style={selectStyle}>
                   {symbols.map((sym) => (
@@ -444,11 +444,7 @@ export default function BuoyFormContent({
               <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
             </div>
           ) : (
-            <Table className="list-view-table" dataSource={gpsCoordList.map((c, i) => ({ ...c, key: i, _idx: i }))}
-              pagination={false} size="middle" bordered scroll={{ x: 820 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}>
               <Table.Column title="Vĩ độ (N)" key="lat"
                 render={(_: any, record: any) => {
                   const dms = ddToDms(record.lat);
@@ -478,7 +474,7 @@ export default function BuoyFormContent({
               <Table.Column title="Thao tác" key="actions" width={80} align="center"
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
         </div>
       ),
@@ -514,19 +510,16 @@ export default function BuoyFormContent({
               </Upload>
             </div>
           ) : (
-            <Table className="list-view-table"
-              dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-              pagination={false} size="middle" bordered scroll={{ x: 400 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable
+              dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i, name: f.name }))}
+              tableProps={{ scroll: { x: 400 } }}>
               <Table.Column title="Tên file" key="name" dataIndex="name"
                 render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               <Table.Column title="Thao tác" key="actions" width={80} align="center"
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRemoveFile(record)} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
           <div style={{ marginTop: spaceSm }}>
             <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>

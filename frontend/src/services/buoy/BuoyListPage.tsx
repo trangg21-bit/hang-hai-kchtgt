@@ -202,13 +202,18 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED_L1: 'APPROVED_L1', PUBLISHED: 'PUBLISHED', REJECTED: 'REJECTED',
 };
 
-function ddToDms(dd: number): { d: number; m: number; s: number } {
-  if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-  const abs = Math.abs(dd);
-  const d = Math.floor(abs);
-  const m = Math.floor((abs - d) * 60);
-  const s = parseFloat(((abs - d - m / 60) * 3600).toFixed(2));
-  return { d, m, s };
+function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
+  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
+  let abs = Math.abs(dd);
+  let d = Math.floor(abs);
+  let mFloat = (abs - d) * 60;
+  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
+  let m = Math.floor(mFloat);
+  let sFloat = (mFloat - m) * 60;
+  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
+  let s = Math.round(sFloat * 100) / 100;
+  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
+  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -225,7 +230,8 @@ export default function BuoyListPage() {
   const [filterStationId, setFilterStationId] = useState<string | undefined>();
 
   // Bộ lọc thường (luôn hiển thị)
-  const [filterQuery, setFilterQuery] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterCode, setFilterCode] = useState('');
 
   // Bộ lọc nâng cao (toggle)
   const [filterProvince, setFilterProvince] = useState('');
@@ -353,13 +359,20 @@ export default function BuoyListPage() {
   }, [symbols]);
 
   useEffect(() => {
-    if (!createGeomType) return;
+    if (!createGeomType) {
+      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      setCreateCoords([]);
+      return;
+    }
     createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     setCreateCoords(Array.from({ length: GEOMETRY_POINT_COUNT[createGeomType] ?? 1 }, () => ({ lat: null, lng: null })));
   }, [createGeomType, createForm]);
 
   useEffect(() => {
-    if (!editGeomType) return;
+    if (!editGeomType) {
+      updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      return;
+    }
     updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     // Đồng bộ với chế độ thêm mới: thiếu bản ghi GPS thì tự thêm bản ghi trống cho đủ số lượng theo loại đối tượng
     const required = GEOMETRY_POINT_COUNT[editGeomType] ?? 1;
@@ -370,23 +383,23 @@ export default function BuoyListPage() {
     });
   }, [editGeomType, updateForm]);
 
-  const updateCreateGps = useCallback((i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => {
+  const updateCreateGps = useCallback((i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (tránh hiển thị mấy trăm)
     const dMax = field === 'lat' ? 90 : 180;
-    const dClamped = Math.min(dMax, Math.max(0, d));
-    const mClamped = Math.min(59, Math.max(0, m));
-    const sClamped = Math.min(59.99, Math.max(0, s));
+    const dClamped = Math.min(dMax, Math.max(0, d ?? 0));
+    const mClamped = Math.min(59, Math.max(0, m ?? 0));
+    const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
     const decimal = dClamped + mClamped / 60 + sClamped / 3600;
     setCreateCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
   }, []);
   const addCreateGps = useCallback(() => setCreateCoords((p) => [...p, { lat: null, lng: null }]), []);
   const removeCreateGps = useCallback((i: number) => setCreateCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))), []);
-  const updateEditGps = useCallback((i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => {
+  const updateEditGps = useCallback((i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (tránh hiển thị mấy trăm)
     const dMax = field === 'lat' ? 90 : 180;
-    const dClamped = Math.min(dMax, Math.max(0, d));
-    const mClamped = Math.min(59, Math.max(0, m));
-    const sClamped = Math.min(59.99, Math.max(0, s));
+    const dClamped = Math.min(dMax, Math.max(0, d ?? 0));
+    const mClamped = Math.min(59, Math.max(0, m ?? 0));
+    const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
     const decimal = dClamped + mClamped / 60 + sClamped / 3600;
     setEditCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
   }, []);
@@ -490,8 +503,8 @@ export default function BuoyListPage() {
     setIsError(false);
     try {
       const all = await searchBuoys({
-        name: filterQuery || undefined,
-        code: filterQuery || undefined,
+        name: filterName || undefined,
+        code: filterCode || undefined,
         condition: filterCondition || undefined,
         provinceId: filterProvince ? (Number(VIETNAM_PROVINCE_OPTIONS.find((o) => o.label === filterProvince)?.value) || undefined) : undefined,
         updatedFrom: filterUpdatedFrom,
@@ -522,7 +535,7 @@ export default function BuoyListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterQuery, filterCondition, filterProvince, filterApprovalStatus, managingUnitId, organizations, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [filterName, filterCode, filterCondition, filterProvince, filterApprovalStatus, managingUnitId, organizations, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
 
@@ -537,7 +550,8 @@ export default function BuoyListPage() {
     const defaultOrg = defaultOrgUnitId.current;
     setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterStationId(undefined);
-    setFilterQuery('');
+    setFilterName('');
+    setFilterCode('');
     setFilterProvince('');
     setFilterCondition(undefined);
     setFilterApprovalStatus(undefined);
@@ -695,10 +709,9 @@ export default function BuoyListPage() {
     const code = String(values.code ?? '').trim();
     const name = String(values.name ?? '').trim();
 
-    if (!code) { toast.error('Mã phao tiêu là bắt buộc'); return; }
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
-    if (values.range == null || Number(values.range) <= 0 || Number(values.range) > 20) {
-      toast.error('Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý'); return;
+    if (values.range == null || Number(values.range) <= 0) {
+      toast.error('Phạm vi chiếu sáng phải lớn hơn 0 hải lý'); return;
     }
 
     const manualCoords = createCoords
@@ -815,8 +828,8 @@ export default function BuoyListPage() {
     const name = String(values.name ?? '').trim();
 
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
-    if (values.range == null || Number(values.range) <= 0 || Number(values.range) > 20) {
-      toast.error('Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý'); return;
+    if (values.range == null || Number(values.range) <= 0) {
+      toast.error('Phạm vi chiếu sáng phải lớn hơn 0 hải lý'); return;
     }
 
     const manualCoords = editCoords
@@ -1299,6 +1312,28 @@ export default function BuoyListPage() {
       },
     },
     {
+      key: 'status',
+      label: 'Trạng thái',
+      dataIndex: 'status',
+      width: 180,
+      render: (status: string | null | undefined) => {
+        const b = buoyStatusBadge(status);
+        return (
+          <span style={{
+            display: 'inline-flex',
+            padding: '2px 10px',
+            borderRadius: 999,
+            fontSize: fontSizeMd,
+            fontWeight: fontWeightMedium,
+            background: `${b.color}15`,
+            color: b.color,
+          }}>
+            {b.label}
+          </span>
+        );
+      },
+    },
+    {
       key: 'updatedAt',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedAt',
@@ -1330,7 +1365,7 @@ export default function BuoyListPage() {
       key: 'level1ApprovedDate',
       label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
       dataIndex: 'level1ApprovedDate',
-      width: 320,
+      width: 340,
       sortable: true,
       ellipsis: true,
       render: (v: string | null, record: Buoy) => (
@@ -1353,28 +1388,6 @@ export default function BuoyListPage() {
           <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
         </div>
       ),
-    },
-    {
-      key: 'status',
-      label: 'Trạng thái',
-      dataIndex: 'status',
-      width: 180,
-      render: (status: string | null | undefined) => {
-        const b = buoyStatusBadge(status);
-        return (
-          <span style={{
-            display: 'inline-flex',
-            padding: '2px 10px',
-            borderRadius: 999,
-            fontSize: fontSizeMd,
-            fontWeight: fontWeightMedium,
-            background: `${b.color}15`,
-            color: b.color,
-          }}>
-            {b.label}
-          </span>
-        );
-      },
     },
   ].map((col) => ({
     ...col,
@@ -1522,24 +1535,45 @@ export default function BuoyListPage() {
             />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã Phao, tiêu</div>
-            <Input placeholder="Nhập tên hoặc mã phao tiêu..." allowClear
-              value={filterQuery}
-              onChange={(e) => { setFilterQuery(e.target.value); setPage(1); }}
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên Phao, tiêu</div>
+            <Input placeholder="Tìm theo tên phao tiêu..." allowClear
+              value={filterName}
+              onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm QLVH phao, tiêu</div>
-            <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
-              value={filterStationId || undefined}
-              onChange={(val) => { setFilterStationId(val); setPage(1); }}
-              options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
-              loading={loadingStations}
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
+            <Select placeholder="Chọn trạng thái" allowClear
+              value={filterApprovalStatus || undefined}
+              onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
+              options={[
+                { value: 'DRAFT', label: 'Nháp' },
+                { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
+                { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
+                { value: 'PUBLISHED', label: 'Đã phê duyệt' },
+                { value: 'REJECTED', label: 'Từ chối' },
+              ]}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
 
           {/* ── Bộ lọc nâng cao (toggle) ────────────────────────────── */}
           {filterCollapsed && (<>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm QLVH phao, tiêu</div>
+              <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
+                value={filterStationId || undefined}
+                onChange={(val) => { setFilterStationId(val); setPage(1); }}
+                options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
+                loading={loadingStations}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã Phao, tiêu</div>
+              <Input placeholder="Tìm theo mã phao tiêu..." allowClear
+                value={filterCode}
+                onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
               <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
@@ -1549,33 +1583,19 @@ export default function BuoyListPage() {
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-              <Select placeholder="Chọn tình trạng" allowClear
-                value={filterCondition || undefined}
-                onChange={(v) => { setFilterCondition(v); setPage(1); }}
-                options={CONDITION_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-              <Select placeholder="Chọn trạng thái" allowClear
-                value={filterApprovalStatus || undefined}
-                onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
-                options={[
-                  { value: 'DRAFT', label: 'Nháp' },
-                  { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                  { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
-                  { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-                  { value: 'REJECTED', label: 'Từ chối' },
-                ]}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
               <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']} allowClear
                 value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
                 onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+              <Select placeholder="Chọn tình trạng" allowClear
+                value={filterCondition || undefined}
+                onChange={(v) => { setFilterCondition(v); setPage(1); }}
+                options={CONDITION_OPTIONS}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
           </>)}
@@ -1618,7 +1638,7 @@ export default function BuoyListPage() {
             rowActions={rowActions}
             loading={false}
             onSort={handleSortChange}
-            scroll={{ x: 2200, y: 'calc(100vh - 450px)' }}
+            scroll={{ x: 2200, y: 550 }}
           />
         ) : null}
         <Pagination

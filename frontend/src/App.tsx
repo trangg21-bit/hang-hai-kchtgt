@@ -81,7 +81,7 @@ const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'))
 
 // M-014: Quản lý Nhà trạm phao tiêu
 // M-015: Đài duyên hải
-const BuoyStationList = lazy(() => import('./services/buoy-station/BuoyStationList'));
+const BuoyStationListPage = lazy(() => import('./services/buoy-station/BuoyStationListPage'));
 
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));
@@ -238,7 +238,7 @@ export default function App() {
                 <Route path="/documents/port-planning" element={<PermissionGuard permission="document:read"><PortPlanningList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
-                <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationList /></PermissionGuard>} />
+                <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationListPage /></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />
