@@ -110,12 +110,15 @@ const histLabels: Record<string, string> = {
   spatialId: 'Vị trí không gian', 'Trạng thái': 'Hành động',
 };
 function histField(fn: string): string { return histLabels[fn] || fn; }
-function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, berthMap?: Map<string, string>): string {
+function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, berthMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
   if (!val || val === '(null)' || val === 'null') return '(trống)';
   if (fn === 'orgUnitId' && orgMap) { const f = orgMap.get(val); return f ? f.split(' - ').pop() || f : val; }
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
   if (fn === 'berthId' && berthMap) return berthMap.get(val) || val;
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
+  if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
+  if (fn === 'structureType') { const m: Record<string,string> = { '1':'Kết cấu bệ cọc cao', '2':'Kết cấu cường từ', '3':'Kết cấu trọng lực', '4':'Kết cấu khác' }; return m[val] || val; }
+  if (fn === 'constructionGrade') { const m: Record<string,string> = { '1':'Cấp đặc biệt', '2':'Cấp 1', '3':'Cấp 2', '4':'Cấp 3', '5':'Cấp 4' }; return m[val] || val; }
   if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PENDING:'Chờ duyệt', PENDING_APPROVAL:'Chờ phê duyệt', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/Vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/Vận hành', SUSPENDED:'Dừng khai thác/Vận hành', HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác/Vận hành', CHUA_KHAI_THAC:'Chưa khai thác/Vận hành', DUNG_KHAI_THAC:'Dừng khai thác/Vận hành' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'pierType') { const m: Record<string,string> = { CONTAINER:'Container', TONG_HOP:'Tổng hợp', HANH_KHACH:'Hành khách', CHUYEN_DUNG_XANG_DAU:'Chuyên dùng xăng dầu', CHUYEN_DUNG_ROI_QUANG:'Chuyên dùng rời/quặng', KHAC:'Khác' }; return m[val?.toUpperCase()] || val; }
@@ -174,11 +177,7 @@ export default function PierListPage() {
     portOptions.forEach((o) => m.set(o.value, o.label));
     return m;
   }, [portOptions]);
-  const berthMap = useMemo(() => {
-    const m = new Map<string, string>();
-    berthOptions.forEach((o) => m.set(o.value, o.label));
-    return m;
-  }, [berthOptions]);
+  const [historyBerthMap, setHistoryBerthMap] = useState<Map<string, string>>(new Map());
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
   const [editPierId, setEditPierId] = useState<string | undefined>();
@@ -256,8 +255,8 @@ export default function PierListPage() {
         const ov = (r.oldValue || '').toLowerCase();
         const nv = (r.newValue || '').toLowerCase();
         const lb = histField(r.fieldName || '').toLowerCase();
-        const od = histVal(r.fieldName, r.oldValue, orgMap, symbolMap, portMap, berthMap).toLowerCase();
-        const nd = histVal(r.fieldName, r.newValue, orgMap, symbolMap, portMap, berthMap).toLowerCase();
+        const od = histVal(r.fieldName, r.oldValue, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap).toLowerCase();
+        const nd = histVal(r.fieldName, r.newValue, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap).toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
       if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
@@ -306,7 +305,7 @@ export default function PierListPage() {
             const n = Number(t);
             return Number.isInteger(n) ? n.toLocaleString('vi-VN') : t;
           }
-          return histVal(fn, raw, orgMap, symbolMap, portMap, berthMap);
+          return histVal(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
         };
         if (orderedChanges.length === 0) return null;
         return (
@@ -385,6 +384,10 @@ export default function PierListPage() {
   useEffect(() => {
     (async () => { try { const params: any = { page: 1, pageSize: 1000 }; if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit; if (filterPortId) params.portId = filterPortId; params.approvalStatus = 'APPROVED'; const r = await berthCRUD.search(params); setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthName }))); } catch {} })();
   }, [orgUnit, filterPortId]);
+
+  useEffect(() => {
+    (async () => { try { const r = await berthCRUD.search({ page: 1, pageSize: 1000 }); const m = new Map<string, string>(); (r.data || []).forEach((b: any) => m.set(b.id, b.berthName)); setHistoryBerthMap(m); } catch {} })();
+  }, []);
 
   useEffect(() => {
     lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
