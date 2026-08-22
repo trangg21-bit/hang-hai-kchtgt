@@ -149,5 +149,14 @@ describe('userService', () => {
       expect(api.post).toHaveBeenCalledWith(`/users/${mockUserApiData.id}/unlock`);
       expect(result.data.status).toBe('active');
     });
+
+    it('should call lock endpoint with reason when provided', async () => {
+      vi.mocked(api.post).mockResolvedValue({ data: { data: { ...mockUserApiData, status: 'LOCKED' } } });
+
+      const result = await userService.toggleLock(mockUserApiData.id, 'active', 'Vi phạm quy định');
+
+      expect(api.post).toHaveBeenCalledWith(`/users/${mockUserApiData.id}/lock`, { reason: 'Vi phạm quy định' });
+      expect(result.data.status).toBe('locked');
+    });
   });
 });

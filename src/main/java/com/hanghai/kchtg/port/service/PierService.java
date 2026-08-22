@@ -72,6 +72,10 @@ public class PierService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBerthId()));
 
+        if (parent.getOperationalStatus() != null && parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
+            throw new IllegalArgumentException("Bến cảng cha phải ở trạng thái hiện hành");
+        }
+
         // BR-020-02: Port must be APPROVED and OPERATIONAL if provided
         if (request.getPortId() != null) {
             Port port = portRepository.findById(request.getPortId())
@@ -220,17 +224,20 @@ public class PierService {
         if (updatedFrom != null && !updatedFrom.trim().isEmpty()) {
             try {
                 updatedFromDt = LocalDateTime.parse(updatedFrom.replace(" ", "T"));
-            } catch (Exception e) { /* ignore */ }
+            } catch (Exception e) {
+                /* ignore */ }
         }
         LocalDateTime updatedToDt = null;
         if (updatedTo != null && !updatedTo.trim().isEmpty()) {
             try {
                 updatedToDt = LocalDateTime.parse(updatedTo.replace(" ", "T"));
-            } catch (Exception e) { /* ignore */ }
+            } catch (Exception e) {
+                /* ignore */ }
         }
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
-        Page<Pier> pageResult = pierRepository.searchPiers(includeAll, orgUnitIds, search, berthId, portId, pierType, province,
+        Page<Pier> pageResult = pierRepository.searchPiers(includeAll, orgUnitIds, search, berthId, portId, pierType,
+                province,
                 statusEnum, approvalEnum, navigationChannelId, constructionGrade, structureType,
                 operationalFunction, updatedFromDt, updatedToDt, pageable);
 

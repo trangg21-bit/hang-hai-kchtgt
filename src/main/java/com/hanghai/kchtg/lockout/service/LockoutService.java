@@ -12,13 +12,17 @@ import com.hanghai.kchtg.user.repository.LoginAuditLogRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.security.service.UserSecurityCacheService;
 import jakarta.servlet.http.HttpServletRequest;
+import com.hanghai.kchtg.lockout.repository.UserLockoutRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -36,6 +40,9 @@ public class LockoutService implements CommandLineRunner {
     private final UserRepository userRepo;
     private final LoginAuditLogRepository loginAuditLogRepo;
     private final UserSecurityCacheService userSecurityCacheService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private UserLockoutRepository userLockoutRepo;
 
     @org.springframework.beans.factory.annotation.Autowired
     public LockoutService(LockoutPolicyRepository policyRepo,
@@ -180,6 +187,29 @@ public class LockoutService implements CommandLineRunner {
         LoginAuditLog auditLog = buildAuditLog(user, LoginAttemptResult.SUCCESS,
                 "Account unlocked by admin: " + adminUser, null);
         loginAuditLogRepo.save(auditLog);
+    }
+
+    /**
+     * Tự động mở khóa các tài khoản đã hết thời hạn khóa tạm thời (chạy định kỳ mỗi phút).
+     */
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void autoUnlockExpiredAccounts() {
+        LocalDateTime now = LocalDateTime.now();
+        List<User> expiredUsers = userLockoutRepo != null
+                ? userLockoutRepo.findByLockedUntilNotNullAndLockedUntilBefore(now)
+                : List.of();
+        for (User user : expiredUsers) {
+            user.setAccountLockedUntil(null);
+            user.setFailedLoginCount(0);
+            user.setFailedTotpCount(0);
+            if (user.getStatus() == UserStatus.LOCKED) {
+                user.setStatus(UserStatus.ACTIVE);
+            }
+            userRepo.save(user);
+            evictSecuritySnapshot(user);
+            log.info("Auto-unlocked expired temporary lockout account: {}", user.getUsername());
+        }
     }
 
     private void saveAuditLog(User user, LoginAttemptResult result,

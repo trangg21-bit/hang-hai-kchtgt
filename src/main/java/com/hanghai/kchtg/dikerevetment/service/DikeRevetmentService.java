@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+
 /**
  * Service for DikeRevetment (F-044 to F-049).
  */
@@ -49,6 +51,7 @@ public class DikeRevetmentService {
     private final DikeRevetmentRepository repo;
     private final DikeRevetmentAttachmentRepository attachmentRepo;
     private final ApprovalHistoryRepository approvalHistoryRepo;
+    private final InfrastructureApprovalService approvalService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final PortCacheService portCacheService;
@@ -289,39 +292,10 @@ public class DikeRevetmentService {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        if (dr.getApprovalStatus() != ApprovalStatus.PROPOSED
-                && dr.getApprovalStatus() != ApprovalStatus.REJECTED) {
-            throw new IllegalStateException("Chi co the phe duyet C1 khi trang thai la PROPOSED hoac REJECTED");
-        }
-
-        dr.setIsApprovedLevel1(true);
-        dr.setApproverLevel1(approvedBy);
-        dr.setApprovedDateLevel1(LocalDate.now());
-
-        String actor = approvedBy != null ? approvedBy.toString() : null;
-        boolean autoApproved = false;
-
-        if ("APPROVED".equalsIgnoreCase(req.getDecision())) {
-            if (AdminAutoApproval.isAutoApprover()) {
-                // Administrators clear both levels in one step.
-                dr.setIsApprovedLevel2(true);
-                dr.setApproverLevel2(approvedBy);
-                dr.setApprovedDateLevel2(LocalDate.now());
-                dr.setApprovalStatus(ApprovalStatus.APPROVED);
-                autoApproved = true;
-            } else {
-                dr.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-            }
-        } else {
-            dr.setApprovalStatus(ApprovalStatus.REJECTED);
-            dr.setRejectionReason(req.getReason());
-        }
-
-        saveApprovalHistory(dr, 1, req.getDecision(), actor, req.getReason());
-        if (autoApproved) {
-            saveApprovalHistory(dr, 2, req.getDecision(), actor, req.getReason());
-        }
-        return buildApprovalResponse(dr, autoApproved ? 2 : 1);
+        approvalService.approveC1(dr, InfrastructureType.DIKE_REVETMENT, req.getDecision(), req.getReason(), approvedBy);
+        dr.setIsApprovedLevel1(dr.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1);
+        repo.save(dr);
+        return buildApprovalResponse(dr, 1);
     }
 
     @Transactional
@@ -329,28 +303,9 @@ public class DikeRevetmentService {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        if (dr.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
-        }
-
-        UUID c1Actor = dr.getApproverLevel1();
-        if (c1Actor != null && c1Actor.equals(approvedBy)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
-        }
-
-        dr.setIsApprovedLevel2(true);
-        dr.setApproverLevel2(approvedBy);
-        dr.setApprovedDateLevel2(LocalDate.now());
-
-        if ("APPROVED".equalsIgnoreCase(req.getDecision())) {
-            dr.setApprovalStatus(ApprovalStatus.APPROVED);
-        } else {
-            dr.setApprovalStatus(ApprovalStatus.REJECTED);
-            dr.setRejectionReason(req.getReason());
-        }
-
-        saveApprovalHistory(dr, 2, req.getDecision(), approvedBy != null ? approvedBy.toString() : null,
-                req.getReason());
+        approvalService.approveC2(dr, InfrastructureType.DIKE_REVETMENT, req.getDecision(), req.getReason(), approvedBy);
+        dr.setIsApprovedLevel2(dr.getApprovalStatus() == ApprovalStatus.APPROVED);
+        repo.save(dr);
         return buildApprovalResponse(dr, 2);
     }
 
@@ -359,39 +314,13 @@ public class DikeRevetmentService {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        if (dr.getApprovalStatus() != ApprovalStatus.PROPOSED
-                && dr.getApprovalStatus() != ApprovalStatus.REJECTED) {
-            throw new IllegalStateException("Chi co the gui phe duyet khi trang thai la NHAP hoac TU_CHOI");
-        }
-
-        dr.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        approvalService.submit(dr, InfrastructureType.DIKE_REVETMENT, submittedBy);
         repo.save(dr);
-
-        saveApprovalHistory(dr, 1, "PROPOSED", submittedBy != null ? submittedBy.toString() : null, "Gửi phê duyệt");
     }
 
     @Transactional
     public ApprovalResponse approveL1(UUID id, java.util.UUID approvedBy) {
-        DikeRevetment dr = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
-
-        if (dr.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("Chi co the phe duyet khi trang thai la CHO_PHE_DUYET");
-        }
-
-        UUID creatorId = dr.getCreatedBy();
-        if (creatorId != null && creatorId.equals(approvedBy)) {
-            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
-        }
-
-        dr.setIsApprovedLevel1(true);
-        dr.setApproverLevel1(approvedBy);
-        dr.setApprovedDateLevel1(LocalDate.now());
-        dr.setApprovalStatus(ApprovalStatus.APPROVED);
-        repo.save(dr);
-
-        saveApprovalHistory(dr, 1, "APPROVED", approvedBy != null ? approvedBy.toString() : null, "Phê duyệt");
-        return buildApprovalResponse(dr, 1);
+        return approveC1(id, ApprovalRequest.builder().decision("APPROVED").build(), approvedBy);
     }
 
     @Transactional
@@ -399,15 +328,13 @@ public class DikeRevetmentService {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
-        if (dr.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("Chi co the tu choi khi trang thai la CHO_PHE_DUYET");
-        }
-
-        dr.setApprovalStatus(ApprovalStatus.REJECTED);
-        dr.setRejectionReason(req.getReason());
-
         Integer cap = req.getApprovalLevel() != null ? req.getApprovalLevel().getValue() : 1;
-        saveApprovalHistory(dr, cap, "REJECTED", approvedBy != null ? approvedBy.toString() : null, req.getReason());
+        if (cap == 2) {
+            approvalService.approveC2(dr, InfrastructureType.DIKE_REVETMENT, "REJECTED", req.getReason(), approvedBy);
+        } else {
+            approvalService.approveC1(dr, InfrastructureType.DIKE_REVETMENT, "REJECTED", req.getReason(), approvedBy);
+        }
+        repo.save(dr);
         return buildApprovalResponse(dr, cap);
     }
 
@@ -431,7 +358,9 @@ public class DikeRevetmentService {
                 .approvalLevel(ApprovalLevel.fromInt(cap))
                 .status(dr.getApprovalStatus().name())
                 .approver(String.valueOf(cap == 1 ? dr.getApproverLevel1() : dr.getApproverLevel2()))
-                .approvalDate(cap == 1 ? dr.getApprovedDateLevel1() : dr.getApprovedDateLevel2())
+                .approvalDate(cap == 1
+                        ? (dr.getApprovedDateLevel1() != null ? dr.getApprovedDateLevel1().toLocalDate() : null)
+                        : (dr.getApprovedDateLevel2() != null ? dr.getApprovedDateLevel2().toLocalDate() : null))
                 .reason(dr.getRejectionReason())
                 .build();
     }
@@ -551,10 +480,10 @@ public class DikeRevetmentService {
                 .approvalStatus(dr.getApprovalStatus())
                 .isApprovedLevel1(dr.getIsApprovedLevel1())
                 .approverLevel1(dr.getApproverLevel1())
-                .approvedDateLevel1(dr.getApprovedDateLevel1())
+                .approvedDateLevel1(dr.getApprovedDateLevel1() != null ? dr.getApprovedDateLevel1().toLocalDate() : null)
                 .isApprovedLevel2(dr.getIsApprovedLevel2())
                 .approverLevel2(dr.getApproverLevel2())
-                .approvedDateLevel2(dr.getApprovedDateLevel2())
+                .approvedDateLevel2(dr.getApprovedDateLevel2() != null ? dr.getApprovedDateLevel2().toLocalDate() : null)
                 .rejectionReason(dr.getRejectionReason())
                 .createdAt(dr.getCreatedAt())
                 .updatedAt(dr.getUpdatedAt())

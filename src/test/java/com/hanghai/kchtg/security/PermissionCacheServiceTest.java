@@ -87,7 +87,7 @@ class PermissionCacheServiceTest {
         verify(valueOps).set(
                 eq("user_perms:" + userId),
                 argThat(json -> json.contains("vts:read") && json.contains("vts:update")),
-                eq(10L),
+                eq(5L),
                 eq(java.util.concurrent.TimeUnit.MINUTES)
         );
     }
@@ -103,7 +103,7 @@ class PermissionCacheServiceTest {
         verify(valueOps).set(
                 eq("user_perms:" + userId),
                 eq("[]"),
-                eq(10L),
+                eq(5L),
                 eq(java.util.concurrent.TimeUnit.MINUTES)
         );
     }

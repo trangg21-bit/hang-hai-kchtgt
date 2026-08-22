@@ -32,6 +32,7 @@ public class MapSymbolController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<MapSymbolResponse>>> search(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -39,7 +40,7 @@ public class MapSymbolController {
         MapSymbolStatus symbolStatus = (status != null && !status.trim().isEmpty())
                 ? MapSymbolStatus.fromString(status)
                 : null;
-        return ResponseEntity.ok(ApiResponse.success(service.search(search, symbolStatus, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(service.search(search, code, symbolStatus, pageable)));
     }
 
     @GetMapping("/{id}")
@@ -66,8 +67,9 @@ public class MapSymbolController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
-        service.delete(id);
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id, Authentication authentication) {
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
+        service.delete(id, userId);
         return ResponseEntity.ok(ApiResponse.success("Ký hiệu bản đồ đã được xóa thành công", null));
     }
 }

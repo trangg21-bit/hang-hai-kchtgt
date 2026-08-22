@@ -19,10 +19,4 @@ public class GlobalLockoutExceptionHandler {
         log.warn("Account locked: {}", ex.getMessage());
         return ApiResponse.error(ex.getMessage());
     }
-
-    @ExceptionHandler(Exception.class)
-    public ApiResponse<Void> handleGeneric(Exception ex) {
-        log.error("Unexpected lockout error", ex);
-        return ApiResponse.error("Lỗi hệ thống");
-    }
 }

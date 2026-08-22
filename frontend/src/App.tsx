@@ -20,6 +20,7 @@ const GISSearch = lazy(() => import('./pages/gis/GISSearch'));
 const GISChartView = lazy(() => import('./pages/gis/GISChartView'));
 const S63PermitsPage = lazy(() => import('./pages/gis/S63PermitsPage'));
 const LoginPage = lazy(() => import('./pages/Login'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ReportList = lazy(() => import('./pages/reports/ReportList'));
 const ReportViewer = lazy(() => import('./pages/reports/ReportViewer'));
 const Bcc157Form = lazy(() => import('./pages/reports/Bcc157Form'));
@@ -116,8 +117,9 @@ export default function App() {
               </div>
             }>
               <Routes>
-              {/* Login — outside layout */}
+              {/* Login & Registration — outside layout */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<PasswordResetPage mode="forgot" />} />
               <Route path="/reset-password/:token" element={<PasswordResetPage mode="reset" />} />
 

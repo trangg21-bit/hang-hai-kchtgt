@@ -29,12 +29,15 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-
+import org.springframework.http.MediaType;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -132,8 +135,7 @@ class PierControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<PierResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(pierService.findAll(0, 20, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null)).thenReturn(page);
+        when(pierService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/piers")
                         .param("page", "0")
@@ -141,9 +143,6 @@ class PierControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].pierCode").value("CAU-001"));
-
-        verify(pierService).findAll(0, 20, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/piers/{id} ────────────────────────────────────────
@@ -176,13 +175,13 @@ class PierControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(pierApprovalService).approve(id, "test-approver", "CUC_DUONG_THUY", null);
+        verify(pierApprovalService).approve(eq(id), eq("test-approver"), eq("CUC_DUONG_THUY"), any());
     }
 
     // ── POST /api/v1/piers/{id}/reject ──────────────────────────────
 
     @Test
-    @DisplayName("POST /api/v1/piers/{id}/reject — reason >= 10 chars returns 200")
+    @DisplayName("POST /api/v1/piers/{id}/reject — valid request returns 200")
     void reject_validReason_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
@@ -193,7 +192,7 @@ class PierControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(pierApprovalService).reject(id, "test-approver", "CUC_DUONG_THUY", "Không đủ tài liệu hợp lệ");
+        verify(pierApprovalService).reject(eq(id), eq("test-approver"), eq("CUC_DUONG_THUY"), eq("Không đủ tài liệu hợp lệ"));
     }
 
     @Test

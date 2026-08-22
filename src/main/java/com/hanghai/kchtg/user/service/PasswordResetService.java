@@ -65,14 +65,20 @@ public class PasswordResetService {
      * Creates a new 1-hour-expiring token, deletes any existing unused tokens, and sends the reset email.
      *
      * @param email the user's email address
-     * @throws ValidationException if user not found with that email
      */
     @Transactional
     public void requestReset(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String cleanEmail = email.trim();
+        Optional<User> userOpt = userRepository.findByEmailIgnoreCase(cleanEmail);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(cleanEmail);
+        }
         if (userOpt.isEmpty()) {
             // Security: Don't reveal whether the email exists. Log it, but don't throw.
-            log.warn("Password reset requested for non-existent email: {}", email);
+            log.warn("Password reset requested for non-existent email: {}", cleanEmail);
             return; // Silent success to prevent email enumeration
         }
 
@@ -91,7 +97,7 @@ public class PasswordResetService {
         // Send password reset email (placeholder - integrates with NotificationService)
         notificationService.sendPasswordResetEmail(user.getEmail(), tokenValue);
 
-        log.info("Password reset requested for user: {} (email={})", user.getUsername(), email);
+        log.info("Password reset requested for user: {} (email={})", user.getUsername(), cleanEmail);
     }
 
     /**
