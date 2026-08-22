@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.report.handler;
 
-import com.hanghai.kchtg.beacon.entity.BeaconLight;
-import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.entity.BeaconStation;
+import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
@@ -14,7 +14,7 @@ import java.util.*;
 public class F155ReportHandler extends BaseReportHandler {
 
     @Autowired
-    private BeaconLightRepository beaconLightRepository;
+    private BeaconStationRepository beaconStationRepository;
 
     @Override
     public boolean supports(String reportCode) {
@@ -27,7 +27,7 @@ public class F155ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
         int reportYear = getReportYear(request);
 
-        List<BeaconLight> beacons = beaconLightRepository.findAll().stream()
+        List<BeaconStation> beacons = beaconStationRepository.findAll().stream()
                 .filter(b -> "APPROVED_L2".equals(b.getStatus()))
                 .filter(b -> b.getIsActive() != null && b.getIsActive())
                 .filter(b -> skipFilter || targetUnitId.equals(b.getUnitId()))
@@ -35,8 +35,8 @@ public class F155ReportHandler extends BaseReportHandler {
                 .toList();
 
         // Group by type
-        Map<String, List<BeaconLight>> grouped = new LinkedHashMap<>();
-        for (BeaconLight b : beacons) {
+        Map<String, List<BeaconStation>> grouped = new LinkedHashMap<>();
+        for (BeaconStation b : beacons) {
             grouped.computeIfAbsent(b.getType(), k -> new ArrayList<>()).add(b);
         }
 
@@ -50,7 +50,7 @@ public class F155ReportHandler extends BaseReportHandler {
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map.Entry<String, List<BeaconLight>> entry : grouped.entrySet()) {
+        for (Map.Entry<String, List<BeaconStation>> entry : grouped.entrySet()) {
             String capLabel;
             if ("LIGHTHOUSE".equals(entry.getKey())) capLabel = "Cấp I";
             else if ("BEACON_LIGHT".equals(entry.getKey())) capLabel = "Cấp II";
@@ -81,7 +81,7 @@ public class F155ReportHandler extends BaseReportHandler {
 
             // Data rows
             int sequenceNo = 1;
-            for (BeaconLight b : entry.getValue()) {
+            for (BeaconStation b : entry.getValue()) {
                 Map<String, Object> r = new LinkedHashMap<>();
                 r.put("STT", sequenceNo++);
                 r.put("Tên đèn biển", b.getName() != null ? b.getName() : "");
@@ -122,7 +122,7 @@ public class F155ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        List<BeaconLight> beacons = beaconLightRepository.findAll().stream()
+        List<BeaconStation> beacons = beaconStationRepository.findAll().stream()
                 .filter(b -> "APPROVED_L2".equals(b.getStatus()))
                 .filter(b -> b.getIsActive() != null && b.getIsActive())
                 .filter(b -> skipFilter || targetUnitId.equals(b.getUnitId()))
@@ -130,13 +130,13 @@ public class F155ReportHandler extends BaseReportHandler {
                 .toList();
 
         // Group by type
-        Map<String, List<BeaconLight>> grouped = new LinkedHashMap<>();
-        for (BeaconLight b : beacons) {
+        Map<String, List<BeaconStation>> grouped = new LinkedHashMap<>();
+        for (BeaconStation b : beacons) {
             grouped.computeIfAbsent(b.getType(), k -> new ArrayList<>()).add(b);
         }
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        for (Map.Entry<String, List<BeaconLight>> entry : grouped.entrySet()) {
+        for (Map.Entry<String, List<BeaconStation>> entry : grouped.entrySet()) {
             // Section header as a regular data item
             String capLabel;
             if ("LIGHTHOUSE".equals(entry.getKey())) capLabel = "Cấp I";
@@ -171,7 +171,7 @@ public class F155ReportHandler extends BaseReportHandler {
             arrResult.add(headerItem);
 
             // Data items
-            for (BeaconLight b : entry.getValue()) {
+            for (BeaconStation b : entry.getValue()) {
                 Map<String, Object> item = new HashMap<>();
                 item.put("ten", b.getName() != null ? b.getName() : "");
                 item.put("code", b.getCode() != null ? b.getCode() : "");

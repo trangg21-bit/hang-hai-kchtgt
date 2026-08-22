@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.gis.search.service;
 
-import com.hanghai.kchtg.beacon.entity.BeaconLight;
+import com.hanghai.kchtg.beacon.entity.BeaconStation;
 import com.hanghai.kchtg.beacon.entity.Buoy;
-import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
@@ -58,7 +58,7 @@ public class KchtGis155Service {
     private final RadarStationRepository radarStationRepository;
     private final OrgUnitCacheService orgUnitCacheService;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
-    private final BeaconLightRepository beaconLightRepository;
+    private final BeaconStationRepository beaconStationRepository;
     private final BuoyRepository buoyRepository;
     private final CoastalStationVTSRepository coastalStationVTSRepository;
     private final CoastalStationInmarsatRepository coastalStationInmarsatRepository;
@@ -758,14 +758,14 @@ public class KchtGis155Service {
 
                 case LIGHTHOUSE:
                     String denSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<BeaconLight> beaconList = beaconLightRepository.searchGis(orgUnitId, denSearchParam);
+                    List<BeaconStation> beaconList = beaconStationRepository.searchGis(orgUnitId, denSearchParam);
                     Map<UUID, GisSpatialObject> beaconSpatialMap = new HashMap<>();
                     if (!beaconList.isEmpty()) {
-                        List<UUID> beaconIds = beaconList.stream().map(BeaconLight::getId).collect(Collectors.toList());
+                        List<UUID> beaconIds = beaconList.stream().map(BeaconStation::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(beaconIds, InfrastructureType.LIGHTHOUSE)
                                 .forEach(so -> beaconSpatialMap.put(so.getRefId(), so));
                     }
-                    for (BeaconLight beacon : beaconList) {
+                    for (BeaconStation beacon : beaconList) {
                         GisSpatialObject spatial = beaconSpatialMap.get(beacon.getId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                                 : null;

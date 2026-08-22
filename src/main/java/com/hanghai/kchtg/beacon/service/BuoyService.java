@@ -11,7 +11,7 @@ import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -40,7 +40,7 @@ import java.util.*;
 
 /**
  * Service for Buoy CRUD + approval workflow (F-074 to F-077).
- * Parallel structure to BeaconLightService.
+ * Parallel structure to BeaconStationService.
  */
 @Slf4j
 @Service
@@ -50,7 +50,7 @@ import java.util.*;
 public class BuoyService {
 
     private final BuoyRepository buoyRepo;
-    private final BeaconLightRepository beaconLightRepo;
+    private final BeaconStationRepository beaconStationRepo;
     private final BeaconHistoryRepository historyRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
@@ -122,7 +122,7 @@ public class BuoyService {
             }
         }
         String code = prefix + String.format("%03d", nextNumber);
-        while (buoyRepo.existsByCode(code) || beaconLightRepo.existsByCode(code)) {
+        while (buoyRepo.existsByCode(code) || beaconStationRepo.existsByCode(code)) {
             nextNumber++;
             code = prefix + String.format("%03d", nextNumber);
         }
@@ -145,7 +145,7 @@ public class BuoyService {
             }
         }
         String code = String.format("PT-%06d", nextNumber);
-        while (buoyRepo.existsByCode(code) || beaconLightRepo.existsByCode(code)) {
+        while (buoyRepo.existsByCode(code) || beaconStationRepo.existsByCode(code)) {
             nextNumber++;
             code = String.format("PT-%06d", nextNumber);
         }
@@ -165,7 +165,7 @@ public class BuoyService {
         }
 
         if (buoyRepo.existsByCode(code)
-                || beaconLightRepo.existsByCode(code)) {
+                || beaconStationRepo.existsByCode(code)) {
             throw new IllegalArgumentException("Đã tồn tại: " + code);
         }
 
@@ -429,7 +429,7 @@ public class BuoyService {
         if (request.getCode() != null && !request.getCode().trim().isEmpty()
                 && !request.getCode().trim().equals(entity.getCode())) {
             String newCode = request.getCode().trim();
-            if (buoyRepo.existsByCode(newCode) || beaconLightRepo.existsByCode(newCode)) {
+            if (buoyRepo.existsByCode(newCode) || beaconStationRepo.existsByCode(newCode)) {
                 throw new IllegalArgumentException("Đã tồn tại mã phao, tiêu: " + newCode);
             }
             entity.setCode(newCode);

@@ -3,11 +3,11 @@ package com.hanghai.kchtg.beacon;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
-import com.hanghai.kchtg.beacon.controller.BeaconLightController;
-import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
-import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
-import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
-import com.hanghai.kchtg.beacon.service.BeaconLightService;
+import com.hanghai.kchtg.beacon.controller.BeaconStationController;
+import com.hanghai.kchtg.beacon.dto.beacon_station.BeaconStationResponse;
+import com.hanghai.kchtg.beacon.dto.beacon_station.CreateBeaconStationRequest;
+import com.hanghai.kchtg.beacon.dto.beacon_station.UpdateBeaconStationRequest;
+import com.hanghai.kchtg.beacon.service.BeaconStationService;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
@@ -34,16 +34,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(BeaconLightController.class)
+@WebMvcTest(BeaconStationController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @WithMockUser(roles = "SYSTEM_ADMIN")
-class BeaconLightControllerTest {
+class BeaconStationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private BeaconLightService beaconLightService;
+    private BeaconStationService beaconStationService;
 
     @MockBean
     private AsyncLogAppender asyncLogAppender;
@@ -64,12 +64,12 @@ class BeaconLightControllerTest {
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
-    private BeaconLightResponse makeResponse(UUID id) {
+    private BeaconStationResponse makeResponse(UUID id) {
         return makeResponse(id, "Đèn biển test", "LIGHTHOUSE", "DRAFT");
     }
 
-    private BeaconLightResponse makeResponse(UUID id, String name, String type, String status) {
-        return BeaconLightResponse.builder()
+    private BeaconStationResponse makeResponse(UUID id, String name, String type, String status) {
+        return BeaconStationResponse.builder()
                 .id(id)
                 .code("DEN-001")
                 .name(name)
@@ -91,72 +91,72 @@ class BeaconLightControllerTest {
     // ── FIND ALL ─────────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /api/beacon-lights — returns 200 with list")
+    @DisplayName("GET /api/beacon-stations — returns 200 with list")
     void testFindAll() throws Exception {
-        when(beaconLightService.findAll()).thenReturn(List.of());
+        when(beaconStationService.findAll()).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/beacon-lights"))
+        mockMvc.perform(get("/api/beacon-stations"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray());
 
-        verify(beaconLightService).findAll();
+        verify(beaconStationService).findAll();
     }
 
     // ── FIND BY ID ───────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /api/beacon-lights/{id} — returns 200 with entity")
+    @DisplayName("GET /api/beacon-stations/{id} — returns 200 with entity")
     void testFindById() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.findById(id)).thenReturn(makeResponse(id));
+        when(beaconStationService.findById(id)).thenReturn(makeResponse(id));
 
-        mockMvc.perform(get("/api/beacon-lights/{id}", id))
+        mockMvc.perform(get("/api/beacon-stations/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Đèn biển test"))
                 .andExpect(jsonPath("$.data.code").value("DEN-001"));
 
-        verify(beaconLightService).findById(id);
+        verify(beaconStationService).findById(id);
     }
 
     @Test
-    @DisplayName("GET /api/beacon-lights/{id} — returns 404 when not found")
+    @DisplayName("GET /api/beacon-stations/{id} — returns 404 when not found")
     void testFindByIdNotFound() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.findById(id))
+        when(beaconStationService.findById(id))
                 .thenThrow(new jakarta.persistence.EntityNotFoundException("Đèn biển không tìm thấy: " + id));
 
-        mockMvc.perform(get("/api/beacon-lights/{id}", id))
+        mockMvc.perform(get("/api/beacon-stations/{id}", id))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false));
 
-        verify(beaconLightService).findById(id);
+        verify(beaconStationService).findById(id);
     }
 
     // ── SEARCH ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /api/beacon-lights/search — returns 200 with filtered list")
+    @DisplayName("GET /api/beacon-stations/search — returns 200 with filtered list")
     void testSearch() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.search(eq("Đèn"), any(), any(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
+        when(beaconStationService.search(eq("Đèn"), any(), any(), any(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(List.of(makeResponse(id)));
 
-        mockMvc.perform(get("/api/beacon-lights/search")
+        mockMvc.perform(get("/api/beacon-stations/search")
                         .param("name", "Đèn"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray());
 
-        verify(beaconLightService).search(eq("Đèn"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
+        verify(beaconStationService).search(eq("Đèn"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
     }
 
     @Test
-    @DisplayName("GET /api/beacon-lights/search — with all params")
+    @DisplayName("GET /api/beacon-stations/search — with all params")
     void testSearchWithAllParams() throws Exception {
-        when(beaconLightService.search(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
+        when(beaconStationService.search(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/beacon-lights/search")
+        mockMvc.perform(get("/api/beacon-stations/search")
                         .param("name", "Đèn")
                         .param("code", "DEN")
                         .param("type", "LIGHTHOUSE")
@@ -164,14 +164,14 @@ class BeaconLightControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(beaconLightService)
+        verify(beaconStationService)
                 .search("Đèn", "DEN", "LIGHTHOUSE", "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     // ── CREATE ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("POST /api/beacon-lights — returns 201 with created entity")
+    @DisplayName("POST /api/beacon-stations — returns 201 with created entity")
     void testCreate() throws Exception {
         UUID id = UUID.randomUUID();
         String json = """
@@ -187,10 +187,10 @@ class BeaconLightControllerTest {
                   "lightCharacteristic": "Chớp 5 giây"
                 }
                 """;
-        BeaconLightResponse response = makeResponse(id, "Đèn biển mới", "BEACON_LIGHT", "DRAFT");
-        when(beaconLightService.create(any(CreateBeaconLightRequest.class))).thenReturn(response);
+        BeaconStationResponse response = makeResponse(id, "Đèn biển mới", "BEACON_LIGHT", "DRAFT");
+        when(beaconStationService.create(any(CreateBeaconStationRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/beacon-lights")
+        mockMvc.perform(post("/api/beacon-stations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
@@ -198,11 +198,11 @@ class BeaconLightControllerTest {
                 .andExpect(jsonPath("$.data.name").value("Đèn biển mới"))
                 .andExpect(jsonPath("$.data.code").value("DEN-001"));
 
-        verify(beaconLightService).create(any(CreateBeaconLightRequest.class));
+        verify(beaconStationService).create(any(CreateBeaconStationRequest.class));
     }
 
     @Test
-    @DisplayName("POST /api/beacon-lights — returns 400 when required fields missing")
+    @DisplayName("POST /api/beacon-stations — returns 400 when required fields missing")
     void testCreateValidationFails() throws Exception {
         String json = """
                 {
@@ -210,18 +210,18 @@ class BeaconLightControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/beacon-lights")
+        mockMvc.perform(post("/api/beacon-stations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Validation failed"));
 
-        verify(beaconLightService, never()).create(any());
+        verify(beaconStationService, never()).create(any());
     }
 
     @Test
-    @DisplayName("POST /api/beacon-lights — returns 400 when duplicate code")
+    @DisplayName("POST /api/beacon-stations — returns 400 when duplicate code")
     void testCreateDuplicateCode() throws Exception {
         String json = """
                 {
@@ -234,10 +234,10 @@ class BeaconLightControllerTest {
                   "range": 12.0
                 }
                 """;
-        when(beaconLightService.create(any(CreateBeaconLightRequest.class)))
+        when(beaconStationService.create(any(CreateBeaconStationRequest.class)))
                 .thenThrow(new IllegalArgumentException("Mã đã tồn tại: DEN-001"));
 
-        mockMvc.perform(post("/api/beacon-lights")
+        mockMvc.perform(post("/api/beacon-stations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest())
@@ -247,7 +247,7 @@ class BeaconLightControllerTest {
     // ── UPDATE ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("PUT /api/beacon-lights/{id} — returns 200 with updated entity")
+    @DisplayName("PUT /api/beacon-stations/{id} — returns 200 with updated entity")
     void testUpdate() throws Exception {
         UUID id = UUID.randomUUID();
         String json = """
@@ -257,21 +257,21 @@ class BeaconLightControllerTest {
                   "range": 18.0
                 }
                 """;
-        BeaconLightResponse updated = makeResponse(id, "Đèn biển cập nhật", "LIGHTHOUSE", "DRAFT");
-        when(beaconLightService.update(eq(id), any(UpdateBeaconLightRequest.class))).thenReturn(updated);
+        BeaconStationResponse updated = makeResponse(id, "Đèn biển cập nhật", "LIGHTHOUSE", "DRAFT");
+        when(beaconStationService.update(eq(id), any(UpdateBeaconStationRequest.class))).thenReturn(updated);
 
-        mockMvc.perform(put("/api/beacon-lights/{id}", id)
+        mockMvc.perform(put("/api/beacon-stations/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.name").value("Đèn biển cập nhật"));
 
-        verify(beaconLightService).update(eq(id), any(UpdateBeaconLightRequest.class));
+        verify(beaconStationService).update(eq(id), any(UpdateBeaconStationRequest.class));
     }
 
     @Test
-    @DisplayName("PUT /api/beacon-lights/{id} — returns 404 when not found")
+    @DisplayName("PUT /api/beacon-stations/{id} — returns 404 when not found")
     void testUpdateNotFound() throws Exception {
         UUID id = UUID.randomUUID();
         String json = """
@@ -279,10 +279,10 @@ class BeaconLightControllerTest {
                   "name": "Không tồn tại"
                 }
                 """;
-        when(beaconLightService.update(eq(id), any(UpdateBeaconLightRequest.class)))
+        when(beaconStationService.update(eq(id), any(UpdateBeaconStationRequest.class)))
                 .thenThrow(new jakarta.persistence.EntityNotFoundException("Đèn biển không tìm thấy: " + id));
 
-        mockMvc.perform(put("/api/beacon-lights/{id}", id)
+        mockMvc.perform(put("/api/beacon-stations/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isNotFound())
@@ -292,26 +292,26 @@ class BeaconLightControllerTest {
     // ── DELETE ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("DELETE /api/beacon-lights/{id} — returns 200 with success")
+    @DisplayName("DELETE /api/beacon-stations/{id} — returns 200 with success")
     void testDelete() throws Exception {
         UUID id = UUID.randomUUID();
-        doNothing().when(beaconLightService).delete(id);
+        doNothing().when(beaconStationService).delete(id);
 
-        mockMvc.perform(delete("/api/beacon-lights/{id}", id))
+        mockMvc.perform(delete("/api/beacon-stations/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(beaconLightService).delete(id);
+        verify(beaconStationService).delete(id);
     }
 
     @Test
-    @DisplayName("DELETE /api/beacon-lights/{id} — returns 404 when not found")
+    @DisplayName("DELETE /api/beacon-stations/{id} — returns 404 when not found")
     void testDeleteNotFound() throws Exception {
         UUID id = UUID.randomUUID();
         doThrow(new jakarta.persistence.EntityNotFoundException("Đèn biển không tìm thấy: " + id))
-                .when(beaconLightService).delete(id);
+                .when(beaconStationService).delete(id);
 
-        mockMvc.perform(delete("/api/beacon-lights/{id}", id))
+        mockMvc.perform(delete("/api/beacon-stations/{id}", id))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false));
     }
@@ -319,58 +319,58 @@ class BeaconLightControllerTest {
     // ── SUBMIT FOR APPROVAL ──────────────────────────────────────
 
     @Test
-    @DisplayName("POST /api/beacon-lights/{id}/submit-approval — returns 200")
+    @DisplayName("POST /api/beacon-stations/{id}/submit-approval — returns 200")
     void testSubmitForApproval() throws Exception {
         UUID id = UUID.randomUUID();
-        doNothing().when(beaconLightService).submitForApproval(id);
+        doNothing().when(beaconStationService).submitForApproval(id);
 
-        mockMvc.perform(post("/api/beacon-lights/{id}/submit-approval", id))
+        mockMvc.perform(post("/api/beacon-stations/{id}/submit-approval", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(beaconLightService).submitForApproval(id);
+        verify(beaconStationService).submitForApproval(id);
     }
 
     @Test
-    @DisplayName("POST /api/beacon-lights/{id}/submit-approval — returns 400 when wrong status")
+    @DisplayName("POST /api/beacon-stations/{id}/submit-approval — returns 400 when wrong status")
     void testSubmitForApprovalWrongStatus() throws Exception {
         UUID id = UUID.randomUUID();
         doThrow(new IllegalStateException("Chỉ có thể gửi phê duyệt khi status = DRAFT"))
-                .when(beaconLightService).submitForApproval(id);
+                .when(beaconStationService).submitForApproval(id);
 
         // IllegalStateException is handled by GlobalExceptionHandler → returns 400 Bad Request
-        mockMvc.perform(post("/api/beacon-lights/{id}/submit-approval", id))
+        mockMvc.perform(post("/api/beacon-stations/{id}/submit-approval", id))
                 .andExpect(status().isBadRequest());
     }
 
     // ── APPROVE L1 ───────────────────────────────────────────────
 
     @Test
-    @DisplayName("POST /api/beacon-lights/{id}/approve-l1 — returns 200 with approved entity")
+    @DisplayName("POST /api/beacon-stations/{id}/approve-l1 — returns 200 with approved entity")
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
-        BeaconLightResponse approved = makeResponse(id, "Đã duyệt L1", "LIGHTHOUSE", "APPROVED_L1");
+        BeaconStationResponse approved = makeResponse(id, "Đã duyệt L1", "LIGHTHOUSE", "APPROVED_L1");
         approved.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        when(beaconLightService.approveL1(eq(id), any(java.util.UUID.class))).thenReturn(approved);
+        when(beaconStationService.approveL1(eq(id), any(java.util.UUID.class))).thenReturn(approved);
 
-        mockMvc.perform(post("/api/beacon-lights/{id}/approve-l1", id)
+        mockMvc.perform(post("/api/beacon-stations/{id}/approve-l1", id)
                         .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("APPROVED_L1"))
                 .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000002"));
 
-        verify(beaconLightService).approveL1(eq(id), any(java.util.UUID.class));
+        verify(beaconStationService).approveL1(eq(id), any(java.util.UUID.class));
     }
 
     @Test
-    @DisplayName("POST /api/beacon-lights/{id}/approve-l1 — returns 400 when not PENDING_APPROVAL")
+    @DisplayName("POST /api/beacon-stations/{id}/approve-l1 — returns 400 when not PENDING_APPROVAL")
     void testApproveL1WrongStatus() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.approveL1(eq(id), any(java.util.UUID.class)))
+        when(beaconStationService.approveL1(eq(id), any(java.util.UUID.class)))
                 .thenThrow(new IllegalStateException("Không ở trạng thái chờ phê duyệt L1"));
 
-        mockMvc.perform(post("/api/beacon-lights/{id}/approve-l1", id)
+        mockMvc.perform(post("/api/beacon-stations/{id}/approve-l1", id)
                         .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isBadRequest());
     }
@@ -378,32 +378,32 @@ class BeaconLightControllerTest {
     // ── REJECT ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("POST /api/beacon-lights/{id}/reject — returns 200 with rejected entity")
+    @DisplayName("POST /api/beacon-stations/{id}/reject — returns 200 with rejected entity")
     void testReject() throws Exception {
         UUID id = UUID.randomUUID();
-        BeaconLightResponse rejected = makeResponse(id, "Bị từ chối", "LIGHTHOUSE", "DRAFT");
+        BeaconStationResponse rejected = makeResponse(id, "Bị từ chối", "LIGHTHOUSE", "DRAFT");
         rejected.setRejectionReason("Lý do từ chối hợp lệ");
         rejected.setApprovalStatus("REJECTED");
-        when(beaconLightService.reject(eq(id), anyString(), any(java.util.UUID.class))).thenReturn(rejected);
+        when(beaconStationService.reject(eq(id), anyString(), any(java.util.UUID.class))).thenReturn(rejected);
 
-        mockMvc.perform(post("/api/beacon-lights/{id}/reject", id)
+        mockMvc.perform(post("/api/beacon-stations/{id}/reject", id)
                         .param("rejectReason", "Lý do từ chối hợp lệ")
                         .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.approvalStatus").value("REJECTED"));
 
-        verify(beaconLightService).reject(eq(id), eq("Lý do từ chối hợp lệ"), any(java.util.UUID.class));
+        verify(beaconStationService).reject(eq(id), eq("Lý do từ chối hợp lệ"), any(java.util.UUID.class));
     }
 
     @Test
-    @DisplayName("POST /api/beacon-lights/{id}/reject — returns 400 when reason too short")
+    @DisplayName("POST /api/beacon-stations/{id}/reject — returns 400 when reason too short")
     void testRejectShortReason() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.reject(eq(id), anyString(), any(java.util.UUID.class)))
+        when(beaconStationService.reject(eq(id), anyString(), any(java.util.UUID.class)))
                 .thenThrow(new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự"));
 
-        mockMvc.perform(post("/api/beacon-lights/{id}/reject", id)
+        mockMvc.perform(post("/api/beacon-stations/{id}/reject", id)
                         .param("rejectReason", "Ngắn")
                         .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isBadRequest())

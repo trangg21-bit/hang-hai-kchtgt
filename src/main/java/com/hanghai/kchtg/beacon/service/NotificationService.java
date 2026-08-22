@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.beacon.service;
 
-import com.hanghai.kchtg.beacon.entity.BeaconLight;
+import com.hanghai.kchtg.beacon.entity.BeaconStation;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +14,7 @@ public class NotificationService {
     /**
      * Send notification to L1 leader when beacon light submitted for approval.
      */
-    public void sendApprovalNotification(BeaconLight entity) {
+    public void sendApprovalNotification(BeaconStation entity) {
         // Post-integration: notify L1 leader (phòng) of entity's unit.
         // Message: "Có đèn biển mới chờ phê duyệt: {entity.getName()}"
     }
@@ -22,7 +22,7 @@ public class NotificationService {
     /**
      * Send notification to L2 leader when beacon light approved at L1.
      */
-    public void sendL2ApprovalNotification(BeaconLight entity) {
+    public void sendL2ApprovalNotification(BeaconStation entity) {
         // Post-integration: notify L2 leader (cục).
         // Message: "Có đèn biển đã được L1 duyệt, chờ L2: {entity.getName()}"
     }
@@ -30,7 +30,7 @@ public class NotificationService {
     /**
      * Send rejection notification to creator with reason.
      */
-    public void sendRejectionNotification(BeaconLight entity, String rejectReason) {
+    public void sendRejectionNotification(BeaconStation entity, String rejectReason) {
         // Post-integration: notify the creator.
         // Message: "Đèn biển bị từ chối — Lý do: {rejectReason}"
     }

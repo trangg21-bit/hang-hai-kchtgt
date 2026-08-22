@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Shared audit trail entity for both BeaconLight and Buoy.
+ * Shared audit trail entity for both BeaconStation and Buoy.
  * Does NOT extend BaseEntity — this entity must always be queryable
  * even for soft-deleted entities (no @SQLRestriction).
  */

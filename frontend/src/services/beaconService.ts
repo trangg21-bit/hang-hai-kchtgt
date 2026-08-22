@@ -2,9 +2,9 @@ import api from './api';
 import * as buoyApi from './buoy/api';
 import type { PaginatedResponse } from '../types/common';
 import type {
-  BeaconLight,
-  CreateBeaconLightRequest,
-  UpdateBeaconLightRequest,
+  BeaconStation,
+  CreateBeaconStationRequest,
+  UpdateBeaconStationRequest,
   Buoy,
   CreateBuoyRequest,
   UpdateBuoyRequest,
@@ -23,16 +23,16 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
   return sp;
 }
 
-// ── BeaconLight CRUD ────────────────────────────────────────────────
+// ── BeaconStation CRUD ────────────────────────────────────────────
 
-export const beaconLightCRUD = {
-  async findAll(): Promise<BeaconLight[]> {
-    const res = await api.get('/beacon-lights');
+export const beaconStationCRUD = {
+  async findAll(): Promise<BeaconStation[]> {
+    const res = await api.get('/beacon-stations');
     return res.data.data || [];
   },
 
-  async findById(id: string): Promise<BeaconLight> {
-    const res = await api.get(`/beacon-lights/${id}`);
+  async findById(id: string): Promise<BeaconStation> {
+    const res = await api.get(`/beacon-stations/${id}`);
     return res.data.data;
   },
 
@@ -55,7 +55,7 @@ export const beaconLightCRUD = {
     updatedTo?: string;
     page?: number;
     pageSize?: number;
-  }): Promise<PaginatedResponse<BeaconLight>> {
+  }): Promise<PaginatedResponse<BeaconStation>> {
     const sp = buildSearchParams({
       name: params?.name,
       code: params?.code,
@@ -76,7 +76,7 @@ export const beaconLightCRUD = {
       page: params?.page !== undefined ? params.page - 1 : 0,
       size: params?.pageSize || 20,
     });
-    const res = await api.get(`/beacon-lights/search-paged?${sp}`);
+    const res = await api.get(`/beacon-stations/search-paged?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -86,33 +86,38 @@ export const beaconLightCRUD = {
     };
   },
 
-  async create(payload: CreateBeaconLightRequest): Promise<BeaconLight> {
-    const res = await api.post('/beacon-lights', payload);
+  async create(payload: CreateBeaconStationRequest): Promise<BeaconStation> {
+    const res = await api.post('/beacon-stations', payload);
     return res.data.data;
   },
 
-  async update(id: string, payload: UpdateBeaconLightRequest): Promise<BeaconLight> {
-    const res = await api.put(`/beacon-lights/${id}`, payload);
+  async generateCode(): Promise<string> {
+    const res = await api.get('/beacon-stations/generate-code');
+    return res.data?.data?.code || '';
+  },
+
+  async update(id: string, payload: UpdateBeaconStationRequest): Promise<BeaconStation> {
+    const res = await api.put(`/beacon-stations/${id}`, payload);
     return res.data.data;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/beacon-lights/${id}`);
+    await api.delete(`/beacon-stations/${id}`);
   },
 
   async uploadAttachments(id: string, files: File[]): Promise<void> {
     const fd = new FormData();
     files.forEach((f) => fd.append('files', f));
-    await api.post(`/beacon-lights/${id}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    await api.post(`/beacon-stations/${id}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
 
   async listAttachments(id: string): Promise<any[]> {
-    const res = await api.get(`/beacon-lights/${id}/attachments`);
+    const res = await api.get(`/beacon-stations/${id}/attachments`);
     return res.data.data || [];
   },
 
   async deleteAttachment(id: string, attachmentId: string): Promise<void> {
-    await api.delete(`/beacon-lights/${id}/attachments/${attachmentId}`);
+    await api.delete(`/beacon-stations/${id}/attachments/${attachmentId}`);
   },
 };
 
@@ -162,11 +167,11 @@ export const buoyCRUD = {
   },
 };
 
-// ── Approval (shared pattern for both BeaconLight & Buoy) ───────────
+// ── Approval (shared pattern for both BeaconStation & Buoy) ───────────
 
 export const approval = {
   async submitForApproval(entityId: string): Promise<void> {
-    await api.post(`/beacon-lights/${entityId}/submit-approval`);
+    await api.post(`/beacon-stations/${entityId}/submit-approval`);
   },
 
   async submitBuoyForApproval(entityId: string): Promise<void> {
@@ -174,7 +179,7 @@ export const approval = {
   },
 
   async approveL1(entityId: string, approverId: string): Promise<unknown> {
-    const res = await api.post(`/beacon-lights/${entityId}/approve-l1`, null, {
+    const res = await api.post(`/beacon-stations/${entityId}/approve-l1`, null, {
       params: { approverId },
     });
     return res.data.data;
@@ -189,7 +194,7 @@ export const approval = {
   },
 
   async reject(entityId: string, rejectReason: string, approverId: string): Promise<unknown> {
-    const res = await api.post(`/beacon-lights/${entityId}/reject`, null, {
+    const res = await api.post(`/beacon-stations/${entityId}/reject`, null, {
       params: { rejectReason, approverId },
     });
     return res.data.data;

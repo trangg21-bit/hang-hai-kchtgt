@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.seeder;
 
-import com.hanghai.kchtg.beacon.entity.BeaconLight;
+import com.hanghai.kchtg.beacon.entity.BeaconStation;
 import com.hanghai.kchtg.beacon.entity.Buoy;
-import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.enums.AuthType;
@@ -59,7 +59,7 @@ public class DataSeeder implements CommandLineRunner {
     private final GroupMemberRepository groupMemberRepo;
     private final OrgUnitRepository orgUnitRepo;
     private final PasswordEncoder passwordEncoder;
-    private final BeaconLightRepository beaconLightRepo;
+    private final BeaconStationRepository beaconStationRepo;
     private final BuoyRepository buoyRepo;
     private final MapSymbolRepository mapSymbolRepo;
 
@@ -75,7 +75,7 @@ public class DataSeeder implements CommandLineRunner {
         seedOrgUnits();
         // seedUserGroups(); // Disabled as per user rule to not seed data via Java
         seedUsers();
-        // seedBeaconLights();
+        // seedBeaconStations();
         // seedBuoys();
         seedDataConnections();
         seedMapSymbols();
@@ -422,13 +422,13 @@ public class DataSeeder implements CommandLineRunner {
         log.info("✅ Seeded 15 DataConnections");
     }
 
-    private void seedBeaconLights() {
-        if (beaconLightRepo.count() > 0) {
+    private void seedBeaconStations() {
+        if (beaconStationRepo.count() > 0) {
             log.info("⏭️ Beacon lights already exist, skipping...");
             return;
         }
 
-        log.info("📦 Seeding 15 BeaconLights...");
+        log.info("📦 Seeding 15 BeaconStations...");
         String[] names = {
             "Đèn biển Hòn Dấu", "Hải đăng Cô Tô", "Đèn biển Long Châu",
             "Đèn biển Ba Lạt", "Hải đăng Sơn Trà", "Đèn biển Cù Lao Xanh",
@@ -465,7 +465,7 @@ public class DataSeeder implements CommandLineRunner {
         double[] lons = { 106.815, 107.755, 107.159, 106.599, 108.291, 109.281, 109.019, 107.989, 107.072, 106.915, 107.721, 105.799, 106.277, 106.999, 104.831 };
 
         for (int i = 0; i < 15; i++) {
-            BeaconLight b = new BeaconLight();
+            BeaconStation b = new BeaconStation();
             b.setCode(codes[i]);
             b.setName(names[i]);
             b.setType(types[i]);
@@ -473,9 +473,9 @@ public class DataSeeder implements CommandLineRunner {
             b.setTowerColor(i % 3 == 0 ? "Trắng chớp nhoáng" : (i % 3 == 1 ? "Đỏ chớp chu kỳ" : "Xanh lục"));
             b.setStatus(statuses[i]);
             b.setIsActive("PUBLISHED".equals(statuses[i]));
-            beaconLightRepo.save(b);
+            beaconStationRepo.save(b);
         }
-        log.info("✅ Seeded 15 BeaconLights");
+        log.info("✅ Seeded 15 BeaconStations");
     }
 
     private void seedBuoys() {

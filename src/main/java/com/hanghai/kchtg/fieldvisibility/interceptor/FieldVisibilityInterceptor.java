@@ -74,7 +74,7 @@ public class FieldVisibilityInterceptor implements HandlerInterceptor {
             Map.entry("/api/v1/stations/cospas-sarsat", "station"),
             Map.entry("/api/v1/lighthouse-station", "lighthousestation"),
             Map.entry("/api/v1/buoy-station", "buoystation"),
-            Map.entry("/api/v1/beacon-lights", "beaconlight"),
+            Map.entry("/api/v1/beacon-stations", "beaconstation"),
             Map.entry("/api/v1/buoys", "buoy"),
             // Documents & Planning
             Map.entry("/api/v1/documents", "document"),

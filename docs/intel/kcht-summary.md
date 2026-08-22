@@ -26,7 +26,7 @@ Dùng enum này để rà soát — nếu một loại KCHT tồn tại trong `h
 | 6 | `DIKE_REVETMENT` | `dikerevetment.entity.DikeRevetment` | `dike_revetment` | Đê chắn sóng, đê chắn cát, kè... | ✅ |
 | 7 | `NAVIGATION_CHANNEL` | `navigationchannel.entity.NavigationChannel` | `navigation_channel` | Luồng hàng hải | ✅ |
 | 8 | `COSO_SUACHUA` | `shiprepairfacility.entity.ShipRepairFacility` | `ship_repair_facility` | Cơ sở sửa chữa, đóng tàu | ✅ |
-| 9 | `DENBIEN` | `beacon.entity.BeaconLight` | `beacon_light` | Đèn biển và nhà trạm | ✅ |
+| 9 | `DENBIEN` | `beacon.entity.BeaconStation` | `beacon_light` | Đèn biển và nhà trạm | ✅ |
 | 10 | `PHAOTIEU` | `beacon.entity.Buoy` | `buoy` | Phao, tiêu | ✅ |
 | 11 | `HE_THONG_VTS` | `vtssystem.entity.VtsSystem` | `vts_system` | Hệ thống VTS | ✅ |
 | 12 | `TRAM_RADAR` | `radarstation.entity.RadarStation` | `radar_station` | Trạm radar | ⚠️ Trùng #13 |
@@ -121,7 +121,7 @@ Cả 2 giá trị đều map về cùng một entity `RadarStation`. Có thể l
 
 | Entity | Table | KchtType |
 |--------|-------|----------|
-| `BeaconLight` | `beacon_light` | `DENBIEN` |
+| `BeaconStation` | `beacon_light` | `DENBIEN` |
 | `Buoy` | `buoy` | `PHAOTIEU` |
 
 **BeaconLightType**: LIGHTHOUSE(1), BEACON_LIGHT(2), BEACON_MARK(3)
@@ -202,7 +202,7 @@ Cả 2 giá trị đều map về cùng một entity `RadarStation`. Có thể l
 - [ ] Khu tránh trú bão → WaterZone STORM_SHELTER / `KHUTRANH_TRU_BAO`
 - [ ] Khu đón trả hoa tiêu → WaterZone PILOT_BOARDING (⚠️ không có enum)
 - [ ] Khu quay trở tàu → WaterZone TURNING_BASIN (⚠️ không có enum)
-- [ ] Đèn biển / Hải đăng → `BeaconLight` / `DENBIEN`
+- [ ] Đèn biển / Hải đăng → `BeaconStation` / `DENBIEN`
 - [ ] Cọc tiêu → BeaconLight BEACON_MARK
 - [ ] Phao tiêu → `Buoy` / `PHAOTIEU`
 - [ ] Luồng hàng hải → `NavigationChannel` / `NAVIGATION_CHANNEL`

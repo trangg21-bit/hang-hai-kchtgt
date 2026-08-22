@@ -3,7 +3,7 @@ package com.hanghai.kchtg.beacon.service;
 import com.hanghai.kchtg.beacon.dto.history.BeaconHistoryResponse;
 import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,7 +23,7 @@ import java.util.UUID;
 public class BeaconHistoryService {
 
     private final BeaconHistoryRepository historyRepo;
-    private final BeaconLightRepository beaconLightRepo;
+    private final BeaconStationRepository beaconStationRepo;
     private final BuoyRepository buoyRepo;
 
     /**
@@ -53,8 +53,8 @@ public class BeaconHistoryService {
         } else if (entityCode != null && !entityCode.trim().isEmpty()) {
             String cleanCode = entityCode.trim();
             if (beaconType == BeaconType.BEACON_LIGHT) {
-                entityIds = beaconLightRepo.findByCodeContainingIgnoreCase(cleanCode).stream()
-                        .map(BeaconLight::getId)
+                entityIds = beaconStationRepo.findByCodeContainingIgnoreCase(cleanCode).stream()
+                        .map(BeaconStation::getId)
                         .toList();
             } else {
                 entityIds = buoyRepo.findByCodeContainingIgnoreCase(cleanCode).stream()
