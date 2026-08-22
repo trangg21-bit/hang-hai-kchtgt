@@ -473,6 +473,26 @@ export default function DryPortListPage() {
   // ── Form instances (two separate forms: create + update) ──
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
+
+  /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới (dùng Form context — tự bind đúng form create/update đang render). */
+  const useMaxReached = (name: string, max: number): boolean => {
+    const raw = Form.useWatch(name) ?? '';
+    const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
+    return len >= max;
+  };
+  const atMax = {
+    dryPortName: useMaxReached('dryPortName', 255),
+    detailedLocation: useMaxReached('detailedLocation', 500),
+    connectionMode: useMaxReached('connectionMode', 2000),
+    transportCorridor: useMaxReached('transportCorridor', 100),
+    teuCapacity: useMaxReached('teuCapacity', 20),
+    area: useMaxReached('area', 20),
+    warehouseArea: useMaxReached('warehouseArea', 20),
+    yardArea: useMaxReached('yardArea', 20),
+    remarks: useMaxReached('remarks', 2000),
+    announcementDecisionNumber: useMaxReached('announcementDecisionNumber', 20),
+    announcementOrg: useMaxReached('announcementOrg', 255),
+  };
   const createGeometryType = Form.useWatch('geometryType', createForm);
   const updateGeometryType = Form.useWatch('geometryType', updateForm);
 
@@ -893,17 +913,9 @@ export default function DryPortListPage() {
       .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
       .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
 
-    if (values.geometryType) {
-      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      if (manualCoords.length < requiredCoords) {
-        setGpsError(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.\nVui lòng nhập đầy đủ thông tin.`);
-        setSubmitting(false);
-        return;
-      }
-    }
-
     // ── Submit/Approve validation ──
     if ((saveAction === 'SUBMIT' || saveAction === 'SAVE_AND_APPROVE') && manualCoords.length === 0) {
+      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
       setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
       setSubmitting(false);
       return;
@@ -1172,7 +1184,7 @@ export default function DryPortListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="dryPortName" {...labelProps('Tên cảng cạn')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên cảng cạn không được để trống' }, { max: 255, message: 'Tên cảng cạn tối đa 255 ký tự' }]}>
+              <Form.Item name="dryPortName" {...labelProps('Tên cảng cạn')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên cảng cạn không được để trống' }, { max: 255, message: 'Tên cảng cạn tối đa 255 ký tự' }]} validateStatus={atMax.dryPortName ? 'error' : undefined} help={atMax.dryPortName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
                 <Input placeholder="Nhập Tên cảng cạn" maxLength={255} style={inputStyle} />
               </Form.Item>
             </Col>
@@ -1184,7 +1196,7 @@ export default function DryPortListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required rules={[{ required: true, message: 'Địa điểm chi tiết là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required rules={[{ required: true, message: 'Địa điểm chi tiết là bắt buộc' }]} style={{ marginBottom: spaceFormField }} validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}>
                 <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
@@ -1196,39 +1208,39 @@ export default function DryPortListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="connectionMode" {...labelProps('Phương thức kết nối giao thông với cảng')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập phương thức kết nối giao thông với cảng" maxLength={500} style={inputStyle} />
+              <Form.Item name="connectionMode" {...labelProps('Phương thức kết nối giao thông với cảng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.connectionMode ? 'error' : undefined} help={atMax.connectionMode ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+                <Input placeholder="Nhập phương thức kết nối giao thông với cảng" maxLength={2000} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="transportCorridor" {...labelProps('Hành lang vận tải')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Nhập hành lang vận tải" maxLength={255} style={inputStyle} />
+              <Form.Item name="transportCorridor" {...labelProps('Hành lang vận tải')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.transportCorridor ? 'error' : undefined} help={atMax.transportCorridor ? 'Đã đạt tối đa 100 ký tự' : undefined}>
+                <Input placeholder="Nhập hành lang vận tải" maxLength={100} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="teuCapacity" {...labelProps('Công suất khai thác')} required rules={[{ required: true, message: 'Công suất khai thác là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="area" {...labelProps('Tổng diện tích cảng (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="warehouseArea" {...labelProps('Diện tích kho (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+              <Form.Item name="teuCapacity" {...labelProps('Công suất khai thác')} required rules={[{ required: true, message: 'Công suất khai thác là bắt buộc' }]} style={{ marginBottom: spaceFormField }} validateStatus={atMax.teuCapacity ? 'error' : undefined} help={atMax.teuCapacity ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="yardArea" {...labelProps('Diện tích bãi (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} step={0.01} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+              <Form.Item name="area" {...labelProps('Tổng diện tích cảng (m2)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.area ? 'error' : undefined} help={atMax.area ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="warehouseArea" {...labelProps('Diện tích kho (m2)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.warehouseArea ? 'error' : undefined} help={atMax.warehouseArea ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="yardArea" {...labelProps('Diện tích bãi (m2)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.yardArea ? 'error' : undefined} help={atMax.yardArea ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -1239,8 +1251,8 @@ export default function DryPortListPage() {
           </Row>
           <Row gutter={16}>
             <Col span={24}>
-              <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                <Input.TextArea placeholder="Nhập ghi chú" maxLength={1000} rows={3} style={{ borderRadius: radiusPill, resize: 'none' }} />
+              <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.remarks ? 'error' : undefined} help={atMax.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+                <Input.TextArea placeholder="Nhập ghi chú" maxLength={2000} rows={3} style={{ borderRadius: radiusPill, resize: 'none' }} />
               </Form.Item>
             </Col>
           </Row>
@@ -1254,8 +1266,8 @@ export default function DryPortListPage() {
         <div style={{ paddingTop: 16 }}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="VD: Số 123/QĐ-BGTVT" maxLength={100} style={inputStyle} />
+              <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.announcementDecisionNumber ? 'error' : undefined} help={atMax.announcementDecisionNumber ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <Input placeholder="VD: Số 123/QĐ-BGTVT" maxLength={20} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -1266,7 +1278,7 @@ export default function DryPortListPage() {
           </Row>
           <Row gutter={16}>
             <Col span={24}>
-              <Form.Item name="announcementOrg" {...labelProps('Đơn vị ra quyết định công bố')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="announcementOrg" {...labelProps('Đơn vị ra quyết định công bố')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.announcementOrg ? 'error' : undefined} help={atMax.announcementOrg ? 'Đã đạt tối đa 255 ký tự' : undefined}>
                 <Input placeholder="Nhập đơn vị ra quyết định công bố" maxLength={255} style={inputStyle} />
               </Form.Item>
             </Col>
@@ -1337,7 +1349,7 @@ export default function DryPortListPage() {
               <Table.Column title="Thao tác" key="actions" width={80} align="center" render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />} onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
             </PagedTable>
           )}
-          <Form.Item name="_gisCoordinates" style={{ marginBottom: 0 }} rules={[{ validator: () => { const hasCoord = coordinateList.some((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng))); return geometryType && !hasCoord ? Promise.reject(new Error('Vui lòng thêm ít nhất một tọa độ GPS')) : Promise.resolve(); } }]}>
+          <Form.Item name="_gisCoordinates" style={{ marginBottom: 0 }}>
             <Input style={{ display: 'none' }} />
           </Form.Item>
         </div>

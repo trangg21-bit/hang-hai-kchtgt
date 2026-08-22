@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.repository;
 
 import com.hanghai.kchtg.station.entity.BuoyStation;
+import com.hanghai.kchtg.station.entity.StationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,7 +29,7 @@ public interface BuoyStationRepository extends JpaRepository<BuoyStation, UUID> 
                      @Param("name") String name,
                      @Param("code") String code,
                      @Param("type") String type,
-                     @Param("status") String status,
+                     @Param("status") StationStatus status,
                      @Param("unitId") UUID unitId,
                      @Param("province") String province,
                      @Param("portId") UUID portId,
