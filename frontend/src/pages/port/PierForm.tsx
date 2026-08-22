@@ -12,10 +12,9 @@ import { LineObject } from '../../types/lineObject';
 import { useAuthStore } from '../../store/authStore';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
-import { statusOperational, actionPrimary, textPrimary, textSecondary, textTertiary, borderDefault, fontSizeMd, fontSizeSm, fontWeightBold, fontWeightMedium, radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, surfaceCard, uploadHintStyle } from '../../tokens';
+import { textPrimary, textSecondary, textTertiary, borderDefault, fontSizeMd, fontSizeSm, fontWeightBold, fontWeightMedium, radiusPill, radiusMd, spaceSm, spaceFormField, surfaceCard, uploadHintStyle } from '../../tokens';
 import { colors } from '../../theme';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
