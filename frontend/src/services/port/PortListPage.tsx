@@ -87,7 +87,6 @@ import { ScreenHeader, StatusTabs, DataTable } from '../../components/list-view'
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import PortFormContent from './PortFormContent';
-import PortDetailContent from './PortDetailContent';
 import {
   statusDraft,
   statusOperational,
@@ -347,8 +346,15 @@ const KCHT_TYPE_OPTIONS = [
 
 const hdrCell = () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px', whiteSpace: 'nowrap' as const } });
 
-// Bảng tham chiếu rỗng (Thông tin quy hoạch / Vận hành khai thác / Bảo trì / Sự cố)
-function PortRefTable({ title, emptyText, columns, fixedLeftCols = 0 }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; fixedLeftCols?: number }) {
+// Bảng tham chiếu (Thông tin quy hoạch / Vận hành khai thác / Bảo trì / Sự cố) — đồng bộ giao diện PagedTabTable bến/cầu cảng
+const TAB_PAGE_SIZE = 5;
+function PortRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
+  const [page, setPage] = useState(1);
+  const maxPage = Math.max(1, Math.ceil(dataSource.length / TAB_PAGE_SIZE));
+  const cur = Math.min(page, maxPage);
+  const rows = dataSource
+    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __stt: idx + 1 }))
+    .slice((cur - 1) * TAB_PAGE_SIZE, cur * TAB_PAGE_SIZE);
   return (
     <div style={{ paddingTop: 3 }}>
       <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
@@ -356,20 +362,26 @@ function PortRefTable({ title, emptyText, columns, fixedLeftCols = 0 }: { title:
       </div>
       <Table
         className="list-view-table"
-        dataSource={[]}
+        dataSource={rows}
         pagination={false} size="middle" bordered
-        scroll={{ x: 'max-content' }}
         style={{ marginLeft: 12, marginRight: 12 }}
         locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>{emptyText}</span></div> }}
       >
-        <Table.Column title="STT" key="stt" width={60} align="center" fixed="left" render={(_: any, __: any, i: number) => i + 1} onHeaderCell={hdrCell} />
-        {columns.map((c, i) => (
-          <Table.Column key={c.title} title={c.title} dataIndex={c.dataIndex} width={c.width} align="center" fixed={i < fixedLeftCols ? 'left' : undefined} onHeaderCell={hdrCell} />
+        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
+          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+        {columns.map((c) => (
+          <Table.Column key={c.title} title={c.title} dataIndex={c.dataIndex} width={c.width} align="center"
+            render={(v: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
+            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
         ))}
-        <Table.Column title="Thao tác" key="actions" width={120} align="center" fixed="right" render={() => <EyeOutlined style={{ color: actionPrimary, cursor: 'pointer' }} />} onHeaderCell={hdrCell} />
+        <Table.Column title="Thao tác" key="actions" width={100} align="center"
+          render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
+          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
       </Table>
-      <div style={{ marginRight: 12 }}>
-        <Pagination total={0} current={1} pageSize={20} onChange={() => undefined} />
+      <div style={{ margin: '0 12px' }}>
+        <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
+          pageSizeOptions={[5, 10, 20]} onChange={setPage} />
       </div>
     </div>
   );
@@ -3870,29 +3882,29 @@ export default function PortListPage() {
                 },
                 {
                   key: 'operation', label: 'Thông tin vận hành khai thác',
-                  children: <PortRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có thông tin vận hành khai thác" fixedLeftCols={2} columns={[
-                    { title: 'Mã kế hoạch vận hành khai thác', dataIndex: 'opPlanCode', width: 180 },
-                    { title: 'Tên kế hoạch vận hành khai thác', dataIndex: 'opPlanName', width: 220 },
-                    { title: 'Ngày bắt đầu vận hành khai thác dự kiến', dataIndex: 'opStartDate', width: 200 },
-                    { title: 'Ngày kết thúc vận hành khai thác dự kiến', dataIndex: 'opEndDate', width: 200 },
+                  children: <PortRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" dataSource={(selectedRecord as any)?.operationPlanList} columns={[
+                    { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
+                    { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
+                    { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
+                    { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
                   ]} />,
                 },
                 {
                   key: 'maintenance', label: 'Thông tin bảo trì',
-                  children: <PortRefTable title="Thông tin bảo trì" emptyText="Chưa có thông tin bảo trì" fixedLeftCols={2} columns={[
-                    { title: 'Mã kế hoạch bảo trì', dataIndex: 'maintCode', width: 180 },
-                    { title: 'Tên kế hoạch bảo trì', dataIndex: 'maintName', width: 220 },
-                    { title: 'Thời gian bắt đầu bảo trì dự kiến', dataIndex: 'maintStart', width: 200 },
-                    { title: 'Thời gian kết thúc bảo trì dự kiến', dataIndex: 'maintEnd', width: 200 },
+                  children: <PortRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" dataSource={(selectedRecord as any)?.maintenancePlanList} columns={[
+                    { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
+                    { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
+                    { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
+                    { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
                   ]} />,
                 },
                 {
                   key: 'incident', label: 'Thông tin sự cố',
-                  children: <PortRefTable title="Thông tin sự cố" emptyText="Chưa có thông tin sự cố" fixedLeftCols={1} columns={[
+                  children: <PortRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" dataSource={(selectedRecord as any)?.incidentList} columns={[
                     { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
                     { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
-                    { title: 'Địa điểm xảy ra sự cố', dataIndex: 'incidentLocation', width: 200 },
-                    { title: 'Thời gian xảy ra sự cố', dataIndex: 'incidentTime', width: 180 },
+                    { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
+                    { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
                   ]} />,
                 },
               ]}

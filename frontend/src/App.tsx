@@ -48,10 +48,10 @@ const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm')
 
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 
-const PierList = lazy(() => import('./pages/port/PierList'));
+const PierListPage = lazy(() => import('./pages/port/PierListPage'));
 const PierForm = lazy(() => import('./pages/port/PierForm'));
 
-const DryPortList = lazy(() => import('./pages/port/DryPortList'));
+const DryPortListPage = lazy(() => import('./pages/port/DryPortListPage'));
 
 const WaterZoneListPage = lazy(() => import('./app/waterzone/WaterZoneListPage'));
 
@@ -187,11 +187,11 @@ export default function App() {
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
 
-                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierList /></PermissionGuard>} />
-                <Route path="/pier/create" element={<PermissionGuard permission="pier:create"><><PierList /><PierForm /></></PermissionGuard>} />
-                <Route path="/pier/:id/edit" element={<PermissionGuard permission="pier:update"><><PierList /><PierForm /></></PermissionGuard>} />
+                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/pier/create" element={<PermissionGuard permission="pier:create"><><PierListPage /><PierForm /></></PermissionGuard>} />
+                <Route path="/pier/:id/edit" element={<PermissionGuard permission="pier:update"><><PierListPage /><PierForm /></></PermissionGuard>} />
 
-                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortList /></PermissionGuard>} />
+                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
 
                 <Route path="/water-zone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
 
