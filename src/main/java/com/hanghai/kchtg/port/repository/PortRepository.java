@@ -58,16 +58,16 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
 
     @Query("SELECT p FROM Port p WHERE p.deletedAt IS NULL " +
             "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +
-            "AND (CAST(:portCode AS string) IS NULL OR LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:portCode AS string), '%'))) " +
-            "AND (CAST(:portName AS string) IS NULL OR LOWER(p.portName) LIKE LOWER(CONCAT('%', CAST(:portName AS string), '%'))) " +
-            "AND (CAST(:province AS string) IS NULL OR LOWER(p.province) LIKE LOWER(CONCAT('%', CAST(:province AS string), '%'))) " +
+            "AND (CAST(:portCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.portCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:portCode AS string), '%'))) AS string)) " +
+            "AND (CAST(:portName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.portName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:portName AS string), '%'))) AS string)) " +
+            "AND (CAST(:province AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.province)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:province AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR p.operationalStatus = :operationalStatus) " +
             "AND (:approvalStatus IS NULL OR p.approvalStatus = :approvalStatus) " +
             "AND (:portGroup IS NULL OR p.portGroup = :portGroup) " +
             "AND (:portClass IS NULL OR p.portClass = :portClass) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR p.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR p.updatedAt <= :updatedTo) " +
-            "AND (CAST(:search AS string) IS NULL OR (LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(p.portName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))))")
+            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(p.portCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(p.portName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))")
     Page<Port> searchPorts(
             @Param("includeAll") boolean includeAll,
             @Param("orgUnitIds") Collection<UUID> orgUnitIds,

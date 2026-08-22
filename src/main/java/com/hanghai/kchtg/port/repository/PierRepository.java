@@ -42,19 +42,19 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
 
     @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL " +
             "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +
-            "AND (CAST(:search AS string) IS NULL OR (LOWER(p.pierCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(p.pierName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
-            "AND (CAST(:pierCode AS string) IS NULL OR LOWER(p.pierCode) LIKE LOWER(CONCAT('%', CAST(:pierCode AS string), '%'))) " +
-            "AND (CAST(:pierName AS string) IS NULL OR LOWER(p.pierName) LIKE LOWER(CONCAT('%', CAST(:pierName AS string), '%'))) " +
+            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(p.pierCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(p.pierName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
+            "AND (CAST(:pierCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.pierCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:pierCode AS string), '%'))) AS string)) " +
+            "AND (CAST(:pierName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.pierName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:pierName AS string), '%'))) AS string)) " +
             "AND (:berthId IS NULL OR p.berthId = :berthId) " +
             "AND (:portId IS NULL OR p.portId = :portId) " +
             "AND (:pierType IS NULL OR p.pierType = :pierType) " +
-            "AND (CAST(:province AS string) IS NULL OR LOWER(p.province) LIKE LOWER(CONCAT('%', CAST(:province AS string), '%'))) " +
+            "AND (CAST(:province AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.province)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:province AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR p.operationalStatus = :operationalStatus) " +
             "AND (:approvalStatus IS NULL OR p.approvalStatus = :approvalStatus) " +
             "AND (:navigationChannelId IS NULL OR p.navigationChannelId = :navigationChannelId) " +
             "AND (:constructionGrade IS NULL OR p.constructionGrade = :constructionGrade) " +
             "AND (:structureType IS NULL OR p.structureType = :structureType) " +
-            "AND (CAST(:operationalFunction AS string) IS NULL OR LOWER(p.operationalFunction) LIKE LOWER(CONCAT('%', CAST(:operationalFunction AS string), '%'))) " +
+            "AND (CAST(:operationalFunction AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.operationalFunction)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:operationalFunction AS string), '%'))) AS string)) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR p.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR p.updatedAt <= :updatedTo)")
     Page<Pier> searchPiers(

@@ -769,10 +769,6 @@ export default function BuoyListPage() {
         toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); return;
       }
     }
-    if ((action === 'submit' || action === 'approved') && manualCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt'); return;
-    }
 
     // Kiểm tra trùng tên/mã phao tiêu (chặn lưu — không cho thêm mới trùng)
     try {

@@ -1087,16 +1087,9 @@ export default function PortListPage() {
       if (qty != null && qty > 5) { toast.error('Số lượng công trình KCHT không quá 5'); return; }
     }
 
-    // Validate required fields for submit/approve — GPS bắt buộc theo loại đối tượng khi gửi duyệt, không bắt buộc khi lưu nháp
+    // Validate required fields for submit/approve — tọa độ GPS không bắt buộc khi gửi duyệt
     const currentAction = actionTypeRef.current;
     if (currentAction === 'submit' || currentAction === 'approve') {
-      // Validate GPS coordinates — bắt buộc ≥1 tọa độ khi gửi duyệt/phê duyệt; lưu nháp không cần
-      const gpsComplete = gpsCoordList.filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng));
-      if (gpsComplete.length === 0) {
-        toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-        setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-        return;
-      }
       const fieldErrors: Array<{ name: Array<string | number>; errors: string[] }> = [];
       if (!values.orgUnitId) fieldErrors.push({ name: ['orgUnitId'], errors: ['Đơn vị quản lý là bắt buộc khi gửi phê duyệt'] });
       if (!values.province) fieldErrors.push({ name: ['province'], errors: ['Tỉnh/Thành phố là bắt buộc khi gửi phê duyệt'] });

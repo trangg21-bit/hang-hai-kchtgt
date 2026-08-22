@@ -159,13 +159,6 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
       return;
     }
-    const validCoords = coordinateList.filter(c => c.lat != null && c.lng != null && !isNaN(Number(c.lat)) && !isNaN(Number(c.lng)));
-    if ((saveAction === 'SUBMIT' || saveAction === 'SAVE_AND_APPROVE' || saveAction === 'APPROVED') && validCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setGpsError('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt');
-      setActiveTabKey('location');
-      return;
-    }
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {

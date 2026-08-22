@@ -252,22 +252,6 @@ export default function PortCreatePage() {
       return;
     }
 
-    // ── Submit-only validation ──
-    if (actionType === 'submit') {
-      const hasSpatialId = !!values.spatialId;
-      const validCoords = coordinateList.filter(
-        (c) =>
-          c.latitude !== null &&
-          c.longitude !== null &&
-          !Number.isNaN(Number(c.latitude)) &&
-          !Number.isNaN(Number(c.longitude)),
-      );
-      if (validCoords.length === 0 && !hasSpatialId) {
-        toast.error('Vui lòng thêm ít nhất một tọa độ GPS hoặc liên kết đối tượng GIS');
-        return;
-      }
-    }
-
     setSubmitting(true);
     try {
       // ── Duplicate name check (AC-008-09) ──
@@ -899,7 +883,7 @@ export default function PortCreatePage() {
           <Alert
             type="info"
             showIcon
-            message="⚠️ Khi Gửi phê duyệt, cần ít nhất 1 tọa độ GPS. Nhập Vĩ độ và Kinh độ bên dưới."
+            message="Tọa độ GPS là tùy chọn. Nhập Vĩ độ và Kinh độ nếu có."
             style={{ marginBottom: spaceMd, fontFamily: fontSans }}
           />
 
