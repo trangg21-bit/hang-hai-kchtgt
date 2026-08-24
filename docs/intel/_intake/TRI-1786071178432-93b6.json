@@ -1,0 +1,38 @@
+{
+  "triage_id": "TRI-1786071178432-93b6",
+  "created_at": 1786071178432,
+  "request_summary": "Thêm section \"Style Preset System\" vào AGENTS.md — quy tắc dùng 46 preset, custom hợp lệ/cấm, agent workflow",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "AGENTS.md"
+    ],
+    "impact_files": [
+      "AGENTS.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "AGENTS.md — PMO lead đọc và chép vào brief dev",
+  "blast_radius": 1,
+  "done_oracle": "Section \"Style Preset System\" xuất hiện trong AGENTS.md giữa Semantic Token System và Form & List UI Convention",
+  "escalated_from": {
+    "triage_id": "TRI-1786070252550-68c5",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "322f71cea404c3f985f3763c988d55c126d64fb2",
+    "dirty": true,
+    "captured_at": 1786071178603
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

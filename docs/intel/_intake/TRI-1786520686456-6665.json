@@ -1,0 +1,44 @@
+{
+  "triage_id": "TRI-1786520686456-6665",
+  "created_at": 1786520686456,
+  "request_summary": "Cập nhật section 2 của 3 feature-briefs M-004 (F-092, F-095, F-096): thay bảng phân quyền role-based bằng PermissionMiddleware model (data:create/read/approve)",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-095-phe-duyet-dai-ttdh/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-096-xem-chi-tiet-dai-ttdh/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-095-phe-duyet-dai-ttdh/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-096-xem-chi-tiet-dai-ttdh/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Người đọc feature-brief hiểu cơ chế phân quyền thực tế của chức năng Đài TTDH",
+  "blast_radius": 3,
+  "done_oracle": "Cả 3 file có section 2 phản ánh đúng PermissionMiddleware + ánh xạ role-permission từ RolePermissionSeeder",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-095-phe-duyet-dai-ttdh/feature-brief.md",
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-096-xem-chi-tiet-dai-ttdh/feature-brief.md"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f52b76f325db68ebfa108cd96f87302a04b11a0c",
+    "dirty": true,
+    "captured_at": 1786520686640
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

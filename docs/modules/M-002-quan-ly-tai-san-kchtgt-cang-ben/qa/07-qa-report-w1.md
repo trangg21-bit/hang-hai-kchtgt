@@ -1,219 +1,123 @@
-
 ---
-feature-id: M-002
-stage: validation
-agent: engineering-qa-engineer
-wave: 1
-verdict: Changes-requested
-critical-ac-total: 6
-critical-ac-verified: 0
-last-updated: 2026-07-21
+id: M-002-qa-merge
+module-id: M-002
+name: "QA report — UI → BE feature-brief merge verification"
+slug: qa-report-merge
+created: 2026-08-21
+triage-ref: TRI-1787277507722-c520
 ---
 
-# QA Report — M-002 Cảng & Bến Pages UI Spec Validation
+# QA Report — M-002 UI → BE Feature-Brief Merge (TRI-1787277507722-c520)
 
-## Feature/Change Overview
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Scope:** Independent verification of the UI→BE feature-brief merge performed by engineering-business-analyst (prior stage Pass/high), following the mapping in `ba/00-ui-be-merge-report.md`.
+**Method:** Direct file inspection only (list/glob/grep/read). Git was NOT run (forbidden by work order). No source files were touched; this is a documentation-only reconciliation.
+**Result per check:** Check 1 PASS · Check 2 PASS · Check 3 PASS · Check 4 PASS (with git-level caveat)
 
-Validate 10 existing frontend pages (cangben module) against 36 designer UI specs across 6 domains. This is a static-analysis white-box validation of UI-spec compliance for:
-- **5 List pages**: CangBienList, BenCangList, CauCangList, CangCanList, VungNuocList
-- **5 Form pages**: CangBienForm, BenCangForm, CauCangForm, CangCanForm, VungNuocForm
+---
 
-## Test Scope
+## Check 1 — `_features/` contains the 30 BE dirs F-008..F-037; the 20 UI dirs contain NO `feature-brief.md` and NO `implementations.yaml`
 
-### Included
-- List page column structure, dataIndex, filter controls, component architecture per spec
-- Form page field set, required/optional correctness, field types, status values, parent entity references
-- Theme compliance: hardcoded hex colors, token usage, component patterns (FilterBar, ScreenHeader, DataTable)
+**Oracle:** triage done_oracle #2 (`_features/` no longer holds the 20 separate UI dirs) + merge report §3.1.
 
-### Excluded
-- Runtime verification (no live server available for this wave)
-- GiayTo domain (only 1 upload spec, no page file exists — noted as gap)
-- Detail, update, approve, delete, history UI specs (only list + create mapped to existing pages)
-- Independent black-box/UAT acceptance testing (Test Studio responsibility)
+**Evidence (direct):**
 
-## Requirement Coverage Matrix
+| Probe | Result |
+|---|---|
+| `list _features/` | 50 dirs = F-008..F-037 (30 BE) + F-078..F-083, F-088..F-092, F-097, F-098, F-101..F-107 (20 UI) |
+| `glob _features/*/feature-brief.md` | **30 hits, all under F-008..F-037**; 0 hits under any UI dir |
+| `glob _features/*/implementations.yaml` | **30 hits, all under F-008..F-037**; 0 hits under any UI dir |
+| `glob _features/*/ba/*` | 24 files, all `ba/00-lean-spec.md` under BE dirs; 0 entries under any UI dir (F-078/ba/00-lean-spec.md confirmed deleted) |
+| `list` of all 20 UI dirs | 19 fully empty; `F-078-ui-ql-cc-danh-sach` retains an **empty `ba/`** subdir |
 
-| Domain | Spec Ref | List Page | Form Page | List Status | Form Status | Specs Mapped |
-|--------|----------|-----------|-----------|-------------|-------------|-------------|
-| Cảng biển (cangbien) | 01-list, 03-create | CangBienList | CangBienForm | ⚠️ Partial | ❌ Major gaps | 7 specs |
-| Bến cảng (bencang) | 01-list, 03-create | BenCangList | BenCangForm | ⚠️ Partial | ❌ Major gaps | 7 specs |
-| Cầu cảng (caucang) | 01-list, 03-create | CauCangList | CauCangForm | ⚠️ Partial | ❌ Major gaps | 7 specs |
-| Cảng cạn (cangcan) | 01-list, 03-create | CangCanList | CangCanForm | ❌ Legacy | ❌ Major gaps | 7 specs |
-| Vùng nước (vungnuoc) | 01-list, 03-create | VungNuocList | VungNuocForm | ❌ Legacy | ❌ Major gaps | 7 specs |
-| Giấy tờ (giayto) | 01-upload | — | — | N/A | N/A | 1 spec (no page) |
+**Verdict: PASS.**
 
-### GiayTo gap
-The giayto domain has a spec (`01-upload-ui-spec.md`) describing a `GiayToUploadModal` but no corresponding page file exists in `frontend/src/pages/cangben/`. Spec describes a modal, not a standalone page.
+**Observation (flagged, not a failure):** all 20 UI directories remain on disk as **empty shells** (19 fully empty + F-078 with an empty `ba/`). This is a literal deviation from done_oracle #2 at the working-tree level. Note that git does not track empty directories, so a fresh checkout/clone of the committed state will contain no UI dirs — the committed state satisfies the oracle. Removal of the shells (`rmdir`) belongs to PMO's git cleanup step.
 
-## Test Strategy
+---
 
-Static analysis: read every page source file and compare against the corresponding designer list and create UI specs. Verification items per page:
+## Check 2 — F-020/021/022/024/025 have `feature-brief.md` at ROOT, NO `ba/feature-brief.md`, `ba/00-lean-spec.md` still present
 
-- **List pages**: Columns present (dataIndex, label, width, render function), filter controls match spec, component architecture (ScreenHeader+FilterBar+DataTable vs legacy Card+Row+Col), status badges use semantic tokens, createdAt column present, parent entity name vs raw UUID display.
-- **Form pages**: Field names match spec, required/optional correctness, field type (Input/Select/Number), parent entity ID as Select dropdown vs text Input, status enum values (HIỆN_HÀNH/TẠM_NGƯNG vs custom), trangThaiPheDuyet presence, GPS optional/paired validation.
-- **Theme compliance**: Any hardcoded hex/rgb colors (should import from tokens.ts), component pattern alignment (list-view vs legacy), inline style values vs tokens.
+**Oracle:** merge report §3.3 (5 Cau cảng normalization table).
 
-## Test Cases (Analytical — no execution, wave 1 authoring)
+**Evidence (direct):**
 
-| ID | Page | Check | Expected | Actual | Pass/Fail |
-|----|------|-------|----------|--------|-----------|
-| TC-01 | CangBienList | Uses ScreenHeader+FilterBar+DataTable | list-view components | ✅ Yes | PASS |
-| TC-02 | CangBienList | Columns match spec (maCang, tenCang, tinhThanhPho, dienTich, khaNangTiepNhan, trangThaiHoatDong, trangThaiPheDuyet, createdAt) | Spec fields present | ✅ Has all, plus viDo/kinhDo (not spec'd) | PASS with note |
-| TC-03 | CangBienList | Filter controls per spec | search + status + approvalStatus + orgUnitId | ❌ Only search filter | FAIL |
-| TC-04 | CangBienList | STATUS_STYLE_MAP uses semantic tokens | statusOperational/statusAttention/statusCritical | ❌ Hardcoded hex #1BAF7A, #EDA100, #E34948 | FAIL |
-| TC-05 | CangBienForm | viDo/kinhDo optional | Not required | ❌ Marked required | FAIL |
-| TC-06 | CangBienForm | trangThaiPheDuyet Select in create mode | Present | ❌ Missing | FAIL |
-| TC-07 | CangBienForm | trangThaiHoatDong enum values | HIỆN_HÀNH / TẠM_NGƯNG | ❌ ACTIVE / SUSPENDED / INACTIVE | FAIL |
-| TC-08 | CangBienForm | trangThaiPheDuyet default | CHỜ_PHE_DUYỆT | ❌ DRAFT | FAIL |
-| TC-09 | CangBienForm | khaNangTiepNhan optional | Not required | ❌ Marked required | FAIL |
-| TC-10 | CangBienForm | GPS pair constraint validation | Zod .refine() | ❌ Only individual range checks | FAIL |
-| TC-11 | BenCangList | Uses ScreenHeader+FilterBar+DataTable | list-view components | ✅ Yes | PASS |
-| TC-12 | BenCangList | cangBienId as Select filter | Present | ✅ Present | PASS |
-| TC-13 | BenCangList | STATUS_STYLE_MAP uses semantic tokens | statusOperational/statusAttention/statusCritical | ❌ Hardcoded hex | FAIL |
-| TC-14 | BenCangForm | cangBienId as Select dropdown | Select loaded from API | ❌ Text Input | FAIL |
-| TC-15 | BenCangForm | loaiBen as free text | Free text Input | ❌ Select enum WATER/SHORE/BREAKWATER | FAIL |
-| TC-16 | BenCangForm | viDo/kinhDo optional | Not required | ❌ Marked required | FAIL |
-| TC-17 | BenCangForm | chieuDai, chieuRong, doSauLuong optional | Not required | ❌ All marked required | FAIL |
-| TC-18 | BenCangForm | trangThaiHoatDong values | HIỆN_HÀNH / TẠM_NGƯNG | ❌ ACTIVE / INACTIVE / MAINTENANCE | FAIL |
-| TC-19 | CauCangList | Uses ScreenHeader+FilterBar+DataTable | list-view components | ✅ Yes | PASS |
-| TC-20 | CauCangList | trangThaiHoatDong dataIndex correct | trangThaiHoatDong | ✅ Yes | PASS |
-| TC-21 | CauCangList | benCangId filter present | Select dropdown filter | ❌ Missing | FAIL |
-| TC-22 | CauCangForm | benCangId as Select dropdown | Select loaded from API | ❌ Text Input | FAIL |
-| TC-23 | CauCangForm | loaiCau as free text | Free text Input | ❌ Select enum STRAIGHT/ANGLED/T_SHAPED | FAIL |
-| TC-24 | CauCangForm | chieuDai, taiTrong optional | Not required | ❌ Both marked required | FAIL |
-| TC-25 | CauCangForm | trangThaiHoatDong values | HIỆN_HÀNH / TẠM_NGƯNG | ❌ ACTIVE / INACTIVE / MAINTENANCE | FAIL |
-| TC-26 | CangCanList | Uses ScreenHeader+FilterBar+DataTable | list-view components | ❌ Legacy Card+Row+Col pattern | FAIL |
-| TC-27 | CangCanList | dataIndex for status fields | trangThaiHoatDong, trangThaiPheDuyet | ❌ isActive, approvalStatus | FAIL |
-| TC-28 | CangCanList | createdAt column | Present | ❌ Missing | FAIL |
-| TC-29 | CangCanList | Filter controls per spec | search + status + approvalStatus | ❌ Custom Input+Select controls | FAIL |
-| TC-30 | CangCanForm | viDo/kinhDo optional | Not required | ❌ Marked required | FAIL |
-| TC-31 | CangCanForm | tinhThanhPho optional | Not required | ❌ Marked required | FAIL |
-| TC-32 | CangCanForm | congSuatTEU optional | Not required | ❌ Marked required | FAIL |
-| TC-33 | CangCanForm | trangThaiPheDuyet Select in create | Present | ❌ Missing | FAIL |
-| TC-34 | CangCanForm | trangThaiHoatDong values | HIỆN_HÀNH / TẠM_NGƯNG | ❌ ACTIVE / INACTIVE / MAINTENANCE | FAIL |
-| TC-35 | CangCanForm | trangThaiPheDuyet default | CHỜ_PHE_DUYỆT | ❌ DRAFT | FAIL |
-| TC-36 | CangCanForm | GPS pair constraint validation | Zod .refine() | ❌ Only individual range checks | FAIL |
-| TC-37 | VungNuocList | Uses ScreenHeader+FilterBar+DataTable | list-view components | ❌ Legacy Card+Row+Col pattern | FAIL |
-| TC-38 | VungNuocList | dataIndex for status fields | trangThaiHoatDong, trangThaiPheDuyet | ❌ isActive, approvalStatus | FAIL |
-| TC-39 | VungNuocList | createdAt column | Present | ❌ Missing | FAIL |
-| TC-40 | VungNuocList | cangBienId shows entity name | tenCangBien clickable link | ❌ Raw UUID | FAIL |
-| TC-41 | VungNuocList | cangBienId filter present | Select dropdown filter | ❌ Missing | FAIL |
-| TC-42 | VungNuocForm | cangBienId as Select dropdown | Select loaded from API | ❌ Text Input | FAIL |
-| TC-43 | VungNuocForm | dienTich, doSauMax, doSauTrungBinh optional | Not required | ❌ All marked required | FAIL |
-| TC-44 | VungNuocForm | loaiVungNuoc as free text | Free text Input | ❌ Select enum with fixed values | FAIL |
-| TC-45 | VungNuocForm | trangThaiHoatDong values | HIỆN_HÀNH / TẠM_NGƯNG | ❌ ACTIVE / INACTIVE / MAINTENANCE | FAIL |
+| Feature | `feature-brief.md` at ROOT | `ba/feature-brief.md` present? | `ba/00-lean-spec.md` present? |
+|---|---|---|---|
+| F-020-ql-cc-tao-moi | ✅ (glob hit; dir lists `feature-brief.md`) | ❌ | ✅ (glob hit) |
+| F-021-ql-cc-cap-nhat | ✅ | ❌ | ✅ |
+| F-022-ql-cc-xoa | ✅ | ❌ | ✅ |
+| F-024-xem-cc | ✅ (dir lists `ba/`, `feature-brief.md`, `implementations.yaml`) | ❌ | ✅ |
+| F-025-ql-cc-lich-su | ✅ | ❌ | ✅ |
 
-## Execution Results
+- The `glob _features/*/ba/*` probe returned **zero** files named `feature-brief.md` anywhere under `_features` — the old `ba/feature-brief.md` of all 5 features is gone.
+- All 5 `ba/00-lean-spec.md` files appear in the same glob (F-020, F-021, F-022, F-024, F-025 all present) — preserved.
 
-| Result | Count |
-|--------|-------|
-| PASS | 5 |
-| FAIL | 40 |
-| TOTAL | 45 |
+**Verdict: PASS.**
 
-Wave 1 (authoring) — no runtime execution performed. All 45 test cases are analytical comparisons of source code against designer specs. No build or test runner was invoked.
+---
 
-## Defects Found
+## Check 3 — Merge content landed with no loss (15 BE targets)
 
-### Blocker/Critical Defects
+**Oracle:** merge report §2 mapping table. Each target must carry a `merged from F-XXX` marker or equivalent UI content.
 
-| ID | Severity | Domain | Page | Description | Expected | Actual |
-|----|----------|--------|------|-------------|----------|--------|
-| DEF-001 | Critical | cangcan | CangCanList | Legacy architecture — does not use list-view shared components | ScreenHeader+FilterBar+DataTable | Custom Card+Row+Col with old DataTable |
-| DEF-002 | Critical | vungnuoc | VungNuocList | Legacy architecture — does not use list-view shared components | ScreenHeader+FilterBar+DataTable | Custom Card+Row+Col with old DataTable |
-| DEF-003 | Critical | cangcan | CangCanList | Wrong dataIndex names for status fields | trangThaiHoatDong / trangThaiPheDuyet | isActive / approvalStatus |
-| DEF-004 | Critical | vungnuoc | VungNuocList | Wrong dataIndex names for status fields | trangThaiHoatDong / trangThaiPheDuyet | isActive / approvalStatus |
-| DEF-005 | Critical | all forms (5) | All *Form pages | Wrong trangThaiHoatDong enum values | HIỆN_HÀNH / TẠM_NGƯNG | ACTIVE / INACTIVE / MAINTENANCE or ACTIVE / SUSPENDED / INACTIVE |
-| DEF-006 | Critical | all forms (5) | All *Form pages | Approval workflow uses L1/L2 pattern, spec defines single approve/reject | Direct approve/reject based on trangThaiPheDuyet | Multi-level (DRAFT→PENDING_APPROVAL→APPROVED_L1→...) |
-| DEF-007 | Critical | bencang | BenCangForm | cangBienId is text Input instead of Select dropdown | Select dropdown loaded from API | Free-text Input |
-| DEF-008 | Critical | caucang | CauCangForm | benCangId is text Input instead of Select dropdown | Select dropdown loaded from API | Free-text Input |
-| DEF-009 | Critical | vungnuoc | VungNuocForm | cangBienId is text Input instead of Select dropdown | Select dropdown loaded from API | Free-text Input |
-| DEF-010 | Critical | bencang | BenCangForm | loaiBen uses fixed enum instead of free text | Free text Input | Select enum (WATER/SHORE/BREAKWATER) |
-| DEF-011 | Critical | caucang | CauCangForm | loaiCau uses fixed enum instead of free text | Free text Input | Select enum (STRAIGHT/ANGLED/T_SHAPED) |
-| DEF-012 | Critical | vungnuoc | VungNuocForm | loaiVungNuoc uses fixed enum instead of free text | Free text Input | Select enum (NEO_DAU/KIEM_DICH/...) |
-| DEF-013 | Critical | cangbien | CangBienForm | trangThaiPheDuyet Select missing in create mode | Present with CHỜ_PHE_DUYỆT default | Absent |
-| DEF-014 | Critical | cangcan | CangCanForm | trangThaiPheDuyet Select missing in create mode | Present with CHỜ_PHE_DUYỆT default | Absent |
+### 3.1. The 6 targets that received NEW merges
 
-### Major Defects
+| BE target | UI source(s) | Marker evidence (file:line) | Content substance verified |
+|---|---|---|---|
+| F-012-xem-cb | F-103 | `feature-brief.md:563` `## 11. Upload giấy tờ đính kèm Cảng biển (merged from F-103)` | Read lines 555–600: upload flow (modal, drag-and-drop, MIME/size validation), `POST /api/v1/giay-to`, `GET /:id/download`, `DELETE /:id`, BR-103-01..06 table, RBAC table — present |
+| F-018-xem-bc | F-104 | `feature-brief.md:301` `## 11. Upload giấy tờ đính kèm Bến cảng (merged from F-104)`; `:188` sync note; `:320` `### 11.3. Quy tắc nghiệp vụ (từ F-104)` | Markers + sub-section structure confirmed |
+| F-023-phe-duyet-cc | F-082 | `feature-brief.md:25` `### UI Flow (merged from F-082)`; `:64` `## UI Scope (merged from F-082)`; `:79` `Merged with UI feature F-082 (ui-phe-duyet-cc) — 2026-08-21` | Read lines 20–79: confirm dialog, `POST /:id/approve` + `/reject`, reason ≥10 ký tự, PheDuyetLog, toasts, RBAC Leader/Admin — present |
+| F-024-xem-cc | F-078 + F-079 + F-105 | `feature-brief.md:472` `### 9.2. ... (merged from F-078)`; `:645` `### 11.9. ... (merged from F-078)`; `:671` `### 11.10. ... (merged from F-105)` | Read lines 640–694: ScreenHeader/FilterBar/StatusTabs/DataTable/Pagination, loading/empty/error states, mobile cards, BR-105-01.. rules — present. F-079 (detail screen) has **no explicit marker** — by design: detail content (read-only description `:28`, breadcrumb AC-024-06 `:118`, approve-from-detail BR-024-03 `:132`) was already present; merge report §2 confirms "Xác nhận đã phủ, không thêm lại" |
+| F-030-xem-cct | F-083 + F-106 | `feature-brief.md:316` `## 11. Màn hình Danh sách Cảng cạn (merged from F-083)`; `:370` `## 12. Upload giấy tờ đính kèm Cảng cạn (merged from F-106)`; `:160` list API row "(merged from F-083)"; `:355/:387/:393/:416` sub-sections (từ F-083 / F-106) | Markers + sub-section structure confirmed |
+| F-036-xem-vn | F-088 + F-089 + F-107 | `feature-brief.md:13` `merged-from: [F-036-BE, F-088-UI, F-089-UI]`; `:360` `### 10.8. Upload giấy tờ đính kèm Vùng nước (merged from F-107)`; `:23` merge doc note | Markers + sub-section structure confirmed |
 
-| ID | Severity | Domain | Page | Description | Expected | Actual |
-|----|----------|--------|------|-------------|----------|--------|
-| DEF-015 | Major | cangbien | CangBienForm | viDo/kinhDo marked required | Optional (spec §2: @DecimalMin/@DecimalMax, optional) | required prop=true |
-| DEF-016 | Major | bencang | BenCangForm | viDo/kinhDo marked required | Optional | required prop=true |
-| DEF-017 | Major | cangcan | CangCanForm | viDo/kinhDo marked required | Optional | required prop=true |
-| DEF-018 | Major | cangbien | CangBienForm | khaNangTiepNhan marked required | Optional | required prop=true |
-| DEF-019 | Major | bencang | BenCangForm | chieuDai, chieuRong, doSauLuong marked required | All optional | All marked required |
-| DEF-020 | Major | caucang | CauCangForm | chieuDai, taiTrong marked required | All optional | Both marked required |
-| DEF-021 | Major | cangcan | CangCanForm | congSuatTEU marked required | Optional | required prop=true |
-| DEF-022 | Major | cangcan | CangCanForm | tinhThanhPho marked required | Optional (spec §2: @Size(max=100), optional) | required prop=true |
-| DEF-023 | Major | vungnuoc | VungNuocForm | dienTich, doSauMax, doSauTrungBinh marked required | All optional | All marked required |
-| DEF-024 | Major | cangbien | CangBienForm | trangThaiPheDuyet default value | 'CHỜ_PHE_DUYỆT' | 'DRAFT' |
-| DEF-025 | Major | cangcan | CangCanForm | trangThaiPheDuyet default value | 'CHỜ_PHE_DUYỆT' | 'DRAFT' |
-| DEF-026 | Major | cangbien | CangBienForm | GPS pair constraint missing | Zod .refine() with paired-or-both-empty rule | Individual range checks only |
-| DEF-027 | Major | cangcan | CangCanForm | GPS pair constraint missing | Zod .refine() with paired-or-both-empty rule | Individual range checks only |
-| DEF-028 | Major | cangcan | CangCanList | Missing createdAt column | Present in spec column list | Absent |
-| DEF-029 | Major | vungnuoc | VungNuocList | Missing createdAt column | Present in spec column list | Absent |
-| DEF-030 | Major | vungnuoc | VungNuocList | cangBienId shows raw UUID | tenCangBien clickable link | Raw UUID string |
-| DEF-031 | Major | cangbien | CangBienList | Filter missing status filters | status + approvalStatus | Only search |
-| DEF-032 | Major | cangbien | CangBienForm | tinhThanhPho uses Select from VIETNAM_PROVINCES | Free text Input | Select dropdown |
-| DEF-033 | Major | caucang | CauCangList | Missing benCangId filter | benCangFilter for parent BenCang | Absent |
+### 3.2. The 9 targets confirmed already carrying UI content
 
-### Minor/Observation Defects
+| BE target | UI source(s) | Evidence (file:line) |
+|---|---|---|
+| F-020-ql-cc-tao-moi | F-080 (pre-merged, normalized from ba/) | `FormCrud` component `:526`, `registerThongTinPhamVi` `:295/:407/:562`, collapsible sections — create-form UI present at root |
+| F-021-ql-cc-cap-nhat | F-081 (pre-merged, normalized) | `feature-brief.md:127` `FormCrud` with `formMode=EDIT`, references F-020 layout |
+| F-022-ql-cc-xoa | F-097 (pre-merged, normalized) | `feature-brief.md:32/:102/:131` delete-dialog flow referencing F-078 list, `deletedAt IS NULL` filter, auto-refresh |
+| F-025-ql-cc-lich-su | F-098 (pre-merged, normalized) | `feature-brief.md:28/:39/:86/:163` card-box history UI, AC-025-01..06, badges, empty state — present at root |
+| F-032-ql-vn-tao-moi | F-090 | `merged-from: [F-032-BE, F-090-UI]` `:13` |
+| F-033-ql-vn-cap-nhat | F-091 | `merged-from: [F-033-BE, F-091-UI]` `:13` |
+| F-034-ql-vn-xoa | F-101 | `merged-from: [F-034-BE, F-101-UI]` `:13` |
+| F-035-phe-duyet-vn | F-092 | `merged-from: [F-035-BE, F-092-UI]` `:13` |
+| F-037-ql-vn-lich-su | F-102 | `merged-from: [F-037-BE, F-102-UI]` `:13` |
 
-| ID | Severity | Domain | Page | Description |
-|----|----------|--------|------|-------------|
-| DEF-034 | Minor | all list (5) | All *List pages | STATUS_STYLE_MAP uses hardcoded hex (#1BAF7A, #EDA100, #E34948) instead of semantic tokens (statusOperational, statusAttention, statusCritical) |
-| DEF-035 | Minor | all list (5) | All *List pages | APPROVAL_STYLE_MAP uses hardcoded hex instead of semantic tokens |
-| DEF-036 | Minor | all list (5) | All *List pages | ma* columns rendered with `<Tag color="cyan">` — hardcoded AntD Tag color |
-| DEF-037 | Minor | cangcan | CangCanList | Hardcoded font size `style={{ fontSize: 13 }}` instead of fontSizeMd |
-| DEF-038 | Minor | vungnuoc | VungNuocList | Hardcoded font size `style={{ fontSize: 13 }}` instead of fontSizeMd |
-| DEF-039 | Minor | all form (5) | All *Form pages | L1/L2 approval workflow references don't match spec's direct approve/reject model |
-| DEF-040 | Minor | cangbien | CangBienList | viDo/kinhDo columns present in list — spec says display in detail, not list |
+**Verdict: PASS.** All 15 targets evidenced; no missing merge, no lost UI section, no mismatched target found. F-079's absence of a marker is the documented "already covered" case, not a loss.
 
-## NFR Observations
+---
 
-- **Maintainability**: 2 of 5 list pages (CangCanList, VungNuocList) use a legacy component pattern that duplicates the shared list-view components. This creates maintenance burden — 3 domains follow the shared pattern, 2 do not.
-- **Consistency**: Status badge rendering is inconsistent across pages. CangBienList/BenCangList/CauCangList use custom inline badge spans, while CangCanList/VungNuocList use AntD `<Tag>` component. Neither uses the `.status-badge` CSS classes defined in theme.ts.
-- **Token compliance**: All pages import semantic tokens from `tokens.ts` but frequently hardcode equivalent hex values instead (statusOperational=#1BAF7A is hardcoded in STATUS_STYLE_MAP as '#1BAF7A').
-- **Approval workflow**: All 5 form pages implement a 2-level approval (L1→L2) pattern that does not match the spec's single approve/reject state machine based on `trangThaiPheDuyet` enum (CHỜ_PHE_DUYỆT / ĐƯỢC_PHE_DUYỆT / TỪ_CHỐI).
+## Check 4 — No stray modifications outside `docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/`
 
-## Regression Impact Assessment
+**Evidence:**
 
-| Area | Impact | Rationale |
-|------|--------|-----------|
-| Shared list-view components | Low | Only CangCanList/VungNuocList need migration; other 3 already use them |
-| Semantic token system | Low | Token values already match hardcoded hex — visual change minimal on update |
-| API contract (status enums) | **HIGH** | ACTIVE/INACTIVE vs HIỆN_HÀNH/TẠM_NGƯNG — must align with BE enum values |
-| Approval state machine | **HIGH** | DRAFT/PENDING/APPROVED_L1/APPROVED_L2 vs CHỜ_PHE_DUYỆT/ĐƯỢC_PHE_DUYỆT/TỪ_CHỐI — fundamental behavioral mismatch |
-| Field required/optional | Medium | Marking optional fields as required blocks form submission for legitimate use cases |
+1. **Triage change set:** all 40 entries of `edit_target_files` and `impact_files` in `docs/intel/_intake/TRI-1787277507722-c520.json` are under `docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/` — the expected blast radius contains nothing outside M-002.
+2. **Prior-stage payload claims (consistent with my observations, not re-derived):** BA run = exactly 5 moves (`ba/feature-brief.md` → root) + 21 deletes, all under M-002, zero `implementations.yaml` references; SA run = exactly 20 feature-level `implementations.yaml` deletes, all under M-002.
+3. **Direct inspection:** every `merged from F-XXX` marker found lives inside an M-002 BE `feature-brief.md`; module-level `implementations.yaml` (read in full, 55 lines) lists exactly F-008..F-037 with **no UI feature id** — consistent with the SA hash-pinned read (`965b5144c8be`).
+4. **Repo-wide identifier grep:** the deleted UI dir identifiers appear only in (a) `docs/intel/catalog.json`, (b) `docs/intel/feature-map.yaml`, (c) the triage JSON — all pre-existing registries on the **read-only** `docs/intel` surface, untouched by this run — and (d) pre-existing `src/` code comments (e.g. `DryPortService.java:401` "SUBMIT (from list page F-083)"; other hits such as beacon F-073/F-079 and report F-101..F-105 belong to different modules' feature namespaces — F-NNN is not globally unique). `frontend/src`: **0 matches**.
 
-## Test Limitations / Gaps
+**Verdict: PASS, with an explicit coverage limitation.** Absolute proof that no file outside M-002 was modified requires `git status`/`git diff`, which this work order forbids. The strongest available non-git evidence (triage change set, prior-stage payload records, exhaustive file-state inspection, repo-wide greps) shows full confinement. PMO should run the git verification recommended in merge report §4 before the module gate.
 
-1. **Static analysis only**: No runtime execution could be performed. The FilterBar, DataTable, and ScreenHeader component implementations were inspected but not tested with live data or API integration.
-2. **GiayTo domain**: No page files exist for this domain. The spec describes a modal (not a standalone page), which should be implemented as a reusable component.
-3. **Spec versions**: Designer specs describe idealized UI. Implementation may be constrained by BE API shapes or available service methods not visible in frontend code alone.
-4. **Custom DataTable vs list-view DataTable**: CangCanList and VungNuocList import from `../../components/DataTable` (custom component), not `../../components/list-view/DataTable`. The custom DataTable may have incompatible prop interfaces.
-5. **Status value alignment with BE**: The actual BE enum values are not confirmed. If BE uses ACTIVE/INACTIVE, the forms would match BE but not the designer spec. This requires BA clarification.
+---
 
-## Release Recommendation
+## Gaps / follow-ups (none blocking this merge)
 
-**DO NOT RELEASE** — 40 gaps found across 10 pages. Critical defects include legacy component architecture (2 list pages), wrong dataIndex names (2 list pages), wrong status enum values across all 5 form pages, parent entity IDs as text inputs (3 forms), hardcoded enums vs free text (3 forms), missing trangThaiPheDuyet fields (2 forms), and an approval workflow that does not match the spec.
+| # | Observation | Severity | Owner |
+|---|---|---|---|
+| G1 | 20 empty UI dir shells remain on the working tree (19 empty + `F-078/ba/` empty). Committed state is clean (git does not track empty dirs) but the literal working tree does not match done_oracle #2 until shells are removed | Low (cosmetic) | PMO (rmdir during git cleanup) |
+| G2 | `docs/intel/catalog.json` and `docs/intel/feature-map.yaml` still register the 20 merged-away UI dirs (stale registry entries; note `catalog.json:1122` even spells the path `F-106-ui-upload-giayto-kc/`, which never matched the actual `F-106-ui-upload-giayto-cct`). `docs/intel` was read-only for this run | Low (registry drift) | PMO via projection rebuild / `ai-kit query` |
+| G3 | Pre-existing `src/` comments referencing M-002 UI feature ids (e.g. `DryPortService.java:401` F-083) now dangle after the merge | Low (cosmetic) | Backend dev (future cleanup; `src/` out of scope here) |
+| G4 | done_oracle items #1 (projection `module-features M-002`), #3 (5 Cau cảng registered in DB), #4 (`ai-kit verify`) were NOT verified here — they belong to the PMO stage, which was still Blocked at dispatch | — | PMO |
 
-## QA Verdict
+## Not covered / not run
 
-**Changes-requested** — 14 Critical + 19 Major + 7 Minor/Observation defects. The feature is not ready for release. Requires:
+- **Git provenance (check 4 absolute proof)** — forbidden by work order; see caveat above.
+- **`mvn -f pom.xml test-compile`** (triage `verification_commands`) — NOT run: the merge is documentation-only; no `src/` file changed, so a Java compile gate is not applicable to this change. No build/test/typecheck applicable.
+- **No source file was read for content grading** — `src/` and `frontend/src` were only grepped for stray identifiers.
 
-1. **Must-fix (Blocker)**: Migrate CangCanList and VungNuocList to shared list-view components (ScreenHeader+FilterBar+DataTable)
-2. **Must-fix (Critical)**: Correct status dataIndex names: `isActive`→`trangThaiHoatDong`, `approvalStatus`→`trangThaiPheDuyet`
-3. **Must-fix (Critical)**: Align all form trangThaiHoatDong values with spec enum: `HIỆN_HÀNH`/`TẠM_NGƯNG`
-4. **Must-fix (Critical)**: Replace parent entity ID text inputs with API-loaded Select dropdowns (cangBienId, benCangId)
-5. **Must-fix (Critical)**: Change loaiBen/loaiCau/loaiVungNuoc from fixed Select enums to free text Inputs
-6. **Must-fix (Critical)**: Add trangThaiPheDuyet Select in CangBienForm and CangCanForm create modes
-7. **Must-fix (Critical)**: Make viDo/kinhDo optional across all forms that require it (CangBien, BenCang, CangCan)
-8. **Must-fix (Critical)**: Remove unnecessary `required` from spec-optional fields (khaNangTiepNhan, chieuDai, chieuRong, doSauLuong, taiTrong, dienTich, congSuatTEU)
-9. **Should-fix (Major)**: Replace hardcoded hex colors in STATUS_STYLE_MAP/APPROVAL_STYLE_MAP with semantic tokens
-10. **Should-fix (Major)**: Add GPS pair constraint validation (CangBienForm, CangCanForm)
-11. **Should-fix (Major)**: Add missing filter controls (CangBienList, CauCangList, VungNuocList)
-12. **Should-fix (Major)**: Add createdAt column to CangCanList and VungNuocList
-13. **Should-fix (Major)**: Show cangBienId as entity name in VungNuocList
-14. **Should-fix (Major)**: Change tinhThanhPho from Select to Input in CangBienForm per spec
+## Conclusion
+
+The UI→BE feature-brief merge for M-002 is **correct and complete at the file level**: all 30 BE briefs intact with merged UI content, all 20 UI briefs removed, all 5 Cau cảng briefs normalized to root with lean-spec preserved, no content loss or mis-mapping detected, and no evidence of modifications outside M-002. Residual items (empty dir shells, stale `docs/intel` registries, dangling src comments) are cosmetic follow-ups for PMO/dev, not merge defects.

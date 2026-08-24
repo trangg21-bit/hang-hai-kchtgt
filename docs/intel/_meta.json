@@ -26,10 +26,10 @@
       "updated_by": "sdlc-ba"
     },
     "docs/modules/M-001-quan-tri-he-thong/_state.md": {
-      "content_hash": "sha256:a34b2f1b855417376fca9b297d50fa2ff1355bd9c6c9df4ed575091d2a518f1c",
-      "last_modified": "2026-08-17T07:14:15Z",
-      "last_producer": "ai-kit/update_state(stage_rollback)",
-      "version": 11
+      "content_hash": "sha256:b006534e3584156157a7ce382b933e5a7a5f7a2776638e7f4e6d3d555a57a622",
+      "last_modified": "2026-08-20T06:22:59Z",
+      "last_producer": "ai-kit/update_state(refit_lane)",
+      "version": 13
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:1d089ed0b8f03f0b11f2504dac0eadad4035d75de8eb3d1af73cbf23fc43cc45",
@@ -394,6 +394,15 @@
     "docs/modules/M-1004-field-level-authorization/qa/07-qa-report-w2.md": {
       "content_hash": "sha256:995ad1ec362bee179acf977bfb06a12361ff73203524c838b5b77c91e17554ea",
       "last_modified": "2026-08-17T04:59:32Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-1006-thong-nhat-phe-duyet-2-cap-kchtgt/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:ef0411c0a29197a49dde71d2ba3980e8eeb61078bf10890c33c09ec92d9f9c15",
+      "last_modified": "2026-08-21T03:12:25Z",
       "last_producer": "ai-kit/state-update(auto-lock-qa)",
       "locked_fields": [
         "content_hash"

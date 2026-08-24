@@ -2,8 +2,8 @@
 module-id: M-002
 module-name: Quản lý tài sản KCHTGT - Cảng & Bến
 document: base-pattern
-version: 1.1
-last-updated: 2026-08-22
+version: 1.0
+last-updated: 2026-08-21
 ---
 
 # M-002: Quản lý tài sản KCHTGT - Cảng & Bến — Tài liệu nền dùng chung
@@ -96,19 +96,7 @@ Tài liệu này gom phần chung đó vào **một chỗ**, để mỗi chức 
 
 **3.5. Trạng thái và quy trình phê duyệt (2 cấp)**
 - Toàn bộ 5 cluster dùng **chung một quy trình** nhập và phê duyệt hồ sơ KCHT (tối đa 2 cấp), quy định tại **`QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** (workspace root) và bản quy ước màn hình tại `docs/conventions/approval-2-level-spec.md`. **Không chép lại nội dung quy trình vào đây — đọc trực tiếp file đó trước khi làm.** Tóm tắt để định hướng: quy trình giống nhau cho mọi loại KCHT; số vòng duyệt (1 hoặc 2) phụ thuộc **đơn vị gửi**, không phụ thuộc loại; quyền duyệt gắn với **chức vụ người duyệt** (lãnh đạo Cảng vụ/Chi cục duyệt vòng 1, lãnh đạo Cục duyệt vòng 2); hồ sơ **Đã duyệt** mới chính thức có hiệu lực và được đưa vào báo cáo.
-- Hồ sơ trải qua **7 trạng thái** (6 trạng thái hoạt động + 1 trạng thái lưu trữ, theo mục 1 của file chuẩn). Bản đồ sang enum `ApprovalStatus` (`src/main/java/com/hanghai/kchtg/common/entity/ApprovalStatus.java`):
-
-| # | Trạng thái nghiệp vụ (QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md mục 1) | ApprovalStatus | Giá trị DB |
-|---|---|---|---|
-| 1 | Lưu tạm | `DRAFT` | 0 |
-| 2 | Chờ Cảng vụ / Chi cục duyệt | `PENDING_APPROVAL` | 2 |
-| 3 | Chờ Cục duyệt | `APPROVED_LEVEL1` | 3 |
-| 4 | Bị Cảng vụ / Chi cục trả về | `REJECTED_LEVEL1` | 8 |
-| 5 | Bị Cục trả về | `REJECTED_LEVEL2` | 9 |
-| 6 | Đã duyệt | `APPROVED` | 5 |
-| 7 | Đã xóa (lịch sử) | `ARCHIVED` | 7 |
-
-> **Bảng mapping đã chốt** (M-1006 DP-9/AC-25) — tập đóng 7 trạng thái. `PROPOSED` (1), `APPROVED_LEVEL2` (4), `REJECTED` (6) là giá trị legacy giữ trong enum để đọc dữ liệu cũ, **không dùng trong luồng thống nhất**.
+- Trạng thái dùng enum `ApprovalStatus` (`src/main/java/com/hanghai/kchtg/common/entity/ApprovalStatus.java`) — **10 giá trị, mỗi giá trị có label tiếng Việt** qua `getLabel()`: `DRAFT`(0, 'Lưu tạm'), `PROPOSED`(1, 'Đang đề xuất'), `PENDING_APPROVAL`(2, 'Chờ Cảng vụ / Chi cục duyệt'), `APPROVED_LEVEL1`(3, 'Chờ Cục duyệt'), `APPROVED_LEVEL2`(4, 'Đã duyệt cấp 2 (Legacy)'), `APPROVED`(5, 'Đã duyệt'), `REJECTED`(6, 'Từ chối (Legacy)'), `ARCHIVED`(7, 'Đã xóa (Lịch sử)'), `REJECTED_LEVEL1`(8, 'Bị Cảng vụ / Chi cục trả về'), `REJECTED_LEVEL2`(9, 'Bị Cục trả về'). **Dev đọc trực tiếp enum + `getLabel()` — không cần bảng mapping riêng ở đây.**
 - Trạng thái lưu trong cơ sở dữ liệu dưới dạng **số nguyên** (INT/SMALLINT/TINYINT), map trên Java bằng enum với `@Enumerated(EnumType.ORDINAL)` — **không lưu chuỗi** (theo quy ước AGENTS.md "Ánh xạ Enum xuống Database"). Không hardcode giá trị enum dạng String — dùng tham chiếu từ enum (ví dụ `ApprovalStatus.APPROVED.name()`).
 - Chức năng `phe-duyet` của từng cluster mô tả đầy đủ quy trình riêng (vòng 1/vòng 2, chuyển trạng thái, popup lý do trả về...) trong feature-brief của nó, **không lặp lại** ở đây.
 
@@ -139,7 +127,7 @@ Tài liệu này gom phần chung đó vào **một chỗ**, để mỗi chức 
 
 | # | Điểm cần khai báo | Mặc định | Khai báo của chức năng "Phê duyệt Cảng biển" |
 |---|---|---|---|
-| 1 | Trạng thái riêng | Không có | Không — dùng 7 trạng thái chung (mục 3.5) |
+| 1 | Trạng thái riêng | Không có | Không — dùng các trạng thái enum `ApprovalStatus` (mục 3.5) |
 | 2 | Có bước phê duyệt không | Không | Có — phê duyệt 2 cấp theo QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md |
 | 3 | Có lọc theo cha-con / đơn vị không | Theo đơn vị | Theo đơn vị (mục 3.3) |
 | 4 | Có trường chỉ hiện trong điều kiện nào không | Không | Không |
@@ -159,4 +147,4 @@ Tài liệu này gom phần chung đó vào **một chỗ**, để mỗi chức 
 
 ## 5. Tóm tắt
 
-> Phân hệ Quản lý tài sản KCHTGT - Cảng & Bến có 5 nhóm thực thể (Cảng biển, Bến cảng, Cầu cảng, Cảng cạn, Vùng nước) với 30 chức năng CRUD (F-008..F-037; F-013 đã hủy). Phần giống nhau giữa chúng nằm gọn trong tài liệu này (mục 3): phân quyền theo resource riêng của từng cluster (`port` / `berth` / `pier` / `dryport` / `waterzone`), Admin Cục full quyền + xem metadata, phạm vi dữ liệu theo đơn vị (`orgUnitFilter` + `@DataScope`), lịch sử thay đổi + xóa mềm, và quy trình phê duyệt 2 cấp chung (tham chiếu `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`, 7 trạng thái → enum `ApprovalStatus`). Mỗi chức năng chỉ cần một tài liệu ngắn ghi phần riêng, theo mẫu ở mục 4.
+> Phân hệ Quản lý tài sản KCHTGT - Cảng & Bến có 5 nhóm thực thể (Cảng biển, Bến cảng, Cầu cảng, Cảng cạn, Vùng nước) với 30 chức năng CRUD (F-008..F-037; F-013 đã hủy). Phần giống nhau giữa chúng nằm gọn trong tài liệu này (mục 3): phân quyền theo resource riêng của từng cluster (`port` / `berth` / `pier` / `dryport` / `waterzone`), Admin Cục full quyền + xem metadata, phạm vi dữ liệu theo đơn vị (`orgUnitFilter` + `@DataScope`), lịch sử thay đổi + xóa mềm, và quy trình phê duyệt 2 cấp chung (tham chiếu `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`, enum `ApprovalStatus` (10 giá trị)). Mỗi chức năng chỉ cần một tài liệu ngắn ghi phần riêng, theo mẫu ở mục 4.

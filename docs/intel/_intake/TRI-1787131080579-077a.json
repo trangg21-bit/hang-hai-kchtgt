@@ -1,0 +1,43 @@
+{
+  "triage_id": "TRI-1787131080579-077a",
+  "created_at": 1787131080579,
+  "request_summary": "Ghi đè F-001 feature-brief.md bằng đúng nội dung file F-001-feature-brief-NEW.md (gốc project); reopen M-001 về stage business-analyst trước nếu module đang đóng/done.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "SDLC Studio / docs/modules/M-001-quan-tri-he-thong — artifact tài liệu F-001 feature-brief.md",
+  "blast_radius": 1,
+  "done_oracle": "File feature-brief.md đích byte-identical với F-001-feature-brief-NEW.md; M-001 được reopen về BA stage trước khi ghi (nếu đang đóng); ai-kit verify structural integrity pass.",
+  "verification_commands": [
+    {
+      "command": "mvn -q -DskipTests compile",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "business_rule",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "444d6d93feb67999385fe7430e5b0e199f23887c",
+    "dirty": true,
+    "captured_at": 1787131080779
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

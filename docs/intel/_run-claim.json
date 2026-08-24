@@ -1,46 +1,47 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-22T14:32:07.569Z",
+  "last_modified_at": "2026-08-21T11:49:50.354Z",
   "modules": {
     "M-001": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "done",
-      "claimed_by": "tab-7335d195c37fbbc0",
-      "claimed_at": "2026-08-17T07:14:36.801Z",
-      "heartbeat_at": "2026-08-17T08:43:30.777Z",
+      "status": "skipped",
+      "claimed_by": "tab-756c3351353f3246",
+      "claimed_at": "2026-08-21T10:55:04.256Z",
+      "heartbeat_at": "2026-08-21T11:02:44.925Z",
       "current_stage": null,
       "started_at": "2026-08-05T07:24:47.234Z",
-      "completed_at": "2026-08-17T08:43:30.777Z",
+      "completed_at": "2026-08-21T11:02:44.925Z",
       "auto_pass_count": 0,
-      "attempt": 2,
+      "attempt": 9,
       "name": "Quản trị hệ thống",
       "slug": "quan-tri-he-thong",
       "risk_path": "M",
-      "reopened_at": "2026-08-17T07:14:15.654Z",
-      "reopened_reason": "Scope-shrink change request TRI-1786950754582-5a51: remove the org-unit approval flow entirely (status/approvedAt columns, OrgUnitStatus enum+converter, submit/approve/reject endpoints, orgunit:approve permission, frontend approval UI/API, F-003 docs).",
+      "reopened_at": "2026-08-20T06:22:30.967Z",
+      "reopened_reason": "Cập nhật BA docs F-002 theo TRI-1787194536636-b6e2 (bổ sung BR-002-09..12 + đồng bộ lean-spec hết mâu thuẫn)",
       "claimed_pid": null,
-      "claimed_host": null
+      "claimed_host": null,
+      "previous_claimed_by": "tab-0f9e8e1982408e21"
     },
     "M-002": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "failed",
-      "claimed_by": "tab-67782430fd688c8b",
-      "claimed_at": "2026-08-22T14:27:43.126Z",
-      "heartbeat_at": "2026-08-22T14:32:07.569Z",
+      "status": "in_progress",
+      "claimed_by": "tab-2f00ea4df5166f09",
+      "claimed_at": "2026-08-21T11:49:50.353Z",
+      "heartbeat_at": "2026-08-21T11:49:50.353Z",
       "current_stage": null,
       "started_at": "2026-06-27T22:47:04.985Z",
-      "completed_at": "2026-08-22T14:32:07.569Z",
+      "completed_at": null,
       "auto_pass_count": 0,
-      "attempt": 9,
+      "attempt": 12,
       "name": "Quản lý tài sản KCHTGT - Cảng & Bến",
       "slug": "quan-ly-tai-san-kchtgt-cang-ben",
       "risk_path": "M",
-      "previous_claimed_by": "tab-debug1",
-      "claimed_pid": null,
-      "claimed_host": null
+      "previous_claimed_by": "tab-2f00ea4df5166f09",
+      "claimed_pid": 24244,
+      "claimed_host": "PTPM-TRANGTT1-PC"
     },
     "M-003": {
       "depends_on": [],
@@ -522,6 +523,25 @@
       "claimed_pid": null,
       "claimed_host": null,
       "previous_claimed_by": "tab-bc1802f18c6d6a69"
+    },
+    "M-1006": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "orphaned",
+      "claimed_by": null,
+      "claimed_at": "2026-08-21T05:04:09.920Z",
+      "heartbeat_at": "2026-08-21T05:04:09.920Z",
+      "current_stage": null,
+      "started_at": "2026-08-21T02:08:58.338Z",
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 2,
+      "name": "Thống nhất quy trình phê duyệt 2 cấp KCHT",
+      "slug": "thong-nhat-phe-duyet-2-cap-kchtgt",
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-b44b96fb3db0f7c2"
     }
   },
   "tabs": {
@@ -733,9 +753,27 @@
       "failed_modules": [],
       "skipped_modules": []
     },
-    "tab-543d97184145f7a5": {
-      "started_at": "2026-08-22T13:35:34.308Z",
-      "last_seen": "2026-08-22T14:12:02.257Z",
+    "tab-7527cfc6ad31b936": {
+      "started_at": "2026-08-20T06:22:45.300Z",
+      "last_seen": "2026-08-20T06:36:32.592Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-001"
+      ]
+    },
+    "tab-5c50ff0f6d3f2a63": {
+      "started_at": "2026-08-20T09:53:08.501Z",
+      "last_seen": "2026-08-20T09:53:08.501Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-428cf024602263fa": {
+      "started_at": "2026-08-21T02:03:32.707Z",
+      "last_seen": "2026-08-21T03:14:39.666Z",
       "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [
@@ -743,15 +781,87 @@
       ],
       "skipped_modules": []
     },
-    "tab-67782430fd688c8b": {
-      "started_at": "2026-08-22T14:27:43.126Z",
-      "last_seen": "2026-08-22T14:32:07.569Z",
+    "tab-e7cb8ed3347c12e7": {
+      "started_at": "2026-08-21T02:08:58.338Z",
+      "last_seen": "2026-08-21T03:18:31.232Z",
       "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [
-        "M-002"
+        "M-1006"
       ],
       "skipped_modules": []
+    },
+    "tab-26ba4f25f82204f7": {
+      "started_at": "2026-08-21T03:06:48.157Z",
+      "last_seen": "2026-08-21T03:06:48.157Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-b44b96fb3db0f7c2": {
+      "started_at": "2026-08-21T05:04:09.920Z",
+      "last_seen": "2026-08-21T05:04:09.920Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-8570be7f5bd2d0e5": {
+      "started_at": "2026-08-21T07:03:56.769Z",
+      "last_seen": "2026-08-21T07:03:56.769Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-0f9e8e1982408e21": {
+      "started_at": "2026-08-21T07:31:35.400Z",
+      "last_seen": "2026-08-21T07:31:35.400Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-14fa7ea1c23f230a": {
+      "started_at": "2026-08-21T07:43:48.979Z",
+      "last_seen": "2026-08-21T07:52:23.056Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-001"
+      ]
+    },
+    "tab-2f00ea4df5166f09": {
+      "started_at": "2026-08-21T09:20:52.871Z",
+      "last_seen": "2026-08-21T11:49:50.353Z",
+      "claimed_modules": [
+        "M-002"
+      ],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-3269e9ac2d4d93a1": {
+      "started_at": "2026-08-21T10:42:46.878Z",
+      "last_seen": "2026-08-21T10:49:52.185Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-001"
+      ]
+    },
+    "tab-756c3351353f3246": {
+      "started_at": "2026-08-21T10:55:04.256Z",
+      "last_seen": "2026-08-21T11:02:44.925Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-001"
+      ]
     }
   }
 }

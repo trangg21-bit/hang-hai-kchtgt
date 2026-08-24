@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1786937604245-7983",
+  "created_at": 1786937604245,
+  "request_summary": "Viết lại base pattern M-001 bản v2.0 theo kiểu người đọc (giải thích chi tiết các file tham chiếu, tách phần cho người đọc vs phần cho BA) — vẫn trong docs/_pilot-review/, chưa đụng docs/modules.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "docs/_pilot-review/01-base-pattern.md — tài liệu nháp cho user review",
+  "blast_radius": 2,
+  "done_oracle": "Base pattern M-001 viết lại kiểu người đọc (v2.0) trong docs/_pilot-review/, tham chiếu 3 nhóm file được giải thích chi tiết, giữ phần quy trình cho BA; user review được trong cây tệp; chưa commit.",
+  "verification_commands": [
+    {
+      "command": "git status --porcelain",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "TRI-1786937062960-a56a",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "41555e0f9725c87c2d774fe3c49691dbac85bea5",
+    "dirty": true,
+    "captured_at": 1786937604413
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "triage_id": "TRI-1787280978952-3087",
+  "created_at": 1787280978952,
+  "request_summary": "Chuẩn hóa cấu trúc mục 4 feature-brief F-006 (M-001) theo template 7-section: tách 4.1 Quy tắc nghiệp vụ / 4.2 Acceptance Criteria / 4.3 User Stories / 4.4 Phân quyền riêng, giữ nguyên nội dung BR/AC",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tài liệu đặc tả nghiệp vụ F-006 Quản lý biểu tượng bản đồ (BA stage artifact)",
+  "blast_radius": 1,
+  "done_oracle": "Mục 4 feature-brief F-006 có đủ 4 subheading 4.1/4.2/4.3/4.4 + Admin Cục như template và như F-004/F-005; nội dung BR-006-01..05 và AC-006-01..10 giữ nguyên; mục 5 vẫn đủ 8 dòng; không sửa file nào khác",
+  "verification_commands": [
+    {
+      "command": "ai-kit sdlc verify --module M-001 --scopes completeness",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 60000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "59a9a36e7d6052da45a68d6233ea40ddc59a4559",
+    "dirty": true,
+    "captured_at": 1787280979128
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

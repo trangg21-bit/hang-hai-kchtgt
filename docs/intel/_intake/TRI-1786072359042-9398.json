@@ -1,0 +1,38 @@
+{
+  "triage_id": "TRI-1786072359042-9398",
+  "created_at": 1786072359042,
+  "request_summary": "Renumber section 8-12 → 9-13 sau khi thêm Section 8 (Sidebar phân cấp Menu)",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "them-token-specification (1).md"
+    ],
+    "impact_files": [
+      "them-token-specification (1).md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tài liệu them-token-specification",
+  "blast_radius": 1,
+  "done_oracle": "Section đánh số 1→13 liên tục, không nhảy, không trùng",
+  "escalated_from": {
+    "triage_id": "TRI-1786071178432-93b6",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "bcaf70b5994c53c9108450e2c172e28c7afeed95",
+    "dirty": true,
+    "captured_at": 1786072359206
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

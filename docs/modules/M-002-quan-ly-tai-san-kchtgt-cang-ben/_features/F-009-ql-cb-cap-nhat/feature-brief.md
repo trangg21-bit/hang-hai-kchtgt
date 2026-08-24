@@ -98,7 +98,7 @@ Cấu trúc theo entity `Port` (bảng `ports`) — danh sách trường **khớ
 
 ## 3. Trạng thái và phê duyệt
 
-- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
+- Theo tài liệu nền mục 3.5 (các trạng thái enum `ApprovalStatus` — 10 giá trị có label) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
 - **Sau mỗi lần cập nhật thành công:** hồ sơ được đưa về trạng thái chờ duyệt và **phải duyệt lại** (không giữ trạng thái đã duyệt cũ) — mọi cập nhật đều phải qua phê duyệt để đảm bảo toàn vẹn dữ liệu.
 - Chỉ được cập nhật khi hồ sơ ở trạng thái cho phép sửa (Lưu tạm / bị trả về — theo file chuẩn); cảnh báo khi cảng đang trong quá trình phê duyệt hoặc đã bị xóa mềm.
 - Mỗi lần cập nhật: ghi change log (bản cũ trước khi cập nhật) + đầy đủ thông tin kiểm toán (operatorId, updatedBy, updatedAt).
@@ -137,7 +137,7 @@ Cấu trúc theo entity `Port` (bảng `ports`) — danh sách trường **khớ
 
 | # | Điểm cần khai báo | Khai báo của chức năng này |
 |---|---|---|
-| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung; cập nhật reset về trạng thái chờ duyệt |
+| 1 | Trạng thái riêng | Không — dùng các trạng thái enum `ApprovalStatus`; cập nhật reset về trạng thái chờ duyệt |
 | 2 | Có bước phê duyệt không | Có — mọi cập nhật phải duyệt lại (quy trình 2 cấp) |
 | 3 | Lọc cha-con / theo đơn vị | Theo đơn vị (orgUnitId — tài liệu nền mục 3.3) |
 | 4 | Trường chỉ hiện trong điều kiện nào | Không |

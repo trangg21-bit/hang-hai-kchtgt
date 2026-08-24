@@ -1,0 +1,45 @@
+{
+  "triage_id": "TRI-1785829420996-1cb1",
+  "created_at": 1785829420997,
+  "request_summary": "Merge BE+UI feature-briefs for VungNuoc group: absorb UI features (F-088-F-092, F-101-F-102) and designer specs into existing BE feature-briefs (F-032-F-037)",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 6 edit-target files exceed the inline gate (6 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "M-002 module docs — feature-brief files under _features/",
+  "blast_radius": 6,
+  "done_oracle": "All 6 files contain merged content from BE + UI + designer specs with 10-section structure matching F-012 pattern, frontmatter updated with merged-from and last-updated: 2026-08-04",
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "7e8901201c233513b6373b976b2ce525aa126b61",
+    "dirty": true,
+    "captured_at": 1785829421190
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

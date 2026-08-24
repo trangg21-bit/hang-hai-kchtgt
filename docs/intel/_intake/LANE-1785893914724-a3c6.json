@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1785893914724-a3c6",
+  "created_at": 1785893914724,
+  "lane": "general-work",
+  "owner": "build",
+  "dispatch_target": "build",
+  "routing_mode": "inline",
+  "request_summary": "Restructure F-002 feature-brief.md to match 10-section BA template, preserving all existing business logic",
+  "reason": "Document reformat only — no business logic change, no code change. Editing a feature-brief to comply with template structure.",
+  "signals": [
+    "document-reformat-only",
+    "no-code-change",
+    "no-business-logic-change"
+  ]
+}

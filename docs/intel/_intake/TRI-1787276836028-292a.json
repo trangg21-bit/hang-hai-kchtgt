@@ -1,0 +1,111 @@
+{
+  "triage_id": "TRI-1787276836028-292a",
+  "created_at": 1787276836028,
+  "request_summary": "Thống nhất mọi chức năng phê duyệt KCHT về quy trình 2 cấp (Cảng vụ/Chi cục → Cục) theo QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md, kèm 1 tài liệu spec chung như M-001 đã làm cho CRUD.",
+  "change_class": "C4",
+  "handling": "adr_first",
+  "evidence": {
+    "edit_target_files": [
+      "docs/conventions/approval-2-level-spec.md",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/common/entity/ApprovalStatus.java",
+      "src/main/java/com/hanghai/kchtg/common/enums/ApprovalLevel.java",
+      "src/main/java/com/hanghai/kchtg/gis/line/service/LineObjectService.java",
+      "src/main/java/com/hanghai/kchtg/gis/point/service/PointObjectService.java",
+      "src/main/java/com/hanghai/kchtg/gis/polygon/service/PolygonObjectService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/shared/ApprovalWorkflowService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/WaterZoneApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationCospasSarsatService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationHaiphongService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationInmarsatService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationLRITService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationVTSService.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/service/VtsSystemService.java"
+    ],
+    "impact_files": [
+      "docs/conventions/approval-2-level-spec.md",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/common/entity/ApprovalStatus.java",
+      "src/main/java/com/hanghai/kchtg/common/enums/ApprovalLevel.java",
+      "src/main/java/com/hanghai/kchtg/gis/line/service/LineObjectService.java",
+      "src/main/java/com/hanghai/kchtg/gis/point/service/PointObjectService.java",
+      "src/main/java/com/hanghai/kchtg/gis/polygon/service/PolygonObjectService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/shared/ApprovalWorkflowService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/WaterZoneApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/service/RadarStationService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationCospasSarsatService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationHaiphongService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationInmarsatService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationLRITService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationVTSService.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/service/VtsSystemService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 2,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C4: 2 disjoint write-scope clusters — multi-module work; decompose one work item per cluster (22 edit-target files / 0 packages / 2 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Luồng phê duyệt (submit → approve L1 → approve L2 → reject) từ màn danh sách từng module, endpoint /{id}/approve và /{id}/reject (port/berth/pier/beacon/station...)",
+  "blast_radius": 22,
+  "done_oracle": "Mọi chức năng phê duyệt KCHT chuyển đúng 2 cấp (vòng 1 Cảng vụ/Chi cục, vòng 2 Cục, chống tự duyệt, ghi nhật ký); có đúng 1 tài liệu spec chung cho phê duyệt; mvn clean compile pass.",
+  "verification_commands": [
+    {
+      "command": "mvn clean compile",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 600000
+    }
+  ],
+  "change_type": "business_rule",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/shared/ApprovalWorkflowService.java",
+      "line": 46,
+      "quote": "if (status != ApprovalStatus.PENDING_APPROVAL) {",
+      "source_hash": "913cc53ff48ef29f909cffa4b9bd0258b6e1ce8530abad1bed8c4fcf91020074",
+      "quote_hash": "3f7c80c1f1fc141c92e9e69115ccb8d2ada8a6916a67a189c1531933dcc240a6",
+      "note": "Gate phê duyệt dùng chung hiện chỉ 1 cấp (PENDING→APPROVED), thiếu L1/L2"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "line": 40,
+      "quote": "if (\"CANG_VU\".equals(cap)) {",
+      "source_hash": "1cc2e0424d360b7f8c14aad4bff984dabd5eada2bb17799ad881659e5686feaa",
+      "quote_hash": "1ff628f729a2ae41d7e787c142b830ba7278c28e64be46c7ca9edbd7a6a36cb2",
+      "note": "Bản 2 cấp tham chiếu đúng tài liệu (cap=CANG_VU/CUC)"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java",
+      "line": 411,
+      "quote": "entity.setStatus(\"APPROVED\");",
+      "source_hash": "e79d436382e1131809e48758e37a32bea109936c09c180919cc8bdfda364152b",
+      "quote_hash": "cb97f06546ff9a69bac9e0fb745196a7115d7c3862bd81b89694a2a9bd345024",
+      "note": "Đèn biển approveL1 nhảy thẳng APPROVED — lệch tài liệu 2 cấp"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "a8666dbd2a6398cfdf442baf1ced6e600d93f33c",
+    "dirty": true,
+    "captured_at": 1787276836207
+  },
+  "budget": {
+    "wall_clock_ms": 28800000,
+    "turns": 1800
+  }
+}

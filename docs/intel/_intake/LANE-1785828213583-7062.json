@@ -1,0 +1,17 @@
+{
+  "route_id": "LANE-1785828213583-7062",
+  "created_at": 1785828213583,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Merge 6 feature-brief BE + UI cho nhóm Vùng nước (M-002): F-036←F-088+F-089, F-032←F-090, F-033←F-091, F-034←F-101, F-035←F-092, F-037←F-102",
+  "reason": "Document merge work under docs/modules/ — SDLC pipeline governed area, requires dispatched specialist with write claim",
+  "signals": [
+    "M-002 module",
+    "feature-brief merge",
+    "docs/modules/ target",
+    "existing BE features done",
+    "UI features proposed"
+  ]
+}

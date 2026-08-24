@@ -1,0 +1,45 @@
+{
+  "triage_id": "TRI-1786934894963-41df",
+  "created_at": 1786934894963,
+  "request_summary": "Pilot mô hình tài liệu BA mới trên M-001: tạo base pattern (ba/01-base-pattern.md) + feature brief delta T1 cho F-006 — chỉ 2 file tài liệu MỚI, không sửa code/không đụng file khác, để user duyệt trước khi rollout.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/ba/01-base-pattern.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/ba/01-base-pattern.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tài liệu BA của M-001 (không phải tính năng UI — là pilot tài liệu, user review qua git diff)",
+  "blast_radius": 2,
+  "done_oracle": "2 file tồn tại với nội dung đúng như đã duyệt; git status chỉ hiện đúng 2 file mới; không file nào khác bị sửa; không thay đổi trạng thái ai-kit; không commit.",
+  "verification_commands": [
+    {
+      "command": "git status --porcelain",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "41555e0f9725c87c2d774fe3c49691dbac85bea5",
+    "dirty": true,
+    "captured_at": 1786934895161
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

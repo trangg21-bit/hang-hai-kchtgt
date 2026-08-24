@@ -97,7 +97,7 @@ Cấu trúc theo entity `Berth` (bảng `berths`) — danh sách trường **kh�
 
 ## 3. Trạng thái và phê duyệt
 
-- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
+- Theo tài liệu nền mục 3.5 (các trạng thái enum `ApprovalStatus` — 10 giá trị có label) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
 - **Lưu tạm:** giữ nguyên trạng thái hiện tại.
 - **Gửi phê duyệt:** reset về đầu quy trình — chờ duyệt cấp Cảng vụ/Chi cục; **xóa các dấu phê duyệt cũ** (`portAuthorityApprovedAt/By` + content, `departmentApprovedAt/By` + content, `rejectionReason` về NULL — tương ứng entity `Berth`); ghi nhận `submittedForApprovalAt`/`submittedForApprovalBy`; phải duyệt lại từ vòng 1.
 - **Lưu và phê duyệt** (admin-operation / system-admin): đạt trạng thái đã duyệt ngay + PheDuyetLog cấp Cục.
@@ -142,7 +142,7 @@ Cấu trúc theo entity `Berth` (bảng `berths`) — danh sách trường **kh�
 
 | # | Điểm cần khai báo | Khai báo của chức năng này |
 |---|---|---|
-| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung; cập nhật reset về đầu quy trình duyệt |
+| 1 | Trạng thái riêng | Không — dùng các trạng thái enum `ApprovalStatus`; cập nhật reset về đầu quy trình duyệt |
 | 2 | Có bước phê duyệt không | Có — mọi cập nhật phải duyệt lại từ vòng 1 (trừ Lưu và phê duyệt) |
 | 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + theo Cảng biển cha (portId) |
 | 4 | Trường chỉ hiện trong điều kiện nào | Có — berthCode + orgUnitId read-only; nút "Lưu và phê duyệt" chỉ với admin-operation/system-admin |

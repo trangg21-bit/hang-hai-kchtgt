@@ -1,0 +1,421 @@
+{
+  "model": "deepseek/deepseek-v4-pro",
+  "disabled_providers": [
+    "gitlab"
+  ],
+  "fallback_model": "deepseek/deepseek-v4-flash",
+  "reverse_fallback_model": "etc-ai/ETC AI",
+  "small_model": "etc-ai/ETC AI",
+  "workload_model_pools": {
+    "mechanical": [
+      "etc-ai/ETC AI",
+      "deepseek/deepseek-v4-flash",
+      "openai/gpt-5.5"
+    ],
+    "standard": [
+      "etc-ai/ETC AI",
+      "deepseek/deepseek-v4-flash",
+      "anthropic/claude-sonnet-5"
+    ],
+    "reasoning": [
+      "deepseek/deepseek-v4-flash",
+      "anthropic/claude-sonnet-5",
+      "openai/gpt-5.5"
+    ],
+    "critical": [
+      "deepseek/deepseek-v4-pro",
+      "anthropic/claude-opus-5",
+      "openai/gpt-5.5"
+    ]
+  },
+  "lsp": true,
+  "formatter": true,
+  "mcp": {
+    "servers": {
+      "context7": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp"
+      }
+    }
+  },
+  "tts": {
+    "provider": "azure",
+    "region": "southeastasia"
+  },
+  "stt": {
+    "provider": "azure",
+    "region": "southeastasia",
+    "language": "vi-VN"
+  },
+  "google": {
+    "client_id": "58519302637-ndhbneef0f2s1jvr5n9s02q36jlfk3ne.apps.googleusercontent.com"
+  },
+  "jira": {
+    "site_url": "https://20.84.97.109:3033",
+    "allow_insecure_tls": true
+  },
+  "agents": {
+    "verify": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "consulting-intelligence-extractor": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "build": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "plan": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "assistant": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "pmo-software-project-manager": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "pmo-digital-transformation-project-manager": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "pmo-document-studio-manager": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "pmo-test-manager": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "utility-test-author": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "utility-test-crawler": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "utility-test-development-tester": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "utility-test-failure-analyst": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "utility-test-runner": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "engineering-solution-designer": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "engineering-backend-developer": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "engineering-frontend-developer": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "engineering-qa-engineer": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "engineering-business-analyst": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "engineering-code-reviewer": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "xhigh"
+    },
+    "consulting-information-architect": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "consulting-strategy-analyst": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "consulting-compliance-editor": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "consulting-document-studio-compliance-editor": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "utility-security-auditor": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "engineering-release-manager": {
+      "model": "etc-ai/ETC AI",
+      "variant": "think"
+    },
+    "utility-slide-author": {
+      "model": "etc-ai/ETC AI",
+      "variant": "think"
+    },
+    "consulting-technical-writer": {
+      "model": "etc-ai/ETC AI",
+      "variant": "think"
+    },
+    "consulting-document-section-writer": {
+      "model": "etc-ai/ETC AI",
+      "variant": "think"
+    },
+    "consulting-document-coherence-editor": {
+      "model": "etc-ai/ETC AI",
+      "variant": "think"
+    },
+    "consulting-technical-illustrator": {
+      "model": "etc-ai/ETC AI",
+      "variant": "think"
+    },
+    "consulting-technical-document-test-runner": {
+      "model": "etc-ai/ETC AI",
+      "variant": "think"
+    },
+    "explore": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    },
+    "general": {
+      "model": "deepseek/deepseek-v4-flash",
+      "variant": "think"
+    }
+  },
+  "providers": {
+    "etc-ai": {
+      "name": "ETC AI",
+      "env": [
+        "ETC_AI_API_KEY"
+      ],
+      "api": {
+        "type": "aisdk",
+        "package": "@ai-sdk/openai-compatible",
+        "url": "https://vllm.etc.vn/v1",
+        "settings": {
+          "baseURL": "https://vllm.etc.vn/v1"
+        }
+      },
+      "models": {
+        "ETC AI": {
+          "name": "ETC AI",
+          "family": "qwen",
+          "capabilities": {
+            "tools": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "routing": {
+            "schema_version": "ai-platform.model-routing-profile/v1",
+            "quality_class": "standard",
+            "latency_class": "interactive",
+            "privacy_classes": [
+              "workspace"
+            ],
+            "budget_class": "economy",
+            "structured_output": false,
+            "priority": 30,
+            "configured_variant": "standard"
+          },
+          "variants": [
+            {
+              "id": "standard",
+              "body": {
+                "reasoningLevel": "standard"
+              }
+            },
+            {
+              "id": "think",
+              "body": {
+                "reasoningLevel": "think"
+              }
+            }
+          ],
+          "variant_strategy": "replace",
+          "limit": {
+            "context": 262144,
+            "output": 8192
+          }
+        }
+      }
+    },
+    "deepseek": {
+      "name": "ETC AI",
+      "env": [
+        "DEEPSEEK_API_KEY"
+      ],
+      "api": {
+        "type": "aisdk",
+        "package": "@ai-sdk/openai-compatible",
+        "url": "https://api.deepseek.com"
+      },
+      "models": {
+        "deepseek-v4-pro": {
+          "name": "ETC AI Pro",
+          "family": "deepseek",
+          "capabilities": {
+            "tools": true,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "routing": {
+            "schema_version": "ai-platform.model-routing-profile/v1",
+            "quality_class": "apex",
+            "latency_class": "standard",
+            "privacy_classes": [
+              "workspace"
+            ],
+            "budget_class": "premium",
+            "structured_output": false,
+            "priority": 10,
+            "configured_variant": "xhigh"
+          },
+          "variants": [
+            {
+              "id": "standard",
+              "body": {
+                "reasoningLevel": "standard"
+              }
+            },
+            {
+              "id": "think",
+              "body": {
+                "reasoningLevel": "think"
+              }
+            },
+            {
+              "id": "xhigh",
+              "body": {
+                "reasoningLevel": "xhigh"
+              }
+            }
+          ],
+          "variant_strategy": "replace",
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          }
+        },
+        "deepseek-v4-flash": {
+          "name": "ETC AI Flash",
+          "family": "deepseek",
+          "capabilities": {
+            "tools": true,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "routing": {
+            "schema_version": "ai-platform.model-routing-profile/v1",
+            "quality_class": "advanced",
+            "latency_class": "interactive",
+            "privacy_classes": [
+              "workspace"
+            ],
+            "budget_class": "standard",
+            "structured_output": false,
+            "priority": 20,
+            "configured_variant": "think"
+          },
+          "variants": [
+            {
+              "id": "standard",
+              "body": {
+                "reasoningLevel": "standard"
+              }
+            },
+            {
+              "id": "think",
+              "body": {
+                "reasoningLevel": "think"
+              }
+            }
+          ],
+          "variant_strategy": "replace",
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          }
+        },
+        "deepseek-reasoner": {
+          "family": "deepseek",
+          "name": "ETC AI Reasoner"
+        },
+        "deepseek-chat": {
+          "family": "deepseek",
+          "name": "ETC AI Chat"
+        }
+      }
+    }
+  },
+  "$schema": "https://ai-studio.local/config.json",
+  "shell": "powershell",
+  "sdlc_strict_intake": false,
+  "sdlc_fail_closed": false,
+  "client_preferences": {
+    "general": {
+      "release_notes": true,
+      "followup": "steer",
+      "show_file_tree": true,
+      "show_search": false,
+      "show_status": false,
+      "show_terminal": false,
+      "shell_tool_parts_expanded": false,
+      "edit_tool_parts_expanded": false,
+      "show_session_progress_bar": true,
+      "density": "comfortable",
+      "focus_mode": false,
+      "stream_reveal_speed": "brisk",
+      "chat_rendering_profile": "balanced",
+      "mascot_color": "blackpink",
+      "mascot_brain": true,
+      "mascot_chattiness": "medium",
+      "mascot_banter": true,
+      "mascot_memory_share": true,
+      "mascot_reflection": true
+    },
+    "appearance": {
+      "font_size": 14,
+      "mono": "",
+      "sans": "",
+      "terminal": ""
+    },
+    "notifications": {
+      "agent": true,
+      "permissions": true,
+      "errors": false
+    },
+    "sounds": {
+      "agent_enabled": true,
+      "agent": "staplebops-01",
+      "permissions_enabled": true,
+      "permissions": "staplebops-02",
+      "errors_enabled": true,
+      "errors": "nope-03"
+    }
+  },
+  "plugins": [],
+  "username": "trangtt1"
+}

@@ -1,0 +1,56 @@
+{
+  "triage_id": "TRI-1786940541872-026b",
+  "created_at": 1786940541873,
+  "request_summary": "Cập nhật AGENTS.md phần phân quyền cho khớp code thực tế: bỏ mô tả 7 vai trò cố định, ghi mô hình phân quyền động theo nhóm + tài khoản qua checkbox, nhóm động, quyền mới phải đăng ký seedPermission; kèm 2 file pilot tài liệu BA trong docs/_pilot-review/.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "AGENTS.md",
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md"
+    ],
+    "impact_files": [
+      "AGENTS.md",
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "AGENTS.md — quy định phân quyền của workspace (file user quản, user đã yêu cầu sửa)",
+  "blast_radius": 3,
+  "done_oracle": "AGENTS.md cập nhật đúng thực tế phân quyền (động theo nhóm + tài khoản qua checkbox; nhóm động; quyền tài khoản = quyền riêng + quyền nhóm; máy chủ kiểm tra từng thao tác 403; quyền mới phải đăng ký); 2 file pilot vẫn trong docs/_pilot-review/; không đụng docs/modules; chưa commit.",
+  "verification_commands": [
+    {
+      "command": "git status --porcelain",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "AGENTS.md",
+    "docs/_pilot-review/01-base-pattern.md",
+    "docs/_pilot-review/F-006-feature-brief.md"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786939873276-6ea0",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "41555e0f9725c87c2d774fe3c49691dbac85bea5",
+    "dirty": true,
+    "captured_at": 1786940542050
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}
