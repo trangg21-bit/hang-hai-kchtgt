@@ -762,6 +762,1150 @@ textarea.ant-input {
 .ant-select:has(.ant-select-selection-item) .ant-select-selection-search-input {
   caret-color: transparent;
 }
+
+/* ============================================================
+   5. MẢNG DANH SÁCH — CẢNG BIỂN / BẾN CẢNG / CẦU CẢNG / CẢNG CAN / PHAO TIÊU
+   ============================================================ */
+
+/* --- Màn danh sách tổng thể (list-view page container) --- */
+.port-module-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--bg-body);
+}
+
+/* --- Vùng Screen Header (breadcrumb + nút hành động) --- */
+.port-screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 8px 8px;
+  margin-bottom: 12px;
+}
+.port-screen-header__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.port-screen-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.port-screen-header__action-btn {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.port-screen-header__action-btn--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}
+.port-screen-header__action-btn--outline {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: transparent;
+}
+
+/* --- Filter Table Layout (bộ lọc bên trái, bảng bên phải) --- */
+.port-filter-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* Panel filter dọc bên trái */
+.port-filter-panel {
+  flex-shrink: 0;
+  width: 320px;
+  max-width: 360px;
+  background: var(--bg-container);
+  border: 0.5px solid var(--border-base);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+.port-filter-panel--collapsed {
+  flex-shrink: 0;
+  width: 44px;
+}
+
+/* Nút mở/đóng filter */
+.port-filter-toggle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-container);
+  border: 1px solid var(--border-base);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.port-filter-toggle-btn:hover {
+  background: var(--icon-bg-blue);
+  color: var(--color-primary);
+}
+
+/* Body filter (scrollable fields) */
+.port-filter-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+.port-filter-field {
+  margin-bottom: 12px;
+}
+.port-filter-field:last-child {
+  margin-bottom: 0;
+}
+.port-filter-field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bg-sidebar);
+  margin-bottom: 6px;
+  display: block;
+}
+.port-filter-field__input {
+  width: 100%;
+  height: 40px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+/* Footer filter (nút Tìm kiếm + Làm mới) */
+.port-filter-footer {
+  border-top: 1px solid var(--border-base);
+  padding: 12px 16px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.port-filter-footer__btn {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 24px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.port-filter-footer__btn--search {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}
+.port-filter-footer__btn--reset {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: transparent;
+}
+
+/* --- Status Tabs (tab trạng thái: Tất cả, Nháp, Chờ duyệt, Đã duyệt, Từ chối) --- */
+.port-status-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-container);
+  border: 0.5px solid var(--border-base);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.port-status-tabs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+.port-status-tabs__item:hover {
+  background: var(--icon-bg-blue);
+}
+.port-status-tabs__item--active {
+  background: var(--icon-bg-blue);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.port-status-tabs__count {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--icon-bg-blue);
+  color: var(--text-secondary);
+}
+.port-status-tabs__item--active .port-status-tabs__count {
+  background: var(--color-primary);
+  color: #FFFFFF;
+}
+
+/* --- Data Table --- */
+.port-data-table {
+  background: var(--bg-container);
+  border: 0.5px solid var(--border-base);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.port-data-table__header {
+  background: #eaf0f6;
+  padding: 15px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--bg-sidebar);
+}
+.port-data-table__row-hover:hover {
+  background: #F5F8FA;
+}
+.port-data-table__cell {
+  font-size: 13px;
+  color: var(--text-primary);
+  padding-block: 9px;
+}
+.port-data-table__empty {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+.port-data-table__loading {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--text-tertiary);
+}
+.port-data-table__error {
+  background: var(--bg-container);
+  border: 0.5px solid var(--border-base);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-error);
+}
+
+/* --- Pagination --- */
+.port-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 0;
+}
+.port-pagination__btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--data-sea1, #2769b3);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.port-pagination__btn:hover {
+  background: var(--icon-bg-blue);
+  border-color: var(--color-primary);
+}
+.port-pagination__btn--active {
+  background: var(--color-primary);
+  color: #FFFFFF;
+}
+.port-pagination__size-select {
+  width: 72px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+/* --- Detail Section (Xem chi tiết) --- */
+.port-detail-section {
+  margin-bottom: 24px;
+}
+.port-detail-section__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bg-sidebar);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-base);
+}
+.port-detail-row {
+  display: flex;
+  padding: 8px 0;
+  gap: 8px;
+}
+.port-detail-row__label {
+  flex-shrink: 0;
+  width: 180px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.port-detail-row__value {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+/* --- Approval Action Bar --- */
+.port-approval-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--icon-bg-blue);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.port-approval-bar__btn {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.port-approval-bar__btn--approve {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #FFFFFF;
+}
+.port-approval-bar__btn--reject {
+  background: transparent;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+.port-approval-bar__btn--submit {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}
+
+/* --- Delete Confirmation Modal --- */
+.port-delete-modal {
+  max-width: 480px;
+}
+.port-delete-modal__warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: var(--icon-bg-red);
+  border: 1px solid rgba(241, 65, 108, 0.2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.port-delete-modal__confirm-input {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+/* --- Reject Reason Modal --- */
+.port-reject-modal {
+  max-width: 560px;
+}
+.port-reject-modal__textarea {
+  width: 100%;
+  border-radius: 8px;
+  min-height: 120px;
+  margin-bottom: 8px;
+}
+.port-reject-modal__error {
+  color: var(--color-error);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* --- History Timeline --- */
+.port-history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.port-history-group {
+  border-left: 2px solid var(--color-primary);
+  padding-left: 12px;
+  padding-bottom: 12px;
+  position: relative;
+}
+.port-history-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.port-history-group__time {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.port-history-group__badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+.port-history-group__badge--edit {
+  background: rgba(14, 111, 214, 0.1);
+  color: var(--color-primary);
+}
+.port-history-group__meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.port-history-group__changes {
+  background: var(--bg-container);
+  border: 0.5px solid var(--border-base);
+  border-radius: 8px;
+  padding: 12px;
+}
+.port-history-group__change-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.port-history-group__change-label {
+  flex-shrink: 0;
+  width: 140px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.port-history-group__change-old {
+  flex: 1;
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+.port-history-group__change-arrow {
+  color: var(--text-tertiary);
+}
+.port-history-group__change-new {
+  flex: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ============================================================
+   6. MẢNG FORM (Drawer/Modal) — THÊM MỚI / CHỈNH SỬA
+   ============================================================ */
+
+/* --- Drawer Container --- */
+.port-form-drawer {
+  width: 1000px;
+}
+.port-form-drawer__header {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border-base);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.port-form-drawer__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bg-sidebar);
+}
+.port-form-drawer__close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-form-drawer__close-btn:hover {
+  background: var(--icon-bg-red);
+  color: var(--color-error);
+}
+.port-form-drawer__body {
+  padding: 0 24px 12px;
+}
+.port-form-drawer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border-base);
+}
+
+/* --- Form Tabs --- */
+.port-form-tabs {
+  margin-bottom: 0;
+  padding-top: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-container);
+}
+.port-form-tabs__ink {
+  background: var(--color-primary);
+}
+.port-form-tabs__item {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.port-form-tabs__item--active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* --- Form Field --- */
+.port-form-field {
+  margin-bottom: 12px;
+}
+.port-form-field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bg-sidebar);
+}
+.port-form-field__input {
+  width: 100%;
+  height: 40px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.port-form-field__textarea {
+  width: 100%;
+  border-radius: 4px;
+  min-height: 80px;
+  font-size: 13px;
+}
+.port-form-field__error {
+  color: var(--color-error);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.port-form-field__hint {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  margin-top: 2px;
+}
+.port-form-field__max-reached {
+  border-color: var(--color-error) !important;
+}
+
+/* --- Form Row (2 columns) --- */
+.port-form-row {
+  display: flex;
+  gap: 16px;
+}
+.port-form-row > * {
+  flex: 1;
+}
+
+/* --- Upload Area --- */
+.port-upload-area {
+  border: 1px dashed var(--border-base);
+  border-radius: 8px;
+  background: #eaf0f6;
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-upload-area:hover {
+  border-color: var(--color-primary);
+  background: var(--icon-bg-blue);
+}
+.port-upload-area__icon {
+  font-size: 32px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+.port-upload-area__text {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.port-upload-area__hint {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+/* --- Uploaded File Item --- */
+.port-upload-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #eaf0f6;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.port-upload-file-item__remove {
+  color: var(--color-error);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-upload-file-item__remove:hover {
+  color: #c82333;
+}
+
+/* --- Coordinate List --- */
+.port-coordinate-table {
+  margin-top: 12px;
+  border: 0.5px solid var(--border-base);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.port-coordinate-table__header {
+  background: #eaf0f6;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bg-sidebar);
+  text-transform: uppercase;
+}
+.port-coordinate-table__row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-light);
+}
+.port-coordinate-table__row:last-child {
+  border-bottom: none;
+}
+.port-coordinate-table__input {
+  width: 120px;
+  height: 36px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.port-coordinate-table__remove-btn {
+  color: var(--color-error);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-coordinate-table__remove-btn:hover {
+  color: #c82333;
+}
+.port-coordinate-table__add-btn {
+  border-radius: 999px;
+  height: 36px;
+  padding: 0 16px;
+  font-size: 12px;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-coordinate-table__add-btn:hover {
+  background: var(--icon-bg-blue);
+}
+
+/* ============================================================
+   7. BẢNG CHI TIẾT (Detail View) — XEM CHI TIẾT
+   ============================================================ */
+
+/* --- Detail Drawer --- */
+.port-detail-drawer {
+  width: 1000px;
+}
+.port-detail-drawer__header {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border-base);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.port-detail-drawer__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bg-sidebar);
+}
+.port-detail-drawer__body {
+  padding: 0 24px 12px;
+}
+
+/* --- Descriptions --- */
+.port-detail-descriptions {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.port-detail-descriptions__item {
+  display: flex;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+}
+.port-detail-descriptions__item:last-child {
+  border-bottom: none;
+}
+.port-detail-descriptions__label {
+  flex-shrink: 0;
+  width: 180px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.port-detail-descriptions__value {
+  flex: 1;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+/* --- Detail Section Collapsible --- */
+.port-detail-section--collapsible {
+  margin-bottom: 16px;
+  border: 0.5px solid var(--border-base);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.port-detail-section--collapsible__header {
+  padding: 12px 16px;
+  background: #eaf0f6;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bg-sidebar);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.port-detail-section--collapsible__header:hover {
+  background: var(--icon-bg-blue);
+}
+.port-detail-section--collapsible__body {
+  padding: 16px;
+}
+
+/* --- Detail Files --- */
+.port-detail-files {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.port-detail-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-container);
+  border: 0.5px solid var(--border-base);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.port-detail-file-item__name {
+  flex: 1;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.port-detail-file-item__size {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+/* ============================================================
+   8. MẢNG XÁC NHẬN / POPUP
+   ============================================================ */
+
+/* --- Confirm Modal (phê duyệt, từ chối, xóa, gửi duyệt) --- */
+.port-confirm-modal {
+  max-width: 480px;
+}
+.port-confirm-modal__body {
+  padding: 16px 0;
+}
+.port-confirm-modal__text {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+.port-confirm-modal__input {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.port-confirm-modal__textarea {
+  width: 100%;
+  border-radius: 8px;
+  min-height: 100px;
+  margin-bottom: 8px;
+}
+.port-confirm-modal__error {
+  color: var(--color-error);
+  font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* --- Approval Content --- */
+.port-approval-content {
+  padding: 12px 16px;
+  background: var(--icon-bg-green);
+  border: 1px solid rgba(23, 198, 83, 0.2);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* --- Status Badge (tái sử dụng từ global, nhưng thêm biến thể riêng cho port module) --- */
+.port-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+.port-status-badge--proposed {
+  background: rgba(14, 111, 214, 0.1);
+  color: var(--color-primary);
+}
+.port-status-badge--pending {
+  background: rgba(237, 161, 0, 0.1);
+  color: #EDA100;
+}
+.port-status-badge--approved {
+  background: rgba(27, 175, 122, 0.1);
+  color: #1BAF7A;
+}
+.port-status-badge--rejected {
+  background: rgba(227, 73, 72, 0.1);
+  color: #E34948;
+}
+.port-status-badge--draft {
+  background: rgba(147, 163, 179, 0.1);
+  color: #93a3b3;
+}
+
+/* ============================================================
+   9. MODULE RIÊNG — CẦU CẢNG (PIER)
+   ============================================================ */
+
+/* --- Pier-specific filter fields --- */
+.pier-filter__structure-type {
+  /* Loại kết cấu: bệ cọc cao / cường từ / trọng lực */
+}
+.pier-filter__construction-grade {
+  /* Phân cấp: đặc biệt / cấp 1-4 */
+}
+.pier-filter__operational-function {
+  /* Công năng: container / tổng hợp / hành khách / xăng dầu / rời/quặng / khác */
+}
+
+/* --- Pier-specific table columns --- */
+.pier-column__pier-type {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-blue);
+  color: var(--color-primary);
+}
+.pier-column__construction-grade {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-orange);
+  color: #C9720A;
+}
+
+/* ============================================================
+   10. MODULE RIÊNG — BẾN CẢNG (BERTH)
+   ============================================================ */
+
+/* --- Berth-specific --- */
+.berth-filter__structure-type {
+  /* Loại kết cấu bến: cọc cao / cường từ / trọng lực / khác */
+}
+.berth-filter__operational-function {
+  /* Công năng: container / hành khách / hànggeneral / xăng dầu */
+}
+
+/* --- Berth-specific table columns --- */
+.berth-column__structure-type {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-purple);
+  color: #7239EA;
+}
+
+/* ============================================================
+   11. MODULE RIÊNG — CẢNG CAN (DRY PORT)
+   ============================================================ */
+
+/* --- Dry Port-specific --- */
+.dry-port-filter__transport-corridor {
+  /* Hành lang giao thông */
+}
+.dry-port-filter__region {
+  /* Vùng: Bắc / Trung / Nam */
+}
+
+/* --- Dry Port-specific table columns --- */
+.dry-port-column__connection-mode {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-green);
+  color: #17C653;
+}
+.dry-port-column__area {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   12. MODULE RIÊNG — LUỒNG HÀNG HẢI (NAVIGATION CHANNEL)
+   ============================================================ */
+
+/* --- Navigation Channel-specific --- */
+.nav-channel-filter__status {
+  /* Trạng thái: PROPOSED / PENDING / APPROVED / REJECTED */
+}
+
+/* --- Navigation Channel-specific table columns --- */
+.nav-channel-column__station-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.nav-channel-column__clearance-height {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-blue);
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   13. MODULE RIÊNG — PHAO TIÊU & NHÀ TRẠM (BUOY / STATION)
+   ============================================================ */
+
+/* --- Buoy-specific --- */
+.buoy-filter__type {
+  /* Loại phao: báo hiệu / cảnh báo / dẫn đường */
+}
+.buoy-filter__operational-status {
+  /* Tình trạng: đang hoạt động / tạm ngừng / hư hỏng */
+}
+
+/* --- Buoy-specific table columns --- */
+.buoy-column__type {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-blue);
+  color: var(--color-primary);
+}
+.buoy-column__condition {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-green);
+  color: #17C653;
+}
+
+/* --- Station-specific --- */
+.station-filter__station-type {
+  /* Loại trạm: radar / đặc biệt / ven bờ */
+}
+
+/* --- Station-specific table columns --- */
+.station-column__status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--icon-bg-green);
+  color: #17C653;
+}
+
+/* ============================================================
+   14. CHUNG — ACTION BUTTONS (Tạo mới, Sửa, Xóa, Xem, Phê duyệt, Từ chối)
+   ============================================================ */
+
+/* --- Primary Actions --- */
+.port-action--create {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}
+.port-action--create:hover {
+  background: var(--primary-hover, #3B94FF);
+  border-color: var(--primary-hover, #3B94FF);
+}
+
+.port-action--update {
+  border-radius: 999px;
+  height: 36px;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-action--update:hover {
+  background: var(--icon-bg-blue);
+  color: var(--color-primary);
+}
+
+.port-action--delete {
+  border-radius: 999px;
+  height: 36px;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-action--delete:hover {
+  background: var(--icon-bg-red);
+  color: var(--color-error);
+}
+
+.port-action--view {
+  border-radius: 999px;
+  height: 36px;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.port-action--view:hover {
+  background: var(--icon-bg-green);
+  color: #17C653;
+}
+
+/* --- Approval Actions --- */
+.port-action--approve {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #FFFFFF;
+}
+.port-action--approve:hover {
+  background: #15a84a;
+  border-color: #15a84a;
+}
+
+.port-action--reject {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+.port-action--reject:hover {
+  background: rgba(241, 65, 108, 0.1);
+}
+
+.port-action--submit {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}
+.port-action--submit:hover {
+  background: var(--primary-hover, #3B94FF);
+  border-color: var(--primary-hover, #3B94FF);
+}
+
+/* --- Outline / Secondary --- */
+.port-action--outline {
+  border-radius: 999px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  background: transparent;
+  cursor: pointer;
+}
+.port-action--outline:hover {
+  background: var(--icon-bg-blue);
+}
+
+/* --- Loading / Spinner --- */
+.port-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: port-spin 0.6s linear infinite;
+}
+@keyframes port-spin {
+  to { transform: rotate(360deg); }
+}
+
 `;
 
 // ============================================================
