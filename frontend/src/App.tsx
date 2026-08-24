@@ -35,8 +35,8 @@ const GroupForm = lazy(() => import('./pages/groups/GroupForm'));
 const LogsPage = lazy(() => import('./pages/LogsPage'));
 const InterconnectPage = lazy(() => import('./pages/InterconnectPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const BeaconList = lazy(() => import('./pages/beacons/BeaconList'));
-const BeaconForm = lazy(() => import('./pages/beacons/BeaconForm'));
+const BeaconStationList = lazy(() => import('./pages/beacon-stations/BeaconStationList'));
+const BeaconStationForm = lazy(() => import('./pages/beacon-stations/BeaconStationForm'));
 const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
@@ -175,10 +175,10 @@ export default function App() {
                 <Route path="/reports/:code" element={<PermissionGuard permission="report:read"><ReportViewer /></PermissionGuard>} />
                 <Route path="/reports/F-142/create" element={<PermissionGuard permission="report:create"><Bcc157Form /></PermissionGuard>} />
 
-                {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
-                <Route path="/beacon-lights" element={<PermissionGuard permission="beaconlight:read"><BeaconList /></PermissionGuard>} />
-                <Route path="/beacon-lights/create" element={<PermissionGuard permission="beaconlight:create"><BeaconForm /></PermissionGuard>} />
-                <Route path="/beacon-lights/:id" element={<PermissionGuard permission="beaconlight:read"><BeaconForm /></PermissionGuard>} />
+                {/* Beacon Stations & Buoys — Báo hiệu hàng hải */}
+                <Route path="/beacon-stations" element={<PermissionGuard permission="beaconstation:read"><BeaconStationList /></PermissionGuard>} />
+                <Route path="/beacon-stations/create" element={<PermissionGuard permission="beaconstation:create"><BeaconStationForm /></PermissionGuard>} />
+                <Route path="/beacon-stations/:id" element={<PermissionGuard permission="beaconstation:read"><BeaconStationForm /></PermissionGuard>} />
                 <Route path="/buoys" element={<PermissionGuard permission="buoy:read"><BuoyListPage /></PermissionGuard>} />
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 

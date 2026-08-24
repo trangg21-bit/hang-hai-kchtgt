@@ -36,7 +36,7 @@ import {
   dryPortCRUD,
   waterZoneCRUD
 } from '../../services/portService';
-import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
+import { beaconStationCRUD, buoyCRUD } from '../../services/beaconService';
 import { fetchBuoyStationById } from '../../services/buoy-station/api';
 import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
@@ -896,7 +896,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     ) {
       data = await waterZoneCRUD.findById(id);
     } else if (type === 'Đèn biển') {
-      data = await beaconLightCRUD.findById(id);
+      data = await beaconStationCRUD.findById(id);
     } else if (type === 'Phao tiêu' || type === 'Phao, tiêu') {
       data = await buoyCRUD.findById(id);
       displayType = 'Phao tiêu';
@@ -1257,7 +1257,7 @@ export default function GISChartView() {
         return;
       }
 
-      // Also skip closing if the pathname includes an ID segment (e.g. /beacon-lights/123)
+      // Also skip closing if the pathname includes an ID segment (e.g. /beacon-stations/123)
       const segments = pathname.split('/').filter(Boolean);
       if (segments.length >= 2) {
         return;
@@ -1269,7 +1269,7 @@ export default function GISChartView() {
         '/navigation-channel',
         '/vts-system',
         '/ship-repair-facility',
-        '/beacon-lights',
+        '/beacon-stations',
         '/buoys',
         '/port',
         '/berth',

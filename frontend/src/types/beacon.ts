@@ -53,7 +53,7 @@ export const BEACON_STATUS_MAP: Record<BeaconStatus, { color: string; label: str
 
 // ── Entity Interfaces ───────────────────────────────────────────────
 
-export interface BeaconLight {
+export interface BeaconStation {
   [key: string]: any;
   id: string;
   name: string;
@@ -70,7 +70,6 @@ export interface BeaconLight {
   unitName?: string;
   lastRepairDate?: string;
   commissionedDate?: string;
-  lastRepairDate?: string;
   isActive: boolean;
   status: BeaconStatus;
   approvalStatus: string;
@@ -104,7 +103,7 @@ export interface BeaconLight {
   stationArea?: number;
 }
 
-export interface CreateBeaconLightRequest {
+export interface CreateBeaconStationRequest {
   name: string;
   code: string;
   type: BeaconLightType;
@@ -118,7 +117,6 @@ export interface CreateBeaconLightRequest {
   unitId?: string;
   lastRepairDate?: string;
   commissionedDate?: string;
-  lastRepairDate?: string;
   isActive?: boolean;
   action?: 'draft' | 'submit';
   provinceId?: number;
@@ -144,7 +142,7 @@ export interface CreateBeaconLightRequest {
   stationArea?: number;
 }
 
-export interface UpdateBeaconLightRequest {
+export interface UpdateBeaconStationRequest {
   name?: string;
   type?: BeaconLightType;
   latitude?: number;
@@ -157,7 +155,6 @@ export interface UpdateBeaconLightRequest {
   unitId?: string;
   lastRepairDate?: string;
   commissionedDate?: string;
-  lastRepairDate?: string;
   isActive?: boolean;
   provinceId?: number;
   seaportId?: string;

@@ -4,7 +4,6 @@ import {
   Tag,
   Modal,
   Input,
-  InputNumber,
   Select,
   TreeSelect,
   Drawer,
@@ -37,11 +36,11 @@ import {
 import dayjs, { type Dayjs } from 'dayjs';
 import type { UploadFile } from 'antd';
 import {
-  beaconLightCRUD,
+  beaconStationCRUD,
   approval,
   beaconHistory,
 } from '../../services/beaconService';
-import type { BeaconLight } from '../../types/beacon';
+import type { BeaconStation } from '../../types/beacon';
 import {
   BEACON_STATUS_MAP,
   BEACON_LIGHT_TYPE_OPTIONS,
@@ -82,6 +81,7 @@ import {
   textTertiary,
   fontSizeSm,
   fontSizeMd,
+  fontSizeBreadcrumb,
   fontWeightBold,
   fontWeightMedium,
   radiusSm,
@@ -226,7 +226,6 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   APPROVED_LEVEL2: 'Đã duyệt cấp 2',
   APPROVED: 'Đã phê duyệt',
   REJECTED: 'Từ chối',
-  PENDING_APPROVAL: 'Chờ phê duyệt',
 };
 
 // History action colors — semantic tokens (BEACON_HISTORY_ACTION_MAP keeps AntD names; use tokens for the accent bar/badge)
@@ -241,7 +240,7 @@ const HISTORY_ACTION_COLOR: Record<string, string> = {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm'); } catch { return dateStr; }
+  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
@@ -280,7 +279,7 @@ const tabBarStyle: React.CSSProperties = {
 
 // ── Component ────────────────────────────────────────────────────────
 
-export default function BeaconList() {
+export default function BeaconStationList() {
   // ── Filter state ─────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
@@ -291,7 +290,8 @@ export default function BeaconList() {
   const [filterOperator, setFilterOperator] = useState('');
   const [filterProvinceId, setFilterProvinceId] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<number | undefined>();
-  const [filterStationArea, setFilterStationArea] = useState<number | undefined>();
+  const [filterCommissionedFrom, setFilterCommissionedFrom] = useState('');
+  const [filterCommissionedTo, setFilterCommissionedTo] = useState('');
   const [filterUpdatedBy, setFilterUpdatedBy] = useState('');
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState('');
   const [filterUpdatedTo, setFilterUpdatedTo] = useState('');
@@ -303,7 +303,7 @@ export default function BeaconList() {
   const [pageSize, setPageSize] = useState(20);
 
   // ── Data ─────────────────────────────────────────────────────────
-  const [dataSource, setDataSource] = useState<BeaconLight[]>([]);
+  const [dataSource, setDataSource] = useState<BeaconStation[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -320,8 +320,8 @@ export default function BeaconList() {
 
   // ── Drawer state ─────────────────────────────────────────────────
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<BeaconLight | null>(null);
-  const [detailRecord, setDetailRecord] = useState<BeaconLight | null>(null);
+  const [editingRecord, setEditingRecord] = useState<BeaconStation | null>(null);
+  const [detailRecord, setDetailRecord] = useState<BeaconStation | null>(null);
   const [isDetailMode, setIsDetailMode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createForm] = Form.useForm();
@@ -335,21 +335,21 @@ export default function BeaconList() {
 
   // ── Delete state ─────────────────────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deletingRecord, setDeletingRecord] = useState<BeaconLight | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState<BeaconStation | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // ── Approval state ───────────────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
-  const [submittingRecord, setSubmittingRecord] = useState<BeaconLight | null>(null);
+  const [submittingRecord, setSubmittingRecord] = useState<BeaconStation | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [approvingRecord, setApprovingRecord] = useState<BeaconLight | null>(null);
+  const [approvingRecord, setApprovingRecord] = useState<BeaconStation | null>(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectingRecord, setRejectingRecord] = useState<BeaconLight | null>(null);
+  const [rejectingRecord, setRejectingRecord] = useState<BeaconStation | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   // ── History state ────────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyTarget, setHistoryTarget] = useState<BeaconLight | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<BeaconStation | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
@@ -412,7 +412,7 @@ export default function BeaconList() {
     try {
       const results = await Promise.allSettled(
         STATUS_TAB_LIST.map((tab) =>
-          beaconLightCRUD.search({
+          beaconStationCRUD.search({
             status: TAB_QUERY_MAP[tab.key],
             page: 1,
             pageSize: 1,
@@ -434,7 +434,7 @@ export default function BeaconList() {
     setIsError(false);
     setError(null);
     try {
-      const res = await beaconLightCRUD.search({
+      const res = await beaconStationCRUD.search({
         name: filterName.trim() || undefined,
         code: filterCode.trim() || undefined,
         type: filterType,
@@ -444,7 +444,8 @@ export default function BeaconList() {
         operator: filterOperator.trim() || undefined,
         provinceId: filterProvinceId,
         operationalStatus: filterOperationalStatus,
-        stationArea: filterStationArea,
+        commissionedFrom: filterCommissionedFrom,
+        commissionedTo: filterCommissionedTo,
         updatedBy: filterUpdatedBy.trim() || undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
@@ -459,7 +460,7 @@ export default function BeaconList() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterName, filterCode, filterType, filterStatus, filterUnitId, filterSeaportId, filterOperator, filterProvinceId, filterOperationalStatus, filterStationArea, filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [filterName, filterCode, filterType, filterStatus, filterUnitId, filterSeaportId, filterOperator, filterProvinceId, filterOperationalStatus, filterCommissionedFrom, filterCommissionedTo, filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
   useEffect(() => { void fetchCounts(); }, [fetchCounts]);
@@ -470,7 +471,7 @@ export default function BeaconList() {
     setFilterName(''); setFilterCode(''); setFilterType(undefined);
     setFilterStatus(undefined); setFilterUnitId(undefined); setFilterSeaportId(undefined);
     setFilterOperator(''); setFilterProvinceId(undefined); setFilterOperationalStatus(undefined);
-    setFilterStationArea(undefined); setFilterUpdatedBy('');
+    setFilterCommissionedFrom(''); setFilterCommissionedTo(''); setFilterUpdatedBy('');
     setFilterUpdatedFrom(''); setFilterUpdatedTo('');
     setActiveTab(''); setPage(1);
   }, []);
@@ -480,9 +481,23 @@ export default function BeaconList() {
   const openCreateDrawer = useCallback(() => {
     setEditingRecord(null); setIsDetailMode(false); setDetailRecord(null);
     createForm.resetFields(); setActiveTabKey('general'); setUploadedFiles([]); setDrawerVisible(true);
+    (async () => {
+      try {
+        const code = await beaconStationCRUD.generateCode();
+        if (code) createForm.setFieldsValue({ code });
+      } catch (err) {
+        console.error('Không thể sinh mã đèn biển tự động', err);
+      }
+      try {
+        const me = await userService.getMe();
+        if (me?.orgUnitId) createForm.setFieldsValue({ unitId: me.orgUnitId });
+      } catch (err) {
+        console.error('Không thể lấy đơn vị mặc định của tài khoản', err);
+      }
+    })();
   }, [createForm]);
 
-  const openEditDrawer = useCallback((record: BeaconLight) => {
+  const openEditDrawer = useCallback((record: BeaconStation) => {
     setEditingRecord(record); setIsDetailMode(false); setDetailRecord(null);
     setActiveTabKey('general');
     createForm.setFieldsValue({
@@ -511,21 +526,21 @@ export default function BeaconList() {
       longitude: record.longitude,
     });
     setUploadedFiles([]);
-    beaconLightCRUD.listAttachments(record.id)
+    beaconStationCRUD.listAttachments(record.id)
       .then((files) => setUploadedFiles(files.map((a: any) => ({ uid: a.id, name: a.fileName || a.name, size: a.fileSize, status: 'done' as const }))))
       .catch(() => setUploadedFiles([]));
     setDrawerVisible(true);
   }, [createForm]);
 
-  const openDetailDrawer = useCallback(async (record: BeaconLight) => {
+  const openDetailDrawer = useCallback(async (record: BeaconStation) => {
     setDetailRecord(record); setEditingRecord(record); setIsDetailMode(true); setActiveTabKey('general'); setDrawerVisible(true);
     setDetailFiles([]);
     try {
-      const res = await beaconLightCRUD.findById(record.id);
+      const res = await beaconStationCRUD.findById(record.id);
       setDetailRecord(res);
     } catch { toast.error('Không thể tải thông tin chi tiết'); }
     try {
-      const files = await beaconLightCRUD.listAttachments(record.id);
+      const files = await beaconStationCRUD.listAttachments(record.id);
       setDetailFiles(files || []);
     } catch { setDetailFiles([]); }
   }, []);
@@ -551,7 +566,7 @@ export default function BeaconList() {
     const target = uploadedFiles.find((f) => f.uid === uid);
     setUploadedFiles((p) => p.filter((f) => f.uid !== uid));
     if (target && !target.originFileObj && editingRecord) {
-      try { await beaconLightCRUD.deleteAttachment(editingRecord.id, uid); } catch { /* ignore */ }
+      try { await beaconStationCRUD.deleteAttachment(editingRecord.id, uid); } catch { /* ignore */ }
     }
   }, [uploadedFiles, editingRecord]);
 
@@ -569,7 +584,7 @@ export default function BeaconList() {
     } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); }
   }, [historyTarget]);
 
-  const openHistory = useCallback(async (r: BeaconLight) => {
+  const openHistory = useCallback(async (r: BeaconStation) => {
     setHistoryTarget(r); setHistoryOpen(true);
     setHistorySearch(''); setHistoryFrom(''); setHistoryTo(''); setHistoryMode('current');
     setHistoryLoading(true);
@@ -581,7 +596,7 @@ export default function BeaconList() {
   }, []);
 
   // ── Delete handlers ─────────────────────────────────────────────
-  const openDeleteConfirm = useCallback((record: BeaconLight) => {
+  const openDeleteConfirm = useCallback((record: BeaconStation) => {
     setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
   }, []);
 
@@ -594,7 +609,7 @@ export default function BeaconList() {
       return;
     }
     try {
-      await beaconLightCRUD.delete(deletingRecord.id);
+      await beaconStationCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa đèn biển');
       setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
       void fetchData(); void fetchCounts();
@@ -602,7 +617,7 @@ export default function BeaconList() {
   }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts]);
 
   // ── Submit approval ─────────────────────────────────────────────
-  const openSubmitModal = useCallback((record: BeaconLight) => { setSubmittingRecord(record); setSubmitModalOpen(true); }, []);
+  const openSubmitModal = useCallback((record: BeaconStation) => { setSubmittingRecord(record); setSubmitModalOpen(true); }, []);
   const confirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     try {
@@ -614,7 +629,7 @@ export default function BeaconList() {
   }, [submittingRecord, fetchData, fetchCounts, closeDrawer]);
 
   // ── Approve L1 / L2 ─────────────────────────────────────────────
-  const openApproveModal = useCallback((record: BeaconLight) => { setApprovingRecord(record); setApproveModalOpen(true); }, []);
+  const openApproveModal = useCallback((record: BeaconStation) => { setApprovingRecord(record); setApproveModalOpen(true); }, []);
 
   const confirmApprove = useCallback(async () => {
     if (!approvingRecord) return;
@@ -628,7 +643,7 @@ export default function BeaconList() {
   }, [approvingRecord, fetchData, fetchCounts, closeDrawer]);
 
   // ── Reject ──────────────────────────────────────────────────────
-  const openRejectModal = useCallback((record: BeaconLight) => {
+  const openRejectModal = useCallback((record: BeaconStation) => {
     setRejectingRecord(record); setRejectReason(''); setRejectModalOpen(true);
   }, []);
 
@@ -677,13 +692,13 @@ export default function BeaconList() {
           latitude: values.latitude != null ? Number(values.latitude) : undefined,
           longitude: values.longitude != null ? Number(values.longitude) : undefined,
         };
-        const updated = await beaconLightCRUD.update(editingRecord.id, payload);
+        const updated = await beaconStationCRUD.update(editingRecord.id, payload);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[editingRecord.id] = updated;
         }
         const newFiles = uploadedFiles.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
         if (newFiles.length > 0) {
-          try { await beaconLightCRUD.uploadAttachments(editingRecord.id, newFiles); } catch { /* ignore */ }
+          try { await beaconStationCRUD.uploadAttachments(editingRecord.id, newFiles); } catch { /* ignore */ }
         }
         toast.success('Đã cập nhật đèn biển');
       } else {
@@ -711,10 +726,10 @@ export default function BeaconList() {
           latitude: values.latitude != null ? Number(values.latitude) : undefined,
           longitude: values.longitude != null ? Number(values.longitude) : undefined,
         };
-        const created = await beaconLightCRUD.create(payload);
+        const created = await beaconStationCRUD.create(payload);
         const newFiles = uploadedFiles.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
         if (created.id && newFiles.length > 0) {
-          try { await beaconLightCRUD.uploadAttachments(created.id, newFiles); } catch { /* ignore */ }
+          try { await beaconStationCRUD.uploadAttachments(created.id, newFiles); } catch { /* ignore */ }
         }
         toast.success('Đã tạo đèn biển');
       }
@@ -730,7 +745,7 @@ export default function BeaconList() {
   }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles]);
 
   // ── Row actions (approval flow: DRAFT→submit; PENDING_APPROVAL→approve) ──
-  const rowActions = useCallback((record: BeaconLight) => {
+  const rowActions = useCallback((record: BeaconStation) => {
     const actions: any[] = [
       { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
       { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) },
@@ -757,60 +772,59 @@ export default function BeaconList() {
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span>,
     },
     {
-      key: 'code', label: 'Mã đèn biển', dataIndex: 'code', width: 140, fixed: 'left' as const,
-      render: (code: string) => <Tag color="cyan" style={{ borderRadius: radiusSm, fontSize: fontSizeSm }}>{code}</Tag>,
-    },
-    {
-      key: 'name', label: 'Tên đèn biển', dataIndex: 'name', width: 220, ellipsis: true,
-      render: (name: string, record: BeaconLight) => (
-        <Button type="link" onClick={() => openDetailDrawer(record)}
-          style={{ padding: 0, height: 'auto', fontWeight: fontWeightBold, color: actionPrimary }}>
-          {name || '—'}
-        </Button>
+      key: 'name', label: 'Tên/Mã đèn biển', dataIndex: 'name', width: 300, fixed: 'left' as const, ellipsis: false,
+      render: (name: string, record: BeaconStation) => (
+        <div style={{ minWidth: 0 }}>
+          <button type="button" title={name}
+            onClick={() => openDetailDrawer(record)}
+            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', font: 'inherit', fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {name || '—'}
+          </button>
+          <span style={{ opacity: 0.85, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.code || '—'}</span>
+        </div>
       ),
     },
     {
-      key: 'type', label: 'Cấp trạm đèn', dataIndex: 'type', width: 130,
-      render: (type: string) => {
-        const opt = BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === type);
-        const tagColor = BEACON_LIGHT_TYPE_MAP[type as BeaconLightType]?.color || 'default';
-        return opt ? <Tag color={tagColor} style={{ borderRadius: radiusSm, fontSize: fontSizeSm }}>{opt.label}</Tag> : <span style={{ color: textTertiary, fontSize: fontSizeMd }}>{type || '—'}</span>;
-      },
+      key: 'unitName', label: 'Đơn vị quản lý', dataIndex: 'unitName', width: 300,
+      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || '—'}</span>,
     },
     {
-      key: 'unitName', label: 'Đơn vị quản lý', dataIndex: 'unitName', width: 200,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>,
-    },
-    {
-      key: 'seaportId', label: 'Thuộc cảng biển', dataIndex: 'seaportId', width: 180, ellipsis: true,
+      key: 'seaportId', label: 'Thuộc cảng biển', dataIndex: 'seaportId', width: 220, ellipsis: true,
       render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{seaports.find((p) => p.id === v)?.portName || v || '—'}</span>,
     },
     {
-      key: 'operator', label: 'Đơn vị vận hành', dataIndex: 'operator', width: 180, ellipsis: true,
+      key: 'operator', label: 'Đơn vị vận hành', dataIndex: 'operator', width: 280, ellipsis: true,
       render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>,
     },
     {
-      key: 'provinceId', label: 'Địa điểm Tỉnh/TP', dataIndex: 'provinceId', width: 150,
+      key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 230,
       render: (v: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{getProvinceNameById(v != null ? Number(v) : undefined) || '—'}</span>,
     },
     {
-      key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 180,
+      key: 'type', label: 'Cấp trạm đèn', dataIndex: 'type', width: 150,
+      render: (type: string) => {
+        const opt = BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === type);
+        return <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{opt ? opt.label : (type || '—')}</span>;
+      },
+    },
+    {
+      key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 170,
+      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatDate(v)}</span>,
+    },
+    {
+      key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 230,
       render: (v: number) => {
         const s = OPERATIONAL_STATUS_STYLE_MAP[v];
         return s
-          ? <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>
+          ? <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, padding: '2px 10px', display: 'inline-flex', background: `${s.color}15`, color: s.color }}>{s.label}</span>
           : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
       },
     },
     {
-      key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 160,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatDate(v)}</span>,
-    },
-    {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 150,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 200,
       render: (status: string) => {
         const s = BEACON_STATUS_STYLE_MAP[status] || { color: textTertiary, label: status || '—' };
-        return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+        return <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, padding: '2px 10px', display: 'inline-flex', background: `${s.color}15`, color: s.color }}>{s.label}</span>;
       },
     },
   ], [page, pageSize, openDetailDrawer, seaports]);
@@ -825,20 +839,20 @@ export default function BeaconList() {
     <>
       {/* ── Bộ lọc cơ bản (luôn hiển thị) ── */}
       <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Đơn vị quản lý</div>
         <TreeSelect placeholder="Chọn đơn vị..." allowClear value={filterUnitId}
           onChange={(v) => { setFilterUnitId(v); setPage(1); }}
           treeData={buildOrgTree(organizations)} showSearch treeNodeFilterProp="title"
           treeDefaultExpandAll style={filterInputStyle} />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tên đèn biển</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Tên đèn biển</div>
         <Input placeholder="Tìm theo tên..." allowClear value={filterName}
           onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
           onPressEnter={handleFilterApply} style={filterInputStyle} />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Trạng thái</div>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Trạng thái</div>
         <Select placeholder="Chọn trạng thái" allowClear value={filterStatus}
           onChange={(v) => { setFilterStatus(v); setPage(1); }}
           options={STATUS_TAB_LIST.filter((t) => t.key).map((t) => ({ value: t.key, label: t.label }))}
@@ -849,19 +863,13 @@ export default function BeaconList() {
       {filterCollapsed && (
         <>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Diện tích sử dụng trạm đèn (m²)</div>
-            <InputNumber placeholder="Nhập diện tích..." min={0} value={filterStationArea}
-              onChange={(v) => { setFilterStationArea(v ?? undefined); setPage(1); }}
-              style={filterInputStyle} />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã đèn biển</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Mã đèn biển</div>
             <Input placeholder="Tìm theo mã..." allowClear value={filterCode}
               onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
               onPressEnter={handleFilterApply} style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Thuộc cảng biển</div>
             <Select placeholder="Chọn cảng biển..." allowClear value={filterSeaportId}
               onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
               showSearch optionFilterProp="label"
@@ -869,39 +877,46 @@ export default function BeaconList() {
               style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị vận hành</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Đơn vị vận hành</div>
             <Input placeholder="Tìm theo đơn vị vận hành..." allowClear value={filterOperator}
               onChange={(e) => { setFilterOperator(e.target.value); setPage(1); }}
               onPressEnter={handleFilterApply} style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Địa điểm Tỉnh/TP</div>
             <Select placeholder="Chọn tỉnh/thành phố..." allowClear value={filterProvinceId}
               onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
               showSearch optionFilterProp="label"
               options={VIETNAM_PROVINCE_OPTIONS} style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Tình trạng</div>
             <Select placeholder="Chọn tình trạng" allowClear value={filterOperationalStatus}
               onChange={(v) => { setFilterOperationalStatus(v); setPage(1); }}
               options={OPERATIONAL_STATUS_OPTIONS} style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cấp trạm đèn</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Cấp trạm đèn</div>
             <Select placeholder="Chọn cấp trạm đèn" allowClear value={filterType}
               onChange={(v) => { setFilterType(v); setPage(1); }}
               options={BEACON_LIGHT_TYPE_OPTIONS} style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Thời điểm đưa vào sử dụng</div>
+            <DatePicker.RangePicker placeholder={['Từ ngày', 'Đến ngày']} format="DD/MM/YYYY"
+              value={rangeValue(filterCommissionedFrom, filterCommissionedTo)}
+              onChange={(range) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); }}
+              style={filterInputStyle} />
+          </div>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker placeholder={['Từ ngày', 'Đến ngày']} format="DD/MM/YYYY"
               value={rangeValue(filterUpdatedFrom, filterUpdatedTo)}
               onChange={(range) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); }}
               style={filterInputStyle} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceSm }}>Cán bộ cập nhật</div>
             <Select placeholder="Chọn cán bộ cập nhật" allowClear showSearch value={filterUpdatedBy || undefined}
               onChange={(v) => { setFilterUpdatedBy(v || ''); setPage(1); }}
               options={userOptions} filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -920,7 +935,7 @@ export default function BeaconList() {
 
   // ── Detail rows (57 trường theo checklist QL Đèn biển và nhà trạm) ──
   // Nhóm thành 9 tab: 5 tab nội dung + log cập nhật + vận hành + bảo trì + sự cố
-  type DetailRow = { label: string; value: React.ReactNode };
+  type DetailRow = { label: string; value: React.ReactNode; span?: boolean };
 
   const renderDetailRows = (rows: DetailRow[], paddingTop = 16) => (
     <div style={{ paddingTop }}>
@@ -936,7 +951,7 @@ export default function BeaconList() {
   const renderDetailRowsTwoCol = (rows: DetailRow[]) => (
     <div style={{ paddingTop: 4, display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
       {rows.map((row) => (
-        <div key={row.label} style={{ ...detailRowStyle, gap: spaceFormField }}>
+        <div key={row.label} style={{ ...detailRowStyle, gap: spaceFormField, gridColumn: row.span ? '1 / -1' : undefined }}>
           <div style={detailLabelColStyle}>{row.label}</div>
           <div style={detailValueStyle}>{row.value}</div>
         </div>
@@ -946,12 +961,9 @@ export default function BeaconList() {
 
   const renderToggleSection = (open: boolean, onToggle: () => void, title: string, rows: DetailRow[], twoCol = false) => (
     <div>
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{ cursor: 'pointer', marginTop: 10, padding: '0 0 0 12px', background: 'none', border: 'none', display: 'block', textAlign: 'left' }}
-      >
-        <span style={{ color: open ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+      <button type="button" style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12, background: 'none', border: 'none', font: 'inherit', textAlign: 'left', display: 'block', width: '100%' }}
+        onClick={onToggle}>
+        <span style={{ color: open ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>
           {open ? '▼' : '▶'} {title}
         </span>
       </button>
@@ -974,10 +986,12 @@ export default function BeaconList() {
           value: (() => {
             const s = OPERATIONAL_STATUS_STYLE_MAP[detailRecord.operationalStatus];
             return s
-              ? <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>
+              ? <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, padding: '2px 10px', display: 'inline-flex', background: `${s.color}15`, color: s.color }}>{s.label}</span>
               : '—';
           })(),
         },
+        { label: 'Ngày cập nhật', value: formatDate(detailRecord.updatedAt) },
+        { label: 'Cán bộ cập nhật', value: userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || '—' },
       ]
     : [];
 
@@ -1035,26 +1049,21 @@ export default function BeaconList() {
   // Tab 6 — Thông tin log cập nhật (read-only)
   const detailLogRows: DetailRow[] = detailRecord
     ? [
-        { label: 'Ngày cập nhật', value: formatDate(detailRecord.updatedAt) },
-        { label: 'Cán bộ cập nhật', value: userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || '—' },
         { label: 'Ngày gửi duyệt', value: '—' },
         { label: 'Cán bộ gửi duyệt', value: '—' },
         { label: 'Ngày phê duyệt Cảng vụ', value: '—' },
         { label: 'Cán bộ phê duyệt Cảng vụ', value: '—' },
+        { label: 'Nội dung Cảng vụ/Chi cục phê duyệt', value: '—', span: true },
         { label: 'Ngày phê duyệt Chi cục', value: '—' },
         { label: 'Cán bộ phê duyệt Chi cục', value: '—' },
-        { label: 'Nội dung phê duyệt', value: '—' },
-        { label: 'Phê duyệt Cục', value: '—' },
-        {
-          label: 'Trạng thái phê duyệt',
-          value: detailRecord.approvalStatus ? (APPROVAL_STATUS_MAP[detailRecord.approvalStatus] || detailRecord.approvalStatus) : '—',
-        },
+        { label: 'Nội dung Cục phê duyệt', value: '—', span: true },
         {
           label: 'Trạng thái',
           value: (() => {
             const s = BEACON_STATUS_STYLE_MAP[detailRecord.status] || { color: textTertiary, label: detailRecord.status || '—' };
-            return <span style={{ ...badgeBaseStyle, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+            return <span style={{ ...badgeBaseStyle, fontSize: fontSizeMd, padding: '2px 10px', display: 'inline-flex', background: `${s.color}15`, color: s.color }}>{s.label}</span>;
           })(),
+          span: true,
         },
       ]
     : [];
@@ -1092,15 +1101,15 @@ export default function BeaconList() {
   const detailTabItems = [
     {
       key: 'general',
-      label: 'Thông tin cơ bản',
+      label: 'Thông tin chung',
       children: (
         <>
-          {renderDetailRows(detailBasicRows)}
-          {renderToggleSection(logOpen, () => setLogOpen(!logOpen), 'Thông tin log cập nhật', detailLogRows, true)}
+          {renderDetailRowsTwoCol(detailBasicRows)}
+          {renderToggleSection(logOpen, () => setLogOpen(!logOpen), 'Thông tin phê duyệt', detailLogRows, true)}
         </>
       ),
     },
-    { key: 'technical', label: 'Thông tin kỹ thuật đèn biển', children: renderDetailRows(detailTechnicalRows) },
+    { key: 'technical', label: 'Thông tin kỹ thuật đèn biển', children: renderDetailRowsTwoCol(detailTechnicalRows) },
     { key: 'station', label: 'Thông tin nhà trạm', children: renderDetailRows(detailStationRows) },
     { key: 'gis', label: 'Thông tin vị trí (tọa độ GIS)', children: renderDetailRows(detailGisRows) },
     {
@@ -1203,7 +1212,7 @@ export default function BeaconList() {
       return (
         <div key={g.items[0]?.id || `${g.ts}-${g.actor}`} style={historyGroupGridStyle}>
           <div>
-            <div style={historyTimeStyle}>{g.ts ? dayjs(g.ts).format('DD/MM/YYYY HH:mm') : '—'}</div>
+            <div style={historyTimeStyle}>{g.ts ? dayjs(g.ts).format('DD/MM/YYYY HH:mm:ss') : '—'}</div>
             <div style={{ marginTop: spaceXs }}>
               <span style={historyBadgeStyle(color)}>{actionLabel}</span>
             </div>
@@ -1276,25 +1285,23 @@ export default function BeaconList() {
         onRetry={() => void fetchData()}
       >
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-          <style>{`.logs-pagination-compact .list-view-pagination { padding-top: 20px !important; padding-bottom: 0 !important; } .logs-pagination-compact .list-view-pagination button { width: 40px !important; height: 40px !important; } .logs-pagination-compact .list-view-pagination .ant-select { height: 40px !important; }`}</style>
+          <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
           <DataTable
             fill
             columns={columns}
             dataSource={tableData}
             rowKey="id"
             rowActions={rowActions}
-            scroll={{ x: 'max-content', y: 400 }}
+            scroll={{ x: 'max-content', y: 540 }}
             emptyState={<EmptyState description="Không có dữ liệu đèn biển nào phù hợp với bộ lọc" />}
           />
-          <div className="logs-pagination-compact" style={{ height: 55, overflow: 'visible', marginBottom: 8 }}>
-            <Pagination
+          <div style={{ height: 6, flexShrink: 0 }} />
+          <Pagination
               total={total}
               current={page}
               pageSize={pageSize}
-              pageSizeOptions={[10, 20, 50]}
               onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
             />
-          </div>
         </div>
       </FilterTableLayout>
 
@@ -1335,7 +1342,7 @@ export default function BeaconList() {
                 items={[
                   {
                     key: 'general',
-                    label: 'Thông tin cơ bản',
+                    label: 'Thông tin chung',
                     children: (
                       <div style={{ paddingTop: 16 }}>
                         <Row gutter={formRowGutter}>

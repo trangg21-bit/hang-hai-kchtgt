@@ -1,4 +1,4 @@
-package com.hanghai.kchtg.beacon.dto.beacon_light;
+package com.hanghai.kchtg.beacon.dto.beacon_station;
 
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import jakarta.validation.constraints.DecimalMax;
@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 
 /**
- * Request DTO for updating an existing BeaconLight (F-069).
+ * Request DTO for updating an existing BeaconStation (F-069).
  * NOTE: code and type are NOT mutable (BR-069-01, BR-069-02).
  * NOTE: longitude/latitude are NOT mutable (BR-069-03).
  */
@@ -20,7 +20,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UpdateBeaconLightRequest {
+public class UpdateBeaconStationRequest {
 
     private RecordSecurityLevel securityLevel;
 

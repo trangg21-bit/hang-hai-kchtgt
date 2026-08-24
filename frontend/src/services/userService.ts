@@ -52,6 +52,16 @@ function mapUser(item: any): User {
 }
 
 export const userService = {
+  async getMe(): Promise<{ orgUnitId?: string; orgUnitName?: string } | null> {
+    try {
+      const response = await api.get('/users/me');
+      const raw: any = response.data?.data ?? response.data;
+      return raw ? { orgUnitId: raw.orgUnitId ?? undefined, orgUnitName: raw.orgUnitName ?? undefined } : null;
+    } catch {
+      return null;
+    }
+  },
+
   async list(params: {
     page?: number;
     pageSize?: number;

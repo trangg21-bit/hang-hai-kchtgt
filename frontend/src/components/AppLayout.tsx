@@ -50,7 +50,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/gis/layers': 'map:manage',
   '/gis/map': 'data:read',
   '/gis/permits': 'map:manage',
-  '/beacon-lights': 'data:read',
+  '/beacon-stations': 'data:read',
   '/buoys': 'data:read',
   '/buoy-station': 'data:read',
   '/history': 'admin:view',
@@ -104,8 +104,7 @@ const pageTitles: Record<string, string> = {
   '/gis/search': 'Tra cứu thông tin KCHT hàng hải trên bản đồ',
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
-  '/beacon-lights': 'Đèn biển và nhà trạm',
-  '/beacon-lights': 'Đèn biển',
+  '/beacon-stations': 'Đèn biển và nhà trạm',
   '/buoys': 'Quản lý Phao, tiêu',
   '/buoy-station': 'Nhà trạm Phao, tiêu',
   '/history': 'Lịch sử thay đổi',
@@ -192,7 +191,7 @@ export default function AppLayout() {
         // Giữ submenu "Nhà trạm phao, tiêu" mở khi đang ở /buoy-station hoặc /buoys
         // (tương tự chuỗi cảng biển → bến cảng được giữ mở ở nhánh phía dưới)
         setOpenKeys(['beacon', 'buoy-station-parent']);
-      } else if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/history') {
+      } else if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-stations' || selectedKey === '/history') {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
@@ -266,7 +265,7 @@ export default function AppLayout() {
             canAccessMenu('/buoys') ? { key: '/buoys', label: 'Quản lý Phao, tiêu', icon: <EnvironmentOutlined /> } : null,
           ].filter(Boolean),
         } : null,
-        canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển và nhà trạm', icon: <EnvironmentOutlined /> } : null,
+        canAccessMenu('/beacon-stations') ? { key: '/beacon-stations', label: 'Đèn biển và nhà trạm', icon: <EnvironmentOutlined /> } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },

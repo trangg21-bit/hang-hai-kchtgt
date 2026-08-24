@@ -411,21 +411,21 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "station", "update", "Cập nhật nhà trạm", "Chỉnh sửa thông tin nhà trạm");
                 seedPermission(definitions, "station", "delete", "Xóa nhà trạm", "Xóa nhà trạm hàng hải");
 
-                seedPermission(definitions, "beaconlight", "read", "Xem đèn biển", "Tra cứu thông tin đèn biển");
-                seedPermission(definitions, "beaconlight", "read:restricted", "Xem bản ghi hạn chế đèn biển",
-                                "Xem các bản ghi dữ liệu mức độ Hạn chế của đèn biển");
-                seedPermission(definitions, "beaconlight", "read:confidential", "Xem bản ghi mật đèn biển",
-                                "Xem các bản ghi dữ liệu mức độ Mật của đèn biển");
-                seedPermission(definitions, "beaconlight", "create", "Thêm đèn biển", "Tạo mới đèn biển");
-                seedPermission(definitions, "beaconlight", "update", "Cập nhật đèn biển",
-                                "Chỉnh sửa thông tin đèn biển");
-                seedPermission(definitions, "beaconlight", "delete", "Xóa đèn biển", "Xóa đèn biển");
-                seedPermission(definitions, "beaconlight", "approvec1", "Phê duyệt C1 đèn biển",
-                                "Phê duyệt cấp 1 đèn biển");
-                seedPermission(definitions, "beaconlight", "approvec2", "Phê duyệt C2 đèn biển",
-                                "Phê duyệt cấp 2 đèn biển");
-                seedPermission(definitions, "beaconlight", "history", "Lịch sử phê duyệt đèn biển",
-                                "Xem lịch sử thay đổi đèn biển");
+                seedPermission(definitions, "beaconstation", "read", "Xem đèn biển và nhà trạm", "Tra cứu thông tin đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "read:restricted", "Xem bản ghi hạn chế đèn biển và nhà trạm",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "read:confidential", "Xem bản ghi mật đèn biển và nhà trạm",
+                                "Xem các bản ghi dữ liệu mức độ Mật của đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "create", "Thêm đèn biển và nhà trạm", "Tạo mới đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "update", "Cập nhật đèn biển và nhà trạm",
+                                "Chỉnh sửa thông tin đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "delete", "Xóa đèn biển và nhà trạm", "Xóa đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "approvec1", "Phê duyệt C1 đèn biển và nhà trạm",
+                                "Phê duyệt cấp 1 đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "approvec2", "Phê duyệt C2 đèn biển và nhà trạm",
+                                "Phê duyệt cấp 2 đèn biển và nhà trạm");
+                seedPermission(definitions, "beaconstation", "history", "Lịch sử phê duyệt đèn biển và nhà trạm",
+                                "Xem lịch sử thay đổi đèn biển và nhà trạm");
 
                 seedPermission(definitions, "buoystation", "read", "Xem trạm phao", "Tra cứu thông tin trạm phao");
                 seedPermission(definitions, "buoystation", "read:restricted", "Xem bản ghi hạn chế trạm phao",

@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.beacon.service;
 
-import com.hanghai.kchtg.beacon.entity.BeaconLight;
+import com.hanghai.kchtg.beacon.entity.BeaconStation;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
@@ -44,10 +44,10 @@ public class PointObjectSyncService {
     }
 
     /**
-     * Sync BeaconLight to M-007 point_objects when published.
+     * Sync BeaconStation to M-007 point_objects when published.
      */
     @Transactional
-    public void syncToMap(BeaconLight entity) {
+    public void syncToMap(BeaconStation entity) {
         if (entity == null) return;
         PointObject point = pointRepo.findByCode(entity.getCode())
                 .orElse(new PointObject());
@@ -67,11 +67,11 @@ public class PointObjectSyncService {
     }
 
     /**
-     * Hide BeaconLight point from M-007 map on soft delete.
+     * Hide BeaconStation point from M-007 map on soft delete.
      * Does NOT delete the point (per BR-070-05).
      */
     @Transactional
-    public void hideFromMap(BeaconLight entity) {
+    public void hideFromMap(BeaconStation entity) {
         if (entity == null) return;
         pointRepo.findByCode(entity.getCode()).ifPresent(point -> {
             point.setStatus(PointObject.Status.DELETED);

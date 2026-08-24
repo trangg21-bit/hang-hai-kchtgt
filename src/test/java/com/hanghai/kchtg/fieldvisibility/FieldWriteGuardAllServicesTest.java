@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.fieldvisibility;
 
-import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
+import com.hanghai.kchtg.beacon.dto.beacon_station.CreateBeaconStationRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.dikerevetment.dto.DikeRevetmentCreateRequest;
 import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;

@@ -1191,7 +1191,7 @@ export default function DikeRevetmentList() {
     </div>
   );
 
-  // ── Detail tabs (format chuẩn màn /beacon-lights) ───────────────
+  // ── Detail tabs (format chuẩn màn /beacon-stations) ───────────────
   // DetailRow + renderDetailRows + renderToggleSection (▼/▶) + tabs riêng từng nhóm
   type DetailRow = { label: string; value: React.ReactNode };
 

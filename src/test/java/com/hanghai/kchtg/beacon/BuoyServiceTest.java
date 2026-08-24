@@ -7,7 +7,7 @@ import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.beacon.service.BuoyService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
@@ -48,7 +48,7 @@ class BuoyServiceTest {
     private BuoyRepository buoyRepo;
 
     @Mock
-    private BeaconLightRepository beaconLightRepo;
+    private BeaconStationRepository beaconStationRepo;
 
     @Mock
     private BeaconHistoryRepository historyRepo;
@@ -226,7 +226,7 @@ class BuoyServiceTest {
             CreateBuoyRequest request = makeCreateRequest();
 
             when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconLightRepo.existsByCode("PHAO-002")).thenReturn(false);
+            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(false);
             when(buoyRepo.save(any())).thenAnswer(invocation -> {
                 Buoy entity = invocation.getArgument(0);
                 setId(entity, savedId);
@@ -261,11 +261,11 @@ class BuoyServiceTest {
         }
 
         @Test
-        @DisplayName("create with duplicate code in beaconLightRepo — throws IllegalArgumentException")
-        void createDuplicateCodeInBeaconLight() {
+        @DisplayName("create with duplicate code in beaconStationRepo — throws IllegalArgumentException")
+        void createDuplicateCodeInBeaconStation() {
             CreateBuoyRequest request = makeCreateRequest();
             when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconLightRepo.existsByCode("PHAO-002")).thenReturn(true);
+            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(true);
 
             assertThatThrownBy(() -> service.create(request))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -282,7 +282,7 @@ class BuoyServiceTest {
             request.setAction("submit");
 
             when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconLightRepo.existsByCode("PHAO-002")).thenReturn(false);
+            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(false);
             when(buoyRepo.save(any())).thenAnswer(invocation -> {
                 Buoy entity = invocation.getArgument(0);
                 setId(entity, savedId);
@@ -302,7 +302,7 @@ class BuoyServiceTest {
             request.setLastInspectionDate(LocalDate.now().plusDays(30));
 
             when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconLightRepo.existsByCode("PHAO-002")).thenReturn(false);
+            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(false);
 
             assertThatThrownBy(() -> service.create(request))
                     .isInstanceOf(IllegalArgumentException.class)

@@ -136,7 +136,7 @@ const KCHT_LABEL_ROUTES: Record<string, string> = {
   'Khu chuyển tải': '/water-zone',
   'Khu quay trở tàu': '/water-zone',
   'Luồng hàng hải': '/navigation-channel',
-  'Đèn biển': '/beacon-lights',
+  'Đèn biển và nhà trạm': '/beacon-stations',
   'Phao tiêu': '/buoys',
   'Đê chắn sóng': '/dike-revetment',
   'Kè bảo vệ bờ': '/dike-revetment',
