@@ -39,7 +39,7 @@ import {
   BUOY_TYPE_OPTIONS, APPROVAL_STYLE_MAP, TAB_STATUS_LIST, STATION_FIELD_MAP,
   COLOR_MAP, SHAPE_MAP, LIGHT_MAP, GEO_MAP, COORD_MAP,
 } from './schema';
-import { CONDITION_OPTIONS, CLASSIFICATION_OPTIONS, CLASSIFICATION_BUOY_OPTIONS } from '../buoy/schema';
+import { CONDITION_OPTIONS, CLASSIFICATION_OPTIONS, CLASSIFICATION_BUOY_OPTIONS, CLASSIFICATION_MARK_OPTIONS } from '../buoy/schema';
 import BuoyStationFormContent from './BuoyStationFormContent';
 import type { ExistingFile, BuoyStationFormContentHandle } from './BuoyStationFormContent';
 import BuoyStationDetailContent from './BuoyStationDetailContent';
@@ -134,7 +134,7 @@ function stationFieldLabel(fn: string): string {
   return STATION_FIELD_LABEL_OVERRIDES[fn] || STATION_FIELD_MAP[fn] || fn;
 }
 
-export default function BuoyStationList() {
+export default function BuoyStationListPage() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
 
@@ -143,7 +143,8 @@ export default function BuoyStationList() {
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
-  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterCode, setFilterCode] = useState('');
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
@@ -151,6 +152,7 @@ export default function BuoyStationList() {
   const [filterCondition, setFilterCondition] = useState<string | undefined>();
   const [filterClassification, setFilterClassification] = useState<string[] | undefined>();
   const [filterClassificationBuoy, setFilterClassificationBuoy] = useState<string[] | undefined>();
+  const [filterClassificationMark, setFilterClassificationMark] = useState<string[] | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [filterCollapsed, setFilterCollapsed] = useState(false);
@@ -189,7 +191,7 @@ export default function BuoyStationList() {
     return map;
   }, [organizations]);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
-  const [stationBuoys, setStationBuoys] = useState<Record<string, { classifications: string[]; classificationBuoys: string[] }>>({});
+  const [stationBuoys, setStationBuoys] = useState<Record<string, { classifications: string[]; classificationBuoys: string[]; classificationMarks: string[] }>>({});
   const [viewBuoyOpen, setViewBuoyOpen] = useState(false);
   const [viewBuoyRecord, setViewBuoyRecord] = useState<Buoy | null>(null);
   const [viewBuoyFiles, setViewBuoyFiles] = useState<any[]>([]);
@@ -227,14 +229,7 @@ export default function BuoyStationList() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyGroupCount = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of historyData) {
-      const ts = r.changedAt || r.createdAt || '';
-      seen.add(`${ts}|${r.changedBy || ''}`);
-    }
-    return seen.size;
-  }, [historyData]);
+  const historyFieldCount = useMemo(() => historyData.length, [historyData]);
 
   // ── Create / Edit Drawers ─────────────────────────────────────────
   const [createOpen, setCreateOpen] = useState(false);
@@ -312,13 +307,14 @@ export default function BuoyStationList() {
     (async () => {
       try {
         const buoys = await searchBuoys({});
-        const m: Record<string, { classifications: string[]; classificationBuoys: string[] }> = {};
+        const m: Record<string, { classifications: string[]; classificationBuoys: string[]; classificationMarks: string[] }> = {};
         (buoys || []).forEach((b: any) => {
           if (!b.buoyStationId) return;
-          if (!m[b.buoyStationId]) m[b.buoyStationId] = { classifications: [], classificationBuoys: [] };
+          if (!m[b.buoyStationId]) m[b.buoyStationId] = { classifications: [], classificationBuoys: [], classificationMarks: [] };
           const e = m[b.buoyStationId];
           if (b.classification && !e.classifications.includes(b.classification)) e.classifications.push(b.classification);
           if (b.classificationBuoy && !e.classificationBuoys.includes(b.classificationBuoy)) e.classificationBuoys.push(b.classificationBuoy);
+          if (b.classificationMark && !e.classificationMarks.includes(b.classificationMark)) e.classificationMarks.push(b.classificationMark);
         });
         setStationBuoys(m);
       } catch { /* */ }
@@ -341,8 +337,8 @@ export default function BuoyStationList() {
     setIsLoading(true); setIsError(false);
     try {
       const res = await fetchBuoyStationList({
-        name: filterKeyword || undefined,
-        code: filterKeyword || undefined,
+        name: filterName || undefined,
+        code: filterCode || undefined,
         province: filterProvince || undefined,
         status: filterStatus || undefined,
         portId: filterPortId || undefined,
@@ -362,10 +358,11 @@ export default function BuoyStationList() {
       if (filterCondition) filtered = filtered.filter((d) => d.condition === filterCondition);
       if (filterClassification && filterClassification.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classifications?.some((c) => filterClassification.includes(c)));
       if (filterClassificationBuoy && filterClassificationBuoy.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classificationBuoys?.some((c) => filterClassificationBuoy.includes(c)));
+      if (filterClassificationMark && filterClassificationMark.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classificationMarks?.some((c) => filterClassificationMark.includes(c)));
       setAllData(filtered); setTotal(filtered.length);
     } catch { setIsError(true); }
     finally { setIsLoading(false); }
-  }, [filterKeyword, managingUnitId, organizations, filterProvince, filterStatus, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterUpdatedFrom, filterUpdatedTo, activeTab, stationBuoys]);
+  }, [filterName, filterCode, managingUnitId, organizations, filterProvince, filterStatus, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterClassificationMark, filterUpdatedFrom, filterUpdatedTo, activeTab, stationBuoys]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
 
@@ -381,6 +378,27 @@ export default function BuoyStationList() {
       } else if (sortField === 'classificationBuoys') {
         aVal = (stationBuoys[a.id]?.classificationBuoys || []).join(', ');
         bVal = (stationBuoys[b.id]?.classificationBuoys || []).join(', ');
+      } else if (sortField === 'classificationMarks') {
+        aVal = (stationBuoys[a.id]?.classificationMarks || []).join(', ');
+        bVal = (stationBuoys[b.id]?.classificationMarks || []).join(', ');
+      } else if (sortField === 'unitId') {
+        aVal = orgLevel2Map.get(a.unitId) ?? a.unitId ?? '';
+        bVal = orgLevel2Map.get(b.unitId) ?? b.unitId ?? '';
+      } else if (sortField === 'operatingOrgId') {
+        aVal = orgMap.get(a.operatingOrgId) ?? a.operatingOrgId ?? '';
+        bVal = orgMap.get(b.operatingOrgId) ?? b.operatingOrgId ?? '';
+      } else if (sortField === 'portId') {
+        aVal = portMap.get(a.portId) ?? a.portId ?? '';
+        bVal = portMap.get(b.portId) ?? b.portId ?? '';
+      } else if (sortField === 'waterwayId') {
+        aVal = waterwayMap.get(a.waterwayId) ?? a.waterwayId ?? '';
+        bVal = waterwayMap.get(b.waterwayId) ?? b.waterwayId ?? '';
+      } else if (sortField === 'condition') {
+        aVal = CONDITION_STYLE[a.condition || '']?.label ?? a.condition ?? '';
+        bVal = CONDITION_STYLE[b.condition || '']?.label ?? b.condition ?? '';
+      } else if (sortField === 'status') {
+        aVal = APPROVAL_STYLE_MAP[a.status || '']?.label ?? a.status ?? '';
+        bVal = APPROVAL_STYLE_MAP[b.status || '']?.label ?? b.status ?? '';
       } else {
         aVal = a[sortField] ?? '';
         bVal = b[sortField] ?? '';
@@ -388,7 +406,7 @@ export default function BuoyStationList() {
       const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
       return sortOrder === 'ascend' ? cmp : -cmp;
     });
-  }, [allData, sortField, sortOrder, stationBuoys]);
+  }, [allData, sortField, sortOrder, stationBuoys, orgLevel2Map, orgMap, portMap, waterwayMap]);
 
   useEffect(() => { setDataSource(sortedAll.slice((page - 1) * pageSize, page * pageSize)); }, [sortedAll, page, pageSize]);
 
@@ -400,7 +418,8 @@ export default function BuoyStationList() {
 
   const handleFilterApply = useCallback(() => {
     setManagingUnitId(filterValues.managingUnitId === '__all__' ? undefined : filterValues.managingUnitId || undefined);
-    setFilterKeyword(filterValues.keyword || '');
+    setFilterName((filterValues.name || '').trim());
+    setFilterCode((filterValues.code || '').trim());
     setFilterProvince(filterValues.province || undefined);
     setFilterStatus(filterValues.status || undefined);
     setFilterPortId(filterValues.portId || undefined);
@@ -408,6 +427,7 @@ export default function BuoyStationList() {
     setFilterCondition(filterValues.condition || undefined);
     setFilterClassification(Array.isArray(filterValues.classification) && filterValues.classification.length > 0 ? filterValues.classification : undefined);
     setFilterClassificationBuoy(Array.isArray(filterValues.classificationBuoy) && filterValues.classificationBuoy.length > 0 ? filterValues.classificationBuoy : undefined);
+    setFilterClassificationMark(Array.isArray(filterValues.classificationMark) && filterValues.classificationMark.length > 0 ? filterValues.classificationMark : undefined);
     setFilterUpdatedFrom(filterValues.updatedFrom || undefined);
     setFilterUpdatedTo(filterValues.updatedTo || undefined);
     setPage(1);
@@ -417,11 +437,12 @@ export default function BuoyStationList() {
     const defaultOrg = defaultOrgUnitId.current === '__all__' ? undefined : defaultOrgUnitId.current;
     setFilterValues({ managingUnitId: defaultOrg });
     setManagingUnitId(defaultOrg);
-    setFilterKeyword('');
+    setFilterName('');
+    setFilterCode('');
     setFilterProvince(undefined);
     setFilterStatus(undefined); setFilterPortId(undefined);
     setFilterWaterwayId(undefined); setFilterCondition(undefined);
-    setFilterClassification(undefined); setFilterClassificationBuoy(undefined);
+    setFilterClassification(undefined); setFilterClassificationBuoy(undefined); setFilterClassificationMark(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
   }, []);
@@ -737,7 +758,7 @@ export default function BuoyStationList() {
       ),
     },
     {
-      key: 'name', label: 'Tên/Mã nhà trạm Phao, tiêu', dataIndex: 'name', width: 280, fixed: 'left' as const, ellipsis: false, sortable: true,
+      key: 'name', label: 'Tên/Mã nhà trạm', dataIndex: 'name', width: 280, fixed: 'left' as const, ellipsis: false, sortable: true,
       render: (name: string, record: BuoyStationResponse) => (
         <div>
           <Button type="link" onClick={() => void openDetail(record)} style={{ fontWeight: fontWeightBold, color: actionPrimary, cursor: 'pointer', display: 'block', padding: 0, height: 'auto' }}>{name}</Button>
@@ -746,7 +767,7 @@ export default function BuoyStationList() {
       ),
     },
     {
-      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true,
+      key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true, sortable: true,
       render: (v: string) => {
         const level2 = v ? orgLevel2Map.get(v) : undefined;
         return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
@@ -767,24 +788,39 @@ export default function BuoyStationList() {
       },
     },
     {
-      key: 'operatingOrgId', label: 'Đơn vị khai thác', dataIndex: 'operatingOrgId', width: 180, ellipsis: true,
+      key: 'classificationMarks', label: 'Phân loại tiêu', width: 170, ellipsis: true, sortable: true,
+      render: (_: unknown, record: BuoyStationResponse) => {
+        const arr = stationBuoys[record.id]?.classificationMarks || [];
+        return arr.length ? arr.join(', ') : '—';
+      },
+    },
+    {
+      key: 'operatingOrgId', label: 'Đơn vị khai thác', dataIndex: 'operatingOrgId', width: 220, ellipsis: true, sortable: true,
       render: (v: string) => (v ? (orgMap.get(v) || v) : '—'),
     },
     {
-      key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 180, ellipsis: true,
+      key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 220, ellipsis: true, sortable: true,
       render: (v: string) => (v ? (portMap.get(v) || v) : '—'),
     },
     {
-      key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 240, ellipsis: true,
+      key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true,
       render: (v: string) => (v ? (waterwayMap.get(v) || v) : '—'),
     },
     {
-      key: 'province', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', width: 170,
+      key: 'province', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'province', width: 200, sortable: true,
       render: (v: string) => (v || '—'),
     },
     {
-      key: 'condition', label: 'Tình trạng', dataIndex: 'condition', width: 190,
+      key: 'condition', label: 'Tình trạng', dataIndex: 'condition', width: 230, sortable: true,
       render: (v: string) => { const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' }; return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>; },
+    },
+    {
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 220, sortable: true,
+      render: (s: string) => {
+        if (!s) return <span style={{ color: textTertiary }}>—</span>;
+        const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };
+        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${m.color}15`, color: m.color }}>{m.label}</span>;
+      },
     },
     {
       key: 'updatedAt', label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', width: 200, ellipsis: true, sortable: true,
@@ -799,7 +835,7 @@ export default function BuoyStationList() {
       ),
     },
     {
-      key: 'level1ApprovedDate', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'level1ApprovedDate', width: 320, ellipsis: true, sortable: true,
+      key: 'level1ApprovedDate', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'level1ApprovedDate', width: 340, ellipsis: true, sortable: true,
       render: (v: string, record: BuoyStationResponse) => (
         <div><span style={{ fontWeight: fontWeightBold }}>{record.level1ApprovedBy != null ? actorName(record.level1ApprovedBy) : '—'}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
       ),
@@ -809,14 +845,6 @@ export default function BuoyStationList() {
       render: (v: string, record: BuoyStationResponse) => (
         <div><span style={{ fontWeight: fontWeightBold }}>{record.level2ApprovedBy != null ? actorName(record.level2ApprovedBy) : '—'}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
       ),
-    },
-    {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 180,
-      render: (s: string) => {
-        if (!s) return <span style={{ color: textTertiary }}>—</span>;
-        const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${m.color}15`, color: m.color }}>{m.label}</span>;
-      },
     },
   ].map((col) => ({
     ...col,
@@ -875,50 +903,82 @@ export default function BuoyStationList() {
             />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã nhà trạm Phao, tiêu</div>
-            <Input placeholder="Nhập tên hoặc mã nhà trạm Phao, tiêu..." allowClear
-              value={filterValues.keyword || ''}
-              onChange={(e) => setFilterValues((prev) => ({ ...prev, keyword: e.target.value }))}
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên nhà trạm</div>
+            <Input placeholder="Tìm theo tên nhà trạm..." allowClear
+              value={filterValues.name || ''}
+              onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
               onPressEnter={handleFilterApply}
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
-            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại..." allowClear showSearch
-              maxTagCount={2}
-              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-              value={filterValues.classification || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, classification: val }))}
-              options={CLASSIFICATION_OPTIONS}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại phao</div>
-            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại phao..." allowClear showSearch
-              maxTagCount={2}
-              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-              value={filterValues.classificationBuoy || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
-              options={CLASSIFICATION_BUOY_OPTIONS}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-            <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
-              value={filterValues.portId || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
-              options={Array.from(portMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-            <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
-              value={filterValues.waterwayId || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, waterwayId: val }))}
-              options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
+            <Select placeholder="Tất cả" allowClear
+              value={filterValues.status || undefined}
+              onChange={(val) => setFilterValues((prev) => ({ ...prev, status: val }))}
+              options={[
+                { value: 'DRAFT', label: 'Nháp' },
+                { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
+                { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
+                { value: 'PUBLISHED', label: 'Đã phê duyệt' },
+                { value: 'REJECTED', label: 'Từ chối' },
+              ]}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
           {filterCollapsed && (<>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+              <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
+                value={filterValues.portId || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
+                options={Array.from(portMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
+              <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
+                value={filterValues.waterwayId || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, waterwayId: val }))}
+                options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhà trạm</div>
+              <Input placeholder="Tìm theo mã nhà trạm..." allowClear
+                value={filterValues.code || ''}
+                onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
+                onPressEnter={handleFilterApply}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
+              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại..." allowClear showSearch
+                maxTagCount={2}
+                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+                value={filterValues.classification || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, classification: val }))}
+                options={CLASSIFICATION_OPTIONS}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại phao</div>
+              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại phao..." allowClear showSearch
+                maxTagCount={2}
+                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+                value={filterValues.classificationBuoy || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
+                options={CLASSIFICATION_BUOY_OPTIONS}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại tiêu</div>
+              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại tiêu..." allowClear showSearch
+                maxTagCount={2}
+                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+                value={filterValues.classificationMark || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationMark: val }))}
+                options={CLASSIFICATION_MARK_OPTIONS}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
               <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
@@ -926,28 +986,6 @@ export default function BuoyStationList() {
                 value={filterValues.province || undefined}
                 onChange={(val) => setFilterValues((prev) => ({ ...prev, province: val }))}
                 options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-              <Select placeholder="Tất cả" allowClear
-                value={filterValues.condition || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, condition: val }))}
-                options={CONDITION_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-              <Select placeholder="Tất cả" allowClear
-                value={filterValues.status || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, status: val }))}
-                options={[
-                  { value: 'DRAFT', label: 'Nháp' },
-                  { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                  { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
-                  { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-                  { value: 'REJECTED', label: 'Từ chối' },
-                ]}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
@@ -960,6 +998,14 @@ export default function BuoyStationList() {
                   updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined,
                   updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined,
                 }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+              <Select placeholder="Tất cả" allowClear
+                value={filterValues.condition || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, condition: val }))}
+                options={CONDITION_OPTIONS}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
           </>)}
@@ -990,7 +1036,7 @@ export default function BuoyStationList() {
             rowActions={rowActions}
             loading={false}
             onSort={handleSortChange}
-            scroll={{ x: 2700, y: 'calc(100vh - 450px)' }}
+            scroll={{ x: 2700, y: 550 }}
           />
         ) : null}
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
@@ -1064,7 +1110,7 @@ export default function BuoyStationList() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Nhà trạm Phao, tiêu' : (historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
           </div>
         }

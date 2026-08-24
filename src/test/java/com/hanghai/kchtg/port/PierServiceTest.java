@@ -99,17 +99,17 @@ class PierServiceTest {
     }
 
     @Test
-    @DisplayName("INT-005: create — parent Berth not HIEN_HANH → IllegalArgumentException")
-    void create_parentNotHienHanh_throwsIllegalArg() {
-        activeBerth.setOperationalStatus(OperationalStatus.SUSPENDED);
+    @DisplayName("INT-005: create — parent Berth not APPROVED → IllegalArgumentException")
+    void create_parentNotApproved_throwsIllegalArg() {
+        activeBerth.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         CreatePierRequest request = buildCreateRequest("CAU-NEW", "Cầu mới", parentId);
         when(pierRepository.existsByPierCode("CAU-NEW")).thenReturn(false);
         when(berthRepository.findById(parentId)).thenReturn(Optional.of(activeBerth));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.create(request));
-        assertTrue(ex.getMessage().contains("hiện hành") || ex.getMessage().contains("HIEN_HANH"),
-                "Exception message should mention hiện hành, was: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("đã phê duyệt (APPROVED)"),
+                "Exception message should mention approval status, was: " + ex.getMessage());
         verify(pierRepository, never()).save(any());
     }
 
@@ -129,6 +129,7 @@ class PierServiceTest {
     @DisplayName("create — parent HIEN_HANH, no dupe → saves and returns response")
     void create_success() {
         CreatePierRequest request = buildCreateRequest("CAU-NEW", "Cầu mới", parentId);
+        activeBerth.setApprovalStatus(ApprovalStatus.APPROVED);
         when(pierRepository.existsByPierCode("CAU-NEW")).thenReturn(false);
         when(berthRepository.findById(parentId)).thenReturn(Optional.of(activeBerth));
         when(pierRepository.save(any(Pier.class))).thenAnswer(inv -> {

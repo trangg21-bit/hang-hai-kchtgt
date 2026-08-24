@@ -72,8 +72,8 @@ public class PierService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBerthId()));
 
-        if (parent.getOperationalStatus() != null && parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
-            throw new IllegalArgumentException("Bến cảng cha phải ở trạng thái hiện hành");
+        if (parent.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            throw new IllegalArgumentException("Bến cảng cha phải ở trạng thái đã phê duyệt (APPROVED)");
         }
 
         // BR-020-02: Port must be APPROVED and OPERATIONAL if provided
@@ -197,21 +197,21 @@ public class PierService {
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
             String search, UUID berthId,
             String status, String approvalStatus) {
-        return findAll(page, size, orgUnitId, search, berthId, null, (PierType) null, null, status, approvalStatus,
+        return findAll(page, size, orgUnitId, search, null, null, berthId, null, (PierType) null, null, status, approvalStatus,
                 null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
-            String search, UUID berthId, UUID portId, PierType pierType, String province,
+            String search, String pierCode, String pierName, UUID berthId, UUID portId, PierType pierType, String province,
             String status, String approvalStatus, UUID navigationChannelId,
             Integer constructionGrade, Integer structureType, String operationalFunction,
             String updatedFrom, String updatedTo) {
@@ -236,7 +236,7 @@ public class PierService {
         }
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
-        Page<Pier> pageResult = pierRepository.searchPiers(includeAll, orgUnitIds, search, berthId, portId, pierType,
+        Page<Pier> pageResult = pierRepository.searchPiers(includeAll, orgUnitIds, search, pierCode, pierName, berthId, portId, pierType,
                 province,
                 statusEnum, approvalEnum, navigationChannelId, constructionGrade, structureType,
                 operationalFunction, updatedFromDt, updatedToDt, pageable);

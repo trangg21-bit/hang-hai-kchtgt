@@ -49,9 +49,10 @@ const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm')
 
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 
-const PierList = lazy(() => import('./pages/port/PierList'));
+const PierListPage = lazy(() => import('./pages/port/PierListPage'));
+const PierForm = lazy(() => import('./pages/port/PierForm'));
 
-const DryPortList = lazy(() => import('./pages/port/DryPortList'));
+const DryPortListPage = lazy(() => import('./pages/port/DryPortListPage'));
 
 const WaterZoneListPage = lazy(() => import('./app/waterzone/WaterZoneListPage'));
 
@@ -80,7 +81,7 @@ const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'))
 
 // M-014: Quản lý Nhà trạm phao tiêu
 // M-015: Đài duyên hải
-const BuoyStationList = lazy(() => import('./services/buoy-station/BuoyStationList'));
+const BuoyStationListPage = lazy(() => import('./services/buoy-station/BuoyStationListPage'));
 
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));
@@ -188,11 +189,11 @@ export default function App() {
 
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
 
-                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierList /></PermissionGuard>} />
-                <Route path="/pier/create" element={<PermissionGuard permission="pier:create"><PierList /></PermissionGuard>} />
-                <Route path="/pier/:id/edit" element={<PermissionGuard permission="pier:update"><PierList /></PermissionGuard>} />
+                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/pier/create" element={<PermissionGuard permission="pier:create"><><PierListPage /><PierForm /></></PermissionGuard>} />
+                <Route path="/pier/:id/edit" element={<PermissionGuard permission="pier:update"><><PierListPage /><PierForm /></></PermissionGuard>} />
 
-                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortList /></PermissionGuard>} />
+                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
 
                 <Route path="/water-zone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
 
@@ -237,7 +238,7 @@ export default function App() {
                 <Route path="/documents/port-planning" element={<PermissionGuard permission="document:read"><PortPlanningList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
-                <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationList /></PermissionGuard>} />
+                <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationListPage /></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />

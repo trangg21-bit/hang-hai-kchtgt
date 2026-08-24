@@ -98,7 +98,7 @@ function collectOrgSubtreeIds(organizations: Organization[], orgUnitId: string):
 // ── Nhãn tiếng Việt bổ sung cho các trường phao tiêu trong lịch sử thay đổi ──
 // (BUOY_FIELD_MAP trong schema.ts không sửa vì là one-way-door — bổ sung local)
 const EXTRA_HISTORY_FIELD_LABELS: Record<string, string> = {
-  buoyStationId: 'Nhà trạm QLVH', locationDetail: 'Địa điểm chi tiết',
+  buoyStationId: 'Nhà trạm quản lý vận hành', locationDetail: 'Địa điểm chi tiết',
   condition: 'Tình trạng', structure: 'Kết cấu', area: 'Diện tích',
   bodyHeight: 'Chiều cao thân', diameter: 'Đường kính', beaconLight: 'Đèn hiệu',
   towerHeight: 'Chiều cao tháp', lightHeight: 'Chiều cao đèn', lightModel: 'Mẫu đèn',
@@ -139,7 +139,7 @@ const COORD_SYS_LABELS: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000'
 const APPROVAL_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Nháp', PROPOSED: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
   APPROVED_LEVEL1: 'Chờ Cục duyệt', APPROVED_LEVEL2: 'Đã duyệt L2', APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối', PENDING_APPROVAL: 'Chờ phê duyệt',
+  REJECTED: 'Từ chối',
 };
 
 function formatDateTime(dateStr: string | null | undefined): string {
@@ -202,13 +202,18 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED_L1: 'APPROVED_L1', PUBLISHED: 'PUBLISHED', REJECTED: 'REJECTED',
 };
 
-function ddToDms(dd: number): { d: number; m: number; s: number } {
-  if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-  const abs = Math.abs(dd);
-  const d = Math.floor(abs);
-  const m = Math.floor((abs - d) * 60);
-  const s = parseFloat(((abs - d - m / 60) * 3600).toFixed(2));
-  return { d, m, s };
+function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
+  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
+  let abs = Math.abs(dd);
+  let d = Math.floor(abs);
+  let mFloat = (abs - d) * 60;
+  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
+  let m = Math.floor(mFloat);
+  let sFloat = (mFloat - m) * 60;
+  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
+  let s = Math.round(sFloat * 100) / 100;
+  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
+  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -225,7 +230,8 @@ export default function BuoyListPage() {
   const [filterStationId, setFilterStationId] = useState<string | undefined>();
 
   // Bộ lọc thường (luôn hiển thị)
-  const [filterQuery, setFilterQuery] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterCode, setFilterCode] = useState('');
 
   // Bộ lọc nâng cao (toggle)
   const [filterProvince, setFilterProvince] = useState('');
@@ -297,18 +303,20 @@ export default function BuoyListPage() {
   const [editTabKey, setEditTabKey] = useState('general');
   const [codeLoading, setCodeLoading] = useState(false);
   const [buoyStations, setBuoyStations] = useState<BuoyStationResponse[]>([]);
-  const [loadingStations, setLoadingStations] = useState(false);
+  // Nhà trạm cho form Thêm mới / Chỉnh sửa — load theo Đơn vị quản lý đã chọn, chỉ nhà trạm Đã phê duyệt (PUBLISHED)
+  const [createStations, setCreateStations] = useState<BuoyStationResponse[]>([]);
+  const [editStations, setEditStations] = useState<BuoyStationResponse[]>([]);
+  const [loadingCreateStations, setLoadingCreateStations] = useState(false);
+  const [loadingEditStations, setLoadingEditStations] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const actionTypeRef = useRef<'draft' | 'submit' | 'approved'>('submit');
 
   // ── Danh sách nhà trạm QLVH phao tiêu (SelectKcht — nguồn sinh mã {mã nhà trạm}-PT-{seq}) ──
   useEffect(() => {
     let cancelled = false;
-    setLoadingStations(true);
     fetchBuoyStationList({})
       .then((res) => { if (!cancelled) setBuoyStations(res.content || []); })
-      .catch(() => { if (!cancelled) toast.error('Không thể tải danh sách nhà trạm QLVH'); })
-      .finally(() => { if (!cancelled) setLoadingStations(false); });
+      .catch(() => { if (!cancelled) toast.error('Không thể tải danh sách nhà trạm quản lý vận hành'); });
     return () => { cancelled = true; };
   }, []);
 
@@ -326,10 +334,57 @@ export default function BuoyListPage() {
       .finally(() => { setCodeLoading(false); });
   }, [createForm]);
 
+  // Đơn vị quản lý đang chọn trong form Thêm mới / Chỉnh sửa (pattern BerthForm: load Cảng biển theo orgUnit)
+  const createUnitId = Form.useWatch('unitId', createForm);
+  const editUnitId = Form.useWatch('unitId', updateForm);
+
+  // Form Thêm mới: đổi Đơn vị quản lý → reset nhà trạm + mã, load nhà trạm thuộc đơn vị (chỉ Đã phê duyệt)
+  useEffect(() => {
+    let cancelled = false;
+    if (createUnitId) {
+      createForm.setFieldsValue({ buoyStationId: undefined, code: undefined });
+      setLoadingCreateStations(true);
+      fetchBuoyStationList({ unitId: createUnitId, status: 'PUBLISHED' })
+        .then((res) => { if (!cancelled) setCreateStations(res.content || []); })
+        .catch(() => { if (!cancelled) setCreateStations([]); })
+        .finally(() => { if (!cancelled) setLoadingCreateStations(false); });
+    } else {
+      setCreateStations([]);
+    }
+    return () => { cancelled = true; };
+  }, [createUnitId, createForm]);
+
+  // Form Chỉnh sửa: load nhà trạm theo đơn vị của bản ghi (chỉ Đã phê duyệt); giữ nhà trạm hiện tại để hiển thị đúng label khi field bị khóa
+  useEffect(() => {
+    let cancelled = false;
+    if (editUnitId) {
+      // Đổi Đơn vị quản lý (phao chưa có nhà trạm) → reset nhà trạm đã chọn (pattern BerthForm)
+      if (!editingRecord?.buoyStationId) updateForm.setFieldsValue({ buoyStationId: undefined });
+      setLoadingEditStations(true);
+      fetchBuoyStationList({ unitId: editUnitId, status: 'PUBLISHED' })
+        .then((res) => {
+          if (cancelled) return;
+          let list = res.content || [];
+          const curId = editingRecord?.buoyStationId;
+          if (curId && !list.some((s) => s.id === curId)) {
+            const cur = buoyStations.find((s) => s.id === curId);
+            if (cur) list = [cur, ...list];
+          }
+          setEditStations(list);
+        })
+        .catch(() => { if (!cancelled) setEditStations([]); })
+        .finally(() => { if (!cancelled) setLoadingEditStations(false); });
+    } else {
+      setEditStations([]);
+    }
+    return () => { cancelled = true; };
+  }, [editUnitId, editingRecord?.buoyStationId, buoyStations, updateForm]);
+
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [createCoords, setCreateCoords] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
   const [editCoords, setEditCoords] = useState<Array<{ lat: number | null; lng: number | null }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const createGeomType = Form.useWatch('geometryType', createForm);
   const editGeomType = Form.useWatch('geometryType', updateForm);
 
@@ -353,13 +408,20 @@ export default function BuoyListPage() {
   }, [symbols]);
 
   useEffect(() => {
-    if (!createGeomType) return;
+    if (!createGeomType) {
+      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      setCreateCoords([]);
+      return;
+    }
     createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     setCreateCoords(Array.from({ length: GEOMETRY_POINT_COUNT[createGeomType] ?? 1 }, () => ({ lat: null, lng: null })));
   }, [createGeomType, createForm]);
 
   useEffect(() => {
-    if (!editGeomType) return;
+    if (!editGeomType) {
+      updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      return;
+    }
     updateForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     // Đồng bộ với chế độ thêm mới: thiếu bản ghi GPS thì tự thêm bản ghi trống cho đủ số lượng theo loại đối tượng
     const required = GEOMETRY_POINT_COUNT[editGeomType] ?? 1;
@@ -370,25 +432,27 @@ export default function BuoyListPage() {
     });
   }, [editGeomType, updateForm]);
 
-  const updateCreateGps = useCallback((i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => {
+  const updateCreateGps = useCallback((i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (tránh hiển thị mấy trăm)
     const dMax = field === 'lat' ? 90 : 180;
-    const dClamped = Math.min(dMax, Math.max(0, d));
-    const mClamped = Math.min(59, Math.max(0, m));
-    const sClamped = Math.min(59.99, Math.max(0, s));
+    const dClamped = Math.min(dMax, Math.max(0, d ?? 0));
+    const mClamped = Math.min(59, Math.max(0, m ?? 0));
+    const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
     const decimal = dClamped + mClamped / 60 + sClamped / 3600;
     setCreateCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
+    setGpsError(null);
   }, []);
-  const addCreateGps = useCallback(() => setCreateCoords((p) => [...p, { lat: null, lng: null }]), []);
-  const removeCreateGps = useCallback((i: number) => setCreateCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))), []);
-  const updateEditGps = useCallback((i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => {
+  const addCreateGps = useCallback(() => { setCreateCoords((p) => [...p, { lat: null, lng: null }]); setGpsError(null); }, []);
+  const removeCreateGps = useCallback((i: number) => { setCreateCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))); setGpsError(null); }, []);
+  const updateEditGps = useCallback((i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => {
     // Chặn giá trị vượt ngưỡng khi gõ: độ ≤ 90/180, phút ≤ 59, giây ≤ 59.99 (tránh hiển thị mấy trăm)
     const dMax = field === 'lat' ? 90 : 180;
-    const dClamped = Math.min(dMax, Math.max(0, d));
-    const mClamped = Math.min(59, Math.max(0, m));
-    const sClamped = Math.min(59.99, Math.max(0, s));
+    const dClamped = Math.min(dMax, Math.max(0, d ?? 0));
+    const mClamped = Math.min(59, Math.max(0, m ?? 0));
+    const sClamped = Math.min(59.99, Math.max(0, s ?? 0));
     const decimal = dClamped + mClamped / 60 + sClamped / 3600;
     setEditCoords((p) => { const n = [...p]; n[i] = { ...n[i], [field]: decimal }; return n; });
+    setGpsError(null);
   }, []);
   const addEditGps = useCallback(() => setEditCoords((p) => [...p, { lat: null, lng: null }]), []);
   const removeEditGps = useCallback((i: number) => setEditCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))), []);
@@ -417,14 +481,7 @@ export default function BuoyListPage() {
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
 
-  const historyGroupCount = useMemo(() => {
-    const seen = new Set<string>();
-    for (const r of historyData) {
-      const s = Math.floor(new Date(r.changedAt || r.createdAt || 0).getTime() / 1000);
-      seen.add(`${s}|${r.changedBy || ''}`);
-    }
-    return seen.size;
-  }, [historyData]);
+  const historyFieldCount = useMemo(() => historyData.length, [historyData]);
 
   // ── Submit approval modal ───────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -490,8 +547,8 @@ export default function BuoyListPage() {
     setIsError(false);
     try {
       const all = await searchBuoys({
-        name: filterQuery || undefined,
-        code: filterQuery || undefined,
+        name: filterName || undefined,
+        code: filterCode || undefined,
         condition: filterCondition || undefined,
         provinceId: filterProvince ? (Number(VIETNAM_PROVINCE_OPTIONS.find((o) => o.label === filterProvince)?.value) || undefined) : undefined,
         updatedFrom: filterUpdatedFrom,
@@ -522,7 +579,7 @@ export default function BuoyListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterQuery, filterCondition, filterProvince, filterApprovalStatus, managingUnitId, organizations, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [filterName, filterCode, filterCondition, filterProvince, filterApprovalStatus, managingUnitId, organizations, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
 
@@ -537,7 +594,8 @@ export default function BuoyListPage() {
     const defaultOrg = defaultOrgUnitId.current;
     setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterStationId(undefined);
-    setFilterQuery('');
+    setFilterName('');
+    setFilterCode('');
     setFilterProvince('');
     setFilterCondition(undefined);
     setFilterApprovalStatus(undefined);
@@ -695,21 +753,14 @@ export default function BuoyListPage() {
     const code = String(values.code ?? '').trim();
     const name = String(values.name ?? '').trim();
 
-    if (!code) { toast.error('Mã phao tiêu là bắt buộc'); return; }
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
-    if (values.range == null || Number(values.range) <= 0 || Number(values.range) > 20) {
-      toast.error('Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý'); return;
+    if (values.range == null || Number(values.range) <= 0) {
+      toast.error('Phạm vi chiếu sáng phải lớn hơn 0 hải lý'); return;
     }
 
     const manualCoords = createCoords
       .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
       .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
-    if (values.geometryType) {
-      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      if (createCoords.length === 0 || manualCoords.length < requiredCoords) {
-        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
-      }
-    }
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -717,9 +768,6 @@ export default function BuoyListPage() {
       if (manualCoords[0].longitude < -180 || manualCoords[0].longitude > 180) {
         toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); return;
       }
-    }
-    if ((action === 'submit' || action === 'approved') && manualCoords.length === 0) {
-      toast.error('Vui lòng thêm ít nhất một tọa độ GPS để gửi phê duyệt'); return;
     }
 
     // Kiểm tra trùng tên/mã phao tiêu (chặn lưu — không cho thêm mới trùng)
@@ -815,19 +863,13 @@ export default function BuoyListPage() {
     const name = String(values.name ?? '').trim();
 
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
-    if (values.range == null || Number(values.range) <= 0 || Number(values.range) > 20) {
-      toast.error('Phạm vi chiếu sáng phải trong khoảng (0, 20] hải lý'); return;
+    if (values.range == null || Number(values.range) <= 0) {
+      toast.error('Phạm vi chiếu sáng phải lớn hơn 0 hải lý'); return;
     }
 
     const manualCoords = editCoords
       .filter((c) => c.lat != null && c.lng != null && !Number.isNaN(Number(c.lat)) && !Number.isNaN(Number(c.lng)))
       .map((c) => ({ latitude: Number(c.lat), longitude: Number(c.lng) }));
-    if (values.geometryType) {
-      const requiredCoords = GEOMETRY_POINT_COUNT[values.geometryType as string] ?? 1;
-      if (editCoords.length === 0 || manualCoords.length < requiredCoords) {
-        toast.error(`Loại đối tượng đã chọn yêu cầu ít nhất ${requiredCoords} tọa độ GPS.`); return;
-      }
-    }
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -1250,7 +1292,7 @@ export default function BuoyListPage() {
       key: 'name',
       label: 'Tên/Mã phao tiêu',
       dataIndex: 'name',
-      width: 170,
+      width: 220,
       fixed: 'left' as const,
       sortable: true,
       ellipsis: false,
@@ -1266,6 +1308,7 @@ export default function BuoyListPage() {
       label: 'Đơn vị quản lý',
       dataIndex: 'unitId',
       width: 260,
+      sortable: true,
       render: (v: string) => {
         const level2 = v ? orgLevel2Map.get(v) : undefined;
         return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
@@ -1273,29 +1316,55 @@ export default function BuoyListPage() {
     },
     {
       key: 'buoyStationId',
-      label: 'Thuộc nhà trạm QLVH phao, tiêu',
+      label: 'Thuộc nhà trạm quản lý vận hành phao, tiêu',
       dataIndex: 'buoyStationName',
-      width: 300,
+      width: 460,
       ellipsis: false,
+      sortable: true,
       render: (v: string, rec: Buoy) => (v || (rec?.buoyStationId ? (buoyStations.find((s) => s.id === rec.buoyStationId)?.name || '—') : '—')),
     },
     {
       key: 'provinceId',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
-      width: 170,
+      width: 200,
       ellipsis: false,
+      sortable: true,
       render: (v: number) => (v != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(v))?.label || String(v)) : '—'),
     },
     {
       key: 'condition',
       label: 'Tình trạng',
       dataIndex: 'condition',
-      width: 220,
+      width: 250,
       ellipsis: false,
+      sortable: true,
       render: (v: string) => {
         const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' };
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+      },
+    },
+    {
+      key: 'status',
+      label: 'Trạng thái',
+      dataIndex: 'status',
+      width: 220,
+      sortable: true,
+      render: (status: string | null | undefined) => {
+        const b = buoyStatusBadge(status);
+        return (
+          <span style={{
+            display: 'inline-flex',
+            padding: '2px 10px',
+            borderRadius: 999,
+            fontSize: fontSizeMd,
+            fontWeight: fontWeightMedium,
+            background: `${b.color}15`,
+            color: b.color,
+          }}>
+            {b.label}
+          </span>
+        );
       },
     },
     {
@@ -1330,7 +1399,7 @@ export default function BuoyListPage() {
       key: 'level1ApprovedDate',
       label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
       dataIndex: 'level1ApprovedDate',
-      width: 320,
+      width: 340,
       sortable: true,
       ellipsis: true,
       render: (v: string | null, record: Buoy) => (
@@ -1353,28 +1422,6 @@ export default function BuoyListPage() {
           <span style={{ opacity: 0.85 }}>{formatDateTime(v)}</span>
         </div>
       ),
-    },
-    {
-      key: 'status',
-      label: 'Trạng thái',
-      dataIndex: 'status',
-      width: 180,
-      render: (status: string | null | undefined) => {
-        const b = buoyStatusBadge(status);
-        return (
-          <span style={{
-            display: 'inline-flex',
-            padding: '2px 10px',
-            borderRadius: 999,
-            fontSize: fontSizeMd,
-            fontWeight: fontWeightMedium,
-            background: `${b.color}15`,
-            color: b.color,
-          }}>
-            {b.label}
-          </span>
-        );
-      },
     },
   ].map((col) => ({
     ...col,
@@ -1522,24 +1569,44 @@ export default function BuoyListPage() {
             />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên hoặc mã Phao, tiêu</div>
-            <Input placeholder="Nhập tên hoặc mã phao tiêu..." allowClear
-              value={filterQuery}
-              onChange={(e) => { setFilterQuery(e.target.value); setPage(1); }}
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên Phao, tiêu</div>
+            <Input placeholder="Tìm theo tên phao tiêu..." allowClear
+              value={filterName}
+              onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm QLVH phao, tiêu</div>
-            <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
-              value={filterStationId || undefined}
-              onChange={(val) => { setFilterStationId(val); setPage(1); }}
-              options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
-              loading={loadingStations}
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
+            <Select placeholder="Chọn trạng thái" allowClear
+              value={filterApprovalStatus || undefined}
+              onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
+              options={[
+                { value: 'DRAFT', label: 'Nháp' },
+                { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
+                { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
+                { value: 'PUBLISHED', label: 'Đã phê duyệt' },
+                { value: 'REJECTED', label: 'Từ chối' },
+              ]}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
 
           {/* ── Bộ lọc nâng cao (toggle) ────────────────────────────── */}
           {filterCollapsed && (<>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm quản lý vận hành phao, tiêu</div>
+              <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
+                value={filterStationId || undefined}
+                onChange={(val) => { setFilterStationId(val); setPage(1); }}
+                options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã Phao, tiêu</div>
+              <Input placeholder="Tìm theo mã phao tiêu..." allowClear
+                value={filterCode}
+                onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
               <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
@@ -1549,33 +1616,19 @@ export default function BuoyListPage() {
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-              <Select placeholder="Chọn tình trạng" allowClear
-                value={filterCondition || undefined}
-                onChange={(v) => { setFilterCondition(v); setPage(1); }}
-                options={CONDITION_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
-              <Select placeholder="Chọn trạng thái" allowClear
-                value={filterApprovalStatus || undefined}
-                onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
-                options={[
-                  { value: 'DRAFT', label: 'Nháp' },
-                  { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                  { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
-                  { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-                  { value: 'REJECTED', label: 'Từ chối' },
-                ]}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
               <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']} allowClear
                 value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
                 onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+              <Select placeholder="Chọn tình trạng" allowClear
+                value={filterCondition || undefined}
+                onChange={(v) => { setFilterCondition(v); setPage(1); }}
+                options={CONDITION_OPTIONS}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
           </>)}
@@ -1608,8 +1661,16 @@ export default function BuoyListPage() {
                 return sortOrder === 'descend' ? arr.reverse() : arr;
               }
               return [...dataSource].sort((a: any, b: any) => {
-                const aVal = a[sortField] ?? '';
-                const bVal = b[sortField] ?? '';
+                const resolve = (r: any) => {
+                  if (sortField === 'unitId') return orgLevel2Map.get(r.unitId) ?? r.unitId ?? '';
+                  if (sortField === 'buoyStationId') return r.buoyStationName || (r.buoyStationId ? (buoyStations.find((s) => s.id === r.buoyStationId)?.name || '') : '') || '';
+                  if (sortField === 'provinceId') return (r.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label || String(r.provinceId)) : '') || '';
+                  if (sortField === 'condition') return CONDITION_STYLE[r.condition || '']?.label ?? r.condition ?? '';
+                  if (sortField === 'status') return buoyStatusBadge(r.status).label;
+                  return r[sortField] ?? '';
+                };
+                const aVal = resolve(a);
+                const bVal = resolve(b);
                 const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
                 return sortOrder === 'ascend' ? cmp : -cmp;
               });
@@ -1618,7 +1679,7 @@ export default function BuoyListPage() {
             rowActions={rowActions}
             loading={false}
             onSort={handleSortChange}
-            scroll={{ x: 2200, y: 'calc(100vh - 450px)' }}
+            scroll={{ x: 2200, y: 550 }}
           />
         ) : null}
         <Pagination
@@ -1683,14 +1744,16 @@ export default function BuoyListPage() {
             activeTabKey={createTabKey}
             onTabChange={setCreateTabKey}
             orgUnits={organizations}
-            buoyStations={buoyStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
-            loadingStations={loadingStations}
+            selectedUnitId={createUnitId}
+            buoyStations={createStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
+            loadingStations={loadingCreateStations}
             onStationChange={handleStationChange}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             symbols={symbols}
             geometryType={createGeomType}
             gpsCoordList={createCoords}
+            gpsError={gpsError}
             addGpsPoint={addCreateGps}
             removeGpsPoint={removeCreateGps}
             updateGpsPoint={updateCreateGps}
@@ -1730,16 +1793,18 @@ export default function BuoyListPage() {
           <BuoyFormContent
             isEdit
             currentStationId={editingRecord?.buoyStationId ?? null}
+            selectedUnitId={editUnitId}
             activeTabKey={editTabKey}
             onTabChange={setEditTabKey}
-            buoyStations={buoyStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
-            loadingStations={loadingStations}
+            buoyStations={editStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
+            loadingStations={loadingEditStations}
             orgUnits={organizations}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             symbols={symbols}
             geometryType={editGeomType}
             gpsCoordList={editCoords}
+            gpsError={gpsError}
             addGpsPoint={addEditGps}
             removeGpsPoint={removeEditGps}
             updateGpsPoint={updateEditGps}
@@ -1791,7 +1856,7 @@ export default function BuoyListPage() {
               <span style={drawerTitleStyle}>
                 {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Phao tiêu' : (historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyGroupCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
             </Space>
           </div>
         }

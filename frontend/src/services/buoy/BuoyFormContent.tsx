@@ -11,8 +11,8 @@ import { UploadOutlined, DeleteOutlined, FileOutlined, PlusOutlined } from '@ant
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import {
-  textTertiary, textPrimary, textSecondary,
-  fontSizeMd, fontSizeSm, fontWeightBold, fontWeightMedium,
+  textTertiary, textPrimary,
+  fontSizeMd, fontSizeSm, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceFormField, surfaceCard, borderDefault, uploadHintStyle,
 } from '../../tokens';
 import {
@@ -23,6 +23,7 @@ import {
   BEACON_LIGHT_OPTIONS,
 } from './schema';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import PagedTable from '../../components/list-view/PagedTable';
 import { fmtInputNumber } from '../../utils/numFmt';
 
 const GEOMETRY_TYPE_OPTIONS = [
@@ -45,6 +46,13 @@ const parseInteger = (v: string | undefined): number => {
   return intPart === '' ? 0 : Number(intPart);
 };
 
+/** true khi giá trị field đã đạt đủ max ký tự — dùng để bật viền đỏ ô nhập + message cảnh báo bên dưới. */
+function useMaxReached(name: string, max: number): boolean {
+  const raw = Form.useWatch(name) ?? '';
+  const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
+  return len >= max;
+}
+
 export const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
 export const MAX_FILE_SIZE = 20 * 1024 * 1024;
 export const MAX_FILE_COUNT = 10;
@@ -61,6 +69,8 @@ export interface BuoyFormContentProps {
   loadingOrgs?: boolean;
   buoyStations: Array<{ id: string; name: string; code: string }>;
   loadingStations?: boolean;
+  /** Đơn vị quản lý đang chọn trong form — chưa chọn thì field nhà trạm bị disable (pattern BerthForm load Cảng biển). */
+  selectedUnitId?: string | null;
   /**
    * Nhà trạm QLVH hiện tại của phao tiêu (chế độ chỉnh sửa).
    * Chỉ cho phép đổi khi phao tiêu CHƯA có nhà trạm (currentStationId rỗng);
@@ -76,10 +86,11 @@ export interface BuoyFormContentProps {
   symbols: Array<{ id: string; name: string; code?: string; image?: string }>;
   geometryType?: string;
   gpsCoordList: Array<{ lat: number | null; lng: number | null }>;
+  gpsError?: string | null;
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
-  updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => void;
-  ddToDms: (dd: number) => { d: number; m: number; s: number };
+  updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
+  ddToDms: (dd: number | null | undefined) => { d: number | null; m: number | null; s: number | null };
 }
 
 export default function BuoyFormContent({
@@ -94,6 +105,7 @@ export default function BuoyFormContent({
   symbols,
   geometryType,
   gpsCoordList,
+  gpsError,
   addGpsPoint,
   removeGpsPoint,
   updateGpsPoint,
@@ -102,7 +114,26 @@ export default function BuoyFormContent({
   loadingStations,
   onStationChange,
   currentStationId,
+  selectedUnitId,
 }: BuoyFormContentProps) {
+  const atMax = {
+    name: useMaxReached('name', 255),
+    locationDetail: useMaxReached('locationDetail', 500),
+    shape: useMaxReached('shape', 500),
+    structure: useMaxReached('structure', 2000),
+    area: useMaxReached('area', 20),
+    bodyHeight: useMaxReached('bodyHeight', 20),
+    diameter: useMaxReached('diameter', 20),
+    towerHeight: useMaxReached('towerHeight', 20),
+    lightHeight: useMaxReached('lightHeight', 20),
+    lightModel: useMaxReached('lightModel', 100),
+    towerColor: useMaxReached('towerColor', 500),
+    powerSupply: useMaxReached('powerSupply', 500),
+    range: useMaxReached('range', 20),
+    lightColor: useMaxReached('lightColor', 50),
+    flashType: useMaxReached('flashType', 50),
+    period: useMaxReached('period', 50),
+  };
   const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
     if (file.size > MAX_FILE_SIZE) {
       message.error(`File "${file.name}" vượt quá 20MB`);
@@ -163,16 +194,17 @@ export default function BuoyFormContent({
                 {...labelProps('Thuộc nhà trạm quản lý vận hành phao, tiêu')}
                 required={!isEdit}
                 style={{ marginBottom: spaceFormField }}
-                tooltip={isEdit && !!currentStationId ? 'Phao tiêu đã thuộc nhà trạm này — không thể đổi nhà trạm quản lý vận hành' : undefined}
+                tooltip={!selectedUnitId ? 'Vui lòng chọn Đơn vị quản lý trước' : (isEdit && !!currentStationId ? 'Phao tiêu đã thuộc nhà trạm này — không thể đổi nhà trạm quản lý vận hành' : undefined)}
                 rules={!isEdit ? [{ required: true, message: 'Thuộc nhà trạm quản lý vận hành phao, tiêu là bắt buộc' }] : []}
               >
                 <Select
-                  placeholder="Chọn Thuộc nhà trạm quản lý vận hành phao, tiêu"
+                  placeholder={!selectedUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : (buoyStations.length === 0 && !loadingStations ? 'Không có nhà trạm đã phê duyệt thuộc đơn vị quản lý' : 'Chọn Thuộc nhà trạm quản lý vận hành phao, tiêu')}
                   loading={loadingStations}
-                  disabled={isEdit && !!currentStationId}
+                  disabled={!selectedUnitId || (buoyStations.length === 0 && !loadingStations) || (isEdit && !!currentStationId)}
                   options={buoyStations.map((s) => ({ value: s.id, label: s.name }))}
                   showSearch
                   filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                  notFoundContent="Không có nhà trạm đã phê duyệt thuộc đơn vị quản lý"
                   onChange={onStationChange}
                   style={selectStyle}
                 />
@@ -207,10 +239,9 @@ export default function BuoyFormContent({
               <Form.Item
                 name="code"
                 {...labelProps('Mã phao, tiêu')}
-                required={!isEdit}
                 style={{ marginBottom: spaceFormField }}
                 tooltip={!isEdit ? 'Mã tự sinh theo {mã nhà trạm}-PT-{seq}, không thể chỉnh sửa' : undefined}
-                rules={!isEdit ? [{ required: true, message: 'Mã phao tiêu không được để trống' }, { max: 50, message: 'Tối đa 50 ký tự' }] : []}
+                rules={!isEdit ? [{ max: 50, message: 'Tối đa 50 ký tự' }] : []}
               >
                 <Input
                   disabled
@@ -229,6 +260,7 @@ export default function BuoyFormContent({
                 required
                 style={{ marginBottom: spaceFormField }}
                 rules={[{ required: true, message: 'Tên phao tiêu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
+                validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}
               >
                 <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} style={inputStyle} />
               </Form.Item>
@@ -241,37 +273,37 @@ export default function BuoyFormContent({
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.locationDetail ? 'error' : undefined} help={atMax.locationDetail ? 'Đã đạt tối đa 500 ký tự' : undefined}>
                 <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="shape" {...labelProps('Hình dáng')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="shape" {...labelProps('Hình dáng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.shape ? 'error' : undefined} help={atMax.shape ? 'Đã đạt tối đa 500 ký tự' : undefined}>
                 <Input placeholder="Nhập Hình dáng" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.structure ? 'error' : undefined} help={atMax.structure ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
                 <Input placeholder="Nhập Kết cấu" maxLength={2000} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
+              <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.area ? 'error' : undefined} help={atMax.area ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} maxLength={20} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
+              <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.bodyHeight ? 'error' : undefined} help={atMax.bodyHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} maxLength={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
+              <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.diameter ? 'error' : undefined} help={atMax.diameter ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} maxLength={20} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -282,8 +314,8 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }}>
-                <InputNumber min={0} max={20} step={1} precision={0} placeholder="Nhập Chiều cao tháp đèn" parser={parseInteger} style={numberInputStyle} />
+              <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerHeight ? 'error' : undefined} help={atMax.towerHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+                <InputNumber min={0} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tháp đèn" parser={parseInteger} style={numberInputStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -295,24 +327,25 @@ export default function BuoyFormContent({
                 required
                 style={{ marginBottom: spaceFormField }}
                 rules={[{ required: true, message: 'Chiều cao tâm sáng là bắt buộc' }]}
+                validateStatus={atMax.lightHeight ? 'error' : undefined} help={atMax.lightHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
-                <InputNumber min={1} max={20} step={1} precision={0} placeholder="Nhập Chiều cao tâm sáng (hải đồ)" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tâm sáng (hải đồ)" parser={parseInteger} style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightModel ? 'error' : undefined} help={atMax.lightModel ? 'Đã đạt tối đa 100 ký tự' : undefined}>
                 <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerColor ? 'error' : undefined} help={atMax.towerColor ? 'Đã đạt tối đa 500 ký tự' : undefined}>
                 <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.powerSupply ? 'error' : undefined} help={atMax.powerSupply ? 'Đã đạt tối đa 500 ký tự' : undefined}>
                 <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} style={inputStyle} />
               </Form.Item>
             </Col>
@@ -325,9 +358,10 @@ export default function BuoyFormContent({
                 required
                 style={{ marginBottom: spaceFormField }}
                 rules={[{ required: true, message: 'Phạm vi chiếu sáng là bắt buộc' }]}
-                tooltip="Từ 1 đến 20 hải lý"
+                tooltip="Phạm vi chiếu sáng (hải lý)"
+                validateStatus={atMax.range ? 'error' : undefined} help={atMax.range ? 'Đã đạt tối đa 20 ký tự' : undefined}
               >
-                <InputNumber min={1} max={20} step={1} precision={0} placeholder="Nhập Phạm vi chiếu sáng" parser={parseInteger} style={numberInputStyle} />
+                <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Phạm vi chiếu sáng" parser={parseInteger} style={numberInputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -348,6 +382,7 @@ export default function BuoyFormContent({
                 {...labelProps('Tình trạng')}
                 required
                 style={{ marginBottom: spaceFormField }}
+                initialValue="Chưa khai thác/vận hành"
                 rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
               >
                 <Select placeholder="Chọn Tình trạng" options={CONDITION_OPTIONS} style={selectStyle} />
@@ -364,19 +399,19 @@ export default function BuoyFormContent({
         <div style={{ paddingTop: 16 }}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightColor ? 'error' : undefined} help={atMax.lightColor ? 'Đã đạt tối đa 50 ký tự' : undefined}>
                 <Input placeholder="Nhập Màu sắc" maxLength={50} style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.flashType ? 'error' : undefined} help={atMax.flashType ? 'Đã đạt tối đa 50 ký tự' : undefined}>
                 <Input placeholder="Nhập Kiểu chớp" maxLength={50} style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }}>
+              <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.period ? 'error' : undefined} help={atMax.period ? 'Đã đạt tối đa 50 ký tự' : undefined}>
                 <Input placeholder="Nhập Chu kỳ" maxLength={50} style={inputStyle} />
               </Form.Item>
             </Col>
@@ -392,12 +427,11 @@ export default function BuoyFormContent({
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn Loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                <Select placeholder="Chọn Loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}
-                rules={geometryType ? [{ required: true, message: 'Biểu tượng bản đồ là bắt buộc khi chọn loại đối tượng' }] : []}>
+              <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn Biểu tượng" allowClear showSearch optionFilterProp="label"
                   disabled={!geometryType} style={selectStyle}>
                   {symbols.map((sym) => (
@@ -444,11 +478,8 @@ export default function BuoyFormContent({
               <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
             </div>
           ) : (
-            <Table className="list-view-table" dataSource={gpsCoordList.map((c, i) => ({ ...c, key: i, _idx: i }))}
-              pagination={false} size="middle" bordered scroll={{ x: 820 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))} tableProps={{ scroll: { x: 820 } }}
+              errorText={gpsError ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span>⚠</span><span>{gpsError}</span></span> : undefined}>
               <Table.Column title="Vĩ độ (N)" key="lat"
                 render={(_: any, record: any) => {
                   const dms = ddToDms(record.lat);
@@ -478,7 +509,7 @@ export default function BuoyFormContent({
               <Table.Column title="Thao tác" key="actions" width={80} align="center"
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
         </div>
       ),
@@ -514,19 +545,16 @@ export default function BuoyFormContent({
               </Upload>
             </div>
           ) : (
-            <Table className="list-view-table"
-              dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i, name: f.name }))}
-              pagination={false} size="middle" bordered scroll={{ x: 400 }}>
-              <Table.Column title="STT" key="stt" width={60} align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+            <PagedTable
+              dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i, name: f.name }))}
+              tableProps={{ scroll: { x: 400 } }}>
               <Table.Column title="Tên file" key="name" dataIndex="name"
                 render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
               <Table.Column title="Thao tác" key="actions" width={80} align="center"
                 render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRemoveFile(record)} />}
                 onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-            </Table>
+            </PagedTable>
           )}
           <div style={{ marginTop: spaceSm }}>
             <span style={uploadHintStyle}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>

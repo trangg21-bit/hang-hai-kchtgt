@@ -9,6 +9,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.dto.dryport.CreateDryPortRequest;
 import com.hanghai.kchtg.port.dto.dryport.DryPortResponse;
 import com.hanghai.kchtg.port.dto.dryport.UpdateDryPortRequest;
@@ -66,6 +67,7 @@ public class DryPortService {
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitScopeService orgUnitScopeService;
 
     // ── GENERATE CODE ───────────────────────────────────────────
 
@@ -225,13 +227,40 @@ public class DryPortService {
     @Transactional(readOnly = true)
     public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
             String search, String status, String approvalStatus) {
+        return findAll(page, size, orgUnitId, provinceId, search, status, approvalStatus,
+                null, null, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
+            String search, String status, String approvalStatus, String region, Integer portStatus,
+            String updatedFrom, String updatedTo, String code, String transportCorridor) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
                 Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
-        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, provinceId, search, statusEnum,
-                approvalEnum, pageable);
+        LocalDateTime updatedFromDt = null;
+        if (updatedFrom != null && !updatedFrom.trim().isEmpty()) {
+            try {
+                updatedFromDt = LocalDateTime.parse(updatedFrom.replace(" ", "T"));
+            } catch (Exception e) {
+                /* ignore */
+            }
+        }
+        LocalDateTime updatedToDt = null;
+        if (updatedTo != null && !updatedTo.trim().isEmpty()) {
+            try {
+                updatedToDt = LocalDateTime.parse(updatedTo.replace(" ", "T"));
+            } catch (Exception e) {
+                /* ignore */
+            }
+        }
+        // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả cảng cạn của toàn bộ đơn vị con (hậu duệ) — giống bến cảng
+        boolean includeAll = orgUnitId == null;
+        List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
+        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(includeAll, orgUnitIds, provinceId, search, statusEnum,
+                approvalEnum, code, transportCorridor, region, portStatus, updatedFromDt, updatedToDt, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         pageResult.getContent().forEach(e -> {

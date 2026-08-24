@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { Tabs, Table, Space, InputNumber } from 'antd';
-import { FileOutlined } from '@ant-design/icons';
+import { Tabs, Table, Space, InputNumber, Select, Tooltip, Button } from 'antd';
+import { FileOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import { resolveOrgFullPath } from '../../components/org-unit';
+import Pagination from '../../components/list-view/Pagination';
+import PagedTable from '../../components/list-view/PagedTable';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, spaceXs,
+  spaceSm, spaceXs, radiusPill, actionPrimary,
 } from '../../tokens';
 import type { Pier } from '../../types/port';
 
@@ -26,6 +28,11 @@ export interface PierDetailContentProps {
   waterwayMap?: Map<string, string>;
   berthDetail?: { berthCode?: string; berthName?: string } | null;
   organizations: Array<{ id: string; name: string; code?: string; parentId?: string }>;
+  infrastructureList?: any[];
+  operationPlanList?: any[];
+  maintenancePlanList?: any[];
+  incidentList?: any[];
+  onViewInfraDetail?: (id: string) => void;
 }
 
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
@@ -40,14 +47,61 @@ function fmtDateTime(d: string | null | undefined): string {
   try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
 }
 
+// Loại kết cấu hạ tầng thuộc cầu cảng (đọc-only, dữ liệu từ infrastructureList)
+const PIER_INFRA_TYPE_OPTIONS = [{ value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' }];
+const TAB_PAGE_SIZE = 20;
+
+// Bảng con trong tab chi tiết: thanh phân trang dùng chung (luôn hiển thị, kể cả khi chưa có dữ liệu)
+function PagedTabTable({ title, dataSource, columns, emptyText }: {
+  title: React.ReactNode;
+  dataSource: any[];
+  columns: React.ReactNode;
+  emptyText: React.ReactNode;
+}) {
+  const [page, setPage] = useState(1);
+  const maxPage = Math.max(1, Math.ceil(dataSource.length / TAB_PAGE_SIZE));
+  const cur = Math.min(page, maxPage);
+  const rows = dataSource
+    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __stt: idx + 1 }))
+    .slice((cur - 1) * TAB_PAGE_SIZE, cur * TAB_PAGE_SIZE);
+  return (
+    <div style={{ paddingTop: 3 }}>
+      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>{title}</div>
+      <Table className="list-view-table" dataSource={rows} pagination={false} size="middle" bordered
+        style={{ marginLeft: 12, marginRight: 12 }} locale={{ emptyText }}>
+        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
+          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+        {columns}
+      </Table>
+      <div style={{ margin: '0 12px' }}>
+        <Pagination total={dataSource.length} current={cur} pageSize={TAB_PAGE_SIZE}
+          pageSizeOptions={[10, 20, 50]} onChange={setPage} />
+      </div>
+    </div>
+  );
+}
+
 
 export default function PierDetailContent({
   selectedRecord, orgMap, portMap, berthOptions, symbolMap, symbolImageMap,
   detailFiles, ddToDms, approvalStyleMap, operationalStyleMap,
   userMap, waterwayMap, berthDetail, organizations,
+  infrastructureList = [],
+  operationPlanList = [],
+  maintenancePlanList = [],
+  incidentList = [],
+  onViewInfraDetail,
 }: PierDetailContentProps) {
   const r = selectedRecord;
   const [systemOpen, setSystemOpen] = useState(true);
+  const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
+  const infraRows = [...infrastructureList].filter((it: any) => {
+    if (!infraTypeFilter || infraTypeFilter === 'ALL') return true;
+    const t = it?.infraType ?? it?.structureType ?? it?.type;
+    if (t === undefined || t === null || t === '') return true;
+    return String(t).toUpperCase() === infraTypeFilter.toUpperCase();
+  });
 
   const berthLabel = berthOptions.find(o => o.value === r.berthId)?.label || r.berthName || r.berthId || '—';
   const portLabel = r.portId ? (portMap.get(r.portId) || r.portId) : '—';
@@ -195,27 +249,22 @@ export default function PierDetailContent({
               </div>
               <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                 <span style={detailLabelStyle}>Tọa độ GPS</span>
-                {coords.length === 0 ? (
-                  <div style={{ color: textTertiary, fontSize: fontSizeMd, marginTop: spaceXs }}>Không có tọa độ</div>
-                ) : (
-                  <Table className="list-view-table" dataSource={coords.map((p, i) => ({ ...p, key: i }))} pagination={false} size="middle" bordered style={{ marginTop: spaceXs }}>
-                    <Table.Column title="STT" key="stt" width={60} align="center"
-                      render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
-                      onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                <PagedTable dataSource={coords.map((p) => ({ ...p }))}
+                  emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
+                >
                     <Table.Column title="Vĩ độ (N)" key="lat" align="center"
                       render={(_: any, rec: any) => {
                         const dms = ddToDms(rec.lat);
-                        return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
+                        return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                       }}
                       onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                     <Table.Column title="Kinh độ (E)" key="lng" align="center"
                       render={(_: any, rec: any) => {
                         const dms = ddToDms(rec.lng);
-                        return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
+                        return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                       }}
                       onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                  </Table>
-                )}
+                  </PagedTable>
               </div>
             </div>
           ),
@@ -227,22 +276,158 @@ export default function PierDetailContent({
               <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
                 <span style={detailLabelStyle}>File đính kèm</span>
               </div>
-              <Table className="list-view-table" rowKey="key" dataSource={detailFiles.map((f, i) => ({ ...f, key: f.id, _idx: i }))} pagination={false} size="middle" bordered style={{ marginLeft: 12, marginRight: 12 }}
-                locale={{ emptyText: (
+              <PagedTable dataSource={detailFiles.map((f) => ({ ...f }))}
+                emptyText={(
                   <div style={{ padding: '32px 0', textAlign: 'center' }}>
                     <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
                     <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tài liệu đính kèm</span>
                   </div>
-                ) }}
+                )}
               >
-                <Table.Column title="STT" key="stt" width={60} align="center"
-                  render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                 <Table.Column title="Tên file" key="name" dataIndex="fileName" align="center"
                   render={(name: string) => <div style={{ textAlign: 'left', fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</div>}
                   onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-              </Table>
+              </PagedTable>
             </div>
+          ),
+        },
+        {
+          key: 'infra', label: 'Danh sách kết cấu hạ tầng thuộc cầu cảng',
+          children: (
+            <PagedTabTable
+              title={(
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
+                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter}
+                    onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
+                    options={PIER_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
+                </div>
+              )}
+              dataSource={infraRows}
+              emptyText={(
+                <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
+                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
+                </div>
+              )}
+              columns={(
+                <>
+                  <Table.Column title="Tên kết cấu hạ tầng" key="name" dataIndex="infraName" align="center"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: actionPrimary, cursor: 'pointer', fontWeight: fontWeightBold }} onClick={() => onViewInfraDetail?.(rec.id)}>{v || rec.name || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
+                    render={(_: any, rec: any) => (
+                      <Tooltip title="Xem chi tiết">
+                        <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }}
+                          onClick={() => onViewInfraDetail?.(rec.id)} />
+                      </Tooltip>
+                    )}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                </>
+              )}
+            />
+          ),
+        },
+        {
+          key: 'operation', label: 'Thông tin vận hành khai thác',
+          children: (
+            <PagedTabTable
+              title={<span style={detailLabelStyle}>Thông tin vận hành khai thác</span>}
+              dataSource={operationPlanList}
+              emptyText={(
+                <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
+                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
+                </div>
+              )}
+              columns={(
+                <>
+                  <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Tên kế hoạch" key="name" dataIndex="planName"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.name || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Ngày bắt đầu" key="start" dataIndex="startDate"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.startTime || rec.start || null)}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Ngày kết thúc" key="end" dataIndex="endDate"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.endTime || rec.end || null)}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
+                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                </>
+              )}
+            />
+          ),
+        },
+        {
+          key: 'maintenance', label: 'Thông tin bảo trì',
+          children: (
+            <PagedTabTable
+              title={<span style={detailLabelStyle}>Thông tin bảo trì</span>}
+              dataSource={maintenancePlanList}
+              emptyText={(
+                <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
+                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
+                </div>
+              )}
+              columns={(
+                <>
+                  <Table.Column title="Mã kế hoạch" key="code" dataIndex="planCode"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Tên kế hoạch" key="name" dataIndex="planName"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.name || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Thời gian bắt đầu" key="start" dataIndex="startTime"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.start || rec.startDate || null)}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Thời gian kết thúc" key="end" dataIndex="endTime"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.end || rec.endDate || null)}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
+                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                </>
+              )}
+            />
+          ),
+        },
+        {
+          key: 'incident', label: 'Thông tin sự cố',
+          children: (
+            <PagedTabTable
+              title={<span style={detailLabelStyle}>Thông tin sự cố</span>}
+              dataSource={incidentList}
+              emptyText={(
+                <div style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div>
+                  <span style={{ color: textTertiary, fontSize: fontSizeLg }}>Chưa có dữ liệu</span>
+                </div>
+              )}
+              columns={(
+                <>
+                  <Table.Column title="Mã sự cố" key="code" dataIndex="incidentCode"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.code || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Loại sự cố" key="type" dataIndex="incidentType"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || rec.type || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Địa điểm" key="location" dataIndex="location"
+                    render={(v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Thời gian" key="time" dataIndex="incidentTime"
+                    render={(v: string, rec: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{fmtDateTime(v || rec.time || null)}</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                  <Table.Column title="Thao tác" key="actions" width={100} align="center"
+                    render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
+                    onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                </>
+              )}
+            />
           ),
         },
       ]}
