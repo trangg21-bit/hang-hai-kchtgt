@@ -30,10 +30,10 @@ source-paths:
 |---|---|
 | Mục đích | Cho phép Chuyên viên tạo mới hồ sơ Hệ thống VTS (Vessel Traffic Service) với đầy đủ thông tin chung, thông tin hệ thống, danh sách vùng VTS trực thuộc và file đính kèm. |
 | Tác nhân | Chuyên viên (A-003) |
-| Luồng chính | Chuyên viên đăng nhập → chọn "Thêm mới hệ thống VTS" → điền form 4 nhóm thông tin → Hệ thống validate → Lưu với trạng thái PROPOSED → Chờ phê duyệt 2 cấp |
+| Luồng chính | Chuyên viên đăng nhập → chọn "Thêm mới hệ thống VTS" → điền form 4 nhóm thông tin → Hệ thống validate → Lưu với trạng thái DRAFT (Lưu tạm) → gửi duyệt → Chờ phê duyệt 2 cấp |
 | Điều kiện trước | Người dùng có quyền `vts:create` |
-| Điều kiện sau | Bản ghi tạo với trạng thái PROPOSED, hiển thị trong danh sách chờ phê duyệt |
-| Quy tắc nghiệp vụ | Mã hệ thống VTS duy nhất toàn hệ thống. Trạng thái mặc định PROPOSED. Phê duyệt 2 cấp: Trưởng phòng (C1) → Cục trưởng (C2). |
+| Điều kiện sau | Bản ghi tạo với trạng thái DRAFT (Lưu tạm), sau khi gửi duyệt chuyển PENDING_APPROVAL (Chờ Cảng vụ/Chi cục duyệt), hiển thị trong danh sách chờ phê duyệt |
+| Quy tắc nghiệp vụ | Mã hệ thống VTS duy nhất toàn hệ thống. Trạng thái mặc định DRAFT. Phê duyệt 2 cấp: Trưởng phòng (C1) → Cục trưởng (C2). |
 
 ## Mô tả màn hình
 
@@ -59,9 +59,6 @@ source-paths:
 | 9 | Phạm vi áp dụng | TextArea + counter | Có | Không | max 2000, placeholder: "Nhập phạm vi áp dụng" | Hiển thị "0/2000" |
 | 10 | Thông báo hàng hải | TextArea + counter | Có | Không | max 2000, placeholder: "Nhập thông báo hàng hải" | Hiển thị "0/2000" |
 | 11 | Tình trạng | Dropdown | Có | Có | Mặc định: "Đang hoạt động" | Options: "Đang hoạt động", "Dừng hoạt động", "Đang bảo trì", "Đang xây dựng" |
-| 12 | Mức độ phụ trách | Text input + counter | Có | Không | max 255, placeholder: "Nhập mức độ phụ trách" | |
-| 13 | Nguồn gốc | Text input + counter | Có | Không | max 255, placeholder: "Nhập nguồn gốc" | |
-| 14 | Đối tác | Text input + counter | Có | Không | max 255, placeholder: "Nhập đối tác" | |
 
 ### Nhóm 3 — Danh sách vùng VTS
 
@@ -81,15 +78,15 @@ source-paths:
 2. Form hiển thị 4 nhóm: Thông tin chung → Thông tin hệ thống VTS → Danh sách vùng VTS → File đính kèm
 3. Người dùng điền các trường bắt buộc: Đơn vị quản lý, Đơn vị chủ quản, Đơn vị vận hành, Mã hệ thống VTS, Tên hệ thống VTS, Địa điểm (Tỉnh/TP), Tình trạng
 4. Hệ thống validate: mã duy nhất, required fields, maxlength
-5. Lưu thành công → trạng thái PROPOSED → hiển thị toast "Tạo mới hệ thống VTS thành công"
-6. Chuyển về danh sách, bản ghi mới hiển thị với trạng thái "Chờ phê duyệt"
+5. Lưu thành công → trạng thái DRAFT (Lưu tạm) → hiển thị toast "Tạo mới hệ thống VTS thành công"
+6. Chuyển về danh sách, bản ghi mới hiển thị với trạng thái "Lưu tạm"; sau khi gửi duyệt hiển thị "Chờ duyệt"
 
 ## Acceptance Criteria
 
 - [x] Form hiển thị đầy đủ 4 nhóm thông tin theo đúng thứ tự
 - [x] Các trường bắt buộc có dấu * đỏ: Đơn vị quản lý, Đơn vị chủ quản, Đơn vị vận hành, Mã hệ thống VTS, Tên hệ thống VTS, Địa điểm (Tỉnh/TP), Tình trạng
 - [x] Validate mã hệ thống VTS duy nhất — nếu trùng hiển thị lỗi "Mã hệ thống VTS đã tồn tại"
-- [x] Trạng thái mặc định = PROPOSED
+- [x] Trạng thái mặc định = DRAFT (Lưu tạm)
 - [x] Danh sách vùng VTS và File đính kèm có thể để trống khi tạo mới
 - [x] Sau khi tạo thành công, hiển thị toast và quay về danh sách
 
@@ -120,7 +117,7 @@ source-paths:
 | maritimeNotice | String | Không | null | Thông báo hàng hải, max 2000 |
 | conditionStatus | Enum | Có | OPERATIONAL | Tình trạng: OPERATIONAL, STOPPED, MAINTENANCE, UNDER_CONSTRUCTION |
 | note | String | Không | null | Ghi chú, max 2000 |
-| approvalStatus | Enum | — | PROPOSED | Trạng thái phê duyệt (PROPOSED, UNDER_REVIEW, APPROVED, REJECTED) |
+| approvalStatus | Enum | — | DRAFT | Trạng thái phê duyệt (DRAFT, PENDING_APPROVAL, APPROVED_LEVEL1, REJECTED_LEVEL1, REJECTED_LEVEL2, APPROVED, ARCHIVED) |
 | approverLevel1 | UUID | Không | null | Người duyệt C1 |
 | approvedDateLevel1 | LocalDateTime | Không | null | Ngày duyệt C1 |
 | approverLevel2 | UUID | Không | null | Người duyệt C2 |
@@ -145,7 +142,7 @@ source-paths:
 | ID | Rule | Applies-to |
 |---|---|---|
 | BR-062-01 | Mã hệ thống VTS (code) duy nhất toàn hệ thống, max 50 ký tự | HeThongVTS.code |
-| BR-062-02 | Trạng thái mặc định = PROPOSED | HeThongVTS.trangThai |
+| BR-062-02 | Trạng thái mặc định = DRAFT (Lưu tạm) | HeThongVTS.trangThai |
 | BR-062-03 | Tên hệ thống VTS bắt buộc, max 255 | HeThongVTS.tenHeThong |
 | BR-062-04 | Đơn vị quản lý, đơn vị chủ quản, đơn vị vận hành bắt buộc | HeThongVTS |
 | BR-062-05 | Địa điểm Tỉnh/TP bắt buộc | HeThongVTS.province |
@@ -157,9 +154,9 @@ source-paths:
 
 | Role | Permission | Ghi chú |
 |---|---|---|
-| A-003 (Chuyên viên) | `vts:create` | Tạo mới, chỉnh sửa bản ghi PROPOSED/UNDER_REVIEW/REJECTED |
-| A-002 (Lãnh đạo) | `vts:approve:c1` | Phê duyệt C1 (PROPOSED → UNDER_REVIEW) |
-| A-002 (Cục trưởng) | `vts:approve:c2` | Phê duyệt C2 (UNDER_REVIEW → APPROVED) |
+| A-003 (Chuyên viên) | `vts:create` | Tạo mới, chỉnh sửa bản ghi DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2 |
+| A-002 (Lãnh đạo) | `vts:approve:c1` | Phê duyệt C1 (PENDING_APPROVAL → APPROVED_LEVEL1) |
+| A-002 (Cục trưởng) | `vts:approve:c2` | Phê duyệt C2 (APPROVED_LEVEL1 → APPROVED) |
 
 ## Dependencies
 

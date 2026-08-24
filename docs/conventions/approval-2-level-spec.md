@@ -1,8 +1,8 @@
 ---
 document: base-pattern
 scope: kcht-approval-2-level
-version: 1.0
-last-updated: 2026-08-21
+version: 1.1
+last-updated: 2026-08-22
 ---
 
 # Quy trình phê duyệt 2 cấp KCHT — Tài liệu nền dùng chung
@@ -60,12 +60,12 @@ Một hồ sơ KCHT trải qua đúng **7 trạng thái** (6 hoạt động + 1 
 | 1 | Lưu tạm | `DRAFT` (0) | Mặc định khi tạo, chỉ người nhập nhìn thấy |
 | 2 | Chờ Cảng vụ / Chi cục duyệt | `PENDING_APPROVAL` (2) | Đã gửi đi, chờ vòng 1 |
 | 3 | Chờ Cục duyệt | `APPROVED_LEVEL1` (3) | Vòng 1 đã duyệt xong; cũng là đích khi người gửi cấp Cục submit thẳng (bỏ vòng 1) |
-| 4 | Bị Cảng vụ / Chi cục trả về | `REJECTED_LEVEL1` | Vòng 1 từ chối |
-| 5 | Bị Cục trả về | `REJECTED_LEVEL2` | Vòng 2 từ chối |
+| 4 | Bị Cảng vụ / Chi cục trả về | `REJECTED_LEVEL1` (8) | Vòng 1 từ chối |
+| 5 | Bị Cục trả về | `REJECTED_LEVEL2` (9) | Vòng 2 từ chối |
 | 6 | Đã duyệt | `APPROVED` (5) | Hoàn tất, hồ sơ chính thức có hiệu lực |
 | 7 | Đã xóa (lịch sử) | `ARCHIVED` (7) | Chỉ xóa được khi "Lưu tạm"; lưu để đối chiếu, không hiển thị |
 
-> `APPROVED_LEVEL2` (4) **giữ lại nhưng không dùng** trong luồng thống nhất (legacy — tránh ảnh hưởng dữ liệu cũ). Ordinal chính xác của `REJECTED_LEVEL1` / `REJECTED_LEVEL2` chốt khi implement (không xung đột `ARCHIVED(7)`).
+> **Tập đóng 7 trạng thái** (đã chốt — M-1006 DP-9/AC-25): hồ sơ luôn thuộc đúng 1 trong 7 trạng thái trên. `PROPOSED` (1), `APPROVED_LEVEL2` (4), `REJECTED` (6) là giá trị **legacy** — giữ trong enum để đọc dữ liệu cũ, **không dùng trong luồng thống nhất**. Ordinal đã chốt: `REJECTED_LEVEL1` = 8, `REJECTED_LEVEL2` = 9 (không xung đột `ARCHIVED` = 7).
 
 ### 3.2. 2 vòng duyệt + phân cấp theo đơn vị gửi (quy tắc 4, 14)
 
@@ -116,7 +116,7 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 
 - Phân quyền dạng `<resource>:<action>`, gán động qua nhóm/tài khoản (xem `AGENTS.md`); quyền mới phải đăng ký trong `PermissionSeeder.java`.
 - **Admin Cục**: full quyền + xem thêm metadata (người tạo, người sửa cuối, thời gian tạo/cập nhật).
-- Granularity resource: dùng chung `kcht` (quyền theo chức vụ, không theo loại) — còn mở, SA chốt khi triển khai.
+- Granularity resource: **đã chốt (M-1006 design DP-10)** — 1 resource dùng chung `kcht` + 9 action: `kcht:create`, `kcht:update`, `kcht:delete`, `kcht:submit`, `kcht:approve_level1`, `kcht:approve_level2`, `kcht:reject`, `kcht:view`, `kcht:view_sensitive`. Quyền theo chức vụ, không theo loại (28× permissions là quá mức). Các permission cũ (`port:approve`, `buoystation:approve*`, ...) giữ seed để không phá gán quyền nhóm hiện có — endpoint mới dùng `kcht:*`.
 
 ### 3.8. Data scope theo đơn vị
 

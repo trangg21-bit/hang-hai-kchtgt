@@ -33,7 +33,7 @@ Cho phép người dùng có thẩm quyền chỉnh sửa thông tin của một
 2. Hệ thống gọi GET detail để load toàn bộ dữ liệu hiện tại, điền sẵn vào form.
 3. Người dùng chỉnh sửa các trường được phép.
 4. Người dùng chọn một trong ba hành động lưu (giống F-056).
-5. Sau khi cập nhật, trạng thái phê duyệt quay về `PROPOSED` → cần duyệt lại.
+5. Sau khi cập nhật, trạng thái phê duyệt quay về `DRAFT` (Lưu tạm) → cần duyệt lại.
 
 ---
 
@@ -80,7 +80,7 @@ Cho phép người dùng có thẩm quyền chỉnh sửa thông tin của một
 
 **BR-057-01 — Chỉ user cùng đơn vị mới được sửa:** Chỉ người dùng thuộc đúng `orgUnitId` của trạm radar mới có quyền chỉnh sửa. Backend kiểm tra `orgUnitId` của user khớp với `orgUnitId` của trạm radar.
 
-**BR-057-02 — Sửa xong phải duyệt lại:** Sau khi cập nhật, `approvalStatus` tự động quay về `PROPOSED`. Trạm radar đang ở trạng thái `APPROVED` mà bị sửa sẽ **tạm thời biến mất** khỏi dropdown chọn trạm radar của các module khác cho đến khi được duyệt lại (F-059).
+**BR-057-02 — Sửa xong phải duyệt lại:** Sau khi cập nhật, `approvalStatus` tự động quay về `DRAFT` (Lưu tạm). Trạm radar đang ở trạng thái `APPROVED` mà bị sửa sẽ **tạm thời biến mất** khỏi dropdown chọn trạm radar của các module khác cho đến khi được duyệt lại (F-059).
 
 **BR-057-03 — Ghi nhật ký thay đổi:** Mọi lần cập nhật đều tạo bản ghi `ApprovalHistory` ghi lại từng trường bị thay đổi (fieldChanged, oldValue, newValue, changedBy, changedAt).
 
@@ -92,12 +92,13 @@ Cho phép người dùng có thẩm quyền chỉnh sửa thông tin của một
 
 ```mermaid
 stateDiagram-v2
-    PROPOSED --> PROPOSED: F-057 - Cập nhật (vẫn chờ duyệt)
-    APPROVED --> PROPOSED: F-057 - Cập nhật (cần duyệt lại)
-    REJECTED --> PROPOSED: F-057 - Sửa và gửi lại
+    DRAFT --> DRAFT: F-057 - Cập nhật (vẫn lưu tạm)
+    APPROVED --> DRAFT: F-057 - Cập nhật (cần duyệt lại)
+    REJECTED_LEVEL1 --> DRAFT: F-057 - Sửa và gửi lại
+    REJECTED_LEVEL2 --> DRAFT: F-057 - Sửa và gửi lại
 ```
 
-> ⚠ **Lưu ý cho dev:** Trạm radar đã duyệt (`APPROVED`) mà bị sửa → trạng thái quay về `PROPOSED` → **tạm thời không khả dụng** trong dropdown của module khác (Bản đồ, Quản lý tài sản, Vận hành, Bảo trì...) cho đến khi được duyệt lại qua F-059.
+> ⚠ **Lưu ý cho dev:** Trạm radar đã duyệt (`APPROVED`) mà bị sửa → trạng thái quay về `DRAFT` (Lưu tạm) → **tạm thời không khả dụng** trong dropdown của module khác (Bản đồ, Quản lý tài sản, Vận hành, Bảo trì...) cho đến khi được duyệt lại qua F-059.
 
 ### Các tính năng liên quan
 

@@ -7,102 +7,156 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-07-28
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Cảng biển - Cập nhật
+# Đặc tả nghiệp vụ: Quản lý Cảng biển - Cập nhật
 
-## Description
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-009 — Quản lý Cảng biển - Cập nhật
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Loại:** chức năng có bước phê duyệt (cập nhật → duyệt lại theo quy trình 2 cấp)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
 
-Tính năng cho phép người dùng có thẩm quyền cập nhật thông tin của một Cảng biển đã tồn tại trong hệ thống, bao gồm thay đổi tên cảng, vị trí địa lý, diện tích, khả năng tiếp nhận tàu và các thuộc tính kỹ thuật khác, với cơ chế kiểm tra trùng lặp và ghi nhật ký thay đổi đầy đủ. Giao diện PortEditPage cung cấp form pre-fill từ API với React Hook Form + Zod validation inline, port_code readonly, tự động reset trạng thái phê duyệt về CHỜ_PHÊ_DUYỆT và tạo change_log sau mỗi lần cập nhật.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
-## Business Intent
+---
 
-Thông tin Cảng biển thay đổi theo thời gian do quá trình mở rộng, cải tạo hoặc tái cấu trúc hạ tầng; việc cho phép cập nhật thông tin chính xác giúp đảm bảo cơ sở dữ liệu cảng luôn phản ánh đúng tình trạng thực tế, hỗ trợ hiệu quả cho công tác quy hoạch, điều phối hoạt động cảng và báo cáo. Mọi cập nhật yêu cầu phê duyệt lại để đảm bảo tính toàn vẹn dữ liệu.
+## 1. Mô tả ngắn
 
-## Flow Summary
+Cho phép người dùng có thẩm quyền (`port:update`) cập nhật thông tin của một Cảng biển đã tồn tại: tên cảng, vị trí địa lý, chỉ số tổng hợp, tọa độ GPS và công trình KCHT. Form điền sẵn (pre-fill) từ API; mã cảng (`portCode`) là read-only. Mỗi lần cập nhật thành công, trạng thái phê duyệt được đưa về trạng thái chờ duyệt và phải được duyệt lại (quy trình 2 cấp); hệ thống tự động ghi nhật ký thay đổi (change log).
 
-### BE Flow
-Người dùng chọn Cảng biển cần cập nhật từ danh sách. Hệ thống hiển thị biểu mẫu với thông tin hiện tại được điền sẵn. Người dùng chỉnh sửa các trường cần thay đổi, hệ thống kiểm tra tính hợp lệ. Sau khi lưu, hệ thống ghi nhận nhật ký thay đổi.
+## 2. Trường dữ liệu
 
-### UI Flow
-Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi tiết (F-069), hệ thống gọi GET /api/v1/ports/:id để lấy dữ liệu hiện tại và pre-fill form. Form hiển thị 7 trường với port_code readonly. GPS fields (latitude/longitude) phải được cung cấp cùng nhau (BE validates @AssertTrue isGpsPaired()). Submit gọi PUT /api/v1/ports/:id, server trả về bản ghi đã cập nhật với approval_status = CHỜ_PHÊ_DUYỆT và tạo change_log. Toast "Cập nhật thành công — chờ phê duyệt lại", điều hướng về danh sách.
+Cấu trúc theo entity `Port` (bảng `ports`) — danh sách trường **khớp 100%** sheet `QL Cảng biển` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Điểm khác biệt của F-009 so với F-008: `portCode` và `orgUnitId` là **read-only trên màn Sửa** (Excel: cột Sửa vẫn hiển thị nhưng điều khiển `Text (read-only)`); sau mỗi lần cập nhật phải duyệt lại.
 
-## Acceptance Criteria
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Mã cảng biển | Text (read-only, tự sinh CB-XXXXXX) | Có (hệ thống tự sinh) | Không | Có | Có | Có | Có | `portCode` — **read-only, bất biến**; backend từ chối payload đổi mã |
+| 2 | Đơn vị quản lý (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `orgUnitId` — read-only trên màn Sửa; validate trong phạm vi user (tài liệu nền mục 3.3) |
+| 3 | Nhóm cảng biển | Select | Không | Có | Có | Có | Có | Có | `portGroup` |
+| 4 | Tên cảng biển (bắt buộc) | Text | Có | Có | Có | Có | Có | Có | `portName` — bắt buộc |
+| 5 | Tỉnh/Thành phố (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `province` |
+| 6 | Địa điểm chi tiết | Text | Không | Không | Không | Có | Có | Có | `detailedLocation` |
+| 7 | Phân cấp cảng biển (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `portClass` — phân cấp I/II/III |
+| 8 | Phạm vi vùng nước | TextArea | Không | Không | Không | Có | Có | Có | `waterAreaScope` |
+| | **Chỉ số tổng hợp** | | | | | | | | |
+| 9 | Tổng số bến cảng | Number | Không | Không | Không | Có | Có | Có | `totalBerths` |
+| 10 | Tổng số khu neo đậu, khu chuyển tải | Number | Không | Không | Không | Có | Có | Có | `totalAnchoragesTransshipment` |
+| 11 | Tổng số tuyến luồng HH công cộng | Number | Không | Không | Không | Có | Có | Có | `totalPublicChannels` |
+| 12 | Tổng số tuyến luồng HH chuyên dùng | Number | Không | Không | Không | Có | Có | Có | `totalDedicatedChannels` |
+| 13 | Tổng chiều dài luồng HH công cộng (km) | Number | Không | Không | Không | Có | Có | Có | `totalPublicChannelLength` |
+| 14 | Tổng chiều dài luồng HH chuyên dùng (km) | Number | Không | Không | Không | Có | Có | Có | `totalDedicatedChannelLength` |
+| 15 | Tổng số phao tiêu, báo hiệu HH trên luồng | Number | Không | Không | Không | Có | Có | Có | `totalBuoysBeacons` |
+| 16 | Tổng số đê, kè | Number | Không | Không | Không | Có | Có | Có | `totalDikes` |
+| 17 | Tổng chiều dài hệ thống đê, kè (km) | Number | Không | Không | Không | Có | Có | Có | `totalDikeLength` |
+| 18 | Tổng số đèn biển, đăng, tiêu độc lập | Number | Không | Không | Không | Có | Có | Có | `totalLighthouses` |
+| 19 | Số lượng bến phao | Number | Không | Không | Không | Có | Có | Có | `buoyBerthCount` |
+| 20 | Số lượng khu neo đậu | Number | Không | Không | Không | Có | Có | Có | `anchorageCount` |
+| 21 | Số lượng khu chuyển tải | Number | Không | Không | Không | Có | Có | Có | `transshipmentCount` |
+| 22 | Các khu nước, vùng nước khác | TextArea | Không | Không | Không | Có | Có | Có | `otherWaterAreas` |
+| | **Thông tin GIS** | | | | | | | | |
+| 23 | Loại đối tượng GIS | Select | Không | Không | Không | Có | Có | Có | `coordinateSystem`/`displayRule`/`mapSymbolId`/`spatialId` |
+| 24 | Biểu tượng | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 25 | Hệ quy chiếu | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 26 | Quy tắc hiển thị | Text | Không | Không | Không | Có | Có | Có | (GIS) |
+| | **Tọa độ GPS** | | | | | | | | |
+| 27 | Tọa độ GPS (bắt buộc ≥1 khi gửi duyệt) | Bảng con (Vĩ độ, Kinh độ) | Có* | Không | Không | Có | Có | Có | `coordinates[]` — GPS phải cung cấp cùng nhau (paired); ≥ 1 tọa độ khi gửi duyệt lại |
+| | **Công trình KCHT trực thuộc** | | | | | | | | |
+| 28 | Công trình KCHT | Bảng con (STT, Tên, Số lượng) | Không | Không | Không | Có | Có | Có | `infrastructure[]` — tên bắt buộc, số lượng > 0 |
+| | **File đính kèm** | | | | | | | | |
+| 29 | File đính kèm | Upload | Không | Không | Không | Có | Có | Có | `attachments[]` — quản lý tại F-008/F-012; màn Sửa hiển thị danh sách |
+| | **Ghi chú & Trạng thái** | | | | | | | | |
+| 30 | Ghi chú | TextArea | Không | Không | Không | Có | Có | Có | `remarks` |
+| 31 | Trạng thái | Select | Không (read-only) | Có | Có | Không | Không | Không | `operationalStatus` — theo Excel chỉ hiển thị ở Danh sách/Bộ lọc |
+| | **Thông tin kiểm toán (chỉ Admin Cục)** | | | | | | | | |
+| 32 | Người cập nhật | Text (read-only) | Không (read-only) | Có | Không | Không | Không | Không | Kiểm toán — chỉ Admin Cục |
+| 33 | Ngày cập nhật | Text (read-only) | Không (read-only) | Có | Có | Không | Không | Không | Kiểm toán — chỉ Admin Cục |
+| | **Kết cấu hạ tầng thuộc cầu cảng** | | | | | | | | |
+| 34 | Tên kết cấu hạ tầng | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 35 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin quy hoạch** | | | | | | | | |
+| 36 | Số quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 37 | Ngày quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 38 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 40 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 42 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 43 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 44 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 45 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 46 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 47 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 48 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 49 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
-1. Người dùng có vai trò Admin hoặc Quản lý cảng có thể truy cập chức năng cập nhật.
-2. Các trường không thể thay đổi: mã cảng; tất cả các trường khác đều có thể chỉnh sửa.
-3. Hệ thống hiển thị cảnh báo khi Cảng biển đang trong quá trình phê duyệt hoặc đã bị xóa mềm.
-4. Mỗi lần cập nhật thành công, hệ thống tự động ghi nhận nhật ký thay đổi.
-5. [UI] Form pre-fill từ GET /api/v1/ports/:id, port_code readonly, validation React Hook Form + Zod.
-6. [UI] Submit PUT /api/v1/ports/:id → reset approval_status = CHỜ_PHÊ_DUYỆT → tạo change_log → toast → về danh sách.
-7. [UI] Nếu port_code trùng, API trả HTTP 409 → toast lỗi.
+## 3. Trạng thái và phê duyệt
 
-## In Scope
+- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
+- **Sau mỗi lần cập nhật thành công:** hồ sơ được đưa về trạng thái chờ duyệt và **phải duyệt lại** (không giữ trạng thái đã duyệt cũ) — mọi cập nhật đều phải qua phê duyệt để đảm bảo toàn vẹn dữ liệu.
+- Chỉ được cập nhật khi hồ sơ ở trạng thái cho phép sửa (Lưu tạm / bị trả về — theo file chuẩn); cảnh báo khi cảng đang trong quá trình phê duyệt hoặc đã bị xóa mềm.
+- Mỗi lần cập nhật: ghi change log (bản cũ trước khi cập nhật) + đầy đủ thông tin kiểm toán (operatorId, updatedBy, updatedAt).
 
-- Biểu mẫu cập nhật với dữ liệu hiện tại điền sẵn
-- Validation cho các trường có thể thay đổi
-- Kiểm tra xung đột dữ liệu trước khi lưu
-- Ghi nhật ký thay đổi
-- Form cập nhật với pre-fill (React Hook Form + Zod)
-- port_code readonly
-- Reset approval_status = CHỜ_PHÊ_DUYỆT sau update
-- Tự động tạo change_log record
+## 4. Quy tắc và phân quyền riêng
 
-## Out of Scope
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
-- Thay đổi mã Cảng biển (không cho phép)
-- Quy trình phê duyệt thay đổi lớn (thuộc F-011)
-- Xóa Cảng biển (thuộc F-010)
-- Lịch sử tất cả phiên bản (thuộc F-013)
-- Chỉnh sửa nhiều bản ghi cùng lúc (bulk edit)
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## Roles + Permissions
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-009-01 | `portCode` không thể thay đổi sau khi tạo (read-only, server từ chối nếu payload đổi mã) | Update |
+| BR-009-02 | Tọa độ GPS phải cung cấp cùng nhau: latitude [-90, 90], longitude [-180, 180] | Update |
+| BR-009-03 | Cập nhật thành công → reset trạng thái về chờ duyệt, phải duyệt lại (quy trình 2 cấp) | Update |
+| BR-009-04 | Tự động tạo change log cho mọi thay đổi (bản cũ lưu trước khi cập nhật) | Update |
+| BR-009-05 | Trùng `portCode`/lỗi xung đột → HTTP 409, không ghi đè | Update |
 
-| Role | Permissions |
-|------|-------------|
-| Admin | Cập nhật, Xem, Xóa, Phê duyệt |
-| Lãnh đạo | Cập nhật, Xem, Xóa, Phê duyệt/Từ chối |
-| Chuyên viên Cục | Cập nhật Cảng biển của Cục mình |
-| Chuyên viên Cảng vụ | Cập nhật Cảng biển của Cảng vụ mình |
-| Doanh nghiệp cảng | Cập nhật Cảng biển của đơn vị mình |
+### 4.2. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem cảng để cập nhật (pre-fill) | `port:read` |
+| Cập nhật Cảng biển | `port:update` |
+
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền |
+| Admin, Lãnh đạo | Cập nhật, Xem |
+| Chuyên viên Cục / Chuyên viên Cảng vụ / Doanh nghiệp cảng | Cập nhật trong phạm vi đơn vị mình |
 | Nhân viên vận hành | Xem (không cập nhật) |
 
-## Entities
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — full quyền + xem metadata người tạo/người sửa/thời gian.
 
-- **port**: id (UUID), port_code (string, unique, read-only), port_name (string), province_city (string), latitude (BigDecimal, range -90..90), longitude (BigDecimal, range -180..180), area (BigDecimal, >0), max_vessel_capacity (BigDecimal), operational_status (string), approval_status (string: CHỜ_PHÊ_DUYỆT/ĐƯỢC_PHÊ_DUYỆT/TỪ_CHỐI), managing_unit (UUID), created_by (string), updated_by (string), created_at, updated_at, deleted_at (nullable)
-- **change_log**: id (UUID), port_id (UUID), change_type (CẬP_NHẬT), changed_field (string), old_value, new_value, changed_by (UUID), changed_at
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-## Business Rules
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung; cập nhật reset về trạng thái chờ duyệt |
+| 2 | Có bước phê duyệt không | Có — mọi cập nhật phải duyệt lại (quy trình 2 cấp) |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị (orgUnitId — tài liệu nền mục 3.3) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `port:update` (kèm `port:read` để pre-fill) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không (đính kèm quản lý tại F-008/F-012) |
+| 8 | Giao diện khác mẫu chung | Không |
 
-| ID | Rule | Applies-to | Source |
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| BR-001 | port_code không thể thay đổi sau khi tạo (readonly) | port_code | Entity spec, F-009, F-071 |
-| BR-002 | latitude [-90, 90], longitude [-180, 180], area [0, 5000] | GPS + Diện tích | Entity spec |
-| BR-003 | approval_status tự động reset về CHỜ_PHÊ_DUYỆT sau cập nhật | Cập nhật | F-009, F-071 |
-| BR-004 | change_log được tạo tự động khi cập nhật | Lịch sử | F-009, F-071, INT-003 |
+| GET | `/api/v1/ports/{id}` | Lấy thông tin hiện tại để pre-fill form | `port:read` |
+| PUT | `/api/v1/ports/{id}` | Cập nhật Cảng biển (kèm coordinates[], infrastructure[]); trả về bản ghi với trạng thái chờ duyệt + change log | `port:update` |
 
-## UI Scope
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-- **Component:** `PortEditPage` — React Hook Form + Zod, pre-fill từ `GET /api/v1/ports/:id`
-- **API endpoint:** `PUT /api/v1/ports/:id`
-- **Fields:** port_code (string, readonly), port_name (string, required), province_city (string, required), latitude (BigDecimal [-90,90]), longitude (BigDecimal [-180,180]), area (BigDecimal [0,5000]), max_vessel_capacity (BigDecimal)
-- **Validation inline:** React Hook Form + Zod, cùng schema như tạo mới
-- **Pre-fill:** GET /api/v1/ports/:id để lấy dữ liệu hiện tại
-- **port_code readonly:** Trường port_code luôn ở chế độ disabled
-- **Submit flow:** PUT /api/v1/ports/:id → reset `approval_status = CHỜ_PHÊ_DUYỆT` → tạo `change_log` → toast "Cập nhật thành công — chờ phê duyệt lại" → về danh sách (F-068)
-- **RBAC:** Chỉ role có `port:update` (Admin, Lãnh đạo, Chuyên viên Cục/Cảng vụ, Doanh nghiệp cảng)
-- **Navigation:** Từ danh sách (F-068) hoặc chi tiết (F-069) → nút "Chỉnh sửa"
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-## Testing Strategy
+**Bảng `ports`:** cấu trúc giống F-008 (mục 7) — không thêm trường mới ở F-009; `portCode` bất biến.
 
-### BE Testing
-Kiểm thử đơn vị cho các quy tắc validation; kiểm thử tích hợp cho luồng cập nhật qua API; kiểm thử nhật ký thay đổi.
-
-### UI Testing
-React Testing Library: pre-fill form, validation inline, xử lý lỗi 409. Cypress E2E: chi tiết → click Chỉnh sửa → pre-fill OK → thay đổi fields → submit → toast "Cập nhật thành công — chờ phê duyệt lại" → về danh sách → xác nhận change_log. Negative: port_code readonly; latitude = -100 → range error.
-
-## Consolidation Note
-
-Merged with UI feature F-071 (ui-ql-cb-cap-nhat) — 2026-07-28
+**Bảng `change_log` (nhật ký thay đổi — dùng chung module):** id (UUID PK), entityType, entityId (UUID), changeType (UPDATE), changedField, oldValue, newValue, changedBy (UUID), changedAt — ghi tự động mỗi lần cập nhật (bản cũ trước khi cập nhật).

@@ -24,7 +24,7 @@ Tra cuu, xem chi tiet, van ban dinh kem — cho phep tat ca roles (chuyen vien, 
 1. Nguoi dung (tat ca roles) truy cap module Luong hang hai
 2. Nguoi dung chon luong hang hai can xem (theo danh sach hoac tim kiem)
 3. He thong hien thi trang chi tiet voi tat ca cac truong: loai_tau, so_luong, ngay_ghi_nhan, gio_dien, tai_trong, dien_tich_dang_bo, ghi_chu
-4. He thong hien thi trang thai hien tai (PROPOSED/UNDER_REVIEW/APPROVED/REJECTED)
+4. He thong hien thi trang thai hien tai (DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2/APPROVED)
 5. He thong hien thi thong tin phe duyet: nguoi phe duyet C1/C2, ngay phe duyet, ly do tu tuyen (neu co)
 6. He thong hien thi danh sach van ban dinh kem (tai lieu tu MinIO)
 7. Nguoi dung co the xem/download tai lieu dinh kem
@@ -34,7 +34,7 @@ Tra cuu, xem chi tiet, van ban dinh kem — cho phep tat ca roles (chuyen vien, 
 - [x] Tra cuu, xem chi tiet, van ban dinh kem
 - [x] Tat ca roles co the xem chi tiet (A-003, A-002, A-004)
 - [x] Hien thi toan bo thong tin luong hang hai (32 fields)
-- [x] Hien thi trang thai hien tai (PROPOSED/UNDER_REVIEW/APPROVED/REJECTED)
+- [x] Hien thi trang thai hien tai (DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2/APPROVED)
 - [x] Hien thi thong tin phe duyet (nguoi, ngay, ly do tu tuyen)
 - [x] Hien thi danh sach van ban dinh kem (tai lieu tu MinIO)
 - [x] Nguoi dung co the xem/download tai lieu dinh kem
@@ -90,7 +90,7 @@ Tra cuu, xem chi tiet, van ban dinh kem — cho phep tat ca roles (chuyen vien, 
 
 ### DTO Fields (View DTO)
 - `id`, `loai_tau`, `so_luong`, `ngay_ghi_nhan`, `gio_dien`, `tai_trong`, `dien_tich_dang_bo`, `ghi_chu`
-- `trangThai` (PROPOSED/UNDER_REVIEW/APPROVED/REJECTED)
+- `trangThai` (DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2/APPROVED)
 - `pheDuyetC1`, `nguoiPheDuyetC1`, `ngayPheDuyetC1`
 - `pheDuyetC2`, `nguoiPheDuyetC2`, `ngayPheDuyetC2`
 - `lyDoTuChoi`

@@ -101,7 +101,7 @@ Tất cả người dùng đã đăng nhập đều có quyền xem lịch sử.
 
 **BR-055-05 — Thay đổi quan trọng nổi bật:** Phê duyệt, từ chối, thay đổi trạng thái được đánh dấu badge màu riêng.
 
-**BR-055-06 — Xem được mọi trạng thái:** Kể cả S_0.
+**BR-055-06 — Xem được mọi trạng thái:** Kể cả ARCHIVED (Đã xóa lịch sử).
 
 ---
 

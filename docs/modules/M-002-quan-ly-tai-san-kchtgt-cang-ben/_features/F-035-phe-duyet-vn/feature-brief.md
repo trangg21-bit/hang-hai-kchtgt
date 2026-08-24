@@ -7,223 +7,103 @@ status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-04
+last-updated: 2026-08-21
 locked-fields: []
 consumed_by_modules: []
-merged-from: [F-035-BE, F-092-UI]
 ---
 # Đặc tả nghiệp vụ: Phê duyệt Vùng nước
 
-**Tài liệu:** BA Feature Brief (merged BE+UI)
-**Feature:** F-035 — Phê duyệt Vùng nước
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-035 — Phê duyệt Vùng nước
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-08-04
+**Loại:** chức năng có bước phê duyệt (quy trình 2 cấp theo file chuẩn)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
 
-> Tài liệu merge từ F-035 (BE) + F-092 (UI) + designer spec 05-approve.
-> 
-> ⚠️ **Ghi chú thiết kế:** BE brief gốc (F-035) mô tả quy trình phê duyệt **hai cấp** (Cấp 1: Trưởng phòng → Cấp 2: Cục). Tuy nhiên, designer spec (05-approve-ui-spec) và UI feature-brief (F-092) đều thiết kế modal phê duyệt **một cấp** với 2 tab Phê duyệt/Từ chối. Tài liệu merge này theo designer spec — phê duyệt 1 cấp. Nếu sau này cần khôi phục 2 cấp, tham khảo BE brief gốc.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng. Quy trình 2 cấp (trạng thái, vòng duyệt, quyền duyệt theo chức vụ) KHÔNG chép lại ở đây — đọc `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`. (Nội dung merge từ F-035 BE + F-092 UI.)
 
 ---
 
-## 1. Tổng quan
+## 1. Mô tả ngắn
 
-### 1.1. Tính năng này làm gì?
+Cho phép người duyệt có thẩm quyền (`waterzone:approve`) xử lý hồ sơ Vùng nước đang chờ duyệt trong quy trình phê duyệt 2 cấp (theo file chuẩn): modal 2 tab **Phê duyệt** (checkbox confirm) và **Từ chối** (lý do ≥ 10 ký tự + checkbox). Modal hiển thị SummaryCard thông tin Vùng nước + lịch sử phê duyệt trước đó. Mỗi quyết định tạo bản ghi `approval_log` (bất biến) và ghi lịch sử thay đổi. Hồ sơ bị từ chối quay lại người tạo để sửa (F-033) và gửi lại.
 
-Modal phê duyệt/từ chối Vùng nước đang `CHỜ_PHÊ_DUYỆT`. 2 tab: **Phê duyệt** (checkbox confirm) và **Từ chối** (lý do ≥ 10 ký tự + checkbox). Hiển thị SummaryCard thông tin Vùng nước + lịch sử phê duyệt. Mỗi lần phê duyệt/từ chối tạo bản ghi `PheDuyetLog`.
+> **⚠️ Ghi chú:** brief merge cũ (theo designer spec) mô tả modal phê duyệt 1 cấp. Theo tài liệu nền mục 3.5, quy trình chuẩn của 5 cluster là **2 cấp** (theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`) — tài liệu này tuân theo quy trình chuẩn; **SA chốt** số cấp áp dụng cho Vùng nước.
 
-### 1.2. Tại sao cần?
+## 2. Trường dữ liệu
 
-Đảm bảo mọi Vùng nước qua kiểm duyệt trước khi khai thác chính thức.
+Không có form nhập liệu mới — thao tác trên bản ghi `WaterZone` hiện có + nhật ký phê duyệt.
 
-### 1.3. Luồng chính
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| 1 | id | Có | UUID | Hồ sơ vùng nước cần xử lý |
+| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
+| 3 | reason (lý do từ chối) | Có khi từ chối | TextArea, tối thiểu 10 ký tự, tối đa 500 | Lý do chấp thuận là tùy chọn |
+| 4 | approval_log | Có (hệ thống) | Bảng `approval_log` | Người duyệt, cấp, thời gian, quyết định, lý do — bất biến |
 
-F-036 → "Phê duyệt" → modal tab "Phê duyệt" active → xem thông tin → check confirm → `POST /approve` → toast → refresh. Hoặc tab "Từ chối" → nhập lý do ≥ 10 ký tự → check confirm → `POST /reject` → toast → refresh.
+## 3. Trạng thái và phê duyệt
 
----
+- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (đã chốt — M-1006 DP-9/AC-25).
+- Chỉ hồ sơ ở trạng thái chờ duyệt đúng cấp mới được xử lý; duyệt tuần tự, không vượt cấp; từ chối/trả về ở bất kỳ cấp nào dừng quy trình, hồ sơ quay lại người tạo.
+- Hồ sơ **Đã duyệt** mới chính thức có hiệu lực và được sử dụng trong khai thác.
+- Sau quyết định: cập nhật trạng thái + ghi `approval_log` + ghi lịch sử (F-037). Log không được sửa/xóa.
 
-## 2. Ai dùng? Dùng như thế nào?
+## 4. Quy tắc và phân quyền riêng
 
-### 2.1. Phân quyền
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
-| Permission | Mô tả |
-|---|---|
-| `vungnuoc:approve` | Phê duyệt / Từ chối Vùng nước |
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-> Phân quyền do M-001 quản lý.
-
-| Vai trò | Approve | Reject |
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| system-admin | ✅ | ✅ |
-| LeDuan | ✅ | ✅ |
-| Chuyên viên Cục/Cảng vụ | ❌ | ❌ |
-| Doanh nghiệp cảng | ❌ | ❌ |
-| Nhân viên vận hành | ❌ | ❌ |
+| BR-035-01 | Chỉ hồ sơ ở trạng thái chờ duyệt đúng cấp mới được phê duyệt/từ chối (theo file chuẩn) | Approve |
+| BR-035-02 | Từ chối phải có lý do ≥ 10 ký tự (≤ 500); chấp thuận không cần lý do | Reject |
+| BR-035-03 | Mỗi quyết định tạo bản ghi `approval_log` (APPROVE/REJECT) — bất biến, không sửa/xóa | Audit |
+| BR-035-04 | Phòng chống thao tác đồng thời: hồ sơ đã được xử lý → toast "đã được phê duyệt/từ chối trước đó" | Approve |
+| BR-035-05 | Chống tự duyệt (4-eyes principle): người tạo hồ sơ không tự duyệt hồ sơ của mình (theo file chuẩn) | Approve |
 
-### 2.2. Logic Admin Cục
+### 4.2. Phân quyền riêng
 
-Toàn quyền phê duyệt/từ chối toàn bộ.
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem hồ sơ chờ duyệt + chi tiết | `waterzone:read` |
+| Phê duyệt / Từ chối ở cấp được phân quyền | `waterzone:approve` |
 
----
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền |
+| Lãnh đạo (LeDuan) | Phê duyệt / Từ chối |
+| Chuyên viên Cục / Cảng vụ | Không phê duyệt |
+| Doanh nghiệp cảng | Không phê duyệt |
+| Nhân viên vận hành | Không phê duyệt |
 
-## 3. User Stories
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — toàn quyền phê duyệt/từ chối + xem người duyệt, thời gian duyệt, lý do từ chối.
 
-### Must
-- **US-035-01:** Phê duyệt Vùng nước đang chờ duyệt. (`vungnuoc:approve`)
-- **US-035-02:** Từ chối Vùng nước kèm lý do. (`vungnuoc:approve`)
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-### Should
-- **US-035-03:** Xem lịch sử phê duyệt trước đó.
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung (tài liệu nền mục 3.5) |
+| 2 | Có bước phê duyệt không | Có — phê duyệt theo QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md (2 cấp; SA chốt) |
+| 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + theo Cảng biển mẹ (portId) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `waterzone:approve` (kèm `waterzone:read`) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Không |
 
----
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-## 4. Yêu cầu chức năng (Acceptance Criteria)
-
-### Nhóm 1: Hiển thị
-
-**AC-035-01:** Modal hiển thị SummaryCard: maVungNuoc, tenVungNuoc, tenCang, dienTich, doSauMax, doSauTrungBinh, loaiVungNuoc, createdBy, createdAt + badge trạng thái hiện tại `CHỜ_PHÊ_DUYỆT`.
-**AC-035-02:** 2 tab: "Phê duyệt" (default active) / "Từ chối". Arrow keys chuyển tab.
-
-### Nhóm 2: Phê duyệt
-
-**AC-035-03:** Tab Phê duyệt: chỉ checkbox "Tôi xác nhận phê duyệt vùng nước này", không cần reason.
-**AC-035-04:** Check → enable [Xác nhận] → `POST /approve` → `trangThaiPheDuyet = ĐƯỢC_PHÊ_DUYỆT` → tạo PheDuyetLog(APPROVE) → toast "Đã phê duyệt thành công".
-
-### Nhóm 3: Từ chối
-
-**AC-035-05:** Tab Từ chối: TextArea reason (min 10, max 500) + checkbox confirm.
-**AC-035-06:** Nhập reason ≥ 10 + check → enable → `POST /reject?reason=...` → `trangThaiPheDuyet = TỪ_CHỐI` → tạo PheDuyetLog(REJECT) → toast "Đã từ chối".
-
-### Nhóm 4: Lỗi
-
-**AC-035-07:** Concurrent modification → toast "Vùng nước này đã được phê duyệt/từ chối trước đó" + đóng modal.
-**AC-035-08:** 403 → "Bạn không có quyền phê duyệt".
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
-|---|---|---|---|---|
-| BR-035-01 | Chỉ Vùng nước `CHỜ_PHÊ_DUYỆT` mới được phê duyệt/từ chối | POST | State machine | Không |
-| BR-035-02 | Từ chối phải có lý do ≥ 10 ký tự, ≤ 500 ký tự | POST /reject | Validation | Không |
-| BR-035-03 | Mỗi lần phê duyệt/từ chối → tạo `PheDuyetLog` (APPROVE/REJECT) | POST | Audit | Không |
-| BR-035-04 | Phê duyệt 1 cấp (đơn giản hóa từ thiết kế 2 cấp ban đầu) | POST | Design decision | Có thể khôi phục 2 cấp sau |
-
----
-
-## 6. Mô hình dữ liệu
-
-### `phe_duyet_logs`
-
-| # | Tên trường | Kiểu | Mô tả | Status |
-|---|---|---|---|---|
-| 1 | id | UUID | PK | ✅ |
-| 2 | vung_nuoc_id | UUID | FK | ✅ |
-| 3 | hanh_dong | NVARCHAR(20) | APPROVE / REJECT | ✅ |
-| 4 | nguoi_thuc_hien | NVARCHAR(100) | | ✅ |
-| 5 | ly_do | NVARCHAR(500) | Required for REJECT | ✅ |
-| 6 | thoi_gian | TIMESTAMP | | ✅ |
-
----
-
-## 7. API Endpoints
-
-| Method | Endpoint | Mô tả | Quyền |
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| POST | `/api/v1/vung-nuoc/{id}/approve` | Phê duyệt | `vungnuoc:approve` |
-| POST | `/api/v1/vung-nuoc/{id}/reject?reason=...` | Từ chối (kèm lý do) | `vungnuoc:approve` |
+| GET | `/api/v1/water-zones` với bộ lọc trạng thái chờ duyệt | Danh sách hồ sơ chờ duyệt của cấp hiện tại | `waterzone:approve` |
+| GET | `/api/v1/water-zones/{id}` | Chi tiết hồ sơ + lịch sử phê duyệt | `waterzone:read` |
+| POST | `/api/v1/water-zones/{id}/approve` | Phê duyệt ở cấp hiện tại | `waterzone:approve` |
+| POST | `/api/v1/water-zones/{id}/reject?reason=` | Từ chối (reason ≥ 10 ký tự) | `waterzone:approve` |
 
----
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-## 8. Chi tiết nghiệp vụ
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-### 8.1. Mở modal
+**Bảng `water_zones`:** sử dụng `approval_status` (SMALLINT, enum `ApprovalStatus`) có sẵn; bổ sung theo dõi quy trình 2 cấp theo mẫu `Berth` (SA chốt): 🔴 `submitted_for_approval_at`/`submitted_for_approval_by`, 🔴 `port_authority_approved_at`/`port_authority_approved_by`/`port_authority_approval_content` (vòng 1), 🔴 `department_approved_at`/`department_approved_by`/`department_approval_content` (vòng 2), 🔴 `rejection_reason` (VARCHAR 500).
 
-F-036 → "Phê duyệt" (chỉ hiện khi `CHỜ_PHÊ_DUYỆT` + `vungnuoc:approve`) → modal `role="dialog"`, max-width 600px. SummaryCard 2 cột. Tab "Phê duyệt" active mặc định.
-
-### 8.2. Phê duyệt
-
-Check "Tôi xác nhận phê duyệt vùng nước này" → enable [Xác nhận] → `POST /approve` → backend set `trangThaiPheDuyet = ĐƯỢC_PHÊ_DUYỆT`, tạo PheDuyetLog(APPROVE) → 200 → toast "Đã phê duyệt thành công" → đóng modal → refresh.
-
-### 8.3. Từ chối
-
-Chọn tab "Từ chối" → nhập lý do ≥ 10 ký tự → check confirm → enable → `POST /reject?reason=...` → backend set `trangThaiPheDuyet = TỪ_CHỐI`, tạo PheDuyetLog(REJECT) → 200 → toast "Đã từ chối" → đóng modal → refresh.
-
-### 8.4. History
-
-ApprovalHistoryList hiển thị timeline các lần phê duyệt/từ chối trước (nếu có).
-
----
-
-## 9. Yêu cầu phi chức năng
-
-- Modal `role="dialog"`, `aria-modal="true"`, focus trap
-- Esc đóng với confirm prompt nếu form dirty
-- Toast "Đã phê duyệt/Từ chối thành công"
-
----
-
-## 10. Yêu cầu giao diện
-
-> Token: `theme.ts` + `tokens.ts`.
-
-### 10.1. Layout
-
-```
-VungNuocApprovalModal (role="dialog", max-width 600px)
-├── Header: "Phê duyệt Vùng nước — [maVungNuoc] | [tenVungNuoc]"
-├── SummaryCard (2 cột, read-only)
-├── TabSwitcher: [Phê duyệt ✅] [Từ chối ❌]
-├── Tab Phê duyệt: checkbox confirm
-├── Tab Từ chối: TextArea reason (min 10, max 500) + checkbox confirm
-├── ApprovalHistoryList (timeline)
-└── Footer: [Hủy] + [Xác nhận] primary (disabled)
-```
-
-### 10.2. Zod Schema
-
-```typescript
-const approveSchema = z.object({
-  confirmed: z.boolean().refine(val => val === true, {
-    message: "Bạn cần xác nhận hành động này",
-  }),
-});
-
-const rejectSchema = z.object({
-  reason: z.string().min(10, "Lý do từ chối tối thiểu 10 ký tự").max(500),
-  confirmed: z.boolean().refine(val => val === true, {
-    message: "Bạn cần xác nhận hành động này",
-  }),
-});
-```
-
-### 10.3. UX
-
-- `borderRadius: radiusPill`, `height: 40`
-- Nút confirm disabled đến khi form valid
-- Tab switching: arrow keys, Enter/Space
-
----
-
-## 11. Xử lý lỗi
-
-| Tình huống | Xử lý |
-|---|---|
-| 403 | "Bạn không có quyền phê duyệt vùng nước này" |
-| 404 | "Không tìm thấy vùng nước để phê duyệt" |
-| 422 (reason short) | Inline "Lý do từ chối tối thiểu 10 ký tự" |
-| Concurrent | Toast "Đã được phê duyệt/từ chối trước đó" + đóng |
-
-## Testing Strategy
-
-Unit: State machine transition. Integration: POST approve/reject API. E2E: Modal tabs, checkbox enable, reason validation, toast + refresh.
-
----
-
-## Implementation Status
-
-| Layer | Status |
-|---|---|
-| Backend | Done |
-| Frontend | Pending |
+**Bảng `approval_log` (nhật ký phê duyệt):** id (UUID PK), entityType, entityId (UUID), 🔴 cap (cấp duyệt), action (enum APPROVE/REJECT), approvedBy (UUID), approvedAt (TIMESTAMP), reason (VARCHAR 500, nullable) — lưu vĩnh viễn, không sửa/xóa.

@@ -7,195 +7,162 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:42Z
-last-updated: 2026-07-31
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
 # Đặc tả nghiệp vụ: Quản lý Bến cảng - Cập nhật
 
-**Tài liệu:** BA Feature Brief
-**Feature:** F-015 — Quản lý Bến cảng - Cập nhật
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-015 — Quản lý Bến cảng - Cập nhật
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-07-31
+**Loại:** chức năng có bước phê duyệt (cập nhật → duyệt lại theo quy trình 2 cấp)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
+
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
 ---
 
-## 1. Tổng quan
+## 1. Mô tả ngắn
 
-### 1.1. Tính năng này làm gì?
+Cho phép người dùng có thẩm quyền (`berth:update`) chỉnh sửa thông tin Bến cảng đã tồn tại, với form pre-fill từ API. Các trường bất biến: **Mã bến** (read-only) và **Đơn vị quản lý** (read-only). Nếu đổi **Cảng biển** → hệ thống sinh lại mã bến. Ba action khi lưu: **Lưu tạm** (giữ trạng thái), **Gửi phê duyệt** (reset về đầu quy trình 2 cấp — xóa các dấu phê duyệt cũ, ghi nhận ngày/người gửi), **Lưu và phê duyệt** (chỉ admin-operation / system-admin). Mọi cập nhật đều ghi change log.
 
-Cập nhật Bến cảng cho phép người dùng có thẩm quyền chỉnh sửa thông tin Bến cảng đã tồn tại. Form **pre-fill** từ `GET /api/v1/ben-cang/:id`. Các trường bất biến: **Mã bến** (RO), **Đơn vị quản lý** (RO). Nếu đổi **Cảng biển** → sinh lại mã bến.
+## 2. Trường dữ liệu
 
-Sau khi lưu, tùy theo action:
-- **Lưu tạm:** giữ nguyên trạng thái hiện tại
-- **Gửi phê duyệt:** reset `trangThaiPheDuyet = CHO_PHE_DUYET` (bắt đầu lại từ Cảng vụ), **reset tất cả trường audit phê duyệt về NULL** (`ngay_pd_cang_vu`, `can_bo_pd_cang_vu`, `ngay_pd_cuc`, `can_bo_pd_cuc`), lưu `ngay_gui_phe_duyet`, `can_bo_gui_phe_duyet`, tạo `LichSuThayDoi`
-- **Lưu và phê duyệt** (admin-op/system-admin): `status = DA_PHE_DUYET` ngay
+Cấu trúc theo entity `Berth` (bảng `berths`) — danh sách trường **khớp 100%** sheet `QL Bến cảng` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Điểm khác biệt của F-015 so với F-014: `berthCode` và `orgUnitId` là **read-only trên màn Sửa** (Excel: cột Sửa vẫn hiển thị nhưng điều khiển `Text (read-only)`); nếu đổi `portId` → sinh lại mã bến. Các trường ~~length, width, berthType, channelDepth~~ đã loại bỏ (thuộc Cầu cảng, không thuộc Bến cảng — theo Excel).
 
-### 1.2. Tại sao cần tính năng này?
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Đơn vị quản lý (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `orgUnitId` — **read-only, bất biến tuyệt đối**; backend từ chối payload đổi đơn vị |
+| 2 | Thuộc cảng biển (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `portId` — đổi cảng → sinh lại mã bến + cảnh báo |
+| 3 | Mã bến cảng | Text (read-only, tự sinh {mã-cảng-mẹ}-B{XX}) | Có (hệ thống tự sinh) | Có | Có | Có | Có | Có | `berthCode` — **read-only, bất biến** |
+| 4 | Tên bến cảng (bắt buộc) | Text | Có | Có | Có | Có | Có | Có | `berthName` |
+| 5 | Thuộc luồng hàng hải | Select | Không | Có | Có | Có | Có | Có | `waterway` / `waterwayId` |
+| 6 | Đơn vị khai thác | Text | Không | Không | Không | Có | Có | Có | `operator` |
+| 7 | Địa điểm (Tỉnh/TP) (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `provinceId` |
+| 8 | Địa điểm chi tiết | Text | Không | Không | Không | Có | Có | Có | `detailedLocation` |
+| 9 | Loại kết cấu bến cảng | Select | Không | Có | Có | Có | Có | Có | `structureType` |
+| 10 | Công năng khai thác | Text | Không | Có | Có | Có | Có | Có | `operationalFunction` |
+| 11 | Tổng diện tích (ha) | Number | Không | Không | Không | Có | Có | Có | `totalArea` |
+| 12 | Năng lực thông qua thiết kế | Number | Không | Không | Không | Có | Có | Có | `designThroughput` |
+| 13 | Năng lực thông qua hiện trạng | Number | Không | Không | Không | Có | Có | Có | `currentThroughput` |
+| 14 | Cỡ tàu tiếp nhận lớn nhất (DWT) | Number | Không | Không | Không | Có | Có | Có | `maxVesselSize` |
+| 15 | Quy hoạch năng lực thông qua | Number | Không | Không | Không | Có | Có | Có | `plannedThroughput` |
+| 16 | Sản lượng thực tế năm gần nhất | Number | Không | Không | Không | Có | Có | Có | `latestCargoVolume` |
+| 17 | Tình trạng (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `operationalStatus` |
+| | **Thông tin công bố** | | | | | | | | |
+| 18 | Thời điểm công bố | Date | Không | Không | Không | Có | Có | Có | `openingAnnouncementDate` |
+| 19 | Quyết định công bố | Text | Không | Không | Không | Có | Có | Có | `openingDecision` |
+| 20 | Văn bản thỏa thuận | Text | Không | Không | Không | Có | Có | Có | `investmentAgreement` |
+| | **Thông tin vị trí (GIS + tọa độ)** | | | | | | | | |
+| 21 | Loại đối tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | `coordinateSystem`/`displayRule`/`mapSymbolId`/`spatialId` |
+| 22 | Biểu tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 23 | Hệ quy chiếu (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 24 | Quy tắc hiển thị (GIS) | Text | Không | Không | Không | Có | Có | Có | (GIS) |
+| 25 | Tọa độ GPS (bắt buộc ≥1 khi gửi duyệt) | Bảng con (Vĩ độ, Kinh độ) | Có* | Không | Không | Có | Có | Có | `coordinates[]` — ≥ 1 tọa độ khi Gửi phê duyệt lại |
+| | **File đính kèm** | | | | | | | | |
+| 26 | File đính kèm | Upload | Không | Không | Không | Có | Có | Có | `attachments[]` — quản lý tại F-014/F-018; màn Sửa hiển thị danh sách |
+| | **Trạng thái & Kiểm toán (chỉ ở trang Chi tiết/Danh sách)** | | | | | | | | |
+| 27 | Trạng thái phê duyệt | Badge (read-only) | Không (read-only) | Có | Có | Có | Không | Không | `approvalStatus` |
+| | **Thông tin log cập nhật** | | | | | | | | |
+| 28 | Ngày cập nhật | DatePicker | Không (read-only) | Có | Có | Có | Không | Không | Chỉ Danh sách/Chi tiết — Admin Cục / admin-operation |
+| 29 | Cán bộ cập nhật | Text (read-only) | Không (read-only) | Có | Không | Có | Không | Không | Chỉ Danh sách/Chi tiết — Admin Cục / admin-operation |
+| 30 | Ngày gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalAt` |
+| 31 | Cán bộ gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalBy` |
+| 32 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedAt` |
+| 33 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedBy` |
+| 34 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovalContent` |
+| 35 | Ngày phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedAt` |
+| 36 | Cán bộ phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedBy` |
+| 37 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovalContent` |
+| | **Kết cấu hạ tầng thuộc cầu cảng** | | | | | | | | |
+| 38 | Tên kết cấu hạ tầng | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 40 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 42 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 43 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 44 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 45 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 46 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 47 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 48 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 49 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 50 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 51 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
-- Dữ liệu Bến cảng luôn phản ánh đúng tình trạng thực tế
-- Mọi thay đổi được ghi nhận qua LichSuThayDoi
-- Reset phê duyệt + xóa audit cũ đảm bảo quy trình 2 cấp được thực hiện lại từ đầu
-- Khi đổi Cảng biển, mã bến sinh lại tự động
+## 3. Trạng thái và phê duyệt
 
-### 1.3. Luồng hoạt động chính
+- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
+- **Lưu tạm:** giữ nguyên trạng thái hiện tại.
+- **Gửi phê duyệt:** reset về đầu quy trình — chờ duyệt cấp Cảng vụ/Chi cục; **xóa các dấu phê duyệt cũ** (`portAuthorityApprovedAt/By` + content, `departmentApprovedAt/By` + content, `rejectionReason` về NULL — tương ứng entity `Berth`); ghi nhận `submittedForApprovalAt`/`submittedForApprovalBy`; phải duyệt lại từ vòng 1.
+- **Lưu và phê duyệt** (admin-operation / system-admin): đạt trạng thái đã duyệt ngay + PheDuyetLog cấp Cục.
+- Mọi cập nhật: ghi change log (bản cũ trước khi cập nhật) + thông tin kiểm toán (operatorId, updatedBy, updatedAt).
 
-Danh sách/Chi tiết → "Chỉnh sửa" → GET pre-fill → sửa → chọn action: Lưu tạm / Gửi PD / Lưu & PD.
+## 4. Quy tắc và phân quyền riêng
 
----
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
-## 2. Ai dùng? Dùng như thế nào?
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-### 2.1. Logic phân quyền chung
-
-| Vai trò | Quyền thao tác | Ghi chú |
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| system-admin (Admin Cục) | Cập nhật, Lưu tạm, Gửi PD, Lưu & PD | Toàn quyền |
-| admin-operation | Cập nhật, Lưu tạm, Gửi PD, Lưu & PD | Vai trò vận hành |
-| admin | Cập nhật, Lưu tạm | Không Gửi PD |
-| Chuyên viên / Lãnh đạo đơn vị | Cập nhật, Lưu tạm | ĐVQL auto-fill RO |
-| Lãnh đạo (cấp Cục) | Không | Chỉ duyệt từ F-017 |
-| Cá nhân | Không | |
+| BR-015-01 | Mã bến bất biến (read-only); đổi Cảng biển → tự sinh lại mã | Update |
+| BR-015-02 | Đơn vị QL bất biến tuyệt đối — mọi trạng thái, mọi vai trò | Update |
+| BR-015-03 | Gửi phê duyệt → reset về trạng thái chờ duyệt cấp Cảng vụ/Chi cục + xóa toàn bộ dấu phê duyệt cũ (vòng 1 + vòng 2 + lý do từ chối) | Update (submit) |
+| BR-015-04 | Lưu nhật ký gửi phê duyệt (`submittedForApprovalAt`/`By`) | Update (submit) |
+| BR-015-05 | Lưu tạm không reset trạng thái — giữ nguyên | Update (draft) |
+| BR-015-06 | Change log bắt buộc cho mọi lần cập nhật (fieldChanged, oldValue, newValue, changedBy, changedAt) | Update |
+| BR-015-07 | GPS hợp lệ, số liệu ≥ 0, ràng buộc file — giống F-014 | Update |
 
-### 2.2. Admin Cục: xem người sửa, thời gian sửa, lịch sử PD
+### 4.2. Phân quyền riêng
 
----
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem bến để cập nhật (pre-fill) | `berth:read` |
+| Cập nhật Bến cảng | `berth:update` |
+| Lưu và phê duyệt | `berth:update` + quyền phê duyệt nhanh (admin-operation / system-admin — SA chốt) |
 
-## 3. User Stories
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền (kể cả Lưu và phê duyệt) |
+| admin-operation | Cập nhật, Lưu tạm, Gửi PD, Lưu và phê duyệt |
+| admin | Cập nhật, Lưu tạm (không Gửi PD) |
+| Chuyên viên / Lãnh đạo đơn vị | Cập nhật, Lưu tạm (ĐVQL auto-fill) |
+| Lãnh đạo (cấp Cục) | Không cập nhật — chỉ duyệt từ F-017 |
+| Cá nhân | Không |
 
-### Mức Must
-- **US-015-01:** Mở form chỉnh sửa, pre-fill đầy đủ. Mã bến + ĐVQL RO.
-- **US-015-02:** Chỉnh sửa các trường, "Lưu tạm" giữ nguyên trạng thái.
-- **US-015-03:** "Gửi phê duyệt" → reset về CHO_PHE_DUYET, xóa audit PD cũ, lưu ngày/người gửi.
-- **US-015-04:** admin-op/system-admin: "Lưu và phê duyệt" → DA_PHE_DUYET ngay.
-- **US-015-05:** Đổi Cảng biển → sinh lại mã bến.
-- **US-015-06:** Mọi cập nhật tạo LichSuThayDoi.
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — full quyền + xem người sửa, thời gian sửa, lịch sử phê duyệt.
 
-### Mức Should
-- **US-015-07:** Nút "Hủy" có xác nhận nếu thay đổi.
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
----
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung; cập nhật reset về đầu quy trình duyệt |
+| 2 | Có bước phê duyệt không | Có — mọi cập nhật phải duyệt lại từ vòng 1 (trừ Lưu và phê duyệt) |
+| 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + theo Cảng biển cha (portId) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — berthCode + orgUnitId read-only; nút "Lưu và phê duyệt" chỉ với admin-operation/system-admin |
+| 5 | Quyền riêng | `berth:update` (kèm `berth:read`) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không (đính kèm quản lý tại F-014/F-018) |
+| 8 | Giao diện khác mẫu chung | Không |
 
-## 4. Yêu cầu chức năng (Acceptance Criteria)
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-### Nhóm 1: Pre-fill
-**AC-015-01:** GET pre-fill 26 trường. Mã bến RO, ĐVQL RO. Lỗi → toast.
-**AC-015-02:** Đổi Cảng biển → `GET /generate-code` → sinh mã mới + cảnh báo.
-
-### Nhóm 2: Lưu tạm
-**AC-015-03:** "Lưu tạm" → PUT action=draft → giữ nguyên status, tạo LichSuThayDoi.
-
-### Nhóm 3: Gửi phê duyệt
-**AC-015-04:** "Gửi PD" → PUT action=submit → `status=CHO_PHE_DUYET`, **reset `ngay_pd_cang_vu`, `can_bo_pd_cang_vu`, `ngay_pd_cuc`, `can_bo_pd_cuc` về NULL**, lưu `ngay_gui_phe_duyet`, `can_bo_gui_phe_duyet`, tạo LichSuThayDoi → toast "Đã gửi phê duyệt, chờ Cảng vụ/Chi cục duyệt".
-**AC-015-05:** Thiếu trường bắt buộc hoặc 0 GPS → lỗi.
-
-### Nhóm 4: Lưu và phê duyệt
-**AC-015-06:** admin-op/system-admin → `status=DA_PHE_DUYET`, tạo PheDuyetLog (cap=CUC) + LichSuThayDoi.
-
-### Nhóm 5: Xác thực & Audit
-**AC-015-07:** GPS [-90,90], [-180,180]. Số ≥0.
-**AC-015-08:** LichSuThayDoi: fieldChanged, oldValue, newValue, changedBy, changedAt.
-
-### Nhóm 6: Phân quyền
-**AC-015-09:** "Gửi PD" cho admin-op/system-admin. "Lưu & PD" cho admin-op/system-admin. "Lưu tạm" cho tất cả.
-**AC-015-10:** Lãnh đạo (cấp Cục)/Cá nhân → ẩn nút "Chỉnh sửa", HTTP 403.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
-|---|---|---|---|---|
-| BR-015-01 | **Mã bến bất biến** — RO; đổi Cảng biển → tự sinh lại | Cập nhật | Thiết kế | Đổi Cảng biển |
-| BR-015-02 | **ĐVQL bất biến tuyệt đối** — mọi trạng thái, mọi vai trò | Cập nhật | Nghiệp vụ | Không |
-| BR-015-03 | **Reset phê duyệt khi Gửi PD** — `CHO_PHE_DUYET`; reset `ngay_pd_cang_vu`, `can_bo_pd_cang_vu`, `ngay_pd_cuc`, `can_bo_pd_cuc` về NULL | Gửi PD | Nghiệp vụ | Lưu & PD → DA_PHE_DUYET |
-| BR-015-04 | **Lưu ngày/người gửi PD** — `ngay_gui_phe_duyet`, `can_bo_gui_phe_duyet` | Gửi PD | F-018 | Không |
-| BR-015-05 | **Lưu tạm không reset trạng thái** — giữ nguyên status | Lưu tạm | Nghiệp vụ | Không |
-| BR-015-06 | **LichSuThayDoi bắt buộc** — mọi lần cập nhật | Cập nhật | Audit | Không |
-| BR-015-07 | **GPS, Loại kết cấu, File** — như F-014 | Cập nhật | — | — |
-
----
-
-## 6. Mô hình dữ liệu
-
-Như F-014 section 6. Bổ sung:
-
-### 6.1. Bảng `lich_su_thay_doi`
-- id, ben_cang_id, field_changed, old_value, new_value, changed_by, changed_at
-
----
-
-## 7. API Endpoints
-
-| Method | Endpoint | Mô tả | Phân quyền |
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| GET | `/api/v1/ben-cang/{id}` | Pre-fill form | `bencang:update` |
-| PUT | `/api/v1/ben-cang/{id}` | Cập nhật. Body: action + các trường + coordinates[] | `bencang:update` |
-| GET | `/api/v1/ben-cang/generate-code?cangBienId=` | Sinh lại mã khi đổi CB | `bencang:update` |
-| GET | `/api/v1/cang-bien?orgUnitId=&status=HIEN_HANH` | Danh sách CB | `bencang:update` |
-| POST | `/api/v1/ben-cang/{id}/attachments` | Upload file | `bencang:update` |
-| DELETE | `/api/v1/ben-cang/{id}/attachments/{attId}` | Xóa file | `bencang:update` |
+| GET | `/api/v1/berths/{id}` | Pre-fill form | `berth:read` |
+| GET | `/api/v1/berths/generate-code?portId=` | Sinh lại mã khi đổi Cảng biển | `berth:update` |
+| PUT | `/api/v1/berths/{id}` | Cập nhật (body: action `draft`/`submit`/`approve` + trường + coordinates[]) | `berth:update` |
 
----
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-## 8. Chi tiết nghiệp vụ
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-### 8.1. Pre-fill
-GET → form 26 trường → Mã bến RO, ĐVQL RO.
+**Bảng `berths`:** cấu trúc giống F-014 (mục 7) — F-015 không thêm trường; sử dụng các cột phê duyệt có sẵn (submittedForApprovalAt/By, portAuthorityApprovedAt/By, portAuthorityApprovalContent, departmentApprovedAt/By, departmentApprovalContent, rejectionReason) — khi Gửi phê duyệt: reset các cột vòng 1/vòng 2 về NULL.
 
-### 8.2. Đổi Cảng biển
-Đổi → GET /generate-code → mã mới + cảnh báo.
-
-### 8.3. Gửi phê duyệt (có reset audit)
-```
-"Gửi phê duyệt" → PUT action=submit
-→ UPDATE status=CHO_PHE_DUYET
-→ SET ngay_pd_cang_vu=NULL, can_bo_pd_cang_vu=NULL, ngay_pd_cuc=NULL, can_bo_pd_cuc=NULL
-→ SET ngay_gui_phe_duyet=NOW(), can_bo_gui_phe_duyet=currentUser
-→ INSERT lich_su_thay_doi (từng trường thay đổi)
-→ toast "Đã gửi phê duyệt, chờ Cảng vụ/Chi cục duyệt"
-```
-
-### 8.4. Lưu và phê duyệt
-```
-admin-op/system-admin → "Lưu và phê duyệt"
-→ PUT action=approve → status=DA_PHE_DUYET
-→ INSERT phe_duyet_log (cap=CUC, action=APPROVE) + lich_su_thay_doi
-```
-
----
-
-## 9. Yêu cầu phi chức năng
-
-- Hiệu năng: GET ≤500ms, PUT ≤2s, ≥50 concurrent
-- Bảo mật: RBAC; tampering detection mã bến + ĐVQL; HTTPS
-- Độ tin cậy: Transaction atomicity; rollback toàn bộ
-- UX: Pre-fill mượt; loading indicator; toast; modal xác nhận rời form
-- Pháp lý: LichSuThayDoi ≥2 năm
-
----
-
-## 10. Yêu cầu giao diện
-
-> Token từ theme.ts và tokens.ts.
-
-### 10.1. Cấu trúc form (giống F-014, pre-fill)
-
-5 nhóm: Thông tin chung (ĐVQL RO, Mã bến RO) → Công bố → Vị trí → File → Action
-
-### 10.2. Action buttons
-
-- "Lưu tạm" (outlined)
-- "Gửi phê duyệt" (primary) — admin-op/system-admin
-- "Lưu và phê duyệt" (primary) — admin-op/system-admin
-
-### 10.3. Bảng trường form
-
-Như F-014. Khác biệt: ĐVQL RO, Mã bến RO.
-
----
-
-## Consolidation Note
-
-Merged with UI feature F-076 (ui-ql-bc-cap-nhat) — 2026-07-31
+**Bảng `change_log` (nhật ký thay đổi — dùng chung module):** id (UUID PK), entityType, entityId (UUID), changeType (UPDATE), changedField, oldValue, newValue, changedBy (UUID), changedAt — ghi tự động mỗi lần cập nhật.

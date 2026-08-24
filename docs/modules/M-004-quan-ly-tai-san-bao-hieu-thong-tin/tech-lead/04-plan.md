@@ -78,7 +78,7 @@ Module M-004 manages 9 entity groups (54 features) for maritime signaling asset 
 | Area | Impact | Details |
 |---|---|---|
 | Backend `beacon` package | Create unit tests | 2 new test classes: BeaconLightControllerTest, BuoyControllerTest |
-| Backend `nhatram` package | Read-only (tests already exist) | 3 existing test classes verified |
+| Backend `nhatram` package | NEW — package chưa tồn tại, cần scaffold F-080..F-091 | `src/main/java/com/hanghai/kchtg/nhatram/` — proposed |
 | Backend `station` package | Create unit tests | 5 new test classes for 5 station controllers |
 | Backend `tai` package | Read-only (duplicate, tests exist) | No changes - documented as architectural debt |
 | Frontend `pages/beacons/` | Read-only | BeaconList.tsx, BeaconForm.tsx already exist |
@@ -237,7 +237,7 @@ Controller (@RestController) → Service (@Service) → Repository (JpaRepositor
 | Entity Group | Base Package | Controller Package | Test Package |
 |---|---|---|---|
 | BeaconLight + Buoy | `com.hanghai.kchtg.beacon` | `.beacon.controller` | Create in `src/test/.../beacon/controller/` |
-| NhaTramPhao + NhaTramDen | `com.hanghai.kchtg.nhatram` | `.nhatram.controller` | Already exists |
+| NhaTramPhao + NhaTramDen | `com.hanghai.kchtg.nhatram` | `.nhatram.controller` | NEW — package chưa tồn tại, cần scaffold F-080..F-091 |
 | 5 CoastalStations | `com.hanghai.kchtg.station` | `.station.controller` | Create in `src/test/.../station/controller/` |
 
 ### Build Commands
@@ -304,7 +304,7 @@ Each feature-brief.md file must contain:
 
 1. **Missing frontend pages**: CoastalStationCospasSarsat, CoastalStationLRIT, CoastalStationHaiphong have no dedicated UI pages. Users can only manage them via API.
 2. **Station in-memory history**: `HistoryService` entries lost on restart. No DB persistence.
-3. **Station ↔ `tai` duplication**: Two implementations of the same 5 station types. Tests are being added to `station` package; `tai` already has tests.
+3. **Station ↔ `tai` duplication (proposed)**: Two implementations of the same 5 station types. `station` package confirmed at `src/main/java/com/hanghai/kchtg/station/controller/BuoyStationController.java:1` with controllers for CoastalStationVTS/LRIT/Inmarsat/CospasSarsat/Haiphong/Buoy. `tai` package — not found in codebase, status proposed.
 4. **No Flyway migrations**: All M-004 tables created via Hibernate `ddl-auto` only.
 
 ---

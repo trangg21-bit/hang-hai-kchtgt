@@ -98,15 +98,16 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 **AC-D-02 — Badge trạng thái:** Tình trạng và trạng thái phê duyệt hiển thị dưới dạng badge màu:
 - Tình trạng: Đang khai thác/vận hành (xanh lá), Chưa khai thác/vận hành (cam), Dừng khai thác/vận hành (đỏ)
-- Trạng thái: PROPOSED (vàng), UNDER_REVIEW (xanh dương), APPROVED (xanh lá), REJECTED (đỏ)
+- Trạng thái: DRAFT (xám), PENDING_APPROVAL (vàng), APPROVED_LEVEL1 (xanh dương), APPROVED (xanh lá), REJECTED_LEVEL1/REJECTED_LEVEL2 (đỏ)
 
 **AC-D-03 — Danh sách file đính kèm:** File đính kèm hiển thị tên file, kích thước, loại file và ngày upload. Mỗi file có nút "Tải xuống". Nếu không có file, hiển thị "Không có file đính kèm".
 
 **AC-D-04 — Hành động theo trạng thái:** Các nút hành động hiển thị động:
-- PROPOSED: "Sửa" (nếu có quyền), "Gửi duyệt" (cùng đơn vị), "Phê duyệt" (Cấp Cục)
-- UNDER_REVIEW: "Phê duyệt C2" (Cục trưởng), "Từ chối" (người duyệt)
+- DRAFT: "Sửa" (nếu có quyền), "Gửi duyệt" (cùng đơn vị), "Phê duyệt" (Cấp Cục)
+- PENDING_APPROVAL: "Phê duyệt C1"/"Từ chối" (Cảng vụ/Chi cục)
+- APPROVED_LEVEL1: "Phê duyệt C2" (Cục trưởng), "Từ chối" (người duyệt)
 - APPROVED: "Sửa" (nếu có quyền đặc biệt)
-- REJECTED: "Sửa" (cùng đơn vị)
+- REJECTED_LEVEL1/REJECTED_LEVEL2: "Sửa" (cùng đơn vị)
 Nếu người dùng không có quyền, nút tương ứng bị ẩn.
 
 **AC-D-05 — Breadcrumb điều hướng:** Breadcrumb: Trang chủ > Quản lý KCHTGT Khu nước & VTS > Đê/kè > [tên công trình]. Click "Đê/kè" quay lại danh sách F-048.
@@ -114,15 +115,15 @@ Nếu người dùng không có quyền, nút tương ứng bị ẩn.
 **AC-D-06 — Metadata cho Admin Cục:** Admin Cục thấy được: người tạo, thời gian tạo, người sửa, thời gian sửa, người duyệt C1/C2, ngày duyệt C1/C2. Vai trò khác: các trường này bị ẩn.
 
 **AC-D-07 — Cảnh báo trạng thái:** 
-- PROPOSED/UNDER_REVIEW: "Công trình chưa được phê duyệt, không khả dụng trong các module khác"
+- DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1: "Công trình chưa được phê duyệt, không khả dụng trong các module khác"
 - APPROVED: "Công trình đã được phê duyệt, đang khả dụng"
-- REJECTED: "Công trình bị từ chối: [lý do]"
+- REJECTED_LEVEL1/REJECTED_LEVEL2: "Công trình bị từ chối: [lý do]"
 
 ---
 
 ## 5. Quy tắc nghiệp vụ (Business Rules)
 
-**BR-D-01 — Xem được ở mọi trạng thái:** Công trình ở bất kỳ trạng thái nào (PROPOSED, UNDER_REVIEW, APPROVED, REJECTED) đều có thể xem chi tiết.
+**BR-D-01 — Xem được ở mọi trạng thái:** Công trình ở bất kỳ trạng thái nào (DRAFT, PENDING_APPROVAL, APPROVED_LEVEL1, REJECTED_LEVEL1, REJECTED_LEVEL2, APPROVED, ARCHIVED) đều có thể xem chi tiết.
 
 **BR-D-02 — Dữ liệu read-only:** Trang chi tiết là chế độ xem. Mọi chỉnh sửa phải thực hiện qua F-045. Không có trường nào cho phép nhập liệu trực tiếp.
 
@@ -142,10 +143,11 @@ Nếu người dùng không có quyền, nút tương ứng bị ẩn.
 
 | Trạng thái | Badge | Hành động có thể thực hiện |
 |---|---|---|
-| PROPOSED | Vàng | Sửa (QLTS), Gửi duyệt, Phê duyệt (Cục) |
-| UNDER_REVIEW | Xanh dương | Phê duyệt C2 (Cục trưởng), Từ chối |
-| APPROVED | Xanh lá | Sửa (có quyền đặc biệt) |
-| REJECTED | Đỏ | Sửa & gửi lại |
+| DRAFT (Lưu tạm) | Xám | Sửa (QLTS), Gửi duyệt, Phê duyệt (Cục) |
+| PENDING_APPROVAL (Chờ Cảng vụ/Chi cục duyệt) | Vàng | Phê duyệt C1, Từ chối C1 |
+| APPROVED_LEVEL1 (Chờ Cục duyệt) | Xanh dương | Phê duyệt C2 (Cục trưởng), Từ chối |
+| REJECTED_LEVEL1 / REJECTED_LEVEL2 (Bị trả về) | Đỏ | Sửa & gửi lại |
+| APPROVED (Đã duyệt) | Xanh lá | Sửa (có quyền đặc biệt) |
 
 ### 6.2. Quan hệ với các tính năng khác
 
@@ -250,11 +252,50 @@ Hiển thị dạng bảng, danh sách các lần phê duyệt của Trưởng p
 
 | STT | Tên trường | Loại hiển thị | Mô tả |
 | --- | --- | --- | --- |
-| I1 | Nút "Chỉnh sửa" | Button | Chỉnh sửa thông tin đê/kè. Chỉ Admin, Chuyên viên cùng đơn vị. Điều kiện: PROPOSED/REJECTED + cùng đơn vị; APPROVED + Cấp Cục. |
-| I2 | Nút "Gửi phê duyệt" | Button | Gửi yêu cầu phê duyệt. Chỉ Chuyên viên cùng đơn vị + PROPOSED/REJECTED. |
-| I3 | Nút "Phê duyệt" | Button | Phê duyệt trực tiếp. Chỉ Cấp Cục + PROPOSED. |
-| I4 | Nút "Từ chối" | Button | Từ chối phê duyệt. Trưởng phòng + PROPOSED; Cục trưởng + UNDER_REVIEW. |
+| I1 | Nút "Chỉnh sửa" | Button | Chỉnh sửa thông tin đê/kè. Chỉ Admin, Chuyên viên cùng đơn vị. Điều kiện: DRAFT/REJECTED_LEVEL1/REJECTED_LEVEL2 + cùng đơn vị; APPROVED + Cấp Cục. |
+| I2 | Nút "Gửi phê duyệt" | Button | Gửi yêu cầu phê duyệt. Chỉ Chuyên viên cùng đơn vị + DRAFT/REJECTED_LEVEL1/REJECTED_LEVEL2. |
+| I3 | Nút "Phê duyệt" | Button | Phê duyệt trực tiếp. Chỉ Cấp Cục + PENDING_APPROVAL. |
+| I4 | Nút "Từ chối" | Button | Từ chối phê duyệt. Cảng vụ/Chi cục + PENDING_APPROVAL; Cục trưởng + APPROVED_LEVEL1. |
 | I5 | Nút "Lịch sử" | Button | Xem lịch sử thay đổi của đê/kè. Tất cả người dùng. |
+
+#### J. Tab: Thông tin vận hành khai thác — thu gọn mặc định
+
+Hiển thị dạng bảng, danh sách các kế hoạch vận hành khai thác gắn với công trình (Excel `QL đê kè` #34–37, read-only):
+
+| STT | Tên trường | Loại hiển thị |
+| --- | --- | --- |
+| 34 | Mã kế hoạch | Text (read-only) |
+| 35 | Tên kế hoạch | Text (read-only) |
+| 36 | Ngày bắt đầu | Text (read-only) |
+| 37 | Ngày kết thúc | Text (read-only) |
+
+**Không có dữ liệu:** hiển thị "Không có dữ liệu".
+
+#### K. Tab: Thông tin bảo trì — thu gọn mặc định
+
+Hiển thị dạng bảng, danh sách các kế hoạch bảo trì gắn với công trình (Excel `QL đê kè` #38–41, read-only):
+
+| STT | Tên trường | Loại hiển thị |
+| --- | --- | --- |
+| 38 | Mã kế hoạch | Text (read-only) |
+| 39 | Tên kế hoạch | Text (read-only) |
+| 40 | Thời gian bắt đầu | Text (read-only) |
+| 41 | Thời gian kết thúc | Text (read-only) |
+
+**Không có dữ liệu:** hiển thị "Không có dữ liệu".
+
+#### L. Tab: Thông tin sự cố — thu gọn mặc định
+
+Hiển thị dạng bảng, danh sách các sự cố gắn với công trình (Excel `QL đê kè` #42–45, read-only):
+
+| STT | Tên trường | Loại hiển thị |
+| --- | --- | --- |
+| 42 | Mã sự cố | Text (read-only) |
+| 43 | Loại sự cố | Text (read-only) |
+| 44 | Địa điểm | Text (read-only) |
+| 45 | Thời gian | Text (read-only) |
+
+**Không có dữ liệu:** hiển thị "Không có dữ liệu".
 
 ---
 
@@ -277,10 +318,11 @@ Dùng chung bố cục hệ thống: sidebar 272px (#12468C), header 64px, nền
 
 | Trạng thái | Màu |
 |---|---|
-| PROPOSED | #FAAD14 (vàng) |
-| UNDER_REVIEW | #1890FF (xanh dương) |
+| DRAFT | #8C8C8C (xám) |
+| PENDING_APPROVAL | #FAAD14 (vàng) |
+| APPROVED_LEVEL1 | #1890FF (xanh dương) |
 | APPROVED | #52C41A (xanh lá) |
-| REJECTED | #FF4D4F (đỏ) |
+| REJECTED_LEVEL1 / REJECTED_LEVEL2 | #FF4D4F (đỏ) |
 | Đang khai thác/vận hành | #52C41A (xanh lá) |
 | Chưa khai thác/vận hành | #FAAD14 (cam) |
 | Dừng khai thác/vận hành | #FF4D4F (đỏ) |
@@ -288,7 +330,7 @@ Dùng chung bố cục hệ thống: sidebar 272px (#12468C), header 64px, nền
 ### 11.3. Màn hình
 
 1. **ScreenHeader:** breadcrumb "Đê/kè > [tên công trình]"
-2. **Info cards:** nhóm A+B+D mở rộng mặc định, C+E+F thu gọn
+2. **Info cards:** nhóm A+B+D mở rộng mặc định, C+E+F+J+K+L thu gọn
 3. **File đính kèm:** bảng + nút Tải xuống/In
 4. **Action bar:** cố định cuối trang (I1-I5)
 

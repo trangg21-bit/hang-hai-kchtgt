@@ -28,7 +28,7 @@ consumed_by_modules: []
 ## Mô tả màn hình
 
 ### 1. Bảng danh sách Quản lý Hệ thống VTS (List Screen)
-Gồm 13 cột dữ liệu theo đúng thứ tự:
+Gồm 14 cột dữ liệu theo đúng thứ tự:
 1. `STT` (Cố định trái)
 2. `Đơn vị quản lý` (`orgUnitName`)
 3. `Trạng thái phê duyệt` (`approvalStatus` - Badge màu)

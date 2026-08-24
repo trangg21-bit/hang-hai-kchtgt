@@ -3,218 +3,106 @@ id: F-029
 name: Phê duyệt Cảng cạn
 slug: phe-duyet-cct
 module-id: M-002
-status: backend_done
+status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-03
+last-updated: 2026-08-21
 locked-fields: []
 consumed_by_modules: []
 ---
 # Đặc tả nghiệp vụ: Phê duyệt Cảng cạn
 
-**Tài liệu:** BA Feature Brief
-**Feature:** F-029 — Phê duyệt Cảng cạn
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-029 — Phê duyệt Cảng cạn
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-08-03
+**Loại:** chức năng có bước phê duyệt (quy trình 2 cấp theo file chuẩn)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
+
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng. Quy trình 2 cấp (trạng thái, vòng duyệt, quyền duyệt theo chức vụ) KHÔNG chép lại ở đây — đọc `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
 
 ---
 
-## 1. Tổng quan
+## 1. Mô tả ngắn
 
-### 1.1. Tính năng này làm gì?
+Cho phép người có thẩm quyền (`dryport:approve`) thực hiện **Phê duyệt** hoặc **Từ chối** đối với Cảng cạn đang ở trạng thái chờ duyệt trong quy trình 2 cấp (theo file chuẩn). Thao tác thực hiện từ danh sách (F-030) hoặc màn hình phê duyệt: dòng có trạng thái chờ duyệt hiển thị nút **Phê duyệt** / **Từ chối**. Sau khi phê duyệt, Cảng cạn chuyển trạng thái Đã duyệt và có thể đưa vào sử dụng; bị từ chối → quay lại người tạo sửa và gửi lại (F-027). Mọi quyết định ghi vào `approval_logs` (bất biến) và ghi nhận lịch sử.
 
-Cho phép người có thẩm quyền (`dryport:approve`) thực hiện **Phê duyệt** hoặc **Từ chối** đối với Cảng cạn đang ở trạng thái **Chờ duyệt (PENDING)**. Thao tác được thực hiện trực tiếp từ danh sách chung (F-083) — trên dòng có trạng thái PENDING sẽ hiển thị nút **Phê duyệt** và **Từ chối**.
+## 2. Trường dữ liệu
 
-Sau khi phê duyệt, Cảng cạn chuyển sang trạng thái **Đã duyệt (APPROVED)** và có thể đưa vào sử dụng. Nếu bị từ chối, trạng thái chuyển thành **Từ chối (REJECTED)**, người tạo có thể sửa lại và gửi duyệt lại.
+Không có form nhập liệu mới — thao tác trên bản ghi `DryPort` hiện có + nhật ký phê duyệt.
 
-### 1.2. Tại sao cần?
-
-- Kiểm soát chất lượng dữ liệu trước khi Cảng cạn đi vào hoạt động chính thức
-- Đảm bảo mọi Cảng cạn đều được Lãnh đạo xem xét trước khi phê duyệt
-- Ghi nhận đầy đủ: ai duyệt, khi nào, lý do từ chối
-
-### 1.3. Luồng chính
-
-Từ danh sách F-083 → dòng có trạng thái PENDING → bấm **"Phê duyệt"** (xác nhận → APPROVED) hoặc **"Từ chối"** (nhập lý do → REJECTED).
-
----
-
-## 2. Ai dùng? Dùng như thế nào?
-
-### 2.1. Phân quyền theo chức năng
-
-Thao tác phê duyệt/từ chối được bảo vệ bởi quyền `dryport:approve`. Người dùng chỉ có thể thực hiện khi vai trò của họ được cấp quyền này:
-
-| Vai trò | Quyền xem | Quyền phê duyệt | Phạm vi dữ liệu | Ghi chú |
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| system-admin | `dryport:read` | `dryport:approve` nếu được gán | Toàn bộ hệ thống | |
-| admin (Security) | `dryport:read` | `dryport:approve` nếu được gán | Theo đơn vị được phân công | |
-| admin-operation | `dryport:read` | `dryport:approve` nếu được gán | Theo đơn vị được phân công | |
-| admin | `dryport:read` | `dryport:approve` nếu được gán | Theo đơn vị quản lý | |
-| Lãnh đạo | `dryport:read` | `dryport:approve` (thường được gán) | Theo đơn vị được phân công | Vai trò chính thực hiện duyệt |
-| Cán bộ | `dryport:read` | Không có quyền | Theo đơn vị công tác | Chỉ tạo và gửi duyệt |
-| Cá nhân | Không có quyền | Không có quyền | Không | Không truy cập được |
+| 1 | id | Có | UUID | Hồ sơ cảng cạn cần xử lý |
+| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
+| 3 | reason (lý do từ chối) | Có khi từ chối | Text, tối thiểu 10 ký tự | Lý do chấp thuận là tùy chọn |
+| 4 | approval_logs | Có (hệ thống) | Bảng `approval_logs` | Người duyệt, thời điểm, hành động, lý do — bất biến |
 
-> Phân quyền do M-001 quản lý. Cần quyền `dryport:approve`.
+## 3. Trạng thái và phê duyệt
 
-### 2.2. Logic phân quyền đặc biệt cho tài khoản Admin Cục
+- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (đã chốt — M-1006 DP-9/AC-25).
+- Chỉ hồ sơ ở trạng thái chờ duyệt đúng cấp mới được xử lý; duyệt tuần tự, không vượt cấp; từ chối/trả về ở bất kỳ cấp nào dừng quy trình, hồ sơ quay lại người tạo.
+- APPROVED / REJECTED_LEVEL1 / REJECTED_LEVEL2 không duyệt lại lần nữa — muốn thay đổi phải qua F-027 (Lưu và phê duyệt).
+- Sau quyết định: cập nhật trạng thái + ghi `approval_logs` + ghi lịch sử (F-031). Log không được sửa/xóa.
 
-Đối với tài khoản **Admin Cục**, áp dụng logic phân quyền đặc biệt sau:
+## 4. Quy tắc và phân quyền riêng
 
-- **Xem full dữ liệu:** Admin Cục có quyền xem toàn bộ Cảng cạn đang chờ duyệt, không giới hạn phạm vi đơn vị hay khu vực.
-- **Phê duyệt toàn bộ:** Admin Cục được phê duyệt/từ chối Cảng cạn trong mọi đơn vị.
-- **Xem thông tin người tạo:** Admin Cục thấy được `createdBy` (họ tên, tên đăng nhập) của bản ghi.
-- **Xem thời gian tạo:** Admin Cục thấy được `createdAt` (timestamp) của bản ghi.
-- **Xem thông tin người duyệt:** Admin Cục thấy được người phê duyệt/từ chối trong `approval_logs`.
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
-> Các trường audit này chỉ hiển thị với tài khoản Admin Cục. Với các vai trò khác, các trường này bị ẩn khỏi giao diện.
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
----
-
-## 3. User Stories
-
-### Must
-- **US-029-01:** Là Lãnh đạo, tôi muốn phê duyệt một Cảng cạn đang chờ duyệt để đưa vào sử dụng chính thức.
-- **US-029-02:** Là Lãnh đạo, tôi muốn từ chối một Cảng cạn kèm lý do cụ thể để người tạo biết cần sửa gì.
-
-### Should
-- **US-029-03:** Là Lãnh đạo, tôi muốn xem được lý do từ chối trước đó nếu bản ghi đã từng bị từ chối.
-
-### Could
-- **US-029-04:** Là Admin Cục, tôi muốn xem được toàn bộ lịch sử phê duyệt/từ chối trên toàn hệ thống.
-
----
-
-## 4. Yêu cầu chức năng (Acceptance Criteria)
-
-### Nhóm 1: Phê duyệt
-
-**AC-029-01:** Trên danh sách F-083, dòng có trạng thái PENDING → bấm "Phê duyệt" → hộp thoại xác nhận → xác nhận → trạng thái chuyển thành APPROVED → hiển thị thông báo "Phê duyệt thành công". Nếu không có quyền `dryport:approve` → HTTP 403.
-
-### Nhóm 2: Từ chối
-
-**AC-029-02:** Bấm "Từ chối" → hiển thị ô nhập lý do (bắt buộc, tối thiểu 10 ký tự) → xác nhận → trạng thái chuyển thành REJECTED → hiển thị thông báo "Đã từ chối".
-**AC-029-03:** Lý do dưới 10 ký tự → hiển thị lỗi "Lý do từ chối phải có ít nhất 10 ký tự", không cho gửi.
-
-### Nhóm 3: Điều kiện hiển thị
-
-**AC-029-04:** Chỉ PENDING mới hiển thị nút Phê duyệt / Từ chối. Các trạng thái khác (NHAP, APPROVED, REJECTED, Lịch sử) không hiển thị.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Quy tắc | Áp dụng cho | Nguồn |
-|---|---|---|---|
-| BR-029-01 | **Chỉ PENDING mới được duyệt** — Nút Phê duyệt / Từ chối chỉ xuất hiện trên dòng có trạng thái PENDING. | Danh sách F-083 | Nghiệp vụ |
-| BR-029-02 | **Phê duyệt → APPROVED** — Xác nhận phê duyệt, trạng thái chuyển thành Đã duyệt. Ghi nhận người duyệt và thời điểm duyệt vào `approval_logs`. | Backend | Nghiệp vụ |
-| BR-029-03 | **Từ chối phải có lý do** — Bắt buộc nhập lý do tối thiểu 10 ký tự. Trạng thái chuyển thành Từ chối. | UI + Backend | Nghiệp vụ |
-| BR-029-04 | **Không duyệt lại** — APPROVED và REJECTED không thể duyệt/từ chối lần nữa. Muốn thay đổi phải qua F-027 (Cập nhật → Lưu và phê duyệt). | Backend | Nghiệp vụ |
-| BR-029-05 | **Phân quyền** — Cần `dryport:approve` để thấy và thực hiện nút Phê duyệt / Từ chối. | UI + Backend | RBAC |
-| BR-029-06 | **Ghi nhận thao tác** — Mọi thao tác phê duyệt/từ chối được ghi vào `approval_logs` để kiểm toán. | Backend | Bảo mật |
-
----
-
-## 6. Mô hình dữ liệu
-
-> Không thêm bảng mới.
-
-Ghi nhận thao tác phê duyệt/từ chối vào `approval_logs`: người thực hiện, thời điểm, hành động (APPROVE/REJECT), lý do (nếu từ chối).
-
----
-
-## 7. API Endpoints
-
-| Method | Endpoint | Mô tả | Quyền |
-|---|---|---|---|
-| POST | `/api/v1/dry-ports/{id}/approve` | Phê duyệt Cảng cạn | `dryport:approve` |
-| POST | `/api/v1/dry-ports/{id}/reject?reason=` | Từ chối Cảng cạn (reason ≥ 10 ký tự) | `dryport:approve` |
-
----
-
-## 8. Chi tiết nghiệp vụ
-
-### 8.1. Phê duyệt
-
-Trên danh sách F-083, dòng có trạng thái PENDING → bấm "Phê duyệt" → hộp thoại xác nhận: "Phê duyệt CC-XXXXXX — [Tên]?" → [Hủy] [Xác nhận] → trạng thái chuyển thành APPROVED → thông báo thành công → danh sách tự động làm mới.
-
-### 8.2. Từ chối
-
-Bấm "Từ chối" → hiển thị ô nhập lý do (bắt buộc, tối thiểu 10 ký tự) → [Hủy] [Xác nhận] → trạng thái chuyển thành REJECTED → thông báo "Đã từ chối".
-
-### 8.3. Sau khi phê duyệt/từ chối
-
-- APPROVED: Cảng cạn sẵn sàng đưa vào sử dụng. Nút Phê duyệt/Từ chối biến mất khỏi dòng.
-- REJECTED: Người tạo có thể mở F-027 để sửa lại và Lưu và phê duyệt.
-
----
-
-## 9. Yêu cầu phi chức năng
-
-- **Hiệu năng:** Thao tác phê duyệt/từ chối hoàn thành ≤1s
-- **Bảo mật:** Chỉ người có `dryport:approve` mới thấy và thực hiện được. HTTPS; CSRF
-- **Độ tin cậy:** Transaction atomic (cập nhật trạng thái + approval_logs)
-- **Truy vết:** Mọi thao tác được ghi lại đầy đủ vào `approval_logs`
-
----
-
-## 10. Yêu cầu giao diện
-
-> Token từ `theme.ts` + `tokens.ts`. KHÔNG hardcode.
-
-### 10.1. Nút hành động trên danh sách
-
-- **Nút Phê duyệt:** màu `statusOperational` (xanh), hiển thị trên dòng PENDING trong dropdown hành động của F-083
-- **Nút Từ chối:** màu `statusDanger` (đỏ), hiển thị trên dòng PENDING
-- Cả hai `borderRadius: radiusPill`, `height: 32`
-
-### 10.2. Popup Phê duyệt
-
-- **Tiêu đề:** "Xác nhận phê duyệt"
-- **Nội dung:** "Phê duyệt CC-XXXXXX — [Tên cảng cạn]?"
-- **Footer:** [Hủy] outlined + [Xác nhận] `statusOperational`
-
-### 10.3. Popup Từ chối
-
-- **Tiêu đề:** "Từ chối phê duyệt"
-- **Nội dung:** "CC-XXXXXX — [Tên cảng cạn]" + ô nhập lý do (TextArea, required, min 10 ký tự)
-- **Footer:** [Hủy] outlined + [Xác nhận] `statusDanger`
-- Nếu < 10 ký tự → lỗi đỏ dưới TextArea: "Lý do từ chối phải có ít nhất 10 ký tự"
-
-### 10.4. Phân quyền hiển thị
-
-| Vai trò | Thấy nút Phê duyệt/Từ chối | Ghi chú |
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| system-admin | Có (nếu được gán `dryport:approve`) | Toàn bộ đơn vị |
-| admin (Security) | Có (nếu được gán) | Trong đơn vị được phân công |
-| admin-operation | Có (nếu được gán) | Trong đơn vị được phân công |
-| admin | Có (nếu được gán) | Trong đơn vị quản lý |
-| Lãnh đạo | Có (thường được gán) | Vai trò duyệt chính |
-| Cán bộ | Không | Chỉ tạo và gửi duyệt |
-| Admin Cục | Có (nếu được gán) | Toàn bộ đơn vị + xem audit fields |
+| BR-029-01 | Chỉ hồ sơ ở trạng thái chờ duyệt đúng cấp mới được phê duyệt/từ chối (theo file chuẩn) | Approve |
+| BR-029-02 | Phê duyệt → trạng thái Đã duyệt; ghi người duyệt + thời điểm vào `approval_logs` | Approve |
+| BR-029-03 | Từ chối phải có lý do ≥ 10 ký tự; trạng thái chuyển Từ chối | Reject |
+| BR-029-04 | APPROVED và REJECTED_LEVEL1/REJECTED_LEVEL2 không duyệt/từ chối lại — thay đổi phải qua F-027 | Approve |
+| BR-029-05 | Cần `dryport:approve` để thấy và thực hiện nút Phê duyệt / Từ chối | RBAC |
+| BR-029-06 | Mọi thao tác ghi vào `approval_logs` để kiểm toán | Audit |
 
-### 10.5. Giao diện trên điện thoại
+### 4.2. Phân quyền riêng
 
-Khi màn hình nhỏ hơn 768px:
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem hồ sơ chờ duyệt + chi tiết | `dryport:read` |
+| Phê duyệt / Từ chối ở cấp được phân quyền | `dryport:approve` |
 
-- Popup thu nhỏ còn 90% chiều rộng
-- Nút xếp dọc trong popup
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền |
+| Lãnh đạo | Thường được gán `dryport:approve` — vai trò chính thực hiện duyệt |
+| admin / admin-operation | Theo `dryport:approve` được gán |
+| Cán bộ | Tạo + gửi duyệt (không duyệt) |
+| Cá nhân | Không truy cập |
 
-### 10.6. UX
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — xem full dữ liệu + phê duyệt/từ chối mọi đơn vị + xem người duyệt trong `approval_logs`.
 
-- Toast `statusOperational` "Phê duyệt thành công" sau khi duyệt
-- Toast `statusWarning` "Đã từ chối" sau khi từ chối
-- Toast `statusDanger` nếu lỗi (403, 409 nếu không phải PENDING)
-- Loading spinner trên nút [Xác nhận] khi đang xử lý
-- Danh sách F-083 tự động refresh sau khi thao tác thành công
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
----
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung (tài liệu nền mục 3.5) |
+| 2 | Có bước phê duyệt không | Có — phê duyệt 2 cấp theo QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị (orgUnitId — tài liệu nền mục 3.3) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `dryport:approve` (kèm `dryport:read`) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Không |
 
-## Implementation Status
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-| Layer | Status |
-|-------|--------|
-| Backend | Done |
-| Frontend | Pending |
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/api/v1/dry-ports` với bộ lọc trạng thái chờ duyệt | Danh sách hồ sơ chờ duyệt của cấp hiện tại | `dryport:approve` |
+| GET | `/api/v1/dry-ports/{id}` | Chi tiết hồ sơ | `dryport:read` |
+| POST | `/api/v1/dry-ports/{id}/approve` | Phê duyệt ở cấp hiện tại | `dryport:approve` |
+| POST | `/api/v1/dry-ports/{id}/reject?reason=` | Từ chối (reason ≥ 10 ký tự) | `dryport:approve` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `dry_ports`:** sử dụng `approval_status` (SMALLINT, enum `ApprovalStatus`) có sẵn; bổ sung theo dõi quy trình 2 cấp theo mẫu `Berth` (SA chốt): 🔴 `submitted_for_approval_at`/`submitted_for_approval_by`, 🔴 `port_authority_approved_at`/`port_authority_approved_by`/`port_authority_approval_content` (vòng 1), 🔴 `department_approved_at`/`department_approved_by`/`department_approval_content` (vòng 2), 🔴 `rejection_reason` (VARCHAR 500).
+
+**Bảng `approval_logs` (nhật ký phê duyệt):** id (UUID PK), entityId (UUID), entityType (NVARCHAR 50 — "DRY_PORT"), 🔴 cap (cấp duyệt), action (NVARCHAR 20 — APPROVE / REJECT), approvedBy (UUID), approvedAt (TIMESTAMP), reason (NVARCHAR 500, nullable) — ghi tự động, bất biến.

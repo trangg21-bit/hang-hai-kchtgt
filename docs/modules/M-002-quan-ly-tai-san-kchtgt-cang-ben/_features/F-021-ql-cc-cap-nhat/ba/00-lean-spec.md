@@ -37,7 +37,7 @@ Hệ thống cần cho phép người dùng có thẩm quyền cập nhật thô
 | AC-021-02 | US-021-01 | Truy cập cập nhật từ trang chi tiết | Given người dùng có quyền đang ở trang chi tiết Pier; When nhấn nút "Chỉnh sửa"; Then biểu mẫu cập nhật hiển thị với dữ liệu hiện tại được điền sẵn, các trường khóa disabled | Người dùng không có quyền không thấy nút chỉnh sửa |
 | AC-021-03 | US-021-01 | Từ chối truy cập với role không đủ quyền | Given người dùng có role Nhan_vien_van_hanh hoặc không thuộc orgUnitId của Pier; When cố truy cập URL cập nhật trực tiếp; Then hệ thống trả về HTTP 403 và không hiển thị biểu mẫu | Kiểm tra phân quyền server-side, không chỉ UI |
 | AC-021-04 | US-021-02 | Mã pierCode không thể thay đổi | Given biểu mẫu cập nhật đang hiển thị; When người dùng cố gắng sửa trường pierCode; Then trường pierCode ở trạng thái disabled (read-only), không nhận input | Áp dụng cả ở frontend lẫn backend validation |
-| AC-021-05 | US-021-02 | Cập nhật thông tin kỹ thuật hợp lệ lưu thành công, approvalStatus về PENDING | Given người dùng nhập pierName mới hợp lệ và designLoad hợp lệ; When nhấn "Cập nhật"; Then hệ thống lưu dữ liệu, approvalStatus tự động chuyển về PENDING (kể cả trước đó là APPROVED), cập nhật updatedAt, hiển thị thông báo thành công | updatedAt được hệ thống tự gán; nếu Pier trước đó APPROVED thì tạm thời không khả dụng trong dropdown module khác cho đến khi được duyệt lại |
+| AC-021-05 | US-021-02 | Cập nhật thông tin kỹ thuật hợp lệ lưu thành công, approvalStatus về PENDING_APPROVAL | Given người dùng nhập pierName mới hợp lệ và designLoad hợp lệ; When nhấn "Cập nhật"; Then hệ thống lưu dữ liệu, approvalStatus tự động chuyển về PENDING_APPROVAL (kể cả trước đó là APPROVED), cập nhật updatedAt, hiển thị thông báo thành công | updatedAt được hệ thống tự gán; nếu Pier trước đó APPROVED thì tạm thời không khả dụng trong dropdown module khác cho đến khi được duyệt lại |
 | AC-021-06 | US-021-02 | Validation designLoad | Given người dùng nhập designLoad ≤ 0 hoặc > 20 T/m²; When nhấn "Cập nhật"; Then hệ thống hiển thị lỗi "Tải trọng thiết kế phải là số dương không vượt quá 20 T/m²", không lưu dữ liệu | Đơn vị T/m² |
 | AC-021-07 | US-021-02 | Validation kích thước Pier | Given người dùng nhập length hoặc width ≤ 0 hoặc > 500m; When nhấn "Cập nhật"; Then hệ thống hiển thị lỗi tương ứng cho từng trường, không lưu dữ liệu | Áp dụng cho cả chiều dài và chiều rộng |
 | AC-021-08 | US-021-03 | Cảnh báo khi thay đổi berthId có dữ liệu liên quan | Given Pier đang có lượt tàu neo đậu hoặc lịch sử kiểm tra kết cấu liên kết; When người dùng thay đổi trường berthId; Then hệ thống hiển thị cảnh báo "Cầu cảng đang có dữ liệu liên quan, thay đổi Bến cảng mẹ yêu cầu phê duyệt" và không cho phép lưu trực tiếp | Yêu cầu quy trình phê duyệt đặc biệt (F-023) |
@@ -53,7 +53,7 @@ Hệ thống cần cho phép người dùng có thẩm quyền cập nhật thô
 | BR-ID | Rule | Applies to | Exception |
 |---|---|---|---|
 | BR-021-01 | **Cùng đơn vị quản lý:** Chỉ người dùng thuộc đúng orgUnitId của Pier mới có quyền chỉnh sửa. Backend kiểm tra orgUnitId của user khớp với orgUnitId của Pier; nếu không khớp, trả về HTTP 403. | AC-021-01, AC-021-03 | Không có ngoại lệ |
-| BR-021-02 | **Reset phê duyệt khi cập nhật:** Sau khi cập nhật thành công, approvalStatus tự động chuyển về PENDING bất kể trạng thái trước đó là APPROVED hay REJECTED. Nếu Pier trước đó là APPROVED, Pier tạm thời không khả dụng trong dropdown chọn Pier của module khác cho đến khi được duyệt lại qua F-023. | AC-021-05 | Pier đã có approvalStatus = PENDING vẫn giữ nguyên PENDING |
+| BR-021-02 | **Reset phê duyệt khi cập nhật:** Sau khi cập nhật thành công, approvalStatus tự động chuyển về PENDING_APPROVAL bất kể trạng thái trước đó là APPROVED, REJECTED_LEVEL1 hay REJECTED_LEVEL2. Nếu Pier trước đó là APPROVED, Pier tạm thời không khả dụng trong dropdown chọn Pier của module khác cho đến khi được duyệt lại qua F-023. | AC-021-05 | Pier đã có approvalStatus = PENDING_APPROVAL vẫn giữ nguyên PENDING_APPROVAL |
 | BR-021-03 | **Ghi nhật ký thay đổi (ChangeLog):** Mọi lần cập nhật đều tạo bản ghi ChangeLog với actionType = 'UPDATE', ghi lại từng trường bị thay đổi (fieldChanged, oldValue, newValue, changedBy, changedAt). Nhật ký không thể xóa hoặc sửa bởi bất kỳ actor nào. Ghi nhật ký và cập nhật Pier phải nằm trong cùng một transaction. | AC-021-12, AC-021-13 | Chỉ ghi các trường thực sự thay đổi; trường không đổi không ghi |
 | BR-021-04 | **pierCode bất biến:** pierCode là bất biến sau khi Pier được tạo; không có API nào được phép cập nhật trường này; thay đổi pierCode yêu cầu hủy bỏ Pier và tạo mới. Trường pierCode hiển thị disabled trên form. | AC-021-04, AC-021-05 | Không có ngoại lệ |
 | BR-021-05 | **Validation designLoad:** designLoad phải là giá trị dương (> 0), đơn vị T/m², không vượt quá 20 T/m². | AC-021-06 | Không áp dụng nếu trường không được cung cấp (optional field) |
@@ -67,12 +67,13 @@ Trạng thái approvalStatus của Pier khi thực hiện cập nhật:
 
 ```mermaid
 stateDiagram-v2
-    PENDING --> PENDING: F-021 Cập nhật (vẫn chờ duyệt)
-    APPROVED --> PENDING: F-021 Cập nhật (cần duyệt lại)
-    REJECTED --> PENDING: F-021 Sửa và gửi lại
+    PENDING_APPROVAL --> PENDING_APPROVAL: F-021 Cập nhật (vẫn chờ duyệt)
+    APPROVED --> PENDING_APPROVAL: F-021 Cập nhật (cần duyệt lại)
+    REJECTED_LEVEL1 --> PENDING_APPROVAL: F-021 Sửa và gửi lại
+    REJECTED_LEVEL2 --> PENDING_APPROVAL: F-021 Sửa và gửi lại
 ```
 
-> **Lưu ý:** Pier đã duyệt (APPROVED) mà bị sửa → approvalStatus quay về PENDING → **tạm thời không khả dụng** trong dropdown chọn Pier của module khác (Quản lý tài sản, Vận hành, Bảo trì...) cho đến khi được duyệt lại qua F-023.
+> **Lưu ý:** Pier đã duyệt (APPROVED) mà bị sửa → approvalStatus quay về PENDING_APPROVAL → **tạm thời không khả dụng** trong dropdown chọn Pier của module khác (Quản lý tài sản, Vận hành, Bảo trì...) cho đến khi được duyệt lại qua F-023.
 
 ## Non-Functional Requirements
 

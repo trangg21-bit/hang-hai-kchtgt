@@ -7,242 +7,111 @@ status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-04
+last-updated: 2026-08-21
 locked-fields: []
 consumed_by_modules: []
-merged-from: [F-032-BE, F-090-UI]
 ---
 # Đặc tả nghiệp vụ: Quản lý Vùng nước - Tạo mới
 
-**Tài liệu:** BA Feature Brief (merged BE+UI)
-**Feature:** F-032 — Quản lý Vùng nước - Tạo mới
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-032 — Quản lý Vùng nước - Tạo mới
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-08-04
+**Loại:** chức năng có bước phê duyệt (hồ sơ tạo mới vào quy trình phê duyệt)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
 
-> Tài liệu merge từ F-032 (BE) + F-090 (UI) + designer spec 03-create.
-
----
-
-## 1. Tổng quan
-
-### 1.1. Tính năng này làm gì?
-
-Tạo mới Vùng nước qua modal form với Zod validation, kiểm tra unique mã real-time. Form gồm 3 nhóm: **Thông tin chung** (4 trường), **Thống kê** (3 trường), **Trạng thái** (1 trường). Có thể để trống `maVungNuoc` — hệ thống tự sinh mã. Sau khi tạo, trạng thái mặc định `CHỜ_PHÊ_DUYỆT`.
-
-### 1.2. Tại sao cần?
-
-Chuẩn hóa đăng ký Vùng nước mới, phục vụ quản lý hạ tầng cảng biển và phân vùng khai thác. Dữ liệu đầy đủ trước khi vào quy trình phê duyệt.
-
-### 1.3. Luồng chính
-
-F-036 → "Thêm mới" → modal mở → điền form (có thể bỏ trống `maVungNuoc` để hệ thống tự sinh, unique check on blur nếu có nhập) → Submit → `POST /api/v1/vung-nuoc` → toast "Tạo mới thành công — chờ phê duyệt" → đóng modal, refresh danh sách.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung. (Nội dung merge từ F-032 BE + F-090 UI.)
 
 ---
 
-## 2. Ai dùng? Dùng như thế nào?
+## 1. Mô tả ngắn
 
-### 2.1. Phân quyền
+Cho phép người dùng có thẩm quyền (`waterzone:create`) tạo mới một Vùng nước thuộc Cảng biển (mẹ) qua modal form với Zod validation và kiểm tra unique mã real-time. Form gồm 3 nhóm: **Thông tin chung** (4 trường), **Thống kê** (3 trường), **Trạng thái** (1 trường). Có thể để trống `waterZoneCode` — hệ thống tự sinh mã (quy tắc VN-XXXXXX, unique). Sau khi tạo, hồ sơ vào trạng thái chờ phê duyệt (theo tài liệu nền mục 3.5) và chờ xử lý tại F-035.
 
-| Permission | Mô tả |
-|---|---|
-| `vungnuoc:create` | Tạo mới Vùng nước |
+## 2. Trường dữ liệu
 
-> Phân quyền do M-001 quản lý.
+Cấu trúc theo entity `WaterZone` (`src/main/java/com/hanghai/kchtg/port/entity/WaterZone.java`, bảng `water_zones`) + bảng con tọa độ GIS và file đính kèm. Các trường từ `BaseEntity` không liệt kê lại.
 
-| Vai trò | Create |
-|---|---|
-| system-admin | ✅ |
-| LeDuan | ✅ |
-| Chuyên viên Cục/Cảng vụ | ✅ |
-| Doanh nghiệp cảng | ✅ |
-| Nhân viên vận hành | ❌ |
-
-### 2.2. Logic Admin Cục
-
-Admin Cục tạo không giới hạn đơn vị. Chuyên viên chỉ tạo trong phạm vi Org Unit.
-
----
-
-## 3. User Stories
-
-### Must
-- **US-032-01:** Tạo mới Vùng nước với đầy đủ thông tin bắt buộc. (`vungnuoc:create`)
-- **US-032-02:** Hệ thống kiểm tra trùng mã real-time khi blur khỏi ô input.
-
-### Should
-- **US-032-03:** Để trống mã → hệ thống tự sinh mã Vùng nước unique.
-
-### Could
-- **US-032-04:** Tab/Enter điều hướng form.
-
----
-
-## 4. Yêu cầu chức năng (Acceptance Criteria)
-
-### Nhóm 1: Form & Validate
-
-**AC-032-01:** Form hiển thị: maVungNuoc (input, optional — nếu để trống hệ thống tự sinh), tenVungNuoc (input, required, max 255), cangBienId (Select CangBien HIEN_HANH, required), dienTich, doSauMax, doSauTrungBinh (input number, optional), loaiVungNuoc (input, optional, free text, max 100), trangThaiHoatDong (Select, default HIỆN_HÀNH).
-**AC-032-02:** Nếu người dùng nhập maVungNuoc → blur → `GET /api/v1/vung-nuoc?maVungNuoc={value}` → trùng → "Mã vùng nước đã tồn tại".
-**AC-032-03:** Bỏ trống trường bắt buộc (tenVungNuoc, cangBienId) → lỗi "Đây là trường bắt buộc", không gửi API.
-
-### Nhóm 2: Submit
-
-**AC-032-04:** Submit → `POST /api/v1/vung-nuoc` → 201 → toast "Tạo mới vùng nước thành công — chờ phê duyệt". Trạng thái mặc định `CHỜ_PHÊ_DUYỆT`.
-**AC-032-05:** 409 Conflict → toast + inline error trên maVungNuoc.
-**AC-032-06:** 422 → React Hook Form map errors → inline field messages.
-
-### Nhóm 3: Tự sinh mã
-
-**AC-032-07 — Tự sinh mã:** Người dùng để trống `maVungNuoc` → submit → backend tự sinh mã unique (theo quy tắc VN-XXXXXX) → lưu thành công → toast hiển thị mã đã sinh.
-
-### Nhóm 4: Hủy
-
-**AC-032-08:** Hủy/Esc → đóng modal, không tạo bản ghi.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
-| BR-032-01 | `maVungNuoc` duy nhất toàn hệ thống (case-insensitive) | POST | Entity | Không |
-| BR-032-02 | `tenVungNuoc` không trùng với Vùng nước đã tồn tại | POST | Entity | Không |
-| BR-032-03 | Trạng thái mặc định: `CHỜ_PHÊ_DUYỆT` | POST | Default | Không |
-| BR-032-04 | Các trường bắt buộc: tên, cảng mẹ. Mã: tự sinh nếu trống | POST | Validation | Mã optional |
-| BR-032-05 | `cangBienId` phải có `trangThaiHoatDong = HIEN_HANH` | POST | Parent guard | Không |
-| BR-032-06 | Mã tự sinh theo quy tắc VN-XXXXXX, unique | POST | Business | Không |
-| BR-032-07 | Chuyên viên chỉ tạo trong phạm vi Org Unit của mình | POST | RBAC | Admin Cục toàn bộ |
+| 1 | waterZoneCode | Không* | Text (VARCHAR 50), UNIQUE | *Tự sinh VN-XXXXXX nếu để trống; unique case-insensitive |
+| 2 | waterZoneName | Có | Text (VARCHAR 255) | Tên vùng nước; không trùng tên vùng nước đã tồn tại |
+| 3 | portId | Có | Select (UUID) | Cảng biển mẹ — chỉ hiển thị cảng đang hoạt động (operationalStatus = OPERATIONAL) |
+| 4 | orgUnitId | Có | TreeSelect (UUID) | Đơn vị quản lý — theo tài liệu nền mục 3.3; Admin Cục chọn mọi đơn vị, còn lại phạm vi đơn vị mình |
+| 5 | area | Không | Number (DECIMAL 15,2) ≥ 0 | Diện tích (m²) |
+| 6 | maxDepth | Không | Number (DECIMAL 10,2) ≥ 0 | Độ sâu tối đa (m) |
+| 7 | avgDepth | Không | Number (DECIMAL 10,2) ≥ 0 | Độ sâu trung bình (m) |
+| 8 | waterZoneType | Không | Select (enum `WaterZoneType`: ANCHORAGE / PILOT_BOARDING / TURNING_BASIN / MOORING_BUOY / TRANSSHIPMENT / STORM_SHELTER) | Loại vùng nước |
+| 9 | operationalStatus | Không | Select (enum `OperationalStatus`), default OPERATIONAL | Trạng thái hoạt động |
+| 10 | provinceId | Không | Number (Integer) | Tỉnh/TP |
+| 11 | mapSymbolId, spatialId | Không | UUID | Thông tin GIS |
+| 12 | coordinates[] | Không | Danh sách (latitude/longitude) | Tọa độ GIS |
+| 13 | attachments[] | Không | File (giấy tờ) | File đính kèm |
+| 14 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Hồ sơ mới → trạng thái chờ duyệt (theo tài liệu nền mục 3.5) |
 
----
+## 3. Trạng thái và phê duyệt
 
-## 6. Mô hình dữ liệu
+- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
+- Hồ sơ tạo mới có trạng thái mặc định **chờ duyệt** (theo file chuẩn — hồ sơ mới phải qua phê duyệt trước khi có hiệu lực); quy trình duyệt thuộc F-035.
+- Mã vùng nước (nhập hoặc tự sinh) duy nhất toàn hệ thống, bất biến sau khi tạo.
+- Không được gửi hồ sơ khi thiếu trường bắt buộc (tên, cảng mẹ).
 
-> Kế thừa F-036 Section 6. Các trường nhập khi tạo:
+## 4. Quy tắc và phân quyền riêng
 
-| # | Tên trường | Kiểu | Bắt buộc | Status |
-|---|---|---|---|---|
-| 1 | ma_vung_nuoc | NVARCHAR(50) | Không* | ✅ (*tự sinh nếu trống) |
-| 2 | ten_vung_nuoc | NVARCHAR(255) | Có | ✅ |
-| 3 | cang_bien_id | UUID | Có | ✅ |
-| 4 | dien_tich | DECIMAL(15,2) | Có | ✅ |
-| 5 | do_sau_max | DECIMAL(10,2) | Không | ✅ |
-| 6 | do_sau_trung_binh | DECIMAL(10,2) | Không | ✅ |
-| 7 | loai_vung_nuoc | NVARCHAR(100) | Có | ✅ |
-| 8 | trang_thai_hoat_dong | NVARCHAR(50) | Không | ✅ (default HIỆN_HÀNH) |
-| 9 | trang_thai_phe_duyet | NVARCHAR(50) | Auto | ✅ (default CHỜ_PHÊ_DUYỆT) |
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
----
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## 7. API Endpoints
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-032-01 | `waterZoneCode` duy nhất toàn hệ thống (case-insensitive); kiểm tra real-time khi blur | Create |
+| BR-032-02 | `waterZoneName` không trùng với vùng nước đã tồn tại | Create |
+| BR-032-03 | Hồ sơ mới có trạng thái mặc định chờ duyệt (theo file chuẩn) | Create |
+| BR-032-04 | Trường bắt buộc: tên, cảng mẹ; mã tự sinh nếu để trống | Create |
+| BR-032-05 | `portId` phải là cảng đang hoạt động (operationalStatus = OPERATIONAL) | Create |
+| BR-032-06 | Mã tự sinh theo quy tắc VN-XXXXXX, unique | Create |
+| BR-032-07 | Chuyên viên chỉ tạo trong phạm vi đơn vị của mình (data scope — tài liệu nền mục 3.3); Admin Cục tạo mọi đơn vị | Create |
 
-| Method | Endpoint | Mô tả | Quyền |
+### 4.2. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Tạo mới Vùng nước | `waterzone:create` |
+
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Tạo không giới hạn đơn vị |
+| Lãnh đạo (LeDuan) | Tạo mới |
+| Chuyên viên Cục / Cảng vụ | Tạo trong phạm vi đơn vị |
+| Doanh nghiệp cảng | Tạo trong phạm vi đơn vị |
+| Nhân viên vận hành | Không tạo |
+
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — tạo không giới hạn đơn vị + xem metadata người tạo/người sửa/thời gian.
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung (tài liệu nền mục 3.5); hồ sơ mới mặc định chờ duyệt |
+| 2 | Có bước phê duyệt không | Có — hồ sơ tạo mới vào quy trình phê duyệt (duyệt tại F-035) |
+| 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + theo Cảng biển mẹ (portId) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `waterzone:create` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — file/giấy tờ đính kèm |
+| 8 | Giao diện khác mẫu chung | Không |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| GET | `/api/v1/cang-bien?trangThaiHoatDong=HIEN_HANH` | Load dropdown cảng mẹ | `vungnuoc:create` |
-| GET | `/api/v1/vung-nuoc?maVungNuoc={value}` | Kiểm tra unique mã | `vungnuoc:create` |
-| POST | `/api/v1/vung-nuoc` | Tạo mới (backend tự sinh mã nếu maVungNuoc trống) | `vungnuoc:create` |
+| GET | `/api/v1/ports?operationalStatus=OPERATIONAL` | Dropdown cảng mẹ | `waterzone:create` |
+| GET | `/api/v1/water-zones?waterZoneCode={value}` | Kiểm tra unique mã | `waterzone:create` |
+| POST | `/api/v1/water-zones` | Tạo mới (backend tự sinh mã nếu waterZoneCode trống) | `waterzone:create` |
 
----
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-## 8. Chi tiết nghiệp vụ
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-### 8.1. Mở form
+**Bảng `water_zones`** (Vùng nước — cấu trúc theo entity `WaterZone`): id (UUID PK), waterZoneCode (VARCHAR 50, UNIQUE, NOT NULL), waterZoneName (VARCHAR 255, NOT NULL), portId (UUID, NOT NULL FK → ports), provinceId (INT), area (DECIMAL 15,2), maxDepth (DECIMAL 10,2), avgDepth (DECIMAL 10,2), waterZoneType (SMALLINT — enum `WaterZoneType`), operationalStatus (SMALLINT — enum `OperationalStatus`), approvalStatus (SMALLINT, NOT NULL), orgUnitId (UUID), securityLevel (SMALLINT, default NORMAL), mapSymbolId (UUID), spatialId (UUID) + audit từ `BaseEntity`; filter `orgUnitFilter` + `recordSecurityLevelFilter`.
 
-F-036 → "Thêm mới" → modal mở, form trống. Dropdown cảng mẹ gọi `GET /api/v1/cang-bien?trangThaiHoatDong=HIEN_HANH`. `trangThaiHoatDong` default HIỆN_HÀNH. `maVungNuoc` để trống — optional.
-
-### 8.2. Unique check
-
-Nếu người dùng nhập maVungNuoc → blur → gọi API kiểm tra → nếu trùng hiển thị lỗi inline "Mã vùng nước đã tồn tại". Debounce 300ms. Nếu để trống → bỏ qua unique check, backend sẽ tự sinh.
-
-### 8.3. Tự sinh mã
-
-Người dùng để trống `maVungNuoc` → submit → backend gọi generate code (VN-XXXXXX) → lưu kèm mã tự sinh. Toast hiển thị mã đã sinh: "Tạo mới vùng nước [mã] thành công — chờ phê duyệt".
-
-### 8.4. Submit
-
-Zod validate → nếu pass → `POST /api/v1/vung-nuoc` → backend lưu `trangThaiPheDuyet=CHỜ_PHÊ_DUYỆT` → 201 → toast → đóng modal → refresh F-036.
-
-### 8.5. Hủy
-
-Hủy/Esc → đóng modal, reset form, không gọi API.
-
----
-
-## 9. Yêu cầu phi chức năng
-
-- **Hiệu năng:** POST ≤ 2s; unique check ≤ 300ms; generate code ≤ 200ms
-- **Bảo mật:** RBAC `vungnuoc:create`; HTTPS
-- **UX:** Modal max-width 600px; submit button disabled khi đang gọi API; focus maVungNuoc khi mở
-
----
-
-## 10. Yêu cầu giao diện
-
-> Token: `theme.ts` + `tokens.ts`. KHÔNG hardcode.
-
-### 10.1. Layout
-
-- Header: "Tạo mới Vùng nước" + nút X
-- Body: form 2 cột (label 180px, gap 24px)
-- Footer: [Hủy] outlined + [Tạo mới] primary. `borderRadius: radiusPill`, `height: 40`.
-
-### 10.2. Form fields
-
-| STT | Trường | Loại | Edit | Bắt buộc | Default | Mô tả |
-|---|---|---|---|---|---|---|
-| 1 | Mã vùng nước | Input text | ✅ | Không | — | Để trống → tự sinh VN-XXXXXX |
-| 2 | Tên vùng nước | Input text | ✅ | Có | — | |
-| 3 | Cảng biển chủ | Select | ✅ | Có | — | Chỉ HIEN_HANH |
-| 4 | Loại vùng nước | Input text | ✅ | Không | — | Free text |
-| 5 | Diện tích (m²) | Input number | ✅ | Có | — | |
-| 6 | Độ sâu tối đa (m) | Input number | ✅ | Không | — | |
-| 7 | Độ sâu trung bình (m) | Input number | ✅ | Không | — | |
-| 8 | Trạng thái hoạt động | Select | ✅ | Không | HIỆN_HÀNH | HIỆN_HÀNH / TẠM_NGƯNG |
-
-### 10.3. Zod Schema
-
-```typescript
-const schema = z.object({
-  maVungNuoc: z.string().max(50).optional().or(z.literal("")),
-  tenVungNuoc: z.string().min(1, "Tên vùng nước không được để trống").max(255),
-  cangBienId: z.string().uuid("Cảng biển chủ không được để trống"),
-  dienTich: z.coerce.number().optional(),
-  doSauMax: z.coerce.number().optional(),
-  doSauTrungBinh: z.coerce.number().optional(),
-  loaiVungNuoc: z.string().max(100).optional().or(z.literal("")),
-  trangThaiHoatDong: z.enum(["HIỆN_HÀNH", "TẠM_NGƯNG"]).optional().default("HIỆN_HÀNH"),
-});
-```
-
-> Ghi chú: `maVungNuoc` là optional trong Zod schema — nếu trống, backend tự sinh.
-
-### 10.4. UX
-
-- `marginBottom: spaceFormField`, `borderRadius: radiusPill`, `height: 40`
-- Lỗi đỏ dưới input
-- Toast `statusOperational` 3s (kèm mã đã sinh nếu tự động)
-- Focus `maVungNuoc` khi mở modal
-
----
-
-## 11. Xử lý lỗi
-
-| Tình huống | Xử lý |
-|---|---|
-| 409 Conflict | Toast "Mã vùng nước 'X' đã tồn tại" + inline error |
-| 422 Validation | Map BE errors → inline field messages |
-| Network error | Toast "Kết nối thất bại. Vui lòng thử lại" |
-| Generate code fail | Toast "Không thể tạo mã. Vui lòng thử lại" |
-
-## Testing Strategy
-
-Unit: Zod schema, unique check, auto-generate code logic. Integration: POST API valid/invalid data, POST with empty maVungNuoc → verify auto-generated code. E2E: Mở modal, điền form, submit, toast + refresh, verify mã hiển thị.
-
----
-
-## Implementation Status
-
-| Layer | Status |
-|---|---|
-| Backend | Done |
-| Frontend | Pending |
+**Bảng con:** bảng tọa độ GIS (waterZoneId, latitude, longitude) + bảng file đính kèm / giấy tờ (waterZoneId, fileName, fileSize, contentType, uploadedBy, uploadedAt).

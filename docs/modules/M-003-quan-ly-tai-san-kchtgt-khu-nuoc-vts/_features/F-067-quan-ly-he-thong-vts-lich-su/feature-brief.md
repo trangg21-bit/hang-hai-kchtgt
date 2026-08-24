@@ -61,10 +61,12 @@ Khi người dùng click vào một mốc, hiển thị popup "Chi tiết lịch
 | 3 | Thuộc cảng biển | Label | Không | **Có:** tên cảng. **Không:** "—" | |
 | 4 | Mã hệ thống VTS | Label | Không | **Có:** "VTS-000002". **Không:** "—" | |
 | 5 | Tên hệ thống VTS | Label | Không | **Có:** "vts demo 03". **Không:** "—" | Giá trị tại thời điểm được chọn (có thể khác hiện tại) |
-| 6 | Thời gian bắt đầu hoạt động | Label | Không | **Có:** "17/04/2026". **Không:** "—" | Định dạng DD/MM/YYYY |
-| 7 | Phạm vi áp dụng | Label | Không | **Có:** "Việt Nam". **Không:** "—" | |
-| 8 | Thông báo hàng hải | Label | Không | **Có:** nội dung. **Không:** "—" | |
-| 9 | Tình trạng | Label (Badge) | Không | **Có:** "Đang khai thác/vận hành" (xanh) / "Dừng hoạt động" (đỏ) / "Đang bảo trì" (vàng) / "Đang xây dựng" (xám). **Không:** "—" | |
+| 6 | Địa điểm (Tỉnh/TP) | Label | Không | **Có:** tên tỉnh/thành phố. **Không:** "—" | |
+| 7 | Địa điểm chi tiết | Label | Không | **Có:** địa chỉ cụ thể. **Không:** "—" | |
+| 8 | Thời gian bắt đầu hoạt động | Label | Không | **Có:** "17/04/2026". **Không:** "—" | Định dạng DD/MM/YYYY |
+| 9 | Phạm vi áp dụng | Label | Không | **Có:** "Việt Nam". **Không:** "—" | |
+| 10 | Thông báo hàng hải | Label | Không | **Có:** nội dung. **Không:** "—" | |
+| 11 | Tình trạng | Label (Badge) | Không | **Có:** "Đang khai thác/vận hành" (xanh) / "Dừng hoạt động" (đỏ) / "Đang bảo trì" (vàng) / "Đang xây dựng" (xám). **Không:** "—" | |
 
 #### Nhóm 3 — Thông tin vùng VTS
 

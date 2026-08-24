@@ -7,262 +7,165 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:42Z
-last-updated: 2026-07-31
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
 # Đặc tả nghiệp vụ: Quản lý Bến cảng - Tạo mới
 
-**Tài liệu:** BA Feature Brief
-**Feature:** F-014 — Quản lý Bến cảng - Tạo mới
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-014 — Quản lý Bến cảng - Tạo mới
 **Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-07-31
+**Loại:** chức năng có bước phê duyệt (luồng Lưu tạm / Gửi phê duyệt 2 cấp / Lưu và phê duyệt)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
+
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
 ---
 
-## 1. Tổng quan
+## 1. Mô tả ngắn
 
-### 1.1. Tính năng này làm gì?
+Cho phép người dùng có thẩm quyền (`berth:create`) đăng ký một Bến cảng mới, thuộc một Cảng biển (cha). Người dùng chọn **Đơn vị quản lý** → chọn **Cảng biển** (lọc theo đơn vị, trạng thái đã duyệt) → hệ thống **tự động sinh mã bến** theo quy tắc `{mã-cảng-mẹ}-B{XX}` (bất biến sau khi tạo). Form gồm 4 nhóm: Thông tin chung, Thông tin công bố, Thông tin vị trí (GIS + tọa độ GPS), File đính kèm. Ba lựa chọn lưu: **Lưu tạm** (nháp), **Gửi phê duyệt** (vào quy trình 2 cấp: Cảng vụ/Chi cục → Cục), **Lưu và phê duyệt** (chỉ admin-operation / system-admin — đạt trạng thái đã duyệt ngay).
 
-Tạo mới Bến cảng là tính năng cho phép người dùng có thẩm quyền đăng ký một Bến cảng mới vào hệ thống quản lý tài sản KCHTGT Hàng Hải. Người dùng chọn **Đơn vị quản lý** → chọn **Cảng biển** (được lọc theo đơn vị) → hệ thống **tự động sinh mã bến** theo quy tắc `{mã-cảng-mẹ}-B{XX}`. Form gồm 4 nhóm: Thông tin chung (17 trường), Thông tin công bố (3 trường), Thông tin vị trí (GIS + bảng tọa độ), File đính kèm.
+## 2. Trường dữ liệu
 
-Người dùng có 3 lựa chọn lưu:
-- **Lưu tạm** → `trangThaiPheDuyet = NHAP`
-- **Lưu và gửi phê duyệt** → `CHO_PHE_DUYET` (chờ Cảng vụ/Chi cục duyệt). Sau đó: Cảng vụ duyệt → `CHO_PD_CAP_CUC` (chờ Cục) → Cục duyệt → `DA_PHE_DUYET`
-- **Lưu và phê duyệt** (admin-op/system-admin) → `DA_PHE_DUYET` ngay, bỏ qua 2 cấp
+Cấu trúc theo entity `Berth` (`src/main/java/com/hanghai/kchtg/port/entity/Berth.java`, bảng `berths`) + bảng con tọa độ và file đính kèm. Các trường từ `BaseEntity` không liệt kê lại.
 
-### 1.2. Tại sao cần tính năng này?
+Bảng dưới đây **khớp 100%** sheet `QL Bến cảng` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Các trường ~~length, width, berthType, channelDepth~~ (Chiều dài, Chiều rộng, Loại bến, Độ sâu kênh) **đã loại bỏ** — theo Excel đây là trường của **Cầu cảng** (sheet `QL Cầu cảng`), không thuộc Bến cảng.
 
-Bến cảng là đơn vị hạ tầng chi tiết bên trong mỗi Cảng biển, nơi trực tiếp tiếp nhận và phục vụ tàu bè. Việc số hóa quy trình đăng ký Bến cảng đảm bảo:
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Đơn vị quản lý (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `orgUnitId` — TreeSelect (UUID); cascade với Cảng biển; Admin Cục chọn mọi đơn vị, còn lại auto-fill |
+| 2 | Thuộc cảng biển (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `portId` — TreeSelect (UUID); lọc theo đơn vị + trạng thái đã duyệt; đổi cảng → sinh lại mã |
+| 3 | Mã bến cảng | Text (read-only, tự sinh {mã-cảng-mẹ}-B{XX}) | Có (hệ thống tự sinh) | Có | Có | Có | Có | Có | `berthCode` — tự sinh `{mã-cảng-mẹ}-B{XX}`, bất biến |
+| 4 | Tên bến cảng (bắt buộc) | Text | Có | Có | Có | Có | Có | Có | `berthName` — bắt buộc ngay cả khi Lưu tạm |
+| 5 | Thuộc luồng hàng hải | Select | Không | Có | Có | Có | Có | Có | `waterway` / `waterwayId` |
+| 6 | Đơn vị khai thác | Text | Không | Không | Không | Có | Có | Có | `operator` |
+| 7 | Địa điểm (Tỉnh/TP) (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `provinceId` |
+| 8 | Địa điểm chi tiết | Text | Không | Không | Không | Có | Có | Có | `detailedLocation` |
+| 9 | Loại kết cấu bến cảng | Select | Không | Có | Có | Có | Có | Có | `structureType` — 4 giá trị danh mục |
+| 10 | Công năng khai thác | Text | Không | Có | Có | Có | Có | Có | `operationalFunction` |
+| 11 | Tổng diện tích (ha) | Number | Không | Không | Không | Có | Có | Có | `totalArea` — DECIMAL ≥ 0 |
+| 12 | Năng lực thông qua thiết kế | Number | Không | Không | Không | Có | Có | Có | `designThroughput` — DECIMAL ≥ 0 |
+| 13 | Năng lực thông qua hiện trạng | Number | Không | Không | Không | Có | Có | Có | `currentThroughput` — DECIMAL ≥ 0 |
+| 14 | Cỡ tàu tiếp nhận lớn nhất (DWT) | Number | Không | Không | Không | Có | Có | Có | `maxVesselSize` — DECIMAL ≥ 0 |
+| 15 | Quy hoạch năng lực thông qua | Number | Không | Không | Không | Có | Có | Có | `plannedThroughput` — DECIMAL ≥ 0 |
+| 16 | Sản lượng thực tế năm gần nhất | Number | Không | Không | Không | Có | Có | Có | `latestCargoVolume` — DECIMAL ≥ 0 |
+| 17 | Tình trạng (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `operationalStatus` — enum NOT_YET_OPERATIONAL / OPERATIONAL / SUSPENDED |
+| | **Thông tin công bố** | | | | | | | | |
+| 18 | Thời điểm công bố | Date | Không | Không | Không | Có | Có | Có | `openingAnnouncementDate` |
+| 19 | Quyết định công bố | Text | Không | Không | Không | Có | Có | Có | `openingDecision` (VARCHAR 500) |
+| 20 | Văn bản thỏa thuận | Text | Không | Không | Không | Có | Có | Có | `investmentAgreement` (VARCHAR 2000) |
+| | **Thông tin vị trí (GIS + tọa độ)** | | | | | | | | |
+| 21 | Loại đối tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | `coordinateSystem`/`displayRule`/`mapSymbolId`/`spatialId` |
+| 22 | Biểu tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 23 | Hệ quy chiếu (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 24 | Quy tắc hiển thị (GIS) | Text | Không | Không | Không | Có | Có | Có | (GIS) |
+| 25 | Tọa độ GPS (bắt buộc ≥1 khi gửi duyệt) | Bảng con (Vĩ độ, Kinh độ) | Có* | Không | Không | Có | Có | Có | `coordinates[]` — latitude [-90,90], longitude [-180,180]; lưu bảng `berth_coordinate` |
+| | **File đính kèm** | | | | | | | | |
+| 26 | File đính kèm | Upload | Không | Không | Không | Có | Có | Có | `attachments[]` — PDF/DOC/DOCX/XLS/XLSX/JPG/PNG/TIFF; ≤ 20MB; ≤ 10 files; upload sau khi tạo |
+| | **Trạng thái & Kiểm toán (chỉ ở trang Chi tiết/Danh sách)** | | | | | | | | |
+| 27 | Trạng thái phê duyệt | Badge (read-only) | Không (read-only) | Có | Có | Có | Không | Không | `approvalStatus` — 7 trạng thái (tài liệu nền mục 3.5) |
+| | **Thông tin log cập nhật** | | | | | | | | |
+| 28 | Ngày cập nhật | DatePicker | Không (read-only) | Có | Có | Có | Không | Không | Chỉ Danh sách/Chi tiết — Admin Cục / admin-operation |
+| 29 | Cán bộ cập nhật | Text (read-only) | Không (read-only) | Có | Không | Có | Không | Không | Chỉ Danh sách/Chi tiết — Admin Cục / admin-operation |
+| 30 | Ngày gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalAt` |
+| 31 | Cán bộ gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalBy` |
+| 32 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedAt` |
+| 33 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedBy` |
+| 34 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovalContent` |
+| 35 | Ngày phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedAt` |
+| 36 | Cán bộ phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedBy` |
+| 37 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovalContent` |
+| | **Kết cấu hạ tầng thuộc cầu cảng** | | | | | | | | |
+| 38 | Tên kết cấu hạ tầng | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 40 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 42 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 43 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 44 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 45 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 46 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 47 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 48 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 49 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 50 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 51 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
-- Dữ liệu Bến cảng được chuẩn hóa theo cấu trúc thống nhất, gắn với Cảng mẹ và Đơn vị quản lý
-- Mã bến được hệ thống tự động sinh — loại bỏ sai sót do nhập tay
-- Quy trình phê duyệt 2 cấp (Cảng vụ/Chi cục → Cục) đảm bảo kiểm soát chất lượng
-- Tích hợp dữ liệu GIS phục vụ hiển thị bản đồ
-- Đầy đủ thông tin công bố, năng lực khai thác, file đính kèm
+## 3. Trạng thái và phê duyệt
 
-### 1.3. Luồng hoạt động chính
+- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
+- **Lưu tạm:** tối thiểu đơn vị QL + Cảng biển + Tên bến → trạng thái `DRAFT` (nháp), chỉnh sửa tiếp được.
+- **Gửi phê duyệt:** đầy đủ trường bắt buộc (ĐVQL, Cảng biển, Tên bến, Tỉnh/TP, Tình trạng, ≥ 1 GPS) → hồ sơ vào quy trình 2 cấp (vòng 1: Cảng vụ/Chi cục; vòng 2: Cục); ghi nhận người/ngày gửi phê duyệt (`submittedForApprovalBy`/`submittedForApprovalAt` — tương ứng entity `Berth`).
+- **Lưu và phê duyệt** (chỉ admin-operation / system-admin): đạt trạng thái đã duyệt ngay, tạo PheDuyetLog cấp Cục (ngoại lệ đã chốt của quy trình — đường "lưu thẳng Đã duyệt" dùng cho dữ liệu tích hợp theo file chuẩn, BA/SA cần xác nhận phạm vi áp dụng).
 
-Người dùng đăng nhập, chọn "Quản lý Bến cảng" → "Tạo mới". Form 4 nhóm hiển thị. Chọn Đơn vị quản lý → Cảng biển (lọc) → mã bến tự sinh. Nhập các trường. Chọn action: Lưu tạm / Gửi phê duyệt / Lưu và phê duyệt. Khi Gửi phê duyệt, hệ thống lưu `ngay_gui_phe_duyet` và `can_bo_gui_phe_duyet`.
+## 4. Quy tắc và phân quyền riêng
 
----
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
-## 2. Ai dùng? Dùng như thế nào?
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-### 2.1. Logic phân quyền chung
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-014-01 | Mã bến tự động sinh `{mã-cảng-mẹ}-B{XX}`, duy nhất, bất biến; server kiểm tra mã không bị sửa | Create |
+| BR-014-02 | Cascade ĐVQL → Cảng biển: danh sách cảng lọc theo đơn vị + trạng thái đã duyệt; đổi cảng → sinh lại mã | Create |
+| BR-014-03 | Lưu tạm: tối thiểu ĐVQL + Cảng biển + Tên bến, trạng thái `DRAFT` | Create (draft) |
+| BR-014-04 | Gửi phê duyệt: bắt buộc ĐVQL, Cảng biển, Tên bến, Tỉnh/TP, Tình trạng, ≥ 1 GPS | Create (submit) |
+| BR-014-05 | GPS hợp lệ: vĩ độ [-90, 90], kinh độ [-180, 180]; số liệu ≥ 0 | Create |
+| BR-014-06 | Ghi nhận ngày/người gửi phê duyệt (`submittedForApprovalAt`/`By`) khi Gửi phê duyệt | Create (submit) |
+| BR-014-07 | File đính kèm: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF; ≤ 20MB; ≤ 10 files | Upload |
+| BR-014-08 | Đơn vị QL gán theo tài liệu nền mục 3.3 — không để NULL; validate phạm vi khi ghi | Create |
 
-| Vai trò | Quyền xem | Quyền thao tác | Phạm vi dữ liệu | Ghi chú |
-|---|---|---|---|---|
-| system-admin (Admin Cục) | Xem toàn bộ | Tạo mới, Lưu tạm, Gửi PD, Lưu & PD | Toàn bộ hệ thống | **Không giới hạn ĐVQL** |
-| admin-operation | Xem toàn bộ | Tạo mới, Lưu tạm, Gửi PD, Lưu & PD | Toàn bộ hệ thống | Vai trò vận hành chính |
-| admin | Xem trong đơn vị | Tạo mới, Lưu tạm | Trong đơn vị | Không Gửi PD |
-| Chuyên viên / Lãnh đạo đơn vị | Xem trong đơn vị | Tạo mới, Lưu tạm | Trong đơn vị | **ĐVQL auto-fill, read-only** |
-| Lãnh đạo (cấp Cục) | Xem toàn bộ | Không | — | Chỉ duyệt từ F-017 |
-| Cá nhân | Không | Không | — | |
+### 4.2. Phân quyền riêng
 
-### 2.2. Logic phân quyền đặc biệt cho Admin Cục
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Tạo mới, Lưu tạm, Gửi phê duyệt | `berth:create` |
+| Lưu và phê duyệt | `berth:create` + quyền phê duyệt nhanh (admin-operation / system-admin — SA chốt) |
+| Upload / xóa file đính kèm | `berth:create` |
 
-- Xem full dữ liệu; xem người tạo/thời gian tạo; xem người sửa/thời gian sửa
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền (kể cả Lưu và phê duyệt) |
+| admin-operation | Tạo mới, Lưu tạm, Gửi PD, Lưu và phê duyệt |
+| admin | Tạo mới, Lưu tạm (không Gửi PD, không Lưu và phê duyệt) |
+| Chuyên viên / Lãnh đạo đơn vị | Tạo mới, Lưu tạm (ĐVQL auto-fill) |
+| Lãnh đạo (cấp Cục) | Không tạo mới — chỉ duyệt từ F-017 |
 
----
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — full quyền + xem metadata người tạo/người sửa/thời gian.
 
-## 3. User Stories
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-### Mức Must
-- **US-014-01:** Là Chuyên viên/admin, tôi muốn mở form "Tạo mới Bến cảng" từ danh sách.
-- **US-014-02:** Là Admin Cục, tôi muốn chọn ĐVQL từ dropdown; là Chuyên viên, tôi muốn ĐVQL auto-fill (read-only).
-- **US-014-03:** Là Chuyên viên, tôi muốn hệ thống tự sinh mã bến khi chọn Cảng biển.
-- **US-014-04:** Là Chuyên viên, tôi muốn "Lưu tạm" để lưu bản nháp.
-- **US-014-05:** Là admin-operation/system-admin, tôi muốn "Gửi phê duyệt" để chuyển bến sang chờ Cảng vụ duyệt.
-- **US-014-06:** Là admin-operation/system-admin, tôi muốn "Lưu và phê duyệt" để duyệt luôn.
-- **US-014-07:** Là Chuyên viên, tôi muốn thêm nhiều tọa độ GPS và upload file đính kèm.
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung (tài liệu nền mục 3.5) |
+| 2 | Có bước phê duyệt không | Có — Gửi phê duyệt 2 cấp (duyệt tại F-017); Lưu và phê duyệt (admin-operation/system-admin) |
+| 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + theo Cảng biển cha (portId); cascade ĐVQL → Cảng biển |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — nút "Lưu và phê duyệt" chỉ hiện với admin-operation / system-admin |
+| 5 | Quyền riêng | `berth:create` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — file đính kèm: PDF/DOC/DOCX/XLS/XLSX/JPG/PNG/TIFF, ≤ 20MB, ≤ 10 files |
+| 8 | Giao diện khác mẫu chung | Không |
 
-### Mức Should
-- **US-014-08:** Là Chuyên viên, tôi muốn nút "Hủy" có xác nhận nếu form có thay đổi.
-- **US-014-09:** Là Chuyên viên, tôi muốn form hỗ trợ Tab/Enter.
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-### Mức Could
-- **US-014-10:** Là Chuyên viên, tôi muốn xem trước vị trí bến trên bản đồ từ tọa độ đã nhập.
-
----
-
-## 4. Yêu cầu chức năng (Acceptance Criteria)
-
-### Nhóm 1: Truy cập và hiển thị
-
-**AC-014-01 — Truy cập:** Chuyên viên, admin, admin-op, system-admin → menu → form hiển thị. Khác → ẩn nút, HTTP 403.
-**AC-014-02 — Cascade ĐVQL → Cảng biển:** Chọn ĐVQL → Cảng biển lọc theo đơn vị + HIEN_HANH. Chưa chọn → dropdown Cảng biển disable.
-**AC-014-03 — Mã bến tự sinh:** Chọn Cảng biển → `GET /generate-code?cangBienId=` → hiển thị RO. Đổi Cảng biển → sinh lại.
-
-### Nhóm 2: Lưu tạm
-
-**AC-014-04 — Lưu tạm:** ĐVQL + Cảng biển + Tên bến → `POST` action=draft → `status=NHAP`. Thiếu Tên bến → lỗi.
-
-### Nhóm 3: Gửi phê duyệt
-
-**AC-014-05 — Gửi PD:** Đầy đủ trường bắt buộc + ≥1 GPS → `POST` action=submit → `status=CHO_PHE_DUYET`, lưu `ngay_gui_phe_duyet`, `can_bo_gui_phe_duyet` → toast "Đã gửi phê duyệt, chờ Cảng vụ/Chi cục duyệt".
-**AC-014-06 — Thiếu trường:** Thiếu Tỉnh/TP, Tình trạng, hoặc 0 GPS → lỗi từng trường.
-
-### Nhóm 4: Lưu và phê duyệt
-
-**AC-014-07 — Lưu & PD:** admin-op/system-admin → đầy đủ + ≥1 GPS → `status=DA_PHE_DUYET` ngay, tạo PheDuyetLog (cap=CUC).
-
-### Nhóm 5: Xác thực
-
-**AC-014-08 — GPS:** [-90,90], [-180,180]. Client + server.
-**AC-014-09 — Số ≥0:** Diện tích, Năng lực, Cỡ tàu, Sản lượng.
-**AC-014-10 — File:** PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF; ≤20MB; ≤10 files.
-
-### Nhóm 6: Phân quyền
-
-**AC-014-11 — Admin Cục:** ĐVQL dropdown chọn mọi đơn vị.
-**AC-014-12 — Chuyên viên/LĐ đơn vị:** ĐVQL auto-fill, RO.
-**AC-014-13 — Ẩn nút:** "Gửi PD" cho admin-op/system-admin; "Lưu & PD" cho admin-op/system-admin; "Lưu tạm" cho tất cả có quyền.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Quy tắc | Áp dụng cho | Nguồn | Ngoại lệ |
-|---|---|---|---|---|
-| BR-014-01 | **Mã bến tự sinh, bất biến** — `{mã-cảng-mẹ}-B{XX}`, duy nhất toàn hệ thống | Tạo mới, Cập nhật | Thiết kế | Đổi Cảng biển → sinh lại |
-| BR-014-02 | **Cascade ĐVQL → Cảng biển** — lọc theo đơn vị + HIEN_HANH | Tạo mới | Nghiệp vụ | Admin Cục xem toàn bộ |
-| BR-014-03 | **Lưu tạm tối thiểu** — ĐVQL + Cảng biển + Tên bến; status=NHAP | Lưu tạm | Nghiệp vụ | Không |
-| BR-014-04 | **Gửi PD đầy đủ** — ĐVQL, Cảng biển, Tên bến, Tỉnh/TP, Tình trạng, ≥1 GPS; status=CHO_PHE_DUYET | Gửi PD | Nghiệp vụ | Không |
-| BR-014-05 | **Lưu & PD bỏ qua 2 cấp** — admin-op/system-admin; status=DA_PHE_DUYET ngay | Lưu & PD | Nghiệp vụ | Không |
-| BR-014-06 | **GPS hợp lệ:** [-90,90], [-180,180] | Tất cả | WGS84 | Không |
-| BR-014-07 | **Loại kết cấu enum 4 giá trị** | Tạo mới, Cập nhật | Thiết kế | Không |
-| BR-014-08 | **Phân quyền ĐVQL** — Admin Cục chọn mọi đơn vị; còn lại auto-fill | Tạo mới | RBAC | Admin Cục |
-| BR-014-09 | **Ghi nhận ngày/người gửi PD** — `ngay_gui_phe_duyet`, `can_bo_gui_phe_duyet` khi Gửi PD | Gửi PD | F-018 | Không |
-| BR-014-10 | **File đính kèm:** PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF; ≤20MB; ≤10 | Upload | Hạ tầng | Không |
-| BR-014-11 | **Audit log** — actor, thời gian, hành động, IP | Audit | Bảo mật | Không |
-
----
-
-## 6. Mô hình dữ liệu
-
-> 🔴 = trường mới.
-
-### 6.1. Bảng `ben_cang`
-
-**Thông tin chung:**
-- id, ma_ben, ten_ben, org_unit_id, cang_bien_id, luong_hang_hai_id, don_vi_khai_thac
-- tinh_thanh_pho, dia_chi_chi_tiet, loai_ket_cau (enum 4), cong_nang_khai_thac
-- tong_dien_tich_ha, nang_luc_thiet_ke, nang_luc_hien_trang
-- co_tau_tiep_nhan_max_dwt, quy_hoach_nang_luc, san_luong_thuc_te_nam_gan_nhat
-- 🔴 **tinh_trang:** NVARCHAR(50) — `DANG_KHAI_THAC` / `CHUA_KHAI_THAC` / `DUNG_KHAI_THAC`
-
-**Thông tin công bố:** thoi_diem_cong_bo, quyet_dinh_cong_bo, van_ban_thoa_thuan
-
-**Thông tin GIS:** object_type, symbol_id, coordinate_system, display_rule
-
-**Trạng thái & Audit:**
-- 🔴 **trang_thai_phe_duyet:** NVARCHAR(50) — `NHAP` / `CHO_PHE_DUYET` / `CHO_PD_CAP_CUC` / `DA_PHE_DUYET` / `TU_CHOI`, DEFAULT 'NHAP'
-- 🔴 **ngay_gui_phe_duyet:** TIMESTAMP — lưu khi Gửi PD
-- 🔴 **can_bo_gui_phe_duyet:** NVARCHAR(100) — lưu khi Gửi PD
-- 🔴 **ngay_pd_cang_vu:** TIMESTAMP — lưu khi Cảng vụ duyệt (F-017)
-- 🔴 **can_bo_pd_cang_vu:** NVARCHAR(100) — lưu khi Cảng vụ duyệt (F-017)
-- 🔴 **ngay_pd_cuc:** TIMESTAMP — lưu khi Cục duyệt (F-017)
-- 🔴 **can_bo_pd_cuc:** NVARCHAR(100) — lưu khi Cục duyệt (F-017)
-- ly_do_tu_choi, ghi_chu, created_by, created_at, updated_by, updated_at, deleted_at
-
-### 6.2. `ben_cang_coordinate` & `ben_cang_attachment`
-
-Như bản cũ.
-
----
-
-## 7. API Endpoints
-
-| Method | Endpoint | Mô tả | Phân quyền |
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| POST | `/api/v1/ben-cang` | Tạo mới. Body: action (`draft`/`submit`/`approve`) + thông tin + coordinates[] | `bencang:create` |
-| GET | `/api/v1/ben-cang/generate-code?cangBienId=` | Sinh mã bến | `bencang:create` |
-| GET | `/api/v1/cang-bien?orgUnitId=&status=HIEN_HANH` | Danh sách Cảng biển | `bencang:create` |
-| GET | `/api/v1/org-units` | Danh sách đơn vị | `bencang:create` |
-| GET | `/api/v1/luong-hang-hai` | Danh sách luồng HH | `bencang:create` |
-| POST | `/api/v1/ben-cang/{id}/attachments` | Upload file | `bencang:create` |
-| DELETE | `/api/v1/ben-cang/{id}/attachments/{attId}` | Xóa file (khi NHAP) | `bencang:create` |
+| GET | `/api/v1/berths/generate-code?portId=` | Sinh mã bến `{mã-cảng-mẹ}-B{XX}` | `berth:create` |
+| GET | `/api/v1/ports?orgUnitId=&status=APPROVED` | Danh sách Cảng biển để chọn (theo đơn vị, đã duyệt) | `berth:create` |
+| POST | `/api/v1/berths` | Tạo mới (body: thông tin + coordinates[] + action `draft`/`submit`/`approve`), 1 transaction | `berth:create` |
+| POST | `/api/v1/berths/{id}/attachments` | Upload file đính kèm | `berth:create` |
+| DELETE | `/api/v1/berths/{id}/attachments/{attId}` | Xóa file đính kèm (khi nháp) | `berth:create` |
 
----
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-## 8. Chi tiết nghiệp vụ
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-### 8.1. Cascade ĐVQL → Cảng biển → Mã bến
+**Bảng `berths`** (Bến cảng — cấu trúc theo entity `Berth`): id (UUID PK), berthCode (VARCHAR 50, UNIQUE, NOT NULL), berthName (VARCHAR 255, NOT NULL), portId (UUID, NOT NULL FK → ports), waterway (VARCHAR 255), waterwayId (UUID), ~~length (DECIMAL 15,2)~~, ~~width (DECIMAL 15,2)~~, ~~berthType (SMALLINT — enum `BerthType`)~~, ~~channelDepth (DECIMAL 10,2)~~, operationalStatus (SMALLINT — enum `OperationalStatus`), approvalStatus (SMALLINT, NOT NULL), orgUnitId (UUID, NOT NULL), securityLevel (SMALLINT, default NORMAL), operationalFunction (VARCHAR 255), mapSymbolId (UUID), spatialId (UUID), provinceId (INT), detailedLocation (VARCHAR 500), coordinateSystem (INT), displayRule (INT), operator (VARCHAR 255), totalArea (DECIMAL 19,4), designThroughput (DECIMAL 19,4), currentThroughput (DECIMAL 19,4), maxVesselSize (DECIMAL 19,4), plannedThroughput (DECIMAL 19,4), latestCargoVolume (DECIMAL 19,4), openingAnnouncementDate (TIMESTAMP), openingDecision (VARCHAR 500), investmentAgreement (VARCHAR 2000), structureType (INT), activityStatus (VARCHAR 50) + các trường theo dõi phê duyệt 2 cấp (submittedForApprovalAt/By, portAuthorityApprovedAt/By, portAuthorityApprovalContent, departmentApprovedAt/By, departmentApprovalContent, rejectionReason) + audit từ `BaseEntity`; filter `orgUnitFilter` + `recordSecurityLevelFilter`.
 
-Mở form → Chọn ĐVQL → Cảng biển lọc theo đơn vị + HIEN_HANH → Chọn Cảng biển → GET /generate-code → mã bến RO → Đổi Cảng biển → sinh lại mã.
-
-### 8.2. Lưu tạm
-
-ĐVQL + Cảng biển + Tên bến → "Lưu tạm" → POST action=draft → status=NHAP → Audit log → Response 201.
-
-### 8.3. Gửi phê duyệt
-
-Đầy đủ + ≥1 GPS → "Gửi phê duyệt" → POST action=submit → status=CHO_PHE_DUYET → Lưu ngay_gui_phe_duyet = NOW(), can_bo_gui_phe_duyet = currentUser → Audit log → Response 201.
-
-### 8.4. Lưu và phê duyệt
-
-admin-op/system-admin → "Lưu và phê duyệt" → POST action=approve → status=DA_PHE_DUYET → Tạo PheDuyetLog (cap=CUC, action=APPROVE) → Audit log → Response 201.
-
----
-
-## 9. Yêu cầu phi chức năng
-
-- **Hiệu năng:** POST ≤2s, GET generate-code ≤200ms, ≥50 concurrent
-- **Mở rộng:** Bảng chuẩn hóa; quy tắc sinh mã configurable
-- **Bảo mật:** RBAC; server-side validation; tampering detection mã bến; HTTPS
-- **Độ tin cậy:** Transaction atomicity; lock khi sinh mã; audit log
-- **UX:** Responsive; loading indicator; modal xác nhận rời form; WCAG 2.1 AA
-- **Pháp lý:** Chuẩn mã VN-301; audit log ≥2 năm
-
----
-
-## 10. Yêu cầu giao diện
-
-> Token từ theme.ts và tokens.ts.
-
-### 10.1. Cấu trúc form
-
-1. Thông tin chung — ĐVQL*, Cảng biển*, Mã bến (RO), Tên bến*, Tỉnh/TP*, Địa chỉ, Loại kết cấu, Công năng, Tổng DT, Năng lực TK, Năng lực HT, Cỡ tàu max, QH năng lực, Sản lượng, Tình trạng*
-2. Thông tin công bố — Thời điểm, Quyết định, Văn bản thỏa thuận
-3. Thông tin vị trí — Loại ĐT, Biểu tượng, Hệ quy chiếu, Quy tắc + Bảng tọa độ
-4. File đính kèm — Upload + danh sách
-5. Action — "Lưu tạm" / "Gửi phê duyệt" (primary) / "Lưu và phê duyệt" (admin-op/system-admin)
-
-### 10.2. Bảng trường form
-
-| STT | Tên trường | Loại ĐK | Bắt buộc | Ghi chú |
-|---|---|---|---|---|
-| 1 | Đơn vị quản lý | Select | Có | Admin Cục: dropdown; còn lại: auto-fill RO |
-| 2 | Thuộc cảng biển | Select | Có | Lọc theo ĐVQL; trigger sinh mã |
-| 3 | Mã bến cảng | Text (RO) | Có | Tự sinh `{mã-cảng-mẹ}-B{XX}` |
-| 4 | Tên bến cảng | Text | Có | |
-| 5 | Thuộc luồng hàng hải | Select | Không | |
-| 6 | Đơn vị khai thác | Text | Không | |
-| 7 | Địa điểm (Tỉnh/TP) | Select | Có* | *Submit |
-| 8 | Địa điểm chi tiết | Text | Không | |
-| 9 | Loại kết cấu bến cảng | Select | Không | 4 enum |
-| 10 | Công năng khai thác | Text | Không | |
-| 11 | Tổng diện tích (ha) | Number | Không | ≥0 |
-| 12 | Năng lực thông qua thiết kế | Number | Không | ≥0 |
-| 13 | Năng lực thông qua hiện trạng | Number | Không | ≥0 |
-| 14 | Cỡ tàu tiếp nhận lớn nhất (DWT) | Number | Không | ≥0 |
-| 15 | Quy hoạch năng lực thông qua | Number | Không | ≥0 |
-| 16 | Sản lượng thực tế năm gần nhất | Number | Không | ≥0 |
-| 17 | Tình trạng | Select | Có* | Đang/Chưa/Dừng khai thác |
-| 18 | Thời điểm công bố | Date | Không | |
-| 19 | Quyết định công bố | Text | Không | |
-| 20 | Văn bản thỏa thuận | Text | Không | |
-| 21 | Loại đối tượng | Select | Không | |
-| 22 | Biểu tượng | Select | Không | |
-| 23 | Hệ quy chiếu | Select | Không | |
-| 24 | Quy tắc hiển thị | Text | Không | |
-| 25 | Tọa độ GPS | Bảng con | Có* | *≥1 Submit |
-| 26 | File đính kèm | Upload | Không | ≤10, 20MB |
-
----
-
-## Consolidation Note
-
-Merged with UI feature F-075 (ui-ql-bc-tao-moi) — 2026-07-31
+**Bảng con:** `berth_coordinate` (id, berthId FK, latitude DECIMAL(9,6) NOT NULL, longitude DECIMAL(9,6) NOT NULL, sortOrder INT) — ≥ 1 bản ghi khi submit; `berth_attachment` (id, berthId FK, fileName, filePath, fileSize, contentType, uploadedBy, uploadedAt).

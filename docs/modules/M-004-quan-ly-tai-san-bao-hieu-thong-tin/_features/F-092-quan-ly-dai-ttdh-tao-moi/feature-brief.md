@@ -7,377 +7,195 @@ status: proposed
 classification: local
 priority: medium
 created: 2026-07-07T03:32:57Z
-last-updated: 2026-08-11
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 x-legacy:
   source-paths:
     - src/main/java/com/hanghai/kchtg/station/
 ---
+
 # Đặc tả nghiệp vụ: Quản lý Đài TTDH - Tạo mới
 
-**Tài liệu:** BA Feature Brief
-**Feature:** F-092
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-092
 **Module:** M-004 — Quản lý tài sản Báo hiệu & Thông tin
-**Mã chức năng:** QLKC-078
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-08-11
+**Loại:** chức năng có bước phê duyệt
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + tài liệu yêu cầu gốc (TKCT)
+
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
+
+> **⚠️ BẮT BUỘC KHAI BÁO PHẠM VI DỮ LIỆU THEO ĐƠN VỊ (Data Scope):**
+> Trong bảng **\"Điểm khác biệt so với mẫu chung\"** (mục 5, dòng 3 — *\"Lọc cha-con / theo đơn vị\"*), BA **PHẢI khai báo đầy đủ** (có/không, trường đơn vị nào, cơ chế, ngoại lệ) và **SA chốt cơ chế** khi duyệt — không được để trống hoặc ghi chung chung.
+> Nếu chức năng quản lý dữ liệu nghiệp vụ thuộc đơn vị, brief PHẢI khai báo: (1) trường đơn vị bắt buộc/không, (2) nguồn gán đơn vị khi tạo (request hay đơn vị user), (3) chiều ghi có validate phạm vi không.
+> Quy tắc chi tiết xem `AGENTS.md` mục **Data Scope Convention**; danh sách lỗ hổng đã gặp xem `docs/intel/data-scope-gap-report.md`.
+
+> **⚠️ LƯU Ý QUAN TRỌNG — Sửa (S) = false toàn bộ trường:**
+> Sheet Excel `Đài TTDH` đánh dấu **Sửa = false** cho TOÀN BỘ trường (cột \"Sửa\" trống). Tuy nhiên feature F-093 (Cập nhật) vẫn tồn tại trong hệ thống. Ghi chú này được thêm dưới dạng banner để cảnh báo mâu thuẫn — **KHÔNG tự xóa feature cập nhật**. Khi triển khai F-093, cần xác nhận lại với BA/SA về việc có cho phép sửa trường nào không.
 
 ---
 
-## 1. Tổng quan
+## 1. Mô tả ngắn
 
-### 1.1. Tính năng này làm gì?
+Cho phép cán bộ nghiệp vụ tạo mới một Đài Thông tin Duyên hải (TTDH) trong hệ thống. Form tạo mới bao gồm 3 nhóm thông tin: (A) thông tin chung hành chính — đơn vị quản lý, tên đài, phân loại, địa điểm, tình trạng; (B) thông tin đặc thù MVT — vùng phủ sóng, dịch vụ cung cấp, ghi chú; (C) vị trí GIS — loại đối tượng, biểu tượng, hệ quy chiếu, tọa độ WGS84, file đính kèm. Sau khi tạo, bản ghi ở trạng thái DRAFT, cần qua phê duyệt 2 cấp (Cảng vụ/Chi cục → Cục) trước khi thành ACTIVE.
 
-Cho phép cán bộ nghiệp vụ tạo mới một Đài Thông tin Duyên hải (TTDH) trong hệ thống. Form tạo mới bao gồm các nhóm thông tin:
+## 2. Trường dữ liệu
 
-**Nhóm A — Thông tin chung (hành chính):**
-- **Đơn vị quản lý (unitId):** mặc định theo đơn vị của user đăng nhập (R4), bắt buộc. Với tài khoản Admin Cục: hiển thị dropdown chọn đơn vị (không tự động điền).
-- **Đơn vị khai thác (operatingUnitId):** có thể khác đơn vị quản lý, không bắt buộc (R6).
-- **Mã đài (code):** hệ thống tự sinh format `DTTDH-xxxxx`, không cho người dùng nhập, immutable (R1, R2, R3).
-- **Tên đài (name):** bắt buộc, tối đa 255 ký tự.
-- **Phân loại đài (stationLevel):** dropdown Loại I → Loại V, bắt buộc.
-- **Địa điểm — Tỉnh/TP (provinceId):** bắt buộc.
-- **Địa điểm chi tiết (detailedLocation):** bắt buộc, tối đa 500 ký tự.
-- **Vùng phủ sóng (coverageArea):** không bắt buộc, mô tả phạm vi hoạt động.
-- **Dịch vụ cung cấp (servicesProvided):** chọn nhiều từ 9 dịch vụ cố định (xem 2.2 trong handoff), không bắt buộc.
-- **Tình trạng (usageStatus):** Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành. Mặc định: Chưa khai thác/vận hành. **Đây là tình trạng vận hành thực tế, KHÔNG phải trạng thái phê duyệt.**
-- **Ghi chú (remarks):** tối đa 2000 ký tự.
+Bảng mô tả các trường trên form tạo mới, trích từ sheet `Đài TTDH` trong Excel `HH_Tính năng & danh sách các trường thông tin.xlsx`:
 
-**Nhóm B — GIS & Bản đồ:**
-- **Loại đối tượng (geometryType):** Điểm / Đường / Vùng.
-- **Biểu tượng (mapSymbolId):** icon hiển thị trên bản đồ.
-- **Hệ quy chiếu (coordinateSystem):** hệ tọa độ.
-- **Quy tắc hiển thị (displayRule):** cách hiển thị trên bản đồ.
-- **Bảng tọa độ (coordinates):** bảng động thêm/xóa dòng, mỗi dòng gồm Vĩ độ N* + Kinh độ E* (WGS84), tối thiểu 1 dòng.
+| STT | Tên trường (theo Excel) | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Đơn vị quản lý (bắt buộc) | SelectOrgCode | Có | Có | Có | Có | Có | Không | Mặc định theo đơn vị user; Admin Cục được chọn đơn vị khác |
+| 2 | Đơn vị khai thác | SelectCateOther | Có | Không | Không | Có | Có | Không | Có thể khác đơn vị quản lý |
+| 3 | Phân loại đài (bắt buộc) | SelectAppParams | Có | Có | Có | Có | Có | Không | Dropdown: Loại I → Loại V |
+| 4 | Mã đài | Input (disabled, tự sinh DTTDH-{seq}) | Có | Có | Có | Có | Có | Không | Hệ thống tự sinh, immutable |
+| 5 | Tên đài (bắt buộc) | InputTextArea | Có | Có | Có | Có | Có | Không | Tối đa 255 ký tự |
+| 6 | Địa điểm (Tỉnh/TP) (bắt buộc) | SelectCateOther | Có | Có | Có | Có | Có | Không | |
+| 7 | Địa điểm chi tiết (bắt buộc) | InputTextArea | Có | Không | Không | Có | Có | Không | Tối đa 500 ký tự |
+| 8 | Tình trạng (bắt buộc) | SelectAppParams | Có | Có | Có | Có | Có | Không | Chưa khai thác / Đang khai thác / Dừng khai thác |
+| 9 | Vùng phủ sóng | InputTextArea | Không | Không | Không | Có | Có | Không | |
+| 10 | Dịch vụ cung cấp | SelectAppParams (multi-select) | Không | Không | Không | Có | Có | Không | 9 dịch vụ cố định |
+| 11 | Ghi chú | InputTextArea | Không | Không | Không | Có | Có | Không | Tối đa 2000 ký tự |
+| 12 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Có | GIS — read-only vận hành/bảo trì/sự cố |
+| 13 | Biểu tượng | Select | Không | Không | Không | Có | Có | Có | GIS |
+| 14 | Hệ quy chiếu | Text | Không | Không | Không | Có | Có | Có | GIS |
+| 15 | Quy tắc hiển thị | Text | Không | Không | Không | Có | Có | Có | GIS |
+| 16 | Tọa độ | LongLatTable | Không | Không | Không | Có | Có | Có | GIS — WGS84, bảng động thêm/xóa dòng |
+| 17 | File đính kèm | UploadFileTable | Không | Không | Không | Có | Có | Có | Quyết định thành lập, hồ sơ kỹ thuật, ảnh hiện trạng |
 
-**Nhóm C — File đính kèm:**
-- Upload nhiều file (quyết định thành lập, hồ sơ kỹ thuật, ảnh hiện trạng...).
+**⚠️ Ghi chú về trường Sửa=false toàn bộ:** Sheet Excel đánh dấu cột \"Sửa\" trống (false) cho tất cả 17 trường trên form tạo mới. Tuy nhiên F-093 (Cập nhật) vẫn tồn tại — cần xác nhận lại với BA/SA khi triển khai.
 
-**Các trường bị ẩn:** Tần số liên lạc, transmitPower, equipmentType — không hiển thị trên form Đài TTDH.
+## 3. Trạng thái và phê duyệt
 
-Form có 3 nút Lưu:
-- **Lưu tạm** → status = Lưu tạm
-- **Lưu và gửi phê duyệt** → nếu user thuộc Chi cục/Cảng vụ: Chờ duyệt CC; nếu user thuộc Cục: Chờ duyệt Cục (bỏ qua CC)
-- **Lưu và phê duyệt** → status = Đã phê duyệt (chỉ Lãnh đạo Cục — ROLE_ADMIN, ROLE_SYSTEM_ADMIN)
+- **7 trạng thái** (lưu dạng số trong DB, không lưu chữ):
+  1. `DRAFT` (0) — Nháp, bản ghi vừa tạo
+  2. `PROPOSED` (1) — Đã gửi phê duyệt
+  3. `APPROVED_L1` (2) — Đã duyệt cấp 1 (Cảng vụ / Chi cục)
+  4. `APPROVED_L2` (3) — Đã duyệt cấp 2 (Cục)
+  5. `ACTIVE` (4) — Đang hoạt động
+  6. `SUSPENDED` (5) — Tạm ngừng
+  7. `DELETED` (6) — Đã xóa (soft delete)
 
-### 1.2. Tại sao cần tính năng này?
+- **Phê duyệt 2 cấp:**
+  - **Cấp 1 (Cảng vụ / Chi cục):** Xem bản ghi ở trạng thái PROPOSED, quyết định DUYỆT hoặc TỪ CHỐI. Khi từ chối: bắt buộc nhập lý do.
+  - **Cấp 2 (Cục):** Chỉ xem bản ghi đã được cấp 1 duyệt (APPROVED_L1), quyết định DUYỆT hoặc TỪ CHỐI. Khi từ chối: bắt buộc nhập lý do.
+  - Sau khi cấp 2 duyệt → chuyển sang ACTIVE.
+  - Trường từ chối ở bất kỳ cấp nào → quay về DRAFT, gửi lại người tạo biết.
 
-Số hóa quy trình đăng ký Đài TTDH thuộc nhóm Mạng viễn thông hàng hải, do Cục Hàng hải Việt Nam quản lý. Mỗi đài được khởi tạo với đầy đủ thông tin hành chính, GIS, dịch vụ và tình trạng vận hành. Mã đài tự sinh đảm bảo tính duy nhất. Phân loại đài (Loại I→V) giúp phân cấp quản lý.
+- **Luồng trạng thái:**
+  ```
+  DRAFT → PROPOSED (người tạo gửi) → APPROVED_L1 (cấp 1 duyệt) → APPROVED_L2 (cấp 2 duyệt) → ACTIVE
+  DRAFT ← REJECT (từ chối ở cấp 1 hoặc cấp 2)
+  ACTIVE → SUSPENDED (tạm ngừng)
+  ACTIVE → DELETED (xóa mềm)
+  ```
 
-### 1.3. Luồng hoạt động chính
+## 4. Quy tắc và phân quyền riêng
 
-**Luồng 1 — Chuyên viên Chi cục/Cảng vụ:**
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền (phần chung đã nằm ở `ba/01-base-pattern.md`).
 
-**Bước 1: Mở form tạo mới**
-- **Người dùng:** mở form tạo mới từ màn hình danh sách Đài TTDH (nút "Thêm mới").
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-**Bước 2: Hệ thống hiển thị form tạo mới**
-- **Hệ thống:** hiển thị modal form với nhóm A (thông tin chung), nhóm B (GIS & bản đồ), nhóm C (file đính kèm); mã đài read-only; đơn vị quản lý mặc định theo user.
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-092-01 | Mã đài tự sinh format `DTTDH-{seq}`, không cho người dùng nhập | Create |
+| BR-092-02 | Đơn vị quản lý mặc định theo đơn vị user đăng nhập; Admin Cục được chọn đơn vị khác | Create |
+| BR-092-03 | Tình trạng mặc định khi tạo mới: `CHUA_KHAI_THAC` (Chưa khai thác/vận hành) | Create |
+| BR-092-04 | Trạng thái là tình trạng vận hành thực tế, KHÔNG phải trạng thái phê duyệt | Create/Update |
+| BR-092-05 | Phê duyệt 2 cấp: Cảng vụ/Chi cục → Cục; từ chối ở bất kỳ cấp → quay DRAFT | Approval |
+| BR-092-06 | Lý do từ chối bắt buộc ở cả 2 cấp | Approval |
+| BR-092-07 | GIS 5 trường (loại đối tượng, biểu tượng, hệ quy chiếu, quy tắc hiển thị, tọa độ) — read-only ở khối vận hành/bảo trì/sự cố | Create/Update |
+| BR-092-08 | File đính kèm: upload nhiều file (quyết định thành lập, hồ sơ kỹ thuật, ảnh hiện trạng) | Create |
 
-**Bước 3-6: Nhập thông tin**
-- Nhập bắt buộc (tên, phân loại, Tỉnh/TP, địa điểm), tùy chọn (dịch vụ, GIS, file), chọn Tình trạng.
+### 4.2. Acceptance Criteria kế thừa (nếu có)
 
-**Bước 7: Nhấn "Lưu và gửi phê duyệt"**
-- Hệ thống: validate đầy đủ → tự sinh mã → lưu status = **Chờ duyệt cấp Cảng vụ/Chi cục** → HTTP 200.
+- **AC-092-01** — Form tạo mới đầy đủ 3 nhóm thông tin (hành chính, MVT, GIS). Khi thiếu trường bắt buộc: hiển thị lỗi validation tiếng Việt.
+- **AC-092-02** — Mã đài tự sinh duy nhất, không trùng lặp. Khi trùng: hệ thống tự tăng seq.
+- **AC-092-03** — Sau khi tạo, bản ghi ở trạng thái DRAFT, chưa cần phê duyệt để lưu.
+- **AC-092-04** — Upload file đính kèm hỗ trợ nhiều file, định dạng PDF/JPG/PNG.
 
-**Bước 8: Lãnh đạo Chi cục duyệt (F-095)**
-- Duyệt → Chờ duyệt cấp Cục; Từ chối → Từ chối CC (sửa & gửi lại).
+### 4.3. User Stories kế thừa (nếu có)
 
-**Bước 9: Lãnh đạo Cục duyệt (F-095)**
-- Duyệt → Đã phê duyệt.
+- **US-092-01:** Như một cán bộ nghiệp vụ, tôi muốn tạo mới một Đài TTDH với đầy đủ thông tin hành chính, MVT và vị trí GIS để quản lý tài sản.
+- **US-092-02:** Như một cán bộ nghiệp vụ, tôi muốn hệ thống tự sinh mã đài theo format quy định để không phải nhập thủ công.
 
-**Luồng 2 — Chuyên viên Cục:**
+### 4.4. Phân quyền riêng
 
-**Bước 1-6:** Tương tự luồng 1.
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Tạo mới Đài TTDH | `coastalstation:create` |
+| Xem danh sách Đài TTDH | `coastalstation:read` |
+| Xem chi tiết Đài TTDH | `coastalstation:read` |
+| Gửi phê duyệt Đài TTDH | `coastalstation:propose` |
 
-**Bước 7: Nhấn "Lưu và gửi phê duyệt"**
-- Hệ thống: validate đầy đủ → tự sinh mã → lưu status = **Chờ duyệt cấp Cục** (bỏ qua cấp Chi cục) → HTTP 200.
+**Admin Cục:** full quyền + xem thêm metadata người tạo/người sửa/thời gian tạo/cập nhật (theo tài liệu nền mục 3.8).
 
-**Bước 8: Lãnh đạo Cục duyệt (F-095)**
-- Duyệt → Đã phê duyệt; Từ chối → Từ chối Cục (sửa & gửi lại).
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-**Luồng 3 — Lãnh đạo Cục (phê duyệt trực tiếp):**
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — 7 trạng thái: DRAFT, PROPOSED, APPROVED_L1, APPROVED_L2, ACTIVE, SUSPENDED, DELETED |
+| 2 | Có bước phê duyệt không | Có — 2 cấp: Cảng vụ/Chi cục (cấp 1) → Cục (cấp 2) |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` bắt buộc, filter theo subtree đơn vị cha, Cục xem full |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `coastalstation:create`, `coastalstation:read`, `coastalstation:propose` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — file đính kèm (quyết định thành lập, hồ sơ kỹ thuật, ảnh hiện trạng) |
+| 8 | Giao diện khác mẫu chung | Có — form 3 nhóm thông tin (hành chính, MVT, GIS) + bảng tọa độ động + upload file |
 
-**Bước 1-6:** Tương tự.
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-**Bước 7: Nhấn "Lưu và phê duyệt"**
-- Hệ thống: validate đầy đủ → tự sinh mã → lưu status = **Đã phê duyệt** (R14) → HTTP 200.
-
----
-
-## 2. Ai dùng? Dùng như thế nào?
-
-### 2.1. Cơ chế phân quyền
-
-Chức năng Tạo mới Đài TTDH được bảo vệ bởi **2 tầng phân quyền**:
-
-#### Tầng 1: PermissionMiddleware (bắt buộc — mọi request)
-
-`PermissionMiddleware` (`src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java`) chạy sau khi xác thực JWT, kiểm tra **từng tài khoản người dùng** xem có permission tương ứng không:
-
-| HTTP method | Endpoint | Resource (URL → DB) | Action | Permission yêu cầu |
-|---|---|---|---|---|
-| POST | `/api/v1/stations/coastal` | `stations` → `data` | `create` | `data:create` |
-| GET | `/api/v1/stations/coastal` | `stations` → `data` | `read` | `data:read` |
-| PUT | `/api/v1/stations/coastal/{id}` | `stations` → `data` | `update` | `data:update` |
-| DELETE | `/api/v1/stations/coastal/{id}` | `stations` → `data` | `delete` | `data:delete` |
-| POST | `/api/v1/stations/coastal/{id}/approve` | `stations` → `data` | `approve` | `data:approve` |
-| POST | `/api/v1/stations/coastal/{id}/reject` | `stations` → `data` | `approve` | `data:approve` |
-
-> **Cơ chế:** Permission của user được resolve từ cache/DB theo `userId` → tập hợp các permission do role của user sở hữu. Middleware kiểm tra chính xác user hiện tại có permission `resource:action` không — đây là **phân quyền theo tài khoản**, không phải kiểm tra tên role trực tiếp.
-
-#### Tầng 2: Phân quyền nghiệp vụ (vai trò → permission)
-
-Bảng dưới ánh xạ **vai trò nghiệp vụ** sang **role Spring Security** và **permission** tương ứng (nguồn: `RolePermissionSeeder.java`):
-
-| Vai trò nghiệp vụ | Role trong hệ thống | Permission được gán | Quyền trên Đài TTDH |
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| Quản trị hệ thống | `ROLE_SYSTEM_ADMIN` | *(bypass — full access)* | Tạo, xem, sửa, xóa, phê duyệt toàn bộ |
-| Quản trị đơn vị | `ROLE_ADMIN` | `data:read`, `data:update`, `data:approve` | Xem, sửa + Phê duyệt |
-| Lãnh đạo | `ROLE_LEADER` | `data:approve` | Phê duyệt (C1/C2) |
-| Chuyên viên | `ROLE_SPECIALIST` | `data:create`, `data:read`, `data:update` | Tạo mới, xem, sửa |
-| Cán bộ vận hành | `ROLE_PORT_OPERATOR` | `data:read`, `data:update` | Xem, sửa |
-| Người dùng công khai | `ROLE_PUBLIC_USER` | `data:read` | Xem |
-| Tích hợp hệ thống | `ROLE_INTEGRATION` | `data:read`, `data:write` | Xem + ghi API |
-| Giám sát an ninh | `ROLE_SECURITY_MONITOR` | *(không có `data:*`)* | Không có quyền |
+| POST | `/api/v1/coastalstations` | Tạo mới Đài TTDH | `coastalstation:create` |
+| GET | `/api/v1/coastalstations` | Danh sách Đài TTDH (phân trang + lọc) | `coastalstation:read` |
+| GET | `/api/v1/coastalstations/{id}` | Xem chi tiết Đài TTDH | `coastalstation:read` |
+| PUT | `/api/v1/coastalstations/{id}` | Cập nhật Đài TTDH | `coastalstation:update` |
+| DELETE | `/api/v1/coastalstations/{id}` | Xóa mềm Đài TTDH | `coastalstation:delete` |
+| POST | `/api/v1/coastalstations/{id}/propose` | Gửi phê duyệt | `coastalstation:propose` |
+| POST | `/api/v1/coastalstations/{id}/approve-l1` | Duyệt cấp 1 | `coastalstation:approve-l1` |
+| POST | `/api/v1/coastalstations/{id}/approve-l2` | Duyệt cấp 2 | `coastalstation:approve-l2` |
 
-#### Ghi chú quan trọng
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-- **Nút "Lưu và phê duyệt"** (status → Đã phê duyệt): hiển thị cho user có `data:approve` — tương ứng `ROLE_SYSTEM_ADMIN`, `ROLE_ADMIN`, `ROLE_LEADER`.
-- **Phạm vi dữ liệu (data scoping):** không do PermissionMiddleware xử lý mà do service layer lọc theo `orgUnitId` của user đăng nhập. User chỉ thấy dữ liệu trong đơn vị mình, trừ `ROLE_SYSTEM_ADMIN` được xem toàn bộ.
-- `ROLE_SYSTEM_ADMIN` **bypass toàn bộ** permission check (`PermissionAuthorizationManager.check()` dòng 55-58) — không cần khai báo từng permission.
-- Controller `CoastalStationVTSController` **không có `@PreAuthorize`** annotation — toàn bộ enforcement qua PermissionMiddleware.
-- **Admin Cục (Quản trị đơn vị):** xem toàn bộ dữ liệu tất cả đơn vị (không giới hạn phạm vi); xem thông tin người tạo, thời gian tạo, người sửa, thời gian sửa, và thông tin chỉnh sửa cuối cùng.
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
----
+**Bảng `coastal_station` (Đài Thông tin Duyên hải):**
 
-## 3. User Stories
-
-### Mức Must
-
-- **US-092-01:** Là Cán bộ, tôi muốn tạo mới Đài TTDH với đầy đủ thông tin hành chính, GIS và dịch vụ.
-- **US-092-02:** Là Cán bộ, tôi muốn hệ thống tự sinh mã đài `DTTDH-xxxxx` để đảm bảo mã duy nhất.
-- **US-092-03:** Là Cán bộ, tôi muốn chọn Phân loại đài (Loại I→V) từ dropdown.
-- **US-092-04:** Là Cán bộ, tôi muốn Đơn vị quản lý được điền sẵn theo user đăng nhập.
-- **US-092-05:** Là Cán bộ, tôi muốn chọn Tình trạng (Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành), mặc định Chưa khai thác/vận hành.
-- **US-092-06:** Là Cán bộ, tôi muốn chọn nhiều dịch vụ từ danh sách 9 dịch vụ cố định.
-- **US-092-07:** Là Cán bộ, tôi muốn thêm nhiều dòng tọa độ vào bảng động và upload file đính kèm.
-
-### Mức Should
-
-- **US-092-08:** Là Cán bộ, tôi muốn nút "Lưu tạm" để lưu chưa cần validate đầy đủ.
-- **US-092-09:** Là Cán bộ, tôi muốn nút "Lưu và gửi phê duyệt" để gửi thẳng lên cấp Cảng vụ/Chi cục.
-- **US-092-10:** Là Cấp Cục, tôi muốn nút "Lưu và phê duyệt" để duyệt thẳng.
-
-### Mức Could
-
-- **US-092-11:** Là Admin, tôi muốn import hàng loạt từ Excel.
-
----
-
-## 4. Yêu cầu chức năng (Acceptance Criteria)
-
-**AC-092-01 — Tạo mới thành công:** Nhập đủ thông tin bắt buộc → hệ thống tự sinh mã `DTTDH-xxxxx`, lưu status Lưu tạm, HTTP 200. Lỗi: HTTP 400 + tiếng Việt.
-
-**AC-092-02 — Mã đài tự sinh đúng format:** Format `DTTDH-xxxxx`, sequential, unique toàn hệ thống, immutable.
-
-**AC-092-03 — Từ chối thiếu trường bắt buộc (Lưu tạm):** Thiếu name → "Tên đài không được để trống". Thiếu stationLevel → "Vui lòng chọn Phân loại đài".
-
-**AC-092-04 — Từ chối thiếu trường (Lưu và gửi phê duyệt):** Thiếu name, stationLevel, unitId, provinceId, detailedLocation, hoặc bảng tọa độ < 1 dòng → HTTP 400.
-
-**AC-092-05 — Từ chối name > 255 ký tự:** "Tên đài không được vượt quá 255 ký tự".
-
-**AC-092-06 — Từ chối tọa độ ngoài range:** Vĩ độ ngoài [-90,90] hoặc kinh độ ngoài [-180,180] → lỗi kèm số dòng.
-
-**AC-092-07 — Từ chối file sai định dạng:** File không phải pdf/jpg/png/docx/xlsx → "Định dạng file không được hỗ trợ".
-
-**AC-092-08 — Từ chối file > 10MB:** "Dung lượng file không được vượt quá 10MB".
-
-**AC-092-09 — Tình trạng mặc định:** Không chọn → mặc định "Chưa khai thác/vận hành".
-
-**AC-092-10 — Dịch vụ multi-select:** Chọn được nhiều dịch vụ, lưu dạng mảng/bitmask.
-
-**AC-092-11 — XSS/Injection:** Escape HTML, parameterized queries. Trim() tất cả text input.
-
-**AC-092-12 — 3 nút Lưu:** "Lưu tạm" (outlined), "Lưu và gửi phê duyệt" (primary), "Lưu và phê duyệt" (primary xanh lá, chỉ Cấp Cục).
-
-**AC-092-13 — Lưu và gửi phê duyệt:** Validate đầy đủ, lưu status = Chờ duyệt cấp Cảng vụ/Chi cục.
-
-**AC-092-14 — Lưu và phê duyệt:** Chỉ Cấp Cục, validate đầy đủ, lưu status = Đã phê duyệt. Role khác → HTTP 403.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-092-01 | Mã đài tự sinh `DTTDH-xxxxx`, sequential, unique, immutable | code | R1, R2, R3 |
-| BR-092-02 | Name bắt buộc, max 255, trim() | name | @NotBlank, @Size(max=255) |
-| BR-092-03 | stationLevel bắt buộc, Loại I→V | stationLevel | @NotNull |
-| BR-092-04 | Đơn vị quản lý mặc định theo user; Admin Cục hiển thị dropdown chọn đơn vị | unitId | R4 |
-| BR-092-05 | Đơn vị khai thác có thể khác đơn vị quản lý | operatingUnitId | R6 |
-| BR-092-06 | Tình trạng mặc định "Chưa khai thác/vận hành" (3 giá trị: Chưa khai thác/vận hành, Đang khai thác/vận hành, Dừng khai thác/vận hành) | usageStatus | Handoff 2.1#10 |
-| BR-092-07 | Dịch vụ cung cấp: chọn nhiều từ 9 dịch vụ cố định (INMARSAT, COSPAS-SARSAT, DSC, RTP, MSI RTP, MSI NAVTEX, MSI EGC, LRIT, Kết nối TT hàng hải) | servicesProvided | Handoff 2.2 |
-| BR-092-08 | Ghi chú max 2000 ký tự | remarks | Handoff 2.1#11 |
-| BR-092-09 | Địa điểm chi tiết bắt buộc khi gửi duyệt, max 500 | detailedLocation | Handoff 2.1#7 |
-| BR-092-10 | provinceId bắt buộc khi gửi duyệt | provinceId | Handoff 2.1#6 |
-| BR-092-11 | Tọa độ tối thiểu 1 dòng khi gửi duyệt, WGS84 | coordinates | |
-| BR-092-12 | File đính kèm: pdf/jpg/png/docx/xlsx, ≤10MB | attachments | |
-| BR-092-13 | Các trường tần số liên lạc, transmitPower, equipmentType bị ẩn | — | Handoff 2.5 |
-| BR-092-14 | Chỉ Cấp Cục được "Lưu và phê duyệt" | — | R14 |
-
----
-
-## 6. Mô hình dữ liệu
-
-> **Quy ước:** 🔴 = trường mới, ~~gạch ngang~~ = loại bỏ.
-
-### 6.1. Bảng coastal_station_vts
-
-- **id:** UUID, PK
-- 🔴 **code:** tự sinh `DTTDH-xxxxx`, unique, not null, max 50
-- **name:** not null, max 255
-- **description:** (đổi thành remarks), max 2000
-- 🔴 **stationLevel:** PhanLoaiDai enum (LOAI_I→V), not null, ORDINAL
-- 🔴 **provinceId:** not null
-- 🔴 **detailedLocation:** max 500
-- **unitId:** UUID đơn vị quản lý
-- 🔴 **operatingUnitId:** UUID đơn vị khai thác
-- 🔴 **coverageArea:** max 500
-- 🔴 **servicesProvided:** multi-select, lưu dạng JSON array / bitmask
-- 🔴 **usageStatus:** 0=Chưa khai thác/vận hành, 1=Đang khai thác/vận hành, 2=Dừng khai thác/vận hành, default 0
-- 🔴 **geometryType:** GisGeometryType enum (POINT/LINE/POLYGON), ORDINAL
-- 🔴 **mapSymbolId:** UUID
-- 🔴 **coordinateSystem:** Integer
-- 🔴 **displayRule:** Integer
-- **spatialId:** UUID
-- ~~**frequencyBand, transmitPower, equipmentType:** bị ẩn~~
-- **status:** 7 trạng thái (Lưu tạm, Chờ duyệt CC, Từ chối CC, Chờ duyệt Cục, Từ chối Cục, Đã phê duyệt, Lịch sử). Lịch sử = read-only, đến từ DRAFT delete (F-094).
-- **approvalStatus, approvalLevel, approvedBy, approvedDate, rejectionReason:** (giữ nguyên pattern)
-- **createdAt, updatedAt:** auto
-
-### 6.2. Bảng coastal_station_vts_coordinates (🔴 mới)
-
-| Cột | Kiểu | Mô tả |
-|-----|------|-------|
-| id | UUID | PK |
-| station_id | UUID | FK |
-| latitude | DOUBLE | Vĩ độ N* |
-| longitude | DOUBLE | Kinh độ E* |
-| sort_order | INTEGER | Thứ tự |
-
-### 6.3. Bảng coastal_station_vts_attachments (🔴 mới)
-
-Pattern: PortAttachment (UUID PK, fileName, filePath, fileSize, contentType, uploadedBy, uploadedAt).
-
----
-
-## 7. API Endpoints
-
-| Method | Endpoint | Mô tả | Phân quyền |
+| Trường | Kiểu | Bắt buộc | Ghi chú |
 |---|---|---|---|
-| POST | `/api/v1/stations/coastal` | Tạo mới (multipart) | `data:create` |
-| POST | `/api/v1/stations/coastal/{id}/attachments` | Upload thêm file | `data:create` |
+| id | UUID | Có | Primary key |
+| org_unit_id | UUID | Có | Đơn vị quản lý, FK → org_unit |
+| operating_unit_id | UUID | Không | Đơn vị khai thác, FK → org_unit |
+| code | VARCHAR(50) | Có | Mã đài tự sinh `DTTDH-{seq}`, unique |
+| name | VARCHAR(255) | Có | Tên đài |
+| station_level | SMALLINT | Có | Phân loại: 0=Loại I, 1=Loại II, ..., 4=Loại V |
+| province_id | UUID | Có | Tỉnh/TP, FK → province |
+| detailed_location | VARCHAR(500) | Có | Địa điểm chi tiết |
+| usage_status | SMALLINT | Có | Tình trạng: 0=Chưa khai thác, 1=Đang khai thác, 2=Dừng khai thác |
+| coverage_area | TEXT | Không | Vùng phủ sóng |
+| services_provided | JSON | Không | Dịch vụ cung cấp (mảng 9 dịch vụ cố định) |
+| remarks | VARCHAR(2000) | Không | Ghi chú |
+| geometry_type | VARCHAR(20) | Không | GIS: Point/Line/Polygon |
+| map_symbol_id | UUID | Không | GIS: biểu tượng |
+| coordinate_system | VARCHAR(100) | Không | GIS: hệ quy chiếu |
+| display_rule | TEXT | Không | GIS: quy tắc hiển thị |
+| coordinates | JSON | Không | GIS: tọa độ WGS84 (mảng {lat, lon}) |
+| approval_status | SMALLINT | Có | Trạng thái phê duyệt: 0=DRAFT, 1=PROPOSED, 2=APPROVED_L1, 3=APPROVED_L2, 4=ACTIVE, 5=SUSPENDED, 6=DELETED |
+| submitted_at | TIMESTAMP | Không | Ngày gửi phê duyệt |
+| submitted_by | UUID | Không | Cán bộ gửi phê duyệt |
+| approved_l1_at | TIMESTAMP | Không | Ngày phê duyệt cấp Cảng vụ/Chi cục |
+| approved_l1_by | UUID | Không | Cán bộ phê duyệt cấp Cảng vụ/Chi cục |
+| approved_l1_content | TEXT | Không | Nội dung phê duyệt cấp 1 |
+| approved_l2_at | TIMESTAMP | Không | Ngày phê duyệt cấp Cục |
+| approved_l2_by | UUID | Không | Cán bộ phê duyệt cấp Cục |
+| approved_l2_content | TEXT | Không | Nội dung phê duyệt cấp 2 |
+| rejection_reason | TEXT | Không | Lý do từ chối |
+| deleted_at | TIMESTAMP | Không | Xóa mềm |
+| deleted_by | UUID | Không | Người xóa |
+| created_by | UUID | Có | Người tạo |
+| created_at | TIMESTAMP | Có | Thời gian tạo |
+| updated_by | UUID | Không | Người sửa cuối |
+| updated_at | TIMESTAMP | Không | Thời gian sửa cuối |
 
----
-
-## 8. Chi tiết nghiệp vụ từng phần
-
-### 8.1. Form tạo mới (Nhóm A — Thông tin chung)
-
-- **code:** read-only "Mã đài sẽ được tự sinh khi lưu"
-- **name:** text input, required
-- **provinceId:** select Tỉnh/TP, required
-- **stationLevel:** select Loại I→V, required
-- **unitId:** select cây đơn vị, mặc định theo user, required khi gửi duyệt
-- **operatingUnitId:** select cây đơn vị, optional
-- **detailedLocation:** text input, max 500, required khi gửi duyệt
-- **coverageArea:** text input, max 500
-- **servicesProvided:** multi-select 9 dịch vụ
-- **usageStatus:** select Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành, default Chưa khai thác/vận hành
-- **remarks:** textarea, max 2000
-
-### 8.2. Form tạo mới (Nhóm B — GIS)
-
-- **geometryType:** select Điểm/Đường/Vùng
-- **Bảng tọa độ:** table động, mỗi dòng: Vĩ độ N* + Kinh độ E* + nút Xóa. Nút "+ Thêm tọa độ".
-- **mapSymbolId:** select biểu tượng
-- **coordinateSystem:** number input
-- **displayRule:** number input
-
-### 8.3. Form tạo mới (Nhóm C — File đính kèm)
-
-- Upload component, kéo thả, chọn nhiều file, max 10MB/file.
-
-### 8.4. Validation
-
-- name, stationLevel, provinceId: required (Lưu tạm)
-- unitId, detailedLocation, tọa độ ≥ 1 dòng: required (Lưu và gửi duyệt)
-- Tọa độ: range WGS84
-- File: pdf/jpg/png/docx/xlsx, ≤10MB
-- Trim() tất cả text input
-
----
-
-## 9. Yêu cầu phi chức năng
-
-| Area | Requirement |
-|------|-------------|
-| Performance | POST < 500ms; upload ≤10MB < 5s |
-| Security | RBAC, XSS escape, SQL parameterized, file MIME validate |
-| Reliability | Transaction atomic; code tự sinh thread-safe |
-| UX | Loading spinner, progress bar upload, Vietnamese errors, WCAG 2.1 AA |
-| Scalability | 10,000+ stations; index trên code, unit_id, province_id |
-| Legal | WGS84, audit log, tài sản công |
-
----
-
-## 10. Yêu cầu giao diện người dùng
-
-> **Nguyên tắc:** Dùng token từ `theme.ts` và `tokens.ts`, không hardcode.
-
-### 10.1. Bố cục
-
-Sidebar 272px, header 64px, nền `surfacePage`. Dùng ScreenHeader, FilterBar, StatusTabs, DataTable, Pagination.
-
-### 10.2. Màu sắc
-
-| Token | Dùng cho |
-|-------|----------|
-| `textPrimary` | Tiêu đề, giá trị |
-| `textSecondary` | Nhãn field |
-| `textTertiary` | Code readonly, caption |
-| `surfaceCard` | Nền card/modal |
-| `actionPrimary` | Nút chính |
-| `statusOperational` | Badge Đang khai thác/vận hành |
-| `statusAttention` | Badge Dừng khai thác/vận hành |
-| `textTertiary` | Badge Chưa khai thác/vận hành |
-
-### 10.3. DataTable
-
-| Cột | Nội dung | Mặc định |
-|-----|----------|----------|
-| STT | Tự động | — |
-| Mã đài | DTTDH-xxxxx | Tự sinh |
-| Tên đài | name | — |
-| Tỉnh/TP | provinceId → tên | — |
-| Phân loại | Badge Loại I→V | — |
-| Tình trạng | Badge Chưa KT/Đang KT/Dừng KT | Chưa khai thác/vận hành |
-| Trạng thái | Badge 7 trạng thái (thêm Lịch sử) | Lưu tạm |
-
-### 10.4. Modal Tạo mới
-
-- Width: 800px, scrollable
-- Form.Item marginBottom: `spaceFormField` (12px)
-- Input/Select: `radiusPill` (999px), `height: 40`
-- Required mark (*): nằm bên phải label (`requiredMarkPosition: 'right'`)
-- Dịch vụ: multi-select với 9 options
-- Bảng tọa độ: table với InputNumber precision 6 + nút Xóa + nút "Thêm tọa độ" (`formSectionHeaderStyle`, `formEmptyTableStyle`)
-- Upload: Ant Design Upload, multiple, accept pdf/jpg/png/docx/xlsx
-- Nút: `Hủy` + `Lưu tạm` → `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`); `Lưu và gửi` → `primaryButtonStyle`; `Lưu và phê duyệt` → `primaryButtonStyle` + màu `statusOperational`
-- Tất cả nút: `radiusPill`, `height: 40`
-
-### 10.5. Responsive
-
-≤768px: sidebar hamburger 80px, bảng → card, modal 90% width, form 1 cột.
+🔴 **Trường mới cần thêm:** `operating_unit_id`, `coverage_area`, `services_provided`, `geometry_type`, `map_symbol_id`, `coordinate_system`, `display_rule`, `coordinates`, `submitted_at`, `submitted_by`, `approved_l1_at`, `approved_l1_by`, `approved_l1_content`, `approved_l2_at`, `approved_l2_by`, `approved_l2_content`, `rejection_reason`.

@@ -7,62 +7,105 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-07-07T03:33:06Z"
-last-updated: "2026-07-07T03:33:06Z"
+last-updated: "2026-08-24"
 locked-fields: []
 consumed_by_modules: []
 ---
 
-# Feature: Quản lý Đài Inmarsat - Xóa
+# Đặc tả nghiệp vụ: Quản lý Đài Inmarsat - Xóa
 
-## Description
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-100
+**Module:** M-004 — Quản lý tài sản Báo hiệu & Thông tin
+**Loại:** chức năng thường (không có bước phê duyệt)
+**Tham chiếu:** tài liệu nền `ba/00-lean-spec.md` (bắt buộc đọc trước) + tài liệu yêu cầu gốc (TKCT)
 
-Tính năng cho phép cán bộ nghiệp vụ (operator) thực hiện soft-delete một Đài Inmarsat khỏi hệ thống. Bản ghi không bị xóa vĩnh viễn khỏi cơ sở dữ liệu mà chỉ được đánh dấu thời điểm xóa (deletedAt) và bị ẩn khỏi các truy vấn thông thường nhờ @SQLRestriction("deleted_at IS NULL"). Điều này cho phép khôi phục khi cần và đảm bảo toàn vẹn dữ liệu lịch sử. Hành động xóa được ghi nhận trong lịch sử với actionType SOFT_DELETE, bao gồm thông tin người thực hiện và thời gian.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
-## Business Intent
+> **⚠️ BẮT BUỘC KHAI BÁO PHẠM VI DỮ LIỆU THEO ĐƠN VỊ (Data Scope):**
+> Trong bảng **"Điểm khác biệt so với mẫu chung"** (mục 5, dòng 3 — *"Lọc cha-con / theo đơn vị"*), BA **PHẢI khai báo đầy đủ** (có/không, trường đơn vị nào, cơ chế, ngoại lệ) và **SA chốt cơ chế** khi duyệt — không được để trống hoặc ghi chung chung.
+> Nếu chức năng quản lý dữ liệu nghiệp vụ thuộc đơn vị, brief PHẢI khai báo: (1) trường đơn vị bắt buộc/không, (2) nguồn gán đơn vị khi tạo (request hay đơn vị user), (3) chiều ghi có validate phạm vi không.
+> Quy tắc chi tiết xem `AGENTS.md` mục **Data Scope Convention**; danh sách lỗ hổng đã gặp xem `docs/intel/data-scope-gap-report.md`.
 
-Quản lý vòng đời Đài Inmarsat trong hệ thống, cho phép loại bỏ các đài không còn hoạt động khỏi giao diện người dùng mà vẫn giữ dữ liệu gốc phục vụ kiểm toán. Soft-delete đảm bảo không mất dữ liệu lịch sử quan trọng về vùng phủ sóng vệ tinh và thông tin SAR đã được ghi nhận.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Operator chọn Đài Inmarsat cần xóa → Xác nhận xóa → Hệ thống gọi DELETE /api/v1/stations/inmarsat/{id} → Service.softDelete() đặt deletedAt → Bản ghi ẩn khỏi mọi truy vấn → Ghi lịch sử SOFT_DELETE → Trả về HTTP 204.
+Tính năng cho phép admin hoặc operator xóa mềm (soft-delete) một Đài Inmarsat đã tồn tại. Hệ thống đánh dấu bản ghi là `DELETED` (set `deleted_at` và `deleted_by`), bản ghi vẫn giữ trong DB để phục hồi nếu cần nhưng không còn hiển thị trong danh sách bình thường. Chỉ bản ghi ở trạng thái `DRAFT` hoặc `PUBLISHED` mới được phép xóa mềm. Hệ thống ghi nhận lịch sử xóa và không cho phép xóa bản ghi đã bị xóa hoặc đang trong quy trình phê duyệt.
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- **AC-01**: Xóa Đài Inmarsat hợp lệ, hệ thống soft-delete và trả về HTTP 204.
-- **AC-02**: Xóa đài đã xóa trước đó trả về HTTP 404.
-- **AC-03**: Lịch sử xóa được ghi nhận với actionType SOFT_DELETE.
+Bảng mô tả các trường liên quan đến thao tác xóa (theo sheet "Đài Inmarsat" — cột "Danh sách" = true, dùng để xác nhận bản ghi trước khi xóa):
 
-## In Scope
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| 1 | Đơn vị quản lý | Có | SelectOrgCode | Mã đơn vị (orgUnitId) — scope filter |
+| 2 | Đơn vị khai thác | Có | SelectCateOther | |
+| 3 | Mã đài | Có | Input (disabled, tự sinh INMARSAT-{seq}) | |
+| 4 | Tên đài | Có | InputTextArea | |
+| 7 | Tình trạng | Có | SelectAppParams | Chỉ xóa được khi DRAFT hoặc PUBLISHED |
 
-- Soft-delete Đài Inmarsat
-- Kiểm tra tồn tại trước khi xóa
-- Ghi nhận lịch sử
+## 3. Trạng thái và phê duyệt
 
-## Out of Scope
+- **Không có bước phê duyệt** trong chức năng xóa mềm.
+- Chỉ cho phép xóa mềm bản ghi ở trạng thái `DRAFT` hoặc `PUBLISHED`.
+- Bản ghi đã ở trạng thái `DELETED`, `PENDING_APPROVAL`, `APPROVED_L1`, `APPROVED_L2`, `REJECTED` — không cho phép xóa.
+- Trạng thái lưu dạng số trong DB (xem `StationStatus` enum trong `00-lean-spec.md`).
 
-- Hard-delete
-- Khôi phục đài đã xóa
+## 4. Quy tắc và phân quyền riêng
 
-## Roles + Permissions
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền (phần chung đã nằm ở `ba/00-lean-spec.md`).
 
-| Role | Level | Notes |
-|------|-------|-------|
-| admin | CRUD | Có thể xóa |
-| operator | CRUD | Có thể xóa |
-| approver_L1 | Read | Không |
-| approver_L2 | Read | Không |
-| viewer | Read | Không |
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## Entities
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-100-01 | Chỉ cho phép xóa mềm bản ghi ở trạng thái `DRAFT` hoặc `PUBLISHED` — từ chối nếu đang `PENDING_APPROVAL`, `APPROVED_L1`, `APPROVED_L2`, `REJECTED`, `DELETED` | Delete |
+| BR-100-02 | Xóa mềm: set `deleted_at` = now(), `deleted_by` = current_user_id, `status` = DELETED | Delete |
+| BR-100-03 | Ghi nhận bản ghi lịch sử SOFT_DELETE với actionType = SOFT_DELETE | Delete |
+| BR-100-04 | Bản ghi đã xóa mềm không thể xóa lần nữa — từ chối với HTTP 409 | Delete |
+| BR-100-05 | Chỉ user có phạm vi đơn vị chứa bản ghi mới được phép xóa | Delete |
 
-- **CoastalStationInmarsat**: softDelete() đặt deletedAt.
+### 4.2. Acceptance Criteria kế thừa (nếu có)
 
-## Business Rules
+- **AC-100-01** — Xóa thành công: Khi bản ghi ở trạng thái DRAFT hoặc PUBLISHED, hệ thống xóa mềm thành công, trả về HTTP 200.
+- **AC-100-02** — Trạng thái không cho phép xóa: Khi bản ghi đang ở trạng thái `PENDING_APPROVAL` hoặc `DELETED`, hệ thống từ chối (HTTP 403/409) với thông báo phù hợp.
+- **AC-100-03** — Ghi nhận lịch sử: Sau khi xóa, bản ghi lịch sử SOFT_DELETE được tạo tự động.
 
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-009 | Chỉ soft-delete, không xóa vĩnh viễn | CoastalStationInmarsat | @SQLRestriction |
+### 4.3. User Stories kế thừa (nếu có)
 
-## Testing Strategy
+- **US-100-01:** Là admin, tôi muốn xóa mềm một Đài Inmarsat không còn sử dụng để loại khỏi danh sách hiển thị nhưng vẫn giữ lịch sử kiểm toán.
 
-(populated by qa stage)
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xóa mềm Đài Inmarsat | `coastal-station-inmarsat:delete` |
+
+**Admin Cục:** Full quyền + xem thêm metadata người tạo/người sửa/thời gian (theo tài liệu nền mục 3.8).
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — chỉ xóa được khi DRAFT hoặc PUBLISHED |
+| 2 | Có bước phê duyệt không | Không |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` bắt buộc, filter theo subtree đơn vị cha, Cục xem full |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `coastal-station-inmarsat:delete` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Không |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| DELETE | `/api/v1/stations/inmarsat/{id}` | Xóa mềm Đài Inmarsat | `coastal-station-inmarsat:delete` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `coastal_station_inmarsat` (Đài Inmarsat):**
+🔴 `id` UUID PK, 🔴 `org_unit_id` UUID FK → `org_unit`, 🔴 `operator_org_id` UUID FK, 🔴 `device_code` VARCHAR(50) UNIQUE (tự sinh INMARSAT-{seq}), 🔴 `device_name` VARCHAR(255), 🔴 `location_province` VARCHAR(255), 🔴 `location_detail` TEXT, 🔴 `status` INT (StationStatus enum), 🔴 `coverage_zone` TEXT, 🔴 `services` TEXT (multi-select JSON), 🔴 `frequency` TEXT, 🔴 `notes` TEXT, 🔴 `object_type` VARCHAR(20) (Điểm/Đường/Vùng), 🔴 `symbol` VARCHAR(100), 🔴 `coordinate_system` VARCHAR(50), 🔴 `display_rule` TEXT, 🔴 `latitude` DECIMAL, 🔴 `longitude` DECIMAL, 🔴 `created_by` UUID, 🔴 `created_at` TIMESTAMP, 🔴 `updated_by` UUID, 🔴 `updated_at` TIMESTAMP, 🔴 `deleted_at` TIMESTAMP, 🔴 `deleted_by` UUID

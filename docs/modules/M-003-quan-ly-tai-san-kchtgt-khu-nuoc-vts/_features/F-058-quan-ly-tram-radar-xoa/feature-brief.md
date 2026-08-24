@@ -50,11 +50,11 @@ Cho phép Admin và Lãnh đạo xóa mềm (soft delete) một Trạm radar kh�
 
 | Trạng thái | Được xóa? | Lý do |
 |---|---|---|
-| PROPOSED (Lưu tạm) | ✅ Có | Trạm radar chưa được gửi duyệt, chưa có dữ liệu liên quan |
-| PROPOSED (đã gửi duyệt) | ❌ Không | Đã gửi duyệt, không thể xóa |
-| UNDER_REVIEW | ❌ Không | Đang trong quy trình phê duyệt |
+| DRAFT (Lưu tạm, chưa gửi duyệt) | ✅ Có | Trạm radar chưa được gửi duyệt, chưa có dữ liệu liên quan |
+| PENDING_APPROVAL (Chờ Cảng vụ/Chi cục duyệt) | ❌ Không | Đã gửi duyệt, không thể xóa |
+| APPROVED_LEVEL1 (Chờ Cục duyệt) | ❌ Không | Đang trong quy trình phê duyệt |
 | APPROVED | ❌ Không | Đã được duyệt, có thể đã có dữ liệu liên quan |
-| REJECTED | ❌ Không | Cần sửa và gửi duyệt lại, không xóa |
+| REJECTED_LEVEL1 / REJECTED_LEVEL2 | ❌ Không | Cần sửa và gửi duyệt lại, không xóa |
 
 ### 2.3. Kiểm tra ràng buộc trước khi xóa
 
@@ -74,7 +74,7 @@ Cho phép Admin và Lãnh đạo xóa mềm (soft delete) một Trạm radar kh�
 
 **BR-058-01 — Chỉ Admin và Lãnh đạo mới được xóa:** Nút "Xóa" chỉ hiển thị cho vai trò Admin và Lãnh đạo. Backend kiểm tra quyền trước khi thực hiện DELETE.
 
-**BR-058-02 — Chỉ xóa được ở trạng thái Lưu tạm:** Chỉ trạm radar ở trạng thái `PROPOSED` và chưa được gửi duyệt mới có thể bị xóa. Trạm radar đã gửi duyệt, đang xem xét, đã duyệt, hoặc bị từ chối không được phép xóa.
+**BR-058-02 — Chỉ xóa được ở trạng thái Lưu tạm:** Chỉ trạm radar ở trạng thái `DRAFT` (Lưu tạm) và chưa được gửi duyệt mới có thể bị xóa. Trạm radar đã gửi duyệt, đang xem xét, đã duyệt, hoặc bị từ chối không được phép xóa.
 
 **BR-058-03 — Xóa mềm, không xóa vật lý:** Xóa trạm radar là soft delete (`isDeleted` được set). Bản ghi vẫn tồn tại trong database để phục vụ kiểm toán, nhưng không hiển thị ở bất kỳ đâu trong hệ thống.
 
@@ -90,10 +90,10 @@ Cho phép Admin và Lãnh đạo xóa mềm (soft delete) một Trạm radar kh�
 
 ```mermaid
 stateDiagram-v2
-    PROPOSED --> [*]: F-058 - Xóa (chỉ khi Lưu tạm, chưa gửi duyệt)
+    DRAFT --> [*]: F-058 - Xóa (chỉ khi Lưu tạm, chưa gửi duyệt)
 ```
 
-> Trạm radar chỉ có thể bị xóa khi đang ở trạng thái `PROPOSED` và chưa được gửi duyệt. Các trạng thái khác (đã gửi duyệt, đang xem xét, đã duyệt, từ chối) không cho phép xóa.
+> Trạm radar chỉ có thể bị xóa khi đang ở trạng thái `DRAFT` (Lưu tạm) và chưa được gửi duyệt. Các trạng thái khác (đã gửi duyệt, đang xem xét, đã duyệt, từ chối) không cho phép xóa.
 
 ### Các tính năng liên quan
 

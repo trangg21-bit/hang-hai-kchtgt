@@ -16,7 +16,7 @@ Hệ thống cần cho phép người dùng có thẩm quyền (Admin, Lãnh đ�
 | | Items |
 |---|---|
 | In scope | Giao diện nút "Xóa" trên danh sách Pier (F-078) dành cho Admin/Lãnh đạo; Hộp thoại xác nhận xóa kèm nhập tên Pier để xác nhận; Kiểm tra ràng buộc dữ liệu liên quan trước khi xóa; Soft delete qua `DELETE /api/v1/cau-cang/:id` (set `deletedAt`, `deletedBy`); Ghi nhật ký thay đổi tự động trong ChangeLog với `actionType = SOFT_DELETE`; Xóa dữ liệu GIS spatial của Pier; Thông báo kết quả cho người dùng; Pier biến mất khỏi danh sách và dropdown sau khi xóa |
-| Out of scope | Xóa vật lý (physical delete) bản ghi Pier khỏi database; Cascade delete dữ liệu liên quan (tài sản, vận hành, bảo trì); Khôi phục (restore) Pier đã xóa; Xóa Pier ở trạng thái APPROVED, REJECTED hoặc PENDING đã gửi duyệt; Quy trình phê duyệt xóa; Import/Export danh sách Pier đã xóa |
+| Out of scope | Xóa vật lý (physical delete) bản ghi Pier khỏi database; Cascade delete dữ liệu liên quan (tài sản, vận hành, bảo trì); Khôi phục (restore) Pier đã xóa; Xóa Pier ở trạng thái APPROVED, REJECTED_LEVEL1/REJECTED_LEVEL2 hoặc PENDING_APPROVAL đã gửi duyệt; Quy trình phê duyệt xóa; Import/Export danh sách Pier đã xóa |
 | Assumptions | Người dùng đã đăng nhập và có vai trò Admin hoặc Lãnh đạo; Pier đã tồn tại trong hệ thống (được tạo qua F-020); Pier có trường `approvalStatus` để xác định trạng thái phê duyệt; Các dữ liệu liên quan (tài sản, vận hành, bảo trì, sự cố) đã được thiết lập quan hệ với Pier qua khóa ngoại |
 
 ## User Stories
@@ -39,14 +39,14 @@ Hệ thống cần cho phép người dùng có thẩm quyền (Admin, Lãnh đ�
 | AC-022-04 | US-022-03 | Chặn xóa Pier đã bị xóa trước đó | Given Pier đã có `deletedAt != null` (đã bị soft delete trước đó); When người dùng thực hiện xóa; Then hệ thống chặn xóa với thông báo "Cầu cảng đã bị xóa trước đó" | Kiểm tra `deletedAt` ở server-side; HTTP 422 hoặc 400 |
 | AC-022-05 | US-022-01, US-022-04 | Xóa thành công — soft delete + audit log | Given Pier hợp lệ (PENDING, chưa gửi duyệt, không có dữ liệu liên quan, `deletedAt IS NULL`); When người dùng xác nhận xóa; Then (1) `deletedAt = current_timestamp`, (2) `deletedBy = current_user_id`, (3) dữ liệu GIS spatial của Pier bị xóa, (4) bản ghi ChangeLog được tạo với `actionType = SOFT_DELETE` và operatorId là người thực hiện, (5) hiển thị Toast "Xóa cầu cảng thành công" | Toàn bộ thao tác trong một transaction — nếu bất kỳ bước nào thất bại, rollback toàn bộ |
 | AC-022-06 | US-022-05 | Pier không còn hiển thị trong danh sách sau khi xóa | Given Pier vừa bị xóa thành công; When người dùng ở trang danh sách Pier (F-078); Then Pier không xuất hiện trong danh sách (bộ lọc mặc định `deletedAt IS NULL`); Nếu đang ở trang chi tiết Pier (F-024), hệ thống redirect về danh sách | Bộ lọc `deletedAt IS NULL` được áp dụng mặc định cho mọi truy vấn danh sách |
-| AC-022-07 | US-022-01 | Chặn xóa Pier ở trạng thái APPROVED, REJECTED hoặc PENDING đã gửi duyệt | Given Pier có `approvalStatus = APPROVED`, `REJECTED`, hoặc PENDING đã gửi duyệt; When người dùng thực hiện xóa; Then hệ thống chặn xóa với thông báo tương ứng theo từng trạng thái | Xem bảng trạng thái tại feature-brief section 2.2 |
+| AC-022-07 | US-022-01 | Chặn xóa Pier ở trạng thái APPROVED, REJECTED_LEVEL1/REJECTED_LEVEL2 hoặc PENDING_APPROVAL đã gửi duyệt | Given Pier có `approvalStatus = APPROVED`, `REJECTED_LEVEL1`/`REJECTED_LEVEL2`, hoặc `PENDING_APPROVAL` đã gửi duyệt; When người dùng thực hiện xóa; Then hệ thống chặn xóa với thông báo tương ứng theo từng trạng thái | Xem bảng trạng thái tại feature-brief section 2.2 |
 
 ## Business Rules
 
 | BR-ID | Rule | Applies to | Exception |
 |---|---|---|---|
 | BR-022-01 | Chỉ người dùng có role Admin hoặc Lãnh đạo mới được phép xóa Pier; kiểm tra phải được thực thi ở tầng API, không chỉ UI | AC-022-01 | Không có ngoại lệ |
-| BR-022-02 | Chỉ Pier có `approvalStatus = PENDING` và chưa được gửi duyệt mới được phép xóa; Pier đã gửi duyệt (`PENDING` submitted), đã duyệt (`APPROVED`), hoặc bị từ chối (`REJECTED`) không được phép xóa | AC-022-01, AC-022-07 | Không có ngoại lệ |
+| BR-022-02 | Chỉ Pier có `approvalStatus = DRAFT` (Lưu tạm) và chưa được gửi duyệt mới được phép xóa; Pier đã gửi duyệt (`PENDING_APPROVAL` submitted), đã duyệt (`APPROVED`), hoặc bị trả về (`REJECTED_LEVEL1` / `REJECTED_LEVEL2`) không được phép xóa | AC-022-01, AC-022-07 | Không có ngoại lệ |
 | BR-022-03 | Xóa Pier là soft delete — chỉ set `deletedAt` và `deletedBy`, không xóa vật lý bản ghi khỏi database; dữ liệu vẫn tồn tại để phục vụ kiểm toán nhưng không hiển thị ở bất kỳ đâu trong hệ thống | AC-022-05, AC-022-06 | Không có ngoại lệ |
 | BR-022-04 | Kiểm tra dữ liệu liên quan (tài sản, vận hành, bảo trì, sự cố) trước khi xóa; nếu còn bất kỳ dữ liệu liên quan nào, chặn xóa và hiển thị cảnh báo chi tiết kèm danh sách module tham chiếu | AC-022-03 | Không có ngoại lệ |
 | BR-022-05 | Xóa Pier không tự động xóa dữ liệu liên quan (no cascade delete); người dùng phải xử lý hoặc di chuyển dữ liệu liên quan trước khi xóa Pier | AC-022-03 | Không có ngoại lệ |

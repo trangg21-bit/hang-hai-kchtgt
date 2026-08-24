@@ -7,95 +7,101 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-07-28
+last-updated: 2026-08-21
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Phê duyệt Cảng biển
+# Đặc tả nghiệp vụ: Phê duyệt Cảng biển
 
-## Description
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu `docs/feature-brief-template.md`)
+**Chức năng:** F-011 — Phê duyệt Cảng biển
+**Module:** M-002 — Quản lý tài sản KCHTGT - Cảng & Bến
+**Loại:** chức năng có bước phê duyệt (quy trình 2 cấp theo file chuẩn)
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + quy trình phê duyệt `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (workspace root)
 
-Tính năng cho phép Lãnh đạo phê duyệt thông tin Cảng biển mới được tạo hoặc cập nhật, bao gồm xem chi tiết, đánh giá tính hợp lệ, chấp thuận hoặc từ chối yêu cầu cùng lý do cụ thể. Giao diện PortApprovalPage hiển thị danh sách cảng chờ duyệt (approval_status = PENDING_APPROVAL), với hành động Phê duyệt/Từ chối kèm confirmation dialog. approval_log được tạo tự động để ghi nhận quyết định.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung. Quy trình 2 cấp (trạng thái, vòng duyệt, quyền duyệt theo chức vụ) KHÔNG chép lại ở đây — đọc `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.
 
-## Business Intent
+---
 
-Việc phê duyệt Cảng biển là bước kiểm soát chất lượng bắt buộc trước khi thông tin cảng được kích hoạt; quy trình này đảm bảo mọi Cảng biển đăng ký đều tuân thủ quy chuẩn kỹ thuật, có đủ thông tin pháp lý và kỹ thuật.
+## 1. Mô tả ngắn
 
-## Flow Summary
+Cho phép người duyệt có thẩm quyền (`port:approve`) xử lý hồ sơ Cảng biển trong quy trình phê duyệt 2 cấp: xem chi tiết hồ sơ chờ duyệt, đánh giá tính hợp lệ, **chấp thuận** hoặc **từ chối** kèm lý do cụ thể (bắt buộc khi từ chối, tối thiểu 10 ký tự). Mỗi quyết định duyệt được ghi vào nhật ký phê duyệt (approval log — lưu vĩnh viễn, không sửa/xóa) và thông báo kết quả cho người tạo hồ sơ.
 
-### BE Flow
-Cảng biển sau khi tạo/cập nhật tự động chuyển trạng thái "Chờ phê duyệt". Lãnh đạo truy cập danh sách chờ duyệt, chọn Cảng cần xem xét. Hệ thống hiển thị đầy đủ thông tin kèm lịch sử thay đổi. Lãnh đạo chọn "Chấp thuận" hoặc "Từ chối" cùng lý do (bắt buộc khi từ chối). Hệ thống cập nhật trạng thái, ghi nhật ký và thông báo cho người tạo.
+## 2. Trường dữ liệu
 
-### UI Flow
-Lãnh đạo vào trang "Phê duyệt", xem danh sách cảng PENDING_APPROVAL. Chọn một cảng → xem chi tiết → click "Phê duyệt" → confirmation dialog → xác nhận → `approval_status = APPROVED` → tạo approval_log → toast "Đã phê duyệt thành công". Hoặc click "Từ chối" → confirmation dialog → nhập lý do (tối thiểu 10 ký tự) → xác nhận → `approval_status = REJECTED` → tạo approval_log với lý do → toast "Đã từ chối".
+Không có form nhập liệu mới — thao tác trên bản ghi `Port` hiện có + nhật ký phê duyệt.
 
-## Acceptance Criteria
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| 1 | id | Có | UUID | Hồ sơ cảng cần xử lý |
+| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Trạng thái hiện tại của hồ sơ trong quy trình 2 cấp |
+| 3 | reason (lý do từ chối) | Có khi từ chối | TextArea, tối thiểu 10 ký tự | Lý do chấp thuận là tùy chọn |
+| 4 | approval log | Có (hệ thống) | Bảng `approval_log` | Người duyệt, thời gian, quyết định, lý do — lưu vĩnh viễn |
 
-1. Chỉ Lãnh đạo mới thấy và thực hiện được danh sách Cảng biển chờ phê duyệt.
-2. Hệ thống hiển thị đầy đủ thông tin Cảng biển chờ phê duyệt kèm lịch sử thay đổi.
-3. Lý do từ chối là bắt buộc (tối thiểu 10 ký tự); lý do chấp thuận là tùy chọn.
-4. Sau khi phê duyệt, trạng thái Cảng biển được cập nhật và người tạo nhận thông báo.
-5. [UI] Confirmation dialog hiển thị trước mọi hành động phê duyệt/từ chối.
-6. [UI] approval_log được tạo tự động, ghi nhận đầy đủ người duyệt, thời gian, quyết định, lý do.
+## 3. Trạng thái và phê duyệt
 
-## In Scope
+- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Áp dụng cho Cảng biển: số vòng duyệt (1 hoặc 2) phụ thuộc đơn vị gửi; quyền duyệt gắn chức vụ (lãnh đạo Cảng vụ/Chi cục duyệt vòng 1, lãnh đạo Cục duyệt vòng 2).
+- Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (đã chốt — M-1006 DP-9/AC-25).
+- **Trạng thái hiển thị:** hồ sơ chờ duyệt ở cấp tương ứng (Cảng vụ/Chi cục hoặc Cục) được đưa vào danh sách chờ duyệt của cấp đó; hồ sơ bị trả về quay lại người nhập để sửa; hồ sơ **Đã duyệt** mới chính thức có hiệu lực.
+- Sau quyết định: cập nhật trạng thái + ghi approval log + thông báo cho người tạo. Nhật ký phê duyệt không được xóa hoặc sửa.
 
-- Danh sách Cảng biển chờ phê duyệt
-- Trang chi tiết với đầy đủ thông tin
-- Giao diện phê duyệt: chấp thuận hoặc từ chối
-- Trường nhập lý do từ chối (bắt buộc, tối thiểu 10 ký tự)
-- Cập nhật trạng thái sau phê duyệt
-- Ghi nhật ký phê duyệt (approval_log)
-- Thông báo kết quả đến người tạo
-- Confirmation dialog
+## 4. Quy tắc và phân quyền riêng
 
-## Out of Scope
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền.
 
-- Phê duyệt xóa Cảng biển
-- Phê duyệt hàng loạt nhiều Cảng biển cùng lúc
-- Tự động phê duyệt dựa trên quy tắc
-- Phê duyệt bởi nhiều cấp (multi-level approval)
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## Roles + Permissions
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-011-01 | Hồ sơ chỉ được duyệt khi đang ở trạng thái chờ duyệt đúng cấp (vòng 1: Cảng vụ/Chi cục; vòng 2: Cục — theo file chuẩn) | Approve |
+| BR-011-02 | Lý do từ chối là bắt buộc, tối thiểu 10 ký tự; lý do chấp thuận là tùy chọn | Reject |
+| BR-011-03 | Mỗi quyết định duyệt ghi approval log: người duyệt, thời gian, quyết định, lý do — lưu vĩnh viễn, không cho phép xóa hoặc sửa | Audit |
+| BR-011-04 | Chống tự duyệt (4-eyes principle): người tạo hồ sơ không được tự duyệt hồ sơ của mình (theo file chuẩn) | Approve |
+| BR-011-05 | Thông báo kết quả duyệt đến người tạo hồ sơ | Approve/Reject |
 
-| Role | Permissions |
-|------|-------------|
-| Lãnh đạo | Phê duyệt (chấp thuận/từ chối), Xem |
-| Admin | Phê duyệt (chấp thuận/từ chối), Xem |
-| Người tạo | Xem trạng thái, không phê duyệt |
+### 4.2. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem hồ sơ chờ duyệt + chi tiết | `port:read` |
+| Chấp thuận / Từ chối ở cấp được phân quyền | `port:approve` |
+
+| Vai trò điển hình | Thao tác |
+|---|---|
+| system-admin / ROLE_SUPER_ADMIN | Toàn quyền |
+| Lãnh đạo Cảng vụ / Chi cục | Duyệt vòng 1 (chấp thuận / trả về) |
+| Lãnh đạo Cục | Duyệt vòng 2 (quyết định cuối) |
+| Người tạo hồ sơ | Xem trạng thái, không tự duyệt |
 | Nhân viên vận hành | Xem |
 
-## Entities
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — full quyền + xem metadata người tạo/người sửa/thời gian (phục vụ kiểm toán duyệt).
 
-- **port**: id (UUID), port_code (string, unique), port_name (string), province_city (string), latitude (BigDecimal), longitude (BigDecimal), area (BigDecimal), max_vessel_capacity (BigDecimal), operational_status (string), approval_status (string: PENDING_APPROVAL/APPROVED/REJECTED), pending_approval (boolean), rejection_reason (text, nullable)
-- **approval_log**: id (UUID), port_id (UUID), approved_by (UUID), decision (enum: approved, rejected), reason (text), approved_at (timestamp)
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
-## Business Rules
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không — dùng 7 trạng thái chung (tài liệu nền mục 3.5) |
+| 2 | Có bước phê duyệt không | Có — phê duyệt 2 cấp theo QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị (orgUnitId — tài liệu nền mục 3.3) |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `port:approve` (kèm `port:read`) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Không |
 
-| ID | Rule | Applies-to | Source |
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| BR-001 | Cảng biển mới tạo có trạng thái "Chờ phê duyệt", chỉ chuyển thành "Hiện hành" sau khi được phê duyệt | Trạng thái | Entity spec |
-| BR-002 | Lý do từ chối là trường bắt buộc, tối thiểu 10 ký tự | Từ chối | F-011, F-072 |
-| BR-003 | Mỗi Cảng biển chỉ cần một lần phê duyệt duy nhất | Quy trình | Entity spec |
-| BR-004 | Nhật ký phê duyệt được lưu trữ vĩnh viễn, không cho phép xóa hoặc sửa | Audit | Entity spec |
+| GET | `/api/v1/ports` với bộ lọc trạng thái chờ duyệt | Danh sách hồ sơ chờ duyệt của cấp hiện tại | `port:approve` |
+| GET | `/api/v1/ports/{id}` | Chi tiết hồ sơ kèm lịch sử thay đổi | `port:read` |
+| POST | `/api/v1/ports/{id}/approve` | Chấp thuận ở cấp hiện tại (chuyển sang cấp tiếp theo hoặc Đã duyệt — theo file chuẩn) | `port:approve` |
+| POST | `/api/v1/ports/{id}/reject` | Từ chối / trả về (bắt buộc lý do ≥ 10 ký tự) | `port:approve` |
 
-## UI Scope
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-- **Component:** `PortApprovalPage` — danh sách cảng chờ duyệt + hành động Phê duyệt/Từ chối
-- **API endpoints:** `GET /api/v1/ports?approval_status=PENDING_APPROVAL` (danh sách), `POST /api/v1/ports/:id/approve` (phê duyệt), `POST /api/v1/ports/:id/reject` (từ chối)
-- **Phê duyệt:** Chuyển `approval_status → APPROVED`, tạo `approval_log`, toast "Đã phê duyệt thành công"
-- **Từ chối:** Chuyển `approval_status → REJECTED`, bắt buộc nhập lý do (tối thiểu 10 ký tự), tạo `approval_log` với lý do, toast "Đã từ chối"
-- **Confirmation dialog:** Hiển thị trước mọi hành động để tránh thao tác nhầm
-- **RBAC:** Chỉ Lãnh đạo mới thấy và thực hiện được hành động Phê duyệt/Từ chối
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-## Testing Strategy
+**Bảng `ports`:** sử dụng cột `approval_status` (SMALLINT, enum `ApprovalStatus`) có sẵn; bổ sung theo quy trình 2 cấp nếu cần theo dõi người duyệt từng vòng — 🔴 `submitted_for_approval_at` / `submitted_for_approval_by`, 🔴 `port_authority_approved_at` / `port_authority_approved_by` / `port_authority_approval_content` (vòng 1), 🔴 `department_approved_at` / `department_approved_by` / `department_approval_content` (vòng 2), 🔴 `rejection_reason` (VARCHAR 500) — tham khảo mẫu đã áp dụng tại entity `Berth` (bảng `berths`), SA chốt.
 
-### BE Testing
-Kiểm thử đơn vị cho quy tắc kiểm tra quyền phê duyệt và validation lý do từ chối; kiểm thử tích hợp cho luồng phê duyệt: chấp thuận thành công, từ chối với lý do, từ chối không lý do (bị chặn).
-
-### UI Testing
-React Testing Library: danh sách chờ duyệt, confirmation dialog, validation lý do từ chối (min 10 chars). Cypress E2E: đăng nhập Lãnh đạo → danh sách chờ duyệt → chọn cảng → xem chi tiết → click Phê duyệt → xác nhận dialog → toast "Đã phê duyệt thành công". Negative: Từ chối không nhập lý do → bị chặn; nhân viên vận hành không thấy nút Phê duyệt.
-
-## Consolidation Note
-
-Merged with UI feature F-072 (ui-phe-duyet-cb) — 2026-07-28
+**Bảng `approval_log` (nhật ký phê duyệt):** id (UUID PK), entityType, entityId (UUID), approvedBy (UUID), decision (enum: APPROVED / REJECTED_LEVEL1 / REJECTED_LEVEL2), reason (text), approvedAt (TIMESTAMP) — lưu vĩnh viễn, không xóa/sửa.
