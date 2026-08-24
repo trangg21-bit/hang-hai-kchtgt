@@ -194,7 +194,10 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       setGpsError(null);
       return;
     }
-    form.setFieldsValue({ coordinateSystem: 'WGS84', displayRule: 'Độ, phút, giây (DMS)' });
+    // Chỉ set default khi entityData không có sẵn coordinateSystem (để prefill không bị override)
+    if (!entityData || !entityData.geometryType || !entityData.coordinateSystem) {
+      form.setFieldsValue({ coordinateSystem: 'WGS84', displayRule: 'Độ, phút, giây (DMS)' });
+    }
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     if (!isEdit) {
       setCoordinateList(Array.from({ length: count }, () => ({ latitude: null, longitude: null })));
@@ -205,7 +208,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         return [...prev, ...added];
       });
     }
-  }, [watchedGeometryType, form, isEdit]);
+  }, [watchedGeometryType, form, isEdit, entityData]);
 
   // Edit mode: prefill dữ liệu hiện tại
   useEffect(() => {
@@ -225,7 +228,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       note: data.note, condition: data.condition, isActive: data.isActive,
       waterwayId: data.waterwayId || undefined, waterwayRouteId: data.waterwayRouteId || undefined,
       geometryType: data.geometryType || undefined, mapSymbolId: data.icon || undefined, coordinateSystem: data.geometryType ? (data.coordinateSystem || 'WGS84') : undefined,
-      displayRule: data.displayRule || undefined,
+      displayRule: data.displayFormat || undefined,
     });
   }, [form, isEdit, entityData, loadPortOptions]);
 
