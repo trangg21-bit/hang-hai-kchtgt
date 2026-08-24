@@ -34,13 +34,13 @@ Không có form nhập liệu mới — thao tác trên bản ghi `Pier` hiện 
 | # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | 1 | id | Có | UUID | Hồ sơ cầu cảng cần xử lý |
-| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (lưu số 0..6) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
+| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
 | 3 | reason (lý do từ chối) | Có khi từ chối | TextArea, tối thiểu 10 ký tự | Lý do chấp thuận là tùy chọn |
 | 4 | PheDuyetLog | Có (hệ thống) | Bảng `approval_log` | Người duyệt, cấp, thời gian, quyết định, lý do — lưu vĩnh viễn |
 
 ## 3. Trạng thái và phê duyệt
 
-- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (BA đề xuất, SA chốt).
+- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (đã chốt — M-1006 DP-9/AC-25).
 - Chỉ hồ sơ ở trạng thái chờ duyệt đúng cấp mới được xử lý; duyệt tuần tự, không vượt cấp; từ chối/trả về ở bất kỳ cấp nào dừng quy trình và hồ sơ quay lại người nhập.
 - Hồ sơ **Đã duyệt** mới chính thức có hiệu lực và được tham chiếu bởi module khác.
 - Sau quyết định: cập nhật trạng thái + ghi PheDuyetLog + thông báo người tạo. Log không được sửa/xóa.

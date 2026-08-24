@@ -2,8 +2,8 @@
 module-id: M-002
 module-name: Quản lý tài sản KCHTGT - Cảng & Bến
 document: base-pattern
-version: 1.0
-last-updated: 2026-08-21
+version: 1.1
+last-updated: 2026-08-22
 ---
 
 # M-002: Quản lý tài sản KCHTGT - Cảng & Bến — Tài liệu nền dùng chung
@@ -101,14 +101,14 @@ Tài liệu này gom phần chung đó vào **một chỗ**, để mỗi chức 
 | # | Trạng thái nghiệp vụ (QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md mục 1) | ApprovalStatus | Giá trị DB |
 |---|---|---|---|
 | 1 | Lưu tạm | `DRAFT` | 0 |
-| 2 | Chờ Cảng vụ / Chi cục duyệt | `PROPOSED` | 1 |
-| 3 | Chờ Cục duyệt | `PENDING_APPROVAL` | 2 |
-| 4 | Bị Cảng vụ / Chi cục trả về | `APPROVED_LEVEL1` | 3 |
-| 5 | Bị Cục trả về | `APPROVED_LEVEL2` | 4 |
+| 2 | Chờ Cảng vụ / Chi cục duyệt | `PENDING_APPROVAL` | 2 |
+| 3 | Chờ Cục duyệt | `APPROVED_LEVEL1` | 3 |
+| 4 | Bị Cảng vụ / Chi cục trả về | `REJECTED_LEVEL1` | 8 |
+| 5 | Bị Cục trả về | `REJECTED_LEVEL2` | 9 |
 | 6 | Đã duyệt | `APPROVED` | 5 |
-| 7 | Đã xóa (lịch sử) | `REJECTED` | 6 |
+| 7 | Đã xóa (lịch sử) | `ARCHIVED` | 7 |
 
-> **Bảng mapping này là đề xuất của BA — SA chốt khi duyệt tài liệu.**
+> **Bảng mapping đã chốt** (M-1006 DP-9/AC-25) — tập đóng 7 trạng thái. `PROPOSED` (1), `APPROVED_LEVEL2` (4), `REJECTED` (6) là giá trị legacy giữ trong enum để đọc dữ liệu cũ, **không dùng trong luồng thống nhất**.
 - Trạng thái lưu trong cơ sở dữ liệu dưới dạng **số nguyên** (INT/SMALLINT/TINYINT), map trên Java bằng enum với `@Enumerated(EnumType.ORDINAL)` — **không lưu chuỗi** (theo quy ước AGENTS.md "Ánh xạ Enum xuống Database"). Không hardcode giá trị enum dạng String — dùng tham chiếu từ enum (ví dụ `ApprovalStatus.APPROVED.name()`).
 - Chức năng `phe-duyet` của từng cluster mô tả đầy đủ quy trình riêng (vòng 1/vòng 2, chuyển trạng thái, popup lý do trả về...) trong feature-brief của nó, **không lặp lại** ở đây.
 

@@ -1,0 +1,80 @@
+{
+  "triage_id": "TRI-1787390890799-12aa",
+  "created_at": 1787390890799,
+  "request_summary": "Thay hardcode hex bằng semantic token trong 6 trang port M-002: 4 file đã sửa + 2 file detail sibling (PierDetailContent, DryPortDetailContent) cùng pattern #1677ff — AGENTS.md yêu cầu sửa đồng bộ màn cùng cụm menu",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/port/BerthDetailContent.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/DryPortDetailContent.tsx",
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/port/PierList.tsx",
+      "frontend/src/pages/port/WaterZoneList.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/port/BerthDetailContent.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/DryPortDetailContent.tsx",
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/port/PierList.tsx",
+      "frontend/src/pages/port/WaterZoneList.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C2: 6 edit-target files exceed the inline gate (6 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Trang danh sách/chi tiết Vùng nước, Cầu cảng, Bến cảng, Cảng cạn (frontend/src/pages/port/*)",
+  "blast_radius": 6,
+  "done_oracle": "Không còn hardcode hex màu (#1BAF7A/#EDA100/#E34948/#FA8C16/#F5222D/#1677ff) trong frontend/src/pages/port/*; nút phê duyệt và status/tag map dùng semantic token từ tokens.ts; tsc --noEmit pass",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/PierDetailContent.tsx",
+      "line": 99,
+      "quote": "background: '#1677ff15', color: '#1677ff' }}>{r.pierCode || '—'}</span>],",
+      "source_hash": "c62cbeea67d17256548ca56f7e0273c8118f0b4b88669504cb7964607fff8a08",
+      "quote_hash": "c646cf0efee5a1a3e32f6470df48c5a3027db6bfd2f72d9d1d9e33bbbcc9a389",
+      "note": "Tag 'Mã cầu cảng' hardcode AntD blue #1677ff"
+    },
+    {
+      "file": "frontend/src/pages/port/PierDetailContent.tsx",
+      "line": 129,
+      "quote": "<span style={{ color: systemOpen ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>",
+      "source_hash": "c62cbeea67d17256548ca56f7e0273c8118f0b4b88669504cb7964607fff8a08",
+      "quote_hash": "b8498e5165543c09c50bd5d17b593699c6bb25e4f2ccfd4ffd30b76e7c2e2bac",
+      "note": "Toggle 'Thông tin hệ thống' hardcode #1677ff"
+    },
+    {
+      "file": "frontend/src/pages/port/DryPortDetailContent.tsx",
+      "line": 89,
+      "quote": "background: '#1677ff15', color: '#1677ff' }}>{r.dryPortCode || '—'}</span>],",
+      "source_hash": "7dcf9e5c7f1be531cd9ce892502ede6bc88df3287b441283558c0541f64aaba2",
+      "quote_hash": "0518d7914da12535aa80cb9825f67458c131c9b8dc556735283e15cdf4fcad45",
+      "note": "Tag 'Mã cảng cạn' hardcode AntD blue #1677ff"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "bd97d2181ee1592a929b92ad5d4c69d0bbda3af7",
+    "dirty": true,
+    "captured_at": 1787390891124
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:42Z
-last-updated: 2026-08-21
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -25,27 +25,75 @@ consumed_by_modules: []
 
 ## 1. Mô tả ngắn
 
-Cho phép người dùng có quyền `berth:read` tra cứu, lọc và xem thông tin Bến cảng. Màn hình **danh sách** hiển thị 19 cột (11 cột cơ bản + 8 cột audit chỉ cho Admin Cục / admin-operation), bộ lọc 2 cấp (cơ bản + nâng cao), phân trang, và các thao tác nhanh: Xem chi tiết, Sửa, Xem vị trí (bản đồ). Màn hình **chi tiết** hiển thị đầy đủ trường của Bến cảng theo 4 nhóm: Thông tin chung, Thông tin công bố, Thông tin vị trí (GIS + tọa độ), File đính kèm — kèm lịch sử phê duyệt 2 cấp. Ngoài ra còn hiển thị + upload giấy tờ đính kèm (nội dung merge từ UI feature F-104).
+Cho phép người dùng có quyền `berth:read` tra cứu, lọc và xem thông tin Bến cảng. Màn hình **danh sách** hiển thị các cột theo sheet `QL Bến cảng` (cột cơ bản + cột log cập nhật/phê duyệt chỉ cho Admin Cục / admin-operation), bộ lọc 2 cấp (cơ bản + nâng cao), phân trang, và các thao tác nhanh: Xem chi tiết, Sửa, Xem vị trí (bản đồ). Màn hình **chi tiết** hiển thị đầy đủ trường của Bến cảng theo 4 nhóm: Thông tin chung, Thông tin công bố, Thông tin vị trí (GIS + tọa độ), File đính kèm — kèm lịch sử phê duyệt 2 cấp. Ngoài ra còn hiển thị + upload giấy tờ đính kèm (nội dung merge từ UI feature F-104).
 
 ## 2. Trường dữ liệu
 
-Không có form nhập liệu — các trường **hiển thị** theo entity `Berth` (bảng `berths`) + bảng con tọa độ và file đính kèm:
+Không có form nhập liệu — các trường **hiển thị** theo entity `Berth` (bảng `berths`) + bảng con tọa độ và file đính kèm. Bảng dưới đây **khớp 100%** sheet `QL Bến cảng` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Cột "Danh sách" quyết định cột hiển thị của màn Danh sách; cột "Xem chi tiết" quyết định trường hiển thị của màn Chi tiết (F-018 chỉ đọc).
 
-| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| 1 | berthCode, berthName | Có (hiển thị) | Text | Cột danh sách + chi tiết |
-| 2 | orgUnitId + orgUnitName | Có (hiển thị) | UUID / Text | Tên đơn vị ánh xạ `OrgUnitCacheService` — tài liệu nền mục 3.3 |
-| 3 | portId + tên Cảng biển | Có (hiển thị) | UUID / Text | Cột "Thuộc cảng biển" |
-| 4 | waterway / waterwayId | Không | Text / UUID | Cột "Thuộc luồng hàng hải" |
-| 5 | provinceId, detailedLocation | Không | Number / Text | Địa điểm |
-| 6 | structureType, berthType, operationalFunction | Không | Number / Enum / Text | Loại kết cấu, Loại bến, Công năng |
-| 7 | operationalStatus | Không | Enum `OperationalStatus` | Tình trạng (badge màu) |
-| 8 | approvalStatus | Có (hiển thị) | Enum `ApprovalStatus` | Trạng thái (badge màu) |
-| 9 | totalArea, designThroughput, currentThroughput, maxVesselSize, plannedThroughput, latestCargoVolume | Không | Number (DECIMAL) | Chi tiết |
-| 10 | openingAnnouncementDate, openingDecision, investmentAgreement | Không | DateTime / Text | Thông tin công bố |
-| 11 | coordinates[] | Không | Danh sách (latitude/longitude) | Dùng tọa độ đầu tiên cho "Xem vị trí" |
-| 12 | attachments[] / giấy tờ | Không | File (≤ 20MB, ≤ 10 files) | Tab File đính kèm + upload (F-104) |
-| 13 | Audit: submittedForApprovalAt/By, portAuthorityApprovedAt/By, departmentApprovedAt/By, updatedAt, updatedBy | Không | TIMESTAMP / UUID | 8 cột audit — chỉ hiển thị Admin Cục / admin-operation |
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Đơn vị quản lý (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `orgUnitId + orgUnitName` — tên đơn vị ánh xạ `OrgUnitCacheService` — tài liệu nền mục 3.3 |
+| 2 | Thuộc cảng biển (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `portId + tên Cảng biển` — cột "Thuộc cảng biển" |
+| 3 | Mã bến cảng | Text (read-only, tự sinh {mã-cảng-mẹ}-B{XX}) | Có (hệ thống tự sinh) | Có | Có | Có | Có | Có | `berthCode` — cột danh sách + bộ lọc |
+| 4 | Tên bến cảng (bắt buộc) | Text | Có | Có | Có | Có | Có | Có | `berthName` — cột danh sách + tìm kiếm |
+| 5 | Thuộc luồng hàng hải | Select | Không | Có | Có | Có | Có | Có | `waterway` / `waterwayId` — cột "Thuộc luồng hàng hải" |
+| 6 | Đơn vị khai thác | Text | Không | Không | Không | Có | Có | Có | `operator` |
+| 7 | Địa điểm (Tỉnh/TP) (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `provinceId` — cột danh sách + bộ lọc |
+| 8 | Địa điểm chi tiết | Text | Không | Không | Không | Có | Có | Có | `detailedLocation` |
+| 9 | Loại kết cấu bến cảng | Select | Không | Có | Có | Có | Có | Có | `structureType` — cột danh sách + bộ lọc |
+| 10 | Công năng khai thác | Text | Không | Có | Có | Có | Có | Có | `operationalFunction` — cột danh sách + bộ lọc |
+| 11 | Tổng diện tích (ha) | Number | Không | Không | Không | Có | Có | Có | `totalArea` |
+| 12 | Năng lực thông qua thiết kế | Number | Không | Không | Không | Có | Có | Có | `designThroughput` |
+| 13 | Năng lực thông qua hiện trạng | Number | Không | Không | Không | Có | Có | Có | `currentThroughput` |
+| 14 | Cỡ tàu tiếp nhận lớn nhất (DWT) | Number | Không | Không | Không | Có | Có | Có | `maxVesselSize` |
+| 15 | Quy hoạch năng lực thông qua | Number | Không | Không | Không | Có | Có | Có | `plannedThroughput` |
+| 16 | Sản lượng thực tế năm gần nhất | Number | Không | Không | Không | Có | Có | Có | `latestCargoVolume` |
+| 17 | Tình trạng (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `operationalStatus` — badge tình trạng (màu theo token) |
+| | **Thông tin công bố** | | | | | | | | |
+| 18 | Thời điểm công bố | Date | Không | Không | Không | Có | Có | Có | `openingAnnouncementDate` |
+| 19 | Quyết định công bố | Text | Không | Không | Không | Có | Có | Có | `openingDecision` |
+| 20 | Văn bản thỏa thuận | Text | Không | Không | Không | Có | Có | Có | `investmentAgreement` |
+| | **Thông tin vị trí (GIS + tọa độ)** | | | | | | | | |
+| 21 | Loại đối tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | Thông tin GIS (`coordinateSystem`, `displayRule`, `mapSymbolId`, `spatialId`) |
+| 22 | Biểu tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 23 | Hệ quy chiếu (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 24 | Quy tắc hiển thị (GIS) | Text | Không | Không | Không | Có | Có | Có | (GIS) |
+| 25 | Tọa độ GPS (bắt buộc ≥1 khi gửi duyệt) | Bảng con (Vĩ độ, Kinh độ) | Có* | Không | Không | Có | Có | Có | `coordinates[]` — dùng tọa độ đầu tiên cho "Xem vị trí" |
+| | **File đính kèm** | | | | | | | | |
+| 26 | File đính kèm | Upload | Không | Không | Không | Có | Có | Có | `attachments[]` / giấy tờ — hiển thị tên, định dạng, dung lượng + Download; ≤ 20MB, ≤ 10 files |
+| | **Trạng thái & Kiểm toán (chỉ ở trang Chi tiết/Danh sách)** | | | | | | | | |
+| 27 | Trạng thái phê duyệt | Badge (read-only) | Không (read-only) | Có | Có | Có | Không | Không | `approvalStatus` — badge trạng thái (màu theo token) |
+| | **Thông tin log cập nhật** | | | | | | | | |
+| 28 | Ngày cập nhật | DatePicker | Không (read-only) | Có | Có | Có | Không | Không | Cột danh sách + chi tiết — Admin Cục / admin-operation |
+| 29 | Cán bộ cập nhật | Text (read-only) | Không (read-only) | Có | Không | Có | Không | Không | Cột danh sách + chi tiết — Admin Cục / admin-operation |
+| 30 | Ngày gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalAt` — cột audit |
+| 31 | Cán bộ gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalBy` — cột audit |
+| 32 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedAt` — cột audit |
+| 33 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedBy` — cột audit |
+| 34 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovalContent` — cột audit |
+| 35 | Ngày phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedAt` — cột audit |
+| 36 | Cán bộ phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedBy` — cột audit |
+| 37 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovalContent` — cột audit |
+| | **Kết cấu hạ tầng thuộc cầu cảng** | | | | | | | | |
+| 38 | Tên kết cấu hạ tầng | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 40 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 42 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 43 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 44 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 45 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 46 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 47 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 48 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 49 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 50 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 51 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
 ## 3. Trạng thái và phê duyệt
 
@@ -63,7 +111,7 @@ Không có form nhập liệu — các trường **hiển thị** theo entity `B
 |---|---|---|
 | BR-018-01 | Danh sách mặc định: sắp xếp theo ngày cập nhật giảm dần, 20 dòng/trang, chỉ hiển thị bản ghi chưa xóa | List |
 | BR-018-02 | Phạm vi dữ liệu theo đơn vị người dùng; Admin Cục / admin-operation thấy toàn bộ | List |
-| BR-018-03 | 8 cột audit (ngày/người cập nhật, gửi PD, phê duyệt vòng 1/vòng 2) chỉ hiển thị cho Admin Cục và admin-operation | List |
+| BR-018-03 | Các cột log cập nhật/phê duyệt (mục 28–37) chỉ hiển thị cho Admin Cục và admin-operation | List |
 | BR-018-04 | Tìm kiếm/lọc: tên bến (trim, không phân biệt hoa/thường), lọc theo đơn vị, cảng biển, luồng HH, mã bến, loại kết cấu, công năng, trạng thái, tình trạng, tỉnh/TP, ngày cập nhật | Filter |
 | BR-018-05 | "Xem vị trí" dùng tọa độ GPS đầu tiên; không có tọa độ → ẩn nút | Detail |
 | BR-018-06 | Popup chi tiết read-only; nếu có quyền sửa → thêm nút "Chỉnh sửa" | Detail |
@@ -79,13 +127,13 @@ Không có form nhập liệu — các trường **hiển thị** theo entity `B
 
 | Vai trò điển hình | Thao tác |
 |---|---|
-| system-admin (Admin Cục) | Xem toàn bộ + cột audit |
-| admin-operation | Xem toàn bộ + cột audit |
-| admin / Chuyên viên / Lãnh đạo đơn vị | Xem trong đơn vị (11 cột cơ bản) |
+| system-admin (Admin Cục) | Xem toàn bộ + cột log |
+| admin-operation | Xem toàn bộ + cột log |
+| admin / Chuyên viên / Lãnh đạo đơn vị | Xem trong đơn vị (cột cơ bản) |
 | Lãnh đạo (cấp Cục) | Xem toàn bộ + duyệt (F-017) |
 | Cá nhân | Không |
 
-**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — xem full dữ liệu + 8 cột audit (người/ngày cập nhật, gửi PD, phê duyệt từng cấp).
+**Admin Cục:** không có đặc biệt ngoài mặc định tài liệu nền mục 3.2 — xem full dữ liệu + các cột log cập nhật/phê duyệt (mục 28–37).
 
 ## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
@@ -94,7 +142,7 @@ Không có form nhập liệu — các trường **hiển thị** theo entity `B
 | 1 | Trạng thái riêng | Không — hiển thị 7 trạng thái chung (badge) |
 | 2 | Có bước phê duyệt không | Không — chỉ xem; nút duyệt điều hướng sang F-017 |
 | 3 | Lọc cha-con / theo đơn vị | Có — theo đơn vị (orgUnitId) + lọc theo Cảng biển mẹ (portId), luồng hàng hải |
-| 4 | Trường chỉ hiện trong điều kiện nào | Có — 8 cột audit chỉ hiển thị với Admin Cục / admin-operation |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — cột log cập nhật/phê duyệt chỉ hiển thị với Admin Cục / admin-operation |
 | 5 | Quyền riêng | `berth:read` (xem); `giayto:upload` / `giayto:delete` (giấy tờ) |
 | 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
 | 7 | Tải lên tệp | Có — upload giấy tờ đính kèm (merge từ F-104) |

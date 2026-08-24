@@ -1,0 +1,79 @@
+{
+  "triage_id": "TRI-1787405414808-2e6e",
+  "created_at": 1787405414808,
+  "request_summary": "M-002 doc-only correction: sync approval-state mapping in base-pattern §3.5 + 11 feature-briefs ('lưu số 0..6') with the finalized 7-state standard (M-1006 DP-9/AC-25).",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C2: 12 edit-target files exceed the inline gate (12 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tài liệu nền phê duyệt M-002 (docs/modules/M-002-*/ba/01-base-pattern.md §3.5) — tài liệu đặc tả, không có entry point UI",
+  "blast_radius": 12,
+  "done_oracle": "grep '0\\.\\.6' trong thư mục M-002 = 0 match; bảng mapping base-pattern khớp chính xác chuẩn 7 trạng thái (DRAFT 0, PENDING_APPROVAL 2, APPROVED_LEVEL1 3, REJECTED_LEVEL1 8, REJECTED_LEVEL2 9, APPROVED 5, ARCHIVED 7); không đụng src/frontend",
+  "verification_commands": [
+    {
+      "command": "grep -rn \"0\\.\\.6\" docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben",
+      "cwd": ".",
+      "timeout_ms": 60000
+    },
+    {
+      "command": "git status --short",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md",
+      "line": 104,
+      "quote": "| 2 | Chờ Cảng vụ / Chi cục duyệt | `PROPOSED` | 1 |",
+      "source_hash": "815986912291687f7d505ba4c11a572a0e58cf3197bd3364c1df8b4b0f6346d2",
+      "quote_hash": "d415b5042ea44aae7f2ffc79f6235f7ff001aebc15437620d998096573474f30",
+      "note": "Bảng mapping sai chuẩn: 'Chờ Cảng vụ/Chi cục duyệt' phải là PENDING_APPROVAL(2), không phải PROPOSED(1)"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "bd97d2181ee1592a929b92ad5d4c69d0bbda3af7",
+    "dirty": true,
+    "captured_at": 1787405415046
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

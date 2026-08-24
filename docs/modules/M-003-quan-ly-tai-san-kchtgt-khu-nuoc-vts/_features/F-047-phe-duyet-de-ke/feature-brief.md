@@ -20,14 +20,14 @@ Quy trình phê duyệt hai cấp cho các bản ghi đê/kè: trưởng phòng 
 Đảm bảo chất lượng và tính chính xác của dữ liệu đê/kè trước khi đưa vào hệ thống thống kê chính thức. Cơ chế phê duyệt hai cấp giúp kiểm soát thông tin, giảm thiểu sai sót và đảm bảo trách nhiệm giải trình trong quản lý tài sản hạ tầng hàng hải khu nước VTS.
 
 ## Flow Summary
-Khi chuyên viên tạo mới hoặc cập nhật bản ghi đê/kè, bản ghi ở trạng thái "chờ phê duyệt cấp 1". Trưởng phòng xem danh sách bản ghi chờ phê duyệt, kiểm tra thông tin và quyết định phê duyệt hoặc từ chối kèm lý do. Nếu được phê duyệt cấp 1, bản ghi chuyển sang "chờ phê duyệt cấp 2". Cục trưởng thực hiện phê duyệt cấp 2 và khi hoàn tất, bản ghi chuyển sang trạng thái "đã phê duyệt" và chính thức ghi nhận trong hệ thống.
+Khi chuyên viên tạo mới hoặc cập nhật bản ghi đê/kè, bản ghi ở trạng thái "Lưu tạm" (`DRAFT`). Khi gửi duyệt, bản ghi chuyển sang "Chờ Cảng vụ/Chi cục duyệt" (`PENDING_APPROVAL`). Trưởng phòng xem danh sách bản ghi chờ phê duyệt, kiểm tra thông tin và quyết định phê duyệt hoặc từ chối kèm lý do. Nếu được phê duyệt cấp 1, bản ghi chuyển sang "Chờ Cục duyệt" (`APPROVED_LEVEL1`); nếu bị từ chối cấp 1 → `REJECTED_LEVEL1`. Cục trưởng thực hiện phê duyệt cấp 2 và khi hoàn tất, bản ghi chuyển sang trạng thái "đã phê duyệt" (`APPROVED`) và chính thức ghi nhận trong hệ thống; nếu bị từ chối cấp 2 → `REJECTED_LEVEL2`. (7 trạng thái chuẩn theo `docs/conventions/approval-2-level-spec.md` mục 3.1.)
 
 ## Acceptance Criteria
-- Bản ghi đê/kè cần phải trải qua 2 cấp phê duyệt (trưởng phòng → cục trưởng)
-- Trưởng phòng có thể phê duyệt hoặc từ chối bản ghi chờ phê duyệt cấp 1
-- Cục trưởng có thể phê duyệt hoặc từ chối bản ghi chờ phê duyệt cấp 2
+- Bản ghi đê/kè cần phải trải qua 2 cấp phê duyệt (trưởng phòng → cục trưởng): `DRAFT → PENDING_APPROVAL → APPROVED_LEVEL1 → APPROVED`
+- Trưởng phòng có thể phê duyệt hoặc từ chối bản ghi chờ phê duyệt cấp 1 (từ chối → `REJECTED_LEVEL1`)
+- Cục trưởng có thể phê duyệt hoặc từ chối bản ghi chờ phê duyệt cấp 2 (từ chối → `REJECTED_LEVEL2`)
 - Khi từ chối, người từ chối phải nhập lý do và bản ghi được gửi lại cho người tạo
-- Khi hoàn tất cả 2 cấp phê duyệt, bản ghi chuyển sang trạng thái "đã phê duyệt"
+- Khi hoàn tất cả 2 cấp phê duyệt, bản ghi chuyển sang trạng thái "đã phê duyệt" (`APPROVED`)
 
 ## In Scope
 - Danh sách bản ghi đê/kè chờ phê duyệt theo từng cấp

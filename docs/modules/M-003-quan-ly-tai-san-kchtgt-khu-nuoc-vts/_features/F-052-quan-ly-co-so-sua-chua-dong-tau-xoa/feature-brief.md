@@ -25,7 +25,7 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Cho phép **Chuyên viên** xóa (soft delete) một bản ghi cơ sở sửa chữa, đóng tàu khỏi danh sách chính. Bản ghi bị xóa chuyển sang trạng thái S_0 và không còn hiển thị trong danh sách, nhưng vẫn tồn tại trong cơ sở dữ liệu và có thể được xem lại qua tính năng Lịch sử (F-055).
+Cho phép **Chuyên viên** xóa (soft delete) một bản ghi cơ sở sửa chữa, đóng tàu khỏi danh sách chính. Bản ghi bị xóa chuyển sang trạng thái ARCHIVED (Đã xóa lịch sử) và không còn hiển thị trong danh sách, nhưng vẫn tồn tại trong cơ sở dữ liệu và có thể được xem lại qua tính năng Lịch sử (F-055).
 
 ### 1.2. Tại sao cần tính năng này?
 
@@ -33,9 +33,9 @@ Trong quá trình quản lý, có những bản ghi được tạo ra do nhầm 
 
 ### 1.3. Luồng hoạt động chính
 
-Chuyên viên mở danh sách CSSCDT → tìm bản ghi cần xóa (phải ở trạng thái S_1 - Lưu tạm) → nhấn nút **Xóa** trên dòng → hệ thống hiển thị hộp thoại xác nhận → Chuyên viên xác nhận → bản ghi chuyển sang S_0 → biến mất khỏi danh sách chính.
+Chuyên viên mở danh sách CSSCDT → tìm bản ghi cần xóa (phải ở trạng thái DRAFT - Lưu tạm) → nhấn nút **Xóa** trên dòng → hệ thống hiển thị hộp thoại xác nhận → Chuyên viên xác nhận → bản ghi chuyển sang ARCHIVED → biến mất khỏi danh sách chính.
 
-> ⚠ **Quan trọng:** Chỉ xóa được bản ghi ở trạng thái **S_1 (Lưu tạm)** — tức là bản ghi chưa từng được gửi duyệt. Một khi đã gửi duyệt (S_2 trở đi), không thể xóa được nữa.
+> ⚠ **Quan trọng:** Chỉ xóa được bản ghi ở trạng thái **DRAFT (Lưu tạm)** — tức là bản ghi chưa từng được gửi duyệt. Một khi đã gửi duyệt (PENDING_APPROVAL trở đi), không thể xóa được nữa.
 
 ---
 
@@ -75,13 +75,13 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 ## 4. Yêu cầu chức năng (Acceptance Criteria)
 
-**AC-052-01 — Chỉ hiển thị nút Xóa khi đủ điều kiện:** Nút Xóa chỉ hiển thị trên dòng khi **đồng thời** thỏa mãn: (1) `status = S_1`, (2) user có quyền `cosuachua:delete`, (3) user thuộc đúng `fkDonViQl` của bản ghi. Nếu không đủ điều kiện, nút Xóa bị ẩn.
+**AC-052-01 — Chỉ hiển thị nút Xóa khi đủ điều kiện:** Nút Xóa chỉ hiển thị trên dòng khi **đồng thời** thỏa mãn: (1) `status = DRAFT` (Lưu tạm), (2) user có quyền `cosuachua:delete`, (3) user thuộc đúng `fkDonViQl` của bản ghi. Nếu không đủ điều kiện, nút Xóa bị ẩn.
 
 **AC-052-02 — Xác nhận trước khi xóa:** Khi nhấn Xóa, hiển thị hộp thoại: "Bạn có chắc chắn muốn xóa cơ sở '{tên cơ sở}'? Bản ghi sẽ được chuyển vào Lịch sử và có thể khôi phục sau." với 2 nút Hủy và Xóa.
 
-**AC-052-03 — Soft delete:** Sau khi xác nhận, backend thực hiện soft delete: set `status = S_0`, không xóa vật lý dữ liệu. Ghi log thao tác vào bảng lịch sử.
+**AC-052-03 — Soft delete:** Sau khi xác nhận, backend thực hiện soft delete: set `status = ARCHIVED` (Đã xóa lịch sử), không xóa vật lý dữ liệu. Ghi log thao tác vào bảng lịch sử.
 
-**AC-052-04 — Từ chối xóa bản ghi không đủ điều kiện:** Nếu gọi API DELETE với bản ghi có status ≠ S_1, trả về lỗi 422: "Chỉ có thể xóa bản ghi ở trạng thái Lưu tạm."
+**AC-052-04 — Từ chối xóa bản ghi không đủ điều kiện:** Nếu gọi API DELETE với bản ghi có status ≠ DRAFT (Lưu tạm), trả về lỗi 422: "Chỉ có thể xóa bản ghi ở trạng thái Lưu tạm."
 
 **AC-052-05 — Kiểm tra quyền đơn vị:** Nếu user không thuộc `fkDonViQl` của bản ghi, trả về 403.
 
@@ -91,15 +91,15 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 ## 5. Quy tắc nghiệp vụ (Business Rules)
 
-**BR-052-01 — Chỉ xóa được S_1:** Bản ghi phải ở trạng thái Lưu tạm (chưa từng gửi duyệt) mới được xóa.
+**BR-052-01 — Chỉ xóa được DRAFT (Lưu tạm):** Bản ghi phải ở trạng thái Lưu tạm (chưa từng gửi duyệt) mới được xóa.
 
-**BR-052-02 — Soft delete, không xóa vật lý:** Dữ liệu không bị xóa khỏi database. Chỉ set `status = S_0` và ghi log.
+**BR-052-02 — Soft delete, không xóa vật lý:** Dữ liệu không bị xóa khỏi database. Chỉ set `status = ARCHIVED` và ghi log.
 
 **BR-052-03 — Dữ liệu liên quan không tự động xóa:** Nếu CSSCDT đã có dữ liệu vận hành, bảo trì, sự cố gắn kèm, các dữ liệu đó **không** tự động bị xóa theo.
 
 **BR-052-04 — Cùng đơn vị mới được xóa:** User phải thuộc `fkDonViQl` của bản ghi.
 
-**BR-052-05 — Có thể khôi phục:** Bản ghi S_0 vẫn tồn tại trong DB, có thể xem lại qua F-055 (Lịch sử).
+**BR-052-05 — Có thể khôi phục:** Bản ghi ARCHIVED (Đã xóa lịch sử) vẫn tồn tại trong DB, có thể xem lại qua F-055 (Lịch sử).
 
 ---
 
@@ -107,13 +107,13 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 | Trạng thái | Thấy nút Xóa? | Lý do |
 |---|---|---|
-| S_1 (Lưu tạm) | ✅ | Đủ điều kiện |
-| S_2 (Chờ Chi cục) | ❌ | Đã gửi duyệt |
-| S_3 (Chờ Cục) | ❌ | Đang trong luồng duyệt |
-| S_4 (Từ chối CC) | ❌ | Đã từng gửi duyệt |
-| S_5 (Từ chối Cục) | ❌ | Đã từng gửi duyệt |
-| S_6 (Đã duyệt) | ❌ | Đã duyệt |
-| S_0 (Đã xóa) | ❌ | Đã xóa rồi |
+| DRAFT (Lưu tạm) | ✅ | Đủ điều kiện |
+| PENDING_APPROVAL (Chờ Cảng vụ/Chi cục duyệt) | ❌ | Đã gửi duyệt |
+| APPROVED_LEVEL1 (Chờ Cục duyệt) | ❌ | Đang trong luồng duyệt |
+| REJECTED_LEVEL1 (Bị trả về C1) | ❌ | Đã từng gửi duyệt |
+| REJECTED_LEVEL2 (Bị trả về C2) | ❌ | Đã từng gửi duyệt |
+| APPROVED (Đã duyệt) | ❌ | Đã duyệt |
+| ARCHIVED (Đã xóa lịch sử) | ❌ | Đã xóa rồi |
 
 ---
 
@@ -149,15 +149,15 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 ```
 1. User nhấn "Xóa" trên dòng trong danh sách
-2. Frontend kiểm tra status = S_1 → nếu không, nút đã bị ẩn
+2. Frontend kiểm tra status = DRAFT (Lưu tạm) → nếu không, nút đã bị ẩn
 3. Hiển thị hộp thoại xác nhận với tên cơ sở
 4. User nhấn "Xóa" xác nhận
 5. Frontend gọi DELETE /api/v1/co-so-sua-chua/{id}
 6. Backend:
    a. Kiểm tra bản ghi tồn tại
-   b. Kiểm tra status = S_1 → nếu không, 422
+   b. Kiểm tra status = DRAFT (Lưu tạm) → nếu không, 422
    c. Kiểm tra user thuộc fkDonViQl → nếu không, 403
-   d. Set status = S_0, updatedAt = now
+   d. Set status = ARCHIVED, updatedAt = now
    e. Ghi log vào phe_duyet_lich_su: loaiThaoTac = XOA
    f. Return 200
 7. Frontend hiển thị toast "Đã xóa cơ sở {tên}"
@@ -179,10 +179,10 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 | Feature | Liên quan |
 |---|---|
-| **F-050** | Bản ghi do F-050 tạo, nếu còn S_1 thì F-052 xóa được |
+| **F-050** | Bản ghi do F-050 tạo, nếu còn DRAFT (Lưu tạm) thì F-052 xóa được |
 | **F-051** | Sau khi F-051 sửa, nếu gửi duyệt rồi thì F-052 không xóa được |
 | **F-053** | Một khi đã vào luồng duyệt, F-052 mất tác dụng |
-| **F-055** | Bản ghi S_0 vẫn xem được qua Lịch sử |
+| **F-055** | Bản ghi ARCHIVED vẫn xem được qua Lịch sử |
 
 ---
 

@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-21
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -25,17 +25,66 @@ consumed_by_modules: []
 
 ## 1. Mô tả ngắn
 
-Cho phép người dùng có thẩm quyền (`dryport:update`) chỉnh sửa thông tin Cảng cạn đã tồn tại; form 4 tab, 25 trường pre-filled từ API. **Mã CC-XXXXXX** và **Đơn vị quản lý** bất biến (read-only/disabled). Hai nút: **Lưu tạm** (giữ trạng thái; **không áp dụng cho bản ghi đã duyệt**) và **Lưu và phê duyệt** (cần `dryport:approve`). Với bản ghi đã duyệt (APPROVED): bắt buộc dùng "Lưu và phê duyệt" để phê duyệt lại — người không có `dryport:approve` không được sửa. Mọi thay đổi ghi vào change history. "Gửi phê duyệt" là hành động trên màn hình Danh sách, không nằm trên form này.
+Cho phép người dùng có thẩm quyền (`dryport:update`) chỉnh sửa thông tin Cảng cạn đã tồn tại; form 4 tab, 24 trường pre-filled từ API. **Mã CC-XXXXXX** và **Đơn vị quản lý** bất biến (read-only/disabled). Hai nút: **Lưu tạm** (giữ trạng thái; **không áp dụng cho bản ghi đã duyệt**) và **Lưu và phê duyệt** (cần `dryport:approve`). Với bản ghi đã duyệt (APPROVED): bắt buộc dùng "Lưu và phê duyệt" để phê duyệt lại — người không có `dryport:approve` không được sửa. Mọi thay đổi ghi vào change history. "Gửi phê duyệt" là hành động trên màn hình Danh sách, không nằm trên form này.
+
+> **⚠️ Lưu ý đối chiếu Excel:** sheet `QL Cảng cạn` (nguồn sự thật) để cột **Sửa = Không** cho mọi trường. Sự tồn tại của F-027 (Cập nhật Cảng cạn) đang là **câu hỏi chờ BA/SA chốt** (mục 3.3 + câu hỏi #1 — `docs/intel/field-mismatch-report-m002-m003-vs-excel.md`): (a) Excel đúng → bỏ F-027; (b) Brief đúng → sửa Excel chuyển Sửa=true; (c) Sửa có điều kiện (vd: chỉ khi DRAFT, khóa ĐVQL). Bảng mục 2 dưới đây giữ nguyên cờ theo Excel (Sửa = Không); nội dung luồng sửa của mục 3-7 giữ nguyên chờ BA/SA chốt.
 
 ## 2. Trường dữ liệu
 
-Cấu trúc theo entity `DryPort` (bảng `dry_ports`) — danh sách trường giống F-026 (mục 2). Điểm khác biệt:
+Cấu trúc theo entity `DryPort` (bảng `dry_ports`) — danh sách trường **khớp 100%** sheet `QL Cảng cạn` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Điểm khác biệt của F-027 so với F-026: `dryPortCode` và `orgUnitId` là **disabled trên màn Sửa** (bất biến vĩnh viễn).
 
-| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| 1 | dryPortCode | Có | Text (VARCHAR 50) | **Disabled — bất biến vĩnh viễn**; backend từ chối nếu payload đổi mã |
-| 2 | orgUnitId | Có | TreeSelect (UUID) | **Disabled — bất biến vĩnh viễn**; backend từ chối nếu payload đổi đơn vị |
-| 3 | Các trường khác của `DryPort` | Không | Theo entity | Cho phép chỉnh sửa (validation giống F-026) |
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Đơn vị quản lý (bắt buộc) | Select | Có | Có | Có | Có | Có | Không | `orgUnitId` — **disabled, bất biến vĩnh viễn**; backend từ chối payload đổi đơn vị |
+| 2 | Đơn vị khai thác | Text | Không | Có | Không | Có | Có | Không | `operatingUnit` |
+| 3 | Khu vực | Text | Không | Có | Có | Có | Có | Không | `region` |
+| 4 | Mã cảng cạn | Text (read-only, tự sinh CC-XXXXXX) | Có (hệ thống tự sinh) | Có | Có | Có | Có | Không | `dryPortCode` — **disabled, bất biến vĩnh viễn**; backend từ chối payload đổi mã |
+| 5 | Tên cảng cạn (bắt buộc) | Text | Có | Có | Có | Có | Có | Không | `dryPortName` |
+| 6 | Tỉnh/TP (bắt buộc) | Select | Có | Không | Có | Có | Có | Không | `provinceId` |
+| 7 | Địa chỉ chi tiết (bắt buộc) | Text | Có | Không | Không | Có | Có | Không | `detailedLocation` |
+| 8 | Hành lang vận tải | Text | Không | Có | Có | Có | Có | Không | `transportCorridor` |
+| 9 | Công suất khai thác (TEU) (bắt buộc) | Number | Có | Không | Không | Có | Có | Không | `teuCapacity` |
+| 10 | Tổng diện tích (m²) | Number | Không | Không | Không | Có | Có | Không | `area` |
+| 11 | Diện tích kho (m²) | Number | Không | Không | Không | Có | Có | Không | `warehouseArea` |
+| 12 | Diện tích bãi (m²) | Number | Không | Không | Không | Có | Có | Không | `yardArea` |
+| 13 | Phương thức kết nối | Text | Không | Không | Không | Có | Có | Không | `connectionMode` |
+| 14 | Tình trạng (bắt buộc) | Select | Có | Không | Có | Có | Có | Không | `portStatus` |
+| 15 | Ghi chú | Textarea | Không | Không | Không | Có | Có | Không | `remarks` |
+| | **Thông tin công bố** | | | | | | | | |
+| 16 | Quyết định công bố số | Text | Không | Không | Không | Có | Có | Không | `announcementDecisionNumber` |
+| 17 | Ngày ra quyết định | DatePicker | Không | Không | Không | Có | Có | Không | `announcementDecisionDate` |
+| 18 | Đơn vị ra quyết định | Text | Không | Không | Không | Có | Có | Không | `announcementOrg` |
+| | **Vị trí (GIS)** | | | | | | | | |
+| 19 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Không | `coordinateSystem`/`displayRule`/`mapSymbolId`/`spatialId` |
+| 20 | Biểu tượng | Select | Không | Không | Không | Có | Có | Không | (GIS) |
+| 21 | Hệ quy chiếu | Text | Không | Không | Không | Có | Có | Không | (GIS) |
+| 22 | Quy tắc hiển thị | Text | Không | Không | Không | Có | Có | Không | (GIS) |
+| 23 | Tọa độ | Bảng con (Kinh độ, Vĩ độ) | Không | Không | Không | Có | Có | Không | `coordinates[]` (GIS) |
+| | **File đính kèm** | | | | | | | | |
+| 24 | File đính kèm | Upload | Không | Không | Không | Có | Có | Không | `attachments[]` — quản lý tại F-026/F-030 |
+| | **Trạng thái & Kiểm toán (chỉ ở trang Chi tiết)** | | | | | | | | |
+| 25 | Trạng thái phê duyệt | Badge (read-only) | Không (read-only) | Có | Có | Có | Không | Không | `approvalStatus` |
+| 26 | Người cập nhật | Text (read-only, chỉ Admin Cục) | Không (read-only) | Có | Không | Có | Không | Không | Kiểm toán — chỉ Admin Cục |
+| 27 | Ngày cập nhật | Text (read-only, chỉ Admin Cục) | Không (read-only) | Có | Có | Có | Không | Không | Kiểm toán — chỉ Admin Cục |
+| | **Thông tin quy hoạch** | | | | | | | | |
+| 28 | Số quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 29 | Ngày quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 30 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 31 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 32 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 33 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 34 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 35 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 36 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 37 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 38 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 40 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
 ## 3. Trạng thái và phê duyệt
 

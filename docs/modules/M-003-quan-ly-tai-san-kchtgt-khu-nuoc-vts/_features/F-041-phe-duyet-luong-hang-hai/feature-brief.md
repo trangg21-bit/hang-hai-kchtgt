@@ -21,20 +21,20 @@ Quy trinh phe duyet hai cap cho luong hang hai: truong phong phe duyet cap 1 (C1
 Dam bao chat luong va tinh chinh xac cua du lieu luong hang hai truoc khi dua vao he thong thong ke chinh thuc. Co che phe duyet hai cap giup kiem soat thong tin, giam thiểu sai sót và đảm bảo trách nhiệm giải trình trong quản lý tài sản hạ tầng hàng hải khu nước VTS.
 
 ## Flow Summary
-1. Chuyen vien tao moi hoac cap nhat luong hang hai → he thong dat trang thai PROPOSED
-2. Chuyen vien gui cho phe duyet → ban ghi chuyen vao danh sach cho phe duyet cap 1
+1. Chuyen vien tao moi hoac cap nhat luong hang hai → he thong dat trang thai DRAFT (Lưu tạm)
+2. Chuyen vien gui cho phe duyet → ban ghi chuyen sang PENDING_APPROVAL (Cho Cang vu/Chi cuc duyet, cap 1)
 3. Truong phong (A-002) xem danh sach luong hang hai cho phe duyet → phe duyet hoac tu tuyen
-4. Phe duyet C1 thanh cong → trang thai chuyen thanh UNDER_REVIEW, chuyen vao danh sach cho phe duyet cap 2
+4. Phe duyet C1 thanh cong → trang thai chuyen thanh APPROVED_LEVEL1 (Cho Cuc duyet), chuyen vao danh sach cho phe duyet cap 2
 5. Cuc truong (A-004) xem danh sach luong hang hai cho phe duyet cap 2 → phe duyet hoac tu tuyen
 6. Phe duyet C2 thanh cong → trang thai chuyen thanh APPROVED, chinh thuc ghi nhan
-7. Neu tu tuyen → trang thai = REJECTED, gui ve cho chuyen vien, chuyen vien co the sua va gui lai
+7. Neu tu tuyen cap 1 → trang thai = REJECTED_LEVEL1; neu tu tuyen cap 2 → trang thai = REJECTED_LEVEL2; gui ve cho chuyen vien, chuyen vien co the sua va gui lai
 
 ## Acceptance Criteria
 - [x] Phe duyet Luong hang hai thanh cong
 - [x] Phe duyet 2 cap: phong (C1) → Cuc (C2)
-- [x] Phe duyet C1: PROPOSED → UNDER_REVIEW
-- [x] Phe duyet C2: UNDER_REVIEW → APPROVED
-- [x] Tu tuyen → trang thai = REJECTED, gui ve cho chuyen vien
+- [x] Phe duyet C1: PENDING_APPROVAL → APPROVED_LEVEL1
+- [x] Phe duyet C2: APPROVED_LEVEL1 → APPROVED
+- [x] Tu tuyen cap 1 → trang thai = REJECTED_LEVEL1; tu tuyen cap 2 → trang thai = REJECTED_LEVEL2, gui ve cho chuyen vien
 - [x] Ly do tu tuyen la buoc khi tu tuyen
 - [x] Ghi nhan phe duyet lich su sau moi quyet dinh
 
@@ -57,9 +57,9 @@ Dam bao chat luong va tinh chinh xac cua du lieu luong hang hai truoc khi dua va
 
 | Role | Level | Notes |
 |---|---|---|
-| A-003 (Chuyen vien) | Tao/Cap nhat/Xoa | Chi du lieu PROPOSED/UNDER_REVIEW/REJECTED |
-| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PROPOSED → UNDER_REVIEW |
-| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | UNDER_REVIEW → APPROVED |
+| A-003 (Chuyen vien) | Tao/Cap nhat/Xoa | Chi du lieu DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2 |
+| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PENDING_APPROVAL → APPROVED_LEVEL1 |
+| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | APPROVED_LEVEL1 → APPROVED |
 
 ## Entities
 
@@ -74,11 +74,11 @@ Dam bao chat luong va tinh chinh xac cua du lieu luong hang hai truoc khi dua va
 | ID | Rule | Applies-to | Source |
 |---|---|---|---|
 | BR-041-01 | 2 cap duyet: phong → Cuc | Approve | UC-3349 |
-| BR-041-02 | Phe duyet C1: PROPOSED → UNDER_REVIEW | Approve C1 | DESIGN.md |
-| BR-041-03 | Phe duyet C2: UNDER_REVIEW → APPROVED | Approve C2 | DESIGN.md |
+| BR-041-02 | Phe duyet C1: PENDING_APPROVAL → APPROVED_LEVEL1 | Approve C1 | DESIGN.md |
+| BR-041-03 | Phe duyet C2: APPROVED_LEVEL1 → APPROVED | Approve C2 | DESIGN.md |
 | BR-041-04 | Ly do tu tuyen la buoc khi tu tuyen | Reject | DESIGN.md |
 | BR-041-05 | Ghi nhan phe duyet lich su sau moi quyet dinh | Approve | DESIGN.md |
-| BR-041-06 | Khong duoc phe duyet cap 2 neu dang PROPOSED | Approve | DESIGN.md |
+| BR-041-06 | Khong duoc phe duyet cap 2 neu dang PENDING_APPROVAL | Approve | DESIGN.md |
 
 ## Technical Details
 
@@ -96,18 +96,19 @@ Dam bao chat luong va tinh chinh xac cua du lieu luong hang hai truoc khi dua va
 - Approve C2: `approverId` (nguoi phe duyet C2), `approvedAt` (thoi gian phe duyet)
 - Reject C2: `approverId`, `rejectedAt`, `reason` (ly do, buoc)
 
-### State Machine
-- PROPOSED --[C1 approve]→ UNDER_REVIEW --[C2 approve]→ APPROVED
-- UNDER_REVIEW --[C1 reject]→ REJECTED
-- PROPOSED --[C1 reject]→ REJECTED
-- REJECTED --[C2 reject]→ REJECTED (gui ve chuyen vien)
+### State Machine (7 trạng thái chuẩn — approval-2-level-spec.md §3.1)
+- DRAFT --[gui duyet]→ PENDING_APPROVAL --[C1 approve]→ APPROVED_LEVEL1 --[C2 approve]→ APPROVED
+- PENDING_APPROVAL --[C1 reject]→ REJECTED_LEVEL1
+- APPROVED_LEVEL1 --[C2 reject]→ REJECTED_LEVEL2
+- REJECTED_LEVEL1/REJECTED_LEVEL2 --[sua & gui lai]→ PENDING_APPROVAL (gui lai vong 1)
+- APPROVED --[sua]→ DRAFT (can duyet lai)
 
 ## Testing Strategy
-- Unit tests: State machine transitions (PROPOSED→UNDER_REVIEW→APPROVED, PROPOSED→REJECTED, etc.)
+- Unit tests: State machine transitions (DRAFT→PENDING_APPROVAL→APPROVED_LEVEL1→APPROVED, PENDING_APPROVAL→REJECTED_LEVEL1, APPROVED_LEVEL1→REJECTED_LEVEL2, etc.)
 - Service tests: Approve C1 → validate → update state → ghi history; Reject C1 → validate reason → update state
 - Controller tests: POST /api/v1/luong-hang-hai/{id}/approve/c1, auth filters, role-based access
 - Integration: Tao moi → gui phe duyet → C1 approve → C2 approve (end-to-end); Reject at any stage
-- Negative tests: C2 approve du lieu PROPOSED → 400; Reject without reason → 400
+- Negative tests: C2 approve du lieu PENDING_APPROVAL → 400; Reject without reason → 400
 - All unit tests must pass before feature seal
 
 ## Design Reference

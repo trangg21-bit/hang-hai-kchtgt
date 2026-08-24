@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:42Z
-last-updated: 2026-08-21
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -29,15 +29,71 @@ Cho phép người dùng có thẩm quyền (`berth:update`) chỉnh sửa thôn
 
 ## 2. Trường dữ liệu
 
-Cấu trúc theo entity `Berth` (bảng `berths`) — danh sách trường giống F-014 (mục 2). Điểm khác biệt của F-015:
+Cấu trúc theo entity `Berth` (bảng `berths`) — danh sách trường **khớp 100%** sheet `QL Bến cảng` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Điểm khác biệt của F-015 so với F-014: `berthCode` và `orgUnitId` là **read-only trên màn Sửa** (Excel: cột Sửa vẫn hiển thị nhưng điều khiển `Text (read-only)`); nếu đổi `portId` → sinh lại mã bến. Các trường ~~length, width, berthType, channelDepth~~ đã loại bỏ (thuộc Cầu cảng, không thuộc Bến cảng — theo Excel).
 
-| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| 1 | berthCode | Có | Text (VARCHAR 50) | **Read-only — bất biến** |
-| 2 | orgUnitId | Có | TreeSelect (UUID) | **Read-only — bất biến tuyệt đối** |
-| 3 | portId | Có | TreeSelect (UUID) | Đổi cảng → sinh lại mã bến + cảnh báo |
-| 4 | coordinates[] | Có* | Danh sách (latitude [-90,90], longitude [-180,180]) | ≥ 1 tọa độ khi Gửi phê duyệt |
-| 5 | Các trường khác của `Berth` | Không | Theo entity | Giống F-014; trường bắt buộc khi submit giống F-014 |
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Đơn vị quản lý (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `orgUnitId` — **read-only, bất biến tuyệt đối**; backend từ chối payload đổi đơn vị |
+| 2 | Thuộc cảng biển (bắt buộc) | Select | Có | Có | Có | Có | Có | Có | `portId` — đổi cảng → sinh lại mã bến + cảnh báo |
+| 3 | Mã bến cảng | Text (read-only, tự sinh {mã-cảng-mẹ}-B{XX}) | Có (hệ thống tự sinh) | Có | Có | Có | Có | Có | `berthCode` — **read-only, bất biến** |
+| 4 | Tên bến cảng (bắt buộc) | Text | Có | Có | Có | Có | Có | Có | `berthName` |
+| 5 | Thuộc luồng hàng hải | Select | Không | Có | Có | Có | Có | Có | `waterway` / `waterwayId` |
+| 6 | Đơn vị khai thác | Text | Không | Không | Không | Có | Có | Có | `operator` |
+| 7 | Địa điểm (Tỉnh/TP) (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `provinceId` |
+| 8 | Địa điểm chi tiết | Text | Không | Không | Không | Có | Có | Có | `detailedLocation` |
+| 9 | Loại kết cấu bến cảng | Select | Không | Có | Có | Có | Có | Có | `structureType` |
+| 10 | Công năng khai thác | Text | Không | Có | Có | Có | Có | Có | `operationalFunction` |
+| 11 | Tổng diện tích (ha) | Number | Không | Không | Không | Có | Có | Có | `totalArea` |
+| 12 | Năng lực thông qua thiết kế | Number | Không | Không | Không | Có | Có | Có | `designThroughput` |
+| 13 | Năng lực thông qua hiện trạng | Number | Không | Không | Không | Có | Có | Có | `currentThroughput` |
+| 14 | Cỡ tàu tiếp nhận lớn nhất (DWT) | Number | Không | Không | Không | Có | Có | Có | `maxVesselSize` |
+| 15 | Quy hoạch năng lực thông qua | Number | Không | Không | Không | Có | Có | Có | `plannedThroughput` |
+| 16 | Sản lượng thực tế năm gần nhất | Number | Không | Không | Không | Có | Có | Có | `latestCargoVolume` |
+| 17 | Tình trạng (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `operationalStatus` |
+| | **Thông tin công bố** | | | | | | | | |
+| 18 | Thời điểm công bố | Date | Không | Không | Không | Có | Có | Có | `openingAnnouncementDate` |
+| 19 | Quyết định công bố | Text | Không | Không | Không | Có | Có | Có | `openingDecision` |
+| 20 | Văn bản thỏa thuận | Text | Không | Không | Không | Có | Có | Có | `investmentAgreement` |
+| | **Thông tin vị trí (GIS + tọa độ)** | | | | | | | | |
+| 21 | Loại đối tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | `coordinateSystem`/`displayRule`/`mapSymbolId`/`spatialId` |
+| 22 | Biểu tượng (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 23 | Hệ quy chiếu (GIS) | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 24 | Quy tắc hiển thị (GIS) | Text | Không | Không | Không | Có | Có | Có | (GIS) |
+| 25 | Tọa độ GPS (bắt buộc ≥1 khi gửi duyệt) | Bảng con (Vĩ độ, Kinh độ) | Có* | Không | Không | Có | Có | Có | `coordinates[]` — ≥ 1 tọa độ khi Gửi phê duyệt lại |
+| | **File đính kèm** | | | | | | | | |
+| 26 | File đính kèm | Upload | Không | Không | Không | Có | Có | Có | `attachments[]` — quản lý tại F-014/F-018; màn Sửa hiển thị danh sách |
+| | **Trạng thái & Kiểm toán (chỉ ở trang Chi tiết/Danh sách)** | | | | | | | | |
+| 27 | Trạng thái phê duyệt | Badge (read-only) | Không (read-only) | Có | Có | Có | Không | Không | `approvalStatus` |
+| | **Thông tin log cập nhật** | | | | | | | | |
+| 28 | Ngày cập nhật | DatePicker | Không (read-only) | Có | Có | Có | Không | Không | Chỉ Danh sách/Chi tiết — Admin Cục / admin-operation |
+| 29 | Cán bộ cập nhật | Text (read-only) | Không (read-only) | Có | Không | Có | Không | Không | Chỉ Danh sách/Chi tiết — Admin Cục / admin-operation |
+| 30 | Ngày gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalAt` |
+| 31 | Cán bộ gửi phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `submittedForApprovalBy` |
+| 32 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedAt` |
+| 33 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovedBy` |
+| 34 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `portAuthorityApprovalContent` |
+| 35 | Ngày phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedAt` |
+| 36 | Cán bộ phê duyệt cấp Cục | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovedBy` |
+| 37 | Nội dung phê duyệt | Textarea | Không (read-only) | Có | Không | Có | Không | Không | `departmentApprovalContent` |
+| | **Kết cấu hạ tầng thuộc cầu cảng** | | | | | | | | |
+| 38 | Tên kết cấu hạ tầng | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 40 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 42 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 43 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 44 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 45 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 46 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 47 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 48 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 49 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 50 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 51 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
 ## 3. Trạng thái và phê duyệt
 

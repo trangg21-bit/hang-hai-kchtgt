@@ -25,7 +25,7 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Cho phép người dùng có thẩm quyền (Admin, Chuyên viên) tạo mới một Trạm radar vào hệ thống quản lý tài sản KCHTGT khu nước & VTS. Người dùng nhập đầy đủ thông tin kỹ thuật và hành chính. Trạm radar sau khi tạo sẽ ở trạng thái "Đề xuất" (`PROPOSED`) và cần được phê duyệt 2 cấp trước khi đưa vào vận hành.
+Cho phép người dùng có thẩm quyền (Admin, Chuyên viên) tạo mới một Trạm radar vào hệ thống quản lý tài sản KCHTGT khu nước & VTS. Người dùng nhập đầy đủ thông tin kỹ thuật và hành chính. Trạm radar sau khi tạo sẽ ở trạng thái "Lưu tạm" (`DRAFT`) và cần được phê duyệt 2 cấp trước khi đưa vào vận hành.
 
 ### 1.2. Tại sao cần tính năng này?
 
@@ -40,8 +40,8 @@ Trạm radar là thiết bị đầu cuối trong hệ thống VTS (Vessel Traff
 5. Người dùng nhập thông tin vào các trường trên form.
 6. Hệ thống kiểm tra tất cả các trường thông tin theo validation (xem chi tiết tại Mô tả màn hình).
 7. Người dùng chọn một trong ba hành động lưu:
-   - **"Lưu tạm":** Lưu trạm radar với trạng thái "Đề xuất" (`PROPOSED`). Trạm radar chưa được gửi duyệt, có thể sửa tiếp.
-   - **"Lưu và gửi phê duyệt":** Lưu và gửi yêu cầu phê duyệt đến cấp có thẩm quyền. Trạng thái chuyển sang "Chờ phê duyệt" (`PROPOSED` kèm cờ gửi duyệt).
+   - **"Lưu tạm":** Lưu trạm radar với trạng thái "Lưu tạm" (`DRAFT`). Trạm radar chưa được gửi duyệt, có thể sửa tiếp.
+   - **"Lưu và gửi phê duyệt":** Lưu và gửi yêu cầu phê duyệt đến cấp có thẩm quyền. Trạng thái chuyển sang "Chờ Cảng vụ/Chi cục duyệt" (`PENDING_APPROVAL`).
    - **"Lưu và phê duyệt":** (Chỉ dành cho tài khoản có quyền phê duyệt) Lưu và phê duyệt ngay. Trạng thái chuyển sang "Đã phê duyệt" (`APPROVED`).
 8. Hệ thống gọi API tạo mới và kiểm tra các quy tắc nghiệp vụ.
 9. Nếu thành công: Trạm radar được lưu với trạng thái tương ứng, hệ thống ghi nhật ký tạo mới, hiển thị thông báo thành công và chuyển hướng về trang danh sách.
@@ -74,7 +74,7 @@ Dưới đây là các câu chuyện người dùng, sắp xếp theo mức đ�
 ### Mức Must (bắt buộc có)
 
 - **US-056-01:** Là Chuyên viên, tôi muốn tạo mới một Trạm radar với đầy đủ thông tin cơ bản và kỹ thuật để đăng ký tài sản vào hệ thống quản lý.
-- **US-056-02:** Là Chuyên viên, tôi muốn hệ thống tự động gán trạng thái "Đề xuất" cho bản ghi mới tạo để bản ghi được đưa vào luồng phê duyệt.
+- **US-056-02:** Là Chuyên viên, tôi muốn hệ thống tự động gán trạng thái "Lưu tạm" (DRAFT) cho bản ghi mới tạo để bản ghi được đưa vào luồng phê duyệt.
 - **US-056-03:** Là Chuyên viên, tôi muốn chỉ chọn được Hệ thống VTS và trung tâm điều hành VTS đã được phê duyệt để đảm bảo trạm radar được gán đúng hệ thống hợp lệ.
 - **US-056-04:** Là Chuyên viên, tôi muốn có thể "Lưu tạm" trạm radar để chỉnh sửa thêm trước khi gửi phê duyệt.
 - **US-056-05:** Là Chuyên viên, tôi muốn "Lưu và gửi phê duyệt" để gửi trạm radar đến cấp có thẩm quyền xem xét.
@@ -98,9 +98,9 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-056-01 — Hiển thị form tạo mới:** Người dùng có vai trò Admin hoặc Chuyên viên nhấn nút "Tạo mới" từ danh sách Trạm radar, hệ thống hiển thị form tạo mới với đầy đủ các nhóm trường: Thông tin cơ bản, Thông tin kỹ thuật, Tọa độ GIS, File đính kèm. Nếu người dùng không có quyền, nút "Tạo mới" bị ẩn và API trả về 403 Forbidden.
 
-**AC-056-02 — Tạo mới thành công với dữ liệu hợp lệ:** Khi người dùng nhập đầy đủ và hợp lệ tất cả các trường bắt buộc, hệ thống lưu bản ghi vào database với `approvalStatus = PROPOSED`, `approvedLevel1 = false`, `approvedLevel2 = false`. API trả về HTTP 200 kèm thông tin bản ghi vừa tạo.
+**AC-056-02 — Tạo mới thành công với dữ liệu hợp lệ:** Khi người dùng nhập đầy đủ và hợp lệ tất cả các trường bắt buộc, hệ thống lưu bản ghi vào database với `approvalStatus = DRAFT`, `approvedLevel1 = false`, `approvedLevel2 = false`. API trả về HTTP 200 kèm thông tin bản ghi vừa tạo.
 
-**AC-056-03 — Tự động gán trạng thái PROPOSED:** Dù client có gửi `approvalStatus` hay không, server luôn gán `approvalStatus = PROPOSED` khi tạo mới. Không cho phép tạo bản ghi với trạng thái khác.
+**AC-056-03 — Tự động gán trạng thái DRAFT:** Dù client có gửi `approvalStatus` hay không, server luôn gán `approvalStatus = DRAFT` khi tạo mới. Không cho phép tạo bản ghi với trạng thái khác.
 
 **AC-056-04 — Validation tên trạm:** `stationName` là bắt buộc, tối đa 255 ký tự. Nếu để trống, hệ thống hiển thị lỗi "Tên trạm không được để trống" tại trường và chặn submit. Validation được thực hiện ở cả client-side và server-side.
 
@@ -110,9 +110,9 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-056-07 — Ghi nhận người tạo:** Hệ thống tự động ghi nhận `createdBy` (ID người dùng hiện tại từ session) và `createdDate` (thời điểm tạo). Không nhận giá trị này từ client.
 
-**AC-056-08 — Lưu tạm thành công:** Người dùng chọn "Lưu tạm", Trạm radar được lưu với trạng thái `PROPOSED`. Hiển thị thông báo "Lưu tạm trạm radar thành công" và chuyển hướng về danh sách. Trạm radar có thể được chỉnh sửa tiếp (F-057).
+**AC-056-08 — Lưu tạm thành công:** Người dùng chọn "Lưu tạm", Trạm radar được lưu với trạng thái `DRAFT`. Hiển thị thông báo "Lưu tạm trạm radar thành công" và chuyển hướng về danh sách. Trạm radar có thể được chỉnh sửa tiếp (F-057).
 
-**AC-056-09 — Lưu và gửi phê duyệt thành công:** Người dùng chọn "Lưu và gửi phê duyệt", Trạm radar được lưu và gửi đến cấp phê duyệt. Trạng thái `PROPOSED` kèm cờ gửi duyệt. Hiển thị thông báo "Đã gửi phê duyệt trạm radar" và chuyển hướng về danh sách. Trạm radar xuất hiện trong danh sách chờ phê duyệt của F-059.
+**AC-056-09 — Lưu và gửi phê duyệt thành công:** Người dùng chọn "Lưu và gửi phê duyệt", Trạm radar được lưu và gửi đến cấp phê duyệt. Trạng thái chuyển sang `PENDING_APPROVAL` (Chờ Cảng vụ/Chi cục duyệt). Hiển thị thông báo "Đã gửi phê duyệt trạm radar" và chuyển hướng về danh sách. Trạm radar xuất hiện trong danh sách chờ phê duyệt của F-059.
 
 **AC-056-10 — Lưu và phê duyệt thành công:** Người dùng có quyền phê duyệt (Admin/Lãnh đạo) chọn "Lưu và phê duyệt", Trạm radar được lưu và phê duyệt ngay. Trạng thái chuyển sang `APPROVED`, `approvedLevel1 = true`, `approvedLevel2 = true`. Hiển thị thông báo "Tạo mới và phê duyệt trạm radar thành công". Trạm radar sẵn sàng để sử dụng trong các module khác.
 
@@ -126,7 +126,7 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thống phải tuân thủ:
 
-**BR-056-01 — Trạng thái mặc định là PROPOSED:** Mọi bản ghi trạm radar khi tạo mới luôn có `approvalStatus = PROPOSED`, bất kể ai tạo. Đây là trạng thái "Đề xuất" — chưa có hiệu lực sử dụng.
+**BR-056-01 — Trạng thái mặc định là DRAFT (Lưu tạm):** Mọi bản ghi trạm radar khi tạo mới luôn có `approvalStatus = DRAFT`, bất kể ai tạo. Đây là trạng thái "Lưu tạm" — chưa có hiệu lực sử dụng.
 
 **BR-056-02 — Tên trạm là bắt buộc:** Mỗi trạm radar phải có tên (`stationName`), tối đa 255 ký tự.
 
@@ -134,13 +134,13 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 **BR-056-04 — Trạm radar phải thuộc một đơn vị quản lý:** Trường `orgUnitId` xác định đơn vị quản lý trạm radar. Chuyên viên chỉ được tạo trạm trong phạm vi đơn vị của mình. Mặc định được điền theo đơn vị của người dùng đăng nhập.
 
-**BR-056-05 — Hệ thống VTS phải đã duyệt:** Khi chọn Hệ thống VTS (`vtsSystemId`), chỉ hiển thị các VTS đã được phê duyệt (`APPROVED`) và filter theo đơn vị quản lý. Không được chọn VTS đang "Đề xuất", "Đang xem xét" hoặc "Từ chối".
+**BR-056-05 — Hệ thống VTS phải đã duyệt:** Khi chọn Hệ thống VTS (`vtsSystemId`), chỉ hiển thị các VTS đã được phê duyệt (`APPROVED`) và filter theo đơn vị quản lý. Không được chọn VTS đang "Lưu tạm", "Chờ duyệt" hoặc "Bị trả về".
 
 **BR-056-06 — Cascade logic khi thay đổi đơn vị quản lý:** Khi thay đổi `orgUnitId`, tự động clear `vtsSystemId` vì danh sách VTS phụ thuộc vào đơn vị quản lý.
 
 **BR-056-07 — Validation các trường thông tin:** Các trường thông tin cần nhập đúng validation (xem chi tiết tại mục 9.1 Mô tả màn hình). Validation được thực hiện ở cả client-side và server-side.
 
-**BR-056-08 — Trạm radar chưa duyệt thì chưa dùng được:** Trạm radar sau khi tạo ở trạng thái `PROPOSED` **chưa thể được tham chiếu** bởi bất kỳ module nào khác (không xuất hiện trong dropdown chọn trạm radar của module Vận hành, Bảo trì, Bản đồ...). Phải qua phê duyệt 2 cấp (F-059) để đạt trạng thái `APPROVED` thì mới có thể sử dụng.
+**BR-056-08 — Trạm radar chưa duyệt thì chưa dùng được:** Trạm radar sau khi tạo ở trạng thái `DRAFT`/`PENDING_APPROVAL`/`APPROVED_LEVEL1` **chưa thể được tham chiếu** bởi bất kỳ module nào khác (không xuất hiện trong dropdown chọn trạm radar của module Vận hành, Bảo trì, Bản đồ...). Phải qua phê duyệt 2 cấp (F-059) để đạt trạng thái `APPROVED` thì mới có thể sử dụng.
 
 ---
 
@@ -152,13 +152,15 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PROPOSED: F-056 - Tạo mới
-    PROPOSED --> UNDER_REVIEW: F-059 - C1 duyệt (Trưởng phòng)
-    PROPOSED --> APPROVED: F-059 - Cục duyệt thẳng
-    UNDER_REVIEW --> APPROVED: F-059 - C2 duyệt (Lãnh đạo Cục)
-    UNDER_REVIEW --> REJECTED: F-059 - C2 từ chối
-    PROPOSED --> REJECTED: F-059 - C1 từ chối
-    REJECTED --> PROPOSED: F-057 - Sửa & gửi lại
+    [*] --> DRAFT: F-056 - Tạo mới (Lưu tạm)
+    DRAFT --> PENDING_APPROVAL: F-056 - Gửi duyệt
+    PENDING_APPROVAL --> APPROVED_LEVEL1: F-059 - C1 duyệt (Cảng vụ/Chi cục)
+    PENDING_APPROVAL --> APPROVED: F-059 - Cục duyệt thẳng
+    APPROVED_LEVEL1 --> APPROVED: F-059 - C2 duyệt (Lãnh đạo Cục)
+    APPROVED_LEVEL1 --> REJECTED_LEVEL2: F-059 - C2 từ chối
+    PENDING_APPROVAL --> REJECTED_LEVEL1: F-059 - C1 từ chối
+    REJECTED_LEVEL1 --> DRAFT: F-057 - Sửa & gửi lại
+    REJECTED_LEVEL2 --> DRAFT: F-057 - Sửa & gửi lại
 
     state APPROVED {
         [*] --> SU_DUNG: Trạm radar được duyệt
@@ -172,11 +174,12 @@ stateDiagram-v2
 
 | Trạng thái | Mã | Ý nghĩa | Có thể dùng ở module khác? |
 |---|---|---|---|
-| Đề xuất | PROPOSED | Trạm radar vừa được tạo, đang chờ phê duyệt cấp 1 | **❌ Không** — không xuất hiện trong dropdown chọn trạm radar |
-| Đang xem xét | UNDER_REVIEW | Đã duyệt C1, đang chờ phê duyệt C2 | **❌ Không** — chưa được dùng |
+| Lưu tạm | DRAFT | Trạm radar vừa được tạo, chưa gửi duyệt | **❌ Không** — không xuất hiện trong dropdown chọn trạm radar |
+| Chờ Cảng vụ/Chi cục duyệt | PENDING_APPROVAL | Đã gửi duyệt, đang chờ phê duyệt cấp 1 | **❌ Không** — không xuất hiện trong dropdown chọn trạm radar |
+| Chờ Cục duyệt | APPROVED_LEVEL1 | Đã duyệt C1, đang chờ phê duyệt C2 | **❌ Không** — chưa được dùng |
+| Bị trả về | REJECTED_LEVEL1 / REJECTED_LEVEL2 | Bị từ chối ở C1 hoặc C2, cần sửa và gửi lại | **❌ Không** — cần sửa lại (F-057) và gửi duyệt lại |
 | Đã phê duyệt | APPROVED | Đã duyệt cả 2 cấp, sẵn sàng sử dụng | **✅ Có** — xuất hiện trong tất cả dropdown và module liên quan |
-| Từ chối | REJECTED | Bị từ chối ở C1 hoặc C2, cần sửa và gửi lại | **❌ Không** — cần sửa lại (F-057) và gửi duyệt lại |
-| Đã xóa | (isDeleted) | Trạm radar bị xóa mềm (F-058) | **❌ Không** — ẩn khỏi toàn bộ hệ thống |
+| Đã xóa | ARCHIVED (isDeleted) | Trạm radar bị xóa mềm (F-058) | **❌ Không** — ẩn khỏi toàn bộ hệ thống |
 
 ### 6.3. Các tính năng liên quan trực tiếp
 
@@ -184,7 +187,7 @@ Những tính năng này nằm trong cùng module M-003 và developer làm F-056
 
 | Feature | Tên | Vai trò | Mối liên kết với F-056 |
 |---|---|---|---|
-| **F-057** | Cập nhật Trạm radar | Sửa thông tin sau khi tạo | Sau khi sửa, trạng thái quay về PROPOSED → cần duyệt lại |
+| **F-057** | Cập nhật Trạm radar | Sửa thông tin sau khi tạo | Sau khi sửa, trạng thái quay về DRAFT (Lưu tạm) → cần duyệt lại |
 | **F-058** | Xóa Trạm radar | Xóa mềm trạm radar | Chỉ xóa được bản ghi ở trạng thái APPROVED |
 | **F-059** | Phê duyệt Trạm radar | Duyệt 2 cấp (C1: Trưởng phòng, C2: Lãnh đạo Cục) | **Bắt buộc** — trạm radar tạo từ F-056 phải qua F-059 mới được sử dụng |
 | **F-060** | Xem chi tiết Trạm radar | Xem thông tin trạm radar | Có thể xem ở mọi trạng thái |
@@ -260,50 +263,50 @@ Tài liệu gốc (`F-056` feature-brief cũ) định nghĩa 3 entity rời rạ
 | 12 | <span style="color:red;font-weight:bold">🔴 `unitOfMeasure`</span> | *chưa có* | VARCHAR(50) | Không | Đơn vị tính (từ `donViTinh`). Danh mục `DVT` |
 | 13 | <span style="color:red;font-weight:bold">🔴 `quantity`</span> | *chưa có* | INT | **Có** | Số lượng (từ `soLuong`). Max 5 chữ số |
 | 14 | `conditionStatus` | `condition_status` | VARCHAR(50) | **Có** | Tình trạng (từ `tinhTrang`). Mặc định = 1. Danh mục `TINH_TRANG` |
-| 15 | `stationType` | `station_type` | VARCHAR(100) | Không | Loại trạm (VD: Radar X, Radar S) |
-| 16 | `source` | `source` | VARCHAR(255) | Không | Nguồn gốc thiết bị (từ `nguonGoc`) |
+
+> **Ghi chú đối chiếu Excel:** Các trường `stationType` (Loại trạm) và `source` (Nguồn gốc thiết bị) **đã bỏ** — không có trong sheet `QL Trạm radar` (nguồn sự thật).
 
 #### B. Thông tin kỹ thuật (từ `zobjDataSub` trong tài liệu tham khảo)
 
 | # | Field | DB Column | Kiểu dữ liệu | Bắt buộc | Mô tả |
 |---|---|---|---|---|---|
-| 17 | `towerHeight` | `tower_height` | DECIMAL(20,4) | Không | <span style="color:red;font-weight:bold">🔴</span> Chiều cao tháp radar - m (từ `chieuCaoThapRadar`) |
-| 18 | `radarRange` | `radar_range` | DECIMAL(20,0) | Không | <span style="color:red;font-weight:bold">🔴</span> Tầm hiệu lực radar (từ `tamHieuLucRadar`). Max 20 ký tự |
-| 19 | `coverage` | `coverage` | VARCHAR(100) | Không | Vùng phủ sóng |
-| 20 | `emissionArea` | `emission_area` | DECIMAL(10,2) | Không | Diện tích phát xạ (km²). > 0 |
+| 15 | `towerHeight` | `tower_height` | DECIMAL(20,4) | Không | <span style="color:red;font-weight:bold">🔴</span> Chiều cao tháp radar - m (từ `chieuCaoThapRadar`) |
+| 16 | `radarRange` | `radar_range` | DECIMAL(20,0) | Không | <span style="color:red;font-weight:bold">🔴</span> Tầm hiệu lực radar (từ `tamHieuLucRadar`). Max 20 ký tự |
+| 17 | `coverage` | `coverage` | VARCHAR(100) | Không | Vùng phủ sóng |
+| 18 | `emissionArea` | `emission_area` | DECIMAL(10,2) | Không | Diện tích phát xạ (km²). > 0 |
 
 #### C. GIS & Không gian (từ `zlstDataGeo` & GIS fields trong tài liệu tham khảo)
 
 | # | Field | DB Column | Kiểu dữ liệu | Bắt buộc | Mô tả |
 |---|---|---|---|---|---|
-| 21 | `spatialId` | `spatial_id` | UUID | Không | Liên kết dữ liệu không gian GIS |
-| 22 | `longitude` | *(qua spatial)* | DECIMAL(10,6) | Không | Kinh độ [-180, 180] |
-| 23 | `latitude` | *(qua spatial)* | DECIMAL(10,6) | Không | Vĩ độ [-90, 90] |
-| 24 | `geometryType` | *(trong DTO, qua spatial)* | ENUM | Không | <span style="color:red;font-weight:bold">🔴</span> Loại đối tượng GIS (từ `loaiDoiTuong`). POINT / POLYGON |
-| 25 | `coordinates` | *(trong DTO, qua spatial)* | TEXT | Không | <span style="color:red;font-weight:bold">🔴</span> Tọa độ GIS (từ `toaDo`). WKT hoặc GeoJSON |
-| 26 | <span style="color:red;font-weight:bold">🔴 `mapIcon`</span> | *chưa có* | VARCHAR(100) | Không | Biểu tượng trên bản đồ (từ `bieuTuong`) |
-| 27 | <span style="color:red;font-weight:bold">🔴 `projection`</span> | *chưa có* | VARCHAR(50) | Không | Hệ quy chiếu (từ `heQuyChieu`). Danh mục `HE_QUY_CHIEU` |
-| 28 | <span style="color:red;font-weight:bold">🔴 `displayRule`</span> | *chưa có* | VARCHAR(50) | Không | Quy tắc hiển thị (từ `quyTacHienThi`). Danh mục `QUY_TAC_HIEN_THI` |
+| 19 | `spatialId` | `spatial_id` | UUID | Không | Liên kết dữ liệu không gian GIS |
+| 20 | `longitude` | *(qua spatial)* | DECIMAL(10,6) | Không | Kinh độ [-180, 180] |
+| 21 | `latitude` | *(qua spatial)* | DECIMAL(10,6) | Không | Vĩ độ [-90, 90] |
+| 22 | `geometryType` | *(trong DTO, qua spatial)* | ENUM | Không | <span style="color:red;font-weight:bold">🔴</span> Loại đối tượng GIS (từ `loaiDoiTuong`). POINT / POLYGON |
+| 23 | `coordinates` | *(trong DTO, qua spatial)* | TEXT | Không | <span style="color:red;font-weight:bold">🔴</span> Tọa độ GIS (từ `toaDo`). WKT hoặc GeoJSON |
+| 24 | <span style="color:red;font-weight:bold">🔴 `mapIcon`</span> | *chưa có* | VARCHAR(100) | Không | Biểu tượng trên bản đồ (từ `bieuTuong`) |
+| 25 | <span style="color:red;font-weight:bold">🔴 `projection`</span> | *chưa có* | VARCHAR(50) | Không | Hệ quy chiếu (từ `heQuyChieu`). Danh mục `HE_QUY_CHIEU` |
+| 26 | <span style="color:red;font-weight:bold">🔴 `displayRule`</span> | *chưa có* | VARCHAR(50) | Không | Quy tắc hiển thị (từ `quyTacHienThi`). Danh mục `QUY_TAC_HIEN_THI` |
 
 #### D. Phê duyệt, Audit & Ghi chú
 
 | # | Field | DB Column | Kiểu dữ liệu | Bắt buộc | Mô tả |
 |---|---|---|---|---|---|
-| 29 | `approvalStatus` | `approval_status` | VARCHAR(30) | **Có** | Trạng thái phê duyệt. Mặc định `PROPOSED` |
-| 30 | `approvedLevel1` | `approved_level1` | BOOLEAN | **Có** | Đã duyệt C1? Mặc định `false` |
-| 31 | `approverLevel1` | `approver_level1` | UUID | Không | Người duyệt C1 |
-| 32 | `approvedDateLevel1` | `approved_date_level1` | DATETIME | Không | Ngày duyệt C1 |
-| 33 | `approvedLevel2` | `approved_level2` | BOOLEAN | **Có** | Đã duyệt C2? Mặc định `false` |
-| 34 | `approverLevel2` | `approver_level2` | UUID | Không | Người duyệt C2 |
-| 35 | `approvedDateLevel2` | `approved_date_level2` | DATETIME | Không | Ngày duyệt C2 |
-| 36 | `rejectionReason` | `rejection_reason` | VARCHAR(500) | Không | Lý do từ chối |
-| 37 | <span style="color:red;font-weight:bold">🔴 `ghiChu`</span> | *chưa có* | VARCHAR(2000) | Không | Ghi chú chung (từ `zobjDataSub.ghiChu`) |
-| 38 | `createdBy` | `created_by` | UUID | **Có** | Người tạo (tự động từ session) |
-| 39 | `createdDate` | `created_date` | DATETIME | **Có** | Thời điểm tạo (tự động) |
-| 40 | `updatedBy` | `updated_by` | UUID | Không | Người sửa cuối |
-| 41 | `updatedDate` | `updated_date` | DATETIME | Không | Thời điểm sửa cuối |
-| 42 | `isDeleted` | `is_deleted` | BOOLEAN | **Có** | Xóa mềm. Mặc định `false` |
-| 43 | `deletedBy` | `deleted_by` | UUID | Không | Người xóa |
+| 27 | `approvalStatus` | `approval_status` | INT | **Có** | Trạng thái phê duyệt. Mặc định `DRAFT` (Lưu tạm) |
+| 28 | `approvedLevel1` | `approved_level1` | BOOLEAN | **Có** | Đã duyệt C1? Mặc định `false` |
+| 29 | `approverLevel1` | `approver_level1` | UUID | Không | Người duyệt C1 |
+| 30 | `approvedDateLevel1` | `approved_date_level1` | DATETIME | Không | Ngày duyệt C1 |
+| 31 | `approvedLevel2` | `approved_level2` | BOOLEAN | **Có** | Đã duyệt C2? Mặc định `false` |
+| 32 | `approverLevel2` | `approver_level2` | UUID | Không | Người duyệt C2 |
+| 33 | `approvedDateLevel2` | `approved_date_level2` | DATETIME | Không | Ngày duyệt C2 |
+| 34 | `rejectionReason` | `rejection_reason` | VARCHAR(500) | Không | Lý do từ chối |
+| 35 | <span style="color:red;font-weight:bold">🔴 `ghiChu`</span> | *chưa có* | VARCHAR(2000) | Không | Ghi chú chung (từ `zobjDataSub.ghiChu`) |
+| 36 | `createdBy` | `created_by` | UUID | **Có** | Người tạo (tự động từ session) |
+| 37 | `createdDate` | `created_date` | DATETIME | **Có** | Thời điểm tạo (tự động) |
+| 38 | `updatedBy` | `updated_by` | UUID | Không | Người sửa cuối |
+| 39 | `updatedDate` | `updated_date` | DATETIME | Không | Thời điểm sửa cuối |
+| 40 | `isDeleted` | `is_deleted` | BOOLEAN | **Có** | Xóa mềm. Mặc định `false` |
+| 41 | `deletedBy` | `deleted_by` | UUID | Không | Người xóa |
 
 > **Cascade logic (từ tài liệu tham khảo):**
 > - Khi thay đổi `orgUnitId` → tự động clear `vtsSystemId` + `ttdhVtsId`
@@ -360,8 +363,8 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
 
 | Method | Endpoint | Mô tả | Phân quyền |
 |---|---|---|---|
-| POST | `/api/v1/radar-station?action=LUU_TAM` | Lưu tạm trạm radar (trạng thái PROPOSED) | `radarstation:create` |
-| POST | `/api/v1/radar-station?action=LUU_VA_GUI_PHE_DUYET` | Lưu và gửi phê duyệt (trạng thái PROPOSED, kèm cờ gửi duyệt) | `radarstation:create` |
+| POST | `/api/v1/radar-station?action=LUU_TAM` | Lưu tạm trạm radar (trạng thái DRAFT) | `radarstation:create` |
+| POST | `/api/v1/radar-station?action=LUU_VA_GUI_PHE_DUYET` | Lưu và gửi phê duyệt (trạng thái PENDING_APPROVAL) | `radarstation:create` |
 | POST | `/api/v1/radar-station?action=LUU_VA_PHE_DUYET` | Lưu và phê duyệt ngay (trạng thái APPROVED) | `radarstation:create` (chỉ Admin/Lãnh đạo) |
 | GET | `/api/v1/radar-station/search?keyword=&approvalStatus=APPROVED` | Lấy danh sách Trạm radar đã duyệt (cho dropdown chọn) | `radarstation:read` |
 | GET | `/api/v1/vts-system?approvalStatus=APPROVED&orgUnitId={id}` | Lấy danh sách Hệ thống VTS đã duyệt, filter theo đơn vị QL | `vtssystem:read` |
@@ -374,10 +377,8 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
   "location": "Đồi Thiên Văn, Hải Phòng",
   "longitude": 106.75,
   "latitude": 20.85,
-  "stationType": "Radar X",
   "coverage": "Luồng vào cảng Hải Phòng",
   "emissionArea": 120.5,
-  "source": "Nhập khẩu - Nhật Bản",
   "conditionStatus": "GOOD",
   "orgUnitId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "vtsSystemId": "4fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -398,7 +399,7 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
     "id": "2fa85f64-5717-4562-b3fc-2c963f66afa6",
     "stationName": "Trạm radar Hải Phòng 1",
     "location": "Đồi Thiên Văn, Hải Phòng",
-    "approvalStatus": "PROPOSED",
+    "approvalStatus": "DRAFT",
     "approvedLevel1": false,
     "approvedLevel2": false,
     "createdDate": "2026-08-07T10:30:00"
@@ -468,7 +469,7 @@ Form tạo mới gồm 5 nhóm thông tin. Các nhóm được tổ chức dư�
 
 | STT | Tên trường | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
 | --- | --- | --- | --- | --- | --- | --- |
-|  | Nút "Lưu tạm" | Button | — | — | — | Gọi API với action=LUU_TAM. Lưu với trạng thái PROPOSED, không gửi duyệt. Hiển thị thông báo: "Lưu tạm trạm radar thành công". Redirect về danh sách. Có thể sửa tiếp. |
+|  | Nút "Lưu tạm" | Button | — | — | — | Gọi API với action=LUU_TAM. Lưu với trạng thái DRAFT, không gửi duyệt. Hiển thị thông báo: "Lưu tạm trạm radar thành công". Redirect về danh sách. Có thể sửa tiếp. |
 |  | Nút "Lưu và gửi phê duyệt" | Button | — | — | — | Gọi API với action=LUU_VA_GUI_PHE_DUYET. Lưu và gửi yêu cầu phê duyệt. Hiển thị thông báo: "Đã gửi phê duyệt trạm radar". Redirect về danh sách. Trạm radar chờ duyệt tại F-059. |
 |  | Nút "Lưu và phê duyệt" | Button | — | — | — | Chỉ hiển thị cho Admin/Lãnh đạo. Gọi API với action=LUU_VA_PHE_DUYET. Lưu và phê duyệt ngay (APPROVED). Hiển thị thông báo: "Tạo mới và phê duyệt trạm radar thành công". Trạm radar sẵn sàng sử dụng ngay. |
 |  | Nút "Hủy" | Button | — | — | — | Hủy thao tác tạo mới, quay về trang danh sách Trạm radar. Không lưu dữ liệu đã nhập. |

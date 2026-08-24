@@ -59,7 +59,7 @@ Cấu trúc theo entity `Pier` (`src/main/java/com/hanghai/kchtg/port/entity/Pie
 | 24 | coordinateSystem, displayRule | Không (disabled) | Text | Hệ quy chiếu = WGS_84, quy tắc = Độ/Phút/Giây — không sửa |
 | 25 | coordinates[] (GIS) | Không | Danh sách (latitude/longitude) | Bảng tọa độ |
 | 26 | attachments[] | Không | File (PDF, ảnh...) | Upload file đính kèm |
-| 27 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (lưu số 0..6) | Theo tài liệu nền mục 3.5 |
+| 27 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Theo tài liệu nền mục 3.5 |
 
 ## 3. Trạng thái và phê duyệt
 

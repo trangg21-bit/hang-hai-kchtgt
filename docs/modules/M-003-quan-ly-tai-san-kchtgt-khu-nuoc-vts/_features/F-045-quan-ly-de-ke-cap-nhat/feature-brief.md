@@ -25,7 +25,7 @@ consumed_by_modules: []
 
 ### 1.1. Tính năng này làm gì?
 
-Cho phép người dùng có thẩm quyền chỉnh sửa thông tin của một công trình đê/kè đã được tạo trước đó (F-044). Sau khi cập nhật, trạng thái phê duyệt của công trình quay về "Chờ phê duyệt" (PROPOSED) và cần được phê duyệt lại (F-047) trước khi tiếp tục sử dụng.
+Cho phép người dùng có thẩm quyền chỉnh sửa thông tin của một công trình đê/kè đã được tạo trước đó (F-044). Sau khi cập nhật, trạng thái phê duyệt của công trình quay về "Lưu tạm" (DRAFT) và cần được phê duyệt lại (F-047) trước khi tiếp tục sử dụng.
 
 ### 1.2. Tại sao cần tính năng này?
 
@@ -38,7 +38,7 @@ Thông tin về công trình đê/kè có thể thay đổi theo thời gian (gi
 3. Hệ thống gọi API GET detail, hiển thị form với dữ liệu hiện tại.
 4. Một số trường bị khóa (disabled): Đơn vị quản lý, Thuộc cảng biển, Mã đê kè.
 5. Người dùng chỉnh sửa các trường được phép và chọn hành động lưu:
-   - **"Lưu tạm":** Lưu thay đổi, trạng thái quay về PROPOSED.
+   - **"Lưu tạm":** Lưu thay đổi, trạng thái quay về DRAFT (Lưu tạm).
    - **"Lưu và gửi phê duyệt":** Lưu và gửi yêu cầu phê duyệt lại.
 6. Nếu thành công: Bản ghi được cập nhật, approvalHistory ghi nhận CAP_NHAT, thông báo thành công.
 7. Nếu thất bại: Thông báo lỗi hiển thị tại trường tương ứng.
@@ -73,7 +73,7 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 - **US-045-01:** Là Chuyên viên, tôi muốn sửa thông tin công trình đê/kè do đơn vị tôi quản lý để cập nhật dữ liệu mới nhất.
 - **US-045-02:** Là Chuyên viên, tôi muốn các trường Đơn vị quản lý, Thuộc cảng biển, Mã đê kè bị khóa khi sửa để tránh thay đổi sai thông tin định danh.
-- **US-045-03:** Là Chuyên viên, tôi muốn sau khi sửa, công trình quay về trạng thái "Chờ phê duyệt" để được kiểm soát chất lượng trước khi tiếp tục sử dụng.
+- **US-045-03:** Là Chuyên viên, tôi muốn sau khi sửa, công trình quay về trạng thái "Lưu tạm" (DRAFT) để được kiểm soát chất lượng trước khi tiếp tục sử dụng.
 
 ### Mức Should (nên có)
 
@@ -87,16 +87,16 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 **AC-045-01 — Hiển thị form sửa với dữ liệu hiện tại:** Người dùng chọn "Sửa" từ danh sách, hệ thống gọi GET detail và hiển thị form với toàn bộ dữ liệu hiện tại của công trình. Các trường Đơn vị quản lý, Thuộc cảng biển, Mã đê kè ở trạng thái disabled.
 
 **AC-045-02 — Điều kiện hiển thị nút Sửa:** Nút "Sửa" chỉ hiển thị với bản ghi thỏa mãn:
-- Trạng thái PROPOSED + cùng đơn vị quản lý (Cấp Cục: tất cả đơn vị)
-- Trạng thái REJECTED + cùng đơn vị quản lý
+- Trạng thái DRAFT (Lưu tạm) + cùng đơn vị quản lý (Cấp Cục: tất cả đơn vị)
+- Trạng thái REJECTED_LEVEL1/REJECTED_LEVEL2 + cùng đơn vị quản lý
 - Trạng thái APPROVED + cùng đơn vị (chỉ Cấp Cục hoặc vai trò đặc biệt)
 Trường hợp khác: nút "Sửa" bị ẩn.
 
-**AC-045-03 — Cập nhật PROPOSED thành công:** Chuyên viên sửa bản ghi PROPOSED và chọn "Lưu tạm". Bản ghi được cập nhật, approvalStatus giữ nguyên PROPOSED. ApprovalHistory ghi nhận CAP_NHAT. Thông báo "Cập nhật đê kè thành công".
+**AC-045-03 — Cập nhật DRAFT thành công:** Chuyên viên sửa bản ghi DRAFT (Lưu tạm) và chọn "Lưu tạm". Bản ghi được cập nhật, approvalStatus giữ nguyên DRAFT. ApprovalHistory ghi nhận CAP_NHAT. Thông báo "Cập nhật đê kè thành công".
 
-**AC-045-04 — Cập nhật REJECTED thành công:** Chuyên viên sửa bản ghi REJECTED và chọn "Lưu tạm". Bản ghi được cập nhật, approvalStatus chuyển về PROPOSED. Có thể gửi duyệt lại.
+**AC-045-04 — Cập nhật bản ghi bị trả về thành công:** Chuyên viên sửa bản ghi REJECTED_LEVEL1/REJECTED_LEVEL2 và chọn "Lưu tạm". Bản ghi được cập nhật, approvalStatus chuyển về DRAFT (Lưu tạm). Có thể gửi duyệt lại.
 
-**AC-045-05 — Cập nhật APPROVED (cần duyệt lại):** Người dùng có quyền sửa bản ghi APPROVED. Sau khi sửa, approvalStatus quay về PROPOSED, isApprovedLevel1 = isApprovedLevel2 = false. Công trình cần được phê duyệt lại từ đầu.
+**AC-045-05 — Cập nhật APPROVED (cần duyệt lại):** Người dùng có quyền sửa bản ghi APPROVED. Sau khi sửa, approvalStatus quay về DRAFT, isApprovedLevel1 = isApprovedLevel2 = false. Công trình cần được phê duyệt lại từ đầu.
 
 **AC-045-06 — Cập nhật & gửi phê duyệt:** Người dùng chọn "Lưu và gửi phê duyệt". Bản ghi được cập nhật và gửi yêu cầu phê duyệt. Hiển thị thông báo "Đã gửi phê duyệt cập nhật đê kè".
 
@@ -110,7 +110,7 @@ Trường hợp khác: nút "Sửa" bị ẩn.
 
 **BR-045-01 — Khóa trường định danh khi sửa:** Các trường `orgUnitId` (Đơn vị quản lý), `cangBienId` (Thuộc cảng biển), `ma` (Mã đê kè) bị disabled khi sửa. Không thể thay đổi sau khi tạo.
 
-**BR-045-02 — Sửa APPROVED → duyệt lại:** Khi sửa bản ghi đã APPROVED, approvalStatus quay về PROPOSED và isApprovedLevel1/2 reset về false. Công trình phải được phê duyệt lại toàn bộ (2 cấp).
+**BR-045-02 — Sửa APPROVED → duyệt lại:** Khi sửa bản ghi đã APPROVED, approvalStatus quay về DRAFT (Lưu tạm) và isApprovedLevel1/2 reset về false. Công trình phải được phê duyệt lại toàn bộ (2 cấp).
 
 **BR-045-03 — Ghi lịch sử thay đổi:** Mọi thao tác sửa đều được ghi vào `dike_revetment_approval_history` với actionType = CAP_NHAT. Lịch sử bao gồm: mã đê/kè, người sửa, thời gian sửa.
 
@@ -120,7 +120,7 @@ Trường hợp khác: nút "Sửa" bị ẩn.
 
 ## 6. Vòng đời và liên kết
 
-> ⚠ **QUAN TRỌNG CHO DEVELOPER:** F-045 là bước trung gian trong vòng đời. Sau khi sửa, công trình LUÔN quay về PROPOSED và cần duyệt lại (F-047). Xem sơ đồ vòng đời đầy đủ tại F-044 mục 6.1.
+> ⚠ **QUAN TRỌNG CHO DEVELOPER:** F-045 là bước trung gian trong vòng đời. Sau khi sửa, công trình LUÔN quay về DRAFT (Lưu tạm) và cần duyệt lại (F-047). Xem sơ đồ vòng đời đầy đủ tại F-044 mục 6.1.
 
 ### 6.1. Các tính năng liên quan
 
@@ -167,8 +167,8 @@ Form sửa dùng chung component với form tạo mới (F-044), khác biệt:
 
 | Nút | Trạng thái sau lưu | Mô tả |
 |-----|-------------------|-------|
-| **Lưu tạm** | PROPOSED | Lưu thay đổi, chưa gửi duyệt. Có thể sửa tiếp hoặc gửi duyệt sau. |
-| **Lưu và gửi phê duyệt** | PROPOSED + gửi notify | Lưu và gửi yêu cầu phê duyệt lại. Công trình xuất hiện trong danh sách chờ duyệt (F-047). |
+| **Lưu tạm** | DRAFT (Lưu tạm) | Lưu thay đổi, chưa gửi duyệt. Có thể sửa tiếp hoặc gửi duyệt sau. |
+| **Lưu và gửi phê duyệt** | PENDING_APPROVAL | Lưu và gửi yêu cầu phê duyệt lại. Công trình xuất hiện trong danh sách chờ duyệt (F-047). |
 | **Hủy** | — | Hủy thao tác, quay về danh sách. Không lưu thay đổi. |
 
 ---

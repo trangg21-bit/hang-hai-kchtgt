@@ -34,15 +34,15 @@ Không có form nhập liệu mới — thao tác trên bản ghi `DryPort` hi�
 | # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | 1 | id | Có | UUID | Hồ sơ cảng cạn cần xử lý |
-| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (lưu số 0..6) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
+| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
 | 3 | reason (lý do từ chối) | Có khi từ chối | Text, tối thiểu 10 ký tự | Lý do chấp thuận là tùy chọn |
 | 4 | approval_logs | Có (hệ thống) | Bảng `approval_logs` | Người duyệt, thời điểm, hành động, lý do — bất biến |
 
 ## 3. Trạng thái và phê duyệt
 
-- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (BA đề xuất, SA chốt).
+- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (đã chốt — M-1006 DP-9/AC-25).
 - Chỉ hồ sơ ở trạng thái chờ duyệt đúng cấp mới được xử lý; duyệt tuần tự, không vượt cấp; từ chối/trả về ở bất kỳ cấp nào dừng quy trình, hồ sơ quay lại người tạo.
-- APPROVED / REJECTED không duyệt lại lần nữa — muốn thay đổi phải qua F-027 (Lưu và phê duyệt).
+- APPROVED / REJECTED_LEVEL1 / REJECTED_LEVEL2 không duyệt lại lần nữa — muốn thay đổi phải qua F-027 (Lưu và phê duyệt).
 - Sau quyết định: cập nhật trạng thái + ghi `approval_logs` + ghi lịch sử (F-031). Log không được sửa/xóa.
 
 ## 4. Quy tắc và phân quyền riêng
@@ -56,7 +56,7 @@ Không có form nhập liệu mới — thao tác trên bản ghi `DryPort` hi�
 | BR-029-01 | Chỉ hồ sơ ở trạng thái chờ duyệt đúng cấp mới được phê duyệt/từ chối (theo file chuẩn) | Approve |
 | BR-029-02 | Phê duyệt → trạng thái Đã duyệt; ghi người duyệt + thời điểm vào `approval_logs` | Approve |
 | BR-029-03 | Từ chối phải có lý do ≥ 10 ký tự; trạng thái chuyển Từ chối | Reject |
-| BR-029-04 | APPROVED và REJECTED không duyệt/từ chối lại — thay đổi phải qua F-027 | Approve |
+| BR-029-04 | APPROVED và REJECTED_LEVEL1/REJECTED_LEVEL2 không duyệt/từ chối lại — thay đổi phải qua F-027 | Approve |
 | BR-029-05 | Cần `dryport:approve` để thấy và thực hiện nút Phê duyệt / Từ chối | RBAC |
 | BR-029-06 | Mọi thao tác ghi vào `approval_logs` để kiểm toán | Audit |
 

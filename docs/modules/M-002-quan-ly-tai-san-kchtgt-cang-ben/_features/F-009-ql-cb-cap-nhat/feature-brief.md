@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-08-21
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -25,20 +25,76 @@ consumed_by_modules: []
 
 ## 1. Mô tả ngắn
 
-Cho phép người dùng có thẩm quyền (`port:update`) cập nhật thông tin của một Cảng biển đã tồn tại: tên cảng, vị trí địa lý, diện tích, khả năng tiếp nhận tàu, chỉ số tổng hợp, tọa độ GPS và công trình KCHT. Form điền sẵn (pre-fill) từ API; mã cảng (`portCode`) là read-only. Mỗi lần cập nhật thành công, trạng thái phê duyệt được đưa về trạng thái chờ duyệt và phải được duyệt lại (quy trình 2 cấp); hệ thống tự động ghi nhật ký thay đổi (change log).
+Cho phép người dùng có thẩm quyền (`port:update`) cập nhật thông tin của một Cảng biển đã tồn tại: tên cảng, vị trí địa lý, chỉ số tổng hợp, tọa độ GPS và công trình KCHT. Form điền sẵn (pre-fill) từ API; mã cảng (`portCode`) là read-only. Mỗi lần cập nhật thành công, trạng thái phê duyệt được đưa về trạng thái chờ duyệt và phải được duyệt lại (quy trình 2 cấp); hệ thống tự động ghi nhật ký thay đổi (change log).
 
 ## 2. Trường dữ liệu
 
-Cấu trúc theo entity `Port` (bảng `ports`) — danh sách trường giống F-008 (mục 2). Điểm khác biệt của F-009:
+Cấu trúc theo entity `Port` (bảng `ports`) — danh sách trường **khớp 100%** sheet `QL Cảng biển` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Điểm khác biệt của F-009 so với F-008: `portCode` và `orgUnitId` là **read-only trên màn Sửa** (Excel: cột Sửa vẫn hiển thị nhưng điều khiển `Text (read-only)`); sau mỗi lần cập nhật phải duyệt lại.
 
-| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| 1 | portCode | Có | Text (VARCHAR 50) | **Read-only — không thể thay đổi sau khi tạo** |
-| 2 | portName | Có | Text (VARCHAR 255) | Bắt buộc |
-| 3 | orgUnitId | Có | TreeSelect (UUID) | Đơn vị quản lý; validate trong phạm vi user (tài liệu nền mục 3.3) |
-| 4 | coordinates[] | Có* | Danh sách (latitude [-90,90], longitude [-180,180]) | GPS phải cung cấp cùng nhau (paired); ≥ 1 tọa độ khi gửi duyệt lại |
-| 5 | area, maxVesselCapacity | Không | Number (DECIMAL) ≥ 0 | — |
-| 6 | Các trường khác của `Port` | Không | Theo entity | Trường bắt buộc khi gửi duyệt giống F-008 (province, portClass...) |
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Mã cảng biển | Text (read-only, tự sinh CB-XXXXXX) | Có (hệ thống tự sinh) | Không | Có | Có | Có | Có | `portCode` — **read-only, bất biến**; backend từ chối payload đổi mã |
+| 2 | Đơn vị quản lý (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `orgUnitId` — read-only trên màn Sửa; validate trong phạm vi user (tài liệu nền mục 3.3) |
+| 3 | Nhóm cảng biển | Select | Không | Có | Có | Có | Có | Có | `portGroup` |
+| 4 | Tên cảng biển (bắt buộc) | Text | Có | Có | Có | Có | Có | Có | `portName` — bắt buộc |
+| 5 | Tỉnh/Thành phố (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `province` |
+| 6 | Địa điểm chi tiết | Text | Không | Không | Không | Có | Có | Có | `detailedLocation` |
+| 7 | Phân cấp cảng biển (bắt buộc khi gửi duyệt) | Select | Có* | Có | Có | Có | Có | Có | `portClass` — phân cấp I/II/III |
+| 8 | Phạm vi vùng nước | TextArea | Không | Không | Không | Có | Có | Có | `waterAreaScope` |
+| | **Chỉ số tổng hợp** | | | | | | | | |
+| 9 | Tổng số bến cảng | Number | Không | Không | Không | Có | Có | Có | `totalBerths` |
+| 10 | Tổng số khu neo đậu, khu chuyển tải | Number | Không | Không | Không | Có | Có | Có | `totalAnchoragesTransshipment` |
+| 11 | Tổng số tuyến luồng HH công cộng | Number | Không | Không | Không | Có | Có | Có | `totalPublicChannels` |
+| 12 | Tổng số tuyến luồng HH chuyên dùng | Number | Không | Không | Không | Có | Có | Có | `totalDedicatedChannels` |
+| 13 | Tổng chiều dài luồng HH công cộng (km) | Number | Không | Không | Không | Có | Có | Có | `totalPublicChannelLength` |
+| 14 | Tổng chiều dài luồng HH chuyên dùng (km) | Number | Không | Không | Không | Có | Có | Có | `totalDedicatedChannelLength` |
+| 15 | Tổng số phao tiêu, báo hiệu HH trên luồng | Number | Không | Không | Không | Có | Có | Có | `totalBuoysBeacons` |
+| 16 | Tổng số đê, kè | Number | Không | Không | Không | Có | Có | Có | `totalDikes` |
+| 17 | Tổng chiều dài hệ thống đê, kè (km) | Number | Không | Không | Không | Có | Có | Có | `totalDikeLength` |
+| 18 | Tổng số đèn biển, đăng, tiêu độc lập | Number | Không | Không | Không | Có | Có | Có | `totalLighthouses` |
+| 19 | Số lượng bến phao | Number | Không | Không | Không | Có | Có | Có | `buoyBerthCount` |
+| 20 | Số lượng khu neo đậu | Number | Không | Không | Không | Có | Có | Có | `anchorageCount` |
+| 21 | Số lượng khu chuyển tải | Number | Không | Không | Không | Có | Có | Có | `transshipmentCount` |
+| 22 | Các khu nước, vùng nước khác | TextArea | Không | Không | Không | Có | Có | Có | `otherWaterAreas` |
+| | **Thông tin GIS** | | | | | | | | |
+| 23 | Loại đối tượng GIS | Select | Không | Không | Không | Có | Có | Có | `coordinateSystem`/`displayRule`/`mapSymbolId`/`spatialId` |
+| 24 | Biểu tượng | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 25 | Hệ quy chiếu | Select | Không | Không | Không | Có | Có | Có | (GIS) |
+| 26 | Quy tắc hiển thị | Text | Không | Không | Không | Có | Có | Có | (GIS) |
+| | **Tọa độ GPS** | | | | | | | | |
+| 27 | Tọa độ GPS (bắt buộc ≥1 khi gửi duyệt) | Bảng con (Vĩ độ, Kinh độ) | Có* | Không | Không | Có | Có | Có | `coordinates[]` — GPS phải cung cấp cùng nhau (paired); ≥ 1 tọa độ khi gửi duyệt lại |
+| | **Công trình KCHT trực thuộc** | | | | | | | | |
+| 28 | Công trình KCHT | Bảng con (STT, Tên, Số lượng) | Không | Không | Không | Có | Có | Có | `infrastructure[]` — tên bắt buộc, số lượng > 0 |
+| | **File đính kèm** | | | | | | | | |
+| 29 | File đính kèm | Upload | Không | Không | Không | Có | Có | Có | `attachments[]` — quản lý tại F-008/F-012; màn Sửa hiển thị danh sách |
+| | **Ghi chú & Trạng thái** | | | | | | | | |
+| 30 | Ghi chú | TextArea | Không | Không | Không | Có | Có | Có | `remarks` |
+| 31 | Trạng thái | Select | Không (read-only) | Có | Có | Không | Không | Không | `operationalStatus` — theo Excel chỉ hiển thị ở Danh sách/Bộ lọc |
+| | **Thông tin kiểm toán (chỉ Admin Cục)** | | | | | | | | |
+| 32 | Người cập nhật | Text (read-only) | Không (read-only) | Có | Không | Không | Không | Không | Kiểm toán — chỉ Admin Cục |
+| 33 | Ngày cập nhật | Text (read-only) | Không (read-only) | Có | Có | Không | Không | Không | Kiểm toán — chỉ Admin Cục |
+| | **Kết cấu hạ tầng thuộc cầu cảng** | | | | | | | | |
+| 34 | Tên kết cấu hạ tầng | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 35 | Loại kết cấu hạ tầng | Dropdown (bộ lọc) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin quy hoạch** | | | | | | | | |
+| 36 | Số quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 37 | Ngày quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 38 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 40 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 42 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 43 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 44 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 45 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 46 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 47 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 48 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 49 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
 ## 3. Trạng thái và phê duyệt
 
@@ -56,7 +112,7 @@ Cấu trúc theo entity `Port` (bảng `ports`) — danh sách trường giống
 | ID | Quy tắc | Áp dụng |
 |---|---|---|
 | BR-009-01 | `portCode` không thể thay đổi sau khi tạo (read-only, server từ chối nếu payload đổi mã) | Update |
-| BR-009-02 | Tọa độ GPS phải cung cấp cùng nhau: latitude [-90, 90], longitude [-180, 180]; area [0, 5000] | Update |
+| BR-009-02 | Tọa độ GPS phải cung cấp cùng nhau: latitude [-90, 90], longitude [-180, 180] | Update |
 | BR-009-03 | Cập nhật thành công → reset trạng thái về chờ duyệt, phải duyệt lại (quy trình 2 cấp) | Update |
 | BR-009-04 | Tự động tạo change log cho mọi thay đổi (bản cũ lưu trước khi cập nhật) | Update |
 | BR-009-05 | Trùng `portCode`/lỗi xung đột → HTTP 409, không ghi đè | Update |

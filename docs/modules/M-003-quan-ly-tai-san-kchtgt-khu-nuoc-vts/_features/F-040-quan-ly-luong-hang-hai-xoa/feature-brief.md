@@ -56,8 +56,8 @@ Cho phep chuyen vien lo bo cac luong hang hai khong con dung, chi voi nhung du l
 | Role | Level | Notes |
 |---|---|---|
 | A-003 (Chuyen vien) | Xoa | Chi du lieu APPROVED, soft delete |
-| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PROPOSED → UNDER_REVIEW |
-| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | UNDER_REVIEW → APPROVED |
+| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PENDING_APPROVAL → APPROVED_LEVEL1 |
+| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | APPROVED_LEVEL1 → APPROVED |
 
 ## Entities
 

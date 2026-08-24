@@ -34,14 +34,14 @@ Không có form nhập liệu mới — thao tác trên bản ghi `Berth` hiện
 | # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | 1 | id | Có | UUID | Hồ sơ bến cần xử lý |
-| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (lưu số 0..6) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
+| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Trạng thái trong quy trình 2 cấp (tài liệu nền mục 3.5) |
 | 3 | reason (lý do từ chối) | Có khi từ chối | TextArea, tối thiểu 10 ký tự | Lý do chấp thuận là tùy chọn |
 | 4 | cap (cấp duyệt) | Có | Enum: CANG_VU / CUC | Phân biệt vòng 1 / vòng 2 trong PheDuyetLog |
 | 5 | PheDuyetLog | Có (hệ thống) | Bảng `approval_log` | Người duyệt, cấp, thời gian, quyết định, lý do — lưu vĩnh viễn |
 
 ## 3. Trạng thái và phê duyệt
 
-- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (BA đề xuất, SA chốt).
+- **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (đã chốt — M-1006 DP-9/AC-25).
 - Duyệt **tuần tự, không vượt cấp**: vòng 1 (Cảng vụ/Chi cục) trước → chờ Cục → vòng 2 (Cục). Từ chối/trả về ở bất kỳ cấp nào sẽ dừng quy trình, hồ sơ quay lại người nhập (theo file chuẩn).
 - Trạng thái hiển thị: danh sách chờ duyệt theo cấp của người dùng; hồ sơ **Đã duyệt** mới chính thức có hiệu lực và vào báo cáo.
 - Sau quyết định: cập nhật trạng thái + ghi PheDuyetLog + thông báo cho người tạo. Log không được sửa/xóa.

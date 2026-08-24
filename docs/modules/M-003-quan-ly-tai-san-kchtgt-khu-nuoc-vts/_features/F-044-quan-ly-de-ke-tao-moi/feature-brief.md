@@ -40,7 +40,7 @@ Cho phép người dùng có thẩm quyền (Chuyên viên, Trưởng phòng, C�
 5. Người dùng nhập thông tin vào các trường trên form.
 6. Hệ thống kiểm tra tất cả các trường thông tin theo validation (xem chi tiết tại Mô tả màn hình).
 7. Người dùng chọn một trong ba hành động lưu:
-   - **"Lưu tạm":** Lưu với trạng thái "Chờ phê duyệt" (PROPOSED). Công trình chưa được gửi duyệt, có thể sửa tiếp.
+   - **"Lưu tạm":** Lưu với trạng thái "Lưu tạm" (DRAFT). Công trình chưa được gửi duyệt, có thể sửa tiếp.
    - **"Lưu và gửi phê duyệt":** Lưu và gửi yêu cầu phê duyệt đến cấp có thẩm quyền. Trạng thái chuyển sang "Chờ phê duyệt".
    - **"Lưu và phê duyệt":** (Chỉ dành cho Cấp Cục) Lưu và phê duyệt ngay. Trạng thái chuyển sang "Đã phê duyệt".
 8. Hệ thống gọi API tạo mới và kiểm tra các quy tắc nghiệp vụ.
@@ -103,15 +103,15 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-044-02 — Mã đê/kè tự động sinh:** Hệ thống tự động sinh mã đê/kè theo định dạng `DK-{seq}` (seq tăng dần), duy nhất trong toàn hệ thống. Mã hiển thị trên form dưới dạng disabled (không cho sửa).
 
-**AC-044-03 — Validation các trường bắt buộc:** Các trường Tên đê kè, Địa điểm (Tỉnh/TP), Địa điểm chi tiết, Loại kết cấu công trình, Chiều dài, Tình trạng là bắt buộc. Nếu thiếu trường nào, hệ thống hiển thị lỗi "Trường này là bắt buộc" và chặn submit.
+**AC-044-03 — Validation các trường bắt buộc:** Các trường Tên đê kè, Địa điểm (Tỉnh/TP), Loại kết cấu công trình, Chiều dài, Tình trạng là bắt buộc. Địa điểm chi tiết **không bắt buộc** (theo Excel). Nếu thiếu trường bắt buộc nào, hệ thống hiển thị lỗi "Trường này là bắt buộc" và chặn submit.
 
 **AC-044-04 — Validation chiều dài:** Chiều dài phải là số thập phân dương (> 0), không vượt quá 99999m. Nếu giá trị không hợp lệ, hiển thị lỗi tại trường tương ứng.
 
 **AC-044-05 — Đơn vị quản lý mặc định:** Trường Đơn vị quản lý mặc định được điền theo đơn vị của người dùng đăng nhập. Khi tạo mới, người dùng chỉ thấy và chọn được dữ liệu trong phạm vi đơn vị quản lý của mình.
 
-**AC-044-06 — Lưu tạm thành công:** Người dùng chọn "Lưu tạm", công trình được lưu với trạng thái "Chờ phê duyệt" (PROPOSED). Bản ghi approvalHistory được tạo với actionType = TAO_MOI. Hiển thị thông báo "Tạo đê kè thành công" và chuyển hướng về danh sách. Công trình có thể được chỉnh sửa tiếp (F-045).
+**AC-044-06 — Lưu tạm thành công:** Người dùng chọn "Lưu tạm", công trình được lưu với trạng thái "Lưu tạm" (DRAFT). Bản ghi approvalHistory được tạo với actionType = TAO_MOI. Hiển thị thông báo "Tạo đê kè thành công" và chuyển hướng về danh sách. Công trình có thể được chỉnh sửa tiếp (F-045).
 
-**AC-044-07 — Lưu và gửi phê duyệt thành công:** Người dùng chọn "Lưu và gửi phê duyệt", công trình được lưu và gửi đến cấp phê duyệt. Trạng thái chuyển sang "Chờ phê duyệt" (PROPOSED). Hiển thị thông báo "Đã gửi phê duyệt đê kè" và chuyển hướng về danh sách. Công trình xuất hiện trong danh sách chờ phê duyệt của F-047.
+**AC-044-07 — Lưu và gửi phê duyệt thành công:** Người dùng chọn "Lưu và gửi phê duyệt", công trình được lưu và gửi đến cấp phê duyệt. Trạng thái chuyển sang "Chờ Cảng vụ/Chi cục duyệt" (PENDING_APPROVAL). Hiển thị thông báo "Đã gửi phê duyệt đê kè" và chuyển hướng về danh sách. Công trình xuất hiện trong danh sách chờ phê duyệt của F-047.
 
 **AC-044-08 — Lưu và phê duyệt thành công:** Người dùng Cấp Cục chọn "Lưu và phê duyệt", công trình được lưu và phê duyệt ngay. Trạng thái chuyển sang "Đã phê duyệt" (APPROVED), isApprovedLevel1 = isApprovedLevel2 = true. Hiển thị thông báo "Tạo mới và phê duyệt đê kè thành công". Công trình sẵn sàng để sử dụng trong các module khác.
 
@@ -129,7 +129,7 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 **BR-044-03 — Cảng biển phải đã duyệt:** Khi chọn Cảng biển (nếu có), chỉ hiển thị các Cảng biển đã duyệt và đang hoạt động. Trường này sẽ bị disabled khi sửa (F-045).
 
-**BR-044-04 — Công trình chưa duyệt thì chưa dùng được:** Công trình sau khi tạo (kể cả "Lưu tạm" hay "Lưu và gửi phê duyệt") đều ở trạng thái chưa được phê duyệt (PROPOSED). Ở trạng thái này, công trình **chưa thể được tham chiếu** bởi bất kỳ module nào khác (không xuất hiện trong dropdown chọn đê/kè của module Gắn tài sản, Vận hành, Bảo trì, Tra cứu công khai...). Phải qua bước phê duyệt (F-047) để đạt trạng thái "Đã phê duyệt" (APPROVED) thì mới có thể sử dụng.
+**BR-044-04 — Công trình chưa duyệt thì chưa dùng được:** Công trình sau khi tạo (kể cả "Lưu tạm" hay "Lưu và gửi phê duyệt") đều ở trạng thái chưa được phê duyệt (DRAFT/PENDING_APPROVAL). Ở trạng thái này, công trình **chưa thể được tham chiếu** bởi bất kỳ module nào khác (không xuất hiện trong dropdown chọn đê/kè của module Gắn tài sản, Vận hành, Bảo trì, Tra cứu công khai...). Phải qua bước phê duyệt (F-047) để đạt trạng thái "Đã phê duyệt" (APPROVED) thì mới có thể sử dụng.
 
 **BR-044-05 — Ghi lịch sử tự động:** Mọi thao tác tạo mới đều được ghi tự động vào bảng `dike_revetment_approval_history` để phục vụ kiểm toán và truy vết. Lịch sử bao gồm: mã đê/kè, người tạo, thời gian tạo, loại hành động (TAO_MOI).
 
@@ -147,13 +147,15 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PROPOSED: F-044 - Tạo mới (Lưu tạm / Gửi duyệt)
-    PROPOSED --> UNDER_REVIEW: F-047 - Duyệt C1 (Trưởng phòng)
-    PROPOSED --> APPROVED: F-044 - Lưu & Phê duyệt (chỉ Cục)
-    UNDER_REVIEW --> APPROVED: F-047 - Duyệt C2 (Cục trưởng)
-    UNDER_REVIEW --> REJECTED: F-047 - Từ chối C2
-    PROPOSED --> REJECTED: F-047 - Từ chối C1
-    REJECTED --> PROPOSED: F-045 - Sửa & gửi lại
+    [*] --> DRAFT: F-044 - Tạo mới (Lưu tạm)
+    DRAFT --> PENDING_APPROVAL: F-044 - Gửi duyệt
+    PENDING_APPROVAL --> APPROVED_LEVEL1: F-047 - Duyệt C1 (Cảng vụ/Chi cục)
+    PENDING_APPROVAL --> APPROVED: F-044 - Lưu & Phê duyệt (chỉ Cục)
+    APPROVED_LEVEL1 --> APPROVED: F-047 - Duyệt C2 (Cục trưởng)
+    APPROVED_LEVEL1 --> REJECTED_LEVEL2: F-047 - Từ chối C2
+    PENDING_APPROVAL --> REJECTED_LEVEL1: F-047 - Từ chối C1
+    REJECTED_LEVEL1 --> DRAFT: F-045 - Sửa & gửi lại
+    REJECTED_LEVEL2 --> DRAFT: F-045 - Sửa & gửi lại
 
     state APPROVED {
         [*] --> SU_DUNG: Công trình được duyệt
@@ -168,10 +170,11 @@ stateDiagram-v2
 
 | Trạng thái | Mã | Ý nghĩa | Có thể dùng ở module khác? |
 |---|---|---|---|
-| Chờ phê duyệt | PROPOSED | Công trình vừa được tạo (lưu tạm hoặc đã gửi duyệt), đang chờ phê duyệt | **❌ Không** — không xuất hiện trong dropdown chọn đê/kè |
-| Đang duyệt | UNDER_REVIEW | Đã duyệt C1, đang chờ duyệt C2 | **❌ Không** — chưa thể sử dụng |
+| Lưu tạm | DRAFT | Công trình vừa được tạo (lưu tạm), chưa gửi duyệt | **❌ Không** — không xuất hiện trong dropdown chọn đê/kè |
+| Chờ Cảng vụ/Chi cục duyệt | PENDING_APPROVAL | Đã gửi duyệt, đang chờ duyệt C1 | **❌ Không** — không xuất hiện trong dropdown chọn đê/kè |
+| Chờ Cục duyệt | APPROVED_LEVEL1 | Đã duyệt C1, đang chờ duyệt C2 | **❌ Không** — chưa thể sử dụng |
+| Bị trả về | REJECTED_LEVEL1 / REJECTED_LEVEL2 | Công trình bị từ chối ở C1 hoặc C2, cần sửa và gửi lại | **❌ Không** — cần sửa lại (F-045) và gửi duyệt lại |
 | Đã phê duyệt | APPROVED | Công trình đã được duyệt C1+C2, sẵn sàng sử dụng | **✅ Có** — xuất hiện trong tất cả dropdown và module liên quan |
-| Từ chối | REJECTED | Công trình bị từ chối, cần sửa và gửi lại | **❌ Không** — cần sửa lại (F-045) và gửi duyệt lại |
 
 ### 6.3. Các tính năng liên quan trực tiếp
 
@@ -179,8 +182,8 @@ Những tính năng này nằm trong cùng module M-003 và developer làm F-044
 
 | Feature | Tên | Vai trò | Mối liên kết với F-044 |
 |---|---|---|---|
-| **F-045** | Cập nhật Đê/kè | Sửa thông tin sau khi tạo | Sau khi sửa, trạng thái quay về PROPOSED → cần duyệt lại |
-| **F-046** | Xóa Đê/kè | Xóa mềm công trình | Chỉ xóa được bản ghi PROPOSED. APPROVED cần quy trình hủy riêng |
+| **F-045** | Cập nhật Đê/kè | Sửa thông tin sau khi tạo | Sau khi sửa, trạng thái quay về DRAFT → cần duyệt lại |
+| **F-046** | Xóa Đê/kè | Xóa mềm công trình | Chỉ xóa được bản ghi DRAFT (Lưu tạm). APPROVED cần quy trình hủy riêng |
 | **F-047** | Phê duyệt Đê/kè | Duyệt 2 cấp (C1+C2) | **Bắt buộc** — công trình tạo từ F-044 phải qua F-047 mới được sử dụng |
 | **F-048** | Xem chi tiết Đê/kè | Xem thông tin công trình | Có thể xem ở mọi trạng thái |
 | **F-049** | Lịch sử Đê/kè | Xem nhật ký thay đổi | Ghi nhận mọi thao tác từ F-044 |
@@ -231,7 +234,7 @@ Tính năng này tạo ra/sửa đổi các bảng dữ liệu sau trong cơ s�
 - <span style="color:red;font-weight:bold">**ma:** chuỗi, mã đê kè, duy nhất toàn hệ thống (unique constraint). Tự động sinh: DK-{seq}. Không cho sửa.</span>
 - **dikeRevetmentName:** chuỗi (255), tên đê/kè, bắt buộc.
 - **location:** chuỗi (200), địa điểm (Tỉnh/TP), bắt buộc. Danh mục Tỉnh/TP.
-- <span style="color:red;font-weight:bold">**locationDetail:** chuỗi (500), địa điểm chi tiết, bắt buộc.</span>
+- <span style="color:red;font-weight:bold">**locationDetail:** chuỗi (500), địa điểm chi tiết, không bắt buộc.</span>
 - **dikeRevetmentType:** enum, loại kết cấu công trình, bắt buộc. Các giá trị: WAVE_BREAK_REVETMENT (đê chắn sóng), SAND_BREAK_REVETMENT (đê chắn cát), FLOW_GUIDE_REVETMENT (kè hướng dòng), BANK_PROTECTION_REVETMENT (kè bảo vệ bờ), RIVER_DIKE, SAND_DIKE, TRAFFIC.
 
 **B. Thông tin kỹ thuật (root fields):**
@@ -251,14 +254,14 @@ Tính năng này tạo ra/sửa đổi các bảng dữ liệu sau trong cơ s�
 
 - **status:** chuỗi (100), tình trạng, bắt buộc. Các giá trị: Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành. Danh mục TINH_TRANG.
 - **note:** chuỗi (500), ghi chú, tùy chọn.
-- **approvalStatus:** enum (PROPOSED, UNDER_REVIEW, APPROVED, REJECTED), mặc định PROPOSED khi tạo mới.
+- **approvalStatus:** enum (DRAFT, PENDING_APPROVAL, APPROVED_LEVEL1, REJECTED_LEVEL1, REJECTED_LEVEL2, APPROVED, ARCHIVED), mặc định DRAFT (Lưu tạm) khi tạo mới.
 - **isApprovedLevel1:** boolean, đã duyệt cấp 1 (Trưởng phòng), mặc định false.
 - **approverLevel1:** chuỗi (100), người duyệt cấp 1.
 - **approvedDateLevel1:** ngày tháng, ngày duyệt cấp 1.
 - **isApprovedLevel2:** boolean, đã duyệt cấp 2 (Cục trưởng), mặc định false.
 - **approverLevel2:** chuỗi (100), người duyệt cấp 2.
 - **approvedDateLevel2:** ngày tháng, ngày duyệt cấp 2.
-- **rejectionReason:** chuỗi (500), lý do từ chối (khi REJECTED).
+- **rejectionReason:** chuỗi (500), lý do từ chối (khi REJECTED_LEVEL1/REJECTED_LEVEL2).
 - **isDeleted:** boolean, xóa mềm, mặc định false.
 - **createdBy:** UUID, người tạo (lấy từ token, không nhận từ client).
 - **createdAt:** timestamp, thời điểm tạo (tự động).
@@ -338,7 +341,7 @@ Form tạo mới gồm 4 nhóm thông tin chính.
 | 4 | Mã đê kè | Textbox (disabled) | Không | Không | DK-{seq} (tự sinh) | Hiển thị mã tự động sinh. Không cho phép chỉnh sửa. |
 | 5 | Tên đê kè | Textarea | Có | Có | Trống | Nhập tên công trình. Validation: không được để trống, tối đa 255 ký tự. |
 | 6 | Địa điểm (Tỉnh/TP) | Select (Dropdown) | Có | Có | Trống | Chọn Tỉnh/Thành phố. Danh mục: Tỉnh/TP. |
-| 7 | Địa điểm chi tiết | Textarea | Có | Có | Trống | Nhập địa điểm chi tiết. Tối đa 500 ký tự. |
+| 7 | Địa điểm chi tiết | Textarea | Có | Không | Trống | Nhập địa điểm chi tiết. Không bắt buộc. Tối đa 500 ký tự. |
 | 8 | Loại kết cấu công trình | Select (Dropdown) | Có | Có | Trống | Chọn loại kết cấu: Đê chắn sóng / Đê chắn cát / Kè hướng dòng / Kè bảo vệ bờ. Danh mục: LOAI_KCCT_DE_KE. |
 
 #### B. Thông tin kỹ thuật
@@ -375,7 +378,7 @@ Form tạo mới gồm 4 nhóm thông tin chính.
 
 | STT | Tên trường | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
 | --- | --- | --- | --- | --- | --- | --- |
-|  | Nút "Lưu tạm" | Button | — | — | — | Lưu với trạng thái PROPOSED, không gửi duyệt. Hiển thị thông báo: "Tạo đê kè thành công". Redirect về danh sách. Có thể sửa tiếp. |
+|  | Nút "Lưu tạm" | Button | — | — | — | Lưu với trạng thái DRAFT, không gửi duyệt. Hiển thị thông báo: "Tạo đê kè thành công". Redirect về danh sách. Có thể sửa tiếp. |
 |  | Nút "Lưu và gửi phê duyệt" | Button | — | — | — | Lưu và gửi yêu cầu phê duyệt. Hiển thị thông báo: "Đã gửi phê duyệt đê kè". Redirect về danh sách. Công trình chờ duyệt tại F-047. |
 |  | Nút "Lưu và phê duyệt" | Button | — | — | — | Chỉ hiển thị cho Cấp Cục. Lưu và phê duyệt ngay (APPROVED, C1+C2). Hiển thị thông báo: "Tạo mới và phê duyệt đê kè thành công". Công trình sẵn sàng sử dụng ngay. |
 |  | Nút "Hủy" | Button | — | — | — | Hủy thao tác tạo mới, quay về trang danh sách Đê/kè. Không lưu dữ liệu đã nhập. |

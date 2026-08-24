@@ -95,17 +95,17 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 **AC-048-07 — Tab trạng thái phê duyệt:** 4 tab "Tất cả / Chờ phê duyệt / Đang duyệt / Đã phê duyệt / Từ chối", mỗi tab hiển thị số lượng bản ghi tương ứng; chuyển tab lọc lại danh sách theo `approvalStatus` mà không mất các bộ lọc khác đang áp dụng.
 
-**AC-048-08 — Cột hiển thị đầy đủ:** Mỗi dòng hiển thị đúng các cột: STT, Đơn vị quản lý, Mã đê kè, Tên đê kè, Địa điểm, Loại kết cấu, Chiều dài, Tình trạng, Trạng thái phê duyệt, Ngày cập nhật, Thao tác.
+**AC-048-08 — Cột hiển thị đầy đủ:** Mỗi dòng hiển thị đúng các cột: STT, Mã + Tên đê kè, Địa điểm, Đơn vị quản lý, Thuộc cảng biển, Loại kết cấu công trình, Thời điểm đưa vào khai thác, Tình trạng, Trạng thái phê duyệt, Ngày cập nhật, Người cập nhật, Thao tác.
 
 **AC-048-09 — Xem chi tiết:** Click vào mã hoặc tên đê/kè (hoặc nút "Xem") điều hướng đến màn hình xem chi tiết với đúng `id` của dòng được chọn.
 
 **AC-048-10 — Chỉnh sửa:** Nút "Sửa" chỉ hiển thị cho người dùng có quyền `dikerevetment:update` và bản ghi đủ điều kiện (xem F-045). Click điều hướng đến màn hình chỉnh sửa với form được điền sẵn dữ liệu.
 
-**AC-048-11 — Xóa:** Nút "Xóa" chỉ hiển thị khi `approvalStatus = PROPOSED` và người dùng có quyền `dikerevetment:delete` + cùng đơn vị (hoặc Cấp Cục). Click mở hộp thoại xác nhận trước khi gọi DELETE.
+**AC-048-11 — Xóa:** Nút "Xóa" chỉ hiển thị khi `approvalStatus = DRAFT` (Lưu tạm) và người dùng có quyền `dikerevetment:delete` + cùng đơn vị (hoặc Cấp Cục). Click mở hộp thoại xác nhận trước khi gọi DELETE.
 
-**AC-048-12 — Gửi phê duyệt:** Nút "Gửi phê duyệt" hiển thị khi `approvalStatus = PROPOSED` hoặc `REJECTED` + cùng đơn vị. Click gửi yêu cầu phê duyệt (xem F-047).
+**AC-048-12 — Gửi phê duyệt:** Nút "Gửi phê duyệt" hiển thị khi `approvalStatus = DRAFT` hoặc `REJECTED_LEVEL1`/`REJECTED_LEVEL2` + cùng đơn vị. Click gửi yêu cầu phê duyệt (xem F-047).
 
-**AC-048-13 — Phê duyệt:** Nút "Phê duyệt" chỉ hiển thị cho Cấp Cục khi `approvalStatus = PROPOSED`. Click phê duyệt trực tiếp (xem F-047).
+**AC-048-13 — Phê duyệt:** Nút "Phê duyệt" chỉ hiển thị cho Cấp Cục khi `approvalStatus = DRAFT`. Click phê duyệt trực tiếp (xem F-047).
 
 **AC-048-14 — Lịch sử:** Nút "Lịch sử" luôn hiển thị cho mọi vai trò có quyền xem; click điều hướng đến màn hình lịch sử thay đổi (F-049).
 
@@ -137,11 +137,12 @@ Các thao tác trong tính năng được bảo vệ bởi các quyền (permiss
 
 | Trạng thái | Mã | Badge màu | Xuất hiện trong danh sách? |
 |---|---|---|---|
-| Chờ phê duyệt | PROPOSED | Vàng | ✅ Có |
-| Đang duyệt | UNDER_REVIEW | Xanh dương | ✅ Có |
+| Lưu tạm | DRAFT | Xám | ✅ Có |
+| Chờ Cảng vụ/Chi cục duyệt | PENDING_APPROVAL | Vàng | ✅ Có |
+| Chờ Cục duyệt | APPROVED_LEVEL1 | Xanh dương | ✅ Có |
+| Bị trả về | REJECTED_LEVEL1 / REJECTED_LEVEL2 | Đỏ | ✅ Có |
 | Đã phê duyệt | APPROVED | Xanh lá | ✅ Có |
-| Từ chối | REJECTED | Đỏ | ✅ Có |
-| Đã xóa | `isDeleted = true` | — | ❌ Không |
+| Đã xóa | `isDeleted = true` / ARCHIVED | — | ❌ Không |
 
 ### 6.2. Các tính năng liên quan
 
@@ -180,17 +181,15 @@ Tính năng này chỉ đọc dữ liệu (read-only), không tạo hay sửa b�
 | 1 | STT | Tự động đánh số | Text | |
 | 2 | Mã + Tên đê kè | `ma` + `dikeRevetmentName` | Text (link) | Click mở xem chi tiết. Hiển thị: [Mã] - [Tên] |
 | 3 | Địa điểm | `location` | Text | Tỉnh/TP |
-| 4 | Chiều dài (m) | `length` | Number | |
-| 5 | Đơn vị quản lý | `orgUnitId` (join) | Text | |
-| 6 | Thuộc cảng biển | `cangBienId` (join) | Text | |
-| 7 | Loại kết cấu công trình | `dikeRevetmentType` | Tag | Đê chắn sóng / Đê chắn cát / Kè hướng dòng / Kè bảo vệ bờ |
-| 8 | Đơn vị vận hành | `donViVanHanhId` (join) | Text | |
-| 9 | Thời điểm đưa vào khai thác | `commissioningDate` | Text (năm) | |
-| 10 | Tình trạng | `status` | Tag | Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành |
-| 11 | Trạng thái | `approvalStatus` | Badge | Vàng: PROPOSED / Xanh dương: UNDER_REVIEW / Xanh lá: APPROVED / Đỏ: REJECTED |
-| 12 | Ngày cập nhật | `updatedAt` | Text (dd/MM/yyyy HH:mm) | Sắp xếp mặc định |
-| 13 | Người cập nhật | `updatedBy` (join) | Text | |
-| 14 | Thao tác | — | Nhóm nút | Xem / Sửa / Xóa / Gửi duyệt / Phê duyệt / Lịch sử |
+| 4 | Đơn vị quản lý | `orgUnitId` (join) | Text | |
+| 5 | Thuộc cảng biển | `cangBienId` (join) | Text | |
+| 6 | Loại kết cấu công trình | `dikeRevetmentType` | Tag | Đê chắn sóng / Đê chắn cát / Kè hướng dòng / Kè bảo vệ bờ |
+| 7 | Thời điểm đưa vào khai thác | `commissioningDate` | Text (năm) | |
+| 8 | Tình trạng | `status` | Tag | Chưa khai thác/vận hành / Đang khai thác/vận hành / Dừng khai thác/vận hành |
+| 9 | Trạng thái | `approvalStatus` | Badge | Xám: DRAFT (Lưu tạm) / Vàng: PENDING_APPROVAL / Xanh dương: APPROVED_LEVEL1 / Đỏ: REJECTED_LEVEL1/REJECTED_LEVEL2 / Xanh lá: APPROVED |
+| 10 | Ngày cập nhật | `updatedAt` | Text (dd/MM/yyyy HH:mm) | Sắp xếp mặc định |
+| 11 | Người cập nhật | `updatedBy` (join) | Text | |
+| 12 | Thao tác | — | Nhóm nút | Xem / Sửa / Xóa / Gửi duyệt / Phê duyệt / Lịch sử |
 
 ### 9.2. Bộ lọc
 
@@ -211,10 +210,10 @@ Tính năng này chỉ đọc dữ liệu (read-only), không tạo hay sửa b�
 | Nút | Điều kiện hiển thị | Hành động |
 |---|---|---|
 | Xem chi tiết | Luôn hiển thị | Mở trang chi tiết |
-| Sửa | PROPOSED/REJECTED + cùng đơn vị; APPROVED + Cấp Cục | Mở form sửa (F-045) |
-| Xóa | PROPOSED + (cùng đơn vị hoặc Cấp Cục) | Mở popup xác nhận → DELETE (F-046) |
-| Gửi phê duyệt | PROPOSED/REJECTED + cùng đơn vị | Gửi yêu cầu duyệt (F-047) |
-| Phê duyệt | PROPOSED + Cấp Cục | Phê duyệt trực tiếp (F-047) |
+| Sửa | DRAFT/REJECTED_LEVEL1/REJECTED_LEVEL2 + cùng đơn vị; APPROVED + Cấp Cục | Mở form sửa (F-045) |
+| Xóa | DRAFT (Lưu tạm) + (cùng đơn vị hoặc Cấp Cục) | Mở popup xác nhận → DELETE (F-046) |
+| Gửi phê duyệt | DRAFT/REJECTED_LEVEL1/REJECTED_LEVEL2 + cùng đơn vị | Gửi yêu cầu duyệt (F-047) |
+| Phê duyệt | PENDING_APPROVAL + Cấp Cục | Phê duyệt trực tiếp (F-047) |
 | Lịch sử | Luôn hiển thị | Mở lịch sử (F-049) |
 
 ---
@@ -239,17 +238,18 @@ Dùng chung bố cục hệ thống: sidebar 272px (#12468C), header 64px, nền
 
 | Trạng thái | Màu |
 |---|---|
-| PROPOSED (Chờ duyệt) | #FAAD14 (vàng) |
-| UNDER_REVIEW (Đang duyệt) | #1890FF (xanh dương) |
-| APPROVED (Đã duyệt) | #52C41A (xanh lá) |
-| REJECTED (Từ chối) | #FF4D4F (đỏ) |
+| DRAFT (Lưu tạm) | Xám `#8C8C8C` |
+| PENDING_APPROVAL (Chờ duyệt) | Vàng `#FAAD14` |
+| APPROVED_LEVEL1 (Chờ Cục duyệt) | Xanh dương `#1890FF` |
+| APPROVED (Đã duyệt) | Xanh lá `#52C41A` |
+| REJECTED_LEVEL1 / REJECTED_LEVEL2 (Từ chối) | Đỏ `#FF4D4F` |
 
 ### 11.3. Màn hình
 
 1. **ScreenHeader:** breadcrumb "Quản lý KCHTGT Khu nước & VTS > Đê/kè" + nút "Tạo mới"
 2. **FilterBar:** ô tìm kiếm nhanh + Tình trạng + Đơn vị QL + Thuộc cảng biển + Loại kết cấu công trình + Địa điểm (Tỉnh/TP) + Thời điểm đưa vào khai thác (year) + Ngày cập nhật (RangePicker từ-đến)
-3. **StatusTabs:** Tất cả / Chờ duyệt / Đang duyệt / Đã duyệt / Từ chối
-4. **DataTable:** sticky header, hover row, 14 cột (9.1), click dòng → chi tiết
+3. **StatusTabs:** Tất cả / Lưu tạm / Chờ duyệt / Đã duyệt / Bị trả về
+4. **DataTable:** sticky header, hover row, 12 cột (9.1), click dòng → chi tiết
 5. **Pagination:** 20/50/100 dòng/trang
 
 ### 11.4. Mobile

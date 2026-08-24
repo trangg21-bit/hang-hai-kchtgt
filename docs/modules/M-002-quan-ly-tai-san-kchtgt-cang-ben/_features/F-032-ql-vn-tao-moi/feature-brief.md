@@ -46,7 +46,7 @@ Cấu trúc theo entity `WaterZone` (`src/main/java/com/hanghai/kchtg/port/entit
 | 11 | mapSymbolId, spatialId | Không | UUID | Thông tin GIS |
 | 12 | coordinates[] | Không | Danh sách (latitude/longitude) | Tọa độ GIS |
 | 13 | attachments[] | Không | File (giấy tờ) | File đính kèm |
-| 14 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (lưu số 0..6) | Hồ sơ mới → trạng thái chờ duyệt (theo tài liệu nền mục 3.5) |
+| 14 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Hồ sơ mới → trạng thái chờ duyệt (theo tài liệu nền mục 3.5) |
 
 ## 3. Trạng thái và phê duyệt
 

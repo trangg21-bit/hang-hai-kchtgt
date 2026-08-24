@@ -5,7 +5,7 @@ import { FileOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 import { resolveOrgFullPath } from '../../components/org-unit';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
+  actionPrimary, textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   spaceSm, spaceXs,
 } from '../../tokens';
@@ -96,7 +96,7 @@ export default function PierDetailContent({
                   ['Mã bến cảng', berthDetail?.berthCode || '—'],
                   ['Tên bến cảng', berthDetail?.berthName || berthLabel],
                   ['Thuộc luồng hàng hải', waterwayMap?.get(r.navigationChannelId || '') || r.navigationChannelId || '—'],
-                  ['Mã cầu cảng', <span key="pierCode" style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: '#1677ff15', color: '#1677ff' }}>{r.pierCode || '—'}</span>],
+                  ['Mã cầu cảng', <span key="pierCode" style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.pierCode || '—'}</span>],
                   ['Tên cầu cảng', <span style={{ fontWeight: fontWeightBold }}>{r.pierName || '—'}</span>],
                   ['Địa điểm (Tỉnh/Thành phố)', r.province || '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
@@ -126,7 +126,7 @@ export default function PierDetailContent({
                 ))}
               </div>
               <div style={{ cursor: 'pointer', marginTop: 10, paddingLeft: 12 }} onClick={() => setSystemOpen(!systemOpen)}>
-                <span style={{ color: systemOpen ? '#1677ff' : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
+                <span style={{ color: systemOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{systemOpen ? '▼' : '▶'} Thông tin hệ thống</span>
               </div>
               {systemOpen && (
                 <div className="detail-grid" style={{ marginTop: 4 }}>

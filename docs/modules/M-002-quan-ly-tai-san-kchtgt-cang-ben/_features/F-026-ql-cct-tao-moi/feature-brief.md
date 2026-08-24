@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-08-21
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -25,34 +25,66 @@ consumed_by_modules: []
 
 ## 1. Mô tả ngắn
 
-Cho phép người dùng có thẩm quyền (`dryport:create`) khai báo một Cảng cạn (ICD — Inland Container Depot) mới. Khi mở form, hệ thống tự động sinh **Mã cảng cạn** dạng CC-XXXXXX (read-only, bất biến sau khi lưu). Form gồm 4 nhóm, 25 trường: Thông tin chung (15 — bắt buộc: ĐVQL, Tên, Tỉnh/TP, Địa chỉ chi tiết, Công suất, Tình trạng), Thông tin công bố (4), Vị trí GIS (5 + bảng tọa độ), File đính kèm. Hai lựa chọn trên form: **Lưu tạm** (chỉ cần tên, trạng thái nháp) và **Lưu và phê duyệt** (cần `dryport:approve`, duyệt ngay). **Gửi phê duyệt** là hành động trên màn hình Danh sách (F-030/F-083): chọn bản ghi nháp → gửi vào quy trình phê duyệt. Mặc định tình trạng = CHUA_KHAI_THAC.
+Cho phép người dùng có thẩm quyền (`dryport:create`) khai báo một Cảng cạn (ICD — Inland Container Depot) mới. Khi mở form, hệ thống tự động sinh **Mã cảng cạn** dạng CC-XXXXXX (read-only, bất biến sau khi lưu). Form gồm 4 nhóm, 24 trường: Thông tin chung (15 — bắt buộc: ĐVQL, Tên, Tỉnh/TP, Địa chỉ chi tiết, Công suất, Tình trạng), Thông tin công bố (3), Vị trí GIS (5 + bảng tọa độ), File đính kèm (1). Hai lựa chọn trên form: **Lưu tạm** (chỉ cần tên, trạng thái nháp) và **Lưu và phê duyệt** (cần `dryport:approve`, duyệt ngay). **Gửi phê duyệt** là hành động trên màn hình Danh sách (F-030/F-083): chọn bản ghi nháp → gửi vào quy trình phê duyệt. Mặc định tình trạng = CHUA_KHAI_THAC.
 
 ## 2. Trường dữ liệu
 
 Cấu trúc theo entity `DryPort` (`src/main/java/com/hanghai/kchtg/port/entity/DryPort.java`, bảng `dry_ports`) + bảng con tọa độ GIS và file đính kèm. Các trường từ `BaseEntity` không liệt kê lại.
 
-| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
-|---|---|---|---|---|
-| 1 | dryPortCode | Có | Text (VARCHAR 50), UNIQUE, read-only | Mã tự sinh CC-XXXXXX, bất biến |
-| 2 | dryPortName | Có | Text (VARCHAR 255) | Tên cảng cạn — bắt buộc cả khi Lưu tạm |
-| 3 | orgUnitId | Có | TreeSelect (UUID) | Đơn vị quản lý; Admin Cục chọn mọi đơn vị, còn lại auto-fill |
-| 4 | provinceId | Có* | Select (Integer) | Tỉnh/TP — bắt buộc khi Lưu và phê duyệt |
-| 5 | detailedLocation | Có* | Text (VARCHAR 500) | Địa chỉ chi tiết — bắt buộc khi Lưu và phê duyệt |
-| 6 | teuCapacity | Có* | Number (DECIMAL 15,2) ≥ 0 | Công suất — bắt buộc khi Lưu và phê duyệt |
-| 7 | portStatus | Có* | Select (Integer) | Tình trạng (1 = hoạt động...) — bắt buộc khi Lưu và phê duyệt; mặc định CHUA_KHAI_THAC |
-| 8 | operatingUnit | Không | Text (VARCHAR 255) | Đơn vị khai thác |
-| 9 | region | Không | Text (VARCHAR 255) | Khu vực |
-| 10 | transportCorridor | Không | Text (VARCHAR 255) | Hành lang vận tải |
-| 11 | area | Không | Number (DECIMAL 15,2) ≥ 0 | Diện tích |
-| 12 | warehouseArea, yardArea | Không | Number (DECIMAL 15,2) ≥ 0 | Diện tích kho / bãi |
-| 13 | connectionMode | Không | Text (VARCHAR 500) | Phương thức kết nối |
-| 14 | remarks | Không | TextArea (VARCHAR 1000) | Ghi chú |
-| 15 | announcementTime, announcementDecisionNumber, announcementDecisionDate, announcementOrg | Không | DateTime / Text (100) / Date / Text (255) | Thông tin công bố |
-| 16 | coordinateSystem, displayRule, mapSymbolId, spatialId | Không | Number / UUID | Thông tin vị trí (GIS) |
-| 17 | coordinates[] (GIS) | Không | Danh sách (kinh độ E [-180,180], vĩ độ N [-90,90]) | Bảng tọa độ |
-| 18 | attachments[] | Không | File ≤ 20MB, ≤ 10 files | File đính kèm |
-| 19 | operationalStatus | Không | Enum `OperationalStatus` | Trạng thái hoạt động |
-| 20 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (lưu số 0..6) | Theo tài liệu nền mục 3.5 |
+Bảng dưới đây **khớp 100%** sheet `QL Cảng cạn` — file `HH_Tính năng & danh sách các trường thông tin.xlsx` (nguồn sự thật đã được xác nhận): tên trường, loại điều khiển và cờ hiển thị tại 5 màn hình (Danh sách / Bộ lọc / Xem chi tiết / Tạo mới / Sửa) lấy nguyên theo Excel. Quy ước cột Bắt buộc: **Có*** = bắt buộc khi Gửi phê duyệt. Lưu ý theo Excel: toàn bộ trường Cảng cạn có cột **Sửa = Không** (xem câu hỏi chờ BA/SA chốt tại `docs/intel/field-mismatch-report-m002-m003-vs-excel.md` mục 3.3).
+
+| STT | Tên trường (theo Excel) | Loại điều khiển (theo Excel) | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| | **Thông tin chung** | | | | | | | | |
+| 1 | Đơn vị quản lý (bắt buộc) | Select | Có | Có | Có | Có | Có | Không | `orgUnitId` — TreeSelect (UUID); Admin Cục chọn mọi đơn vị, còn lại auto-fill |
+| 2 | Đơn vị khai thác | Text | Không | Có | Không | Có | Có | Không | `operatingUnit` |
+| 3 | Khu vực | Text | Không | Có | Có | Có | Có | Không | `region` |
+| 4 | Mã cảng cạn | Text (read-only, tự sinh CC-XXXXXX) | Có (hệ thống tự sinh) | Có | Có | Có | Có | Không | `dryPortCode` — tự sinh CC-XXXXXX, bất biến |
+| 5 | Tên cảng cạn (bắt buộc) | Text | Có | Có | Có | Có | Có | Không | `dryPortName` — bắt buộc cả khi Lưu tạm |
+| 6 | Tỉnh/TP (bắt buộc) | Select | Có | Không | Có | Có | Có | Không | `provinceId` |
+| 7 | Địa chỉ chi tiết (bắt buộc) | Text | Có | Không | Không | Có | Có | Không | `detailedLocation` |
+| 8 | Hành lang vận tải | Text | Không | Có | Có | Có | Có | Không | `transportCorridor` |
+| 9 | Công suất khai thác (TEU) (bắt buộc) | Number | Có | Không | Không | Có | Có | Không | `teuCapacity` — DECIMAL ≥ 0 |
+| 10 | Tổng diện tích (m²) | Number | Không | Không | Không | Có | Có | Không | `area` — DECIMAL ≥ 0 |
+| 11 | Diện tích kho (m²) | Number | Không | Không | Không | Có | Có | Không | `warehouseArea` — DECIMAL ≥ 0 |
+| 12 | Diện tích bãi (m²) | Number | Không | Không | Không | Có | Có | Không | `yardArea` — DECIMAL ≥ 0 |
+| 13 | Phương thức kết nối | Text | Không | Không | Không | Có | Có | Không | `connectionMode` |
+| 14 | Tình trạng (bắt buộc) | Select | Có | Không | Có | Có | Có | Không | `portStatus` — bắt buộc khi Lưu và phê duyệt; mặc định CHUA_KHAI_THAC |
+| 15 | Ghi chú | Textarea | Không | Không | Không | Có | Có | Không | `remarks` |
+| | **Thông tin công bố** | | | | | | | | |
+| 16 | Quyết định công bố số | Text | Không | Không | Không | Có | Có | Không | `announcementDecisionNumber` |
+| 17 | Ngày ra quyết định | DatePicker | Không | Không | Không | Có | Có | Không | `announcementDecisionDate` |
+| 18 | Đơn vị ra quyết định | Text | Không | Không | Không | Có | Có | Không | `announcementOrg` |
+| | **Vị trí (GIS)** | | | | | | | | |
+| 19 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | Không | Không | Có | Có | Không | `coordinateSystem`/`displayRule`/`mapSymbolId`/`spatialId` |
+| 20 | Biểu tượng | Select | Không | Không | Không | Có | Có | Không | (GIS) |
+| 21 | Hệ quy chiếu | Text | Không | Không | Không | Có | Có | Không | (GIS) |
+| 22 | Quy tắc hiển thị | Text | Không | Không | Không | Có | Có | Không | (GIS) |
+| 23 | Tọa độ | Bảng con (Kinh độ, Vĩ độ) | Không | Không | Không | Có | Có | Không | `coordinates[]` — kinh độ E [-180,180], vĩ độ N [-90,90] |
+| | **File đính kèm** | | | | | | | | |
+| 24 | File đính kèm | Upload | Không | Không | Không | Có | Có | Không | `attachments[]` — ≤ 20MB, ≤ 10 files |
+| | **Trạng thái & Kiểm toán (chỉ ở trang Chi tiết)** | | | | | | | | |
+| 25 | Trạng thái phê duyệt | Badge (read-only) | Không (read-only) | Có | Có | Có | Không | Không | `approvalStatus` — 7 trạng thái (tài liệu nền mục 3.5) |
+| 26 | Người cập nhật | Text (read-only, chỉ Admin Cục) | Không (read-only) | Có | Không | Có | Không | Không | Kiểm toán — chỉ Admin Cục |
+| 27 | Ngày cập nhật | Text (read-only, chỉ Admin Cục) | Không (read-only) | Có | Có | Có | Không | Không | Kiểm toán — chỉ Admin Cục |
+| | **Thông tin quy hoạch** | | | | | | | | |
+| 28 | Số quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 29 | Ngày quyết định quy hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin vận hành khai thác** | | | | | | | | |
+| 30 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 31 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 32 | Ngày bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 33 | Ngày kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin bảo trì** | | | | | | | | |
+| 34 | Mã kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 35 | Tên kế hoạch | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 36 | Thời gian bắt đầu | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 37 | Thời gian kết thúc | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| | **Thông tin sự cố** | | | | | | | | |
+| 38 | Mã sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 39 | Loại sự cố | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 40 | Địa điểm | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
+| 41 | Thời gian | Text (read-only) | Không (read-only) | Không | Không | Có | Không | Không | Chỉ Xem chi tiết |
 
 ## 3. Trạng thái và phê duyệt
 
@@ -122,6 +154,6 @@ Cấu trúc theo entity `DryPort` (`src/main/java/com/hanghai/kchtg/port/entity/
 
 Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-**Bảng `dry_ports`** (Cảng cạn — cấu trúc theo entity `DryPort`): id (UUID PK), dryPortCode (VARCHAR 50, UNIQUE, NOT NULL), dryPortName (VARCHAR 255, NOT NULL), provinceId (INT), area (DECIMAL 15,2), teuCapacity (DECIMAL 15,2), operationalStatus (SMALLINT — enum `OperationalStatus`), approvalStatus (SMALLINT, NOT NULL), orgUnitId (UUID, NOT NULL), securityLevel (SMALLINT, default NORMAL), mapSymbolId (UUID), spatialId (UUID), operatingUnit (VARCHAR 255), region (VARCHAR 255), detailedLocation (VARCHAR 500), transportCorridor (VARCHAR 255), warehouseArea (DECIMAL 15,2), yardArea (DECIMAL 15,2), connectionMode (VARCHAR 500), portStatus (INT, NOT NULL), remarks (VARCHAR 1000), announcementTime (TIMESTAMP), announcementDecisionNumber (VARCHAR 100), announcementDecisionDate (DATE), announcementOrg (VARCHAR 255), coordinateSystem (INT), displayRule (INT) + audit từ `BaseEntity`; filter `orgUnitFilter` + `recordSecurityLevelFilter`.
+**Bảng `dry_ports`** (Cảng cạn — cấu trúc theo entity `DryPort`): id (UUID PK), dryPortCode (VARCHAR 50, UNIQUE, NOT NULL), dryPortName (VARCHAR 255, NOT NULL), provinceId (INT), area (DECIMAL 15,2), teuCapacity (DECIMAL 15,2), operationalStatus (SMALLINT — enum `OperationalStatus`), approvalStatus (SMALLINT, NOT NULL), orgUnitId (UUID, NOT NULL), securityLevel (SMALLINT, default NORMAL), mapSymbolId (UUID), spatialId (UUID), operatingUnit (VARCHAR 255), region (VARCHAR 255), detailedLocation (VARCHAR 500), transportCorridor (VARCHAR 255), warehouseArea (DECIMAL 15,2), yardArea (DECIMAL 15,2), connectionMode (VARCHAR 500), portStatus (INT, NOT NULL), remarks (VARCHAR 1000), announcementDecisionNumber (VARCHAR 100), announcementDecisionDate (DATE), announcementOrg (VARCHAR 255), coordinateSystem (INT), displayRule (INT) + audit từ `BaseEntity`; filter `orgUnitFilter` + `recordSecurityLevelFilter`.
 
 **Bảng con:** bảng tọa độ GIS (dryPortId, latitude, longitude) + bảng `dry_port_attachments` (dryPortId FK, fileName, filePath, fileSize, contentType, uploadedBy, uploadedAt).

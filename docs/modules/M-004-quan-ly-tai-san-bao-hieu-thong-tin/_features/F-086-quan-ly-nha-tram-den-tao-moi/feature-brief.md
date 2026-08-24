@@ -7,80 +7,188 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-07-07T03:32:49Z"
-last-updated: "2026-07-07T03:32:49Z"
+last-updated: "2026-08-23"
 locked-fields: []
 consumed_by_modules: []
 ---
 
-# Feature: Quản lý Nhà trạm đèn - Tạo mới
+# Đặc tả nghiệp vụ: Quản lý Nhà trạm đèn - Tạo mới
 
-## Description
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-086
+**Module:** M-004 — Quản lý tài sản Báo hiệu & Thông tin
+**Loại:** chức năng có bước phê duyệt
+**Tham chiếu:** tài liệu nền `ba/00-lean-spec.md` (bắt buộc đọc trước) + tài liệu yêu cầu gốc (Excel `HH_Tính năng & danh sách các trường thông tin.xlsx`, sheet `QL Đèn biển và nhà trạm`)
 
-Cho phép cán bộ nghiệp vụ (operator) tạo mới một nhà trạm đèn (beacon station building) trong hệ thống quản lý tài sản báo hiệu hàng hải. Nhà trạm đèn là công trình phục vụ việc lắp đặt, bảo trì và vận hành các đèn báo hiệu hàng hải (hải đăng, đèn báo, cọc tiêu). Tính năng thu thập thông tin về mã số, tên gọi, vị trí địa lý (kinh độ, vĩ độ), loại đèn (BeaconLightType: LIGHTHOUSE, BEACON_LIGHT, BEACON_MARK), tầm hiệu lực ánh sáng (lightRange 0.01-60.0 hải lý), màu ánh sáng, đặc tính ánh sáng, tầm nhìn xa (range 0.01-100.0 hải lý), thông tin đơn vị quản lý, lịch bảo trì gần nhất/kế tiếp, cùng thông tin mô tả chi tiết. Khi tạo, người dùng có thể lưu nháp (draft) hoặc gửi phê duyệt ngay (submit). Mỗi nhà trạm đèn được gán trạng thái DRAFT hoặc PENDING_APPROVAL tùy hành động.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
-## Business Intent
+> **⚠️ BẮT BUỘC KHAI BÁO PHẠM VI DỮ LIỆU THEO ĐƠN VỊ (Data Scope):**
+> Trong bảng **\"Điểm khác biệt so với mẫu chung\"** (mục 5, dòng 3 — *\"Lọc cha-con / theo đơn vị\"*), BA **PHẢI khai báo đầy đủ** (có/không, trường đơn vị nào, cơ chế, ngoại lệ) và **SA chốt cơ chế** khi duyệt — không được để trống hoặc ghi chung chung.
+> Nếu chức năng quản lý dữ liệu nghiệp vụ thuộc đơn vị, brief PHẢI khai báo: (1) trường đơn vị bắt buộc/không, (2) nguồn gán đơn vị khi tạo (request hay đơn vị user), (3) chiều ghi có validate phạm vi không.
+> Quy tắc chi tiết xem `AGENTS.md` mục **Data Scope Convention**; danh sách lỗ hổng đã gặp xem `docs/intel/data-scope-gap-report.md`.
 
-Số hóa quy trình đăng ký nhà trạm đèn mới phục vụ công tác quản lý tài sản báo hiệu hàng hải, giúp cán bộ nghiệp vụ tạo lập dữ liệu nhà trạm đèn nhanh chóng và chính xác. Giảm sai sót so với nhập liệu thủ công, tạo nền tảng cho quy trình phê duyệt điện tử cấp L1 và L2 sau này.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Người dùng (operator) truy cập màn hình tạo mới nhà trạm đèn và nhập các thông tin: mã (code), tên (name), loại đèn (type), vị trí (latitude, longitude), tầm hiệu lực ánh sáng (lightRange), màu ánh sáng (lightColor), đặc tính ánh sáng (lightCharacteristic), tầm nhìn xa (range), mô tả (description), đơn vị quản lý (unitId), ngày bảo trì gần nhất/kế tiếp (lastMaintenanceDate, nextMaintenanceDate). Hệ thống thực hiện validate dữ liệu đầu vào (bắt buộc: code, name, type, latitude, longitude, lightRange; không bắt buộc: lightColor, lightCharacteristic, range, description, unitId, lastMaintenanceDate, nextMaintenanceDate). Nếu action="draft", hệ thống lưu với trạng thái DRAFT; nếu action="submit", lưu với trạng thái PENDING_APPROVAL và ghi nhật ký lịch sử hành động CREATE. Kết quả trả về thông tin chi tiết nhà trạm đèn vừa tạo (id tự sinh, code duy nhất, các trường đã nhập, trạng thái, thời gian tạo).
+Cho phép cán bộ nghiệp vụ (operator) tạo mới một nhà trạm đèn trong hệ thống quản lý tài sản báo hiệu hàng hải. Nhà trạm đèn là công trình phục vụ việc lắp đặt, bảo trì và vận hành các đèn báo hiệu hàng hải. Tính năng thu thập thông tin về địa điểm đặt trạm, kết cấu, diện tích, diện tích sử dụng, số lượng nhân sự bố trí và ghi chú. Khi tạo, người dùng có thể lưu nháp (DRAFT) hoặc gửi phê duyệt ngay (PENDING_APPROVAL).
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- AC-01: Gửi request hợp lệ với đầy đủ các trường bắt buộc (code, name, type, latitude, longitude, lightRange) và action="draft", hệ thống tạo thành công nhà trạm đèn mới với trạng thái DRAFT, trả về HTTP 201.
-- AC-02: Gửi request hợp lệ với action="submit", hệ thống tạo thành công với trạng thái PENDING_APPROVAL, đồng thời ghi lại bản ghi lịch sử với actionType=CREATE.
-- AC-03: Gửi request với code đã tồn tại, hệ thống trả về lỗi vi phạm ràng buộc unique (HTTP 400/409).
-- AC-04: Gửi request thiếu trường bắt buộc (vd: code để trống hoặc lightRange null), hệ thống trả về lỗi validation HTTP 400.
-- AC-05: Gửi request với lightRange ngoài khoảng [0.01, 60.0] hải lý, hệ thống trả về lỗi validation.
+Bảng mô tả các trường trên form tạo mới/chỉnh sửa:
 
-## In Scope
+| # | Tên trường (theo Excel) | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| 1 | Địa điểm đặt trạm đèn | Không | TextArea, tối đa 500 ký tự | Mô tả vị trí cụ thể của nhà trạm |
+| 2 | Kết cấu | Không | TextArea, tối đa 500 ký tự | Mô tả kết cấu xây dựng (bê tông, thép, gỗ…) |
+| 3 | Diện tích (m²) | Không | Decimal, ≥ 0 | Tổng diện tích nhà trạm |
+| 4 | Diện tích sử dụng trạm đèn (m²) | Không | Decimal, ≥ 0 | Diện tích thực tế sử dụng cho vận hành đèn |
+| 5 | Số lượng nhân sự bố trí | Không | TextArea, tối đa 100 ký tự | Số người làm việc tại nhà trạm |
+| 6 | Ghi chú | Không | TextArea, tối đa 1000 ký tự | Ghi chú bổ sung |
+| 7 | Loại đối tượng (GIS) | Không | SelectAppParams | Phân loại đối tượng GIS |
+| 8 | Biểu tượng (GIS) | Không | SelectIcon | Biểu tượng hiển thị trên bản đồ |
+| 9 | Hệ quy chiếu (GIS) | Không | SelectAppParams | Hệ quy chiếu tọa độ (VD: WGS84) |
+| 10 | Quy tắc hiển thị (GIS) | Không | SelectAppParams | Quy tắc style hiển thị GIS |
+| 11 | Tọa độ (GIS) | Không | LongLatTable | Bảng nhập tọa độ kinh độ/vĩ độ |
+| 12 | Danh sách file đính kèm | Không | UploadFileTable | Tải lên tệp tài liệu liên quan |
 
-- Tạo mới nhà trạm đèn với đầy đủ các trường thuộc tính
-- Validation dữ liệu đầu vào theo business rules
-- Hỗ trợ hai chế độ: lưu nháp (DRAFT) và gửi phê duyệt (PENDING_APPROVAL)
-- Ghi lịch sử CREATE khi action=submit
-- Mã (code) tự động kiểm tra unique
+> **Ghi chú:** Các trường \"Thông tin cơ bản\" (mã đèn, tên đèn, đơn vị quản lý, thuộc cảng biển, đơn vị vận hành, địa điểm tỉnh/TP, địa điểm chi tiết, tình trạng, thông tin kỹ thuật đèn biển) đã được kế thừa từ feature F-068 (Quản lý Đèn biển - Tạo mới) và không lặp lại trong brief này. Các trường \"Thông tin log cập nhật\", \"Thông tin vận hành khai thác\", \"Thông tin bảo trì\", \"Thông tin sự cố\", \"Trạng thái\" là read-only, không xuất hiện trong form tạo mới.
 
-## Out of Scope
+## 3. Trạng thái và phê duyệt
 
-- Cập nhật/xóa nhà trạm đèn (F-087, F-088)
-- Phê duyệt nhà trạm đèn (F-089)
-- Tích hợp GIS (M-007)
+- Quy trình phê duyệt 2 cấp theo `ba/00-lean-spec.md` mục 3.7:
+  - **DRAFT** (0) — Trạng thái mặc định khi tạo mới, lưu nháp.
+  - **PENDING_APPROVAL** (2) — Khi người dùng nhấn \"Gửi phê duyệt\", chuyển từ DRAFT sang trạng thái chờ duyệt cấp Cảng vụ/Chi cục.
+  - **APPROVED_L1** (3) — Cấp Cảng vụ/Chi cục phê duyệt.
+  - **APPROVED_L2** (4) — Cấp Cục phê duyệt.
+  - **PUBLISHED** (5) — Đã đưa vào sử dụng.
+  - **REJECTED** (6) — Bị từ chối ở bất kỳ cấp nào.
+  - **DELETED** (7) — Đã xóa mềm.
+- Khi tạo mới, người dùng chọn hành động:
+  - **Lưu nháp** → trạng thái `DRAFT`.
+  - **Gửi phê duyệt** → trạng thái `PENDING_APPROVAL`, ghi nhật ký lịch sử hành động CREATE.
+- Trạng thái lưu dạng số trong DB (ApprovalStatus enum ordinal), không lưu chữ.
 
-## Roles + Permissions
+## 4. Quy tắc và phân quyền riêng
 
-| Role | Level | Notes |
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền (phần chung đã nằm ở `ba/00-lean-spec.md`).
+
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| admin | CRUD | Toàn quyền thao tác |
-| operator | CRUD | Có thể tạo mới, lưu nháp hoặc gửi phê duyệt |
-| viewer | Read | Không có quyền tạo mới |
+| BR-086-01 | Diện tích (m²) và diện tích sử dụng phải ≥ 0 | Create |
+| BR-086-02 | Số lượng nhân sự bố trí phải là số nguyên ≥ 0 (nếu nhập số) | Create |
+| BR-086-03 | Tọa độ GIS phải tuân thủ WGS84 (latitude: -90→90, longitude: -180→180) | Create |
+| BR-086-04 | Khi action=\"draft\", lưu với trạng thái DRAFT; khi action=\"submit\", lưu với trạng thái PENDING_APPROVAL và ghi lịch sử CREATE | Create |
+| BR-086-05 | Mã nhà trạm đèn (nếu có) phải là duy nhất | Create |
 
-## Entities
+### 4.2. Acceptance Criteria kế thừa (nếu có)
 
-| Entity | Type | Usage |
+- **AC-086-01** — Gửi request hợp lệ với đầy đủ trường bắt buộc và action=\"draft\", hệ thống tạo thành công nhà trạm đèn mới với trạng thái DRAFT, trả về HTTP 201.
+- **AC-086-02** — Gửi request hợp lệ với action=\"submit\", hệ thống tạo thành công với trạng thái PENDING_APPROVAL, đồng thời ghi lại bản ghi lịch sử với actionType=CREATE.
+- **AC-086-03** — Gửi request thiếu trường bắt buộc (nếu có), hệ thống trả về lỗi validation HTTP 400.
+- **AC-086-04** — Gửi request với mã đã tồn tại, hệ thống trả về lỗi vi phạm ràng buộc unique (HTTP 400/409).
+
+### 4.3. User Stories kế thừa (nếu có)
+
+- **US-086-01:** Là cán bộ nghiệp vụ, tôi muốn tạo mới nhà trạm đèn với đầy đủ thông tin (địa điểm, kết cấu, diện tích, nhân sự) để phục vụ công tác quản lý tài sản báo hiệu hàng hải.
+- **US-086-02:** Là cán bộ nghiệp vụ, tôi muốn lưu nháp hoặc gửi phê duyệt ngay khi tạo mới để linh hoạt trong quy trình làm việc.
+
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Tạo mới nhà trạm đèn | `nhatramden:create` |
+| Xem danh sách nhà trạm đèn | `nhatramden:read` |
+| Xem chi tiết nhà trạm đèn | `nhatramden:detail` |
+| Cập nhật nhà trạm đèn | `nhatramden:update` |
+| Xóa nhà trạm đèn | `nhatramden:delete` |
+| Phê duyệt nhà trạm đèn | `nhatramden:approve` |
+| Xem lịch sử nhà trạm đèn | `nhatramden:history` |
+
+**Admin Cục:** Full quyền + xem thêm metadata người tạo/người sửa/thời gian tạo/cập nhật (theo tài liệu nền mục 3.8).
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
 |---|---|---|
-| NhaTramDen (nha_tram_den) | Table | Lưu thông tin nhà trạm đèn mới |
-| BaseNhaTram | Superclass | Kế thừa các trường chung (id, code, name, latitude, longitude, description, unitId, isActive, status) |
-| NhaTramHistory (nha_tram_history) | Table | Ghi nhật ký hành động CREATE |
-| BeaconLightType | Enum | LIGHTHOUSE, BEACON_LIGHT, BEACON_MARK |
-| NhaTramStatus | Enum | DRAFT, PENDING_APPROVAL, APPROVED_L1, APPROVED_L2, PUBLISHED, DELETED |
+| 1 | Trạng thái riêng | Có — NhaTramDenStatus: DRAFT, PENDING_APPROVAL, APPROVED_L1, APPROVED_L2, PUBLISHED, REJECTED, DELETED (7 trạng thái) |
+| 2 | Có bước phê duyệt không | Có — Phê duyệt 2 cấp (Cảng vụ/Chi cục → Cục) |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` bắt buộc, filter theo subtree đơn vị người dùng, Cục xem full |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `nhatramden:create`, `nhatramden:read`, `nhatramden:update`, `nhatramden:delete`, `nhatramden:approve`, `nhatramden:detail`, `nhatramden:history` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — trường \"Danh sách file đính kèm\" (UploadFileTable) cho phép upload tài liệu liên quan |
+| 8 | Giao diện khác mẫu chung | Có — Form tạo mới bao gồm 6 trường riêng nhà trạm (địa điểm, kết cấu, diện tích, diện tích sử dụng, nhân sự, ghi chú) + 5 trường GIS + file upload |
 
-## Business Rules
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-| ID | Rule | Applies-to | Source |
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| BR-001 | Mã (code) phải là duy nhất, không được để trống, tối đa 50 ký tự | NhaTramDen.code | @Column(unique=true), @NotBlank, @Size(max=50) |
-| BR-002 | Tên (name) không được để trống, tối đa 200 ký tự | NhaTramDen.name | @NotBlank, @Size(max=200) |
-| BR-003 | Vĩ độ (latitude) trong khoảng -90.0 đến 90.0 | NhaTramDen | @DecimalMin, @DecimalMax |
-| BR-004 | Kinh độ (longitude) trong khoảng -180.0 đến 180.0 | NhaTramDen | @DecimalMin, @DecimalMax |
-| BR-005 | Tầm hiệu lực ánh sáng (lightRange) phải từ 0.01 đến 60.0 hải lý | NhaTramDen | @DecimalMin, @DecimalMax |
-| BR-006 | Tầm nhìn xa (range) phải từ 0.01 đến 100.0 hải lý | NhaTramDen | @DecimalMin, @DecimalMax |
-| BR-007 | Mô tả (description) tối đa 1000 ký tự | NhaTramDen | @Size(max=1000) |
-| BR-015 | Trạng thái khởi tạo mặc định là DRAFT hoặc PENDING_APPROVAL tùy action | NhaTramDen | @Builder.Default status = DRAFT, action field |
-| BR-019 | Màu ánh sáng (lightColor) tối đa 50 ký tự | NhaTramDen | @Size(max=50) |
-| BR-018 | Đặc tính ánh sáng (lightCharacteristic) tối đa 100 ký tự | NhaTramDen | @Size(max=100) |
+| POST | `/api/v1/nhatram-den` | Tạo mới nhà trạm đèn (draft hoặc submit) | `nhatramden:create` |
+| GET | `/api/v1/nhatram-den` | Danh sách nhà trạm đèn (phân trang) | `nhatramden:read` |
+| GET | `/api/v1/nhatram-den/{id}` | Xem chi tiết nhà trạm đèn | `nhatramden:detail` |
+| PUT | `/api/v1/nhatram-den/{id}` | Cập nhật nhà trạm đèn | `nhatramden:update` |
+| DELETE | `/api/v1/nhatram-den/{id}` | Xóa mềm nhà trạm đèn | `nhatramden:delete` |
+| POST | `/api/v1/nhatram-den/{id}/approve` | Phê duyệt (C1/C2) | `nhatramden:approve` |
+| POST | `/api/v1/nhatram-den/{id}/reject` | Từ chối phê duyệt | `nhatramden:approve` |
+| GET | `/api/v1/nhatram-den/{id}/history` | Lịch sử thay đổi | `nhatramden:history` |
 
-## Testing Strategy
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-(populated by qa stage)
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `nha_tram_den` (Nhà trạm đèn):**
+
+Kế thừa từ `BaseEntity` (id, createdAt, updatedAt, createdByName, updatedByName, deletedAt, deletedByName) + các trường sau:
+
+| Trường | Kiểu | Bắt buộc | Ghi chú |
+|---|---|---|---|
+| code | VARCHAR(50) | Có | Mã nhà trạm đèn, unique |
+| name | VARCHAR(200) | Có | Tên nhà trạm đèn |
+| orgUnitId | UUID | Có | Đơn vị quản lý (data scope) |
+| portId | UUID | Không | Thuộc cảng biển |
+| operatingUnitId | UUID | Không | Đơn vị vận hành |
+| province | VARCHAR(100) | Không | Địa điểm (Tỉnh/TP) |
+| detailedLocation | TEXT | Không | Địa điểm chi tiết |
+| status | SMALLINT | Có | Trạng thái (ApprovalStatus ordinal) |
+| conditionId | INTEGER | Không | Tình trạng (AppParams) |
+| lightType | VARCHAR(50) | Không | Chủng loại đèn chính |
+| backupLightType | VARCHAR(50) | Không | Chủng loại đèn dự phòng |
+| stationLevel | VARCHAR(50) | Không | Cấp trạm đèn |
+| jurisdiction | TEXT | Không | Địa bàn |
+| landmark | TEXT | Not null | Đặc điểm nhận dạng |
+| shape | TEXT | Không | Hình dạng |
+| towerHeight | DECIMAL(6,2) | Không | Chiều cao tháp đèn (m) |
+| lightCenterHeight | DECIMAL(6,2) | Không | Chiều cao tâm sáng (m) |
+| geoRange | VARCHAR(50) | Không | Tầm hiệu lực địa lý |
+| lightRange | DECIMAL(6,2) | Không | Tầm hiệu lực ánh sáng (hải lý) |
+| towerColor | TEXT | Không | Màu sắc tháp đèn |
+| energySource | TEXT | Không | Nguồn năng lượng |
+| commissioningDate | DATE | Không | Thời điểm đưa vào sử dụng |
+| lastRepairDate | DATE | Không | Thời điểm sửa chữa gần nhất |
+| 🔴 stationLocation | TEXT | Không | Địa điểm đặt trạm đèn |
+| 🔴 structure | TEXT | Không | Kết cấu |
+| 🔴 area | DECIMAL(10,2) | Không | Diện tích (m²) |
+| 🔴 usableArea | DECIMAL(10,2) | Không | Diện tích sử dụng trạm đèn (m²) |
+| 🔴 staffCount | VARCHAR(100) | Không | Số lượng nhân sự bố trí |
+| 🔴 note | TEXT | Không | Ghi chú |
+| objectTypeId | INTEGER | Không | Loại đối tượng (GIS) |
+| iconId | INTEGER | Không | Biểu tượng (GIS) |
+| crsId | INTEGER | Không | Hệ quy chiếu (GIS) |
+| displayRuleId | INTEGER | Không | Quy tắc hiển thị (GIS) |
+| coordinates | JSONB | Không | Tọa độ (GIS) |
+| isActive | BOOLEAN | Có | Default true |
+
+**Bảng `nha_tram_den_attachment` (Đính kèm nhà trạm đèn):** 🔴 mới
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| id | UUID | Primary key |
+| nhaTramDenId | UUID | FK → nha_tram_den.id |
+| fileName | VARCHAR(255) | Tên file |
+| filePath | VARCHAR(500) | Đường dẫn lưu trữ |
+| fileSize | BIGINT | Kích thước file (bytes) |
+| uploadedBy | UUID | Người upload |
+| uploadedAt | TIMESTAMP | Thời gian upload |

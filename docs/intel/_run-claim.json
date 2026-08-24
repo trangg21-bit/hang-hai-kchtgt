@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-19T08:56:39.910Z",
+  "last_modified_at": "2026-08-22T14:32:07.569Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -27,14 +27,14 @@
       "depends_on": [],
       "topo_level": 0,
       "status": "failed",
-      "claimed_by": "tab-2506df7c067a758a",
-      "claimed_at": "2026-07-28T02:46:25.516Z",
-      "heartbeat_at": "2026-07-28T02:59:18.767Z",
+      "claimed_by": "tab-67782430fd688c8b",
+      "claimed_at": "2026-08-22T14:27:43.126Z",
+      "heartbeat_at": "2026-08-22T14:32:07.569Z",
       "current_stage": null,
       "started_at": "2026-06-27T22:47:04.985Z",
-      "completed_at": "2026-07-28T02:59:18.767Z",
+      "completed_at": "2026-08-22T14:32:07.569Z",
       "auto_pass_count": 0,
-      "attempt": 7,
+      "attempt": 9,
       "name": "Quản lý tài sản KCHTGT - Cảng & Bến",
       "slug": "quan-ly-tai-san-kchtgt-cang-ben",
       "risk_path": "M",
@@ -399,8 +399,8 @@
     "M-023": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-7175e9c120b55ffd",
+      "status": "orphaned",
+      "claimed_by": null,
       "claimed_at": "2026-08-19T04:10:00.063Z",
       "heartbeat_at": "2026-08-19T04:10:00.063Z",
       "current_stage": null,
@@ -411,8 +411,9 @@
       "name": "Quản lý Đèn biển và nhà trạm gắn với Đèn biển",
       "slug": "quan-ly-den-bien-va-nha-tram",
       "risk_path": "M",
-      "claimed_pid": 16952,
-      "claimed_host": "PTPM-AnhNT3-PC"
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-7175e9c120b55ffd"
     },
     "M-1000": {
       "depends_on": [],
@@ -506,8 +507,8 @@
     "M-1005": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-bc1802f18c6d6a69",
+      "status": "orphaned",
+      "claimed_by": null,
       "claimed_at": "2026-08-19T08:14:08.910Z",
       "heartbeat_at": "2026-08-19T08:56:39.910Z",
       "current_stage": null,
@@ -518,8 +519,9 @@
       "name": "Tối ưu hiệu năng phân quyền FE/BE",
       "slug": "toi-uu-hieu-nang-phan-quyen",
       "risk_path": "M",
-      "claimed_pid": 35780,
-      "claimed_host": "PTPM-SONPN-PC"
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-bc1802f18c6d6a69"
     }
   },
   "tabs": {
@@ -677,9 +679,7 @@
     "tab-7175e9c120b55ffd": {
       "started_at": "2026-08-19T04:10:00.063Z",
       "last_seen": "2026-08-19T04:10:00.063Z",
-      "claimed_modules": [
-        "M-023"
-      ],
+      "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [],
       "skipped_modules": []
@@ -728,11 +728,29 @@
     "tab-bc1802f18c6d6a69": {
       "started_at": "2026-08-19T08:14:08.910Z",
       "last_seen": "2026-08-19T08:56:39.910Z",
-      "claimed_modules": [
-        "M-1005"
-      ],
+      "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-543d97184145f7a5": {
+      "started_at": "2026-08-22T13:35:34.308Z",
+      "last_seen": "2026-08-22T14:12:02.257Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [
+        "M-002"
+      ],
+      "skipped_modules": []
+    },
+    "tab-67782430fd688c8b": {
+      "started_at": "2026-08-22T14:27:43.126Z",
+      "last_seen": "2026-08-22T14:32:07.569Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [
+        "M-002"
+      ],
       "skipped_modules": []
     }
   }

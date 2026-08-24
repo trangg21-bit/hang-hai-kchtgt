@@ -1,77 +1,131 @@
 ---
 id: F-085
-name: "Quản lý Nhà trạm phao - Lịch sử"
+name: Lịch sử Nhà trạm phao
 slug: quan-ly-nha-tram-phao-lich-su
 module-id: M-004
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-07T03:32:42Z"
-last-updated: "2026-07-07T03:32:42Z"
+created: 2026-07-07T03:32:42Z
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
 
-# Feature: Quản lý Nhà trạm phao - Lịch sử
+# Đặc tả nghiệp vụ: Lịch sử Nhà trạm phao
 
-## Description
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-085
+**Module:** M-004 — Quản lý tài sản Báo hiệu & Thông tin
+**Loại:** chức năng thường (không có bước phê duyệt) — tra cứu lịch sử thay đổi nhà trạm phao
+**Tham chiếu:** tài liệu nền `ba/00-lean-spec.md` (bắt buộc đọc trước) + tài liệu yêu cầu gốc (Excel `HH_Tính năng & danh sách các trường thông tin.xlsx`, sheet `QL Nhà trạm phao tiêu`)
 
-Cho phép người dùng tra cứu lịch sử thay đổi của các nhà trạm phao (NhaTramPhao) dựa trên loại nhà trạm (NhaTramType.PHAO). Lịch sử ghi lại tất cả các hành động quan trọng: tạo mới (CREATE), cập nhật (UPDATE), phê duyệt cấp 1 (APPROVE_L1), phê duyệt cấp 2 (APPROVE_L2), từ chối (REJECT), và xóa mềm (SOFT_DELETE). Mỗi bản ghi lịch sử bao gồm: loại hành động, id entity liên quan, trường thay đổi (changedField), giá trị cũ/mới, người thực hiện (changedBy), thời gian (changedAt), lý do (reason), và dữ liệu diff dạng JSON. Hỗ trợ lọc theo entityId, actionType, changedBy, khoảng thời gian (from/to), và phân trang.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
-## Business Intent
+> **⚠️ BẮT BUỘC KHAI BÁO PHẠM VI DỮ LIỆU THEO ĐƠN VỊ (Data Scope):**
+> Trong bảng **"Điểm khác biệt so với mẫu chung"** (mục 5, dòng 3 — *"Lọc cha-con / theo đơn vị"*), BA **PHẢI khai báo đầy đủ** (có/không, trường đơn vị nào, cơ chế, ngoại lệ) và **SA chốt cơ chế** khi duyệt — không được để trống hoặc ghi chung chung.
+> Nếu chức năng quản lý dữ liệu nghiệp vụ thuộc đơn vị, brief PHẢI khai báo: (1) trường đơn vị bắt buộc/không, (2) nguồn gán đơn vị khi tạo (request hay đơn vị user), (3) chiều ghi có validate phạm vi không.
+> Quy tắc chi tiết xem `AGENTS.md` mục **Data Scope Convention**; danh sách lỗ hổng đã gặp xem `docs/intel/data-scope-gap-report.md`.
 
-Phục vụ công tác kiểm toán (audit) và truy vết thay đổi dữ liệu nhà trạm phao, đảm bảo tính minh bạch và khả năng truy xuất nguồn gốc của mọi thao tác trên tài sản báo hiệu hàng hải. Giúp quản lý xem xét ai đã thay đổi gì và khi nào, phục vụ điều tra sự cố hoặc đánh giá chất lượng dữ liệu.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Người dùng gửi request GET đến endpoint /api/v1/nhatram/history với tham số bắt buộc type=PHAO (NhaTramType) và các tham số tùy chọn: entityId (UUID), actionType (CREATE/UPDATE/APPROVE_L1/APPROVE_L2/REJECT/SOFT_DELETE), changedBy (Long), from (LocalDateTime), to (LocalDateTime), page (mặc định 0), size (mặc định 20). Hệ thống truy vấn bảng nha_tram_history với filter, sắp xếp theo changedAt giảm dần, trả về danh sách phân trang NhaTramHistoryResponse. Kết quả bao gồm thông tin chi tiết của từng hành động: tramType, entityId, actionType, changedField, previousValue, newValue, changedBy, changedAt, reason, diffData.
+Cho phép mọi người dùng có quyền `nhatramphao:read` tra cứu lịch sử thay đổi của nhà trạm phao. Lịch sử bao gồm các hành động: CREATE (tạo mới), UPDATE (cập nhật), APPROVE_L1 (phê duyệt cấp 1), APPROVE_L2 (phê duyệt cấp 2), REJECT (từ chối), SOFT_DELETE (xóa mềm). Người dùng có thể lọc theo entityId, actionType, khoảng thời gian. Hệ thống trả về danh sách phân trang, sắp xếp theo thời gian giảm dần. Tất cả thông tin lịch sử là read-only — không thể sửa/xóa.
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- AC-01: Gửi request GET /api/v1/nhatram/history?type=PHAO không có filter, hệ thống trả về danh sách tất cả lịch sử nhà trạm phao (phân trang, mặc định 20 bản ghi), HTTP 200.
-- AC-02: Gửi request GET với type=PHAO và entityId cụ thể, hệ thống trả về lịch sử chỉ của nhà trạm phao đó.
-- AC-03: Gửi request GET với type=PHAO và actionType=APPROVE_L2, hệ thống trả về lịch sử chỉ gồm các hành động phê duyệt L2.
-- AC-04: Gửi request GET với type=PHAO và from/to, hệ thống trả về lịch sử trong khoảng thời gian chỉ định.
-- AC-05: Gửi request GET với type=DEN (không phải PHAO), hệ thống trả về lịch sử nhà trạm đèn, không bao gồm nhà trạm phao.
+Bảng mô tả các trường hiển thị trên màn hình lịch sử (nguồn: Excel sheet `QL Nhà trạm phao tiêu`, cột "Xem chi tiết" — các trường trạng thái & kiểm toán):
 
-## In Scope
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| 1 | ID bản ghi lịch sử | Có | UUID (read-only) | |
+| 2 | ID nhà trạm phao | Có | UUID (read-only) | Liên kết đến nhà trạm phao |
+| 3 | Loại hành động | Có | Badge (read-only) | CREATE, UPDATE, APPROVE_L1, APPROVE_L2, REJECT, SOFT_DELETE |
+| 4 | Trường thay đổi | Không | Text (read-only) | Tên trường bị thay đổi |
+| 5 | Giá trị trước | Không | Text (read-only) | Giá trị cũ |
+| 6 | Giá trị sau | Không | Text (read-only) | Giá trị mới |
+| 7 | Người thực hiện | Có | Text (read-only) | changedBy |
+| 8 | Thời gian thực hiện | Có | Text (read-only) | changedAt |
+| 9 | Lý do | Không | Text (read-only) | reason (phê duyệt/từ chối) |
 
-- Tra cứu lịch sử theo loại nhà trạm (type=PHAO)
-- Lọc theo entityId, actionType, changedBy, khoảng thời gian
-- Phân trang và sắp xếp theo thời gian giảm dần
-- Hiển thị chi tiết changedField, previousValue, newValue
+## 3. Trạng thái và phê duyệt
 
-## Out of Scope
+- Theo tài liệu nền mục 3.7 (trạng thái lưu dạng số, không lưu chữ).
+- Lịch sử thay đổi là **read-only** — không thể sửa/xóa bản ghi lịch sử.
+- Không có bước phê duyệt cho thao tác tra cứu lịch sử.
+- Lịch sử được ghi tự động bởi hệ thống khi thực hiện bất kỳ thao tác CRUD hoặc phê duyệt nào trên nhà trạm phao.
 
-- Lịch sử nhà trạm đèn (type=DEN) — F-091
-- Chỉnh sửa/xóa bản ghi lịch sử (read-only)
-- Lịch sử BeaconLight/Buoy (F-073, F-079)
+## 4. Quy tắc và phân quyền riêng
 
-## Roles + Permissions
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền (phần chung đã nằm ở `ba/00-lean-spec.md`).
 
-| Role | Level | Notes |
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| admin | Read | Xem toàn bộ lịch sử |
-| operator | Read | Xem lịch sử của nhà trạm phao |
-| approver_L1 | Read | Xem lịch sử phục vụ phê duyệt |
-| approver_L2 | Read | Xem lịch sử phục vụ phê duyệt |
-| viewer | Read | Xem lịch sử (chỉ đọc) |
+| BR-085-01 | Lịch sử chỉ đọc (read-only) — không thể sửa/xóa bản ghi lịch sử | Read |
+| BR-085-02 | Chỉ hiển thị lịch sử nhà trạm phao thuộc phạm vi người dùng (data scope) | Read |
+| BR-085-03 | Lọc theo actionType: CREATE, UPDATE, APPROVE_L1, APPROVE_L2, REJECT, SOFT_DELETE | Read |
+| BR-085-04 | Lọc theo khoảng thời gian (from/to) | Read |
+| BR-085-05 | Sắp xếp theo thời gian thực hiện giảm dần (mới nhất trước) | Read |
+| BR-085-06 | Phân trang: mặc định 20 bản ghi/page | Read |
+| BR-085-07 | Admin Cục xem thêm metadata người thực hiện đầy đủ | Read |
 
-## Entities
+### 4.2. Acceptance Criteria kế thừa (nếu có)
 
-| Entity | Type | Usage |
+- **AC-085-01** — Tra cứu không có filter: hệ thống trả về danh sách tất cả lịch sử nhà trạm phao (phân trang, mặc định 20 bản ghi), HTTP 200.
+- **AC-085-02** — Tra cứu với filter entityId: hệ thống trả về lịch sử chỉ của nhà trạm phao đó.
+- **AC-085-03** — Tra cứu với filter actionType=APPROVE_L2: hệ thống trả về lịch sử chỉ gồm các hành động phê duyệt L2.
+- **AC-085-04** — Tra cứu với filter from/to: hệ thống trả về lịch sử trong khoảng thời gian chỉ định.
+- **AC-085-05** — Sắp xếp: hệ thống trả về danh sách sắp xếp theo changedAt giảm dần.
+- **AC-085-06** — Không có quyền: hệ thống trả về HTTP 403 Forbidden.
+
+### 4.3. User Stories kế thừa (nếu có)
+
+- **US-085-01:** Là người dùng có quyền, tôi muốn tra cứu lịch sử thay đổi của nhà trạm phao để theo dõi toàn bộ quá trình tạo, sửa, phê duyệt và xóa.
+- **US-085-02:** Là người dùng có quyền, tôi muốn lọc lịch sử theo hành động (phê duyệt, từ chối, cập nhật) để nhanh chóng tìm thấy thông tin cần thiết.
+- **US-085-03:** Là Admin Cục, tôi muốn xem đầy đủ thông tin người thực hiện và thời gian để phục vụ công tác kiểm tra, giám sát.
+
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem lịch sử nhà trạm phao | `nhatramphao:read` |
+
+**Admin Cục:** Full quyền xem lịch sử + xem thêm metadata người thực hiện đầy đủ (theo tài liệu nền mục 3.8).
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
 |---|---|---|
-| NhaTramHistory (nha_tram_history) | Table | Lưu trữ và truy vấn lịch sử |
-| NhaTramType | Enum | PHAO — filter theo loại nhà trạm phao |
-| NhaTramHistoryActionType | Enum | CREATE, UPDATE, APPROVE_L1, APPROVE_L2, REJECT, SOFT_DELETE |
-| NhaTramHistoryResponse | DTO | Đóng gói dữ liệu lịch sử trả về |
+| 1 | Trạng thái riêng | Không — lịch sử không có trạng thái riêng |
+| 2 | Có bước phê duyệt không | Không — lịch sử chỉ đọc |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — chỉ xem được lịch sử nhà trạm phao thuộc đơn vị mình quản lý hoặc đơn vị con |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — Lý do chỉ hiện với hành động APPROVE/REJECT |
+| 5 | Quyền riêng | `nhatramphao:read` (chung với xem chi tiết) |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Có — hiển thị timeline thay đổi |
 
-## Business Rules
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-| ID | Rule | Applies-to | Source |
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| BR-001 | Lịch sử chỉ đọc (read-only) — không thể sửa/xóa | NhaTramHistory | Service design — only create operations |
+| GET | `/api/v1/nhatram-phao/{id}/history` | Lấy lịch sử thay đổi nhà trạm phao | `nhatramphao:read` |
 
-## Testing Strategy
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-(populated by qa stage)
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `nha_tram_phao_history` (Lịch sử nhà trạm phao):**
+- `id` UUID PK 🔴
+- `nhaTramPhaoId` UUID NOT NULL FK 🔴
+- `actionType` VARCHAR NOT NULL (CREATE/UPDATE/APPROVE_L1/APPROVE_L2/REJECT/SOFT_DELETE) 🔴
+- `changedField` VARCHAR 🔴
+- `previousValue` TEXT 🔴
+- `newValue` TEXT 🔴
+- `changedBy` UUID NOT NULL FK 🔴
+- `changedAt` TIMESTAMP NOT NULL 🔴
+- `reason` TEXT 🔴
+- `diffData` JSONB 🔴

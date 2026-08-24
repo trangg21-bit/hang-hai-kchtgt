@@ -7,74 +7,223 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-07-07T03:32:32Z"
-last-updated: "2026-07-07T03:32:32Z"
+last-updated: "2026-08-23"
 locked-fields: []
 consumed_by_modules: []
 ---
 
-# Feature: Quản lý Phao tiêu - Tạo mới
+# Đặc tả nghiệp vụ: Quản lý Phao tiêu - Tạo mới
 
-## Description
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-074
+**Module:** M-004 — Quản lý tài sản Báo hiệu & Thông tin
+**Loại:** chức năng có bước phê duyệt
+**Tham chiếu:** tài liệu nền `ba/00-lean-spec.md` (bắt buộc đọc trước) + tài liệu yêu cầu gốc (TKCT)
 
-Cho phép người dùng nhập thông tin một phao tiêu mới vào hệ thống, bao gồm các trường: mã code (duy nhất trong toàn bộ beacon_light và buoy), tên, loại phao (CARDINAL / SECTOR / SPECIAL / SAFE_WATER / ISOLATED_DANGER), tọa độ (kinh độ, vĩ độ WGS84), màu sắc, hình dáng, đặc tính ánh sáng, tầm nhìn xa (hải lý), mô tả, đơn vị quản lý, ngày kiểm tra gần nhất và kế tiếp, và trạng thái hoạt động. Hệ thống kiểm tra tính duy nhất của mã code, validate tọa độ và ngày kiểm tra, tạo bản ghi với trạng thái DRAFT hoặc PENDING_APPROVAL.
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
 
-## Business Intent
+> **⚠️ BẮT BUỘC KHAI BÁO PHẠM VI DỮ LIỆU THEO ĐƠN VỊ (Data Scope):**
+> Trong bảng **"Điểm khác biệt so với mẫu chung"** (mục 5, dòng 3 — *"Lọc cha-con / theo đơn vị"*), BA **PHẢI khai báo đầy đủ** (có/không, trường đơn vị nào, cơ chế, ngoại lệ) và **SA chốt cơ chế** khi duyệt — không được để trống hoặc ghi chung chung.
+> Nếu chức năng quản lý dữ liệu nghiệp vụ thuộc đơn vị, brief PHẢI khai báo: (1) trường đơn vị bắt buộc/không, (2) nguồn gán đơn vị khi tạo (request hay đơn vị user), (3) chiều ghi có validate phạm vi không.
+> Quy tắc chi tiết xem `AGENTS.md` mục **Data Scope Convention**; danh sách lỗ hổng đã gặp xem `docs/intel/data-scope-gap-report.md`.
 
-Xây dựng cơ sở dữ liệu tập trung về các phao tiêu (1.452 phao tiêu trên toàn quốc) phục vụ công tác quản lý tài sản báo hiệu hàng hải. Đảm bảo mỗi phao tiêu có thông tin định danh duy nhất và tuân thủ quy chuẩn kỹ thuật IALA trước khi đưa vào vận hành nhằm đảm bảo an toàn hàng hải.
+---
 
-## Flow Summary
+## 1. Mô tả ngắn
 
-Người dùng truy cập màn hình tạo mới phao tiêu, điền form thông tin với các trường bắt buộc (code, name, type, latitude, longitude, range) và tùy chọn (color, shape, lightCharacteristic, description, unitId, lastInspectionDate, nextInspectionDate, isActive). Hệ thống kiểm tra mã code không trùng với Buoy hay BeaconLight, validate tọa độ WGS84, tầm nhìn xa 0.01–100.0 hải lý và ngày kiểm tra hợp lệ. Người dùng có thể lưu nháp hoặc gửi phê duyệt ngay (action = "submit"). Khi tạo thành công, hệ thống ghi lịch sử CREATE và gửi thông báo phê duyệt.
+Cho phép người dùng tạo mới một phao tiêu vào hệ thống, bao gồm thông tin cơ bản (đơn vị quản lý, nhà trạm, mã tự sinh, tên, địa điểm, tình trạng), thông tin kỹ thuật (phân loại phao/tiêu, hình dáng, kết cấu, kích thước, đèn biển, đặc tính ánh sáng), tọa độ GIS (5 trường: tọa độ, loại đối tượng, biểu tượng, hệ quy chiếu, quy tắc hiển thị), file đính kèm, và thời điểm đưa vào sử dụng. Mã phao tiêu tự sinh theo định dạng `{mã nhà trạm}-PT-{seq}`. Trạng thái khởi tạo là DRAFT; người dùng có thể chọn gửi phê duyệt ngay để chuyển sang PENDING_APPROVAL.
 
-## Acceptance Criteria
+## 2. Trường dữ liệu
 
-- AC-01: Người dùng điền đầy đủ thông tin bắt buộc và tạo thành công phao tiêu mới — hệ thống trả về HTTP 201.
-- AC-02: Hệ thống từ chối tạo phao tiêu mới nếu mã code đã tồn tại trong bảng buoy hoặc beacon_light.
-- AC-03: Hệ thống từ chối nếu tọa độ không hợp lệ (kinh độ ngoài -180~180 hoặc vĩ độ ngoài -90~90).
-- AC-04: Hệ thống từ chối nếu tầm nhìn xa (range) ngoài khoảng 0.01–100.0 hải lý.
-- AC-05: Người dùng có thể chọn gửi phê duyệt ngay sau khi tạo (action="submit") — phao tiêu được tạo với status = PENDING_APPROVAL.
-- AC-06: Sau khi tạo thành công, lịch sử được ghi với actionType = CREATE và beaconType = BUOY.
+Bảng mô tả các trường trên form tạo mới/chỉnh sửa:
 
-## In Scope
+| # | Tên trường (theo Excel) | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Đơn vị quản lý (bắt buộc khi tạo) | SelectOrgCode | Có (khi tạo) | ✓ | ✓ | ✓ | ✓ | ✓ | Theo Data Scope Convention |
+| 2 | Thuộc nhà trạm QLVH phao, tiêu (bắt buộc) | SelectKcht (ATHH, NT) | Có | ✓ | ✓ | ✓ | ✓ | ✓ | Liên kết nhà trạm |
+| 3 | Phân loại | SelectAppParams | Không | | | ✓ | ✓ | ✓ | Tham chiếu AppParams |
+| 4 | Phân loại phao | SelectAppParams | Không | | | ✓ | ✓ | ✓ | Tham chiếu AppParams |
+| 5 | Phân loại tiêu | SelectAppParams | Không | | | ✓ | ✓ | ✓ | Tham chiếu AppParams |
+| 6 | Mã phao, tiêu | Input (disabled, tự sinh {mã nhà trạm}-PT-{seq}) | Có | ✓ | ✓ | ✓ | ✓ | ✓ | Tự sinh, không cho sửa |
+| 7 | Tên phao, tiêu (bắt buộc) | InputTextArea | Có | ✓ | ✓ | ✓ | ✓ | ✓ | Tối đa 200 ký tự |
+| 8 | Địa điểm (Tỉnh/TP) | SelectCateOther | Có | ✓ | ✓ | ✓ | ✓ | ✓ | Tỉnh/thành phố |
+| 9 | Địa điểm chi tiết | InputTextArea | Không | | | ✓ | ✓ | ✓ | |
+| 10 | Tình trạng (bắt buộc) | SelectAppParams | Có | ✓ | ✓ | ✓ | ✓ | ✓ | Tham chiếu AppParams |
+| 11 | Hình dáng | InputTextArea | Không | | | ✓ | ✓ | ✓ | |
+| 12 | Kết cấu | InputTextArea | Không | | | ✓ | ✓ | ✓ | |
+| 13 | Diện tích (m²) | InputDecimal | Không | | | ✓ | ✓ | ✓ | |
+| 14 | Chiều cao thân phao (m) | InputDecimal | Không | | | ✓ | ✓ | ✓ | |
+| 15 | Đường kính phao (m) | InputDecimal | Không | | | ✓ | ✓ | ✓ | |
+| 16 | Đèn biển | SelectAppParams | Không | | | ✓ | ✓ | ✓ | |
+| 17 | Chiều cao tháp đèn | InputDecimal | Không | | | ✓ | ✓ | ✓ | |
+| 18 | Chiều cao tâm sáng (hải đồ) (bắt buộc) | InputDecimal | Có | | | ✓ | ✓ | ✓ | |
+| 19 | Chủng loại đèn (Thiết bị báo hiệu) | Input | Không | | | ✓ | ✓ | ✓ | |
+| 20 | Màu sắc bên ngoài của tháp đèn | InputTextArea | Không | | | ✓ | ✓ | ✓ | |
+| 21 | Nguồn cung cấp năng lượng cho đèn | InputTextArea | Không | | | ✓ | ✓ | ✓ | |
+| 22 | Phạm vi chiếu sáng | Input | Không | | | ✓ | ✓ | ✓ | |
+| 23 | Thời điểm đưa vào sử dụng | DatePicker | Không | | | ✓ | ✓ | ✓ | |
+| 24 | Thời điểm sửa chữa gần nhất | DatePicker | Không | | | ✓ | | | Chỉ hiển thị chi tiết |
+| 25 | Màu sắc | Input | Không | | | ✓ | ✓ | ✓ | |
+| 26 | Kiểu chớp | Input | Không | | | ✓ | ✓ | ✓ | |
+| 27 | Chu kỳ | Input | Không | | | ✓ | ✓ | ✓ | |
+| 28 | Tọa độ GIS | LocationInformationForm | Không | | | ✓ | ✓ | ✓ | GIS 5 trường (xem mục 7) |
+| 29 | Loại đối tượng | Select (Điểm/Đường/Vùng) | Không | | | ✓ | ✓ | ✓ | GIS |
+| 30 | Biểu tượng | Select | Không | | | ✓ | ✓ | ✓ | GIS |
+| 31 | Hệ quy chiếu | Text | Không | | | ✓ | ✓ | ✓ | GIS |
+| 32 | Quy tắc hiển thị | Text | Không | | | ✓ | ✓ | ✓ | GIS |
+| 33 | File đính kèm | UploadFileTable | Không | | | ✓ | ✓ | ✓ | |
+| 34 | Trạng thái | Badge (read-only) | Có | ✓ | ✓ | ✓ | | | Chỉ hiển thị, không chỉnh sửa |
+| 35 | Ngày cập nhật | Text (read-only) | Có | ✓ | ✓ | ✓ | | | Chỉ hiển thị |
+| 36 | Cán bộ cập nhật | Text (read-only) | Có | | ✓ | ✓ | | | Chỉ hiển thị |
+| 37 | Ngày gửi phê duyệt | Text (read-only) | Có | | | ✓ | | | Chỉ hiển thị |
+| 38 | Cán bộ gửi phê duyệt | Text (read-only) | Có | | | ✓ | | | Chỉ hiển thị |
+| 39 | Ngày phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | | | ✓ | | | Chỉ hiển thị |
+| 40 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | Text (read-only) | Có | | | ✓ | | | Chỉ hiển thị |
+| 41 | Nội dung phê duyệt | Text (read-only) | Không | | | ✓ | | | Chỉ hiển thị |
+| 42 | Ngày phê duyệt cấp Cục | Text (read-only) | Có | | | ✓ | | | Chỉ hiển thị |
+| 43 | Cán bộ phê duyệt cấp Cục | Text (read-only) | Có | | | ✓ | | | Chỉ hiển thị |
+| 44 | Nội dung phê duyệt | Text (read-only) | Không | | | ✓ | | | Chỉ hiển thị |
+| 45 | Thông tin vận hành khai thác | — | — | | | ✓ | | | Khối read-only (mã/tên/khởi kết thúc kế hoạch) |
+| 46 | Thông tin bảo trì | — | — | | | ✓ | | | Khối read-only (mã/tên/khởi kết thúc kế hoạch) |
+| 47 | Thông tin sự cố | — | — | | | ✓ | | | Khối read-only (mã sự cố, loại, địa điểm, thời gian) |
 
-(populated by ba stage)
+## 3. Trạng thái và phê duyệt
 
-## Out of Scope
+- Quy trình phê duyệt 2 cấp theo `ba/00-lean-spec.md` mục 3.7.
+- 7 trạng thái (lưu dạng số trong DB): DRAFT (0), PENDING_APPROVAL (1), APPROVED_L1 (2), APPROVED_L2 (3), PUBLISHED (4), REJECTED (5), DELETED (6).
+- Trạng thái khởi tạo khi tạo mới: **DRAFT**.
+- Người dùng có thể chọn gửi phê duyệt ngay sau khi tạo → chuyển sang **PENDING_APPROVAL**.
+- Người phê duyệt không thể phê duyệt bản ghi do chính mình tạo (4-eyes principle).
+- Từ chối yêu cầu lý do ≥ 10 ký tự → quay về DRAFT.
 
-(populated by ba stage)
+## 4. Quy tắc và phân quyền riêng
 
-## Roles + Permissions
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền (phần chung đã nằm ở `ba/00-lean-spec.md`).
 
-| Role | Level | Notes |
-|------|-------|-------|
-| admin | full_access | Có quyền tạo mới phao tiêu |
-| operator | create | Có quyền tạo mới phao tiêu |
-| approver_L1 | none | Không có quyền tạo mới |
-| approver_L2 | none | Không có quyền tạo mới |
-| viewer | none | Không có quyền tạo mới |
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-## Entities
+| ID | Quy tắc | Áp dụng |
+|---|---|---|
+| BR-074-01 | Mã phao tiêu tự sinh theo định dạng `{mã nhà trạm}-PT-{seq}`, không được để trống | Create |
+| BR-074-02 | Tên phao tiêu bắt buộc, tối đa 200 ký tự | Create |
+| BR-074-03 | Địa điểm (Tỉnh/TP) bắt buộc khi tạo | Create |
+| BR-074-04 | Tình trạng bắt buộc khi tạo | Create |
+| BR-074-05 | Chiều cao tâm sáng (hải đồ) bắt buộc, giá trị số > 0 | Create |
+| BR-074-06 | Đơn vị quản lý bắt buộc khi tạo (Data Scope) | Create |
+| BR-074-07 | Thuộc nhà trạm QLVH phao, tiêu bắt buộc khi tạo | Create |
+| BR-074-08 | Tọa độ GIS hợp lệ (WGS84) khi nhập | Create |
+| BR-074-09 | Mã phao tiêu không được phép chỉnh sửa sau khi tạo | Update |
+| BR-074-10 | Nếu phao tiêu đã được phê duyệt (APPROVED_L1/APPROVED_L2/PUBLISHED), sau khi cập nhật tự động hạ về DRAFT và yêu cầu phê duyệt lại | Update |
 
-| Entity | Table | Role |
-|--------|-------|------|
-| Buoy | buoy | Thực thể chính, lưu toàn bộ thông tin phao tiêu |
-| BeaconHistory | beacon_history | Ghi lại lịch sử thao tác CREATE |
+### 4.2. Acceptance Criteria kế thừa (nếu có)
 
-## Business Rules
+- **AC-074-01** — Tạo mới thành công: Người dùng điền đầy đủ các trường bắt buộc và tạo thành công phao tiêu mới — hệ thống trả về HTTP 201.
+- **AC-074-02** — Gửi phê duyệt ngay: Người dùng có thể chọn gửi phê duyệt sau khi tạo → phao tiêu chuyển sang PENDING_APPROVAL, ghi lịch sử CREATE.
+- **AC-074-03** — Mã tự sinh: Mã phao tiêu được tự sinh theo định dạng `{mã nhà trạm}-PT-{seq}`, không cho người dùng nhập thủ công.
+- **AC-074-04** — Validate tọa độ: Hệ thống từ chối nếu tọa độ GIS không hợp lệ (kinh độ ngoài -180~180 hoặc vĩ độ ngoài -90~90).
 
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-001 | Mã code phải là duy nhất, không được để trống, tối đa 50 ký tự | Buoy.code | `@NotBlank`, `@Column(unique=true)` |
-| BR-002 | Tên không được để trống, tối đa 200 ký tự | Buoy.name | `@NotBlank`, `@Size(max=200)` |
-| BR-003 | Vĩ độ phải trong khoảng -90.0 đến 90.0 | Buoy.latitude | `@DecimalMin` / `@DecimalMax` |
-| BR-004 | Kinh độ phải trong khoảng -180.0 đến 180.0 | Buoy.longitude | `@DecimalMin` / `@DecimalMax` |
-| BR-006 | Tầm nhìn xa phải từ 0.01 đến 100.0 hải lý | Buoy.range | `@DecimalMin("0.01")`, `@DecimalMax("100.0")` |
-| BR-007 | Mô tả tối đa 1000 ký tự | Buoy.description | `@Size(max=1000)` |
-| BR-015 | Trạng thái khởi tạo mặc định là DRAFT | Buoy.status | `@Builder.Default status = DRAFT` |
-| BR-016 | Màu sắc tối đa 50 ký tự | Buoy.color | `@Size(max=50)` |
-| BR-017 | Hình dáng tối đa 50 ký tự | Buoy.shape | `@Size(max=50)` |
-| BR-018 | Đặc tính ánh sáng tối đa 100 ký tự | Buoy.lightCharacteristic | `@Size(max=100)` |
+### 4.3. User Stories kế thừa (nếu có)
 
-## Testing Strategy
+- **US-074-01:** Là operator, tôi muốn tạo mới phao tiêu với đầy đủ thông tin kỹ thuật và tọa độ GIS để quản lý tài sản báo hiệu hàng hải.
+- **US-074-02:** Là operator, tôi muốn gửi phê duyệt ngay sau khi tạo để đẩy nhanh quy trình đưa phao tiêu vào vận hành.
 
-(populated by qa stage)
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Tạo mới phao tiêu | `buoy:create` |
+| Xem danh sách phao tiêu | `buoy:read` |
+| Xem chi tiết phao tiêu | `buoy:read` |
+| Cập nhật phao tiêu | `buoy:update` |
+| Xóa phao tiêu | `buoy:delete` |
+| Gửi phê duyệt phao tiêu | `buoy:submit` |
+| Phê duyệt phao tiêu | `buoy:approve` |
+
+**Admin Cục:** Full quyền + xem thêm metadata người tạo/người sửa/thời gian tạo/cập nhật (theo tài liệu nền mục 3.8).
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — 7 trạng thái: DRAFT, PENDING_APPROVAL, APPROVED_L1, APPROVED_L2, PUBLISHED, REJECTED, DELETED |
+| 2 | Có bước phê duyệt không | Có — 2 cấp (C1: Cảng vụ/Chi cục, C2: Cục) |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — trường `orgUnitId` bắt buộc khi tạo, validate phạm vi theo `OrgUnitScopeService` |
+| 4 | Trường chỉ hiện trong điều kiện nào | Có — khối vận hành/bảo trì/sự cố chỉ hiển thị read-only ở trang chi tiết |
+| 5 | Quyền riêng | `buoy:create`, `buoy:read`, `buoy:update`, `buoy:delete`, `buoy:submit`, `buoy:approve` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Có — File đính kèm (UploadFileTable) |
+| 8 | Giao diện khác mẫu chung | Có — Mã tự sinh `{mã nhà trạm}-PT-{seq}`, GIS 5 trường, khối read-only vận hành/bảo trì/sự cố |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
+|---|---|---|---|
+| POST | `/api/v1/buoys` | Tạo mới phao tiêu | `buoy:create` |
+| POST | `/api/v1/buoys/{id}/submit-approval` | Gửi phê duyệt phao tiêu | `buoy:submit` |
+| GET | `/api/v1/buoys` | Danh sách phao tiêu (phân trang, lọc) | `buoy:read` |
+| GET | `/api/v1/buoys/{id}` | Xem chi tiết phao tiêu | `buoy:read` |
+| PUT | `/api/v1/buoys/{id}` | Cập nhật phao tiêu | `buoy:update` |
+| DELETE | `/api/v1/buoys/{id}` | Xóa mềm phao tiêu | `buoy:delete` |
+
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
+
+**Bảng `buoy` (Phao tiêu):**
+
+| Trường | Kiểu | Bắt buộc | Ghi chú |
+|---|---|---|---|
+| id | UUID | Có | Primary key |
+| code | VARCHAR(50) | Có | Mã tự sinh `{mã nhà trạm}-PT-{seq}`, unique |
+| name | VARCHAR(200) | Có | Tên phao, tiêu |
+| orgUnitId | UUID | Có | Đơn vị quản lý (Data Scope) |
+| nhaTramId | UUID | Có | Thuộc nhà trạm QLVH |
+| classification | VARCHAR(50) | Không | Phân loại |
+| buoyClassification | VARCHAR(50) | Không | Phân loại phao |
+| beaconClassification | VARCHAR(50) | Không | Phân loại tiêu |
+| locationProvince | VARCHAR(100) | Có | Địa điểm (Tỉnh/TP) |
+| locationDetail | TEXT | Không | Địa điểm chi tiết |
+| status | TINYINT | Có | Tình trạng (AppParams) |
+| shape | TEXT | Không | Hình dáng |
+| structure | TEXT | Không | Kết cấu |
+| area | DECIMAL(10,2) | Không | Diện tích (m²) |
+| bodyHeight | DECIMAL(8,2) | Không | Chiều cao thân phao (m) |
+| diameter | DECIMAL(8,2) | Không | Đường kính phao (m) |
+| lightId | VARCHAR(50) | Không | Đèn biển (AppParams) |
+| towerHeight | DECIMAL(8,2) | Không | Chiều cao tháp đèn |
+| lightCenterHeight | DECIMAL(8,2) | Có | Chiều cao tâm sáng (hải đồ) |
+| lightType | VARCHAR(100) | Không | Chủng loại đèn |
+| towerColor | TEXT | Không | Màu sắc bên ngoài tháp đèn |
+| powerSource | TEXT | Không | Nguồn cung cấp năng lượng |
+| lightingRange | VARCHAR(50) | Không | Phạm vi chiếu sáng |
+| commissioningDate | DATE | Không | Thời điểm đưa vào sử dụng |
+| lastRepairDate | DATE | Không | Thời điểm sửa chữa gần nhất |
+| color | VARCHAR(50) | Không | Màu sắc |
+| flashPattern | VARCHAR(50) | Không | Kiểu chớp |
+| cycle | VARCHAR(50) | Không | Chu kỳ |
+| isActive | BOOLEAN | Không | Trạng thái hoạt động |
+| statusEnum | TINYINT | Có | DRAFT/PENDING_APPROVAL/APPROVED_L1/APPROVED_L2/PUBLISHED/REJECTED/DELETED |
+| approvalStatus | TINYINT | Có | ApprovalStatus enum |
+| approvalLevel | TINYINT | Không | Cấp phê duyệt hiện tại |
+| approvedBy | UUID | Không | Người phê duyệt |
+| approvedDate | TIMESTAMP | Không | Ngày phê duyệt |
+| rejectionReason | TEXT | Không | Lý do từ chối |
+| createdAt | TIMESTAMP | Có | Thời gian tạo |
+| createdBy | UUID | Có | Người tạo |
+| updatedAt | TIMESTAMP | Có | Thời gian cập nhật |
+| updatedBy | UUID | Không | Người cập nhật |
+| deletedAt | TIMESTAMP | Không | Xóa mềm (soft-delete) |
+| deletedBy | UUID | Không | Người xóa |
+
+**GIS 5 trường (đồng bộ với M-007 `point_objects`):**
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| latitude | DECIMAL(10,7) | Vĩ độ WGS84 |
+| longitude | DECIMAL(10,7) | Kinh độ WGS84 |
+| objectType | VARCHAR(20) | Điểm/Đường/Vùng |
+| symbol | VARCHAR(50) | Biểu tượng |
+| coordinateSystem | VARCHAR(50) | Hệ quy chiếu |
+| displayRule | TEXT | Quy tắc hiển thị |
+
+**Khối read-only vận hành/bảo trì/sự cố:** Hiển thị từ các bảng kế hoạch, bảo trì, sự cố liên kết qua FK — không chỉnh sửa trực tiếp trên form tạo/sửa phao tiêu.

@@ -36,14 +36,14 @@ import {
 } from '../../tokens';
 
 const STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  HIEN_HANH: { color: '#1BAF7A', label: 'Hiện hành' },
-  TAM_NGUNG: { color: '#EDA100', label: 'Tạm ngừng' },
+  HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
+  TAM_NGUNG: { color: statusAttention, label: 'Tạm ngừng' },
 };
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  CHO_PHE_DUYET: { color: '#EDA100', label: 'Chờ phê duyệt' },
-  DUOC_PHE_DUYET: { color: '#1BAF7A', label: 'Được phê duyệt' },
-  TU_CHOI: { color: '#E34948', label: 'Từ chối' },
+  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
+  DUOC_PHE_DUYET: { color: statusOperational, label: 'Được phê duyệt' },
+  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
 };
 
 export default function WaterZoneList() {

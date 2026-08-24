@@ -253,18 +253,18 @@ stateDiagram-v2
 
 ---
 
-## Phụ lục kỹ thuật — chỉ dành cho DEV (không cần đọc nếu chỉ làm nghiệp vụ)
+## Phụ lục kỹ thuật — ánh xạ trạng thái chuẩn (chỉ dành cho DEV)
 
-Đây là nguồn gốc kỹ thuật của các mô tả ở trên, để DEV đối chiếu khi code:
+Bản đồ 7 trạng thái nghiệp vụ sang enum `ApprovalStatus` và giá trị lưu DB (đã chốt — M-1006 DP-9/AC-25; enum: `src/main/java/com/hanghai/kchtg/common/entity/ApprovalStatus.java`):
 
-| Nội dung nghiệp vụ | Nguồn kỹ thuật trong hệ thống cũ |
-|---|---|
-| 7 trạng thái hồ sơ | Enum `EnumTrangThaiKcht` (giá trị 0..6) trong tệp `TsktConstAndEnum.java` |
-| Các hành động (lưu tạm, gửi duyệt, duyệt, nhập-và-duyệt) | Enum `EnumActionKcht` (cùng tệp trên) |
-| Ghi dấu "ai duyệt, lúc nào" | Cột `PD_GUI_DUYET_*`, `PD_CHI_CUC_DUYET_*`, `PD_CUC_DUYET_*` trên 4 bảng hồ sơ |
-| Luồng duyệt 2 vòng | Thủ tục `SP_APPROVAL_OR_REJECT` (cờ `@P_IS_CHI_CUC` phân biệt vòng 1 / vòng 2) |
-| Quyền duyệt theo chức vụ | Danh mục `CHUC_VU` (Chi cục trưởng, Phó, Cục trưởng, Phó) |
-| Phân cấp theo đơn vị gửi | `ConstantVmdMtisApi`: `AUTH_ORG_ORG_LEVEL_1_CODE = "G17.43"` (Cục Hàng hải và Đường thủy VN) |
-| Chỉ hồ sơ "Đã duyệt" vào báo cáo | Thủ tục báo cáo `BCKCHT_163` (điều kiện lọc theo trạng thái 6) |
+| # | Trạng thái nghiệp vụ | `ApprovalStatus` | Giá trị DB |
+|---|---|---|---|
+| 1 | Lưu tạm | `DRAFT` | 0 |
+| 2 | Chờ Cảng vụ / Chi cục duyệt | `PENDING_APPROVAL` | 2 |
+| 3 | Chờ Cục duyệt | `APPROVED_LEVEL1` | 3 |
+| 4 | Bị Cảng vụ / Chi cục trả về | `REJECTED_LEVEL1` | 8 |
+| 5 | Bị Cục trả về | `REJECTED_LEVEL2` | 9 |
+| 6 | Đã duyệt | `APPROVED` | 5 |
+| 7 | Đã xóa (lịch sử) | `ARCHIVED` | 7 |
 
-**Ghi chú xác minh (đã đối chiếu code):** (1) đường "lưu thẳng Đã duyệt" dùng cho dữ liệu tích hợp (`LgspThdlService`); (2) luồng "bị trả về → sửa lại → gửi lại" là tường minh trong `WebUtilService.getLstAllowUpdate` — hành động "Lưu và gửi duyệt" chỉ cho phép ở trạng thái "Lưu tạm" / "Bị Cảng vụ-Chi cục trả về" / "Bị Cục trả về"; (3) trạng thái "Lịch sử" (0) là trạng thái **xóa mềm** — thủ tục xóa (`SP_DELETE`) đặt trạng thái 0 và chỉ xóa được hồ sơ "Lưu tạm"; còn khi **sửa**, bản cũ lưu vào bảng nhật ký (`QlkcBaseService` gọi `comDataLogService.insert` với bản cũ trước khi cập nhật); (4) quy tắc phân cấp ở `WebUtilService.getStatusWhenInsertOrUpdate` và màn phê duyệt `QlkcBaseService.searchValidate`.
+> **Tập đóng 7 trạng thái:** hồ sơ luôn thuộc đúng 1 trong 7 trạng thái trên. `PROPOSED` (1), `APPROVED_LEVEL2` (4), `REJECTED` (6) chỉ là giá trị legacy giữ trong enum để đọc dữ liệu cũ, **không dùng trong luồng thống nhất**. Trạng thái lưu DB dưới dạng **số nguyên** (INT/SMALLINT/TINYINT), map trên Java bằng `@Enumerated(EnumType.ORDINAL)`; không hardcode giá trị enum dạng String.

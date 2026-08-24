@@ -20,10 +20,10 @@ consumed_by_modules: []
 |---|---|
 | Mục đích | Cho phép Chuyên viên cập nhật thông tin Hệ thống VTS đã tồn tại. Form load sẵn dữ liệu hiện tại, cho phép sửa tất cả các trường. Mọi thay đổi phải được phê duyệt lại trước khi chính thức ghi nhận. |
 | Tác nhân | Chuyên viên (A-003) |
-| Luồng chính | Chuyên viên chọn Hệ thống VTS → nhấn "Cập nhật" → Form load dữ liệu hiện tại → Sửa các trường cần thay đổi → Hệ thống validate → Lưu → Trạng thái chuyển UNDER_REVIEW → Chờ phê duyệt lại 2 cấp |
-| Điều kiện trước | Người dùng có quyền `vts:update`. Bản ghi ở trạng thái PROPOSED / UNDER_REVIEW / REJECTED. |
-| Điều kiện sau | Bản ghi cập nhật với trạng thái UNDER_REVIEW, ghi nhận lịch sử thay đổi. |
-| Quy tắc nghiệp vụ | Chỉ cập nhật được bản ghi PROPOSED/UNDER_REVIEW/REJECTED. Bản ghi APPROVED không được sửa trực tiếp. Sau cập nhật → phê duyệt lại 2 cấp (C1 → C2). Mọi thay đổi ghi vào change log. |
+| Luồng chính | Chuyên viên chọn Hệ thống VTS → nhấn "Cập nhật" → Form load dữ liệu hiện tại → Sửa các trường cần thay đổi → Hệ thống validate → Lưu → Trạng thái chuyển DRAFT (Lưu tạm) → gửi duyệt lại 2 cấp |
+| Điều kiện trước | Người dùng có quyền `vts:update`. Bản ghi ở trạng thái DRAFT / PENDING_APPROVAL / APPROVED_LEVEL1 / REJECTED_LEVEL1 / REJECTED_LEVEL2. |
+| Điều kiện sau | Bản ghi cập nhật với trạng thái DRAFT (Lưu tạm), ghi nhận lịch sử thay đổi. |
+| Quy tắc nghiệp vụ | Chỉ cập nhật được bản ghi DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2. Bản ghi APPROVED không được sửa trực tiếp. Sau cập nhật → phê duyệt lại 2 cấp (C1 → C2). Mọi thay đổi ghi vào change log. |
 
 ## Mô tả màn hình
 
@@ -51,9 +51,6 @@ Form Cập nhật giống hệt form Tạo mới (F-062), gồm 4 nhóm:
 | 9 | Phạm vi áp dụng | TextArea + counter | Có | Không | **Có dữ liệu:** hiển thị nội dung + "n/2000" (VD: "Việt Nam" → "8/2000"). **Không có:** hiển thị placeholder "Nhập phạm vi áp dụng" + "0/2000" | |
 | 10 | Thông báo hàng hải | TextArea + counter | Có | Không | **Có dữ liệu:** hiển thị nội dung + "n/2000". **Không có:** hiển thị placeholder "Nhập thông báo hàng hải" + "0/2000" | |
 | 11 | Tình trạng | Dropdown | Có | Có | **Có dữ liệu:** hiển thị giá trị đã lưu. **Không có:** hiển thị placeholder "Chọn tình trạng" | Options: "Đang hoạt động", "Dừng hoạt động", "Đang bảo trì", "Đang xây dựng" |
-| 12 | Mức độ phụ trách | Text input + counter | Có | Không | **Có dữ liệu:** hiển thị nội dung + "n/255". **Không có:** hiển thị placeholder "Nhập mức độ phụ trách" + "0/255" | |
-| 13 | Nguồn gốc | Text input + counter | Có | Không | **Có dữ liệu:** hiển thị nội dung + "n/255". **Không có:** hiển thị placeholder "Nhập nguồn gốc" + "0/255" | |
-| 14 | Đối tác | Text input + counter | Có | Không | **Có dữ liệu:** hiển thị nội dung + "n/255". **Không có:** hiển thị placeholder "Nhập đối tác" + "0/255" | |
 
 ### Nhóm 3 — Danh sách vùng VTS
 
@@ -75,16 +72,16 @@ Form Cập nhật giống hệt form Tạo mới (F-062), gồm 4 nhóm:
 4. Mã hệ thống VTS hiển thị read-only (không cho sửa)
 5. Chuyên viên sửa các trường cần thiết
 6. Hệ thống validate: required fields, maxlength
-7. Lưu thành công → trạng thái chuyển UNDER_REVIEW → ghi change log → toast "Cập nhật hệ thống VTS thành công"
-8. Chuyển về danh sách, bản ghi hiển thị trạng thái "Chờ phê duyệt"
+7. Lưu thành công → trạng thái chuyển DRAFT (Lưu tạm) → ghi change log → toast "Cập nhật hệ thống VTS thành công"
+8. Chuyển về danh sách, bản ghi hiển thị trạng thái "Lưu tạm"; sau khi gửi duyệt hiển thị "Chờ duyệt"
 
 ## Acceptance Criteria
 
 - [x] Form load đầy đủ dữ liệu hiện tại của 4 nhóm thông tin
 - [x] Mã hệ thống VTS hiển thị read-only, không cho phép sửa
-- [x] Chỉ cập nhật được bản ghi PROPOSED / UNDER_REVIEW / REJECTED
+- [x] Chỉ cập nhật được bản ghi DRAFT / PENDING_APPROVAL / APPROVED_LEVEL1 / REJECTED_LEVEL1 / REJECTED_LEVEL2
 - [x] Bản ghi APPROVED bị từ chối cập nhật với thông báo lỗi
-- [x] Sau khi cập nhật → trạng thái chuyển UNDER_REVIEW
+- [x] Sau khi cập nhật → trạng thái chuyển DRAFT (Lưu tạm)
 - [x] Mọi thay đổi được ghi vào change log
 - [x] Có thể thêm/xóa vùng VTS và file đính kèm
 
@@ -102,21 +99,21 @@ Form Cập nhật giống hệt form Tạo mới (F-062), gồm 4 nhóm:
 
 | ID | Rule | Applies-to |
 |---|---|---|
-| BR-063-01 | Chỉ cập nhật bản ghi PROPOSED / UNDER_REVIEW / REJECTED | HeThongVTS.trangThai |
+| BR-063-01 | Chỉ cập nhật bản ghi DRAFT / PENDING_APPROVAL / APPROVED_LEVEL1 / REJECTED_LEVEL1 / REJECTED_LEVEL2 | HeThongVTS.trangThai |
 | BR-063-02 | Bản ghi APPROVED không cho phép cập nhật trực tiếp | HeThongVTS.trangThai |
 | BR-063-03 | Mã hệ thống VTS (code) immutable — không cho sửa sau khi tạo | HeThongVTS.code |
-| BR-063-04 | Sau cập nhật thông tin/vùng VTS/file đính kèm khi bản ghi đang ở `Đang xem xét` (UNDER_REVIEW) hoặc sau C1 → trạng thái chuyển về PROPOSED (Chờ phê duyệt), yêu cầu phê duyệt lại 2 cấp từ C1 | HeThongVTS.trangThai |
+| BR-063-04 | Sau cập nhật thông tin/vùng VTS/file đính kèm → trạng thái quay về DRAFT (Lưu tạm), yêu cầu phê duyệt lại 2 cấp từ C1 | HeThongVTS.trangThai |
 | BR-063-05 | Phê duyệt 2 cấp: Trưởng phòng/Chi cục/Cảng vụ (C1) → Cục trưởng/Lãnh đạo Cục (C2) | HeThongVTS |
 | BR-063-06 | Mọi thay đổi được ghi vào HeThongVTSChangeLog / ApprovalHistory (old_value → new_value) | ChangeLog |
-| BR-063-07 | Thêm mới hoặc xóa file đính kèm tại bản ghi đang ở `Đang xem xét` (UNDER_REVIEW) sẽ tự động reset trạng thái về `Chờ phê duyệt` (PROPOSED) để đảm bảo tính toàn vẹn của hồ sơ trình duyệt | HeThongVTSAttachment |
+| BR-063-07 | Thêm mới hoặc xóa file đính kèm tại bản ghi đang ở trạng thái chờ duyệt sẽ tự động reset trạng thái về DRAFT (Lưu tạm) để đảm bảo tính toàn vẹn của hồ sơ trình duyệt | HeThongVTSAttachment |
 
 ## Roles + Permissions
 
 | Role | Permission | Ghi chú |
 |---|---|---|
-| A-003 (Chuyên viên) | `vts:update` | Cập nhật bản ghi PROPOSED/UNDER_REVIEW/REJECTED |
-| A-002 (Lãnh đạo) | `vts:approve:c1` | Phê duyệt C1 (UNDER_REVIEW → chờ C2) |
-| A-002 (Cục trưởng) | `vts:approve:c2` | Phê duyệt C2 → APPROVED |
+| A-003 (Chuyên viên) | `vts:update` | Cập nhật bản ghi DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2 |
+| A-002 (Lãnh đạo) | `vts:approve:c1` | Phê duyệt C1 (PENDING_APPROVAL → APPROVED_LEVEL1) |
+| A-002 (Cục trưởng) | `vts:approve:c2` | Phê duyệt C2 (APPROVED_LEVEL1 → APPROVED) |
 
 ## Dependencies
 

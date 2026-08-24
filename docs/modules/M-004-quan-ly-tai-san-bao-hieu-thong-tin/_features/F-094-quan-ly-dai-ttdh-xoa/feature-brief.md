@@ -7,340 +7,162 @@ status: proposed
 classification: local
 priority: medium
 created: 2026-07-07T03:32:57Z
-last-updated: 2026-08-11
+last-updated: 2026-08-23
 locked-fields: []
 consumed_by_modules: []
 ---
+
 # Đặc tả nghiệp vụ: Quản lý Đài TTDH - Xóa
 
-**Tài liệu:** BA Feature Brief
-**Feature:** F-094
+**Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)
+**Chức năng:** F-094
 **Module:** M-004 — Quản lý tài sản Báo hiệu & Thông tin
-**Mã chức năng:** QLKC-078
-**Người viết:** Business Analyst
-**Ngày cập nhật:** 2026-08-11
+**Loại:** chức năng có bước phê duyệt
+**Tham chiếu:** tài liệu nền `ba/01-base-pattern.md` (bắt buộc đọc trước) + tài liệu yêu cầu gốc (TKCT)
+
+> **Trước khi viết:** đọc tài liệu nền của module để biết phần CHUNG. File này CHỈ ghi phần RIÊNG của chức năng — không lặp lại phần chung.
+
+> **⚠️ BẮT BUỘC KHAI BÁO PHẠM VI DỮ LIỆU THEO ĐƠN VỊ (Data Scope):**
+> Trong bảng **\"Điểm khác biệt so với mẫu chung\"** (mục 5, dòng 3 — *\"Lọc cha-con / theo đơn vị\"*), BA **PHẢI khai báo đầy đủ** (có/không, trường đơn vị nào, cơ chế, ngoại lệ) và **SA chốt cơ chế** khi duyệt — không được để trống hoặc ghi chung chung.
+> Nếu chức năng quản lý dữ liệu nghiệp vụ thuộc đơn vị, brief PHẢI khai báo: (1) trường đơn vị bắt buộc/không, (2) nguồn gán đơn vị khi tạo (request hay đơn vị user), (3) chiều ghi có validate phạm vi không.
+> Quy tắc chi tiết xem `AGENTS.md` mục **Data Scope Convention**; danh sách lỗ hổng đã gặp xem `docs/intel/data-scope-gap-report.md`.
+
+> **⚠️ LƯU Ý QUAN TRỌNG — Sửa (S) = false toàn bộ trường:**
+> Sheet Excel `Đài TTDH` đánh dấu **Sửa = false** cho TOÀN BỘ trường (cột \"Sửa\" trống). Feature F-094 (Xóa) không liên quan đến sửa trường — chỉ thực hiện xóa mềm. Ghi chú này được thêm dưới dạng banner để cảnh báo mâu thuẫn với F-093 (Cập nhật).
 
 ---
 
-## 1. Tổng quan
+## 1. Mô tả ngắn
 
-### 1.1. Tính năng này làm gì?
+Cho phép cán bộ nghiệp vụ xóa mềm (soft delete) một Đài Thông tin Duyên hải (TTDH) đã tồn tại. Thao tác xóa không xóa bản ghi khỏi database mà đánh dấu trạng thái thành `DELETED` (6), đồng thời ghi nhận vào audit log. Bản ghi đã xóa vẫn hiển thị trong danh sách (có thể lọc theo trạng thái) và trong xem chi tiết (hiển thị mờ/greyed out). Xóa mềm cho phép khôi phục sau này nếu cần.
 
-Cho phép xóa Đài TTDH bằng cách chuyển trạng thái từ "Lưu tạm" sang "Lịch sử". **Đây không phải soft-delete** — bản ghi vẫn tồn tại trong database, vẫn hiển thị trong danh sách (không `@SQLRestriction`, không `deletedAt`), nhưng ở trạng thái read-only hoàn toàn. Mục đích là giữ lại dấu vết dữ liệu phục vụ kiểm toán và tra cứu lịch sử.
+## 2. Trường dữ liệu
 
-**7 trạng thái tổng thể:**
-1. Lưu tạm — edit✅, delete✅, submit✅
-2. Chờ duyệt cấp Cảng vụ/Chi cục — all❌
-3. Từ chối cấp Cảng vụ/Chi cục — edit✅, delete❌, submit✅
-4. Chờ duyệt cấp Cục — all❌
-5. Từ chối cấp Cục — edit✅, delete❌, submit✅
-6. Đã phê duyệt — edit✅(→Lưu tạm), delete❌, submit❌
-7. **Lịch sử** — all❌ (read-only, đến từ DRAFT delete only)
+Feature F-094 (Xóa) **không có trường dữ liệu để chỉnh sửa** — chỉ là thao tác xác nhận xóa. Các trường liên quan đến xóa:
 
-### 1.2. Tại sao cần tính năng này?
+| STT | Tên trường (theo Excel) | Loại điều khiển | Bắt buộc | Danh sách | Bộ lọc | Xem chi tiết | Tạo mới | Sửa | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|
+| — | Xác nhận xóa | Confirm dialog | — | — | — | — | — | — | Popup xác nhận: \"Bạn có chắc muốn xóa Đài TTDH [tên]? Thao tác này chỉ xóa mềm, bản ghi vẫn tồn tại trong hệ thống.\" |
+| — | Lý do xóa (nếu có) | TextArea | Không | — | — | — | — | — | Tùy chọn, bắt buộc nếu bản ghi đang ACTIVE |
 
-Ngăn chặn mất dữ liệu vĩnh viễn — các đài bị xóa (dù chưa gửi duyệt) vẫn được giữ lại trong hệ thống ở trạng thái Lịch sử để phục vụ kiểm toán. Không dùng soft-delete với `deletedAt` vì:
-- Bản ghi cần tiếp tục hiển thị trong danh sách (không ẩn)
-- Không cần cơ chế khôi phục (restore) — Lịch sử là trạng thái cuối cùng
-- Đơn giản hóa truy vấn: không cần `@SQLRestriction`
+## 3. Trạng thái và phê duyệt
 
-### 1.3. Luồng hoạt động chính
+- **7 trạng thái** (lưu dạng số trong DB, không lưu chữ):
+  1. `DRAFT` (0) — Nháp
+  2. `PROPOSED` (1) — Đã gửi phê duyệt
+  3. `APPROVED_L1` (2) — Đã duyệt cấp 1 (Cảng vụ / Chi cục)
+  4. `APPROVED_L2` (3) — Đã duyệt cấp 2 (Cục)
+  5. `ACTIVE` (4) — Đang hoạt động
+  6. `SUSPENDED` (5) — Tạm ngừng
+  7. `DELETED` (6) — Đã xóa (soft delete)
 
-**Bước 1: Chọn "Xóa"**
-- Người dùng: tại màn hình danh sách, chọn "Xóa" từ dropdown hành động của một bản ghi.
-- Hệ thống:
-  - Nút "Xóa" chỉ hiển thị khi trạng thái bản ghi = "Lưu tạm" (R8).
-  - Nếu trạng thái ≠ "Lưu tạm": ẩn nút Xóa.
-  - Nếu trạng thái = "Lịch sử": ẩn nút Xóa (không thể xóa lại).
+- **Xóa mềm:**
+  - Thao tác xóa → chuyển trạng thái thành `DELETED` (6).
+  - Ghi nhận vào `station_history` với `actionType = DELETE`.
+  - Bản ghi vẫn tồn tại trong DB, chỉ bị ẩn khỏi danh sách mặc định (lọc `approval_status != DELETED`).
+  - Có thể khôi phục bằng cách chuyển lại trạng thái cũ (nếu cần).
 
-**Bước 2: Xác nhận xóa**
-- Người dùng: hệ thống hiển thị hộp thoại xác nhận "Bạn có chắc chắn muốn xóa Đài TTDH [Tên đài]? Bản ghi sẽ được chuyển sang trạng thái Lịch sử."
-- Hệ thống: chờ người dùng xác nhận hoặc hủy.
+- **Ràng buộc:**
+  - Chỉ xóa được bản ghi ở trạng thái `DRAFT`, `SUSPENDED`, hoặc `DELETED` (không xóa được bản ghi ACTIVE mà không hủy hoạt động trước).
+  - Nếu bản ghi đang ACTIVE: cần chuyển sang SUSPENDED trước khi xóa.
 
-**Bước 3: Thực hiện xóa**
-- Hệ thống:
-  - Kiểm tra lại status = Lưu tạm (double-check).
-  - Cập nhật status → "Lịch sử".
-  - **Không đặt `deletedAt`**, **không `@SQLRestriction`**.
-  - Ghi lịch sử DELETE vào `station_history` (actionType = DELETE).
-  - HTTP 200.
-- Khi lỗi:
-  - Status không phải Lưu tạm → HTTP 400 "Chỉ có thể xóa Đài TTDH ở trạng thái Lưu tạm".
-  - Bản ghi không tồn tại → HTTP 404 "Không tìm thấy Đài TTDH".
-  - Không có quyền → HTTP 403 "Bạn không có quyền xóa Đài TTDH này".
+## 4. Quy tắc và phân quyền riêng
 
----
+> Chỉ ghi quy tắc **chưa có** trong tài liệu nền (phần chung đã nằm ở `ba/01-base-pattern.md`).
 
-## 2. Ai dùng? Dùng như thế nào?
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
 
-### 2.1. Cơ chế phân quyền
-
-Xóa Đài TTDH dùng chung cơ chế `PermissionMiddleware` — kiểm tra permission `data:delete` theo từng tài khoản người dùng. Backend chỉ kiểm tra một điều kiện: bản ghi phải ở trạng thái "Lưu tạm" — không phân biệt ai là người tạo hay cấp nào.
-
-| Vai trò | Permission | Quyền xóa |
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| ROLE_SYSTEM_ADMIN | *(bypass)* | Mọi bản ghi Lưu tạm, toàn quốc |
-| ROLE_ADMIN | `data:delete` | Mọi bản ghi Lưu tạm, toàn quốc |
-| ROLE_SPECIALIST | `data:delete` | Bản ghi Lưu tạm, đơn vị mình |
+| BR-094-01 | Xóa mềm — không xóa bản ghi khỏi DB, chỉ đánh dấu `approval_status = DELETED` | Delete |
+| BR-094-02 | Chỉ xóa được bản ghi DRAFT/SUSPENDED/DELETED; bản ghi ACTIVE cần chuyển SUSPENDED trước | Delete |
+| BR-094-03 | Ghi nhận vào station_history với actionType = DELETE, changedBy = người xóa | Delete |
+| BR-094-04 | Lý do xóa bắt buộc nếu bản ghi đang ACTIVE | Delete |
+| BR-094-05 | Bản ghi DELETED vẫn hiển thị trong danh sách (có thể lọc theo trạng thái) | Delete |
 
-- Data scoping lọc theo `orgUnitId`. SYSTEM_ADMIN bypass.
-- Admin Cục (ROLE_ADMIN, ROLE_SYSTEM_ADMIN): xem thông tin người thực hiện xóa, thời gian xóa, thông tin chỉnh sửa cuối cùng.
+### 4.2. Acceptance Criteria kế thừa (nếu có)
 
-> Xem F-092 section 2.1 để biết đầy đủ cơ chế PermissionMiddleware và ánh xạ vai trò → permission.
+- **AC-094-01** — Popup xác nhận xóa với tên Đài TTDH và thông báo \"xóa mềm\".
+- **AC-094-02** — Sau khi xóa, bản ghi chuyển sang DELETED, không hiển thị trong danh sách mặc định.
+- **AC-094-03** — Audit log ghi nhận deletedBy, deletedAt.
+- **AC-094-04** — Không cho xóa bản ghi ACTIVE trực tiếp — phải chuyển SUSPENDED trước.
 
----
+### 4.3. User Stories kế thừa (nếu có)
 
-## 3. User Stories
+- **US-094-01:** Như một cán bộ nghiệp vụ, tôi muốn xóa mềm một Đài TTDH để loại bỏ dữ liệu không còn sử dụng nhưng vẫn giữ lại lịch sử.
 
-### Mức Must
+### 4.4. Phân quyền riêng
 
-- **US-094-01:** Là Cán bộ, tôi muốn xóa Đài TTDH ở trạng thái Lưu tạm để loại bỏ các bản nháp không cần thiết.
-- **US-094-02:** Là Quản lý, tôi muốn bản ghi đã xóa vẫn hiển thị trong danh sách ở trạng thái "Lịch sử" để phục vụ kiểm toán.
-- **US-094-03:** Là Kiểm toán, tôi muốn xem được ai đã xóa bản ghi và thời điểm xóa trong lịch sử thay đổi.
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xóa mềm Đài TTDH | `coastalstation:delete` |
 
-### Mức Should
+**Admin Cục:** full quyền + xem thêm metadata người tạo/người sửa/thời gian tạo/cập nhật (theo tài liệu nền mục 3.8).
 
-- **US-094-04:** Là Cán bộ, tôi muốn hệ thống ngăn chặn xóa nhầm bằng hộp thoại xác nhận.
-- **US-094-05:** Là Cán bộ, tôi muốn không thể xóa bản ghi đã ở trạng thái Lịch sử.
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
 
----
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có — 7 trạng thái: DRAFT, PROPOSED, APPROVED_L1, APPROVED_L2, ACTIVE, SUSPENDED, DELETED |
+| 2 | Có bước phê duyệt không | Không — xóa mềm không cần phê duyệt (trừ khi quy định riêng) |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị — chỉ xóa được bản ghi trong phạm vi đơn vị của user |
+| 4 | Trường chỉ hiện trong điều kiện nào | Không |
+| 5 | Quyền riêng | `coastalstation:delete` |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không |
+| 7 | Tải lên tệp | Không |
+| 8 | Giao diện khác mẫu chung | Không — popup xác nhận xóa tiêu chuẩn |
 
-## 4. Yêu cầu chức năng (Acceptance Criteria)
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-**AC-094-01 — Xóa thành công (DRAFT → Lịch sử):** Khi bản ghi ở trạng thái Lưu tạm, người dùng có quyền chọn Xóa → xác nhận → hệ thống cập nhật status = "Lịch sử", ghi lịch sử DELETE, HTTP 200. Bản ghi vẫn hiển thị trong danh sách với badge "Lịch sử".
-
-**AC-094-02 — Từ chối xóa không phải Lưu tạm:** Status ≠ "Lưu tạm" → HTTP 400 "Chỉ có thể xóa Đài TTDH ở trạng thái Lưu tạm". Nút Xóa bị ẩn trên UI khi status ≠ Lưu tạm.
-
-**AC-094-03 — Từ chối xóa khi đã là Lịch sử:** Status = "Lịch sử" → nút Xóa bị ẩn. Nếu gọi API trực tiếp → HTTP 400 "Đài TTDH này đã ở trạng thái Lịch sử, không thể xóa lại".
-
-**AC-094-04 — Xác nhận trước khi xóa:** Hộp thoại hiển thị "Bạn có chắc chắn muốn xóa Đài TTDH [Tên đài]? Bản ghi sẽ được chuyển sang trạng thái Lịch sử." với nút Hủy và Xóa.
-
-**AC-094-05 — Không soft-delete:** Bản ghi sau khi xóa KHÔNG có `deletedAt`. Bản ghi vẫn hiển thị trong danh sách thông thường (không `@SQLRestriction`). Truy vấn danh sách trả về cả bản ghi Lịch sử.
-
-**AC-094-06 — Ghi lịch sử DELETE:** Hệ thống tự động ghi vào `station_history` với actionType = DELETE, changedBy = người thực hiện, changedAt = thời điểm xóa.
-
-**AC-094-07 — RBAC:** Người dùng không có quyền → HTTP 403 "Bạn không có quyền xóa Đài TTDH này". Người dùng không thuộc đơn vị quản lý của bản ghi → HTTP 403.
-
-**AC-094-08 — XSS/Injection:** Nội dung xác nhận được escape, API dùng parameterized queries.
-
----
-
-## 5. Quy tắc nghiệp vụ (Business Rules)
-
-| ID | Rule | Applies-to | Source |
-|----|------|------------|--------|
-| BR-094-01 | Chỉ xóa khi status = Lưu tạm | DELETE action | R8 |
-| BR-094-02 | Xóa = chuyển status → Lịch sử (KHÔNG soft-delete, KHÔNG deletedAt) | DELETE action | F-094 design |
-| BR-094-03 | Không thể xóa bản ghi đã ở trạng thái Lịch sử | DELETE action | F-094 design |
-| BR-094-04 | Bản ghi Lịch sử vẫn hiển thị trong danh sách (không @SQLRestriction) | List query | F-094 design |
-| BR-094-05 | Ghi station_history với actionType = DELETE | Audit log | F-097 |
-| BR-094-06 | Xác nhận trước khi xóa bằng hộp thoại | UI | UX convention |
-| BR-094-07 | Phân quyền qua `data:delete` — SYSTEM_ADMIN bypass, role khác cần được cấp permission | RBAC | PermissionMiddleware |
-
----
-
-## 6. Mô hình dữ liệu
-
-Tính năng này **không thêm trường mới** vào bảng `coastal_station_vts`. Cơ chế xóa dựa trên cập nhật trường `status` hiện có.
-
-> **Quy ước đánh dấu:**
-> - <span style="color:red;font-weight:bold">🔴 Chữ màu đỏ</span> = **Logic thay đổi**.
-> - ~~Chữ gạch ngang~~ = **Logic cũ cần loại bỏ**.
-
-### 6.1. Bảng coastal_station_vts — thay đổi logic
-
-- **status:** <span style="color:red;font-weight:bold">🔴 Thêm giá trị thứ 7: "Lịch sử" (ORDINAL value). Khi DELETE DRAFT, status chuyển từ Lưu tạm → Lịch sử.</span>
-- ~~**deletedAt:** trường này không được sử dụng trong luồng xóa Đài TTDH.~~
-- ~~**@SQLRestriction("deleted_at IS NULL"):** không áp dụng cho CoastalStationVTS.~~
-- **isActive:** giữ nguyên (không đổi khi chuyển sang Lịch sử).
-
-### 6.2. Bảng station_history — ghi nhận DELETE
-
-| Cột | Giá trị khi DELETE |
-|-----|-------------------|
-| entityId | UUID của đài bị xóa |
-| actionType | DELETE |
-| changedBy | UUID người thực hiện |
-| changedAt | Thời điểm xóa |
-| details | JSON: `{"previousStatus": "Lưu tạm", "newStatus": "Lịch sử"}` |
-
----
-
-## 7. API Endpoints
-
-| Method | Endpoint | Mô tả | Phân quyền |
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| DELETE | `/api/v1/stations/coastal/{id}` | Xóa (DRAFT → Lịch sử) | `data:delete` |
+| DELETE | `/api/v1/coastalstations/{id}` | Xóa mềm Đài TTDH | `coastalstation:delete` |
+| GET | `/api/v1/coastalstations/{id}/history` | Xem lịch sử thay đổi | `coastalstation:read` |
 
-**Request:** Không có body.
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-**Response 200:**
-```json
-{
-  "id": "uuid",
-  "code": "DTTDH-00001",
-  "status": "Lịch sử",
-  "message": "Đài TTDH đã được chuyển sang trạng thái Lịch sử"
-}
-```
+Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường cần loại bỏ.
 
-**Response 400:**
-```json
-{
-  "error": "Chỉ có thể xóa Đài TTDH ở trạng thái Lưu tạm"
-}
-```
+**Bảng `coastal_station` (Đài Thông tin Duyên hải):**
 
----
-
-## 8. Chi tiết nghiệp vụ từng phần
-
-### 8.1. Điều kiện hiển thị nút Xóa
-
-Nút "Xóa" trong dropdown hành động của DataTable chỉ hiển thị khi **đồng thời**:
-- `status = "Lưu tạm"`
-- Người dùng có quyền xóa (RBAC)
-- Người dùng thuộc đơn vị quản lý của bản ghi (hoặc là Cấp Cục)
-
-### 8.2. Hộp thoại xác nhận xóa
-
-- Tiêu đề: "Xác nhận xóa"
-- Nội dung: "Bạn có chắc chắn muốn xóa Đài TTDH **[Tên đài]**? Bản ghi sẽ được chuyển sang trạng thái Lịch sử."
-- Nút "Hủy": `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`, `radiusPill`, `height: 40`)
-- Nút "Xóa" (màu `statusCritical`, `radiusPill`, `height: 40`)
-
-### 8.3. Sau khi xóa
-
-- Bản ghi chuyển sang trạng thái "Lịch sử"
-- Badge trạng thái trên DataTable chuyển sang màu xám đậm (dark gray)
-- Nút "Sửa", "Xóa", "Gửi phê duyệt" bị ẩn khỏi dropdown
-- Bản ghi vẫn hiển thị trong tất cả các tab của StatusTabs (bao gồm cả tab "Lịch sử")
-- Trong màn hình xem chi tiết (F-096): hiển thị badge "Lịch sử" màu xám đậm
-
-### 8.4. Xử lý lỗi
-
-| Tình huống | HTTP Status | Thông báo |
-|---|---|---|
-| Status ≠ Lưu tạm | 400 | "Chỉ có thể xóa Đài TTDH ở trạng thái Lưu tạm" |
-| Status = Lịch sử | 400 | "Đài TTDH này đã ở trạng thái Lịch sử, không thể xóa lại" |
-| Không tìm thấy | 404 | "Không tìm thấy Đài TTDH" |
-| Không có quyền | 403 | "Bạn không có quyền xóa Đài TTDH này" |
-| Không thuộc đơn vị | 403 | "Bạn không có quyền xóa Đài TTDH thuộc đơn vị khác" |
-
----
-
-## 9. Yêu cầu phi chức năng
-
-### 9.1. Hiệu năng
-
-- DELETE response < 300ms
-- Transaction atomic: cập nhật status + ghi station_history trong cùng transaction
-
-### 9.2. Khả năng mở rộng
-
-- Cơ chế status-based delete không phụ thuộc vào số lượng bản ghi
-- Không cần index cho `deletedAt` (vì không dùng)
-
-### 9.3. Bảo mật
-
-- Phân quyền RBAC trên endpoint DELETE
-- Validation trạng thái phía server (không trust client)
-- Chống double-delete: kiểm tra status trước khi cập nhật
-
-### 9.4. Độ tin cậy
-
-- Optimistic locking: dùng `@Version` để tránh race condition khi 2 user cùng xóa
-- Transaction rollback nếu ghi history thất bại
-
-### 9.5. Trải nghiệm người dùng
-
-- Nút Xóa chỉ hiển thị khi đủ điều kiện (tránh click rồi mới báo lỗi)
-- Hộp thoại xác nhận rõ ràng với tên đài
-- Loading spinner trong lúc xử lý
-- Thông báo thành công: "Đài TTDH [Tên đài] đã được chuyển sang trạng thái Lịch sử"
-
-### 9.6. Tuân thủ pháp lý
-
-- Dữ liệu không bị xóa vĩnh viễn — tuân thủ yêu cầu lưu trữ hồ sơ hành chính
-- Lịch sử DELETE được ghi nhận đầy đủ phục vụ kiểm toán
-
----
-
-## 10. Yêu cầu giao diện người dùng
-
-> **Nguyên tắc cốt lõi:** Mọi giá trị màu sắc, khoảng cách, kích thước chữ trong giao diện đều được định nghĩa tập trung tại 2 file `frontend/src/theme.ts` (layout, màu nền sidebar/header) và `frontend/src/tokens.ts` (màu chữ, màu trạng thái, thang số). Tuyệt đối không hardcode giá trị hex hay pixel trong component.
-
-### 10.1. Bố cục chung
-
-Màn hình danh sách Đài TTDH dùng chung bố cục toàn hệ thống, bao gồm:
-
-- **Thanh menu trái (sidebar):** rộng 272px, nền `#12468C`. Mục đang chọn tô `#1B84FF`.
-- **Thanh tiêu đề trên cùng (header):** cao 64px, nền trắng.
-- **Vùng nội dung chính:** nền `#eaf0f6` (`surfacePage`).
-
-### 10.2. Hệ thống màu sắc
-
-| Khi cần... | Dùng token | Màu thực tế |
-|---|---|---|
-| Nút Xóa (danger action) | `statusCritical` | `#D14343` |
-| Nút Hủy | `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`) |
-| Nền hộp thoại xác nhận | `surfaceCard` | `#FFFFFF` |
-| Text xác nhận | `textPrimary` | `#0c2438` |
-| Badge "Lịch sử" | `textTertiary` (dark gray) | `#93a3b3` |
-
-### 10.3. Thang số — chỉ dùng giá trị cho phép
-
-**Khoảng cách (spacing):** Nút trong hộp thoại cách nhau `spaceMd` (16px).
-
-**Bo góc (radius):** Nút Xóa và Hủy dùng `radiusPill` (999px).
-
-**Cỡ chữ (font size):** Text xác nhận `fontSizeMd` (13px), tiêu đề hộp thoại `fontSizeLg` (15px).
-
-### 10.4. Style có sẵn
-
-- **Nút Xóa:** màu `statusCritical`, style `primaryButtonStyle` + `danger`
-- **Nút Hủy:** `outlineButtonStyle` (viền `actionPrimary`, chữ `actionPrimary`, `radiusPill`, `height: 40`)
-- **Hộp thoại:** dùng `cardStyle` (nền trắng, viền 0.5px, bo góc 12px, padding 16px)
-- **Icon cảnh báo:** `ExclamationCircleOutlined` màu `statusCritical`
-
-### 10.5. Giới hạn màu nhấn — tối đa 3 lần mỗi màn
-
-Màu `actionPrimary` chỉ xuất hiện tối đa 3 lần trên màn hình danh sách Đài TTDH. Màu `statusCritical` cho nút Xóa không tính vào giới hạn này.
-
-### 10.6. Hộp thoại xác nhận xóa
-
-- **Tiêu đề:** "Xác nhận xóa" (fontSizeLg, fontWeightBold, textPrimary)
-- **Icon:** `ExclamationCircleOutlined` màu `statusCritical`, fontSize 24px
-- **Nội dung:** "Bạn có chắc chắn muốn xóa Đài TTDH **[Tên đài]**? Bản ghi sẽ được chuyển sang trạng thái Lịch sử."
-- **Footer:**
-  - Nút "Hủy": `secondaryButtonStyle`, `radiusPill`, `height: 40`
-  - Nút "Xóa": `primaryButtonStyle` + màu `statusCritical`, `radiusPill`, `height: 40`
-
-### 10.7. Dropdown hành động (DataTable)
-
-Nút "Xóa" trong dropdown:
-- Chỉ hiển thị khi `status === "Lưu tạm"`
-- Màu chữ: `statusCritical`
-- Icon: `DeleteOutlined`
-
-### 10.8. Các trạng thái giao diện
-
-- **Đang xử lý:** Nút "Xóa" hiển thị loading spinner, bị disable
-- **Thành công:** Toast message "Đài TTDH [Tên đài] đã được chuyển sang trạng thái Lịch sử", badge trạng thái cập nhật
-- **Thất bại:** Toast message với nội dung lỗi từ server
-
-### 10.9. Phân quyền hiển thị
-
-| Vai trò | Permission | Thấy nút Xóa | Điều kiện |
+| Trường | Kiểu | Bắt buộc | Ghi chú |
 |---|---|---|---|
-| ROLE_SYSTEM_ADMIN | *(bypass)* | ✅ | status = Lưu tạm (mọi đơn vị) |
-| ROLE_ADMIN | `data:delete` | ✅ | status = Lưu tạm (mọi đơn vị) |
-| ROLE_SPECIALIST | `data:delete` | ✅ | status = Lưu tạm + đơn vị mình |
-| ROLE_PORT_OPERATOR | *(không có)* | ❌ | — |
-| ROLE_PUBLIC_USER | *(không có)* | ❌ | — |
+| id | UUID | Có | Primary key |
+| org_unit_id | UUID | Có | Đơn vị quản lý, FK → org_unit |
+| operating_unit_id | UUID | Không | Đơn vị khai thác, FK → org_unit |
+| code | VARCHAR(50) | Có | Mã đài tự sinh `DTTDH-{seq}`, unique, immutable |
+| name | VARCHAR(255) | Có | Tên đài |
+| station_level | SMALLINT | Có | Phân loại: 0=Loại I, 1=Loại II, ..., 4=Loại V |
+| province_id | UUID | Có | Tỉnh/TP, FK → province |
+| detailed_location | VARCHAR(500) | Có | Địa điểm chi tiết |
+| usage_status | SMALLINT | Có | Tình trạng: 0=Chưa khai thác, 1=Đang khai thác, 2=Dừng khai thác |
+| coverage_area | TEXT | Không | Vùng phủ sóng |
+| services_provided | JSON | Không | Dịch vụ cung cấp (mảng 9 dịch vụ cố định) |
+| remarks | VARCHAR(2000) | Không | Ghi chú |
+| geometry_type | VARCHAR(20) | Không | GIS: Point/Line/Polygon |
+| map_symbol_id | UUID | Không | GIS: biểu tượng |
+| coordinate_system | VARCHAR(100) | Không | GIS: hệ quy chiếu |
+| display_rule | TEXT | Không | GIS: quy tắc hiển thị |
+| coordinates | JSON | Không | GIS: tọa độ WGS84 (mảng {lat, lon}) |
+| approval_status | SMALLINT | Có | Trạng thái phê duyệt: 0=DRAFT, 1=PROPOSED, 2=APPROVED_L1, 3=APPROVED_L2, 4=ACTIVE, 5=SUSPENDED, 6=DELETED |
+| deleted_at | TIMESTAMP | Không | Xóa mềm |
+| deleted_by | UUID | Không | Người xóa |
+| created_by | UUID | Có | Người tạo |
+| created_at | TIMESTAMP | Có | Thời gian tạo |
+| updated_by | UUID | Không | Người sửa cuối |
+| updated_at | TIMESTAMP | Không | Thời gian sửa cuối |
 
-### 10.10. Giao diện trên điện thoại
+🔴 **Trường mới cần thêm:** `deleted_at`, `deleted_by`.
 
-Khi màn hình nhỏ hơn 768px:
-- Hộp thoại xác nhận thu nhỏ còn 90% chiều rộng màn hình
-- Nút Xóa và Hủy xếp dọc (không nằm ngang)
+**Bảng `station_history` (Lịch sử thay đổi):**
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| id | UUID | Primary key |
+| entity_id | UUID | FK → coastal_station.id |
+| action_type | VARCHAR(20) | CREATE, UPDATE, DELETE, APPROVE_L1, APPROVE_L2, REJECT |
+| changed_field | VARCHAR(100) | Tên trường thay đổi |
+| previous_value | TEXT | Giá trị cũ |
+| new_value | TEXT | Giá trị mới |
+| changed_by | UUID | Người thực hiện |
+| changed_at | TIMESTAMP | Thời gian thay đổi |

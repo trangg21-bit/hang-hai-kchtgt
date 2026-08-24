@@ -128,7 +128,7 @@ Bảng chính lưu toàn bộ lịch sử thay đổi của Trạm radar.
 | `id` | Long | Định danh bản ghi (PK, IDENTITY) |
 | `radarStationId` | UUID (FK → radar_station) | Trạm radar bị thay đổi |
 | `approvalLevel` | Integer | Cấp phê duyệt: 1 (C1 - Trưởng phòng) hoặc 2 (C2 - Lãnh đạo Cục). NULL nếu là thao tác tạo mới/cập nhật/xóa |
-| `status` | String | Loại sự kiện: CREATED / UPDATED / APPROVED / REJECTED / DELETED |
+| `status` | String | Loại sự kiện: CREATED / UPDATED / APPROVED / REJECTED_LEVEL1 / REJECTED_LEVEL2 / DELETED |
 | `approvedBy` | UUID (FK → User) | Người thực hiện thay đổi |
 | `approvedDate` | Timestamp | Thời gian thay đổi (tự động) |
 | `reason` | String | Lý do (bắt buộc khi từ chối, tùy chọn với phê duyệt) |
@@ -160,7 +160,7 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
 | `tuNgay` | Lọc từ ngày (định dạng yyyy-MM-dd) |
 | `denNgay` | Lọc đến ngày (định dạng yyyy-MM-dd) |
 | `approvedBy` | Lọc theo UUID người thực hiện |
-| `status` | Lọc theo loại sự kiện: CREATED / UPDATED / APPROVED / REJECTED / DELETED |
+| `status` | Lọc theo loại sự kiện: CREATED / UPDATED / APPROVED / REJECTED_LEVEL1 / REJECTED_LEVEL2 / DELETED |
 
 ---
 
@@ -185,7 +185,7 @@ Mỗi lần thay đổi được hiển thị thành một **card box** độc l
 │  │                  │  │   35.0m  →  45.5m            │ │
 │  └──────────────────┘  │                              │ │
 │                         │ Trạng thái phê duyệt:        │ │
-│                         │   APPROVED  →  PROPOSED      │ │
+│                         │   APPROVED  →  DRAFT         │ │
 │                         └──────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -200,9 +200,9 @@ Mỗi lần thay đổi được hiển thị thành một **card box** độc l
   - Mũi tên `→` phân cách giữa cũ và mới.
 - Nếu là thao tác **Tạo mới**: cột phải hiển thị "Tạo mới trạm radar" + danh sách tất cả giá trị ban đầu.
 - Nếu là thao tác **Xóa mềm**: cột phải hiển thị "Trạm radar đã bị xóa mềm".
-- Nếu là **Phê duyệt C1** (status = APPROVED, approvalLevel = 1): cột phải hiển thị "Phê duyệt cấp 1 (Trưởng phòng) — Trạng thái: PROPOSED → UNDER_REVIEW" + lý do (nếu có).
-- Nếu là **Phê duyệt C2** (status = APPROVED, approvalLevel = 2): cột phải hiển thị "Phê duyệt cấp 2 (Lãnh đạo Cục) — Trạng thái: UNDER_REVIEW → APPROVED" + lý do (nếu có).
-- Nếu là **Từ chối** (status = REJECTED): cột phải hiển thị "Từ chối — Lý do: [nội dung reason]".
+- Nếu là **Phê duyệt C1** (status = APPROVED, approvalLevel = 1): cột phải hiển thị "Phê duyệt cấp 1 (Trưởng phòng) — Trạng thái: PENDING_APPROVAL → APPROVED_LEVEL1" + lý do (nếu có).
+- Nếu là **Phê duyệt C2** (status = APPROVED, approvalLevel = 2): cột phải hiển thị "Phê duyệt cấp 2 (Lãnh đạo Cục) — Trạng thái: APPROVED_LEVEL1 → APPROVED" + lý do (nếu có).
+- Nếu là **Từ chối** (status = REJECTED_LEVEL1 hoặc REJECTED_LEVEL2): cột phải hiển thị "Từ chối — Lý do: [nội dung reason]".
 
 ### 8.2. Bộ lọc
 
@@ -279,7 +279,7 @@ Mỗi lần thay đổi được hiển thị thành một **card box** độc l
 | Tạo mới (CREATED) | Xanh lá `#4CAF50` |
 | Cập nhật (UPDATED) | Xanh dương `#2196F3` |
 | Phê duyệt (APPROVED) | Xanh dương đậm `#1565C0` |
-| Từ chối (REJECTED) | Đỏ `#F44336` |
+| Từ chối (REJECTED_LEVEL1/REJECTED_LEVEL2) | Đỏ `#F44336` |
 | Xóa mềm (DELETED) | Xám `#9E9E9E` |
 
 ### 10.5. Màn hình Lịch sử Trạm radar

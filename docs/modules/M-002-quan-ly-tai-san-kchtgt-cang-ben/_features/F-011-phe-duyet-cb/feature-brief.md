@@ -34,14 +34,14 @@ Không có form nhập liệu mới — thao tác trên bản ghi `Port` hiện 
 | # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
 |---|---|---|---|---|
 | 1 | id | Có | UUID | Hồ sơ cảng cần xử lý |
-| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (lưu số 0..6) | Trạng thái hiện tại của hồ sơ trong quy trình 2 cấp |
+| 2 | approvalStatus | Có (hệ thống) | Enum `ApprovalStatus` (7 trạng thái, lưu số theo tài liệu nền mục 3.5) | Trạng thái hiện tại của hồ sơ trong quy trình 2 cấp |
 | 3 | reason (lý do từ chối) | Có khi từ chối | TextArea, tối thiểu 10 ký tự | Lý do chấp thuận là tùy chọn |
 | 4 | approval log | Có (hệ thống) | Bảng `approval_log` | Người duyệt, thời gian, quyết định, lý do — lưu vĩnh viễn |
 
 ## 3. Trạng thái và phê duyệt
 
 - **Toàn bộ quy trình phê duyệt 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`** — không mô tả lại tại đây. Áp dụng cho Cảng biển: số vòng duyệt (1 hoặc 2) phụ thuộc đơn vị gửi; quyền duyệt gắn chức vụ (lãnh đạo Cảng vụ/Chi cục duyệt vòng 1, lãnh đạo Cục duyệt vòng 2).
-- Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (BA đề xuất, SA chốt).
+- Bản đồ 7 trạng thái → enum `ApprovalStatus` theo tài liệu nền mục 3.5 (đã chốt — M-1006 DP-9/AC-25).
 - **Trạng thái hiển thị:** hồ sơ chờ duyệt ở cấp tương ứng (Cảng vụ/Chi cục hoặc Cục) được đưa vào danh sách chờ duyệt của cấp đó; hồ sơ bị trả về quay lại người nhập để sửa; hồ sơ **Đã duyệt** mới chính thức có hiệu lực.
 - Sau quyết định: cập nhật trạng thái + ghi approval log + thông báo cho người tạo. Nhật ký phê duyệt không được xóa hoặc sửa.
 
@@ -104,4 +104,4 @@ Quy ước: 🔴 = trường mới cần thêm; ~~gạch ngang~~ = trường c�
 
 **Bảng `ports`:** sử dụng cột `approval_status` (SMALLINT, enum `ApprovalStatus`) có sẵn; bổ sung theo quy trình 2 cấp nếu cần theo dõi người duyệt từng vòng — 🔴 `submitted_for_approval_at` / `submitted_for_approval_by`, 🔴 `port_authority_approved_at` / `port_authority_approved_by` / `port_authority_approval_content` (vòng 1), 🔴 `department_approved_at` / `department_approved_by` / `department_approval_content` (vòng 2), 🔴 `rejection_reason` (VARCHAR 500) — tham khảo mẫu đã áp dụng tại entity `Berth` (bảng `berths`), SA chốt.
 
-**Bảng `approval_log` (nhật ký phê duyệt):** id (UUID PK), entityType, entityId (UUID), approvedBy (UUID), decision (enum: APPROVED/REJECTED), reason (text), approvedAt (TIMESTAMP) — lưu vĩnh viễn, không xóa/sửa.
+**Bảng `approval_log` (nhật ký phê duyệt):** id (UUID PK), entityType, entityId (UUID), approvedBy (UUID), decision (enum: APPROVED / REJECTED_LEVEL1 / REJECTED_LEVEL2), reason (text), approvedAt (TIMESTAMP) — lưu vĩnh viễn, không xóa/sửa.

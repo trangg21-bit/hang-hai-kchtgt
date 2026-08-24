@@ -86,7 +86,7 @@ export default function DryPortDetailContent({
               <div style={{ paddingTop: 3 }}>
                 <div className="detail-grid">
                   {[
-                    ['Mã cảng cạn', <span key="dryPortCode" style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: '#1677ff15', color: '#1677ff' }}>{r.dryPortCode || '—'}</span>],
+                    ['Mã cảng cạn', <span key="dryPortCode" style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{r.dryPortCode || '—'}</span>],
                     ['Tên cảng cạn', r.dryPortName || '—'],
                     ['Đơn vị quản lý', (r as any).orgUnitName || orgMap.get(r.orgUnitId || '')?.split(' - ').pop() || r.orgUnitId || '—'],
                     ['Đơn vị khai thác', r.operatingUnit || '—'],

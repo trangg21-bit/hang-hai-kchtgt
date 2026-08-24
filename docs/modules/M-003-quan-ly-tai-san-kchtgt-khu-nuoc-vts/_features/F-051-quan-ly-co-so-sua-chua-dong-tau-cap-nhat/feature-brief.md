@@ -37,11 +37,11 @@ Chuyên viên truy cập màn hình danh sách CSSCDT → chọn bản ghi cần
 
 | Hành động | Trạng thái sau lưu | Ý nghĩa |
 |---|---|---|
-| **Cập nhật** | S_1 (Lưu tạm) | Lưu thay đổi, có thể sửa tiếp, chưa gửi duyệt |
-| **Cập nhật và gửi phê duyệt** | S_2 (Chờ Chi cục duyệt) | Lưu thay đổi và gửi thẳng sang luồng phê duyệt |
-| **Cập nhật và phê duyệt** | S_6 (Đã duyệt) | Lưu thay đổi và phê duyệt luôn (dành cho lãnh đạo) |
+| **Cập nhật** | DRAFT (Lưu tạm) | Lưu thay đổi, có thể sửa tiếp, chưa gửi duyệt |
+| **Cập nhật và gửi phê duyệt** | PENDING_APPROVAL (Chờ Cảng vụ/Chi cục duyệt) | Lưu thay đổi và gửi thẳng sang luồng phê duyệt |
+| **Cập nhật và phê duyệt** | APPROVED (Đã duyệt) | Lưu thay đổi và phê duyệt luôn (dành cho lãnh đạo) |
 
-> ⚠ **Quan trọng:** Sau khi cập nhật, trạng thái phê duyệt quay về S_1/S_2. Nếu bản ghi đang ở S_6 (Đã duyệt) trước khi sửa, nó sẽ **tạm thời biến mất** khỏi dropdown chọn CSSCDT ở các module khác cho đến khi được phê duyệt lại (F-053).
+> ⚠ **Quan trọng:** Sau khi cập nhật, trạng thái phê duyệt quay về DRAFT/PENDING_APPROVAL. Nếu bản ghi đang ở APPROVED (Đã duyệt) trước khi sửa, nó sẽ **tạm thời biến mất** khỏi dropdown chọn CSSCDT ở các module khác cho đến khi được phê duyệt lại (F-053).
 
 ---
 
@@ -99,11 +99,11 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-051-03 — Validate trường bắt buộc:** Khi người dùng nhấn Lưu, hệ thống kiểm tra tất cả các trường bắt buộc giống như khi tạo mới. Trường nào thiếu sẽ được đánh dấu đỏ.
 
-**AC-051-04 — Cập nhật (Lưu tạm):** Khi chọn "Cập nhật", bản ghi được lưu với `status = S_1` (Lưu tạm). Hiển thị thông báo "Đã cập nhật cơ sở {tên cơ sở}". Nếu bản ghi trước đó đang ở S_6, nó sẽ biến mất khỏi dropdown tham chiếu của module khác.
+**AC-051-04 — Cập nhật (Lưu tạm):** Khi chọn "Cập nhật", bản ghi được lưu với `status = DRAFT` (Lưu tạm). Hiển thị thông báo "Đã cập nhật cơ sở {tên cơ sở}". Nếu bản ghi trước đó đang ở APPROVED, nó sẽ biến mất khỏi dropdown tham chiếu của module khác.
 
-**AC-051-05 — Cập nhật và gửi phê duyệt:** Khi chọn "Cập nhật và gửi phê duyệt", bản ghi được lưu với `status = S_2` (Chờ Chi cục duyệt).
+**AC-051-05 — Cập nhật và gửi phê duyệt:** Khi chọn "Cập nhật và gửi phê duyệt", bản ghi được lưu với `status = PENDING_APPROVAL` (Chờ Cảng vụ/Chi cục duyệt).
 
-**AC-051-06 — Không cho cập nhật bản ghi đã xóa:** Nếu bản ghi có `status = S_0` (Đã xóa), nút Sửa không hiển thị. Nếu cố gọi API, trả về 404 hoặc 410.
+**AC-051-06 — Không cho cập nhật bản ghi đã xóa:** Nếu bản ghi có `status = ARCHIVED` (Đã xóa lịch sử), nút Sửa không hiển thị. Nếu cố gọi API, trả về 404 hoặc 410.
 
 **AC-051-07 — Kiểm tra quyền đơn vị:** Chỉ user thuộc đúng `fkDonViQl` của bản ghi mới được phép cập nhật. Nếu không đúng, trả về 403.
 
@@ -115,15 +115,15 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thống phải tuân thủ:
 
-**BR-051-01 — Trạng thái sau cập nhật:** Sau khi cập nhật, trạng thái phê duyệt quay về S_1 (nếu chọn "Cập nhật") hoặc S_2 (nếu chọn "Cập nhật và gửi phê duyệt"), bất kể trạng thái trước đó là gì.
+**BR-051-01 — Trạng thái sau cập nhật:** Sau khi cập nhật, trạng thái phê duyệt quay về DRAFT (nếu chọn "Cập nhật") hoặc PENDING_APPROVAL (nếu chọn "Cập nhật và gửi phê duyệt"), bất kể trạng thái trước đó là gì.
 
-**BR-051-02 — Bản ghi S_6 sau khi sửa sẽ mất khả dụng tạm thời:** Nếu bản ghi đang ở S_6 (Đã duyệt) bị sửa, nó quay về S_1/S_2 và **tạm thời biến mất** khỏi tất cả dropdown tham chiếu cho đến khi được phê duyệt lại qua F-053.
+**BR-051-02 — Bản ghi APPROVED sau khi sửa sẽ mất khả dụng tạm thời:** Nếu bản ghi đang ở APPROVED (Đã duyệt) bị sửa, nó quay về DRAFT/PENDING_APPROVAL và **tạm thời biến mất** khỏi tất cả dropdown tham chiếu cho đến khi được phê duyệt lại qua F-053.
 
 **BR-051-03 — Không được sửa đơn vị quản lý và cảng biển:** `fkDonViQl` và `fkCangBien` bị khóa trên form và backend từ chối nếu giá trị thay đổi.
 
 **BR-051-04 — Chỉ user cùng đơn vị mới được sửa:** Backend kiểm tra user đăng nhập có thuộc `fkDonViQl` của bản ghi hay không. Nếu không, trả về 403.
 
-**BR-051-05 — Không được sửa bản ghi đã xóa:** Bản ghi có `status = S_0` không hiển thị nút Sửa và API PUT từ chối.
+**BR-051-05 — Không được sửa bản ghi đã xóa:** Bản ghi có `status = ARCHIVED` không hiển thị nút Sửa và API PUT từ chối.
 
 **BR-051-06 — Ghi lịch sử đầy đủ:** Mọi thay đổi phải được ghi vào bảng lịch sử với đủ thông tin: tên trường, giá trị cũ, giá trị mới, người thực hiện, thời gian.
 
@@ -137,16 +137,16 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 ```mermaid
 stateDiagram-v2
-    [*] --> S_1: F-050 - Tạo mới (Lưu tạm)
-    S_1 --> S_2: F-050/F-051 - Gửi duyệt
-    S_2 --> S_3: F-053 - Chi cục duyệt
-    S_2 --> S_4: F-053 - Chi cục từ chối
-    S_3 --> S_6: F-053 - Cục duyệt
-    S_3 --> S_5: F-053 - Cục từ chối
-    S_4 --> S_1: F-051 - Sửa lại
-    S_5 --> S_1: F-051 - Sửa lại
-    S_6 --> S_1: F-051 - Sửa (mất S_6, cần duyệt lại)
-    S_1 --> [*]: F-052 - Xóa (soft delete → S_0)
+    [*] --> DRAFT: F-050 - Tạo mới (Lưu tạm)
+    DRAFT --> PENDING_APPROVAL: F-050/F-051 - Gửi duyệt
+    PENDING_APPROVAL --> APPROVED_LEVEL1: F-053 - C1 duyệt (Cảng vụ/Chi cục)
+    PENDING_APPROVAL --> REJECTED_LEVEL1: F-053 - C1 từ chối
+    APPROVED_LEVEL1 --> APPROVED: F-053 - C2 duyệt (Cục)
+    APPROVED_LEVEL1 --> REJECTED_LEVEL2: F-053 - C2 từ chối
+    REJECTED_LEVEL1 --> DRAFT: F-051 - Sửa lại
+    REJECTED_LEVEL2 --> DRAFT: F-051 - Sửa lại
+    APPROVED --> DRAFT: F-051 - Sửa (mất APPROVED, cần duyệt lại)
+    DRAFT --> ARCHIVED: F-052 - Xóa (soft delete → ARCHIVED)
 ```
 
 #### Các feature liên quan trực tiếp
@@ -154,7 +154,7 @@ stateDiagram-v2
 | Feature | Tên | Liên quan đến F-051 như thế nào |
 |---|---|---|
 | **F-050** | Tạo mới CSSCDT | F-051 sửa bản ghi do F-050 tạo ra |
-| **F-052** | Xóa CSSCDT | F-051 không dùng được nếu F-052 đã xóa (S_0) |
+| **F-052** | Xóa CSSCDT | F-051 không dùng được nếu F-052 đã xóa (ARCHIVED) |
 | **F-053** | Phê duyệt CSSCDT | Sau khi F-051 sửa, phải qua F-053 để duyệt lại |
 | **F-054** | Xem chi tiết CSSCDT | Xem dữ liệu trước/sau khi F-051 sửa |
 | **F-055** | Lịch sử CSSCDT | F-051 ghi log, F-055 hiển thị log đó |
@@ -172,7 +172,7 @@ Khi cập nhật, các trường sau được phép thay đổi:
 - **ten:** tên cơ sở sửa chữa, đóng tàu (bắt buộc, tối đa 255 ký tự)
 - **fkCauCang:** thuộc mã cầu cảng (không bắt buộc, có thể thay đổi)
 - **diaDiem:** mã tỉnh/thành phố (bắt buộc)
-- **diaDiemChiTiet:** địa chỉ chi tiết (bắt buộc, tối đa 500 ký tự)
+- **diaDiemChiTiet:** địa chỉ chi tiết (không bắt buộc, tối đa 500 ký tự)
 - **tinhTrang:** tình trạng khai thác/vận hành — Chưa khai thác/vận hành; Đang khai thác/vận hành; Dừng khai thác/vận hành (bắt buộc)
 - **congNangSuDung:** công năng sử dụng
 - **dienTichNhaXuongKhoBai:** diện tích nhà xưởng, kho bãi (m², Decimal(20,4), ≥ 0)
@@ -215,9 +215,9 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
 | Method | Endpoint | Mô tả | Phân quyền |
 |---|---|---|---|
 | GET | `/api/v1/co-so-sua-chua/{id}` | Lấy dữ liệu hiện tại để đổ vào form sửa | `cosuachua:read` |
-| PUT | `/api/v1/co-so-sua-chua/{id}?enumActionKcht=LUU_TAM` | Cập nhật và lưu tạm (S_1) | `cosuachua:update` |
-| PUT | `/api/v1/co-so-sua-chua/{id}?enumActionKcht=LUU_VA_GUI_PHE_DUYET` | Cập nhật và gửi duyệt (S_2) | `cosuachua:update` |
-| PUT | `/api/v1/co-so-sua-chua/{id}?enumActionKcht=LUU_VA_PHE_DUYET` | Cập nhật và phê duyệt luôn (S_6) | `cosuachua:approve:c1` + `cosuachua:approve:c2` |
+| PUT | `/api/v1/co-so-sua-chua/{id}?enumActionKcht=LUU_TAM` | Cập nhật và lưu tạm (DRAFT) | `cosuachua:update` |
+| PUT | `/api/v1/co-so-sua-chua/{id}?enumActionKcht=LUU_VA_GUI_PHE_DUYET` | Cập nhật và gửi duyệt (PENDING_APPROVAL) | `cosuachua:update` |
+| PUT | `/api/v1/co-so-sua-chua/{id}?enumActionKcht=LUU_VA_PHE_DUYET` | Cập nhật và phê duyệt luôn (APPROVED) | `cosuachua:approve:c1` + `cosuachua:approve:c2` |
 
 ### 7.1. Request Body
 
@@ -254,7 +254,7 @@ Hệ thống cung cấp các API để phục vụ các thao tác liên quan đ�
     "id": 412,
     "ma": "G17.43.000001-CSSCDT-000412",
     "ten": "Cơ sở sửa chữa tàu biển ABC (đã mở rộng)",
-    "status": "S_1",
+    "status": "DRAFT",
     "updatedAt": "2026-08-03T14:00:00Z"
   },
   "message": "Đã cập nhật cơ sở Cơ sở sửa chữa tàu biển ABC (đã mở rộng)"
@@ -299,12 +299,12 @@ Giống F-050, trừ 3 trường bị khóa. 22 trường chia làm 3 card:
 5. User chọn hành động lưu (Cập nhật / Cập nhật & Gửi duyệt / Cập nhật & Duyệt)
 6. Frontend gọi PUT /api/v1/co-so-sua-chua/{id}?enumActionKcht={action}
 7. Backend:
-   a. Kiểm tra bản ghi tồn tại và status != S_0
+   a. Kiểm tra bản ghi tồn tại và status != ARCHIVED
    b. Kiểm tra user thuộc fkDonViQl của bản ghi
    c. Kiểm tra fkDonViQl và fkCangBien không bị thay đổi
    d. Validate các trường required + format
    e. So sánh giá trị cũ/mới, ghi log thay đổi vào phe_duyet_lich_su
-   f. UPDATE bản ghi với status mới (S_1/S_2/S_6)
+   f. UPDATE bản ghi với status mới (DRAFT/PENDING_APPROVAL/APPROVED)
    g. UPDATE tọa độ GIS nếu có thay đổi
    h. UPDATE file đính kèm nếu có thay đổi
    i. Return 200 + dữ liệu đã cập nhật
@@ -416,8 +416,8 @@ Màn hình cập nhật CSSCDT dùng chung bố cục toàn hệ thống:
 
 5. **Thanh hành động cuối form (sticky bottom):**
    - **Hủy** (màu xám, outline)
-   - **Cập nhật** (outline, `actionPrimary`) — lưu với S_1
-   - **Cập nhật và gửi phê duyệt** (solid, `actionPrimary`) — lưu với S_2
+   - **Cập nhật** (outline, `actionPrimary`) — lưu với DRAFT
+   - **Cập nhật và gửi phê duyệt** (solid, `actionPrimary`) — lưu với PENDING_APPROVAL
 
 ### 10.7. Các trạng thái giao diện
 
@@ -425,7 +425,7 @@ Màn hình cập nhật CSSCDT dùng chung bố cục toàn hệ thống:
 - **Đang lưu:** nút Cập nhật chuyển sang loading, disabled tất cả nút
 - **Lỗi tải:** hiển thị cảnh báo đỏ + nút "Thử lại"
 - **Lỗi lưu:** hiển thị toast lỗi cụ thể, giữ nguyên dữ liệu đã nhập
-- **Bản ghi đã xóa (S_0):** không hiển thị nút Sửa trên dòng
+- **Bản ghi đã xóa (ARCHIVED):** không hiển thị nút Sửa trên dòng
 
 ### 10.8. Phân quyền hiển thị
 
