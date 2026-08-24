@@ -9,7 +9,7 @@ import PagedTable from '../../components/list-view/PagedTable';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, spaceXs, radiusPill, actionPrimary,
+  spaceSm, spaceXs, radiusPill,
 } from '../../tokens';
 import type { Pier } from '../../types/port';
 
