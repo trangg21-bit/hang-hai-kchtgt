@@ -2,62 +2,88 @@ package com.hanghai.kchtg.navigationchannel.dto;
 
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Update request for NavigationChannel (F-038). All fields optional.
+ * Update request for NavigationChannel (F-038) — all fields optional.
+ * Same write surface as the create request (no #47-#71, no channelCode/routeCode — BR-038-03/06).
  */
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldNameConstants
 public class NavigationChannelUpdateRequest {
 
     private RecordSecurityLevel securityLevel;
 
-    private String channelName;
-
-    private Integer stationAmountt;
-
-    private LocalDate latestStationRepairDate;
-
-    private java.math.BigDecimal stationArea;
-
-    private String note;
-
-    private String channelCode;
+    private UUID orgUnitId;
 
     private UUID seaportId;
 
     private UUID operatingUnitId;
 
-    private String location;
+    private String channelName;
+
+    private Integer provinceId;
 
     private String detailedLocation;
 
-    private String channelManagementStation;
+    private ConditionStatus conditionStatus;
 
-    private Integer stationStaffAmount;
+    private String managementStation;
+
+    private Integer stationCount;
+
+    private Integer stationStaffCount;
+
+    private BigDecimal stationAreaSquareMeters;
+
+    private LocalDate latestStationRepairMonth;
 
     private Integer latestMaintenanceYear;
 
-    private java.math.BigDecimal dredgingVolume;
+    private BigDecimal latestDredgingVolumeCubicMeters;
 
-    @Builder.Default private Integer buoyAmount = 0;
+    private Integer buoyCount;
 
-    @Builder.Default private Integer beaconAmount = 0;
+    private Integer beaconCount;
 
-    @Builder.Default private Integer status = 1;
+    private String notes;
 
-    private UUID orgUnitId;
+    private String announcementDecisionNumber;
+
+    private LocalDate announcementDecisionDate;
+
+    private String announcementDecisionIssuer;
+
+    private List<ChannelRouteDetailRequest> routeDetails;
+
+    private BigDecimal protectionScopeMeters;
+
+    private String protectionNotes;
+
     private GisGeometryType geometryType;
+
+    private UUID mapIconId;
+
+    private String coordinateReferenceSystem;
+
+    private String displayRule;
+
     private String coordinates;
-    private UUID symbolId;
+
+    private List<NavigationChannelCoordinateRequest> coordinateList;
+
+    private List<NavigationChannelAttachmentRequest> attachments;
 }

@@ -74,6 +74,10 @@ public class InfrastructureApprovalService {
         entity.setApprovalStatus(nextStatus);
         entity.setRejectionReason(null);
 
+        // Ghi thời điểm + người gửi phê duyệt (#50, #51) — refresh cả khi gửi lại sau từ chối
+        entity.setSubmittedAt(LocalDateTime.now());
+        entity.setSubmittedBy(userId);
+
         // Reset approver level nếu gửi lại từ đầu
         if (nextStatus == ApprovalStatus.PENDING_APPROVAL) {
             entity.setApproverLevel1(null);
@@ -116,6 +120,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(reason.trim());
             entity.setApproverLevel1(null);
             entity.setApprovedDateLevel1(null);
+            // #54 — nội dung trả về vẫn được ghi
+            entity.setLevel1ApprovalContent(reason.trim());
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
                     ApprovalHistoryStatus.REJECTED, userId, reason.trim(),
@@ -126,6 +132,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(null);
             entity.setApproverLevel1(userId);
             entity.setApprovedDateLevel1(LocalDateTime.now());
+            // #54 — nội dung phê duyệt
+            entity.setLevel1ApprovalContent(reason);
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
                     ApprovalHistoryStatus.APPROVED, userId, reason,
@@ -171,6 +179,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(reason.trim());
             entity.setApproverLevel2(null);
             entity.setApprovedDateLevel2(null);
+            // #57 — nội dung trả về vẫn được ghi
+            entity.setLevel2ApprovalContent(reason.trim());
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
                     ApprovalHistoryStatus.REJECTED, userId, reason.trim(),
@@ -181,6 +191,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(null);
             entity.setApproverLevel2(userId);
             entity.setApprovedDateLevel2(LocalDateTime.now());
+            // #57 — nội dung phê duyệt
+            entity.setLevel2ApprovalContent(reason);
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
                     ApprovalHistoryStatus.APPROVED, userId, reason,

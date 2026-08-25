@@ -67,11 +67,11 @@ public class F151ReportHandler extends BaseReportHandler {
             BigDecimal sumLength = BigDecimal.ZERO;
             BigDecimal sumDredgingVolume = BigDecimal.ZERO;
             for (ChannelRouteDetail child : children) {
-                if (child.getLength() != null) {
-                    sumLength = sumLength.add(child.getLength());
+                if (child.getChannelLengthKilometers() != null) {
+                    sumLength = sumLength.add(child.getChannelLengthKilometers());
                 }
-                if (child.getDredgingVolume() != null) {
-                    sumDredgingVolume = sumDredgingVolume.add(child.getDredgingVolume());
+                if (child.getRouteLatestDredgingVolumeCubicMeters() != null) {
+                    sumDredgingVolume = sumDredgingVolume.add(child.getRouteLatestDredgingVolumeCubicMeters());
                 }
             }
 
@@ -90,14 +90,15 @@ public class F151ReportHandler extends BaseReportHandler {
             parentRow.put("KL nạo vét (m3)", sumDredgingVolume);
             parentRow.put("Công cộng", "");
             parentRow.put("Chuyên dùng", "");
-            parentRow.put("Tên trạm QL luồng", nc.getChannelManagementStation() != null ? nc.getChannelManagementStation() : "");
-            parentRow.put("Số lượng trạm", nc.getStationAmountt() != null ? nc.getStationAmountt() : "");
-            parentRow.put("Diện tích (m2)", nc.getStationArea() != null ? nc.getStationArea() : "");
-            parentRow.put("Thời điểm SC", nc.getLatestStationRepairDate() != null
-                    ? nc.getLatestStationRepairDate().toString() : "");
-            parentRow.put("Nhân sự", nc.getStationStaffAmount() != null ? nc.getStationStaffAmount() : "");
-            parentRow.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffAmount() != null ? nc.getStationStaffAmount() : "");
-            parentRow.put("Chiều cao tĩnh không", nc.getClearanceHeight() != null ? nc.getClearanceHeight() : "");
+            parentRow.put("Tên trạm QL luồng", nc.getManagementStation() != null ? nc.getManagementStation() : "");
+            parentRow.put("Số lượng trạm", nc.getStationCount() != null ? nc.getStationCount() : "");
+            parentRow.put("Diện tích (m2)", nc.getStationAreaSquareMeters() != null ? nc.getStationAreaSquareMeters() : "");
+            parentRow.put("Thời điểm SC", nc.getLatestStationRepairMonth() != null
+                    ? nc.getLatestStationRepairMonth().toString() : "");
+            parentRow.put("Nhân sự", nc.getStationStaffCount() != null ? nc.getStationStaffCount() : "");
+            parentRow.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffCount() != null ? nc.getStationStaffCount() : "");
+            parentRow.put("Chiều cao tĩnh không", children.isEmpty() ? ""
+                    : String.valueOf(children.get(0).getVerticalClearanceMeters()));
             parentRow.put("ĐVQL vận hành", donVi);
             rows.add(parentRow);
 
@@ -105,22 +106,21 @@ public class F151ReportHandler extends BaseReportHandler {
             for (ChannelRouteDetail child : children) {
                 Map<String, Object> childRow = new LinkedHashMap<>();
                 childRow.put("STT", "");
-                childRow.put("Chỉ tiêu", child.getName() != null ? child.getName() : "");
-                childRow.put("Dài (km)", child.getLength() != null ? child.getLength() : "");
-                childRow.put("Rộng LN (m)", child.getMaxWidth() != null ? child.getMaxWidth() : "");
-                childRow.put("Rộng NN (m)", child.getMinWidth() != null ? child.getMinWidth() : "");
-                childRow.put("Độ sâu (m)", child.getDepth() != null ? child.getDepth() : "");
+                childRow.put("Chỉ tiêu", child.getRouteName() != null ? child.getRouteName() : "");
+                childRow.put("Dài (km)", child.getChannelLengthKilometers() != null ? child.getChannelLengthKilometers() : "");
+                childRow.put("Rộng LN (m)", child.getMaximumDesignWidthMeters() != null ? child.getMaximumDesignWidthMeters() : "");
+                childRow.put("Rộng NN (m)", child.getMinimumDesignWidthMeters() != null ? child.getMinimumDesignWidthMeters() : "");
+                childRow.put("Độ sâu (m)", child.getDesignDepthMeters() != null ? child.getDesignDepthMeters() : "");
                 childRow.put("Mái dốc", child.getDesignSlope() != null ? child.getDesignSlope() : "");
-                childRow.put("Độ sâu hiện tại", child.getCurrentDepth() != null ? child.getCurrentDepth() : "");
-                childRow.put("KL nạo vét (m3)", child.getDredgingVolume() != null ? child.getDredgingVolume() : "");
-                childRow.put("Công cộng", Boolean.TRUE.equals(child.getPublicAccess()) ? "X" : "");
-                childRow.put("Chuyên dùng", Boolean.TRUE.equals(child.getDedicated()) ? "X" : "");
+                childRow.put("Độ sâu hiện tại", child.getCurrentDepthMeters() != null ? child.getCurrentDepthMeters() : "");
+                childRow.put("KL nạo vét (m3)", child.getRouteLatestDredgingVolumeCubicMeters() != null ? child.getRouteLatestDredgingVolumeCubicMeters() : "");
                 childRow.put("Tên trạm QL luồng", "");
                 childRow.put("Số lượng trạm", "");
                 childRow.put("Diện tích (m2)", "");
                 childRow.put("Thời điểm SC", "");
                 childRow.put("Nhân sự", "");
-                childRow.put("Chiều cao tĩnh không", "");
+                childRow.put("Chiều cao tĩnh không", child.getVerticalClearanceMeters() != null
+                        ? String.valueOf(child.getVerticalClearanceMeters()) : "");
                 childRow.put("ĐVQL vận hành", "");
                 rows.add(childRow);
             }
@@ -160,11 +160,11 @@ public class F151ReportHandler extends BaseReportHandler {
             BigDecimal sumLength = BigDecimal.ZERO;
             BigDecimal sumDredgingVolume = BigDecimal.ZERO;
             for (ChannelRouteDetail child : children) {
-                if (child.getLength() != null) {
-                    sumLength = sumLength.add(child.getLength());
+                if (child.getChannelLengthKilometers() != null) {
+                    sumLength = sumLength.add(child.getChannelLengthKilometers());
                 }
-                if (child.getDredgingVolume() != null) {
-                    sumDredgingVolume = sumDredgingVolume.add(child.getDredgingVolume());
+                if (child.getRouteLatestDredgingVolumeCubicMeters() != null) {
+                    sumDredgingVolume = sumDredgingVolume.add(child.getRouteLatestDredgingVolumeCubicMeters());
                 }
             }
 
@@ -174,16 +174,17 @@ public class F151ReportHandler extends BaseReportHandler {
             Map<String, Object> parentItem = new HashMap<>();
             parentItem.put("sequenceNo", sequenceNo);
             parentItem.put("ten", nc.getChannelName() != null ? nc.getChannelName() : "");
-            parentItem.put("tenTramQuanLyLuong", nc.getChannelManagementStation() != null ? nc.getChannelManagementStation() : "");
-            parentItem.put("soLuongTram", nc.getStationAmountt() != null ? nc.getStationAmountt().doubleValue() : 0.0);
-            parentItem.put("dienTich", nc.getStationArea() != null ? nc.getStationArea().doubleValue() : 0.0);
-            parentItem.put("thoiDiemSuaChuaGanNhat", nc.getLatestStationRepairDate() != null
-                    ? nc.getLatestStationRepairDate().toString() : "");
-            parentItem.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffAmount() != null
-                    ? nc.getStationStaffAmount().doubleValue() : 0.0);
+            parentItem.put("tenTramQuanLyLuong", nc.getManagementStation() != null ? nc.getManagementStation() : "");
+            parentItem.put("soLuongTram", nc.getStationCount() != null ? nc.getStationCount().doubleValue() : 0.0);
+            parentItem.put("dienTich", nc.getStationAreaSquareMeters() != null ? nc.getStationAreaSquareMeters().doubleValue() : 0.0);
+            parentItem.put("thoiDiemSuaChuaGanNhat", nc.getLatestStationRepairMonth() != null
+                    ? nc.getLatestStationRepairMonth().toString() : "");
+            parentItem.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffCount() != null
+                    ? nc.getStationStaffCount().doubleValue() : 0.0);
 
             parentItem.put("donViQuanLyVanHanh", donVi);
-            parentItem.put("chieuCaoTinhKhong", nc.getClearanceHeight() != null ? nc.getClearanceHeight() : "");
+            parentItem.put("chieuCaoTinhKhong", children.isEmpty() || children.get(0).getVerticalClearanceMeters() == null
+                    ? "" : String.valueOf(children.get(0).getVerticalClearanceMeters()));
             parentItem.put("daiLuong", sumLength);
             // Child fields empty for parent row
             parentItem.put("maTuyenLuong", "");
@@ -204,33 +205,32 @@ public class F151ReportHandler extends BaseReportHandler {
             for (ChannelRouteDetail child : children) {
                 Map<String, Object> childItem = new HashMap<>();
                 childItem.put("sequenceNo", "");
-                childItem.put("ten", child.getName() != null ? child.getName() : "");
+                childItem.put("ten", child.getRouteName() != null ? child.getRouteName() : "");
                 childItem.put("tenTramQuanLyLuong", "");
                 childItem.put("soLuongTram", 0.0);
                 childItem.put("dienTichTram", 0.0);
                 childItem.put("thoiDiemSuaChuaGanNhat", "");
-                childItem.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffAmount() != null ? nc.getStationStaffAmount().doubleValue() : 0.0);
-                childItem.put("chieuCaoTinhKhong", nc.getClearanceHeight() != null ? nc.getClearanceHeight() : "");
+                childItem.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffCount() != null ? nc.getStationStaffCount().doubleValue() : 0.0);
+                childItem.put("chieuCaoTinhKhong", child.getVerticalClearanceMeters() != null
+                        ? String.valueOf(child.getVerticalClearanceMeters()) : "");
                 childItem.put("donViQuanLyVanHanh", "");
-                childItem.put("daiLuong", child.getLength() != null ? child.getLength().doubleValue() : 0.0);
-                childItem.put("maTuyenLuong", child.getCode() != null ? child.getCode() : "");
-                childItem.put("rongLonNhat", child.getMaxWidth() != null ? child.getMaxWidth().doubleValue() : 0.0);
-                childItem.put("rongNhoNhat", child.getMinWidth() != null ? child.getMinWidth().doubleValue() : 0.0);
-                childItem.put("doSau", child.getDepth() != null ? child.getDepth().doubleValue() : 0.0);
+                childItem.put("daiLuong", child.getChannelLengthKilometers() != null ? child.getChannelLengthKilometers().doubleValue() : 0.0);
+                childItem.put("maTuyenLuong", child.getRouteCode() != null ? child.getRouteCode() : "");
+                childItem.put("rongLonNhat", child.getMaximumDesignWidthMeters() != null ? child.getMaximumDesignWidthMeters().doubleValue() : 0.0);
+                childItem.put("rongNhoNhat", child.getMinimumDesignWidthMeters() != null ? child.getMinimumDesignWidthMeters().doubleValue() : 0.0);
+                childItem.put("doSau", child.getDesignDepthMeters() != null ? child.getDesignDepthMeters().doubleValue() : 0.0);
                 childItem.put("maiDoc", child.getDesignSlope() != null ? child.getDesignSlope() : "");
-                childItem.put("doSauHienTai", child.getCurrentDepth() != null ? child.getCurrentDepth() : "");
-                childItem.put("khoiLuongNaoVetDuyTu", child.getDredgingVolume() != null
-                        ? child.getDredgingVolume().doubleValue() : 0.0);
-                childItem.put("congCong", Boolean.TRUE.equals(child.getPublicAccess()) ? "X" : "");
-                childItem.put("chuyenDung", Boolean.TRUE.equals(child.getDedicated()) ? "X" : "");
+                childItem.put("doSauHienTai", child.getCurrentDepthMeters() != null ? child.getCurrentDepthMeters() : "");
+                childItem.put("khoiLuongNaoVetDuyTu", child.getRouteLatestDredgingVolumeCubicMeters() != null
+                        ? child.getRouteLatestDredgingVolumeCubicMeters().doubleValue() : 0.0);
                 // Parent context for template back-reference
-                childItem.put("tenTram", nc.getChannelManagementStation() != null ? nc.getChannelManagementStation() : "");
-                childItem.put("soLuongTramParent", nc.getStationAmountt() != null ? nc.getStationAmountt().doubleValue() : 0.0);
-                childItem.put("dienTichParent", nc.getStationArea() != null ? nc.getStationArea().doubleValue() : 0.0);
-                childItem.put("thoiDiemSuaChuaParent", nc.getLatestStationRepairDate() != null ? nc.getLatestStationRepairDate().toString() : "");
+                childItem.put("tenTram", nc.getManagementStation() != null ? nc.getManagementStation() : "");
+                childItem.put("soLuongTramParent", nc.getStationCount() != null ? nc.getStationCount().doubleValue() : 0.0);
+                childItem.put("dienTichParent", nc.getStationAreaSquareMeters() != null ? nc.getStationAreaSquareMeters().doubleValue() : 0.0);
+                childItem.put("thoiDiemSuaChuaParent", nc.getLatestStationRepairMonth() != null ? nc.getLatestStationRepairMonth().toString() : "");
                 childItem.put("donViQLVH", donVi);
                 // Generic backward-compatible keys
-                childItem.put("name", child.getName() != null ? child.getName() : "");
+                childItem.put("name", child.getRouteName() != null ? child.getRouteName() : "");
                 childItem.put("unitId", "");
                 arrResult.add(childItem);
             }

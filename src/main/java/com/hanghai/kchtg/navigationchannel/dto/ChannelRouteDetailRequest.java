@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import com.hanghai.kchtg.common.entity.BaseEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,19 +11,18 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Response for a channel route detail row (#22-#38) of NavigationChannel (F-038).
+ * Create/update payload for a channel route detail row (#22-#38) of NavigationChannel (F-038).
+ * routeCode (#23) is system-generated/disabled — not accepted from the client (BR-038-03).
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldNameConstants
-public class ChannelRouteDetailResponse {
+public class ChannelRouteDetailRequest {
 
-    private UUID id;
     private Integer sequenceNo;
     private String routeClassification;
-    private String routeCode;
     private String routeName;
     private Integer routeType;
     private String turningBasinLocation;

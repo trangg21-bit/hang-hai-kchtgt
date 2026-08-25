@@ -1,225 +1,127 @@
----
-feature-id: M-003
-stage: final-quality-gate
-agent: engineering-code-reviewer
-verdict: Pass
-must-fix-count: 0
-should-fix-count: 4
-last-updated: 2026-07-01
----
+# Code Review Report — F-038 Tạo mới Luồng hàng hải (M-003)
 
-# Review Report — M-003 Khu Nước & VTS — Wave-2 Final Quality Gate
+- **Reviewer seat:** engineering-code-reviewer
+- **Reviewed commit:** `ec962a22` (HEAD) — M-003/F-038 71-field navigation channel implementation
+- **Contract:** `design/00-design-plan.md` (WO-BE-1..10, WO-FE-1..4), `_features/F-038.../feature-brief.md`, `_features/F-038.../ba/00-lean-spec.md`
+- **Date:** 2026-08-25
 
-## 1. Scope Reviewed
+## Verdict
 
-**Module:** M-003 — Quản lý tài sản KCHTGT — Khu nước & VTS
-**Wave:** 2 (frontend pages + defect fixes)
+**Changes-requested** — 1 medium functional defect (approval-status list filter silently no-ops, F1) + 4 minor convention/gap findings (F2–F6). Backend compiles, the touched report test passes, and the frontend typecheck introduces **no new errors** in the F-038 files; the failure is a wired-through filter that does not work end-to-end, plus enforced-convention violations.
 
-### Frontend artifacts reviewed (all files, full read):
-- **Page components (10):** LuongHangHaiList.tsx, LuongHangHaiForm.tsx, DeKeList.tsx, DeKeForm.tsx, CoSuaChuaList.tsx, CoSuaChuaForm.tsx, TramRadarList.tsx, TramRadarForm.tsx, HeThongVTSList.tsx, HeThongVTSForm.tsx
-- **Shared components (5):** AttachmentList.tsx, ApprovalActionBar.tsx, HistoryTimeline.tsx, ApprovalStatusBadge.tsx, CrudPageLayout.tsx
-- **Services (5):** luongHangHaiService.ts, deKeService.ts, coSuaChuaService.ts, tramRadarService.ts, heThongVtsService.ts
-- **Types (5):** luongHangHai.ts, deKe.ts, coSuaChua.ts, tramRadar.ts, heThongVts.ts
+## Verification executed (this session)
 
-### Backend artifacts reviewed (spot-check, full read of controllers):
-- **Controllers (5):** LuongHangHaiController.java, DeKeController.java, CoSuaChuaDongTauController.java, TramRadarController.java, HeThongVTSController.java
-- **Service C1/C2 guards:** Verified c1Actor.equals(self) guard in CoSuaChuaDongTauService.java, TramRadarService.java, HeThongVTSDataService.java (grep-confirmed)
-- **Mass-assignment protection:** Verified createdBy/updatedBy/server-side status across LuongHangHaiService.java, DeKeService.java (grep-confirmed)
-
-### Defect fixes verified:
-- **DEFECT-M003-UI-003:** AttachmentList upload guard added — confirmed in DeKeForm.tsx, CoSuaChuaForm.tsx, TramRadarForm.tsx with AttachmentList component usage
-- **DEFECT-M003-UI-004:** coSuaChuaService search params include trangThaiPheDuyet — confirmed at coSuaChuaService.ts line 32 (`trangThaiPheDuyet: params?.trangThaiPheDuyet`)
-
-### QA status:
-- QA Wave-2 verdict: **Pass** (234/234 tests, 0 failures)
-- Security review: Confirmed (C1/C2 self-approval guard in all 5 services)
-
-### Build verification:
-- **tsc --noEmit:** ✅ Passed (no errors)
-- **mvn compile:** ❌ Blocked by environment (requires Java 17, current env is JDK 25). This is a runtime environment issue, NOT a code defect. Maven enforcer plugin blocks build with Java 25 per project policy (JaCoCo/Mockito compatibility). The backend code itself compiles fine when run with JDK 17.
-
-### ai-kit-verify gate:
-- Cross-cutting dependencies: **All implemented** (0 pending)
-- Schema violations: HIGH findings present but **systemic across ALL modules** (M-002, M-004–M-021, M-999), not specific to M-003 Wave-2 changes. No M-003 code-specific HIGH findings.
-
----
-
-## 2. Overall Verdict
-
-**Pass**
-
-All required checks pass. No must-fix items remain. Wave-2 defect fixes verified. tsc passes. Backend code review confirms all follow-ups from Wave-1 are still valid as accepted non-blocking items. No new critical issues found in Wave-2.
-
----
-
-## 3. Requirement Alignment
-
-| Area | Finding | Severity |
+| Check | Command | Result |
 |---|---|---|
-| 5 entity CRUD pages | All 10 page components (5 List + 5 Form) fully implemented — not placeholders | Pass |
-| Approval workflow (C1 → UNDER_REVIEW → C2 → APPROVED) | Correctly implemented in all 5 Form components with proper state transitions | Pass |
-| Permission-gated CRUD actions | userPermissions.includes checks for `:create`, `:read`, `:update`, `:delete` on every List and Form | Pass |
-| Search/filter on List pages | Filter bars with keyword + entity-specific filters + approval status dropdown on all 5 List pages | Pass |
-| Soft-delete guard (APPROVED only) | Delete action on List pages only visible when status is APPROVED | Pass |
-| AttachmentList upload guard (DEFECT fix) | Confirmed in DeKeForm.tsx, CoSuaChuaForm.tsx, TramRadarForm.tsx | Pass |
-| coSuaChuaService trangThaiPheDuyet in search (DEFECT fix) | Confirmed at coSuaChuaService.ts line 32 | Pass |
+| Backend compile | `mvn -DskipTests compile` (MAVEN_HOME `C:\my-tools\apache-maven-3.9.16`) | **PASS** (exit 0) |
+| Touched test | `mvn -Dtest=F151ReportHandlerTest test` | **PASS** (exit 0) |
+| Frontend typecheck | `npx tsc --noEmit -p tsconfig.app.json` (frontend/) | Baseline RED (~90 pre-existing error files, per knowledge `frontend-tsc-baseline-red--63404d`); **zero matches** for the F-038 touched files (`pages/navigationchannel/*`, `types/navigationChannel.ts`, `services/navigationChannelService.ts`) in the full output → no new errors |
+| Review area anchors | all cited below | opened + read this session |
 
----
+## Findings (anchored)
 
-## 4. Architecture Alignment
+### F1 — MEDIUM (functional defect): approval-status list filter broken end-to-end (param-name case mismatch)
+The list page filters by approval status through `search()`:
 
-| Area | Finding | Severity |
+- FE sends the query param **`approvalStatus`** — `navigationChannelService.ts` (search params object, `approvalStatus: params?.approvalStatus`), used at `NavigationChannelList.tsx:145` (main list load) and `NavigationChannelList.tsx:172` (per-tab counts, `search({ approvalStatus: s, page: 0, size: 1 })`).
+- BE binds the param as **`ApprovalStatus`** — `NavigationChannelController.java:146` `@RequestParam(name = "ApprovalStatus", required = false)`.
+
+Spring MVC binds `@RequestParam(name=...)` case-sensitively against the request parameter map; the value is therefore always `null`, the repository predicate `(:ApprovalStatus IS NULL OR ...)` (`NavigationChannelRepository.java:39`) always matches, and the StatusTabs filter + tab counts silently return ALL records. Violates design §9 AC-038-01 (DS/Lọc trên #47) and WO-BE-10 oracle ("Test filter DS/Lọc").
+**Fix:** align one side — either FE param `ApprovalStatus` or BE `@RequestParam(name = "approvalStatus")`.
+
+### F2 — MINOR (enforced convention): non-diacritic Vietnamese error message
+`ApprovalRequest.java:21` — `@NotBlank(message = "Trang thai khong duoc de trong")`. Mandates in AGENTS.md ("message/error text PHẢI tiếng Việt có dấu") and design §13 are violated. Fix to `"Trạng thái không được để trống"`.
+
+### F3 — MINOR (enforced convention): hardcoded font-size outside token scale
+`NavigationChannelForm.tsx:1027` — `fontSize: 12`. Token scale is 11/13/15/20/28 (AGENTS.md semantic-token rules; design §13). Use a token (`fontSizeSm`/`fontSizeMd`).
+
+### F4 — MINOR (functional gap): `routeCode` (#23) is never populated, and F151 report column depends on it
+`ChannelRouteDetailRequest.java` correctly excludes `routeCode` (client write blocked, BR-038-03), but `NavigationChannelService.toRouteDetail` (`NavigationChannelService.java:696-716`) never generates or assigns it either → column stays `NULL` for every new row. Consequence: `F151ReportHandler.java:213` `childItem.put("maTuyenLuong", child.getRouteCode() ...)` always renders empty in the F-151 report. Design §4.2 marks #23 "tự sinh/disabled" — the "tự sinh" half is missing.
+**Fix (with BA/SA):** generate `routeCode` per route detail (e.g. `TL.` + seq) in `toRouteDetail`, or explicitly accept NULL and remove the "tự sinh" wording.
+
+### F5 — LOW-MEDIUM (report regression from approved schema drop): F-151 loses Công cộng/Chuyên dùng classification
+Child rows no longer emit `congCong`/`chuyenDung` (`F151ReportHandler.java:205-231`); the parent row hardcodes them empty (`F151ReportHandler.java:197`). The old handler derived per-child `congCong` from `publicAccess`/`dedicated` (old assertions removed in `F151ReportHandlerTest.java`). Direct consequence of the design-approved drop of `cong_cong`/`chuyen_dung` (`00-design-plan.md` §4.2 DROP) — but the design's risk table (§12) never named this report, so the dev only fixed compilation. `routeType` (#25, 1 = Công cộng, 2 = Chuyên dùng) could preserve the classification but is not mapped.
+**Action:** BA/SA confirm whether F-151 must keep the classification; if yes, map `routeType` → `congCong`/`chuyenDung` in the handler.
+
+### F6 — MINOR (enforced convention): hardcoded enum string
+`NavigationChannelService.java:389` and `:399` pass literal `"REJECTED"` into `approvalService.approveC1/C2`. Explicit rule (AGENTS.md, design §13): use `ApprovalStatus.REJECTED.name()`.
+
+### F7 — INFO (deviation, accepted): response omits #58-#71
+`NavigationChannelResponse.java` has no `relatedInfrastructure*/operationPlan*/maintenancePlan*/incident*` fields; AC-038-08 oracle says "response trả null có kiểm soát". FE type (`types/navigationChannel.ts`) declares them optional → detail UI renders controlled-empty. Acceptable only because no data source exists yet; document in FE detail blocks rather than inventing placeholders.
+
+### F8 — INFO (design-accepted risk): codegen count includes soft-deleted rows
+`NavigationChannelRepository.java:20` `countByOrgUnitId` counts all rows including soft-deleted; the unique partial index is `WHERE deleted_at IS NULL`; the retry-once on `DataIntegrityViolationException` (`NavigationChannelService.java:137-141`) covers the collision. Note: the catch is broader than the code collision (any `DataIntegrityViolationException`, incl. child FK violations, is swallowed and retried in a possibly inconsistent persistence context) — matches the design risk table, low exposure.
+
+## Area-by-area pass/evidence (review dimensions requested)
+
+| Area | Verdict | Anchors |
 |---|---|---|
-| Frontend component reuse | All 5 pages use shared CrudPageLayout, ApprovalStatusBadge, AttachmentList, ApprovalActionBar, HistoryTimeline | Pass |
-| Service layer contracts | All 5 services follow identical CRUD + Approval pattern | Pass |
-| Type consistency | All 5 type files define consistent interfaces | Pass |
-| BE package boundaries | 5 separate bounded-context packages — no cross-domain FK | Pass |
-| @Valid annotations on controllers | Verified present on all @RequestBody in all 5 controllers | Pass |
-| Mass-assignment protection | createdBy/updatedBy set server-side from Authentication.getName() | Pass |
-| C1/C2 self-approval guard | Verified in CoSuaChuaDongTauService, TramRadarService, HeThongVTSDataService | Pass |
-| ApprovalActionBar self-check | ApprovalActionBar.tsx line 45 disables C2 button when currentUserId === nguoiPheDuyetC1 | Pass |
+| (a) Data scope | **PASS** | `@DataScope` class-level `NavigationChannelController.java:21`; `@Filter(orgUnitFilter)` `NavigationChannel.java:22`; write-scope `orgUnitScopeService.currentUserScope().allows(...)` on create `NavigationChannelService.java:85-86` and on orgUnit change `:212-213`; `Scope.allows(null)` null-safe `OrgUnitScopeService.java:74-76`; orgUnitId never NULL: `@NotNull` `NavigationChannelCreateRequest.java:31` + migration fail-closed backfill + `SET NOT NULL` (V20260825120000 step 3); `orgUnitName` via `OrgUnitCacheService` `NavigationChannelService.java:553,667` |
+| (b) Approval 4-eyes + state machine + session-sourced | **PASS** | `submit()` writes `submittedAt/By` from session `InfrastructureApprovalService.java:139-141`; `approveC1/C2` write `level1/2ApprovalContent` from decision/reason `:121-122,130-131,178-180,188-189` (never from payload); 4-eyes C1≠creator `:166-171`, C2≠C1 `:163-166`, C2≠creator `:168-171`; Rule 14 `:98-109`; state machine DRAFT→PENDING_APPROVAL→APPROVED_LEVEL1→APPROVED + REJECTED_LEVEL1/2 matches design §6.3; create sets DRAFT explicitly `NavigationChannelService.java:126` (overrides `BaseApprovableEntity.java:87-90` PROPOSED default); new endpoints `NavigationChannelController.java:110-141`; history guard `navigationchannel:history` `:148-151` |
+| (c) Enums ORDINAL SMALLINT + @FieldNameConstants + no hardcoded strings | **PASS** (except F6) | `ConditionStatus` ORDINAL SMALLINT `NavigationChannel.java:44-46`; `GisGeometryType` `:92-94`; `ApprovalStatus`/`RecordSecurityLevel` ORDINAL SMALLINT `BaseApprovableEntity.java:28-31,44-46`; `@FieldNameConstants` on all new/changed entities+DTOs; `EntityFields.CREATED_AT` used `NavigationChannelService.java:172`; F6 is the single literal-enum-string violation |
+| (d) English identifiers / Vietnamese UI text | **PASS** (except F2) | All column/field/param identifiers English (checked entity, DTO, repository, service, `types/navigationChannel.ts`, service layer); UI/messages diacritic Vietnamese (controller toasts, service exceptions, FE labels); F2 is the single offender; `lyDo` at `NavigationChannelForm.tsx:553` is the shared `ApprovalActionBar.tsx:73,78` pre-existing contract, not introduced here |
+| (e) Trim inputs + audit operatorId | **PASS** | `trimToNull` on every string field `NavigationChannelService.java:98-127,258-296`; search params trimmed `:486-493`; attachment file names/paths trimmed `:732-752`; `setUpdatedBy(updatedBy)` `:273`; `softDelete(operatorId)` `:336-344`; `uploadedBy(userId)` `:744`; `createdBy` via `@CreatedBy` auditing `BaseEntity.java:104-107` |
+| (f) Migration renames/backfill | **PASS** | 9 guarded renames (V20260825120000 step 1); ADD 10 Excel fields + `condition_status SMALLINT NOT NULL DEFAULT 0` + 4 approval columns (step 2); org_unit_id backfill from `users.org_unit_id` with `RAISE EXCEPTION` fail-closed + `SET NOT NULL` (step 3); `channel_code` backfill `'LHH' || LPAD(...,6,'0')` per org unit (step 6); 10 DROPs (step 7); `ux_navigation_channel_org_code UNIQUE (org_unit_id, channel_code) WHERE deleted_at IS NULL` + dashboard index rebuilt + `idx_navigation_channel_org_unit` (step 8); `chi_tiet_tuyen_luong`→`channel_route_detail` guarded rename + 16 column renames + 3 guarded String→NUMERIC casts with regex validation (step 9); `navigation_channel_coordinate` + FK CASCADE + index (step 10); 4 approval columns on the other 4 `BaseApprovableEntity` tables (step 11) |
+| (g) DTO excludes #47-#71 | **PASS** | Create/Update requests carry #1-#46 only (no `channelCode`, no workflow/audit/read-only fields) — `NavigationChannelCreateRequest.java`, `NavigationChannelUpdateRequest.java`; 3 required fields `@NotNull` with diacritic messages; child DTOs match §4.2/4.3; response carries #47-#57 read-only (F7 caveat) |
+
+## Caller ripple-fixes — in-scope judgement
+
+**In scope, correctly scoped.** Both were mandatory compile fixes caused by the F-038 entity renames:
+
+- `KchtGis155Service.java:661` — `getNote()` → `getNotes()` (rename `note`→`notes`); 1 line, no behavior change.
+- `F151ReportHandler.java` — field renames only (`getLength`→`getChannelLengthKilometers`, `getDredgingVolume`→`getRouteLatestDredgingVolumeCubicMeters`, `getChannelManagementStation`→`getManagementStation`, `getStationAmountt`→`getStationCount`, `getStationArea`→`getStationAreaSquareMeters`, `getLatestStationRepairDate`→`getLatestStationRepairMonth`) + test rewritten to the new model. No unrelated logic touched. The only behavioral consequence is F5 (classification data loss from the approved column drop) — flagged for BA/SA.
+
+## Inspected scope / not covered
+
+- Read this session: design plan (full, 291 lines), migration SQL (full, 333 lines), `NavigationChannel.java`, `ChannelRouteDetail.java`, `NavigationChannelCoordinate.java` + repository, `NavigationChannelRepository.java`, `BaseEntity.java`, `BaseApprovableEntity.java`, `ApprovableEntity.java`, `InfrastructureApprovalService.java`, `NavigationChannelService.java` (full, 755 lines), `NavigationChannelController.java`, all 8 DTOs, `OrgUnitScopeService.java`, `FieldWriteGuard.java` (partial), `KchtGis155Service.java` + `F151ReportHandler.java` diffs + test, `types/navigationChannel.ts`, `services/navigationChannelService.ts`, list/form pages (spot-checked via grep + targeted reads).
+- NOT executed: full `mvn test` suite (only the touched test), Flyway migration against a live PostgreSQL (no DB available), runtime/UI behavior (no server run — prohibited), full visual review of the 1078-line form. The status-filter defect (F1) and report regression (F5) are code-read conclusions, not runtime reproductions.
 
 ---
 
-## 5. Code Quality Findings
+# Re-check — 2026-08-25 (post-fix wave)
 
-### Frontend — Pass
+## Verdict (re-check)
 
-- **Type safety:** All page components import and use strongly-typed interfaces from service/type modules.
-- **Error handling:** Consistent try/catch with user-friendly Vietnamese messages across all 10 components.
-- **No debug code:** Zero `console.log`/`console.debug` in any M-003 page component or shared component (grep-confirmed).
-- **Vietnamese UI text:** All labels, buttons, placeholders, messages in Vietnamese.
-- **No placeholder components:** All 10 page components contain full implementations.
+**Pass** — every actionable finding of the original review is closed with current file:line anchors; the one remaining item (F-151 `congCong`/`chuyenDung` classification, original F5) is unchanged and stays an **open, un-decided BA/SA sign-off** — the fix wave introduced **no silent behavior change** to F-151 classification. Backend compiles (`mvn -DskipTests compile` → BUILD SUCCESS) and the new regression suite passes (6/6). Fix wave is present as uncommitted working-tree changes (HEAD `802ee5f4`, M-024 scope) — not yet committed; the review below covers the working tree.
 
-### Backend — Pass with Observations
+## Verification executed (re-check)
 
-- **LuongHangHaiController:** Defensive null-check on Authentication (`!= null ? ... : "system"`) at lines 32, 56 — slightly inconsistent with DeKe/TramRadar/VTS. Not a defect in pre-authenticated context. **Observation.**
-- **CoSuaChuaDongTauController:** Wraps every handler in try/catch returning 400 — functionally equivalent to LuongHangHai/DeKe (global @ControllerAdvice handles exceptions). **Observation.**
-- **TramRadarController:** Same try/catch pattern. **Observation.**
-- **HeThongVTSController:** Uses constructor injection (no @RequiredArgsConstructor) while others use @RequiredArgsConstructor. **Observation.**
-
----
-
-## 6. Security Findings
-
-| Check | Result | Evidence |
+| Check | Command / method | Result |
 |---|---|---|
-| No secrets/credentials | Pass | No keys, tokens, or credentials found |
-| Input validation (@Valid) | Pass | @Valid on all @RequestBody in all 5 controllers |
-| @PreAuthorize on every endpoint | Pass | All 5 controllers carry @PreAuthorize with canonical permission codes |
-| C1/C2 self-approval guard | Pass | c1Actor.equals(self) in CoSuaChua, TramRadar, VTS services |
-| Mass-assignment protection | Pass | createdBy/updatedBy set server-side |
-| approvalStatus server-derived | Pass | Set to PROPOSED on create, never from request |
-| Error message leakage | Low observation | CoSuaChua/TramRadar return `e.getMessage()` — may leak internal detail |
-| Audit logging | Pass | PheDuyetLichSu saved for every approval transition |
-| RBAC deny-path | Pass | M003RbacSecurityTest (20 tests) — 10 allow + 10 deny |
-| Permission checks on frontend | Pass | userPermissions.includes for every CRUD button |
-| Approval status guards | Pass | Edit only on PROPOSED, Delete only on APPROVED |
+| Backend compile | `C:\my-tools\apache-maven-3.9.16\bin\mvn.cmd -DskipTests compile` | **BUILD SUCCESS** (exit 0; classes up-to-date — matches the fresh compile recorded by the backend-dev stage) |
+| Regression suite | `C:\my-tools\apache-maven-3.9.16\bin\mvn.cmd -Dtest=NavigationChannelServiceTest test` | **PASS** — Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 |
+| F1 binding chain | grep `RequestParam` / `approvalStatus` / `:ApprovalStatus` across controller, repository, FE service | 0 remaining capital-A param/JPQL binding; full chain lowercase end-to-end |
+| F2 / F3 / F6 anchors | grep `NotBlank` / `fontSize:\s*12` / `REJECTED` | each verified at exact lines below |
+| BR-038-03 block | read `NavigationChannelService.java:690-719` + `ChannelRouteDetailRequest.java` | routeCode generated server-side; client write still blocked |
+| F-151 state | read `F151ReportHandler.java:185-240` + grep `congCong\|chuyenDung\|maTuyenLuong` | unchanged — parent hardcodes empties (`:197-198`), children emit neither (`:205-235`), no `routeType` mapping; child `maTuyenLuong` at `:218` (pre-fix anchor `:213` in original F4 text refers to the ec962a22-era tree, shifted by the field-rename fix wave) |
+
+## Per-finding closure
+
+| Finding | Original anchor | Re-check anchor (current working tree) | Verdict |
+|---|---|---|---|
+| **F1** approvalStatus camelCase binding (BLOCKING) | `NavigationChannelController.java:146` `name="ApprovalStatus"`; repo predicate `:ApprovalStatus` (`NavigationChannelRepository.java:39`) | `NavigationChannelController.java:146` `@RequestParam(name = "approvalStatus", ...) String approvalStatus` → forwarded `:151`; `NavigationChannelService.java:184-196` converts String → `ApprovalStatus.valueOf()` (guarded try/catch; invalid value → `log.debug` + filter skipped, no exception); `NavigationChannelRepository.java:36` `(:approvalStatus IS NULL OR l.approvalStatus = :approvalStatus)` + `:43` `@Param("approvalStatus") ApprovalStatus approvalStatus`; FE `frontend/src/services/navigationChannelService.ts:36` sends `approvalStatus`. Remaining capital-A occurrences are enum type / derived method name `findByApprovalStatusAndDeletedAtIsNull` only. Regression test `NavigationChannelServiceTest.java:85-89` MockMvc `?approvalStatus=PROPOSED` → **PASS** | **CLOSED** |
+| **F2** non-diacritic message | `ApprovalRequest.java:21` `"Trang thai khong duoc de trong"` | `ApprovalRequest.java:21` `@NotBlank(message = "Trạng thái không được để trống")` | **CLOSED** |
+| **F3** hardcoded `fontSize: 12` | `NavigationChannelForm.tsx:1027` | grep `fontSize:\s*12\|fontSize:\s*1[0-9]` in `NavigationChannelForm.tsx` → **0 matches**; token `fontSizeSm` imported `:61`, used `:1028` | **CLOSED** |
+| **F4 / BR-038-03** routeCode never populated | `NavigationChannelService.java:696-716` no assignment | `NavigationChannelService.java:700-709` — `toRouteDetail`: `sequenceNo == null → index + 1` (`:704-706`), `routeCode = channelCode + "-" + String.format("%02d", sequenceNo)` (`:709`); client write still blocked — `ChannelRouteDetailRequest.java:15,22` has no `routeCode` field. Side benefit: `F151ReportHandler.java:218` (current tree; child `childItem.put("maTuyenLuong", child.getRouteCode() ...)`) now renders real codes. Regression tests `NavigationChannelServiceTest.java:135,147-148` (generation + index fallback) → **PASS** | **CLOSED** |
+| **F5** F-151 `congCong`/`chuyenDung` classification (UN-DECIDED) | `F151ReportHandler.java:197,205-231` — parent hardcodes empties, children emit neither | **Unchanged**: `F151ReportHandler.java:197-198` parent `congCong`/`chuyenDung` = `""`; child loop `:205-235` emits neither key and maps no `routeType` (#25). Fix wave touched only the documented field renames. No silent behavior change | **STILL OPEN — un-decided; BA/SA sign-off required** (keep as open finding; do not close without a product decision) |
+| **F6** hardcoded `"REJECTED"` | `NavigationChannelService.java:389,399` | `NavigationChannelService.java:390` + `:400` — `approvalService.approveC1/C2(..., ApprovalStatus.REJECTED.name(), ...)`; grep `REJECTED` → exactly 2 matches, both enum-based | **CLOSED** |
+| **F7** INFO — response omits #58-#71 | accepted deviation | unchanged, still accepted (no data source exists) | unchanged (INFO) |
+| **F8** INFO — codegen count includes soft-deleted | design-accepted risk | unchanged, retry-once still covers collision | unchanged (INFO) |
+
+## Open items / handoff
+
+- **F-151 classification (original F5, brief "F6")** — open product decision, owner **BA/SA**: either accept the loss per the design-approved drop of `cong_cong`/`chuyen_dung` (00-design-plan §4.2) or map `routeType` (#25, 1 = Công cộng, 2 = Chuyên dùng) → `congCong`/`chuyenDung` in `F151ReportHandler`. Code must not be changed on this point until the sign-off lands; verified unchanged in this re-check.
+- Not re-executed in this re-check: full `mvn test` suite, Flyway migration against a live PostgreSQL, runtime/UI behavior. F1 is now additionally backed by an executed MockMvc binding test (not merely a code-read conclusion).
 
 ---
 
-## 7. Performance/Reliability/Operability Findings
+# Sign-off addendum — 2026-08-25 (BA/SA decision on F-151 classification)
 
-| Area | Finding | Severity |
-|---|---|---|
-| Pagination | Correct PageRequest usage on list/search endpoints | Pass |
-| Loading states | Spin/Empty error states on all List and Form pages | Pass |
-| Retry on error | Retry button on List pages when fetchData fails | Pass |
-| Form submission guard | isSubmitting flag prevents double-submit | Pass |
-| Popconfirm on delete | All List pages use Popconfirm before delete | Pass |
-| History retry | HistoryTimeline onRetry callback on all 5 Forms | Pass |
-| HeThongVTSController no @Slf4j | Missing logger — inconsistent with CoSuaChua/TramRadar | Observation |
+## Finding F5 → CLOSED-BY-SIGNOFF
 
----
+**Decision (user / BA/SA, chốt 2026-08-25):** **ACCEPT** the loss of `congCong`/`chuyenDung` in the F-151 report — per `design/00-design-plan.md` §4.2 (`docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/design/00-design-plan.md:134` — **DROP:** `cong_cong`, `chuyen_dung`, `pham_vi_bao_ve_luong`; corroborated at `:51` table `a4` and `:173` migration step 9). **Do NOT map** `routeType` (#25) to these two columns. Route classification now lives in `route_classification` (#22) and `route_type` (#25).
 
-## 8. Test Adequacy Findings
-
-| Test class | Count | Status |
-|---|---|---|
-| LuongHangHaiControllerTest | 14 | Pass |
-| LuongHangHaiServiceTest | 26 | Pass |
-| LuongHangHaiEntityTest | 11 | Pass |
-| DeKeControllerTest | 12 | Pass |
-| DeKeServiceTest | 28 | Pass |
-| DeKeEntityTest | 10 | Pass |
-| CoSuaChuaDongTauControllerTest | 18 | Pass |
-| CoSuaChuaDongTauServiceTest | 26 | Pass |
-| CoSuaChuaDongTauEntityTest | 15 | Pass |
-| TramRadarControllerTest | 10 | Pass |
-| TramRadarServiceTest | 11 | Pass |
-| TramRadarEntityTest | 6 | Pass |
-| HeThongVTSControllerTest | 10 | Pass |
-| HeThongVTSDataServiceTest | 11 | Pass |
-| HeThongVTSEntityTest | 6 | Pass |
-| M003RbacSecurityTest | 20 | Pass |
-| **TOTAL** | **234** | **Pass** |
-
-Note: Backend-only QA per convention. Frontend has no unit tests — accepted per module QA scope. tsc type-check passes as structural verification.
-
----
-
-## 9. Documentation Adequacy Findings
-
-- BA spec (ba/), SA architecture (sa/), tech-lead plan (tech-lead/): Present
-- DESIGN.md, QA reports (w1, w2), Wave-1 review report: Present with detailed matrices
-- Module _state.md and feature briefs: Present
-- Adequate for Phase-1 enterprise handoff.
-
----
-
-## 10. Must-Fix Items
-
-**None.** All required checks pass.
-
----
-
-## 11. Should-Fix Items
-
-| # | Item | Why it matters | Required action | Owner |
-|---|---|---|---|---|
-| 1 | **HeThongVTSForm.tsx: `name="attachments"` on Form.Item without Form.Item children** | The Form.Item wraps AttachmentList but `name="attachments"` suggests form-binding; AttachmentList is not a standard Ant Design Form.Item child — it does not integrate with form validation or submission. | Move `name="attachments"` off the Form.Item wrapper or confirm it's intentionally not part of form submission. | Developer |
-| 2 | **Controller style inconsistency (try/catch vs. global @ControllerAdvice)** | CoSuaChuaDongTauController and TramRadarController use per-handler try/catch while LuongHangHaiController and DeKeController let exceptions bubble. Mixed patterns make maintenance harder. | Standardize to one pattern (prefer global @ControllerAdvice). | Developer |
-| 3 | **HeThongVTSController missing @RequiredArgsConstructor / @Slf4j** | Uses constructor injection (different from @RequiredArgsConstructor on 4 of 5 controllers) and has no @Slf4j logger. | Add @RequiredArgsConstructor for consistency; consider adding @Slf4j. | Developer |
-| 4 | **Error message leakage in CoSuaChuaDongTauController & TramRadarController** | `e.getMessage()` returned directly to client in error responses. In production may leak stack traces or internal identifiers. | Use generic error message with logged exception details server-side. | Developer |
-
----
-
-## 12. Questions / Clarifications
-
-| Question | Context |
-|---|---|
-| Maven compile blocked by Java version — confirmed JDK 17 is available for CI/CD? | mvn compile fails with JDK 25 in current environment. The project policy mandates JDK 17 for JaCoCo/Mockito compatibility. This is an environment issue, not a code defect. |
-| CoSuaChua search returns non-paginated List (CoSuaChuaList uses `total = items.length`) | Intentional — CoSuaChua has fewer records and uses simple list endpoint. Confirmed consistent with CoSuaChuaService search returning `List<>` not `Page<>`. |
-
----
-
-## 13. Follow-up Recommendations (from Wave-1, still accepted)
-
-1. **No live-DB integration tests** — H2/mock only. Add PostgreSQL-backed integration tests pre-Phase-2.
-2. **GeoServer / real-time VTS integration** — out of Phase-1 scope; design in Phase-2.
-3. **PheDuyetLichSu updatable on cosuachua + one other entity** — minor technical debt before Phase-2.
-4. **History-permission dead code** — LOW item from security; remove in next refactor.
-5. **Broad assertThrows in some deny tests** — LOW QA finding; tighten exception type assertions.
-6. **Error message leakage in CoSuaChuaDongTauController** — LOW security observation (moved to should-fix item #4 above).
-
----
-
-## 14. Final Review Summary
-
-M-003 Khu Nước & VTS Wave-2 is **ready for merge**. All 30 features across 5 entity groups are fully implemented with 10 complete page components (5 List + 5 Form). Both Wave-2 defects are verified fixed. The frontend codebase demonstrates consistent patterns: proper type usage, error handling, permission checks, approval flow correctness, no debug code, and proper Vietnamese UI text. Backend controllers have @Valid on all request bodies, @PreAuthorize on every endpoint, mass-assignment protection for createdBy/updatedBy, and C1/C2 self-approval guards. The 234 backend tests pass with zero failures. The tsc type-check passes cleanly.
-
-Four minor should-fix items identified (style inconsistencies and one form field naming issue) — all accepted as non-blocking. Six Wave-1 follow-ups remain as accepted technical debt for Phase-2.
-
----
-
-## 14b. Cross-Feature Impact
-
-No must-fix items — no cross-feature propagation required.
-
-## 14c. Architecture Drift
-
-All 5 packages follow the bounded-context pattern approved in SA design. No FK cross-domain dependencies found. No new drift detected in Wave-2.
-
----
-
-**Verdict:** Pass — M-003 Wave-2 is ready for merge. Follow-ups tracked for Phase-2 sprint planning.
+- **Finding F5** (original review; "F6" in the dispatch brief — F-151 `congCong`/`chuyenDung` classification loss) → **CLOSED-BY-SIGNOFF**, 2026-08-25. No further review action required.
+- **`F151ReportHandler.java` stays as-is — NO code change.** Parent row keeps emitting empty `congCong`/`chuyenDung` keys (`:197-198`) for old-template compatibility; child rows emit neither key. This is now a decided, accepted loss, not an open defect.
+- Behavior was verified unchanged in the 2026-08-25 re-check (no silent behavior change); the sign-off resolves the previously un-decided item.
+- Remaining non-blocking items from the original review (F7/F8, both INFO) are unaffected by this decision.

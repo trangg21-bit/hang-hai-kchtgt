@@ -658,7 +658,7 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(nc.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Luồng hàng hải")
                                 .location("")
-                                .diaChiChiTiet(nc.getNote() != null ? nc.getNote() : "")
+                                .diaChiChiTiet(nc.getNotes() != null ? nc.getNotes() : "")
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, nc.getSpatialId(), objectType,

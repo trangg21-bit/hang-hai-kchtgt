@@ -63,45 +63,40 @@ class F151ReportHandlerTest {
         NavigationChannel nc = NavigationChannel.builder()
                 .id(ncId)
                 .channelName("Luồng hàng hải A")
-                .channelManagementStation("Trạm QL luồng số 1")
+                .managementStation("Trạm QL luồng số 1")
                 .orgUnitId(orgUnitId)
-                .stationAmountt(3)
-                .stationArea(new BigDecimal("500"))
-                .latestStationRepairDate(null)
+                .stationCount(3)
+                .stationAreaSquareMeters(new BigDecimal("500"))
+                .latestStationRepairMonth(null)
                 .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
-                .stationStaffAmount(2)
-                .clearanceHeight("10m")
+                .stationStaffCount(2)
                 .build();
 
         // Two ChannelRouteDetail children
         ChannelRouteDetail child1 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .name("Tuyến 1")
-                .code("TL.01")
-                .length(new BigDecimal("15.5"))
-                .maxWidth(new BigDecimal("100"))
-                .minWidth(new BigDecimal("80"))
-                .depth(new BigDecimal("12"))
-                .designSlope("1:3")
-                .currentDepth("11.5m")
-                .dredgingVolume(new BigDecimal("5000"))
-                .publicAccess(true)
-                .dedicated(false)
+                .routeName("Tuyến 1")
+                .routeCode("TL.01")
+                .channelLengthKilometers(new BigDecimal("15.5"))
+                .maximumDesignWidthMeters(new BigDecimal("100"))
+                .minimumDesignWidthMeters(new BigDecimal("80"))
+                .designDepthMeters(new BigDecimal("12"))
+                .designSlope(new BigDecimal("1.3"))
+                .currentDepthMeters(new BigDecimal("11.5"))
+                .routeLatestDredgingVolumeCubicMeters(new BigDecimal("5000"))
                 .build();
 
         ChannelRouteDetail child2 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .name("Tuyến 2")
-                .code("TL.02")
-                .length(new BigDecimal("8.3"))
-                .maxWidth(new BigDecimal("90"))
-                .minWidth(new BigDecimal("70"))
-                .depth(new BigDecimal("10"))
-                .designSlope("1:4")
-                .currentDepth("9.8m")
-                .dredgingVolume(new BigDecimal("3000"))
-                .publicAccess(false)
-                .dedicated(true)
+                .routeName("Tuyến 2")
+                .routeCode("TL.02")
+                .channelLengthKilometers(new BigDecimal("8.3"))
+                .maximumDesignWidthMeters(new BigDecimal("90"))
+                .minimumDesignWidthMeters(new BigDecimal("70"))
+                .designDepthMeters(new BigDecimal("10"))
+                .designSlope(new BigDecimal("1.4"))
+                .currentDepthMeters(new BigDecimal("9.8"))
+                .routeLatestDredgingVolumeCubicMeters(new BigDecimal("3000"))
                 .build();
 
         // Mocks
@@ -149,15 +144,11 @@ class F151ReportHandlerTest {
         assertEquals("", c1.get("STT"));
         assertEquals("Tuyến 1", c1.get("Chỉ tiêu"));
         assertEquals(new BigDecimal("15.5"), c1.get("Dài (km)"));
-        assertEquals("X", c1.get("Công cộng"));
-        assertEquals("", c1.get("Chuyên dùng"));
 
         // ---- Child row 2 (index 2) ----
         Map<String, Object> c2 = rows.get(2);
         assertEquals("", c2.get("STT"));
         assertEquals("Tuyến 2", c2.get("Chỉ tiêu"));
-        assertEquals("", c2.get("Công cộng"));
-        assertEquals("X", c2.get("Chuyên dùng"));
 
         // ---- Summary ----
         Map<String, Object> summary = response.getSummary();
@@ -174,43 +165,38 @@ class F151ReportHandlerTest {
         NavigationChannel nc = NavigationChannel.builder()
                 .id(ncId)
                 .channelName("Luồng hàng hải A")
-                .channelManagementStation("Trạm QL luồng số 1")
+                .managementStation("Trạm QL luồng số 1")
                 .orgUnitId(orgUnitId)
-                .stationAmountt(3)
-                .stationArea(new BigDecimal("500"))
-                .latestStationRepairDate(LocalDate.of(2025, 3, 15))
-                .stationStaffAmount(2)
-                .clearanceHeight("10m")
+                .stationCount(3)
+                .stationAreaSquareMeters(new BigDecimal("500"))
+                .latestStationRepairMonth(LocalDate.of(2025, 3, 15))
+                .stationStaffCount(2)
                 .build();
 
         ChannelRouteDetail child1 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .name("Tuyến 1")
-                .code("TL.01")
-                .length(new BigDecimal("15.5"))
-                .maxWidth(new BigDecimal("100"))
-                .minWidth(new BigDecimal("80"))
-                .depth(new BigDecimal("12"))
-                .designSlope("1:3")
-                .currentDepth("11.5m")
-                .dredgingVolume(new BigDecimal("5000"))
-                .publicAccess(true)
-                .dedicated(false)
+                .routeName("Tuyến 1")
+                .routeCode("TL.01")
+                .channelLengthKilometers(new BigDecimal("15.5"))
+                .maximumDesignWidthMeters(new BigDecimal("100"))
+                .minimumDesignWidthMeters(new BigDecimal("80"))
+                .designDepthMeters(new BigDecimal("12"))
+                .designSlope(new BigDecimal("1.3"))
+                .currentDepthMeters(new BigDecimal("11.5"))
+                .routeLatestDredgingVolumeCubicMeters(new BigDecimal("5000"))
                 .build();
 
         ChannelRouteDetail child2 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .name("Tuyến 2")
-                .code("TL.02")
-                .length(new BigDecimal("8.3"))
-                .maxWidth(new BigDecimal("90"))
-                .minWidth(new BigDecimal("70"))
-                .depth(new BigDecimal("10"))
-                .designSlope("1:4")
-                .currentDepth("9.8m")
-                .dredgingVolume(new BigDecimal("3000"))
-                .publicAccess(false)
-                .dedicated(true)
+                .routeName("Tuyến 2")
+                .routeCode("TL.02")
+                .channelLengthKilometers(new BigDecimal("8.3"))
+                .maximumDesignWidthMeters(new BigDecimal("90"))
+                .minimumDesignWidthMeters(new BigDecimal("70"))
+                .designDepthMeters(new BigDecimal("10"))
+                .designSlope(new BigDecimal("1.4"))
+                .currentDepthMeters(new BigDecimal("9.8"))
+                .routeLatestDredgingVolumeCubicMeters(new BigDecimal("3000"))
                 .build();
 
         when(navigationChannelRepository.findByDeletedAtIsNull(any(org.springframework.data.domain.Sort.class)))
@@ -251,7 +237,6 @@ class F151ReportHandlerTest {
                 "Child row should have maTuyenLuong = TL.01");
         assertTrue(r1.containsKey("daiLuong"),
                 "Child row must contain key 'daiLuong'");
-        assertEquals("X", r1.get("congCong"));
 
         // Child row 2 (index 2) — template field checks
         Map<String, Object> r2 = result.get(2);
@@ -259,8 +244,6 @@ class F151ReportHandlerTest {
                 "Child row should have maTuyenLuong = TL.02");
         assertTrue(r2.containsKey("daiLuong"),
                 "Child row must contain key 'daiLuong'");
-        assertEquals("", r2.get("congCong"),
-                "Child with publicAccess=false should have empty string");
     }
 
     // ---------------------------------------------------------------
