@@ -1666,8 +1666,8 @@ export default function PortListPage() {
         key: 'portName',
         label: 'Tên cảng biển',
         dataIndex: 'portName',
-        width: 190,
-        fixed: 'left' as const,
+        width: 280,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'portName' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => (
@@ -1684,6 +1684,7 @@ export default function PortListPage() {
         label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
         width: 260,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'orgUnitId' ? sortOrder : null,
         render: (_v: string | null, record: CangBienResponse) => {
@@ -1704,7 +1705,7 @@ export default function PortListPage() {
         key: 'portClass',
         label: 'Phân cấp cảng biển',
         dataIndex: 'portClass',
-        width: 200,
+        width: 180,
         sortable: true,
         sortOrder: sortField === 'portClass' ? sortOrder : null,
         render: (v: number | null) => v != null ? (v === 5 ? 'Cấp đặc biệt' : `Cấp ${v}`) : '—',
@@ -1713,7 +1714,8 @@ export default function PortListPage() {
         key: 'province',
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'province',
-        width: 250,
+        width: 220,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'province' ? sortOrder : null,
         render: (v: string | null) => v || '—',
@@ -1722,7 +1724,8 @@ export default function PortListPage() {
         key: 'approvalStatus',
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
-        width: 160,
+        width: 170,
+        align: 'center' as const,
         sortable: true,
         sortOrder: sortField === 'approvalStatus' ? sortOrder : null,
         render: (v: string) => {
@@ -1760,6 +1763,7 @@ export default function PortListPage() {
         label: 'Người cập nhật',
         dataIndex: 'updatedByName',
         width: 170,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'updatedBy' ? sortOrder : null,
         render: (v: string | null) => <span style={{ fontWeight: fontWeightBold }}>{v || '—'}</span>,
@@ -1769,6 +1773,7 @@ export default function PortListPage() {
         label: 'Ngày cập nhật',
         dataIndex: 'updatedAt',
         width: 170,
+        align: 'center' as const,
         sortable: true,
         sortOrder: sortField === 'updatedAt' ? sortOrder : null,
         render: (v: string | null) => (
@@ -2083,7 +2088,7 @@ export default function PortListPage() {
                 })}
                 rowKey="id" rowActions={rowActions} loading={false}
                 onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-                scroll={{ x: 1400, y: 550 }}
+                scroll={{ x: 'max-content', y: 550 }}
               />
             ) : null}
             <Pagination total={total} current={page} pageSize={pageSize}
