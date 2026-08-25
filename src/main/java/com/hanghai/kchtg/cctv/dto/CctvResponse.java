@@ -26,8 +26,8 @@ public class CctvResponse {
     private String model;
     private UUID orgUnitId;
     private String orgUnitName;
-    private String operatingUnitId;
-    private UUID provinceId;
+    private UUID operatingUnitId;
+    private String provinceName;
     private Integer attachedInfrastructureType;
     private UUID attachedInfrastructureId;
     private String attachedInfrastructureName;

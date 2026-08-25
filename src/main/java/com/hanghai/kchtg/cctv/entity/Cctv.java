@@ -54,10 +54,10 @@ public class Cctv extends BaseEntity {
     private UUID attachedInfrastructureId;
 
     @Column(name = "operating_unit_id")
-    private String operatingUnitId;
+    private UUID operatingUnitId;
 
-    @Column(name = "province_id")
-    private UUID provinceId;
+    @Column(name = "province_name", length = 200)
+    private String provinceName;
 
     @Column(name = "unit_of_measure")
     private Integer unitOfMeasure;

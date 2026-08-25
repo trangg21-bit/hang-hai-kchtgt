@@ -19,13 +19,7 @@ export interface SelectCateOtherProps extends Omit<SelectProps, 'options' | 'sho
 }
 
 const DEFAULT_CATEGORIES: Record<string, CateOtherOption[]> = {
-  DON_VI_KHAI_THAC: [
-    { value: 'VTS', label: 'Trung tâm VTS' },
-    { value: 'RADAR', label: 'Trạm Radar' },
-    { value: 'AIS', label: 'Đài AIS' },
-    { value: 'CCTV', label: 'Hệ thống CCTV' },
-    { value: 'KHAC', label: 'Khác' },
-  ],
+  DON_VI_KHAI_THAC: [],
   DON_VI_HANH_CHINH: [
     { value: 'TP_HANOI', label: 'Hà Nội' },
     { value: 'TP_HCM', label: 'TP. Hồ Chí Minh' },

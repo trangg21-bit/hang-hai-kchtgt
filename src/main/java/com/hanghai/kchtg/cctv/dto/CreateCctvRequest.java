@@ -38,8 +38,8 @@ public class CreateCctvRequest {
     private String model;
 
     private UUID orgUnitId;
-    private String operatingUnitId;
-    private UUID provinceId;
+    private UUID operatingUnitId;
+    private String provinceName;
 
     private Integer attachedInfrastructureType;
     private UUID attachedInfrastructureId;

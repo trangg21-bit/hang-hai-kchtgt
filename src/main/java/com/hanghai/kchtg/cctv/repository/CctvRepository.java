@@ -64,7 +64,7 @@ public interface CctvRepository extends JpaRepository<Cctv, UUID> {
             "AND (:yearOfUse IS NULL OR c.yearOfUse = :yearOfUse) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR c.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR c.updatedAt <= :updatedTo) " +
-            "AND (:provinceId IS NULL OR c.provinceId = :provinceId) " +
+            "AND (CAST(:provinceId AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(c.provinceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:provinceId AS string), '%'))) AS string)) " +
             "AND (:attachedInfrastructureType IS NULL OR c.attachedInfrastructureType = :attachedInfrastructureType) " +
             "AND (:attachedInfrastructureId IS NULL OR c.attachedInfrastructureId = :attachedInfrastructureId) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(c.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(c.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))")
@@ -78,7 +78,7 @@ public interface CctvRepository extends JpaRepository<Cctv, UUID> {
             @Param("yearOfUse") Integer yearOfUse,
             @Param("updatedFrom") java.time.LocalDateTime updatedFrom,
             @Param("updatedTo") java.time.LocalDateTime updatedTo,
-            @Param("provinceId") UUID provinceId,
+            @Param("provinceId") String provinceId,
             @Param("attachedInfrastructureType") Integer attachedInfrastructureType,
             @Param("attachedInfrastructureId") UUID attachedInfrastructureId,
             @Param("search") String search,

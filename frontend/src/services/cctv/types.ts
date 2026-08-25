@@ -11,7 +11,7 @@ export interface CctvResponse {
   orgUnitId: string | null;
   orgUnitName: string | null;
   operatingUnitId: string | null;
-  provinceId: string | null;
+  provinceName: string | null;
   attachedInfrastructureType: number | null;
   attachedInfrastructureId: string | null;
   unitOfMeasure: number | null;
@@ -46,7 +46,7 @@ export interface CreateCctvRequest {
   quantity: number;
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
-  provinceId?: string | null;
+  provinceName?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;
@@ -73,7 +73,7 @@ export interface UpdateCctvRequest {
   quantity?: number | null;
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
-  provinceId?: string | null;
+  provinceName?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;

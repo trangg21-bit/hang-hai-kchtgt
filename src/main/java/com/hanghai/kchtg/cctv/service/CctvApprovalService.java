@@ -55,7 +55,7 @@ public class CctvApprovalService {
                 .quantity(entity.getQuantity())
                 .orgUnitId(entity.getOrgUnitId())
                 .operatingUnitId(entity.getOperatingUnitId())
-                .provinceId(entity.getProvinceId())
+                .provinceName(entity.getProvinceName())
                 .attachedInfrastructureType(entity.getAttachedInfrastructureType())
                 .attachedInfrastructureId(entity.getAttachedInfrastructureId())
                 .unitOfMeasure(entity.getUnitOfMeasure())
@@ -110,7 +110,7 @@ public class CctvApprovalService {
                 "entityId", entityId,
                 "entityType", entityType,
                 "currentApprovalStatus", entity.getApprovalStatus(),
-                "changeLog", changeLog,
+                "changeHistory", changeLog,
                 "approvalLog", approvalLog
         );
     }
@@ -128,6 +128,6 @@ public class CctvApprovalService {
                 } catch (Exception e) { entityNames.put(log.getEntityId(), log.getEntityId()); }
             }
         }
-        return Map.of("entityType", entityType, "changeLog", changeLog, "entityNames", entityNames);
+        return Map.of("entityType", entityType, "changeHistory", changeLog, "entityNames", entityNames);
     }
 }

@@ -114,6 +114,16 @@ export async function fetchCctvHistory(
   return res.data.data;
 }
 
+export async function fetchAllCctvHistory(
+  params?: { page?: number; size?: number },
+): Promise<any> {
+  const sp = new URLSearchParams();
+  if (params?.page !== undefined) sp.set('page', String(params.page));
+  if (params?.size !== undefined) sp.set('size', String(params.size));
+  const res = await api.get(`${BASE}/history/all?${sp}`);
+  return res.data.data;
+}
+
 // ── Restore ─────────────────────────────────────────────────────────
 
 export async function restoreCctv(id: string): Promise<CctvResponse> {

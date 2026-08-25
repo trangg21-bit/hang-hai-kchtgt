@@ -1,173 +1,223 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, Button, Typography, Descriptions } from 'antd';
-import { useParams, useNavigate } from 'react-router-dom';
-import { approveCctv, rejectCctv, fetchCctvById } from '../api';
-import type { CctvResponse } from '../types';
+import { Card, Button, Space, Typography, Tag, Row, Col, Form, Checkbox } from 'antd';
+import { useNavigate, useParams } from 'react-router-dom';
+import { borderDefault } from '../../tokens';
+import { fetchCctvById, approveCctv, rejectCctv } from './api';
+import { trangThaiPheDuyetBadge } from './schema';
+import type { CctvResponse } from './types';
+import { fmtNum } from '../../utils/numFmt';
 import toast from '../../components/ToastNotification';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import {
-  colors,
-  fontSizeMd,
-  fontSizeLg,
-  fontWeightBold,
-  textPrimary,
-  textSecondary,
-  actionPrimary,
-  borderDefault,
-  radiusPill,
-  spaceMd,
-} from '../../tokens';
 
-const { Title, Text } = Typography;
+type TabType = 'approve' | 'reject';
 
-const CctvApprovePage = () => {
-  const { id } = useParams<{ id: string }>();
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleString('vi-VN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return dateStr; }
+}
+
+export default function CctvApprovePage() {
   const navigate = useNavigate();
-  const [record, setRecord] = useState<CctvResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { id } = useParams<{ id: string }>();
+  const [data, setData] = useState<CctvResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tab, setTab] = useState<TabType>('approve');
   const [submitting, setSubmitting] = useState(false);
-  const [approveForm] = Form.useForm();
-  const [rejectForm] = Form.useForm();
+  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [reasonError, setReasonError] = useState('');
 
   useEffect(() => {
     if (!id) return;
-    const load = async () => {
+    (async () => {
+      setIsLoading(true);
       try {
-        const data = await fetchCctvById(id);
-        setRecord(data);
-      } catch (error) {
-        toast.error('Không thể tải thông tin');
+        const res = await fetchCctvById(id);
+        setData(res);
+      } catch (err) {
+        console.error('Failed to fetch CCTV:', err);
+        toast.error('Không thể tải thông tin hệ thống CCTV');
         navigate('/cctv');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
-    };
-    load();
+    })();
   }, [id, navigate]);
 
-  const handleApprove = async () => {
-    if (!id || !record) return;
+  if (isLoading || !data) {
+    return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
+  }
+
+  const validateReason = (): boolean => {
+    if (tab !== 'reject') return true;
+    if (!rejectReason || rejectReason.trim().length < 10) {
+      setReasonError('Lý do từ chối phải có ít nhất 10 ký tự');
+      toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
+      return false;
+    }
+    if (rejectReason.length > 500) {
+      setReasonError('Lý do từ chối tối đa 500 ký tự');
+      return false;
+    }
+    setReasonError('');
+    return true;
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmChecked) {
+      toast.error('Bạn cần xác nhận hành động này');
+      return;
+    }
+    if (tab === 'reject' && !validateReason()) return;
+
+    setSubmitting(true);
     try {
-      await approveForm.validateFields();
-      setSubmitting(true);
-      await approveCctv(id);
-      toast.success('Phê duyệt hệ thống CCTV thành công');
-      navigate('/cctv');
-    } catch (error: any) {
-      if (error.errorFields) return; // Form validation error
-      toast.error(error.response?.data?.message || 'Lỗi khi phê duyệt');
+      if (tab === 'approve') {
+        await approveCctv(data.id);
+        toast.success('Đã phê duyệt thành công');
+      } else {
+        await rejectCctv(data.id, rejectReason);
+        toast.success('Đã từ chối');
+      }
+      navigate(`/cctv/${data.id}`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : tab === 'approve' ? 'Phê duyệt thất bại' : 'Từ chối thất bại');
     } finally {
       setSubmitting(false);
     }
   };
-
-  const handleReject = async () => {
-    if (!id || !record) return;
-    try {
-      const { reason, confirmed } = await rejectForm.validateFields();
-      setSubmitting(true);
-      await rejectCctv(id, reason);
-      toast.success('Từ chối hệ thống CCTV thành công');
-      navigate('/cctv');
-    } catch (error: any) {
-      if (error.errorFields) return; // Form validation error
-      toast.error(error.response?.data?.message || 'Lỗi khi từ chối');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loading) return <LoadingSkeleton />;
-  if (!record) return <div>Không tìm thấy dữ liệu</div>;
 
   return (
-    <div style={{ padding: spaceMd }}>
-      <Title level={3} style={{ color: colors.sidebarBg }}>
-        Phê duyệt hệ thống CCTV: {record.deviceCode}
-      </Title>
+    <>
+      <Card style={{ marginBottom: 16 }}>
+        <Space>
+          <Button onClick={() => navigate(`/cctv/${data.id}`)}>Quay lại</Button>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            Phê duyệt — {data.deviceCode} — {data.deviceName}
+          </Typography.Title>
+        </Space>
+      </Card>
 
-      <Descriptions bordered column={1} style={{ marginBottom: spaceMd }}>
-        <Descriptions.Item label="Mã thiết bị">{record.deviceCode}</Descriptions.Item>
-        <Descriptions.Item label="Tên thiết bị">{record.deviceName}</Descriptions.Item>
-        <Descriptions.Item label="Model">{record.model || '—'}</Descriptions.Item>
-        <Descriptions.Item label="Hãng sản xuất">{record.manufacturer || '—'}</Descriptions.Item>
-        <Descriptions.Item label="Số lượng">{record.quantity}</Descriptions.Item>
-        <Descriptions.Item label="Đơn vị quản lý">{record.orgUnitName || '—'}</Descriptions.Item>
-        <Descriptions.Item label="Địa điểm chi tiết">{record.detailedLocation || '—'}</Descriptions.Item>
-        <Descriptions.Item label="Trạng thái hiện tại">
-          {record.approvalStatus === 'APPROVED' && 'Đã phê duyệt'}
-          {record.approvalStatus === 'PENDING' && 'Chờ phê duyệt'}
-          {record.approvalStatus === 'REJECTED' && 'Đã từ chối'}
-        </Descriptions.Item>
-      </Descriptions>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+        {/* Summary */}
+        <Card size="small" title="Thông tin hệ thống CCTV" style={{ marginBottom: 16 }}>
+          <Row gutter={[16, 8]}>
+            <Col span={12}>
+              <Typography.Text strong>Mã thiết bị:</Typography.Text>
+              <br />
+              <Tag color="cyan">{data.deviceCode}</Tag>
+            </Col>
+            <Col span={12}>
+              <Typography.Text strong>Tên thiết bị:</Typography.Text>
+              <br />
+              <Typography.Text>{data.deviceName}</Typography.Text>
+            </Col>
+            <Col span={12}>
+              <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
+              <br />
+              <Typography.Text>{data.provinceName || '—'}</Typography.Text>
+            </Col>
+            <Col span={12}>
+              <Typography.Text strong>Số lượng:</Typography.Text>
+              <br />
+              <Typography.Text>{data.quantity != null ? fmtNum(data.quantity) : '—'}</Typography.Text>
+            </Col>
+            <Col span={12}>
+              <Typography.Text strong>Đơn vị quản lý:</Typography.Text>
+              <br />
+              <Typography.Text>{data.orgUnitName || '—'}</Typography.Text>
+            </Col>
+            <Col span={12}>
+              <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>
+              <br />
+              <Tag color={trangThaiPheDuyetBadge(data.approvalStatus || '').color}>
+                {trangThaiPheDuyetBadge(data.approvalStatus || '').label}
+              </Tag>
+            </Col>
+            <Col span={12}>
+              <Typography.Text strong>Tạo bởi:</Typography.Text>
+              <br />
+              <Typography.Text>{data.createdByName || data.createdBy || '—'}</Typography.Text>
+            </Col>
+            <Col span={12}>
+              <Typography.Text strong>Ngày tạo:</Typography.Text>
+              <br />
+              <Typography.Text>{formatDate(data.createdAt)}</Typography.Text>
+            </Col>
+          </Row>
+        </Card>
 
-      <div style={{ display: 'flex', gap: spaceMd }}>
-        <div style={{ flex: 1 }}>
-          <Title level={5}>Phê duyệt</Title>
-          <Form form={approveForm} layout="vertical">
-            <Form.Item
-              name="confirmed"
-              valuePropName="checked"
-              rules={[{ required: true, message: 'Bạn cần xác nhận hành động này' }]}
-            >
-              <label style={{ cursor: 'pointer' }}>
-                <input type="checkbox" /> Tôi xác nhận phê duyệt hệ thống CCTV này
-              </label>
+        {/* Tab Switcher */}
+        <Space.Compact style={{ width: '100%', marginBottom: 16 }}>
+          <Button type={tab === 'approve' ? 'primary' : 'default'} onClick={() => { setTab('approve'); setConfirmChecked(false); }} style={{ flex: 1 }}>
+            ✅ Phê duyệt
+          </Button>
+          <Button type={tab === 'reject' ? 'primary' : 'default'} danger={tab === 'reject'} onClick={() => { setTab('reject'); setConfirmChecked(false); }} style={{ flex: 1 }}>
+            ❌ Từ chối
+          </Button>
+        </Space.Compact>
+
+        {/* Approval Form */}
+        {tab === 'approve' ? (
+          <Form layout="vertical">
+            <Form.Item label="Xác nhận">
+              <Space>
+                <Checkbox checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)}>
+                  Tôi xác nhận hành động này
+                </Checkbox>
+              </Space>
             </Form.Item>
+          </Form>
+        ) : (
+          <Form layout="vertical">
+            <Form.Item
+              label="Lý do từ chối *"
+              validateStatus={reasonError ? 'error' : ''}
+              help={reasonError}
+            >
+              <Form.Item
+                name="reason"
+                noStyle
+              >
+                <Input.TextArea
+                  rows={4}
+                  value={rejectReason}
+                  onChange={(e) => { setRejectReason(e.target.value); setReasonError(''); }}
+                  placeholder="Nhập lý do từ chối (tối thiểu 10 ký tự)"
+                  aria-label="Lý do từ chối"
+                />
+              </Form.Item>
+            </Form.Item>
+            <Form.Item label="Xác nhận">
+              <Space>
+                <Checkbox checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)}>
+                  Tôi xác nhận hành động này
+                </Checkbox>
+              </Space>
+            </Form.Item>
+          </Form>
+        )}
+
+        {/* Footer */}
+        <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16, marginTop: 8 }}>
+          <Space>
+            <Button onClick={() => navigate(`/cctv/${data.id}`)}>Hủy</Button>
             <Button
               type="primary"
-              htmlType="button"
-              onClick={handleApprove}
+              danger={tab === 'reject'}
+              onClick={handleConfirm}
               loading={submitting}
-              style={{ borderRadius: radiusPill }}
+              disabled={!confirmChecked}
             >
-              Phê duyệt
+              {tab === 'approve' ? 'Phê duyệt' : 'Từ chối'}
             </Button>
-          </Form>
+          </Space>
         </div>
-
-        <div style={{ flex: 1 }}>
-          <Title level={5}>Từ chối</Title>
-          <Form form={rejectForm} layout="vertical">
-            <Form.Item
-              name="reason"
-              label="Lý do từ chối"
-              rules={[
-                { required: true, message: 'Vui lòng nhập lý do từ chối' },
-                { min: 10, message: 'Lý do từ chối tối thiểu 10 ký tự' },
-              ]}
-            >
-              <Input.TextArea rows={4} placeholder="Nhập lý do từ chối..." />
-            </Form.Item>
-            <Form.Item
-              name="confirmed"
-              valuePropName="checked"
-              rules={[{ required: true, message: 'Bạn cần xác nhận hành động này' }]}
-            >
-              <label style={{ cursor: 'pointer' }}>
-                <input type="checkbox" /> Tôi xác nhận từ chối hệ thống CCTV này
-              </label>
-            </Form.Item>
-            <Button
-              danger
-              htmlType="button"
-              onClick={handleReject}
-              loading={submitting}
-              style={{ borderRadius: radiusPill }}
-            >
-              Từ chối
-            </Button>
-          </Form>
-        </div>
-      </div>
-
-      <div style={{ marginTop: spaceMd }}>
-        <Button onClick={() => navigate('/cctv')} style={{ borderRadius: radiusPill }}>
-          Quay lại
-        </Button>
-      </div>
-    </div>
+      </Card>
+    </>
   );
-};
-
-export default CctvApprovePage;
+}

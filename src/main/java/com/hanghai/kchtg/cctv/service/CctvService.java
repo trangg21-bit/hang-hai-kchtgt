@@ -113,7 +113,7 @@ public class CctvService {
       .quantity(request.getQuantity())
       .orgUnitId(request.getOrgUnitId())
       .operatingUnitId(request.getOperatingUnitId())
-      .provinceId(request.getProvinceId())
+      .provinceName(request.getProvinceName())
       .attachedInfrastructureType(request.getAttachedInfrastructureType())
       .attachedInfrastructureId(request.getAttachedInfrastructureId())
       .unitOfMeasure(request.getUnitOfMeasure())
@@ -177,7 +177,6 @@ public class CctvService {
 
     LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
     LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
-    UUID provinceId = parseUUID(province);
 
     Page<Cctv> result = cctvRepository.searchCctv(
       includeAll, orgUnitIds,
@@ -185,7 +184,7 @@ public class CctvService {
       opStatus, apprStatus,
       yearOfUse,
       updatedFromDt, updatedToDt,
-      provinceId,
+      province,
       attachedInfrastructureType != null ? attachedInfrastructureType : null,
       attachedInfrastructureId != null ? attachedInfrastructureId : null,
       search, pageable);
@@ -213,7 +212,7 @@ public class CctvService {
       .quantity(entity.getQuantity())
       .orgUnitId(entity.getOrgUnitId())
       .operatingUnitId(entity.getOperatingUnitId())
-      .provinceId(entity.getProvinceId())
+      .provinceName(entity.getProvinceName())
       .attachedInfrastructureType(entity.getAttachedInfrastructureType())
       .attachedInfrastructureId(entity.getAttachedInfrastructureId())
       .unitOfMeasure(entity.getUnitOfMeasure())
@@ -238,7 +237,7 @@ public class CctvService {
     if (request.getQuantity() != null) entity.setQuantity(request.getQuantity());
     if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
     if (request.getOperatingUnitId() != null) entity.setOperatingUnitId(request.getOperatingUnitId());
-    if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
+    if (request.getProvinceName() != null) entity.setProvinceName(request.getProvinceName());
     if (request.getAttachedInfrastructureType() != null)
       entity.setAttachedInfrastructureType(request.getAttachedInfrastructureType());
     if (request.getAttachedInfrastructureId() != null)
@@ -329,7 +328,7 @@ public class CctvService {
       .orgUnitId(entity.getOrgUnitId())
       .orgUnitName(orgUnitName)
       .operatingUnitId(entity.getOperatingUnitId())
-      .provinceId(entity.getProvinceId())
+      .provinceName(entity.getProvinceName())
       .attachedInfrastructureType(entity.getAttachedInfrastructureType())
       .attachedInfrastructureId(entity.getAttachedInfrastructureId())
       .attachedInfrastructureName(attachedInfrastructureName)
@@ -399,6 +398,9 @@ public class CctvService {
       }
       if ("TU_CHOI".equals(upper) || "REJECTED".equals(upper)) {
         return ApprovalStatus.REJECTED;
+      }
+      if ("DRAFT".equals(upper)) {
+        return ApprovalStatus.DRAFT;
       }
       return null;
     } catch (Exception e) {

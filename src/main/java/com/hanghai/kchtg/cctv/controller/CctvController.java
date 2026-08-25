@@ -83,7 +83,6 @@ public class CctvController {
     @RequestParam(required = false) Integer attachedInfrastructureType,
     @RequestParam(required = false) UUID attachedInfrastructureId,
     @RequestParam(required = false) Integer yearOfUse,
-    @RequestParam(required = false) String provinceId,
     @RequestParam(required = false) String operatingUnitId,
     @RequestParam(required = false) String updatedFrom,
     @RequestParam(required = false) String updatedTo,

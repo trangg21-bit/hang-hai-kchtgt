@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { PERMISSIONS } from "../../constants/permissions";
-import { fmtNum } from "../../utils/numFmt";
+import { fmtNum, fmtInputNumber } from "../../utils/numFmt";
+import { usePermissionStore } from "../../store/permissionStore";
 import {
   Alert,
   Button,
@@ -22,6 +23,7 @@ import {
   Descriptions,
   Drawer,
   Popconfirm,
+  Table,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
 import {
@@ -48,11 +50,10 @@ import {
   FileImageOutlined,
   FilePdfOutlined,
 } from "@ant-design/icons";
-import { Tabs, Upload } from "antd";
+import { Tabs, Upload, Radio } from "antd";
 import type { RcFile, UploadFile } from "antd/es/upload/interface";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { SelectAppParams } from "../../components/SelectAppParams";
-import SelectKcht from "../../components/SelectKcht";
 import SelectCateOther from "../../components/SelectCateOther";
 import { LongLatTable, type CoordinateRow } from "../../components/LongLatTable";
 import { UploadFileTable } from "../../components/UploadFileTable";
@@ -66,6 +67,8 @@ import {
   updateCctv,
   generateCctvCode,
   fetchCctvOptions,
+  fetchCctvHistory,
+  fetchAllCctvHistory,
 } from "./api";
 import {
   trangThaiHoatDongBadge,
@@ -77,9 +80,9 @@ import {
 import type { CctvResponse } from "./types";
 import toast from "../../components/ToastNotification";
 import EmptyState from "../../components/EmptyState";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { organizationService } from "../../services/organizationService";
-import { vtsSystemCRUD } from "../vtsSystemService";
 import { radarStationCRUD } from "../radarStationService";
 import { symbolService } from "../symbolService";
 import type { Symbol as MapSymbolType } from "../symbolService";
@@ -88,7 +91,64 @@ import {
   DataTable,
   Pagination,
   FilterTableLayout,
+  PagedTable,
 } from "../../components/list-view";
+import {
+  historyBadgeStyle,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyInfoTitleStyle,
+  historyChangeRowStyle,
+  historyCreateRowStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
+} from "../../tokens";
+
+/** Map unitOfMeasure code (Integer) → label cho hiển thị */
+const UOM_LABELS: Record<number, string> = {
+  1: 'Bộ',
+  2: 'Bến',
+  3: 'Bản quyền',
+  4: 'Chiếc',
+  5: 'Cổng',
+  6: 'Cái',
+  7: 'Cột',
+  8: 'Cầu',
+  9: 'Đường truyền',
+  10: 'Héc-ta',
+  11: 'Hạng mục',
+  12: 'Hệ thống',
+  13: 'Kho',
+  14: 'Khu',
+  15: 'Ki-lô-mét',
+  16: 'Mét',
+  17: 'Mét vuông',
+  18: 'Nhà',
+  19: 'Phòng',
+  20: 'Phân hệ',
+  21: 'Quả',
+  22: 'Tuyến',
+  23: 'Tấn',
+  24: 'Trạm',
+  25: 'Tháp',
+  26: 'Trụ',
+  27: 'VNĐ',
+};
+
+function formatUnitOfMeasure(code: number | null | undefined): string {
+  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
+}
+
+// ── labelProps — matches PortFormContent.tsx ────────────────
+const labelProps = (text: string) => ({
+  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
+});
+
 import {
   colors,
   fontSizeMd,
@@ -168,10 +228,9 @@ const pillStyle: React.CSSProperties = {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleString('vi-VN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    });
+    const d = new Date(dateStr);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   } catch { return dateStr; }
 }
 
@@ -260,8 +319,8 @@ function buildCctvCollapseItems(
         <DetailInfoRow label="Tên thiết bị" value={rec.deviceName} />
         <DetailInfoRow label="Model" value={rec.model || '—'} />
         <DetailInfoRow label="Hãng sản xuất" value={rec.manufacturer || '—'} />
-        <DetailInfoRow label="Số lượng" value={<strong style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(rec.quantity)}</strong>} />
-        <DetailInfoRow label="Đơn vị tính" value={rec.unitOfMeasureName || '—'} />
+        <DetailInfoRow label="Số lượng" value={<span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(rec.quantity)}</span>} />
+        <DetailInfoRow label="Đơn vị tính" value={formatUnitOfMeasure(rec.unitOfMeasure)} />
         <DetailInfoRow label="Đơn vị quản lý" value={rec.orgUnitName || '—'} />
         <DetailInfoRow label="Đơn vị khai thác" value={rec.operatingUnitName || '—'} />
         <DetailInfoRow label="Thuộc TTDH VTS / Trạm Radar" full value={rec.attachedInfrastructureName || '—'} />
@@ -300,7 +359,7 @@ function buildCctvCollapseItems(
   // 3. GIS
   const attachedTypeLabel = (t: number | null) => {
     if (t === null) return '—';
-    const map: Record<number, string> = { 1: 'TTDH VTS', 2: 'Trạm Radar' };
+    const map: Record<number, string> = { 2: 'Trạm Radar' };
     return map[t] || String(t);
   };
   items.push({
@@ -412,6 +471,8 @@ function buildCctvCollapseItems(
 const CctvListPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const isIframeModal = window.parent !== window.self;
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<CctvResponse[]>([]);
@@ -421,6 +482,26 @@ const CctvListPage = () => {
     return isNaN(p) || p < 0 ? 0 : p;
   });
   const [pageSize, setPageSize] = useState(20);
+
+  // Tab counts for approval status filter
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+  const fetchTabCounts = useCallback(async () => {
+    const statuses = [
+      { key: "DRAFT", status: "DRAFT" },
+      { key: "PENDING", status: "PENDING" },
+      { key: "APPROVED", status: "APPROVED" },
+      { key: "REJECTED", status: "REJECTED" },
+    ];
+    const results = await Promise.allSettled(
+      statuses.map((s) => fetchCctvList({ page: 0, size: 1, approvalStatus: s.status }))
+    );
+    setTabCounts({
+      DRAFT: results[0].status === "fulfilled" ? (results[0].value?.totalElements ?? 0) : 0,
+      PENDING: results[1].status === "fulfilled" ? (results[1].value?.totalElements ?? 0) : 0,
+      APPROVED: results[2].status === "fulfilled" ? (results[2].value?.totalElements ?? 0) : 0,
+      REJECTED: results[3].status === "fulfilled" ? (results[3].value?.totalElements ?? 0) : 0,
+    });
+  }, []);
 
   // Filters
   const [filterCollapsed, setFilterCollapsed] = useState(false);
@@ -439,12 +520,6 @@ const CctvListPage = () => {
     updatedTo: "" as string,
   });
 
-  // VTS system options for advanced filter
-  const [vtsSystemOptions, setVtsSystemOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [loadingVtsSystems, setLoadingVtsSystems] = useState(false);
-
   // Org units
   const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
@@ -452,12 +527,6 @@ const CctvListPage = () => {
   // Symbols
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
-
-  // Province options (static)
-  const provinceOptions = useMemo(
-    () => VIETNAM_PROVINCES.map((p) => ({ label: p, value: p })),
-    []
-  );
 
   // Year options for "Năm đưa vào sử dụng" (current year - 30 to current year)
   const yearOfUseOptions = useMemo(() => {
@@ -470,7 +539,6 @@ const CctvListPage = () => {
 
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
-    { label: 'Trung tâm điều hành VTS', value: 1 },
     { label: 'Trạm Radar', value: 2 },
   ];
 
@@ -530,6 +598,10 @@ const CctvListPage = () => {
 
   // Reactive watch for attached infrastructure dropdown
   const createAttachedType = Form.useWatch('attachedInfrastructureType', createForm);
+  const createGeometryType = Form.useWatch('geometryType', createForm);
+
+  // GPS coordinates for create drawer
+  const [gpsCoordList, setGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
 
   // Update modal
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -539,6 +611,37 @@ const CctvListPage = () => {
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
+  const updateGeometryType = Form.useWatch('geometryType', updateForm);
+
+  // GPS coordinates for edit drawer
+  const [updateGpsCoordList, setUpdateGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
+
+  // GEOMETRY_POINT_COUNT mapping (same as Port)
+  const GEOMETRY_POINT_COUNT = useMemo(() => ({ POINT: 1, LINE: 2, POLYGON: 3 }), []);
+
+  // Auto-initialize GPS coordinates when geometry type changes (create)
+  useEffect(() => {
+    if (createGeometryType) {
+      const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
+      setGpsCoordList(Array.from({ length: count }, () => ({ lat: 0, lng: 0 })));
+    } else {
+      setGpsCoordList([]);
+    }
+  }, [createGeometryType, GEOMETRY_POINT_COUNT]);
+
+  // Auto-initialize GPS coordinates when geometry type changes (edit)
+  useEffect(() => {
+    if (updateGeometryType) {
+      const count = GEOMETRY_POINT_COUNT[updateGeometryType] ?? 1;
+      setUpdateGpsCoordList((prev) => {
+        if (prev.length >= count) return prev;
+        const added = Array.from({ length: count - prev.length }, () => ({ lat: 0, lng: 0 }));
+        return [...prev, ...added];
+      });
+    } else {
+      setUpdateGpsCoordList([]);
+    }
+  }, [updateGeometryType, GEOMETRY_POINT_COUNT]);
 
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -546,6 +649,47 @@ const CctvListPage = () => {
     null
   );
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  // ── History state ─────────────────────────────────────────────────────
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
+  const [historyDateTo, setHistoryDateTo] = useState<string>('');
+  const [historyEntityFilter, setHistoryEntityFilter] = useState('');
+  const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
+  const [historyEntityId, setHistoryEntityId] = useState('');
+  const [historyEntityName, setHistoryEntityName] = useState('');
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyMode, setHistoryMode] = useState<'current' | 'all'>('current');
+  const historySearchRef = useRef('');
+
+  // ── History map helpers ────────────────────────────────────────
+  const symbolMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (symbols || []).forEach((s) => m.set(s.id, s.name || s.id));
+    return m;
+  }, [symbols]);
+
+  const symbolImageMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (symbols || []).forEach((s) => {
+      if (s.image) m.set(s.id, s.image);
+    });
+    return m;
+  }, [symbols]);
+
+  const orgMap = useMemo(() => {
+    const m = new Map<string, string>();
+    const build = (items: Array<{ id: string; name: string; parentId?: string; children?: Array<{ id: string; name: string }> }>) => {
+      for (const item of items) {
+        m.set(item.id, item.name || item.id);
+        if (item.children) build(item.children);
+      }
+    };
+    build(orgUnits || []);
+    return m;
+  }, [orgUnits]);
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
@@ -635,12 +779,12 @@ const CctvListPage = () => {
         ),
       },
       {
-        key: "unitOfMeasureName",
+        key: "unitOfMeasure",
         label: "Đơn vị tính",
-        dataIndex: "unitOfMeasureName",
+        dataIndex: "unitOfMeasure",
         width: 130,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || "—"}</span>
+        render: (val: number) => (
+          <span style={tableMetaStyle}>{formatUnitOfMeasure(val)}</span>
         ),
       },
       {
@@ -678,7 +822,7 @@ const CctvListPage = () => {
         sortOrder: sortField === "updatedAt" ? sortOrder : null,
         render: (val: string) => (
           <span style={tableMetaStyle}>
-            {val ? dayjs(val).format("DD/MM/YYYY HH:mm") : "—"}
+            {val ? dayjs(val).format("DD/MM/YYYY HH:mm:ss") : "—"}
           </span>
         ),
       },
@@ -752,41 +896,436 @@ const CctvListPage = () => {
     [page, pageSize, sortField, sortOrder]
   );
 
+  // ── History helpers ────────────────────────────────────────────────
+  const historyFieldLabels: Record<string, string> = {
+    deviceCode: 'Mã thiết bị',
+    deviceName: 'Tên thiết bị',
+    manufacturer: 'Hãng sản xuất',
+    model: 'Model',
+    quantity: 'Số lượng',
+    orgUnitId: 'Đơn vị quản lý',
+    operatingUnitId: 'Đơn vị khai thác',
+    provinceName: 'Tỉnh/Thành phố',
+    detailedLocation: 'Địa điểm chi tiết',
+    attachedInfrastructureType: 'Loại hạ tầng',
+    attachedInfrastructureId: 'Thuộc hạ tầng',
+    unitOfMeasure: 'Đơn vị tính',
+    yearOfUse: 'Năm đưa vào sử dụng',
+    operationalStatus: 'Trạng thái hoạt động',
+    approvalStatus: 'Trạng thái phê duyệt',
+    specifications: 'Thông số kỹ thuật',
+    maintenanceInformation: 'Thông tin bảo trì',
+    note: 'Ghi chú',
+    objectType: 'Loại đối tượng',
+    mapSymbolId: 'Biểu tượng',
+    coordinateSystem: 'Hệ quy chiếu',
+    displayRule: 'Quy tắc hiển thị',
+    'Lý do từ chối': 'Lý do từ chối',
+    'Trạng thái': 'Hành động',
+  };
+
+  function historyFieldName(fn: string): string {
+    return historyFieldLabels[fn] || fn;
+  }
+
+  function historyFieldValue(
+    fn: string,
+    val: string | null,
+    orgMap?: Map<string, string>,
+    symbolMap?: Map<string, string>
+  ): string {
+    if (!val || val === '(null)' || val === 'null') return '(trống)';
+    if (fn === 'orgUnitId' && orgMap) {
+      const full = orgMap.get(val);
+      return full ? full.split(' - ').pop() || full : val;
+    }
+    if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
+    if (fn === 'approvalStatus') {
+      const m: Record<string, string> = {
+        DRAFT: 'Nháp',
+        PROPOSED: 'Đề xuất',
+        PENDING: 'Chờ duyệt',
+        CHO_PHE_DUYET: 'Chờ phê duyệt',
+        PENDING_APPROVAL: 'Chờ phê duyệt',
+        APPROVED: 'Đã phê duyệt',
+        DA_PHE_DUYET: 'Đã phê duyệt',
+        REJECTED: 'Từ chối',
+        TU_CHOI: 'Từ chối',
+      };
+      return m[val] || m[val?.toUpperCase()] || val;
+    }
+    if (fn === 'operationalStatus') {
+      const m: Record<string, string> = {
+        '0': 'Chưa khai thác/vận hành',
+        '1': 'Đang khai thác/vận hành',
+        '2': 'Dừng khai thác/vận hành',
+        NON_OPERATIONAL: 'Chưa khai thác/vận hành',
+        OPERATIONAL: 'Đang khai thác/vận hành',
+        STOPPED: 'Dừng khai thác/vận hành',
+      };
+      return m[val] || val;
+    }
+    if (fn === 'unitOfMeasure') {
+      return formatUnitOfMeasure(Number(val));
+    }
+    if (fn === 'coordinateSystem') {
+      const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+      return m[String(val)] || val;
+    }
+    if (fn === 'changedAt' || fn === 'createdAt') {
+      try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
+    }
+    return val;
+  }
+
+  function getActionLabel(items: any[]): { label: string; color: string } {
+    const fields = items.map((i: any) => i.fieldName || '');
+    const oldVals = items.map((i: any) => i.oldValue || '');
+    const newVals = items.map((i: any) => i.newValue || '');
+    if (fields.includes('deletedAt') || newVals.includes('Đã xóa'))
+      return { label: 'Xóa', color: 'red' };
+    if (fields.includes('approvalStatus')) {
+      const newStatus = newVals[fields.indexOf('approvalStatus')];
+      if (newStatus === 'APPROVED') return { label: 'Phê duyệt', color: 'green' };
+      if (newStatus === 'REJECTED') return { label: 'Từ chối', color: 'red' };
+      if (newStatus === 'PENDING') return { label: 'Gửi phê duyệt', color: 'orange' };
+    }
+    const nullCount = oldVals.filter((v) => v === '(null)' || v === 'null').length;
+    if (nullCount > items.length / 2) return { label: 'Thêm mới', color: 'blue' };
+    return { label: 'Chỉnh sửa', color: 'blue' };
+  }
+
+  const historyTabStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    borderRadius: 0,
+    border: 'none',
+    background: 'transparent',
+    fontSize: fontSizeMd,
+    padding: `0 ${spaceMd}px`,
+  };
+
+  const HISTORY_FIELD_ORDER = [
+    'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
+    'quantity', 'operatingUnitId', 'provinceName', 'detailedLocation',
+    'attachedInfrastructureType', 'attachedInfrastructureId',
+    'unitOfMeasure', 'yearOfUse', 'operationalStatus',
+    'specifications', 'maintenanceInformation', 'note',
+    'objectType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+  ];
+
+  const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
+
+  const renderCctvHistoryTimeline = (records: any[]) => {
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...records].sort(
+      (a: any, b: any) =>
+        new Date(b.changedAt || b.createdAt).getTime() -
+        new Date(a.changedAt || a.createdAt).getTime()
+    );
+    const q = historySearch.toLowerCase().trim();
+    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+
+    for (const r of sorted) {
+      if (q) {
+        const fn = (r.fieldName || '').toLowerCase();
+        const ov = (r.oldValue || '').toLowerCase();
+        const nv = (r.newValue || '').toLowerCase();
+        const lb = historyFieldName(r.fieldName || '').toLowerCase();
+        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase();
+        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase();
+        if (
+          !fn.includes(q) &&
+          !ov.includes(q) &&
+          !nv.includes(q) &&
+          !lb.includes(q) &&
+          !od.includes(q) &&
+          !nd.includes(q)
+        )
+          continue;
+      }
+      if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
+      if (historyDateFrom || historyDateTo) {
+        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
+        if (historyDateFrom && cd < historyDateFrom.replace(' ', 'T')) continue;
+        if (historyDateTo && cd > historyDateTo.replace(' ', 'T') + ':59') continue;
+      }
+      const ts = r.changedAt || r.createdAt || '';
+      const sec = ts ? toSec(ts) : 0;
+      const prev = groups[groups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || ''))
+        prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
+    }
+
+    if (groups.length === 0)
+      return (
+        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
+            {q || historyDateFrom || historyDateTo
+              ? 'Không tìm thấy kết quả phù hợp'
+              : 'Chưa có thay đổi nào được ghi nhận'}
+          </div>
+        </div>
+      );
+
+    const fmtTime = (ts: string) => {
+      const d = new Date(ts);
+      return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+    };
+
+    return (
+      <div>
+        {groups.map((g, gi) => {
+          const rec0 = g.items[0] || {};
+          const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
+          const orgName = orgId ? orgMap.get(orgId) : undefined;
+          const unitName =
+            (orgName ? orgName.split(' - ').pop() || orgName : rec0.orgUnitName || rec0.unitName || selectedRecord?.orgUnitName) ||
+            '—';
+          const barColor = actionPrimary;
+          const changes = g.items.map((item: any) => ({
+            field: item.fieldName || '—',
+            oldValue: item.oldValue ?? null,
+            newValue: item.newValue ?? null,
+          }));
+          const isCreate = changes.every(
+            (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
+          );
+          const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+          const orderedChanges = [...changes]
+            .sort((a: any, b: any) => {
+              const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+              const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+              return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+            })
+            .filter(
+              (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments'
+            );
+
+          const formatHistoryValue = (fn: string, raw: string | null) => {
+            if (raw === null || raw === '(null)' || raw === '') return null;
+            const t = raw.trim();
+            if (t.startsWith('[') && t.endsWith(']')) {
+              if (t === '[]') return 'Không có';
+              const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+              return `${parts.length} công trình hạ tầng`;
+            }
+            if (/^-?\d+(\.\d+)?$/.test(t)) {
+              const n = Number(t);
+              return Number.isInteger(n) ? String(n) : t;
+            }
+            return historyFieldValue(fn, raw, orgMap, symbolMap);
+          };
+
+          if (orderedChanges.length === 0) return null;
+
+          return (
+            <div
+              key={gi}
+              style={{
+                ...historyGroupGridStyle,
+                marginBottom: gi < groups.length - 1 ? spaceSm : 0,
+              }}
+            >
+              <div style={{ minWidth: 0, paddingTop: spaceXs }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+                  <Typography.Text style={historyTimeStyle}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>
+                  <span style={{ flexShrink: 0 }}>
+                    {isCreate && <span style={historyBadgeStyle(statusOperational)}>Thêm mới</span>}
+                    {!isCreate && <span style={historyBadgeStyle(actionPrimary)}>Chỉnh sửa</span>}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
+                  <Typography.Text style={historyMetaRowStyle}>
+                    Người cập nhật: {g.actor || '—'}
+                  </Typography.Text>
+                  <Typography.Text style={historyMetaRowStyle}>
+                    Đơn vị: {unitName}
+                  </Typography.Text>
+                </div>
+              </div>
+              <div style={historyInfoCardStyle}>
+                <div style={historyAccentBarStyle(barColor)} />
+                <Typography.Text style={historyInfoTitleStyle}>{informationTitle}</Typography.Text>
+                {orderedChanges.length > 0 ? (
+                  <div>
+                    {orderedChanges.map((change, ri: number) => {
+                      const fn = change.field;
+                      const ov = formatHistoryValue(fn, change.oldValue);
+                      const nv = formatHistoryValue(fn, change.newValue);
+                      const renderCell = (rawVal: string | null) => {
+                        if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
+                          const img = symbolImageMap.get(rawVal);
+                          const name = symbolMap.get(rawVal) || rawVal;
+                          return (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              {img ? (
+                                <img
+                                  src={img}
+                                  alt=""
+                                  style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }}
+                                />
+                              ) : null}
+                              {name}
+                            </span>
+                          );
+                        }
+                        return null;
+                      };
+                      return isCreate ? (
+                        <div
+                          key={`${fn}-${ri}`}
+                          style={{
+                            ...historyCreateRowStyle,
+                            paddingTop: ri > 0 ? spaceXs : 0,
+                          }}
+                        >
+                          <div style={historyFieldLabelStyle}>
+                            {fn ? `${historyFieldName(fn)}:` : '—'}
+                          </div>
+                          <span title={nv ?? '—'} style={historyNewValueStyle}>
+                            {renderCell(change.newValue) ?? nv ?? '—'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          key={`${fn}-${ri}`}
+                          style={{
+                            ...historyChangeRowStyle,
+                            paddingTop: ri > 0 ? spaceXs : 0,
+                          }}
+                        >
+                          <div style={historyFieldLabelStyle}>
+                            {fn ? `${historyFieldName(fn)}:` : '—'}
+                          </div>
+                          <span title={ov ?? '—'} style={historyOldValueStyle}>
+                            {renderCell(change.oldValue) ?? ov ?? '—'}
+                          </span>
+                          <span style={historyArrowStyle}>→</span>
+                          <span title={nv ?? '—'} style={historyNewValueStyle}>
+                            {renderCell(change.newValue) ?? nv ?? '—'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>
+                    Không có thông tin chi tiết
+                  </Typography.Text>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
-    (record: CctvResponse) => [
-      {
-        key: "view",
-        label: "Xem chi tiết",
-        icon: <EyeOutlined />,
-        onClick: () => {
-          setSelectedRecord(record);
-          setDetailDrawerOpen(true);
+    (record: CctvResponse) => {
+      const actions = [
+        {
+          key: "view",
+          label: "Xem chi tiết",
+          icon: <EyeOutlined />,
+          onClick: () => {
+            setSelectedRecord(record);
+            setDetailDrawerOpen(true);
+          },
         },
-      },
-      {
-        key: "edit",
-        label: "Chỉnh sửa",
-        icon: <EditOutlined />,
-        onClick: () => {
-          setUpdateTarget(record);
-          updateForm.setFieldsValue({ ...record });
-          setUpdateModalOpen(true);
+        {
+          key: "edit",
+          label: "Chỉnh sửa",
+          icon: <EditOutlined />,
+          onClick: () => {
+            setUpdateTarget(record);
+            // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
+            const safeRecord = {
+              ...record,
+              operationalStatus: record.operationalStatus != null
+                ? (() => {
+                    switch (record.operationalStatus) {
+                      case "NOT_YET_OPERATIONAL": return 0;
+                      case "OPERATIONAL": return 1;
+                      case "SUSPENDED": return 2;
+                      default: {
+                        const num = Number(record.operationalStatus);
+                        return num >= 0 && num <= 2 ? num : 1;
+                      }
+                    }
+                  })()
+                : null,
+            };
+            updateForm.setFieldsValue(safeRecord);
+            setUpdateModalOpen(true);
+          },
         },
-      },
-      {
-        key: "delete",
-        label: "Xóa",
-        icon: <DeleteOutlined />,
-        danger: true,
-        disabled: record.approvalStatus !== "APPROVED",
-        onClick: () => {
-          setDeleteTarget(record);
-          setDeleteConfirmText("");
+        {
+          key: "history",
+          label: "Lịch sử",
+          icon: <HistoryOutlined />,
+          onClick: () => {
+            setHistoryEntityId(record.id);
+            setHistoryEntityName(record.deviceName || '');
+            setHistoryModalVisible(true);
+            setHistoryRecords([]);
+            setLoadingHistory(true);
+            fetchCctvHistory(record.id, { page: 0, size: 200 })
+              .then((d: any) => {
+                setHistoryRecords(d.changeHistory || []);
+              })
+              .catch(() => toast.error('Không thể tải lịch sử'))
+              .finally(() => setLoadingHistory(false));
+          },
         },
-      },
-    ],
-    [updateForm],
+      ];
+
+      // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
+      const isPending =
+        record.approvalStatus === "CHO_PHE_DUYET" ||
+        record.approvalStatus === "PENDING" ||
+        record.approvalStatus === "PENDING_APPROVAL";
+      if (isPending && hasPerm?.("cctv:approve")) {
+        actions.push({
+          key: "approve",
+          label: "Phê duyệt",
+          icon: <CheckCircleOutlined />,
+          onClick: () => {
+            setApproveTarget(record);
+            setApproveModalOpen(true);
+          },
+        });
+        actions.push({
+          key: "reject",
+          label: "Từ chối",
+          icon: <CloseCircleOutlined />,
+          danger: true,
+          onClick: () => {
+            setRejectTarget(record);
+            setRejectModalOpen(true);
+          },
+        });
+        // Navigate to approve page
+        actions.push({
+          key: "approve-page",
+          label: "Phê duyệt (trang riêng)",
+          icon: <CheckCircleOutlined />,
+          onClick: () => navigate(`/cctv/${record.id}/approve`),
+        });
+      }
+
+      return actions;
+    },
+    [updateForm, navigate, hasPerm]
   );
 
   const fetchData = useCallback(async () => {
@@ -849,29 +1388,12 @@ const CctvListPage = () => {
     }
   }, []);
 
-  const fetchVtsSystems = useCallback(async () => {
-    setLoadingVtsSystems(true);
-    try {
-      const result = await vtsSystemCRUD.list({ page: 0, size: 500 });
-      setVtsSystemOptions(
-        result.items.map((s) => ({
-          label: s.systemName,
-          value: s.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Lỗi tải danh sách TTDH VTS:", error);
-    } finally {
-      setLoadingVtsSystems(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchData();
     fetchOrgUnits();
     fetchSymbols();
-    fetchVtsSystems();
-  }, [fetchData, fetchOrgUnits, fetchSymbols, fetchVtsSystems]);
+    fetchTabCounts();
+  }, [fetchData, fetchOrgUnits, fetchSymbols, fetchTabCounts]);
 
   const handleFilterApply = useCallback(() => {
     setPage(0);
@@ -958,15 +1480,22 @@ const CctvListPage = () => {
     async (values: Record<string, unknown>) => {
       setCreateLoading(true);
       try {
+        // Build coordinateList from GPS state
+        const coordinateList = gpsCoordList
+          .filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng))
+          .map(c => ({ latitude: c.lat, longitude: c.lng }));
+
         const payload = {
           ...values,
           deviceCode: values.deviceCode || (await generateCctvCode()),
           operationalStatus: values.operationalStatus ?? 1,
+          coordinateList,
         };
         await createCctv(payload);
         toast.success("Tạo mới hệ thống CCTV thành công");
         setCreateModalOpen(false);
         createForm.resetFields();
+        setGpsCoordList([]);
         fetchData();
       } catch (error: unknown) {
         toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi tạo mới");
@@ -974,7 +1503,7 @@ const CctvListPage = () => {
         setCreateLoading(false);
       }
     },
-    [createForm, fetchData]
+    [createForm, fetchData, gpsCoordList]
   );
 
   const handleUpdate = useCallback(
@@ -982,10 +1511,16 @@ const CctvListPage = () => {
       if (!updateTarget) return;
       setUpdateLoading(true);
       try {
-        await updateCctv({ id: updateTarget.id, ...values });
+        // Build coordinateList from GPS state
+        const coordinateList = updateGpsCoordList
+          .filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng))
+          .map(c => ({ latitude: c.lat, longitude: c.lng }));
+
+        await updateCctv({ id: updateTarget.id, ...values, coordinateList });
         toast.success("Cập nhật hệ thống CCTV thành công");
         setUpdateModalOpen(false);
         setUpdateTarget(null);
+        setUpdateGpsCoordList([]);
         fetchData();
       } catch (error: unknown) {
         toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi cập nhật");
@@ -993,7 +1528,7 @@ const CctvListPage = () => {
         setUpdateLoading(false);
       }
     },
-    [updateTarget, fetchData]
+    [updateTarget, fetchData, updateGpsCoordList]
   );
 
   const handleConfirmSubmit = useCallback(async () => {
@@ -1049,7 +1584,7 @@ const CctvListPage = () => {
               </div>
               <OrgUnitTreeSelect
                 organizations={orgUnits}
-                placeholder="Chọn đơn vị..."
+                placeholder="Chọn đơn vị"
                 allowClear
                 showPath
                 allLabel="Tất cả"
@@ -1108,7 +1643,7 @@ const CctvListPage = () => {
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Thuộc loại hạ tầng</div>
-                  <Select placeholder="Chọn loại hạ tầng..." allowClear
+                  <Select placeholder="Chọn loại hạ tầng" allowClear
                     value={filterValues.attachedInfraType || undefined}
                     onChange={(val) => {
                       setFilterValues((prev) => ({
@@ -1142,7 +1677,7 @@ const CctvListPage = () => {
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Năm đưa vào sử dụng</div>
-                  <Select placeholder="Chọn năm..." allowClear
+                  <Select placeholder="Chọn năm" allowClear
                     value={filterValues.yearOfUse}
                     onChange={(val) =>
                       setFilterValues((prev) => ({
@@ -1175,7 +1710,7 @@ const CctvListPage = () => {
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Địa điểm (Tỉnh/Thành phố)</div>
-                  <Select placeholder="Chọn tỉnh/thành phố..." allowClear showSearch
+                  <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
                     filterOption={(input, option) =>
                       (option?.label ?? "")
                         .toLowerCase()
@@ -1188,7 +1723,7 @@ const CctvListPage = () => {
                         province: val as string,
                       }))
                     }
-                    options={provinceOptions}
+                    options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
                 </div>
               </>
@@ -1206,28 +1741,28 @@ const CctvListPage = () => {
           {
             key: "DRAFT",
             label: "Nháp",
-            count: 0,
+            count: tabCounts["DRAFT"] ?? 0,
             color: statusDraft,
             active: filterValues.approvalStatus === "DRAFT",
           },
           {
             key: "PENDING",
             label: "Chờ phê duyệt",
-            count: 0,
+            count: tabCounts["PENDING"] ?? 0,
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING",
           },
           {
             key: "APPROVED",
             label: "Đã phê duyệt",
-            count: 0,
+            count: tabCounts["APPROVED"] ?? 0,
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
           },
           {
             key: "REJECTED",
             label: "Từ chối",
-            count: 0,
+            count: tabCounts["REJECTED"] ?? 0,
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED",
           },
@@ -1299,8 +1834,8 @@ const CctvListPage = () => {
                 <DetailInfoRow label="Tên thiết bị" value={selectedRecord.deviceName} />
                 <DetailInfoRow label="Model" value={selectedRecord.model || "—"} />
                 <DetailInfoRow label="Hãng sản xuất" value={selectedRecord.manufacturer || "—"} />
-                <DetailInfoRow label="Số lượng" value={<strong style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</strong>} />
-                <DetailInfoRow label="Đơn vị tính" value={selectedRecord.unitOfMeasureName || "—"} />
+                <DetailInfoRow label="Số lượng" value={<span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span>} />
+                <DetailInfoRow label="Đơn vị tính" value={formatUnitOfMeasure(selectedRecord.unitOfMeasure)} />
                 <DetailInfoRow label="Đơn vị quản lý" value={selectedRecord.orgUnitName || "—"} />
                 <DetailInfoRow label="Đơn vị khai thác" value={selectedRecord.operatingUnitName || "—"} />
                 <DetailInfoRow label="Thuộc TTDH VTS / Trạm Radar" full value={selectedRecord.attachedInfrastructureName || "—"} />
@@ -1601,6 +2136,7 @@ const CctvListPage = () => {
         onClose={() => {
           setCreateModalOpen(false);
           createForm.resetFields();
+          setGpsCoordList([]);
         }}
         extra={
           <Button
@@ -1608,6 +2144,7 @@ const CctvListPage = () => {
             onClick={() => {
               setCreateModalOpen(false);
               createForm.resetFields();
+              setGpsCoordList([]);
             }}
             style={drawerCloseBtnStyle}
           >
@@ -1620,6 +2157,7 @@ const CctvListPage = () => {
               onClick={() => {
                 setCreateModalOpen(false);
                 createForm.resetFields();
+                setGpsCoordList([]);
               }}
               style={outlineButtonStyle}
             >
@@ -1660,7 +2198,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="orgUnitId"
-                          label="Đơn vị quản lý"
+                          {...labelProps('Đơn vị quản lý')}
                           rules={[
                             { required: true, message: "Vui lòng chọn đơn vị quản lý" },
                           ]}
@@ -1668,7 +2206,7 @@ const CctvListPage = () => {
                         >
                           <OrgUnitTreeSelect
                             organizations={orgUnits}
-                            placeholder="Chọn đơn vị..."
+                            placeholder="Chọn đơn vị"
                             loading={loadingOrgs}
                             showPath
                             treeDefaultExpandAll={false}
@@ -1678,28 +2216,13 @@ const CctvListPage = () => {
                       </Col>
                       <Col xs={24} sm={12}>
                         <Form.Item
-                          name="vtsSystemId"
-                          label="Thuộc TTDH VTS / Trạm Radar"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <SelectKcht
-                            category="RADAR"
-                            placeholder="Chọn TTDH VTS/Trạm Radar (không bắt buộc)..."
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={24}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
                           name="attachedInfrastructureType"
-                          label="Thuộc loại hạ tầng"
+                          {...labelProps('Thuộc loại hạ tầng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
                             style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn loại hạ tầng..."
+                            placeholder="Chọn loại hạ tầng"
                             options={attachedInfraTypeOptions}
                             onChange={(val) => {
                               createForm.setFieldValue("attachedInfrastructureType", val);
@@ -1712,7 +2235,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="attachedInfrastructureId"
-                          label="Thuộc hạ tầng"
+                          {...labelProps('Thuộc hạ tầng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -1734,12 +2257,12 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operatingUnitId"
-                          label="Đơn vị khai thác"
+                          {...labelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <SelectCateOther
                             category="DON_VI_KHAI_THAC"
-                            placeholder="Chọn đơn vị khai thác..."
+                            placeholder="Chọn đơn vị khai thác"
                             style={{ width: "100%", ...pillStyle }}
                           />
                         </Form.Item>
@@ -1747,7 +2270,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="deviceCode"
-                          label="Mã thiết bị"
+                          {...labelProps('Mã thiết bị')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -1762,7 +2285,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="deviceName"
-                          label="Tên thiết bị"
+                          {...labelProps('Tên thiết bị')}
                           rules={[
                             { required: true, message: "Vui lòng nhập tên thiết bị" },
                           ]}
@@ -1777,14 +2300,18 @@ const CctvListPage = () => {
                       </Col>
                       <Col xs={24} sm={12}>
                         <Form.Item
-                          name="provinceId"
-                          label="Địa điểm (Tỉnh/TP)"
+                          name="provinceName"
+                          {...labelProps('Địa điểm (Tỉnh/TP)')}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <SelectCateOther
-                            category="DON_VI_HANH_CHINH"
-                            placeholder="Chọn tỉnh/thành phố..."
+                          <Select
                             style={{ width: "100%", ...pillStyle }}
+                            placeholder="Chọn tỉnh/thành phố"
+                            options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
+                            showSearch
+                            filterOption={(input: string, option: any) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                           />
                         </Form.Item>
                       </Col>
@@ -1793,7 +2320,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="detailedLocation"
-                          label="Địa điểm chi tiết"
+                          {...labelProps('Địa điểm chi tiết')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -1805,11 +2332,11 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="unitOfMeasure"
-                          label="Đơn vị tính"
+                          {...labelProps('Đơn vị tính')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
-                            placeholder="Chọn đơn vị tính..."
+                            placeholder="Chọn đơn vị tính"
                             options={[
                               { label: 'Bộ', value: 1 },
                               { label: 'Bến', value: 2 },
@@ -1848,7 +2375,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="quantity"
-                          label="Số lượng"
+                          {...labelProps('Số lượng')}
                           rules={[
                             { required: true, message: "Vui lòng nhập số lượng" },
                             { type: 'number', min: 1, message: "Số lượng phải > 0" },
@@ -1865,12 +2392,12 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="yearOfUse"
-                          label="Năm đưa vào sử dụng"
+                          {...labelProps('Năm đưa vào sử dụng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
                             style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn năm..."
+                            placeholder="Chọn năm"
                             options={yearOfUseOptions}
                           />
                         </Form.Item>
@@ -1880,14 +2407,14 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operationalStatus"
-                          label="Tình trạng"
+                          {...labelProps('Tình trạng')}
                           rules={[
                             { required: true, message: "Vui lòng chọn tình trạng" },
                           ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
-                            placeholder="Chọn tình trạng..."
+                            placeholder="Chọn tình trạng"
                             options={TRANG_THAI_HOAT_DONG_OPTIONS}
                             style={{ width: "100%", ...pillStyle }}
                           />
@@ -1906,7 +2433,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="model"
-                          label="Model"
+                          {...labelProps('Model')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -1919,7 +2446,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="manufacturer"
-                          label="Hãng sản xuất"
+                          {...labelProps('Hãng sản xuất')}
                           rules={[{ max: 50, message: "Tối đa 50 ký tự" }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -1933,7 +2460,7 @@ const CctvListPage = () => {
                     </Row>
                     <Form.Item
                       name="specifications"
-                      label="Thông số kỹ thuật"
+                      {...labelProps('Thông số kỹ thuật')}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -1945,7 +2472,7 @@ const CctvListPage = () => {
                     </Form.Item>
                     <Form.Item
                       name="maintenanceInformation"
-                      label="Thông tin bảo trì"
+                      {...labelProps('Thông tin bảo trì')}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -1957,7 +2484,7 @@ const CctvListPage = () => {
                     </Form.Item>
                     <Form.Item
                       name="note"
-                      label="Ghi chú"
+                      {...labelProps('Ghi chú')}
                       style={{ marginBottom: 0 }}
                     >
                       <Input.TextArea
@@ -1972,73 +2499,229 @@ const CctvListPage = () => {
               },
               {
                 key: 'gis',
-                label: 'Vị trí (GIS)',
+                label: 'Thông tin vị trí',
                 children: (
-                  <>
-                    <Row gutter={24}>
-                      <Col xs={24} sm={12}>
+                  <div style={{ paddingTop: 16 }}>
+                    <Row gutter={16}>
+                      <Col span={12}>
                         <Form.Item
-                          name="objectType"
-                          label="Loại đối tượng"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <SelectAppParams
-                            groupName="LOAI_DOI_TUONG"
-                            placeholder="Chọn loại đối tượng..."
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="mapSymbolId"
-                          label="Biểu tượng"
+                          name="geometryType"
+                          {...labelProps('Loại đối tượng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn biểu tượng..."
-                            options={symbols.map((s) => ({
-                              label: s.name || s.id,
-                              value: s.id,
-                            }))}
+                            placeholder="Chọn loại đối tượng"
                             allowClear
+                            options={[
+                              { value: 'POINT', label: 'Đối tượng điểm' },
+                              { value: 'LINE', label: 'Đối tượng đường' },
+                              { value: 'POLYGON', label: 'Đối tượng vùng' },
+                            ]}
+                            style={{ ...pillStyle, width: '100%' }}
                           />
                         </Form.Item>
                       </Col>
+                      <Col span={12}>
+                        <Form.Item
+                          name="mapSymbolId"
+                          {...labelProps('Biểu tượng')}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Select
+                            placeholder="Chọn biểu tượng bản đồ"
+                            allowClear
+                            showSearch
+                            optionFilterProp="label"
+                            disabled={!createGeometryType}
+                            style={{ ...pillStyle, width: '100%' }}
+                          >
+                            {symbols.map((sym) => (
+                              <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                                <Space>
+                                  {sym.image && (
+                                    <img
+                                      src={
+                                        sym.image.startsWith('data:')
+                                          ? sym.image
+                                          : `data:image/png;base64,${sym.image}`
+                                      }
+                                      alt={sym.name}
+                                      style={{ width: 20, height: 20, objectFit: 'contain' }}
+                                    />
+                                  )}
+                                  <span>
+                                    {sym.code ? `${sym.name} (${sym.code})` : sym.name}
+                                  </span>
+                                </Space>
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
                     </Row>
-                    <Row gutter={24}>
-                      <Col xs={24} sm={12}>
+                    <Row gutter={16}>
+                      <Col span={12}>
                         <Form.Item
                           name="coordinateSystem"
-                          label="Hệ quy chiếu"
+                          {...labelProps('Hệ quy chiếu')}
                           style={{ marginBottom: spaceFormField }}
+                          rules={createGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}
                         >
-                          <SelectAppParams
-                            groupName="HET_VAN_CHUA"
-                            placeholder="Chọn hệ quy chiếu..."
-                            style={{ width: "100%", ...pillStyle }}
+                          <Select
+                            placeholder="Chọn hệ quy chiếu"
+                            disabled
+                            options={[
+                              { value: 1, label: 'WGS-84' },
+                              { value: 2, label: 'VN-2000' },
+                            ]}
+                            style={{ ...pillStyle, width: '100%' }}
                           />
                         </Form.Item>
                       </Col>
-                      <Col xs={24} sm={12}>
+                      <Col span={12}>
                         <Form.Item
                           name="displayRule"
-                          label="Quy tắc hiển thị"
+                          {...labelProps('Quy tắc hiển thị')}
                           style={{ marginBottom: spaceFormField }}
+                          rules={createGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}
                         >
-                          <SelectAppParams
-                            groupName="QUY_TAC_HIEN_THI"
-                            placeholder="Chọn quy tắc..."
-                            style={{ width: "100%", ...pillStyle }}
+                          <Input
+                            placeholder="Chọn quy tắc hiển thị"
+                            disabled
+                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
                           />
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Form.Item name="coordinates" label="Tọa độ">
-                      <LongLatTable />
-                    </Form.Item>
-                  </>
+                    {/* GPS Coordinates (DMS) */}
+                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>
+                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{createGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
+                      </span>
+                      {gpsCoordList.length > 0 && (
+                        <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => setGpsCoordList([...gpsCoordList, { lat: 0, lng: 0 }])} disabled={!createGeometryType} style={{ borderRadius: radiusPill }}>
+                          Thêm tọa độ
+                        </Button>
+                      )}
+                    </div>
+                    {gpsCoordList.length === 0 ? (
+                      <div style={{
+                        padding: '32px 16px',
+                        textAlign: 'center',
+                        border: `1px dashed ${borderDefault}`,
+                        borderRadius: radiusMd,
+                        background: surfaceCard,
+                      }}>
+                        <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
+                          Chưa có tọa độ nào.
+                        </span>
+                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => setGpsCoordList([...gpsCoordList, { lat: 0, lng: 0 }])} disabled={!createGeometryType} style={{ borderRadius: radiusPill }}>
+                          Thêm tọa độ
+                        </Button>
+                      </div>
+                    ) : (
+                      <PagedTable
+                        dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+                        tableProps={{ scroll: { x: 820 } }}
+                      >
+                        <Table.Column
+                          title="Vĩ độ (N)"
+                          key="lat"
+                          render={(_: any, record: any) => {
+                            const dd = record.lat || 0;
+                            const d = Math.floor(dd);
+                            const m = Math.floor((dd - d) * 60);
+                            const s = ((dd - d - m / 60) * 3600);
+                            return (
+                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                                <InputNumber value={d} min={0} max={90} placeholder="Độ"
+                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: Number(v ?? 0) } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>°</span>
+                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
+                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + (Number(v ?? 0)) / 60 } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>'</span>
+                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
+                                  style={{ flex: 1.2 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>{'"'}</span>
+                              </Space.Compact>
+                            );
+                          }}
+                          onHeaderCell={() => ({
+                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
+                          })}
+                        />
+                        <Table.Column
+                          title="Kinh độ (E)"
+                          key="lng"
+                          render={(_: any, record: any) => {
+                            const dd = record.lng || 0;
+                            const d = Math.floor(dd);
+                            const m = Math.floor((dd - d) * 60);
+                            const s = ((dd - d - m / 60) * 3600);
+                            return (
+                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                                <InputNumber value={d} min={0} max={180} placeholder="Độ"
+                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: Number(v ?? 0) } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>°</span>
+                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
+                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + (Number(v ?? 0)) / 60 } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>'</span>
+                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                  onChange={(v) => setGpsCoordList(gpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
+                                  style={{ flex: 1.2 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>{'"'}</span>
+                              </Space.Compact>
+                            );
+                          }}
+                          onHeaderCell={() => ({
+                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
+                          })}
+                        />
+                        <Table.Column
+                          title=""
+                          key="actions"
+                          width={44}
+                          align="center"
+                          render={(_: any, record: any) => (
+                            <Button type="link" danger size="small" icon={<DeleteOutlined />}
+                              onClick={() => setGpsCoordList(gpsCoordList.filter((_, idx) => idx !== record._idx))} />
+                          )}
+                          onHeaderCell={() => ({
+                            style: { background: colors.bodyBg, padding: '12px 6px' },
+                          })}
+                        />
+                      </PagedTable>
+                    )}
+                  </div>
                 ),
               },
               {
@@ -2056,12 +2739,17 @@ const CctvListPage = () => {
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
       <Drawer
         {...drawerProps}
-        title={<span style={drawerTitleStyle}>Chỉnh sửa hệ thống CCTV</span>}
+        title={
+          <span style={drawerTitleStyle}>
+            Chỉnh sửa thông tin — {updateTarget?.deviceName || '—'}
+          </span>
+        }
         open={updateModalOpen}
         onClose={() => {
           setUpdateModalOpen(false);
           setUpdateTarget(null);
           updateForm.resetFields();
+          setUpdateGpsCoordList([]);
         }}
         extra={
           <Button
@@ -2070,6 +2758,7 @@ const CctvListPage = () => {
               setUpdateModalOpen(false);
               setUpdateTarget(null);
               updateForm.resetFields();
+              setUpdateGpsCoordList([]);
             }}
             style={drawerCloseBtnStyle}
           >
@@ -2083,6 +2772,7 @@ const CctvListPage = () => {
                 setUpdateModalOpen(false);
                 setUpdateTarget(null);
                 updateForm.resetFields();
+                setUpdateGpsCoordList([]);
               }}
               style={outlineButtonStyle}
             >
@@ -2123,12 +2813,12 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="orgUnitId"
-                          label="Đơn vị quản lý"
+                          {...labelProps('Đơn vị quản lý')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <OrgUnitTreeSelect
                             organizations={orgUnits}
-                            placeholder="Chọn đơn vị..."
+                            placeholder="Chọn đơn vị"
                             loading={loadingOrgs}
                             showPath
                             treeDefaultExpandAll={false}
@@ -2138,28 +2828,13 @@ const CctvListPage = () => {
                       </Col>
                       <Col xs={24} sm={12}>
                         <Form.Item
-                          name="vtsSystemId"
-                          label="Thuộc TTDH VTS / Trạm Radar"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <SelectKcht
-                            category="RADAR"
-                            placeholder="Chọn TTDH VTS/Trạm Radar..."
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={24}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
                           name="attachedInfrastructureType"
-                          label="Thuộc loại hạ tầng"
+                          {...labelProps('Thuộc loại hạ tầng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
                             style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn loại hạ tầng..."
+                            placeholder="Chọn loại hạ tầng"
                             options={attachedInfraTypeOptions}
                             onChange={(val) => {
                               updateForm.setFieldValue("attachedInfrastructureType", val);
@@ -2171,7 +2846,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="attachedInfrastructureId"
-                          label="Thuộc hạ tầng"
+                          {...labelProps('Thuộc hạ tầng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -2193,12 +2868,12 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operatingUnitId"
-                          label="Đơn vị khai thác"
+                          {...labelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <SelectCateOther
                             category="DON_VI_KHAI_THAC"
-                            placeholder="Chọn đơn vị khai thác..."
+                            placeholder="Chọn đơn vị khai thác"
                             style={{ width: "100%", ...pillStyle }}
                           />
                         </Form.Item>
@@ -2206,7 +2881,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="deviceCode"
-                          label="Mã thiết bị"
+                          {...labelProps('Mã thiết bị')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -2221,7 +2896,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="deviceName"
-                          label="Tên thiết bị"
+                          {...labelProps('Tên thiết bị')}
                           rules={[
                             { required: true, message: "Vui lòng nhập tên thiết bị" },
                           ]}
@@ -2235,14 +2910,18 @@ const CctvListPage = () => {
                       </Col>
                       <Col xs={24} sm={12}>
                         <Form.Item
-                          name="provinceId"
-                          label="Địa điểm (Tỉnh/TP)"
+                          name="provinceName"
+                          {...labelProps('Địa điểm (Tỉnh/TP)')}
                           style={{ marginBottom: spaceFormField }}
                         >
-                          <SelectCateOther
-                            category="DON_VI_HANH_CHINH"
-                            placeholder="Chọn tỉnh/thành phố..."
+                          <Select
                             style={{ width: "100%", ...pillStyle }}
+                            placeholder="Chọn tỉnh/thành phố"
+                            options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
+                            showSearch
+                            filterOption={(input: string, option: any) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                           />
                         </Form.Item>
                       </Col>
@@ -2251,7 +2930,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="detailedLocation"
-                          label="Địa điểm chi tiết"
+                          {...labelProps('Địa điểm chi tiết')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -2263,11 +2942,11 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="unitOfMeasure"
-                          label="Đơn vị tính"
+                          {...labelProps('Đơn vị tính')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
-                            placeholder="Chọn đơn vị tính..."
+                            placeholder="Chọn đơn vị tính"
                             options={[
                               { label: 'Bộ', value: 1 },
                               { label: 'Bến', value: 2 },
@@ -2306,7 +2985,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="quantity"
-                          label="Số lượng"
+                          {...labelProps('Số lượng')}
                           rules={[
                             { required: true, message: "Vui lòng nhập số lượng" },
                             { type: 'number', min: 1, message: "Số lượng phải > 0" },
@@ -2323,12 +3002,12 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="yearOfUse"
-                          label="Năm đưa vào sử dụng"
+                          {...labelProps('Năm đưa vào sử dụng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
                             style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn năm..."
+                            placeholder="Chọn năm"
                             options={yearOfUseOptions}
                           />
                         </Form.Item>
@@ -2338,14 +3017,14 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operationalStatus"
-                          label="Tình trạng"
+                          {...labelProps('Tình trạng')}
                           rules={[
                             { required: true, message: "Vui lòng chọn tình trạng" },
                           ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
-                            placeholder="Chọn tình trạng..."
+                            placeholder="Chọn tình trạng"
                             options={TRANG_THAI_HOAT_DONG_OPTIONS}
                             style={{ width: "100%", ...pillStyle }}
                           />
@@ -2364,7 +3043,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="model"
-                          label="Model"
+                          {...labelProps('Model')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -2376,7 +3055,7 @@ const CctvListPage = () => {
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="manufacturer"
-                          label="Hãng sản xuất"
+                          {...labelProps('Hãng sản xuất')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -2388,7 +3067,7 @@ const CctvListPage = () => {
                     </Row>
                     <Form.Item
                       name="specifications"
-                      label="Thông số kỹ thuật"
+                      {...labelProps('Thông số kỹ thuật')}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -2400,7 +3079,7 @@ const CctvListPage = () => {
                     </Form.Item>
                     <Form.Item
                       name="maintenanceInformation"
-                      label="Thông tin bảo trì"
+                      {...labelProps('Thông tin bảo trì')}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -2412,7 +3091,7 @@ const CctvListPage = () => {
                     </Form.Item>
                     <Form.Item
                       name="note"
-                      label="Ghi chú"
+                      {...labelProps('Ghi chú')}
                       style={{ marginBottom: 0 }}
                     >
                       <Input.TextArea
@@ -2427,73 +3106,229 @@ const CctvListPage = () => {
               },
               {
                 key: 'gis',
-                label: 'Vị trí (GIS)',
+                label: 'Thông tin vị trí',
                 children: (
-                  <>
-                    <Row gutter={24}>
-                      <Col xs={24} sm={12}>
+                  <div style={{ paddingTop: 16 }}>
+                    <Row gutter={16}>
+                      <Col span={12}>
                         <Form.Item
-                          name="objectType"
-                          label="Loại đối tượng"
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <SelectAppParams
-                            groupName="LOAI_DOI_TUONG"
-                            placeholder="Chọn loại đối tượng..."
-                            style={{ width: "100%", ...pillStyle }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="mapSymbolId"
-                          label="Biểu tượng"
+                          name="geometryType"
+                          {...labelProps('Loại đối tượng')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
-                            style={{ width: "100%", ...pillStyle }}
-                            placeholder="Chọn biểu tượng..."
-                            options={symbols.map((s) => ({
-                              label: s.name || s.id,
-                              value: s.id,
-                            }))}
+                            placeholder="Chọn loại đối tượng"
                             allowClear
+                            options={[
+                              { value: 'POINT', label: 'Đối tượng điểm' },
+                              { value: 'LINE', label: 'Đối tượng đường' },
+                              { value: 'POLYGON', label: 'Đối tượng vùng' },
+                            ]}
+                            style={{ ...pillStyle, width: '100%' }}
                           />
                         </Form.Item>
                       </Col>
+                      <Col span={12}>
+                        <Form.Item
+                          name="mapSymbolId"
+                          {...labelProps('Biểu tượng')}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Select
+                            placeholder="Chọn biểu tượng bản đồ"
+                            allowClear
+                            showSearch
+                            optionFilterProp="label"
+                            disabled={!updateGeometryType}
+                            style={{ ...pillStyle, width: '100%' }}
+                          >
+                            {symbols.map((sym) => (
+                              <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                                <Space>
+                                  {sym.image && (
+                                    <img
+                                      src={
+                                        sym.image.startsWith('data:')
+                                          ? sym.image
+                                          : `data:image/png;base64,${sym.image}`
+                                      }
+                                      alt={sym.name}
+                                      style={{ width: 20, height: 20, objectFit: 'contain' }}
+                                    />
+                                  )}
+                                  <span>
+                                    {sym.code ? `${sym.name} (${sym.code})` : sym.name}
+                                  </span>
+                                </Space>
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
                     </Row>
-                    <Row gutter={24}>
-                      <Col xs={24} sm={12}>
+                    <Row gutter={16}>
+                      <Col span={12}>
                         <Form.Item
                           name="coordinateSystem"
-                          label="Hệ quy chiếu"
+                          {...labelProps('Hệ quy chiếu')}
                           style={{ marginBottom: spaceFormField }}
+                          rules={updateGeometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}
                         >
-                          <SelectAppParams
-                            groupName="HET_VAN_CHUA"
-                            placeholder="Chọn hệ quy chiếu..."
-                            style={{ width: "100%", ...pillStyle }}
+                          <Select
+                            placeholder="Chọn hệ quy chiếu"
+                            disabled
+                            options={[
+                              { value: 1, label: 'WGS-84' },
+                              { value: 2, label: 'VN-2000' },
+                            ]}
+                            style={{ ...pillStyle, width: '100%' }}
                           />
                         </Form.Item>
                       </Col>
-                      <Col xs={24} sm={12}>
+                      <Col span={12}>
                         <Form.Item
                           name="displayRule"
-                          label="Quy tắc hiển thị"
+                          {...labelProps('Quy tắc hiển thị')}
                           style={{ marginBottom: spaceFormField }}
+                          rules={updateGeometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}
                         >
-                          <SelectAppParams
-                            groupName="QUY_TAC_HIEN_THI"
-                            placeholder="Chọn quy tắc..."
-                            style={{ width: "100%", ...pillStyle }}
+                          <Input
+                            placeholder="Chọn quy tắc hiển thị"
+                            disabled
+                            style={{ ...pillStyle, color: '#8c8c8c', cursor: 'not-allowed' }}
                           />
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Form.Item name="coordinates" label="Tọa độ">
-                      <LongLatTable />
-                    </Form.Item>
-                  </>
+                    {/* GPS Coordinates (DMS) */}
+                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>
+                        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{updateGeometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
+                      </span>
+                      {updateGpsCoordList.length > 0 && (
+                        <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => setUpdateGpsCoordList([...updateGpsCoordList, { lat: 0, lng: 0 }])} disabled={!updateGeometryType} style={{ borderRadius: radiusPill }}>
+                          Thêm tọa độ
+                        </Button>
+                      )}
+                    </div>
+                    {updateGpsCoordList.length === 0 ? (
+                      <div style={{
+                        padding: '32px 16px',
+                        textAlign: 'center',
+                        border: `1px dashed ${borderDefault}`,
+                        borderRadius: radiusMd,
+                        background: surfaceCard,
+                      }}>
+                        <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
+                          Chưa có tọa độ nào.
+                        </span>
+                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => setUpdateGpsCoordList([...updateGpsCoordList, { lat: 0, lng: 0 }])} disabled={!updateGeometryType} style={{ borderRadius: radiusPill }}>
+                          Thêm tọa độ
+                        </Button>
+                      </div>
+                    ) : (
+                      <PagedTable
+                        dataSource={updateGpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+                        tableProps={{ scroll: { x: 820 } }}
+                      >
+                        <Table.Column
+                          title="Vĩ độ (N)"
+                          key="lat"
+                          render={(_: any, record: any) => {
+                            const dd = record.lat || 0;
+                            const d = Math.floor(dd);
+                            const m = Math.floor((dd - d) * 60);
+                            const s = ((dd - d - m / 60) * 3600);
+                            return (
+                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                                <InputNumber value={d} min={0} max={90} placeholder="Độ"
+                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: Number(v ?? 0) } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>°</span>
+                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
+                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + (Number(v ?? 0)) / 60 } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>'</span>
+                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lat: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
+                                  style={{ flex: 1.2 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>{'"'}</span>
+                              </Space.Compact>
+                            );
+                          }}
+                          onHeaderCell={() => ({
+                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
+                          })}
+                        />
+                        <Table.Column
+                          title="Kinh độ (E)"
+                          key="lng"
+                          render={(_: any, record: any) => {
+                            const dd = record.lng || 0;
+                            const d = Math.floor(dd);
+                            const m = Math.floor((dd - d) * 60);
+                            const s = ((dd - d - m / 60) * 3600);
+                            return (
+                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                                <InputNumber value={d} min={0} max={180} placeholder="Độ"
+                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: Number(v ?? 0) } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>°</span>
+                                <InputNumber value={m} min={0} max={59} placeholder="Phút"
+                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + (Number(v ?? 0)) / 60 } : g))}
+                                  style={{ flex: 1 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>'</span>
+                                <InputNumber value={s.toFixed(2)} min={0} max={59.99} step={0.01} placeholder="Giây" formatter={fmtInputNumber}
+                                  onChange={(v) => setUpdateGpsCoordList(updateGpsCoordList.map((g, idx) => idx === record._idx ? { ...g, lng: d + m / 60 + (Number(v ?? 0)) / 3600 } : g))}
+                                  style={{ flex: 1.2 }} controls={false} />
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', padding: '0 6px',
+                                  background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0,
+                                  fontSize: fontSizeSm, color: textTertiary,
+                                }}>{'"'}</span>
+                              </Space.Compact>
+                            );
+                          }}
+                          onHeaderCell={() => ({
+                            style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' },
+                          })}
+                        />
+                        <Table.Column
+                          title=""
+                          key="actions"
+                          width={44}
+                          align="center"
+                          render={(_: any, record: any) => (
+                            <Button type="link" danger size="small" icon={<DeleteOutlined />}
+                              onClick={() => setUpdateGpsCoordList(updateGpsCoordList.filter((_, idx) => idx !== record._idx))} />
+                          )}
+                          onHeaderCell={() => ({
+                            style: { background: colors.bodyBg, padding: '12px 6px' },
+                          })}
+                        />
+                      </PagedTable>
+                    )}
+                  </div>
                 ),
               },
               {
@@ -2506,6 +3341,38 @@ const CctvListPage = () => {
             ]}
           />
         </Form>
+      </Drawer>
+
+      {/* ── History Drawer ─────────────────────────────────────── */}
+      <Drawer
+        {...drawerProps}
+        size={isIframeModal ? '100%' : 880}
+        mask={!isIframeModal}
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Space size={spaceSm} style={{ alignItems: 'center' }}>
+              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+              <span style={drawerTitleStyle}>
+                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — CCTV' : (historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi')}
+              </span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+            </Space>
+          </div>
+        }
+        open={historyModalVisible}
+        onClose={() => setHistoryModalVisible(false)}
+        extra={<Button type="text" onClick={() => setHistoryModalVisible(false)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+        }}>
+        <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {loadingHistory ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
+          ) : renderCctvHistoryTimeline(historyRecords)}
+        </div>
       </Drawer>
     </>
   );
