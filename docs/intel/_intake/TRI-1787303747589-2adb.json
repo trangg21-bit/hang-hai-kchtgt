@@ -1,0 +1,119 @@
+{
+  "triage_id": "TRI-1787303747589-2adb",
+  "created_at": 1787303747589,
+  "request_summary": "Tạo ba/01-base-pattern.md (tài liệu nền phần CHUNG + bảng mapping 7 trạng thái phê duyệt 2 cấp → ApprovalStatus) và viết lại 29 feature-brief M-002 theo 7 mục \"phần riêng\", theo chuẩn M-001.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-009-ql-cb-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-010-ql-cb-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-015-ql-bc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-016-ql-bc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-021-ql-cc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-022-ql-cc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-009-ql-cb-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-010-ql-cb-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-015-ql-bc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-016-ql-bc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-021-ql-cc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-022-ql-cc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C2: 30 edit-target files exceed the inline gate (30 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Thư mục docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/ (hiện rỗng) + 29 feature-brief.md đang ở format 10-mục cũ.",
+  "blast_radius": 30,
+  "done_oracle": "ba/01-base-pattern.md tồn tại, tham chiếu QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md + bảng mapping 7 trạng thái → ApprovalStatus; 29 feature-brief viết theo 7 mục phần riêng (F-013 bỏ qua); ai-kit verify không còn structural violation.",
+  "verification_commands": [
+    {
+      "command": "mvn -f pom.xml test-compile",
+      "cwd": ".",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_state.md",
+      "line": 10,
+      "quote": "current-stage: closed",
+      "source_hash": "c3447e63aed56b751d4a14b7080b99705181de8bbe9819f58da0c6a4f295674a",
+      "quote_hash": "1afb4eea7f9bc3461121d6be347b945508fe5e30be275a7b0a52c17af0c43fbe",
+      "note": "Module M-002 đang ở trạng thái closed; ba/ hiện rỗng, feature-brief ở format 10-mục cũ"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "line": 24,
+      "quote": "## 1. Tổng quan",
+      "source_hash": "17babe3901d29f5a4c68881bd3b3f5bbd15a1379c9bebac538a2fc21c657fc9d",
+      "quote_hash": "2c03651d76501e66d4ec9dddd74bc9f02c5cde5cbedfbab0d3735df80c37a71f",
+      "note": "Feature-brief hiện ở format 10-mục cũ — cần viết lại theo 7 mục phần riêng"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "e71d818cdeb51ed9ef74f376ff7d9c18ac819047",
+    "dirty": true,
+    "captured_at": 1787303747793
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

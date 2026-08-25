@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1785893869008-2ffd",
+  "created_at": 1785893869008,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Restructure F-002 feature-brief.md to match 10-section template, preserving all existing business logic content",
+  "reason": "Editing SDLC artifact (feature-brief.md) under docs/modules/M-001/ — requires SDLC pipeline dispatch",
+  "signals": [
+    "sdlc-artifact: feature-brief.md",
+    "module: M-001",
+    "feature: F-002"
+  ]
+}

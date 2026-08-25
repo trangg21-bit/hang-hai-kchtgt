@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1786330462998-59b2",
+  "created_at": 1786330462998,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "M-015: Rollback về BA stage để viết lại toàn bộ feature-briefs F-092→F-121 theo nghiệp vụ đúng. Mô hình mới: CoastalStation (1 entity với service flags) + StationAsset (entity con) + StationAssetApproval. INMARSAT/COSPAS-SARSAT/LRIT/NAVTEX là dịch vụ của đài, không phải loại đài riêng.",
+  "reason": "Phát hiện sai lệch nghiệp vụ giữa code hiện tại (5 entity riêng biệt cho từng loại đài) và nghiệp vụ thực tế (INMARSAT/COSPAS-SARSAT/LRIT là dịch vụ của Đài TTDH, không phải loại đài độc lập). Cần sửa từ gốc BA.",
+  "signals": [
+    "M-015 sealed",
+    "features F-092→F-121 proposed under M-004 instead of M-015",
+    "user confirmed business domain: Đài TTDH provides multiple services",
+    "missing StationAsset entity"
+  ]
+}

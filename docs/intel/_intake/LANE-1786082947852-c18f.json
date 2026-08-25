@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1786082947852-c18f",
+  "created_at": 1786082947852,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Gộp UI feature folders vào BE cho VungNuoc (M-002): xóa 7 thư mục UI thừa và rebuild module-brief.md để thống nhất với CangBien",
+  "reason": "Các feature-brief.md đã merge nội dung (có merged-from) nhưng thư mục UI vẫn tồn tại trên disk và module-brief.md vẫn liệt kê riêng. Cần dọn disk + rebuild projection.",
+  "signals": [
+    "module M-002 VungNuoc features split UI/BE mismatch",
+    "7 UI folders to delete: F-088→F-092, F-101, F-102",
+    "F-107 upload-giayto giữ lại (không có BE counterpart như F-103)"
+  ]
+}

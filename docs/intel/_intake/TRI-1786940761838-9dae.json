@@ -1,0 +1,55 @@
+{
+  "triage_id": "TRI-1786940761838-9dae",
+  "created_at": 1786940761838,
+  "request_summary": "Sửa template feature-brief mục 2.1 (thay bảng 7 vai trò cũ bằng mô hình phân quyền động theo nhóm + tài khoản qua checkbox) và đổi cụm \"vai trò\" → \"nhóm người dùng\" trong AGENTS.md cho khớp mô hình thực tế đã xác nhận từ code.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "AGENTS.md",
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md",
+      "docs/feature-brief-template.md"
+    ],
+    "impact_files": [
+      "AGENTS.md",
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md",
+      "docs/feature-brief-template.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "docs/feature-brief-template.md mục 2.1 — BA đọc template trước khi viết brief; AGENTS.md dòng mô tả màn danh sách",
+  "blast_radius": 4,
+  "done_oracle": "Template mục 2.1 bỏ bảng 7 vai trò cũ, ghi mô hình phân quyền động (nhóm + tài khoản qua checkbox); AGENTS.md dòng ví dụ đổi \"vai trò\" → \"nhóm người dùng\"; không đụng docs/modules; chưa commit.",
+  "verification_commands": [
+    {
+      "command": "git status --porcelain",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "AGENTS.md",
+    "docs/_pilot-review/01-base-pattern.md",
+    "docs/_pilot-review/F-006-feature-brief.md",
+    "docs/feature-brief-template.md"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "41555e0f9725c87c2d774fe3c49691dbac85bea5",
+    "dirty": true,
+    "captured_at": 1786940762019
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

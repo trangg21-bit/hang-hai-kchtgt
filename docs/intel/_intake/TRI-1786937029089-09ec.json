@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1786937029089-09ec",
+  "created_at": 1786937029090,
+  "request_summary": "Pilot tài liệu BA mới: đặt 2 file nháp (base pattern M-001 + brief delta F-006) vào docs/_pilot-review/ trong dự án để user review; bản trước bị chặn ghi docs/modules nên đổi vị trí nháp; chưa đụng file khác, chưa commit.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Thư mục docs/_pilot-review/ — bản nháp tài liệu BA để user review trước khi đưa vào docs/modules (không phải tính năng UI)",
+  "blast_radius": 2,
+  "done_oracle": "2 file pilot nằm trong docs/_pilot-review/ (base pattern M-001 + brief delta F-006) để user review trong cây tệp dự án; git status chỉ hiện 2 file mới; chưa commit; chưa đụng docs/modules.",
+  "verification_commands": [
+    {
+      "command": "git status --porcelain",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "TRI-1786934894963-41df",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "41555e0f9725c87c2d774fe3c49691dbac85bea5",
+    "dirty": true,
+    "captured_at": 1786937029272
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

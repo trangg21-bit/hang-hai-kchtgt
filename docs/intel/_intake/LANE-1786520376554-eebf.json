@@ -1,0 +1,15 @@
+{
+  "route_id": "LANE-1786520376554-eebf",
+  "created_at": 1786520376554,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Cập nhật mục 2.1 feature-brief F-092 (M-004): sửa mô hình phân quyền từ role-based sang permission-based (PermissionMiddleware) phản ánh đúng code thực tế",
+  "reason": "Feature-brief là SDLC artifact thuộc M-004, cần specialist được dispatch qua pipeline để ghi vào docs/modules/",
+  "signals": [
+    "feature-brief.md in docs/modules/M-004",
+    "PermissionMiddleware code evidence",
+    "RolePermissionSeeder role-to-permission mapping"
+  ]
+}

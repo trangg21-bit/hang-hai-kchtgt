@@ -1,0 +1,46 @@
+{
+  "triage_id": "TRI-1786333100818-cafb",
+  "created_at": 1786333100818,
+  "request_summary": "BA document fix: align F-092→F-094 state machine with Cảng cạn pattern. Add 3-button create model, per-status update rules, delete US-094-05 restore, standardize approvalStatus.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-093-quan-ly-dai-ttdh-cap-nhat/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-094-quan-ly-dai-ttdh-xoa/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/ba/00-lean-spec.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-093-quan-ly-dai-ttdh-cap-nhat/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-094-quan-ly-dai-ttdh-xoa/feature-brief.md",
+      "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/ba/00-lean-spec.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/ba/00-lean-spec.md",
+  "blast_radius": 4,
+  "done_oracle": "F-092 has 3 buttons described, F-093 has per-status rules, F-094 no restore, lean-spec uses approvalStatus",
+  "declared_write_scope": [
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/feature-brief.md",
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-093-quan-ly-dai-ttdh-cap-nhat/feature-brief.md",
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-094-quan-ly-dai-ttdh-xoa/feature-brief.md",
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/ba/00-lean-spec.md"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f1be301530bab0b7dba1e5de35f944b171d89067",
+    "dirty": true,
+    "captured_at": 1786333100985
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

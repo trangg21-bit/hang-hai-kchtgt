@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mô hình dữ liệu nghiệp vụ — Kết cấu Hạ tầng Hàng hải</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #0f4c81;
+    --accent-light: #e8f0fe;
+    --orange: #e67e22;
+    --green: #27ae60;
+    --red: #c0392b;
+    --tier1: #1abc9c;
+    --tier2: #3498db;
+    --tier3: #9b59b6;
+    --tier4: #e67e22;
+    --indep: #95a5a6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  header {
+    background: var(--accent);
+    color: white;
+    padding: 32px 40px;
+    border-radius: 12px;
+    margin-bottom: 28px;
+  }
+  header h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+  header p  { font-size: 0.95rem; opacity: 0.9; }
+  .meta-bar {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    margin-top: 16px; font-size: 0.85rem; opacity: 0.85;
+  }
+  .meta-bar span { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 20px; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .stat-card .num { font-size: 2rem; font-weight: 800; }
+  .stat-card .label { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+  .stat-card.tier1 .num { color: var(--tier1); }
+  .stat-card.tier2 .num { color: var(--tier2); }
+  .stat-card.tier3 .num { color: var(--tier3); }
+  .stat-card.tier4 .num { color: var(--tier4); }
+  .stat-card.indep .num { color: var(--indep); }
+  .stat-card.total .num { color: var(--accent); }
+
+  section {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 8px;
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent-light);
+    padding-bottom: 10px;
+  }
+  section h3 {
+    font-size: 1.05rem;
+    margin: 20px 0 12px;
+    color: var(--text);
+  }
+
+  .diagram-box {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  thead th {
+    background: var(--accent);
+    color: white;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tbody tr:hover { background: #f8fafc; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: white;
+  }
+  .badge.t1 { background: var(--tier1); }
+  .badge.t2 { background: var(--tier2); }
+  .badge.t3 { background: var(--tier3); }
+  .badge.t4 { background: var(--tier4); }
+  .badge.dl { background: var(--indep); }
+
+  .parent-list { color: var(--muted); font-size: 0.85rem; }
+  .child-list  { font-size: 0.85rem; line-height: 1.7; }
+  .child-tag {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 1px 8px;
+    border-radius: 4px;
+    margin: 1px 3px;
+    font-size: 0.8rem;
+  }
+  .no-child { color: var(--muted); font-style: italic; font-size: 0.85rem; }
+
+  .multi-parent { color: var(--orange); font-weight: 600; }
+  .callout {
+    border-left: 4px solid var(--orange);
+    background: #fef9e7;
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 18px 0;
+    font-size: 0.9rem;
+  }
+  .callout strong { color: var(--orange); }
+
+  .legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 16px; font-size: 0.85rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 14px; height: 14px; border-radius: 4px;
+    display: inline-block;
+  }
+
+  footer {
+    text-align: center; padding: 24px;
+    color: var(--muted); font-size: 0.8rem;
+  }
+
+  @media (max-width: 768px) {
+    body { padding: 10px; }
+    header { padding: 20px; }
+    section { padding: 16px; }
+    table { font-size: 0.8rem; }
+    thead th, tbody td { padding: 8px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏗️ Mô hình dữ liệu nghiệp vụ — Kết cấu Hạ tầng Hàng hải</h1>
+  <p>Phân cấp 4 tầng các đối tượng hạ tầng theo quan hệ cha — con, đã được xác minh từ mã nguồn hệ thống quản lý</p>
+  <div class="meta-bar">
+    <span>📄 Revision 22</span>
+    <span>📅 06/08/2026</span>
+    <span>📊 29 thực thể</span>
+    <span>🔗 5 thực thể đa cha</span>
+  </div>
+</header>
+
+<!-- THỐNG KÊ -->
+<div class="stats">
+  <div class="stat-card tier1">
+    <div class="num">1</div>
+    <div class="label">Tầng 1 — Gốc</div>
+  </div>
+  <div class="stat-card tier2">
+    <div class="num">8</div>
+    <div class="label">Tầng 2 — Con</div>
+  </div>
+  <div class="stat-card tier3">
+    <div class="num">5</div>
+    <div class="label">Tầng 3 — Cháu</div>
+  </div>
+  <div class="stat-card tier4">
+    <div class="num">8</div>
+    <div class="label">Tầng 4 — Chắt</div>
+  </div>
+  <div class="stat-card indep">
+    <div class="num">7</div>
+    <div class="label">Nhóm độc lập</div>
+  </div>
+  <div class="stat-card total">
+    <div class="num">22 + 7</div>
+    <div class="label">Tổng: 29 thực thể</div>
+  </div>
+</div>
+
+<!-- SƠ ĐỒ -->
+<section>
+  <h2>🔍 1. Sơ đồ phân cấp tổng thể</h2>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--tier1)"></span> Tầng 1</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--tier2)"></span> Tầng 2</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--tier3)"></span> Tầng 3</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--tier4)"></span> Tầng 4</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--indep)"></span> Độc lập</div>
+    <div class="legend-item" style="margin-left:16px">⭐ = Đa cha</div>
+  </div>
+  <div class="diagram-box">
+    <pre class="mermaid">
+graph TD
+  subgraph T1["Tầng 1 — Gốc"]
+    CB["Cảng biển"]
+  end
+  subgraph T2["Tầng 2 — Con trực tiếp (8)"]
+    BC["Bến cảng"]
+    LHH["Luồng hàng hải"]
+    KTTB["Khu tránh trú bão"]
+    KCT["Khu chuyển tải"]
+    KND["Khu neo đậu"]
+    CSSC["Cơ sở sửa chữa, đóng tàu"]
+    VTS["Hệ thống VTS"]
+    NT["Nhà trạm QLVH phao, tiêu"]
+  end
+  subgraph T3["Tầng 3 — Cháu (5)"]
+    CC["⭐ Cầu cảng"]
+    BP["Bến phao"]
+    TL["Tuyến luồng"]
+    TDH["Trung tâm điều hành VTS"]
+    DBNT["⭐ Đèn biển và nhà trạm"]
+  end
+  subgraph T4["Tầng 4 — Chắt (8)"]
+    RDR["⭐ Trạm Radar"]
+    AIS["Hệ thống AIS"]
+    CCTV["Hệ thống CCTV"]
+    SCADA["Hệ thống SCADA"]
+    TD["Hệ thống truyền dẫn"]
+    PVTS["Hệ thống phụ trợ VTS"]
+    PT["⭐ Phao, tiêu"]
+    DK["⭐ Đê, kè chắn sóng..."]
+  end
+  subgraph DL["Nhóm độc lập (7)"]
+    VHF["Hệ thống VHF"]
+    DTDH["Đài Thông tin Duyên hải"]
+    DIM["Đài Inmarsat Hải Phòng"]
+    DCS["Đài Cospas-Sarsat"]
+    DLT["Đài LRIT"]
+    DTTHN["Đài TTXL TT HH Hà Nội"]
+    CC2["Cảng cạn"]
+  end
+  CB --> BC
+  CB --> LHH
+  CB --> KTTB
+  CB --> KCT
+  CB --> KND
+  CB --> CSSC
+  CB --> VTS
+  CB --> NT
+  BC --> CC
+  LHH --> CC
+  BC --> BP
+  LHH --> TL
+  VTS --> TDH
+  LHH --> DBNT
+  NT --> DBNT
+  TDH --> RDR
+  VTS --> RDR
+  TDH --> AIS
+  TDH --> CCTV
+  TDH --> SCADA
+  TDH --> TD
+  TDH --> PVTS
+  NT --> PT
+  TDH --> PT
+  LHH --> PT
+  TL --> PT
+  LHH --> DK
+  TL --> DK
+    </pre>
+  </div>
+  <p style="margin-top:12px; font-size:0.85rem; color:var(--muted)">
+    ⭐ = Thực thể đa cha (5 thực thể). Tổng 28 cạnh quan hệ. Nhóm độc lập không nối với Cảng biển.
+  </p>
+</section>
+
+<!-- BẢNG MA TRẬN QUAN HỆ — QUAN TRỌNG NHẤT -->
+<section>
+  <h2>📋 2. Ma trận quan hệ Cha — Con (toàn bộ 29 thực thể)</h2>
+  <p style="color:var(--muted); margin-bottom:16px; font-size:0.9rem">
+    Đây là bảng quan trọng nhất của tài liệu. Mỗi dòng thể hiện một thực thể cùng <strong>cha trực tiếp</strong> và <strong>toàn bộ con</strong> của nó.
+    Dữ liệu được xác minh từ <code>_pipeline.dcb</code> và <code>bible.glossary</code> trong tài liệu gốc.
+  </p>
+
+  <div class="callout">
+    <strong>⭐ Đa cha:</strong> 5 thực thể thuộc nhiều hơn 1 cha — Cầu cảng, Đèn biển và nhà trạm, Trạm Radar, Phao tiêu, Đê kè.
+    Trong bảng, các thực thể này được tô cam ở cột Cha và xuất hiện trong cột Con của nhiều cha khác nhau.
+  </div>
+
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th style="width:240px">Thực thể</th>
+          <th style="width:60px">Tầng</th>
+          <th style="width:280px">Cha trực tiếp</th>
+          <th>Con (thực thể trực thuộc)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>Cảng biển</strong></td>
+          <td><span class="badge t1">T1</span></td>
+          <td class="parent-list">(gốc — không có cha)</td>
+          <td class="child-list">
+            <span class="child-tag">Bến cảng</span>
+            <span class="child-tag">Luồng hàng hải</span>
+            <span class="child-tag">Khu tránh trú bão</span>
+            <span class="child-tag">Khu chuyển tải</span>
+            <span class="child-tag">Khu neo đậu</span>
+            <span class="child-tag">Cơ sở sửa chữa, đóng tàu</span>
+            <span class="child-tag">Hệ thống VTS</span>
+            <span class="child-tag">Nhà trạm QLVH phao, tiêu</span>
+          </td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>Bến cảng</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="child-list">
+            <span class="child-tag">⭐ Cầu cảng</span>
+            <span class="child-tag">Bến phao</span>
+          </td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>Luồng hàng hải</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="child-list">
+            <span class="child-tag">⭐ Cầu cảng</span>
+            <span class="child-tag">Tuyến luồng</span>
+            <span class="child-tag">⭐ Đèn biển và nhà trạm</span>
+            <span class="child-tag">⭐ Phao, tiêu</span>
+            <span class="child-tag">⭐ Đê, kè chắn sóng...</span>
+          </td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>Khu tránh trú bão</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><strong>Khu chuyển tải</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><strong>Khu neo đậu</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><strong>Cơ sở sửa chữa, đóng tàu</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><strong>Hệ thống VTS</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="child-list">
+            <span class="child-tag">Trung tâm điều hành VTS</span>
+            <span class="child-tag">⭐ Trạm Radar</span>
+          </td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td><strong>Nhà trạm QLVH phao, tiêu</strong></td>
+          <td><span class="badge t2">T2</span></td>
+          <td class="parent-list">Cảng biển</td>
+          <td class="child-list">
+            <span class="child-tag">⭐ Đèn biển và nhà trạm</span>
+            <span class="child-tag">⭐ Phao, tiêu</span>
+          </td>
+        </tr>
+        <tr style="background:#fef9e7">
+          <td>10</td>
+          <td><strong>⭐ Cầu cảng</strong></td>
+          <td><span class="badge t3">T3</span></td>
+          <td class="multi-parent">Bến cảng<br>Luồng hàng hải</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td><strong>Bến phao</strong></td>
+          <td><span class="badge t3">T3</span></td>
+          <td class="parent-list">Bến cảng</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td><strong>Tuyến luồng</strong></td>
+          <td><span class="badge t3">T3</span></td>
+          <td class="parent-list">Luồng hàng hải</td>
+          <td class="child-list">
+            <span class="child-tag">⭐ Phao, tiêu</span>
+            <span class="child-tag">⭐ Đê, kè chắn sóng...</span>
+          </td>
+        </tr>
+        <tr>
+          <td>13</td>
+          <td><strong>Trung tâm điều hành VTS</strong></td>
+          <td><span class="badge t3">T3</span></td>
+          <td class="parent-list">Hệ thống VTS</td>
+          <td class="child-list">
+            <span class="child-tag">⭐ Trạm Radar</span>
+            <span class="child-tag">Hệ thống AIS</span>
+            <span class="child-tag">Hệ thống CCTV</span>
+            <span class="child-tag">Hệ thống SCADA</span>
+            <span class="child-tag">Hệ thống truyền dẫn</span>
+            <span class="child-tag">Hệ thống phụ trợ VTS</span>
+            <span class="child-tag">⭐ Phao, tiêu</span>
+          </td>
+        </tr>
+        <tr style="background:#fef9e7">
+          <td>14</td>
+          <td><strong>⭐ Đèn biển và nhà trạm</strong></td>
+          <td><span class="badge t3">T3</span></td>
+          <td class="multi-parent">Luồng hàng hải<br>Nhà trạm QLVH phao, tiêu</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr style="background:#fef9e7">
+          <td>15</td>
+          <td><strong>⭐ Trạm Radar</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="multi-parent">Hệ thống VTS<br>Trung tâm điều hành VTS</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>16</td>
+          <td><strong>Hệ thống AIS</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="parent-list">Trung tâm điều hành VTS</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>17</td>
+          <td><strong>Hệ thống CCTV</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="parent-list">Trung tâm điều hành VTS</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>18</td>
+          <td><strong>Hệ thống SCADA</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="parent-list">Trung tâm điều hành VTS</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>19</td>
+          <td><strong>Hệ thống truyền dẫn</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="parent-list">Trung tâm điều hành VTS</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>20</td>
+          <td><strong>Hệ thống phụ trợ VTS</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="parent-list">Trung tâm điều hành VTS</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr style="background:#fef9e7">
+          <td>21</td>
+          <td><strong>⭐ Phao, tiêu</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="multi-parent">Nhà trạm QLVH phao, tiêu<br>Trung tâm điều hành VTS<br>Luồng hàng hải<br>Tuyến luồng</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr style="background:#fef9e7">
+          <td>22</td>
+          <td><strong>⭐ Đê, kè chắn sóng, chắn cát, hướng dòng, bảo vệ bờ</strong></td>
+          <td><span class="badge t4">T4</span></td>
+          <td class="multi-parent">Luồng hàng hải<br>Tuyến luồng</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>23</td>
+          <td><strong>Hệ thống VHF</strong></td>
+          <td><span class="badge dl">ĐL</span></td>
+          <td class="parent-list">(độc lập)</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>24</td>
+          <td><strong>Đài Thông tin Duyên hải</strong></td>
+          <td><span class="badge dl">ĐL</span></td>
+          <td class="parent-list">(độc lập)</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>25</td>
+          <td><strong>Đài Inmarsat Hải Phòng</strong></td>
+          <td><span class="badge dl">ĐL</span></td>
+          <td class="parent-list">(độc lập)</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>26</td>
+          <td><strong>Đài Cospas-Sarsat</strong></td>
+          <td><span class="badge dl">ĐL</span></td>
+          <td class="parent-list">(độc lập)</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>27</td>
+          <td><strong>Đài LRIT</strong></td>
+          <td><span class="badge dl">ĐL</span></td>
+          <td class="parent-list">(độc lập)</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>28</td>
+          <td><strong>Đài Trung tâm xử lý thông tin hàng hải Hà Nội</strong></td>
+          <td><span class="badge dl">ĐL</span></td>
+          <td class="parent-list">(độc lập)</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+        <tr>
+          <td>29</td>
+          <td><strong>Cảng cạn</strong></td>
+          <td><span class="badge dl">ĐL</span></td>
+          <td class="parent-list">(độc lập)</td>
+          <td class="no-child">— không có con —</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- GHI CHÚ -->
+<section>
+  <h2>📝 3. Ghi chú mô hình</h2>
+  <table>
+    <thead>
+      <tr><th style="width:220px">Mục</th><th>Chi tiết</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Tổng thực thể</strong></td>
+        <td>29 (22 trong phân cấp Cảng biển + 7 độc lập)</td>
+      </tr>
+      <tr>
+        <td><strong>Cấu trúc</strong></td>
+        <td>DAG (có hướng, không chu trình) — 4 tầng, 28 cạnh quan hệ cha-con</td>
+      </tr>
+      <tr>
+        <td><strong>Thực thể đa cha</strong></td>
+        <td>5 thực thể: Cầu cảng (2 cha), Đèn biển và nhà trạm (2), Trạm Radar (2), Phao tiêu (4), Đê kè (2)</td>
+      </tr>
+      <tr>
+        <td><strong>Node nhiều con nhất</strong></td>
+        <td>Cảng biển (8 con), Trung tâm điều hành VTS (7 con), Luồng hàng hải (5 con)</td>
+      </tr>
+      <tr>
+        <td><strong>Node nhiều cha nhất</strong></td>
+        <td>Phao, tiêu (4 cha: Nhà trạm, TTDH VTS, Luồng HH, Tuyến luồng)</td>
+      </tr>
+      <tr>
+        <td><strong>Thực thể lá</strong></td>
+        <td>20/29 (69%): không có thực thể con nào</td>
+      </tr>
+      <tr>
+        <td><strong>Tuyến luồng</strong></td>
+        <td>Là dạng văn bản pháp luật của Luồng hàng hải</td>
+      </tr>
+      <tr>
+        <td><strong>Nguồn dữ liệu</strong></td>
+        <td>Xác minh từ bộ biểu mẫu thông tin hạ tầng trong mã nguồn hệ thống quản lý</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  Tài liệu tạo từ <code>mo-hinh-du-lieu-nghiep-vu-kcht-hang-hai.json</code> — Revision 22 — 06/08/2026
+</footer>
+
+<script>mermaid.initialize({startOnLoad:true, theme:'default'});</script>
+</body>
+</html>

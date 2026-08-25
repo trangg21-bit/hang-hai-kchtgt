@@ -1,0 +1,131 @@
+---
+module-id: M-002
+module-name: "Quan ly tai san KCHTGT - Cang & Ben"
+stage: execution-planning
+agent: sdlc-tech-lead
+verdict: "Ready for development"
+waves: 5
+last-updated: 2026-06-27
+service-path: "src/main/java/com/hanghai/kchtg/cangben"
+---
+
+# Wave Plan: M-002 Quản lý tài sản KCHTGT - Cảng & Bến
+
+## Overview
+
+30 features (F-008..F-037) across 5 entities follow an identical CRUD+Approval pattern.
+Strategy: W0 establishes shared infrastructure; W1-W4 replicate the pattern per entity group.
+Max 4 dev tasks per wave. All inter-wave dependencies are explicit below.
+
+## Entity → Wave Mapping
+
+| Entity       | Wave | Depends on Wave | Rationale                            |
+|---|---|---|---|
+| Shared infra | W0   | —               | Unblocks all entity waves            |
+| CangBien     | W1   | W0              | Root entity, no parent FK            |
+| BenCang      | W2   | W1              | FK → cang_bien.id (NOT NULL)         |
+| CauCang      | W3   | W2              | FK → ben_cang.id (NOT NULL)          |
+| CangCan      | W2   | W0              | Independent — parallel with BenCang  |
+| VungNuoc     | W3   | W1              | FK → cang_bien.id — parallel with CauCang |
+
+---
+
+## Wave W0: Shared Infrastructure
+
+**Goal:** Establish base entities, migration scripts, shared services, and RBAC seeder update.
+All subsequent waves depend on this wave completing.
+Parallel-safe: yes (4 tasks, non-overlapping files)
+
+| Task   | Kind    | Features           | Scope                                                                                                                    | Files-glob                                                                                                                   | Risk   |
+|---|---|---|---|---|---|
+| W0-T1  | dev-be  | M-002 shared       | Flyway migrations V14-V21: create tables cang_bien, ben_cang, cau_cang, cang_can, vung_nuoc, lich_su_thay_doi, phe_duyet_log, giay_to; add PostgreSQL indexes; unique constraints on code columns | src/main/resources/db/migration/V14__*.sql .. V21__*.sql | Medium |
+| W0-T2  | dev-be  | M-002 shared       | Base entity classes: CangBenBaseEntity (extends BaseEntity, adds trangThai enum + orgUnitId + code + approvalStatus), ApprovalStatus enum, TrangThaiEnum; LichSuThayDoi entity (INSERT-only, no BaseEntity), PheDuyetLog entity (INSERT-only), GiayTo entity | src/main/java/com/hanghai/kchtg/cangben/entity/base/** | Low    |
+| W0-T3  | dev-be  | M-002 shared       | Shared services: ApprovalWorkflowService (state machine transitions, PheDuyetLog insert), LichSuThayDoiService (per-field diff + INSERT), GiayToService (MinIO upload + giay_to metadata insert, MIME validation via Apache Tika); base repositories for LichSuThayDoi, PheDuyetLog, GiayTo | src/main/java/com/hanghai/kchtg/cangben/service/shared/** src/main/java/com/hanghai/kchtg/cangben/repository/shared/** | Medium |
+| W0-T4  | dev-be  | M-002 shared       | RBAC seeder update: add 30 permission codes (cangbien/bencang/caucang/cangcan/vungnuoc × create/read/update/delete/approve/history) to RolePermissionSeeder; map to existing roles per SA security table; idempotent check-before-insert pattern | src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java OR new CangBenPermissionSeeder.java | Low    |
+
+---
+
+## Wave W1: CangBien Entity (Features F-008..F-013)
+
+**Goal:** Full CRUD + Approval + View + History for CangBien (root entity, VN-36).
+Depends on: W0 complete.
+Parallel-safe: yes (4 tasks)
+
+| Task   | Kind    | Features           | Scope                                                                                                                   | Files-glob                                                                                       | Risk   |
+|---|---|---|---|---|---|
+| W1-T1  | dev-be  | F-008, F-009, F-010 | CangBien entity, CangBienRepository (+ org-unit filter), CangBienService (create/update/softDelete with LichSuThayDoi + audit log in same TX); DTO: CreateCangBienRequest, UpdateCangBienRequest, CangBienResponse; Bean Validation on DTOs | src/main/java/com/hanghai/kchtg/cangben/entity/CangBien.java src/main/java/com/hanghai/kchtg/cangben/repository/CangBienRepository.java src/main/java/com/hanghai/kchtg/cangben/service/CangBienService.java src/main/java/com/hanghai/kchtg/cangben/dto/cangbien/** | Medium |
+| W1-T2  | dev-be  | F-011              | CangBienApprovalService (approve/reject state transitions via ApprovalWorkflowService + PheDuyetLog + TaiNotificationService stub); approve endpoint security: cangbien:approve permission | src/main/java/com/hanghai/kchtg/cangben/service/CangBienApprovalService.java | Low    |
+| W1-T3  | dev-be  | F-012, F-013       | CangBienController: REST /api/v1/cang-bien (GET list with pagination, GET by id, POST, PUT, DELETE, POST approve, POST reject, GET history); @PreAuthorize per endpoint using cangbien:{action} permission codes; org-unit filter for SPECIALIST/PORT_OPERATOR roles; GlobalExceptionHandler handling (409 duplicate code, 403, 404, 400) | src/main/java/com/hanghai/kchtg/cangben/controller/CangBienController.java | Medium |
+| W1-T4  | dev-be  | F-008..F-013       | CangBien unit tests: service layer (create duplicate code → 409; invalid GPS → 400; approval state machine; audit log written); controller layer (403 for wrong role; pagination params); integration test: create → approve flow | src/test/java/com/hanghai/kchtg/cangben/CangBienServiceTest.java src/test/java/com/hanghai/kchtg/cangben/CangBienControllerTest.java | Low    |
+
+---
+
+## Wave W2: BenCang (F-014..F-019) + CangCan (F-026..F-031) [parallel]
+
+**Goal:** BenCang (child of CangBien) and CangCan (independent) in parallel.
+Depends on: W1 complete (CangBien FK for BenCang); W0 complete (CangCan independent).
+Parallel-safe: yes — BenCang tasks and CangCan tasks touch non-overlapping files.
+
+| Task   | Kind    | Features           | Scope                                                                                                                   | Files-glob                                                                                       | Risk   |
+|---|---|---|---|---|---|
+| W2-T1  | dev-be  | F-014, F-015, F-016 | BenCang entity (FK → cang_bien.id NOT NULL), BenCangRepository, BenCangService (CRUD + LichSuThayDoi + org-unit filter); DTOs; parent CangBien must be hien_hanh to create BenCang (guard in service) | src/main/java/com/hanghai/kchtg/cangben/entity/BenCang.java src/main/java/com/hanghai/kchtg/cangben/repository/BenCangRepository.java src/main/java/com/hanghai/kchtg/cangben/service/BenCangService.java src/main/java/com/hanghai/kchtg/cangben/dto/bencang/** | Medium |
+| W2-T2  | dev-be  | F-017, F-018, F-019 | BenCangApprovalService + BenCangController (REST /api/v1/ben-cang); same approval pattern as CangBien; include cangId as query param for filtered list | src/main/java/com/hanghai/kchtg/cangben/service/BenCangApprovalService.java src/main/java/com/hanghai/kchtg/cangben/controller/BenCangController.java | Low    |
+| W2-T3  | dev-be  | F-026, F-027, F-028, F-029, F-030, F-031 | CangCan entity (independent, no parent FK), CangCanRepository, CangCanService (CRUD + approval), CangCanController (REST /api/v1/cang-can); same pattern; DTOs | src/main/java/com/hanghai/kchtg/cangben/entity/CangCan.java src/main/java/com/hanghai/kchtg/cangben/repository/CangCanRepository.java src/main/java/com/hanghai/kchtg/cangben/service/CangCanService.java src/main/java/com/hanghai/kchtg/cangben/controller/CangCanController.java src/main/java/com/hanghai/kchtg/cangben/dto/cangcan/** | Low    |
+| W2-T4  | dev-be  | F-014..F-019, F-026..F-031 | Unit/integration tests for BenCang and CangCan: parent-exists guard; approval flow; duplicate code rejection; role-based access | src/test/java/com/hanghai/kchtg/cangben/BenCangServiceTest.java src/test/java/com/hanghai/kchtg/cangben/CangCanServiceTest.java | Low    |
+
+---
+
+## Wave W3: CauCang (F-020..F-025) + VungNuoc (F-032..F-037) [parallel]
+
+**Goal:** CauCang (child of BenCang) and VungNuoc (child of CangBien) in parallel.
+Depends on: W2 complete (BenCang FK for CauCang; CangBien already from W1 for VungNuoc).
+Parallel-safe: yes — non-overlapping files.
+
+| Task   | Kind    | Features           | Scope                                                                                                                   | Files-glob                                                                                       | Risk   |
+|---|---|---|---|---|---|
+| W3-T1  | dev-be  | F-020, F-021, F-022 | CauCang entity (FK → ben_cang.id NOT NULL), CauCangRepository, CauCangService (CRUD + LichSuThayDoi + audit); parent BenCang must be hien_hanh guard; DTOs | src/main/java/com/hanghai/kchtg/cangben/entity/CauCang.java src/main/java/com/hanghai/kchtg/cangben/repository/CauCangRepository.java src/main/java/com/hanghai/kchtg/cangben/service/CauCangService.java src/main/java/com/hanghai/kchtg/cangben/dto/caucang/** | Medium |
+| W3-T2  | dev-be  | F-023, F-024, F-025 | CauCangApprovalService + CauCangController (REST /api/v1/cau-cang); benCangId as query param for filtered list; same approval pattern | src/main/java/com/hanghai/kchtg/cangben/service/CauCangApprovalService.java src/main/java/com/hanghai/kchtg/cangben/controller/CauCangController.java | Low    |
+| W3-T3  | dev-be  | F-032, F-033, F-034, F-035, F-036, F-037 | VungNuoc entity (FK → cang_bien.id NOT NULL), VungNuocRepository, VungNuocService (CRUD + approval), VungNuocController (REST /api/v1/vung-nuoc); implement single-level approval (same as other entities; 2-level Q-002 deferred); DTOs | src/main/java/com/hanghai/kchtg/cangben/entity/VungNuoc.java src/main/java/com/hanghai/kchtg/cangben/repository/VungNuocRepository.java src/main/java/com/hanghai/kchtg/cangben/service/VungNuocService.java src/main/java/com/hanghai/kchtg/cangben/controller/VungNuocController.java src/main/java/com/hanghai/kchtg/cangben/dto/vungnuoc/** | Low    |
+| W3-T4  | dev-be  | F-020..F-025, F-032..F-037 | Unit/integration tests for CauCang and VungNuoc; include grandparent guard (CauCang: BenCang parent must exist and be hien_hanh) | src/test/java/com/hanghai/kchtg/cangben/CauCangServiceTest.java src/test/java/com/hanghai/kchtg/cangben/VungNuocServiceTest.java | Low    |
+
+---
+
+## Wave W4: File Attachments (GiayTo) + Integration Hardening
+
+**Goal:** GiayTo (MinIO-backed file attachment) for all 5 entity types + cross-cutting hardening.
+Depends on: W1-W3 complete (all entity IDs in place as FK targets).
+Parallel-safe: yes
+
+| Task   | Kind    | Features           | Scope                                                                                                                   | Files-glob                                                                                       | Risk   |
+|---|---|---|---|---|---|
+| W4-T1  | dev-be  | F-008..F-037 shared | GiayToController: REST POST /api/v1/{entity-type}/{id}/giay-to (upload), GET (list), DELETE (by id); MIME validation via Apache Tika; MinIO multipart upload; giay_to metadata persist; rollback on MinIO failure; allowed: PDF, DOCX, JPEG; max 10MB | src/main/java/com/hanghai/kchtg/cangben/controller/GiayToController.java src/main/java/com/hanghai/kchtg/cangben/service/shared/GiayToService.java (update from W0-T3 stub) | High   |
+| W4-T2  | dev-be  | M-002 shared       | Pagination enforcement on all list endpoints (default page=20, max page=100); org-unit filter audit (ensure SPECIALIST and PORT_OPERATOR always get filtered list); LogCleanupScheduler exclusion guard for lich_su_thay_doi and phe_duyet_log tables | src/main/java/com/hanghai/kchtg/cangben/controller/** (pagination) src/main/java/com/hanghai/kchtg/common/scheduler/LogCleanupScheduler.java (add exclusion comment or guard) | Low    |
+| W4-T3  | dev-be  | M-002 shared       | Notification stub wire-up: CangBenNotificationService (wraps existing TaiNotificationService pattern as stub); invoked after approve/reject in each entity approval service; Q-001 deferred pending notification infra confirmation | src/main/java/com/hanghai/kchtg/cangben/service/shared/CangBenNotificationService.java | Low    |
+| W4-T4  | dev-be  | M-002 shared       | Integration test suite: end-to-end approval flow (create → approve → hien_hanh) per entity; file attachment upload with invalid MIME returns 415; duplicate code 409; org-unit filter: SPECIALIST sees only own-unit entities | src/test/java/com/hanghai/kchtg/cangben/integration/** | Medium |
+
+---
+
+## Dependency Graph
+
+```
+W0 (shared infra)
+ └─► W1 (CangBien)
+      └─► W2 (BenCang + CangCan)
+           └─► W3 (CauCang + VungNuoc)
+                └─► W4 (GiayTo + hardening)
+```
+
+W0 also unblocks W2-T3 (CangCan) directly, but W2 is gated on W1 completing first for simplicity of release coordination.
+
+---
+
+## Task Count Summary
+
+| Wave | Tasks | Owner Type | Parallelizable |
+|---|---|---|---|
+| W0   | 4     | dev-be     | yes            |
+| W1   | 4     | dev-be     | yes            |
+| W2   | 4     | dev-be     | yes            |
+| W3   | 4     | dev-be     | yes            |
+| W4   | 4     | dev-be     | yes            |
+| **Total** | **20** | dev-be | —         |

@@ -3,11 +3,11 @@ feature-id: M-001
 feature-name: Quản trị hệ thống
 pipeline-type: sdlc
 status: in-progress
-current-stage: closed
+current-stage: engineering-business-analyst
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-08-17T08:43:21Z
+last-updated: 2026-08-20T06:36:18Z
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -18,42 +18,19 @@ completed-stages:
   intake:
     verdict: Ready for feature pipeline
     completed-at: 2026-06-28
-  engineering-business-analyst:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md
-    completed-at: 2026-08-17
-  engineering-solution-designer:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/design/00-design-plan.md
-    completed-at: 2026-08-17
-  engineering-qa-engineer-wave-1:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md
-    completed-at: 2026-08-17
-  engineering-backend-developer-wave-1:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-dev-w1-remove-org-unit-approval.md
-    completed-at: 2026-08-17
-  engineering-frontend-developer-wave-1:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-remove-org-unit-approval.md
-    completed-at: 2026-08-17
-  engineering-qa-engineer-wave-2:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md
-    completed-at: 2026-08-17
-  engineering-code-reviewer:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md
-    completed-at: 2026-08-17
-stages-queue: []
+stages-queue:
+  - engineering-solution-designer
+  - engineering-qa-engineer-wave-1
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-2
+  - engineering-code-reviewer
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count:
-  engineering-business-analyst: 4
+  engineering-business-analyst: 5
   engineering-solution-designer: 2
   engineering-backend-developer-wave-1: 1
 locked-fields: []
@@ -63,10 +40,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-reopened-at: 2026-08-17T07:14:15Z
-reopened-reason: "Scope-shrink change request TRI-1786950754582-5a51: remove the org-unit approval flow entirely (status/approvedAt columns, OrgUnitStatus enum+converter, submit/approve/reject endpoints, orgunit:approve permission, frontend approval UI/API, F-003 docs)."
-triage-id: TRI-1786936397148-3956
-released: true
+reopened-at: 2026-08-20T06:22:30Z
+reopened-reason: Cập nhật BA docs F-002 theo TRI-1787194536636-b6e2 (bổ sung BR-002-09..12 + đồng bộ lean-spec hết mâu thuẫn)
+triage-id: TRI-1787194536636-b6e2
 ---
 # Pipeline State: Quản trị hệ thống (M-001)
 
@@ -76,7 +52,7 @@ Quản lý tài khoản người dùng, phân quyền RBAC, quản lý nhóm, đ
 
 ## Module Status
 
-**Status: closed, Stage: closed** — Module has completed all stages (BA, SA, TL, Dev, QA, Reviewer, Closed). Ready for deployment.
+**Status: in-progress (change request re-entry TRI-1787194536636-b6e2, 2026-08-20)** — Module đang trong pipeline change-request: BA stage đã hoàn thành (cập nhật BA docs F-002: BR-002-09..12 + đồng bộ lean-spec), các stage kế tiếp trong stages-queue chưa chạy. Trạng thái này là hệ quả của write-gate yêu cầu reopen để ghi tài liệu feature; orchestrator đã chốt không drive lane SDLC tiếp (thay đổi chỉ là bổ sung tài liệu BA, triage C0) — chờ quyết định xử lý lane (đóng pipeline hoặc xử lý bằng op CLI-level).
 
 ## Active Blockers
 
@@ -88,18 +64,16 @@ none
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
 | 1 | intake | intake | Ready for feature pipeline | — | 2026-06-28 |
-| 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-tri-he-thong/ba/00-lean-spec.md | 2026-08-17 |
-| 3 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-001-quan-tri-he-thong/design/00-design-plan.md | 2026-08-17 |
-| 4 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w1.md | 2026-08-17 |
-| 5 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-dev-w1-remove-org-unit-approval.md | 2026-08-17 |
-| 6 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-001-quan-tri-he-thong/dev/05-fe-dev-w1-remove-org-unit-approval.md | 2026-08-17 |
-| 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-001-quan-tri-he-thong/qa/07-qa-report-w2.md | 2026-08-17 |
-| 8 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-001-quan-tri-he-thong/reviewer/08-review-report.md | 2026-08-17 |
+| 2 | engineering-solution-designer | engineering-solution-designer | — | — | — |
+| 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
+| 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
+| 5 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
+| 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
 
 ## Current Stage
 
-**closed** — Pipeline complete.
+**engineering-business-analyst** — Ready to start. Input: `docs/modules/M-001-quan-tri-he-thong/module-brief.md`.
 
 ## Next Action
 
-Released — sign-off recorded (`released: true`).
+Next stage `engineering-business-analyst` — dispatched by the project manager (via the build receptionist); no slash command to run.

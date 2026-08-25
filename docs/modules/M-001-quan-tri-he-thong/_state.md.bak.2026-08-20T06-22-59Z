@@ -1,0 +1,83 @@
+---
+feature-id: M-001
+feature-name: Quản trị hệ thống
+pipeline-type: sdlc
+status: in-progress
+current-stage: engineering-business-analyst
+depends-on: []
+blocked-by: []
+created: 2026-06-16T04:39:13Z
+last-updated: 2026-08-20T06:22:30Z
+output-mode: lean
+repo-type: mini
+repo-path: .
+project: ""
+docs-path: docs/modules/M-001-quan-tri-he-thong
+intel-path: docs/intel
+completed-stages:
+  intake:
+    verdict: Ready for feature pipeline
+    completed-at: 2026-06-28
+stages-queue:
+  - engineering-business-analyst
+  - engineering-solution-designer
+  - engineering-qa-engineer-wave-1
+  - engineering-backend-developer-wave-1
+  - engineering-frontend-developer-wave-1
+  - engineering-qa-engineer-wave-2
+  - engineering-code-reviewer
+kpi:
+  tokens-total: 0
+  cycle-time-start: 2026-06-16T04:39:13Z
+  tokens-by-stage: {}
+  tokens-by-feature: {}
+rework-count:
+  engineering-business-analyst: 5
+  engineering-solution-designer: 2
+  engineering-backend-developer-wave-1: 1
+locked-fields: []
+version: 4
+finalizers: []
+children-close-policy: TERMINATE
+child-events: []
+partial-redo: []
+agent-flags: {}
+reopened-at: 2026-08-20T06:22:30Z
+reopened-reason: Cập nhật BA docs F-002 theo TRI-1787194536636-b6e2 (bổ sung BR-002-09..12 + đồng bộ lean-spec hết mâu thuẫn)
+triage-id: TRI-1786936397148-3956
+---
+# Pipeline State: Quản trị hệ thống (M-001)
+
+## Business Goal
+
+Quản lý tài khoản người dùng, phân quyền RBAC, quản lý nhóm, đơn vị, admin và audit log truy cập.
+
+## Module Status
+
+**Status: closed, Stage: closed** — Module has completed all stages (BA, SA, TL, Dev, QA, Reviewer, Closed). Ready for deployment.
+
+## Active Blockers
+
+none
+---
+
+## Stage Progress
+
+| # | Stage | Agent | Verdict | Artifact | Date |
+|---|---|---|---|---|---|
+| 1 | intake | intake | Ready for feature pipeline | — | 2026-06-28 |
+| 2 | engineering-business-analyst | engineering-business-analyst | — | — | — |
+| 3 | engineering-solution-designer | engineering-solution-designer | — | — | — |
+| 4 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
+| 5 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
+| 6 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | — | — | — |
+| 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
+| 8 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
+
+## Current Stage
+
+**engineering-business-analyst** — Ready to start. Input: `docs/modules/M-001-quan-tri-he-thong/module-brief.md`.
+
+## Next Action
+
+Next stage `engineering-business-analyst` — dispatched by the project manager (via the build receptionist); no slash command to run.

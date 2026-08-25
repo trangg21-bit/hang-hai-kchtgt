@@ -1,0 +1,17 @@
+{
+  "route_id": "LANE-1785731980987-6247",
+  "created_at": 1785731980987,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Cập nhật F-027 feature-brief: bản ghi APPROVED vẫn cho sửa, khóa orgUnitId + dryPortCode, bắt buộc phê duyệt lại sau sửa",
+  "reason": "Cập nhật tài liệu feature-brief F-027 thuộc M-002, thay đổi business rules",
+  "signals": [
+    "feature-brief.md",
+    "M-002",
+    "F-027",
+    "Cảng cạn",
+    "business rule update"
+  ]
+}

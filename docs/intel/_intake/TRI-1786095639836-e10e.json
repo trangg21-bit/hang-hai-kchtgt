@@ -1,0 +1,78 @@
+{
+  "triage_id": "TRI-1786095639836-e10e",
+  "created_at": 1786095639836,
+  "request_summary": "Xóa toàn bộ hardcoded enum loaiVungNuoc (VUNGNUOOC_LOAI_OPTIONS/MAP, LOAI_VUNG_NUOC_OPTIONS, LoaiVungNuoc type) do agent tự bịa, chuyển về free text Input đúng BA spec F-032",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/app/waterzone/schema.ts",
+      "frontend/src/app/waterzone/types.ts",
+      "frontend/src/app/waterzone/WaterZoneListPage.tsx",
+      "frontend/src/components/FilterBar.tsx",
+      "frontend/src/pages/gis/GISChartView.tsx",
+      "frontend/src/pages/Home.tsx",
+      "frontend/src/pages/port/WaterZoneForm.tsx",
+      "frontend/src/pages/port/WaterZoneList.tsx",
+      "frontend/src/services/port/PortDetailPage.tsx",
+      "frontend/src/types/port.ts"
+    ],
+    "impact_files": [
+      "frontend/src/app/waterzone/schema.ts",
+      "frontend/src/app/waterzone/types.ts",
+      "frontend/src/app/waterzone/WaterZoneListPage.tsx",
+      "frontend/src/components/FilterBar.tsx",
+      "frontend/src/pages/gis/GISChartView.tsx",
+      "frontend/src/pages/Home.tsx",
+      "frontend/src/pages/port/WaterZoneForm.tsx",
+      "frontend/src/pages/port/WaterZoneList.tsx",
+      "frontend/src/services/port/PortDetailPage.tsx",
+      "frontend/src/types/port.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "frontend/src/app/waterzone/schema.ts"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: schema:frontend/src/app/waterzone/schema.ts — floors at C3 regardless of size (10 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form tạo mới/chỉnh sửa Vùng nước, danh sách Vùng nước, filter",
+  "blast_radius": 10,
+  "done_oracle": "loaiVungNuoc là Input text tự do ở mọi nơi (form, filter, hiển thị), không còn Select enum cứng; Zod schema dùng z.string(); các import VUNGNUOOC_LOAI_OPTIONS/MAP, LOAI_VUNG_NUOC_OPTIONS, LoaiVungNuoc type bị xóa",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "line": 85,
+      "quote": "loaiVungNuoc (input, optional, free text, max 100)",
+      "source_hash": "4036d67ad11b65252180998150a5189212fa80733d85d2454973f412d85f3d5a",
+      "quote_hash": "2fea722c600629359e6e4f622f72c6e1ff43f9cce1e5d89ffed1f27e034e394d",
+      "note": "BA spec explicitly says free text Input, not Select enum"
+    },
+    {
+      "file": "frontend/src/types/port.ts",
+      "line": 527,
+      "quote": "export const VUNGNUOOC_LOAI_OPTIONS = [",
+      "source_hash": "dba189e61e176d74a1e82c476061d9e29726250ed88e05c8916bb55027b7ccca",
+      "quote_hash": "71da84162aa947457042f260f6e7e7c99e6d53aa3e69b8a67965d232fc2bbdc5",
+      "note": "Fabricated hardcoded enum - needs removal"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "af08c59ae9a0f229c52c747ae58f45e3ed0ec338",
+    "dirty": true,
+    "captured_at": 1786095640023
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

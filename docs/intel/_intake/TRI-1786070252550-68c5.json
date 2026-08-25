@@ -1,0 +1,42 @@
+{
+  "triage_id": "TRI-1786070252550-68c5",
+  "created_at": 1786070252550,
+  "request_summary": "Cập nhật version tài liệu 2.1→2.2 + đồng bộ Section 5 Style Presets",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/tokens.ts",
+      "them-token-specification (1).md"
+    ],
+    "impact_files": [
+      "frontend/src/tokens.ts",
+      "them-token-specification (1).md"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tài liệu theme token specification",
+  "blast_radius": 2,
+  "done_oracle": "Version document = 2.2, tsc+vite build pass",
+  "escalated_from": {
+    "triage_id": "TRI-1786069851841-6f84",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "322f71cea404c3f985f3763c988d55c126d64fb2",
+    "dirty": true,
+    "captured_at": 1786070252723
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

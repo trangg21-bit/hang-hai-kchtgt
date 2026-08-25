@@ -1,0 +1,119 @@
+{
+  "triage_id": "TRI-1787312884434-4413",
+  "created_at": 1787312884434,
+  "request_summary": "Sửa base-pattern M-002 (bỏ bảng mapping 7 trạng thái → ApprovalStatus đang sai) + đính chính 29 feature-brief (thay \"7 trạng thái\"/\"lưu số 0..6\" bằng tham chiếu enum ApprovalStatus 10 giá trị đã có label).",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-009-ql-cb-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-010-ql-cb-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-015-ql-bc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-016-ql-bc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-021-ql-cc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-022-ql-cc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-009-ql-cb-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-010-ql-cb-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-015-ql-bc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-016-ql-bc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-021-ql-cc-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-022-ql-cc-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C2: 30 edit-target files exceed the inline gate (30 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md mục 3.5 (bảng mapping sai) + 29 feature-brief.md có cụm \"7 trạng thái\"/\"0..6\".",
+  "blast_radius": 30,
+  "done_oracle": "base-pattern không còn bảng mapping, thay bằng tham chiếu enum ApprovalStatus (10 giá trị có label); 29 feature-brief không còn cụm \"7 trạng thái\" và \"lưu số 0..6\"; ai-kit verify không còn structural violation.",
+  "verification_commands": [
+    {
+      "command": "mvn -f pom.xml test-compile",
+      "cwd": ".",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/ba/01-base-pattern.md",
+      "line": 99,
+      "quote": "- Hồ sơ trải qua **7 trạng thái** (6 trạng thái hoạt động + 1 trạng thái lưu trữ, theo mục 1 của file chuẩn). Bản đồ sang enum `ApprovalStatus` (`src/main/java/com/hanghai/kchtg/common/entity/ApprovalStatus.java`):",
+      "source_hash": "815986912291687f7d505ba4c11a572a0e58cf3197bd3364c1df8b4b0f6346d2",
+      "quote_hash": "3ae0375abf8d30b26bc0d05a9a46b2dd1144c4a381d885dff546631dcc03526a",
+      "note": "Bảng mapping 7 trạng thái → ApprovalStatus đang sai, cần bỏ"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "line": 58,
+      "quote": "- Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`, lưu dạng số) và quy trình 2 cấp tại `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`.",
+      "source_hash": "86ff415828aa6f4c6ebd539eebd596b71898fedf2b5872cbac12fc53bcdabc62",
+      "quote_hash": "2e84963ee75d74c32f8021617f5f14ecce6acd07d278daf8813001e2a8e3e8c9",
+      "note": "Cụm 7 trạng thái cần đính chính thành tham chiếu enum"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "bd97d2181ee1592a929b92ad5d4c69d0bbda3af7",
+    "dirty": true,
+    "captured_at": 1787312884696
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "triage_id": "TRI-1786941867955-ed03",
+  "created_at": 1786941867955,
+  "request_summary": "Hoàn tất chỉnh sửa tài liệu BA M-001 theo mô hình delta: viết lại template thành khuôn delta (7 mục + phần kỹ thuật đề xuất), căn chỉnh base pattern v3.5 và brief F-006 khớp template, AGENTS.md đã đồng bộ phân quyền động; file tài liệu dài vượt ngân sách LOC nên escalation.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "AGENTS.md",
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md",
+      "docs/feature-brief-template.md"
+    ],
+    "impact_files": [
+      "AGENTS.md",
+      "docs/_pilot-review/01-base-pattern.md",
+      "docs/_pilot-review/F-006-feature-brief.md",
+      "docs/feature-brief-template.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "docs/feature-brief-template.md — khuôn BA điền tài liệu chức năng; base pattern + AGENTS.md liên quan",
+  "blast_radius": 4,
+  "done_oracle": "Template viết lại theo mô hình delta (front-matter + header + 7 mục, phần kỹ thuật ghi nhãn đề xuất); base pattern + F-006 căn chỉnh khớp; AGENTS.md đã đồng bộ phân quyền động; tất cả local chưa commit.",
+  "verification_commands": [
+    {
+      "command": "git status --porcelain",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "AGENTS.md",
+    "docs/_pilot-review/01-base-pattern.md",
+    "docs/_pilot-review/F-006-feature-brief.md",
+    "docs/feature-brief-template.md"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java",
+      "line": 330,
+      "quote": "Map<String, List<String>> rolePermissionMap = new LinkedHashMap<>();",
+      "source_hash": "ece484638ddfbec8d965ff7efa098645be405ceb89f6761b6323585e5f07a8aa",
+      "quote_hash": "5c4079a695d228cca91c931dfd26f288ec5fa9ed278e8e83d0e4b7895fa7fcf9",
+      "note": "Vai trò seed chỉ là bộ quyền mặc định khởi tạo — tài liệu ghi phân quyền động theo nhóm/tài khoản"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/user/service/UserService.java",
+      "line": 433,
+      "quote": "user.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());",
+      "source_hash": "f754698b9a7fa4cbb83cb13685327d2f52fc43502074af2e3ed26c6676536043",
+      "quote_hash": "a06bdea1151d09d07c5cddd0dac2c426dc42ca8456bf9a0af27e9083bada2d10",
+      "note": "Tài khoản có xóa mềm — base pattern 3.1 ghi đúng xóa mềm + khóa/mở khóa"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java",
+      "line": 113,
+      "quote": "// the middleware consistent with @PreAuthorize: system-admin",
+      "source_hash": "292a5fc958c766e20bc7f6de514ca28d22cefa9bce44b724d9e18ad75240ff7b",
+      "quote_hash": "089c4b61413f5cee6ed42b9440b8d31182b1fb92750a5d85e3e14f9d1271488b",
+      "note": "Máy chủ kiểm tra quyền từng thao tác — tài liệu ghi không có quyền → 403"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786940761838-9dae",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "41555e0f9725c87c2d774fe3c49691dbac85bea5",
+    "dirty": true,
+    "captured_at": 1786941868145
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

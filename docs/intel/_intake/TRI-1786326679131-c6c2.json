@@ -1,0 +1,42 @@
+{
+  "triage_id": "TRI-1786326679131-c6c2",
+  "created_at": 1786326679131,
+  "request_summary": "Sửa PortDetailPage: panel '5. Công trình KCHT trực thuộc' hiển thị đúng dữ liệu từ port_infrastructures (STT, Tên, SL) thay vì nhầm sang Berths + WaterZones. Thêm panel '6. Bến cảng & Vùng nước' riêng cho Berths + WaterZones. Đánh lại số thứ tự panel.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/port/PortDetailPage.tsx",
+      "frontend/src/services/port/types.ts"
+    ],
+    "impact_files": [
+      "frontend/src/services/port/PortDetailPage.tsx",
+      "frontend/src/services/port/types.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/Port/:id — PortDetailPage collapse panel \"5. Công trình KCHT trực thuộc\"",
+  "blast_radius": 2,
+  "done_oracle": "Mở chi tiết cảng biển, panel 5 hiển thị bảng STT/Tên công trình/Số lượng từ port_infrastructures; panel 6 hiển thị Bến cảng & Vùng nước; panel 7 là File đính kèm; panel 8 là Ghi chú & Trạng thái",
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1786326573318",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f1be301530bab0b7dba1e5de35f944b171d89067",
+    "dirty": true,
+    "captured_at": 1786326679326
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

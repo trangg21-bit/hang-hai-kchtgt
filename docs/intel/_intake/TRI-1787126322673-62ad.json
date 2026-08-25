@@ -1,0 +1,44 @@
+{
+  "triage_id": "TRI-1787126322673-62ad",
+  "created_at": 1787126322673,
+  "request_summary": "Mở lại module M-001 (ai-kit-state-recover op=reopen, làm đổi _state.md + tua pipeline) rồi ghi đè feature brief F-001 bằng bản mới do owner viết — verbatim, chỉ đổi tài liệu.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_state.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_state.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "SDLC pipeline M-001/F-001 — tái mở module + cập nhật artifact feature brief F-001.",
+  "blast_radius": 2,
+  "done_oracle": "M-001 được reopen và claim được; feature-brief.md có front matter status: done / last-updated: 2026-08-19 và nội dung khớp đúng bản owner; không file nào khác đổi ngoài _state.md do reopen.",
+  "verification_commands": [
+    {
+      "command": "mvn -q -DskipTests compile",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 300000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "444d6d93feb67999385fe7430e5b0e199f23887c",
+    "dirty": true,
+    "captured_at": 1787126322880
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "triage_id": "TRI-1786957339465-c234",
+  "created_at": 1786957339465,
+  "request_summary": "Re-baseline toàn bộ feature-brief M-001 (Quản trị hệ thống) sang template 7-section + mô hình phân quyền động (bỏ RBAC/vai trò cũ), giữ nguyên nghiệp vụ cũ, xung đột báo cáo lại cho người dùng. Thuần tài liệu BA (docs/modules/**.md), không đụng source code.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-004-quan-ly-ket-noi-lien-thong/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/ba/01-base-pattern.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-004-quan-ly-ket-noi-lien-thong/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/ba/01-base-pattern.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C2: 7 edit-target files exceed the inline gate (7 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "docs/modules/M-001-quan-tri-he-thong/_features/**/feature-brief.md (tài liệu BA của module Quản trị hệ thống)",
+  "blast_radius": 7,
+  "done_oracle": "Toàn bộ feature-brief M-001 (F-001..F-006) tuân thủ đúng template 7-section (tiêu đề/thứ tự/bảng 8 dòng/dòng Admin Cục/mục 6-7 đề xuất SA chốt), nghiệp vụ cũ được giữ nguyên, không còn từ vựng RBAC mô tả mô hình hiện hành, base-pattern tại ba/01-base-pattern.md, danh sách xung đột (nếu có) trả về để người dùng quyết.",
+  "verification_commands": [
+    {
+      "command": "git diff --check",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 60000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/feature-brief.md",
+      "line": 36,
+      "quote": "Quản lý toàn bộ vòng đời tài khoản người dùng trong hệ thống, bao gồm tạo mới, chỉnh sửa thông tin, khóa/mở khóa tài khoản, phân quyền theo vai trò (RBAC — Role-Based Access Control), đặt lại mật khẩu, và phê duyệt tài khoản đăng ký mới từ người dùng bên ngoài. **Hệ thống không có chức năng xóa tài khoản** — thay vào đó, Admin khóa tài khoản để vô hiệu hóa. Tính năng cung cấp giao diện quản lý tập trung cho tất cả người dùng hệ thống.",
+      "source_hash": "ecbdd1df71f0a8f3a6df993ec855564d0abaefa610f5817af35e231a057c25ec",
+      "quote_hash": "feecd129b7ebca3eef483842da5aebe00622d58716c02f236a81a8b3a69c64df",
+      "note": "Dòng load-bearing: brief F-001 đang mô tả cơ chế RBAC theo vai trò cũ + khẳng định không có chức năng xóa tài khoản — cần re-baseline sang mô hình phân quyền động theo template 7-section"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "39735bcbd756d6e9e3d7154eadca01c97a1f02bf",
+    "dirty": true,
+    "captured_at": 1786957339654
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

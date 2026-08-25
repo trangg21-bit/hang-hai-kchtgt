@@ -1,0 +1,112 @@
+{
+  "triage_id": "TRI-1786083057009-98d3",
+  "created_at": 1786083057009,
+  "request_summary": "Xóa 7 thư mục UI feature VungNuoc đã merge vào BE (F-088→F-102) và rebuild module-brief.md projection",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-088-ui-ql-vn-danh-sach/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-088-ui-ql-vn-danh-sach/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-089-ui-xem-vn-chi-tiet/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-089-ui-xem-vn-chi-tiet/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-090-ui-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-090-ui-ql-vn-tao-moi/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-091-ui-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-091-ui-ql-vn-cap-nhat/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-092-ui-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-092-ui-phe-duyet-vn/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-101-ui-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-101-ui-ql-vn-xoa/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-102-ui-ql-vn-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-102-ui-ql-vn-lich-su/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-088-ui-ql-vn-danh-sach/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-088-ui-ql-vn-danh-sach/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-089-ui-xem-vn-chi-tiet/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-089-ui-xem-vn-chi-tiet/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-090-ui-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-090-ui-ql-vn-tao-moi/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-091-ui-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-091-ui-ql-vn-cap-nhat/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-092-ui-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-092-ui-phe-duyet-vn/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-101-ui-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-101-ui-ql-vn-xoa/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-102-ui-ql-vn-lich-su/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-102-ui-ql-vn-lich-su/implementations.yaml",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 15 edit-target files exceed the inline gate (15 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "M-002 module-brief.md — VungNuoc section",
+  "blast_radius": 15,
+  "done_oracle": "7 thư mục UI đã xóa khỏi disk, F-107 còn lại, module-brief.md hiển thị đúng merged state như CangBien",
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "line": 13,
+      "quote": "merged-from: [F-032-BE, F-090-UI]",
+      "source_hash": "4036d67ad11b65252180998150a5189212fa80733d85d2454973f412d85f3d5a",
+      "quote_hash": "492df1a51ed0d0fe7f2dba393b3ad0ff8411d2f38973b617bbebf399c7a4fdea",
+      "note": "F-090 UI content already merged into F-032"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "line": 13,
+      "quote": "merged-from: [F-033-BE, F-091-UI]",
+      "source_hash": "131630447873a6630ff30ac5246e68e151419299407557a8c2cabfb2df0b2044",
+      "quote_hash": "eb412796ea9e21af12f0caa352c5a4c342bd18d1c0886eeaac04a73bce34db12",
+      "note": "F-091 UI content already merged into F-033"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "line": 13,
+      "quote": "merged-from: [F-034-BE, F-101-UI]",
+      "source_hash": "175275ecf27eccd530506edc39e8a4e13e7a5bc1f98846dd4d30b02fe0f0284c",
+      "quote_hash": "e3d1814c5a4dbc2232761b9495987af14a89865ec089a3eb4b0b79db70316dd5",
+      "note": "F-101 UI content already merged into F-034"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "line": 13,
+      "quote": "merged-from: [F-035-BE, F-092-UI]",
+      "source_hash": "e5a92bc53e7a11452738c036d1553de2cf6450aa1864fb3f3680282adc3f18d7",
+      "quote_hash": "d797d5e37880f6843494c9785a8ac545615d496de03282f423bdc3c86c58cd0f",
+      "note": "F-092 UI content already merged into F-035"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "line": 13,
+      "quote": "merged-from: [F-036-BE, F-088-UI, F-089-UI]",
+      "source_hash": "0f755e45140cec7287fccecc704e5502d18ab01b40b380bb6dd820fc88477184",
+      "quote_hash": "4da053cc1519405127228fe32cc4f49171553d436ff6b6d9fece58d39464106a",
+      "note": "F-088+F-089 UI content already merged into F-036"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md",
+      "line": 13,
+      "quote": "merged-from: [F-037-BE, F-102-UI]",
+      "source_hash": "a6f4cfc872d2e5393e84ebd2a975ddb1031b2a8f91bbaef435907cfffe975dd0",
+      "quote_hash": "0fe1959ab093e063194019ce958147e4042b541e23e50ac30c593bbf8c921a5b",
+      "note": "F-102 UI content already merged into F-037"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "7a8e171d8f94c67de632bbd55ab90a3768d6e45a",
+    "dirty": true,
+    "captured_at": 1786083057215
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

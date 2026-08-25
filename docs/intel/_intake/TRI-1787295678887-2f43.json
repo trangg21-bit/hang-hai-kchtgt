@@ -1,0 +1,44 @@
+{
+  "triage_id": "TRI-1787295678887-2f43",
+  "created_at": 1787295678887,
+  "request_summary": "F-005: đổi tên trường lọc 'Khoảng thời gian'→'Ngày truy cập' (2.1) + bổ sung trường Email vào cột danh sách/chi tiết (2.2). F-006: tách mục 2 thành 2.1 Form Tạo mới + 2.2 Form Chỉnh sửa/Xem. Chỉ sửa tài liệu, giữ nguyên nội dung nghiệp vụ.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap/feature-brief.md",
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tài liệu đặc tả F-005 Log truy cập và F-006 Biểu tượng bản đồ (BA stage artifacts)",
+  "blast_radius": 2,
+  "done_oracle": "F-005 2.1: trường lọc số 1 đổi tên thành 'Ngày truy cập' (giữ Date range); F-005 2.2: thêm cột Email vào danh sách + thêm email vào dòng Chi tiết popup, đồng bộ AC-005-01 (8 cột→9 cột); F-006 mục 2 tách 2.1 Form Tạo mới (4 trường) + 2.2 Chỉnh sửa/Xem (AC-006-03/05); không bịa thêm trường/quy tắc; không sửa file khác",
+  "verification_commands": [
+    {
+      "command": "ai-kit sdlc verify --module M-001 --scopes completeness",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 60000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "e71d818cdeb51ed9ef74f376ff7d9c18ac819047",
+    "dirty": true,
+    "captured_at": 1787295679091
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

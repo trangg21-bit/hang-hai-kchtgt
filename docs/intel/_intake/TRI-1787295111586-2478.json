@@ -1,0 +1,42 @@
+{
+  "triage_id": "TRI-1787295111586-2478",
+  "created_at": 1787295111586,
+  "request_summary": "Tách mục 2 feature-brief F-006 thành 2.1 Form Tạo mới + 2.2 Form Chỉnh sửa/Xem chi tiết, đồng bộ cấu trúc với F-001/F-003 (giữ nguyên 4 trường hiện có)",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "unknown"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tài liệu đặc tả nghiệp vụ F-006 Quản lý biểu tượng bản đồ (BA stage artifact)",
+  "blast_radius": 1,
+  "done_oracle": "Mục 2 F-006 có 2.1 Form Tạo mới (4 trường: Tên, Hình ảnh, Trạng thái, Ghi chú) + 2.2 Form Chỉnh sửa/Xem chi tiết (sửa điền sẵn AC-006-03, xem read-only AC-006-05); giữ nguyên 4 trường, không bịa thêm trường/quy tắc; mục 4/5/6/7 không đổi",
+  "verification_commands": [
+    {
+      "command": "ai-kit sdlc verify --module M-001 --scopes completeness",
+      "cwd": "C:\\Users\\trangtt1\\hang-hai-kchtgt",
+      "timeout_ms": 60000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "e71d818cdeb51ed9ef74f376ff7d9c18ac819047",
+    "dirty": true,
+    "captured_at": 1787295111807
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

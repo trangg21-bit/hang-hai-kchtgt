@@ -1,0 +1,17 @@
+{
+  "route_id": "LANE-1785921868743-de5a",
+  "created_at": 1785921868743,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Cập nhật logic nghiệp vụ F-001: Admin tạo tài khoản = kích hoạt trực tiếp (không cần Lãnh đạo duyệt). Xóa luồng \"Admin/Cán bộ tạo yêu cầu → Lãnh đạo duyệt\". Update feature-brief.md và lean-spec, rồi review code.",
+  "reason": "Thay đổi business rule trong BA docs của F-001 (M-001), cần cập nhật tài liệu + review code khớp logic mới.",
+  "signals": [
+    "feature-brief.md",
+    "00-lean-spec.md",
+    "M-001",
+    "F-001",
+    "business rule change"
+  ]
+}

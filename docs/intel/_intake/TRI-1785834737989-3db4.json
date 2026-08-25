@@ -1,0 +1,95 @@
+{
+  "triage_id": "TRI-1785834737989-3db4",
+  "created_at": 1785834737989,
+  "request_summary": "Merge BE+UI feature-briefs for VungNuoc group",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 6 edit-target files exceed the inline gate (6 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "M-002 module docs — feature-brief files under _features/",
+  "blast_radius": 6,
+  "done_oracle": "All 6 files contain merged content from BE + UI + designer specs with 10-section structure matching F-012 pattern",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/feature-brief.md",
+      "line": 11,
+      "quote": "# Feature: Xem chi tiết Vùng nước",
+      "source_hash": "a2a02dc8656793bfc0dc3f2db723692afa17b8d0b62e2950490985044a85228a",
+      "quote_hash": "dbafe035c26c4d7f5d4e037df0d0ca94b018aeca0ed62e20f411528d35b1053d",
+      "note": "BE feature-brief F-036 sẽ hấp thụ UI F-088 list + F-089 detail"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/feature-brief.md",
+      "line": 14,
+      "quote": "# Feature: Quản lý Vùng nước - Tạo mới",
+      "source_hash": "d4a3d9cd6c6e77ffd708b070a72c52bd8c8e64042c9262c444f4b8fbfec8d700",
+      "quote_hash": "aaa96026202ff5731a74213e9153f5be31205cc364be965ea11641a84c47778c",
+      "note": "BE feature-brief F-032 sẽ hấp thụ UI F-090"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/feature-brief.md",
+      "line": 14,
+      "quote": "# Feature: Quản lý Vùng nước - Cập nhật",
+      "source_hash": "7f6300efd06abbbb29106fc530dc743692db4c7b4a440e9e4027313e3d58f1bf",
+      "quote_hash": "285066781c12b5dfd17b382c402a6e62e1e60ee349284b5a176737b6e7e9dd0b",
+      "note": "BE feature-brief F-033 sẽ hấp thụ UI F-091"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/feature-brief.md",
+      "line": 14,
+      "quote": "# Feature: Quản lý Vùng nước - Xóa",
+      "source_hash": "c7691c6c147e82f85d42863468dd8a88ebd2e973f5ad10a4f20ed0ea04e5a659",
+      "quote_hash": "2aeb6b7ced21d7bed34f5ac382f13b9e9dc48f62e3d9a2e2a8b03e658482daaf",
+      "note": "BE feature-brief F-034 sẽ hấp thụ UI F-101"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/feature-brief.md",
+      "line": 14,
+      "quote": "# Feature: Phê duyệt Vùng nước",
+      "source_hash": "ee478deab43662575f918625ddc8514f55040414d1996b2099fdfa9e0d10b632",
+      "quote_hash": "c887857f15e6fe507e45d9743f453590c098364109879a05905c410b5d858f74",
+      "note": "BE feature-brief F-035 sẽ hấp thụ UI F-092"
+    },
+    {
+      "file": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/feature-brief.md",
+      "line": 14,
+      "quote": "# Feature: Quản lý Vùng nước - Lịch sử",
+      "source_hash": "c5620205f88dfd9fe396c92d7779aafd2636bae4aeb85ff5692d147256660dec",
+      "quote_hash": "699174fb484c7d92988b1b3ac42e03fdfc52ea3a96047438bf7f09a3bff41855",
+      "note": "BE feature-brief F-037 sẽ hấp thụ UI F-102"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "b8513ff76181630c8b1c73a9b80422d73004db0f",
+    "dirty": true,
+    "captured_at": 1785834738173
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}
