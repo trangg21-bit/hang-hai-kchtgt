@@ -257,6 +257,19 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "waterzone", "history", "Lịch sử phê duyệt vùng nước",
                                 "Xem lịch sử thay đổi vùng nước");
 
+                // 8.7 Hệ thống CCTV (CCTV System)
+                seedPermission(definitions, "cctv", "read", "Xem hệ thống CCTV", "Tra cứu thông tin hệ thống CCTV");
+                seedPermission(definitions, "cctv", "read:restricted", "Xem bản ghi hạn chế CCTV",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống CCTV");
+                seedPermission(definitions, "cctv", "read:confidential", "Xem bản ghi mật CCTV",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống CCTV");
+                seedPermission(definitions, "cctv", "create", "Thêm hệ thống CCTV", "Tạo mới hồ sơ hệ thống CCTV");
+                seedPermission(definitions, "cctv", "update", "Cập nhật hệ thống CCTV", "Chỉnh sửa thông tin hệ thống CCTV");
+                seedPermission(definitions, "cctv", "delete", "Xóa hệ thống CCTV", "Xóa hệ thống CCTV khỏi hệ thống");
+                seedPermission(definitions, "cctv", "approve", "Phê duyệt hệ thống CCTV", "Phê duyệt dữ liệu hệ thống CCTV");
+                seedPermission(definitions, "cctv", "history", "Lịch sử phê duyệt CCTV",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống CCTV");
+
                 seedPermission(definitions, "waterarea", "read", "Xem vùng nước cảng",
                                 "Tra cứu thông tin vùng nước cảng");
                 seedPermission(definitions, "waterarea", "create", "Thêm vùng nước cảng",

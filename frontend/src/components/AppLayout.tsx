@@ -68,6 +68,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/ship-repair-facility': 'shiprepair:read',
   '/radar-station': 'radarstation:read',
   '/vts-system': 'vts:read',
+  '/cctv': 'cctv:read',
   '/station/coastal': 'coastalstation:read',
   '/station/special': 'specialstation:read',
   '/connections': 'connection:read',
@@ -118,6 +119,7 @@ const pageTitles: Record<string, string> = {
   '/ship-repair-facility': 'Cơ sở sửa chữa & đóng tàu',
   '/radar-station': 'Trạm Radar',
   '/vts-system': 'Hệ thống VTS',
+  '/cctv': 'Quản lý hệ thống CCTV',
   '/connections': 'Liên thông dữ liệu',
   '/interconnect': 'Quản lý kết nối liên thông',
   '/reports': 'Báo cáo & Thống kê',
@@ -207,7 +209,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/cctv'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -331,6 +333,7 @@ export default function AppLayout() {
         canAccessMenu('/ship-repair-facility') ? { key: '/ship-repair-facility', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Trạm Radar' } : null,
         canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Hệ thống VTS' } : null,
+        canAccessMenu('/cctv') ? { key: '/cctv', label: 'Quản lý hệ thống CCTV', icon: <DashboardOutlined /> } : null,
       ].filter(Boolean),
     },
     {
