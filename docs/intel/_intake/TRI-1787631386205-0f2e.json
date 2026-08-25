@@ -1,0 +1,78 @@
+{
+  "triage_id": "TRI-1787631386205-0f2e",
+  "created_at": 1787631386205,
+  "request_summary": "Tái cấu trúc toàn bộ menu hệ thống: Dashboard Grid 6 khối + Sidebar phân cấp 13 thực thể theo PMS Model.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/store/authStore.ts",
+      "frontend/src/store/permissionStore.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java"
+    ],
+    "impact_files": [
+      "frontend/src/components/AppLayout.tsx",
+      "frontend/src/store/authStore.ts",
+      "frontend/src/store/permissionStore.ts",
+      "src/main/java/com/hanghai/kchtg/config/PermissionSeeder.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "frontend/src/store/permissionStore.ts"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: security:frontend/src/store/permissionStore.ts — floors at C3 regardless of size (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "User login → Dashboard Grid → Click \"Quản lý KCHT hàng hải\" → Sidebar phân cấp.",
+  "blast_radius": 4,
+  "done_oracle": "Dashboard hiển thị đúng 6 khối. Sidebar phân cấp đúng 13 thực thể trong \"Quản lý cảng biển\" theo ma trận cha-con.",
+  "verification_commands": [
+    {
+      "command": "cd frontend && npx tsc --noEmit",
+      "cwd": ".",
+      "timeout_ms": 30000
+    },
+    {
+      "command": "mvn compile -DskipTests",
+      "cwd": ".",
+      "timeout_ms": 60000
+    }
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/components/AppLayout.tsx",
+      "line": 44,
+      "quote": "export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {",
+      "source_hash": "576f1126ec8d3ef69e4e440c5141d0fac0b6929892618ecb913fa69575e2bbb6",
+      "quote_hash": "3e7f1e650d2dabcd1b240ebea622687dddad92c8e52fbc15518f825e5df22fca",
+      "note": "Dòng chính yếu xác định toàn bộ quyền truy cập menu trong AppLayout.tsx"
+    },
+    {
+      "file": "frontend/src/store/permissionStore.ts",
+      "line": 61,
+      "quote": ".map((permission) => normalizePermissionKey(permission.trim()))",
+      "source_hash": "be2d02c9654f0f8edb3684ac51b817af9937feb94e7fd07ba0979049953b9ed0",
+      "quote_hash": "aa7000781751f06d9cafdeae6dd12960054879a14547d7b23b88d1845ab03d07",
+      "note": "Dòng chính yếu xác định cách xử lý permission trong permissionStore.ts"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "3aace0b7c8606b13b44622003cc13f5cb8637310",
+    "dirty": true,
+    "captured_at": 1787631386393
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

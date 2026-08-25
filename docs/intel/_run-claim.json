@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-08-21T11:49:50.354Z",
+  "last_modified_at": "2026-08-25T10:39:48.362Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -27,8 +27,8 @@
     "M-002": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-2f00ea4df5166f09",
+      "status": "orphaned",
+      "claimed_by": null,
       "claimed_at": "2026-08-21T11:49:50.353Z",
       "heartbeat_at": "2026-08-21T11:49:50.353Z",
       "current_stage": null,
@@ -40,26 +40,27 @@
       "slug": "quan-ly-tai-san-kchtgt-cang-ben",
       "risk_path": "M",
       "previous_claimed_by": "tab-2f00ea4df5166f09",
-      "claimed_pid": 24244,
-      "claimed_host": "PTPM-TRANGTT1-PC"
+      "claimed_pid": null,
+      "claimed_host": null
     },
     "M-003": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "skipped",
-      "claimed_by": "tab-2930046ca029d0f7",
-      "claimed_at": "2026-08-10T06:10:07.652Z",
-      "heartbeat_at": "2026-08-10T06:22:39.298Z",
+      "status": "orphaned",
+      "claimed_by": null,
+      "claimed_at": "2026-08-25T10:09:18.143Z",
+      "heartbeat_at": "2026-08-25T10:09:18.143Z",
       "current_stage": null,
       "started_at": "2026-08-10T06:10:07.652Z",
-      "completed_at": "2026-08-10T06:22:39.297Z",
+      "completed_at": null,
       "auto_pass_count": 0,
-      "attempt": 1,
+      "attempt": 7,
       "name": "Quản lý tài sản KCHTGT - Khu nước & VTS",
       "slug": "quan-ly-tai-san-kchtgt-khu-nuoc-vts",
       "risk_path": "M",
       "claimed_pid": null,
-      "claimed_host": null
+      "claimed_host": null,
+      "previous_claimed_by": "tab-9ab8945f375da3c2"
     },
     "M-004": {
       "depends_on": [],
@@ -542,6 +543,25 @@
       "claimed_pid": null,
       "claimed_host": null,
       "previous_claimed_by": "tab-b44b96fb3db0f7c2"
+    },
+    "M-024": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "in_progress",
+      "claimed_by": "tab-b939ed9ca32dd9ed",
+      "claimed_at": "2026-08-25T10:38:45.100Z",
+      "heartbeat_at": "2026-08-25T10:39:48.362Z",
+      "current_stage": null,
+      "started_at": "2026-08-25T07:12:51.017Z",
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 4,
+      "name": "Tái cấu trúc Menu & Navigation",
+      "slug": "tai-cau-truc-menu-navigation",
+      "risk_path": "M",
+      "claimed_pid": 4276,
+      "claimed_host": "PTPM-TRANGTT1-PC",
+      "previous_claimed_by": "tab-bfc630c8205a114a"
     }
   },
   "tabs": {
@@ -836,9 +856,7 @@
     "tab-2f00ea4df5166f09": {
       "started_at": "2026-08-21T09:20:52.871Z",
       "last_seen": "2026-08-21T11:49:50.353Z",
-      "claimed_modules": [
-        "M-002"
-      ],
+      "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [],
       "skipped_modules": []
@@ -862,6 +880,64 @@
       "skipped_modules": [
         "M-001"
       ]
+    },
+    "tab-4d7de577e25b8bc3": {
+      "started_at": "2026-08-24T08:57:17.239Z",
+      "last_seen": "2026-08-24T09:52:53.335Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-003",
+        "M-003"
+      ]
+    },
+    "tab-bfc630c8205a114a": {
+      "started_at": "2026-08-25T07:12:51.017Z",
+      "last_seen": "2026-08-25T07:12:51.017Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-6844be8d2b6fd3e0": {
+      "started_at": "2026-08-25T08:09:33.188Z",
+      "last_seen": "2026-08-25T08:09:33.188Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-969d55803f584c31": {
+      "started_at": "2026-08-25T08:36:01.366Z",
+      "last_seen": "2026-08-25T08:36:01.366Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-9ab8945f375da3c2": {
+      "started_at": "2026-08-25T09:11:59.759Z",
+      "last_seen": "2026-08-25T10:09:18.143Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-003"
+      ]
+    },
+    "tab-b939ed9ca32dd9ed": {
+      "started_at": "2026-08-25T09:33:34.257Z",
+      "last_seen": "2026-08-25T10:39:48.362Z",
+      "claimed_modules": [
+        "M-024"
+      ],
+      "completed_modules": [],
+      "failed_modules": [
+        "M-024",
+        "M-024"
+      ],
+      "skipped_modules": []
     }
   }
 }
