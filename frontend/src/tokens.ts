@@ -14,6 +14,8 @@ export const statusOperational = '#1BAF7A';   // good, operating, increase
 export const statusAttention = '#EDA100';     // pending, warning, not-exploited
 export const statusCritical = '#E34948';      // bad, stopped, rejected, decrease
 export const statusDraft = '#93a3b3';         // draft, inactive
+export const statusWarning = '#E8A900';       // warning, caution (amber — between attention and critical)
+export const statusNeutral = '#93a3b3';       // neutral, no status, placeholder
 
 // Data — chart series, NOT "blue" / "pink"
 export const dataPrimary = '#2A78D6';         // main data series (domestic, primary)
@@ -324,7 +326,7 @@ export const paginationSizeSelectStyle: React.CSSProperties = {
 
 /** Props chuẩn cho Drawer CRUD: width 1000px, right, không nút X mặc định */
 export const drawerProps = {
-  size: 1000 as any,
+  size: 1000 as number,
   placement: 'right' as const,
   closable: false,
   styles: {
@@ -707,3 +709,10 @@ export const filterInputStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   height: controlHeight,
 };
+
+
+// ============================================================
+// Re-export `colors` từ theme.ts cho tiện (nhiều file đã import colors từ tokens)
+// NOTE: colors object thực sự nằm ở theme.ts; đây chỉ là re-export lại để không phá vỡ imports.
+// ============================================================
+export { colors } from './theme';

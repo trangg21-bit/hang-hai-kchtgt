@@ -8,6 +8,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import org.springframework.security.access.AccessDeniedException;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -96,6 +98,17 @@ public class OrgUnitScopeService {
 
         public boolean allows(UUID orgUnitId) {
             return unrestricted || (orgUnitId != null && orgUnitIds.contains(orgUnitId));
+        }
+    }
+
+    /**
+     * Assert that {@code organizationId} falls within the current user's org-unit
+     * subtree.  Throws {@link AccessDeniedException} if the caller has no access.
+     */
+    public void requireOrganizationInScope(UUID organizationId) {
+        if (!currentUserScope().allows(organizationId)) {
+            throw new AccessDeniedException(
+                    "Bạn không có quyền tạo hoặc thay đổi nhóm ngoài phạm vi đơn vị được phân quyền");
         }
     }
 }

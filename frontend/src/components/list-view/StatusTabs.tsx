@@ -12,7 +12,7 @@ export interface StatusTabsProps {
   tabs: StatusTab[]; onChange: (key: string) => void;
 }
 
-const StatusTabs: React.FC<StatusTabsProps> = ({ tabs, onChange }) => (
+const StatusTabs: React.FC<StatusTabsProps> = ({ tabs = [], onChange }) => (
   <div style={{
     display: 'flex', gap: spaceLg, justifyContent: 'center', flexWrap: 'wrap',
   }}>
