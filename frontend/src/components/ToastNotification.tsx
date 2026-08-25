@@ -47,48 +47,22 @@ export const modal: any = new Proxy({} as any, {
   },
 });
 
-const lastToastMap = new Map<string, number>();
-
-const shouldSuppress = (key: string, cooldownMs = 1500): boolean => {
-  const now = Date.now();
-  const lastTime = lastToastMap.get(key) || 0;
-  if (now - lastTime < cooldownMs) {
-    return true;
-  }
-  lastToastMap.set(key, now);
-  if (lastToastMap.size > 50) {
-    for (const [k, t] of lastToastMap.entries()) {
-      if (now - t > 10000) lastToastMap.delete(k);
-    }
-  }
-  return false;
-};
-
 /**
  * ToastNotification — wrapper xung quanh antd message,
  * chuẩn hóa success/error/info/toast feedback throughout app.
- * Tích hợp cơ chế tự động chống hiển thị trùng lặp (deduplication).
  */
 export const toast = {
-  success: (msg: string, duration = 3) => {
-    if (!msg || shouldSuppress(`success:${msg}`)) return;
-    return (activeMessage || antdMessage).success({ content: msg, duration, type: typeMap.success, key: `success:${msg}` });
-  },
+  success: (msg: string, duration = 3) =>
+    activeMessage.success({ content: msg, duration, type: typeMap.success }),
 
-  error: (msg: string, duration = 5) => {
-    if (!msg || shouldSuppress(`error:${msg}`)) return;
-    return (activeMessage || antdMessage).error({ content: msg, duration, type: typeMap.error, key: `error:${msg}` });
-  },
+  error: (msg: string, duration = 5) =>
+    activeMessage.error({ content: msg, duration, type: typeMap.error }),
 
-  info: (msg: string, duration = 3) => {
-    if (!msg || shouldSuppress(`info:${msg}`)) return;
-    return (activeMessage || antdMessage).info({ content: msg, duration, type: typeMap.info, key: `info:${msg}` });
-  },
+  info: (msg: string, duration = 3) =>
+    activeMessage.info({ content: msg, duration, type: typeMap.info }),
 
-  warning: (msg: string, duration = 3) => {
-    if (!msg || shouldSuppress(`warning:${msg}`)) return;
-    return (activeMessage || antdMessage).warning({ content: msg, duration, type: typeMap.warning, key: `warning:${msg}` });
-  },
+  warning: (msg: string, duration = 3) =>
+    activeMessage.warning({ content: msg, duration, type: typeMap.warning }),
 };
 
 export default toast;

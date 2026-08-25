@@ -9,8 +9,8 @@ export interface StatusTab {
   key: string;
   label: string;
   count: number;
-  color?: string;
-  active?: boolean;
+  color: string;
+  active: boolean;
 }
 
 export interface FilterTableLayoutProps {
@@ -67,7 +67,7 @@ export default function FilterTableLayout({
       <div
         style={{
           ...cardStyle,
-          width: 280,
+          width: 364,
           flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
@@ -86,7 +86,7 @@ export default function FilterTableLayout({
             icon={<ReloadOutlined />}
             onClick={onFilterReset}
             shape="circle"
-            style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd, flexShrink: 0 }}
+            style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
           />
           <Button
             type="primary"
@@ -96,7 +96,16 @@ export default function FilterTableLayout({
           >
             Tìm kiếm
           </Button>
-          <div style={{ width: 38, height: 38, flexShrink: 0 }} aria-hidden="true" />
+          {!hideFilterToggle ? (
+            <Button
+              icon={<FilterOutlined />}
+              onClick={onToggleCollapse}
+              shape="circle"
+              style={{ color: filterCollapsed ? actionPrimary : textSecondary, borderColor: filterCollapsed ? actionPrimary : borderDefault, width: 38, height: 38, fontSize: fontSizeMd }}
+            />
+          ) : (
+            <div style={{ width: 38, height: 38 }} aria-hidden="true" />
+          )}
         </div>
       </div>
 

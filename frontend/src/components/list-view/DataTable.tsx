@@ -20,15 +20,15 @@ const actionColumnCellStyle: React.CSSProperties = {
   paddingInline: 0,
   textAlign: 'center',
   verticalAlign: 'middle',
-  background: '#ffffff',
-  zIndex: 10,
 };
 
 // Header cột action phải có cùng nền với header cột dữ liệu (tableHeaderBg).
+// AntD v6 set nền cell cố định (`.ant-table-cell-fix`) = tableBg (trắng) — nếu
+// không override, header action thành khối trắng đè lên hàng header xám và
+// "chắn đè" cột dữ liệu (vd cột Trạng thái) khi bảng cuộn ngang.
 const actionColumnHeaderCellStyle: React.CSSProperties = {
   ...actionColumnCellStyle,
   background: tableHeaderBg,
-  zIndex: 10,
 };
 
 
@@ -48,17 +48,12 @@ function computeRowSetSignature(dataSource: any[], rowKey: string | ((record: an
 }
 
 export interface DataTableColumn {
-  key?: string;
-  label?: React.ReactNode;
-  title?: React.ReactNode;
-  sortable?: boolean;
-  twoLine?: boolean;
+  key: string; label: React.ReactNode; sortable?: boolean; twoLine?: boolean;
   type?: 'text' | 'status' | 'action' | 'number' | 'date' | 'mono';
   width?: number | string;
   align?: 'left' | 'center' | 'right';
   render?: (value: any, record: any, index?: number) => React.ReactNode;
-  dataIndex?: string;
-  sorter?: boolean | ((a: any, b: any) => number);
+  dataIndex?: string; sorter?: boolean;
   sortOrder?: 'ascend' | 'descend' | null;
   cellTitle?: (record: any) => string;
   fixed?: 'left' | 'right';
@@ -67,17 +62,22 @@ export interface DataTableColumn {
 }
 
 export interface DataTableProps {
-  columns?: DataTableColumn[] | ColumnsType<any>;
-  dataSource?: any[];
-  rowKey?: string | ((record: any) => string);
+  columns?: DataTableColumn[];
+  dataSource: any[];
+  rowKey: string | ((record: any) => string);
   loading?: boolean;
   emptyState?: React.ReactNode;
+  /** Khi true (và scroll.y là số): thân bảng LUÔN lấp đầy chiều cao khả dụng,
+      scrollbar ngang nằm sát mép dưới bảng, kể cả khi ít bản ghi. */
   fill?: boolean;
+  /** Dense: thu nhỏ chữ cell + header xuống fontSizeSm (10px) để bảng nhiều cột vừa màn hình. */
   dense?: boolean;
-  onSort?: (field: string, order: any) => void;
-  rowActions?: (record: any) => { key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }[];
+  rowActions?: (record: any) => {
+    key: string; label: string; icon?: React.ReactNode;
+    onClick: () => void; danger?: boolean; disabled?: boolean;
+  }[];
+  onSort?: (key: string, order: 'asc' | 'desc') => void;
   children?: React.ReactNode;
-  scroll?: { x?: number | string; y?: number | string };
   [key: string]: any;
 }
 
@@ -113,46 +113,41 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, ...rest
+  columns, dataSource, rowKey, loading, emptyState, fill, dense, onSort, rowActions, children, scroll, ...rest
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
   const dataSignatureRef = useRef<string | null>(null);
   const [measuredTableWidth, setMeasuredTableWidth] = useState<number>();
+  // Preserve a content-sized table when the page explicitly requests
+  // `max-content`. For lists whose columns are narrower than the common
+  // minimum width, replacing it with a larger fixed width leaves an empty
+  // area after the last column. At the far-right scroll position that area
+  // makes the action column look detached from the table.
   const resolvedScroll = scroll;
 
-  const resetHorizontalScroll = () => {
-    tableShellRef.current?.querySelectorAll<HTMLElement>(
-      '.ant-table-header, .ant-table-body, .ant-table-content, .ant-table-container, .ant-table, .ant-table-sticky-scroll',
-    ).forEach((element) => {
-      element.scrollLeft = 0;
-      element.scrollTo?.({ left: 0, behavior: 'auto' });
-    });
-  };
-
-  useEffect(() => {
-    resetHorizontalScroll();
-    const frameId = window.requestAnimationFrame(resetHorizontalScroll);
-    const timer = setTimeout(resetHorizontalScroll, 100);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      clearTimeout(timer);
-    };
-  }, []);
-
   useLayoutEffect(() => {
+    // A client-side re-sort produces a brand-new `dataSource` array with the SAME
+    // rows in a different order. Reset the horizontal scroll only when the set of
+    // rows actually changes (filter / pagination / reload) — otherwise clicking a
+    // sortable header while scrolled right would snap back to the first column.
     const signature = computeRowSetSignature(dataSource, rowKey);
     if (dataSignatureRef.current !== null && signature === dataSignatureRef.current) {
-      return;
+      return; // same rows, just re-ordered — keep the current scroll position
     }
     dataSignatureRef.current = signature;
 
+    const resetHorizontalScroll = () => {
+      tableShellRef.current?.querySelectorAll<HTMLElement>(
+        '.ant-table-header, .ant-table-body, .ant-table-content, .ant-table-sticky-scroll',
+      ).forEach((element) => {
+        element.scrollLeft = 0;
+        element.scrollTo?.({ left: 0, behavior: 'auto' });
+      });
+    };
+
     resetHorizontalScroll();
     const frameId = window.requestAnimationFrame(resetHorizontalScroll);
-    const timer = setTimeout(resetHorizontalScroll, 50);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      clearTimeout(timer);
-    };
+    return () => window.cancelAnimationFrame(frameId);
   }, [dataSource, rowKey]);
 
   useLayoutEffect(() => {
@@ -172,12 +167,56 @@ const DataTable: React.FC<DataTableProps> = ({
     return () => resizeObserver.disconnect();
   }, []);
 
-  const hasFixedColumns = Boolean(columns?.some((c: any) => c.fixed));
+  const requestedScrollY = scroll?.y ?? layout.listTableScrollY;
+  const isNumericScrollY = typeof requestedScrollY === 'number';
+  // Đo chiều cao thực tế để quyết định chế độ thân bảng thay vì LUÔN lấp đầy:
+  //  - Nội dung cao hơn vùng trống (availH) → scroll.y = availH − header:
+  //    thân bảng lấp đầy, mép dưới thẳng hàng panel filter, cuộn TRONG bảng.
+  //  - Nội dung vừa vùng trống → scroll.y = undefined + shell co sát nội dung:
+  //    pagination nằm ngay dưới bảng, mép dưới KHÔNG thẳng hàng panel filter.
+  // Chỉ áp dụng khi scroll.y là số, có dữ liệu và shell nằm trong flex container.
+  const [fitMode, setFitMode] = useState<number | 'content' | null>(null);
+  useLayoutEffect(() => {
+    const el = tableShellRef.current;
+    if (!el || !el.parentElement) return;
+    const parent = el.parentElement;
+    if (!isNumericScrollY || dataSource.length === 0) return;
+    if (!getComputedStyle(parent).display.includes('flex')) return;
+    const measure = () => {
+      // Vùng trống cho bảng = chiều cao parent − tổng sibling (pagination; thẻ <style> = 0).
+      let availH = parent.clientHeight;
+      for (const sib of Array.from(parent.children)) {
+        if (sib !== el) availH -= (sib as HTMLElement).offsetHeight;
+      }
+      const header = el.querySelector<HTMLElement>('.ant-table-header')
+        || el.querySelector<HTMLElement>('.ant-table-thead');
+      const tbody = el.querySelector<HTMLElement>('.ant-table-tbody');
+      const headerH = header ? header.offsetHeight : 0;
+      // Chiều cao tự nhiên của nội dung = header + tbody. KHÔNG dùng
+      // body.scrollHeight: ở chế độ split (scroll.y đã đặt) body bị ép cao đúng
+      // scroll.y nên scrollHeight luôn ≥ scroll.y → đo sai khi ít bản ghi
+      // (làm bảng vẫn lấp đầy dù nội dung ngắn).
+      const contentH = headerH + (tbody ? tbody.offsetHeight : 0);
+      // `fill`: luôn lấp đầy vùng trống (scrollbar ngang nằm sát mép dưới bảng),
+      // không bao giờ rơi về chế độ 'content' dù nội dung ít bản ghi.
+      if (fill || contentH > availH + 1) {
+        setFitMode(Math.max(80, availH - headerH));
+      } else {
+        setFitMode('content');
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
+  }, [dataSource.length, isNumericScrollY, fill]);
   const hasGeneratedActionColumn = Boolean(
-    rowActions && columns && !columns.some((column: any) => column.key === 'actions'),
+    rowActions && columns && !columns.some((column) => column.key === 'actions'),
   );
+  const hasFixedColumns = Boolean(columns?.some((column) => Boolean(column.fixed)));
   const declaredColumnsWidth = columns?.reduce(
-    (totalWidth: number, column: any) => totalWidth + (typeof column.width === 'number' ? column.width : 0),
+    (totalWidth, column) => totalWidth + (typeof column.width === 'number' ? column.width : 0),
     0,
   ) ?? 0;
   const totalDeclaredWidth = declaredColumnsWidth + (hasGeneratedActionColumn ? ACTION_COLUMN_WIDTH : 0);
@@ -201,33 +240,37 @@ const DataTable: React.FC<DataTableProps> = ({
 
   const tableScroll = {
     x: resolvedScrollX,
+    y: isNumericScrollY && fitMode != null
+      ? (fitMode === 'content' ? undefined : fitMode)
+      : requestedScrollY,
   };
+  // Keep column positions stable between populated and empty states. When the
+  // declared columns are narrower than the viewport, one content column absorbs
+  // the remainder so status/actions stay at the right edge instead of leaving a
+  // blank header segment.
   const tableLayout = 'fixed' as const;
 
   if (children) {
     return (
-      <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0 }}>
         <Table dataSource={dataSource} rowKey={rowKey} loading={loading}
           className="list-view-table"
           pagination={false}
           tableLayout={tableLayout}
           scroll={resolvedScroll}
-          style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
           locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
           {...rest}>{children}</Table>
       </div>
     );
   }
 
-  const cols = (columns as any[]) || [];
-
   const widthlessStretchColumns = shouldStretchColumns
-    ? cols.filter((column) => column.width == null && !column.fixed && column.key !== 'actions')
+    ? columns?.filter((column) => column.width == null && !column.fixed && column.key !== 'actions') ?? []
     : [];
   const explicitStretchColumn = shouldStretchColumns && widthlessStretchColumns.length === 0
-    ? cols
-      .filter((column) => !column.fixed && column.key !== 'actions' && column.key !== 'status')
-      .reduce<any>((widestColumn, column) => {
+    ? columns
+      ?.filter((column) => !column.fixed && column.key !== 'actions' && column.key !== 'status')
+      .reduce<DataTableColumn | undefined>((widestColumn, column) => {
         if (!widestColumn) return column;
         const currentWidth = typeof column.width === 'number' ? column.width : 0;
         const widestWidth = typeof widestColumn.width === 'number' ? widestColumn.width : 0;
@@ -244,7 +287,7 @@ const DataTable: React.FC<DataTableProps> = ({
     ? (typeof explicitStretchColumn.width === 'number' ? explicitStretchColumn.width : 0) + remainingViewportWidth
     : undefined;
 
-  const antdColumns: ColumnsType<any> | undefined = cols.map((col: any) => {
+  const antdColumns: ColumnsType<any> | undefined = columns?.map((col) => {
     const dataKey = col.dataIndex || col.key;
     const isSortable = Boolean(col.sortable || col.sorter);
     const sorterFn = typeof col.sorter === 'function'
@@ -269,12 +312,12 @@ const DataTable: React.FC<DataTableProps> = ({
       showSorterTooltip: false,
       align: col.align,
       fixed: col.fixed,
-      ellipsis: col.ellipsis === true,
+      ellipsis: col.ellipsis !== false,
       render: col.render ? (val: any, record: any, index: number) => col.render!(val, record, index)
         : col.type === 'mono'
-          ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd, whiteSpace: 'nowrap' }}>{val}</span>
+          ? (val: any) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{val}</span>
           : col.type === 'date'
-            ? (val: any) => <span style={{ color: textSecondary, whiteSpace: 'nowrap' }}>{val}</span>
+            ? (val: any) => <span style={{ color: textSecondary }}>{val}</span>
             : col.type === 'status'
               ? (val: any) => {
                   const color = STATUS_COLOR_MAP[val?.toLowerCase()] || textTertiary;
@@ -282,26 +325,13 @@ const DataTable: React.FC<DataTableProps> = ({
                     <span style={{
                       display: 'inline-flex', padding: '2px 8px', borderRadius: 999,
                       fontSize: fontSizeMd, fontWeight: fontWeightMedium,
-                      background: `${color}15`, color, whiteSpace: 'nowrap',
+                      background: `${color}15`, color,
                     }}>{val}</span>
                   );
                 }
               : undefined,
       onHeaderCell: () => ({
-        style: {
-          background: tableHeaderBg,
-          color: colors.sidebarBg,
-          fontWeight: fontWeightBold,
-          fontSize: fontSizeMd,
-          textTransform: 'uppercase',
-          padding: '15px 16px',
-          cursor: col.sortable ? 'pointer' : undefined,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          zIndex: col.fixed ? 10 : undefined,
-          textAlign: col.align || 'left',
-        },
+        style: { background: tableHeaderBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', padding: '15px 16px', cursor: col.sortable ? 'pointer' : undefined, whiteSpace: col.ellipsis === false ? 'normal' : undefined, lineHeight: col.ellipsis === false ? 1.35 : undefined },
         onClick: col.sortable ? () => {
           if (onSort && dataKey) {
             const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';
@@ -311,17 +341,11 @@ const DataTable: React.FC<DataTableProps> = ({
       }),
       title: col.sortable ? (
         <Tooltip title={<span style={{ fontSize: 12 }}>{col.sortOrder === 'ascend' ? 'Nhấn để sắp xếp giảm dần' : 'Nhấn để sắp xếp tăng dần'}</span>}>
-          <span style={{ whiteSpace: 'nowrap' }}>{(col as any).title ?? col.label}</span>
+          <span>{col.label}</span>
         </Tooltip>
-      ) : <span style={{ whiteSpace: 'nowrap' }}>{((col as any).title ?? col.label)}</span>,
-      onCell: () => ({
-        style: {
-          fontSize: dense ? fontSizeSm : fontSizeMd,
-          color: textPrimary,
-          whiteSpace: col.ellipsis === true ? undefined : 'nowrap',
-          background: col.fixed ? '#ffffff' : undefined,
-          zIndex: col.fixed ? 9 : undefined,
-        },
+      ) : col.label,
+      onCell: (record: any) => ({
+        style: { fontSize: dense ? fontSizeSm : fontSizeMd, color: textPrimary },
       }),
     };
 
@@ -370,7 +394,7 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   return (
-    <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <div ref={tableShellRef} style={{ width: '100%', minWidth: 0, flex: fitMode === 'content' ? '0 0 auto' : 1, minHeight: 0 }}>
       <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
         className="list-view-table"
         pagination={false}
@@ -378,7 +402,6 @@ const DataTable: React.FC<DataTableProps> = ({
         locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
         scroll={tableScroll}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
         {...rest} />
     </div>
   );

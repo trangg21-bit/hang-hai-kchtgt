@@ -40,11 +40,11 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
     Optional<String> findMaxPortCode();
 
     @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
-           "FROM Port p WHERE p.deletedAt IS NULL AND (p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2) ORDER BY p.portName ASC")
+           "FROM Port p WHERE p.deletedAt IS NULL ORDER BY p.portName ASC")
     List<PortOptionResponse> findAllOptions();
 
     @Query("SELECT new com.hanghai.kchtg.port.dto.port.PortOptionResponse(p.id, p.portCode, p.portName, p.orgUnitId) " +
-           "FROM Port p WHERE p.deletedAt IS NULL AND (p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2) AND p.orgUnitId IN :orgUnitIds ORDER BY p.portName ASC")
+           "FROM Port p WHERE p.deletedAt IS NULL AND p.orgUnitId IN :orgUnitIds ORDER BY p.portName ASC")
     List<PortOptionResponse> findOptionsByOrgUnitIds(@Param("orgUnitIds") Collection<UUID> orgUnitIds);
 
     @Query("SELECT p FROM Port p WHERE p.id = :id AND p.deletedAt IS NULL")

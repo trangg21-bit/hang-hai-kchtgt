@@ -5,7 +5,6 @@ import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -32,8 +31,7 @@ public class PortCacheService {
     private final PortRepository portRepository;
     private final CacheManager cacheManager;
 
-    public PortCacheService(PortRepository portRepository,
-                            @Lazy CacheManager cacheManager) {
+    public PortCacheService(PortRepository portRepository, CacheManager cacheManager) {
         this.portRepository = portRepository;
         this.cacheManager = cacheManager;
     }

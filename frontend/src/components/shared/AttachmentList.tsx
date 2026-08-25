@@ -6,16 +6,15 @@ import type { UploadFile } from 'antd/es/upload/interface';
 import { message } from '../ToastNotification';
 import api from '../../services/api';
 import {
-  actionPrimary, textSecondary, textTertiary,
-  spaceSm, fontSizeMd, fontWeightMedium,
+  actionPrimary, textPrimary, textSecondary, textTertiary,
+  spaceSm, fontSizeMd, fontWeightMedium, fontWeightBold,
 } from '../../tokens';
+import { colors } from '../../theme';
 
-export interface Attachment {
+interface Attachment {
   id: string;
   fileName: string;
-  filePath?: string;
-  fileUrl?: string;
-  fileSize?: number;
+  filePath: string;
 }
 
 interface AttachmentListProps {
@@ -94,25 +93,21 @@ export default function AttachmentList({
   };
 
   const handleDownload = async (record: Attachment) => {
-    const downloadPath = record.fileUrl || record.filePath;
-    if (!downloadPath) {
+    if (!record.filePath) {
       message.error('Không tìm thấy đường dẫn tệp');
       return;
     }
     setDownloadingId(record.id);
     try {
-      const url = downloadPath.startsWith('/api')
-        ? downloadPath.replace(/^\/api/, '')
-        : downloadPath;
+      const url = record.filePath.startsWith('/api')
+        ? record.filePath.replace(/^\/api/, '')
+        : record.filePath;
 
       const resp = await api.get(url, {
         responseType: 'blob',
       });
-      const contentType = typeof resp.headers?.['content-type'] === 'string'
-        ? resp.headers['content-type']
-        : 'application/octet-stream';
       const blob = new Blob([resp.data], {
-        type: contentType,
+        type: resp.headers['content-type'] || 'application/octet-stream',
       });
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

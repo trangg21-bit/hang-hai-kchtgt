@@ -18,44 +18,54 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
 
     boolean existsByCode(String code);
 
-    boolean existsByCodeAndIdNot(String code, UUID id);
-
     List<RadarStation> findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
-    List<RadarStation> findByVtsSystemIdAndDeletedAtIsNull(UUID vtsSystemId);
+    List<RadarStation> findByVtsSystemId(UUID vtsSystemId);
 
-    long countByVtsSystemIdAndDeletedAtIsNull(UUID vtsSystemId);
+    long countByVtsSystemId(UUID vtsSystemId);
 
     @Query("""
         SELECT t FROM RadarStation t
         WHERE t.deletedAt IS NULL
-          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR
+            LOWER(t.stationName) LIKE :keyword OR
+            LOWER(t.location) LIKE :keyword OR
+            LOWER(t.stationType) LIKE :keyword)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+        ORDER BY t.createdAt DESC
+    """)
+    Page<RadarStation> search(
+        @Param("orgUnitId") UUID orgUnitId,
+        @Param("keyword") String keyword,
+        @Param("conditionStatus") String conditionStatus,
+        @Param("approvalStatus") ApprovalStatus approvalStatus,
+        Pageable pageable
+    );
+
+    @Query("""
+        SELECT t FROM RadarStation t
+        WHERE t.deletedAt IS NULL
+          AND (:keyword IS NULL OR
+            LOWER(t.stationName) LIKE LOWER(CONCAT('%', cast(:keyword as string), '%')) OR
+            LOWER(t.code) LIKE LOWER(CONCAT('%', cast(:keyword as string), '%')))
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:seaportId IS NULL OR t.seaportId = :seaportId)
           AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
           AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
           AND (:operatingUnitId IS NULL OR t.operatingUnitId = :operatingUnitId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
-          AND (:keyword IS NULL OR
-            CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:keyword AS string) OR
-            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
-            CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string) OR
-            CAST(function('immutable_unaccent', LOWER(t.stationType)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED))
+          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+          AND (:status IS NULL OR t.status = :status)
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
-        ORDER BY t.createdAt DESC
     """)
     Page<RadarStation> searchPaged(
-        @Param("scopeEnabled") boolean scopeEnabled,
-        @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
-        @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
+        @Param("orgUnitId") UUID orgUnitId,
         @Param("seaportId") UUID seaportId,
         @Param("vtsSystemId") UUID vtsSystemId,
         @Param("vtsOperationCenterId") UUID vtsOperationCenterId,
@@ -63,51 +73,18 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") String conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
+        @Param("status") String status,
         @Param("updatedBy") UUID updatedBy,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo,
         Pageable pageable
     );
 
-    @Query("""
-        SELECT t.approvalStatus, COUNT(t) FROM RadarStation t
-        WHERE t.deletedAt IS NULL
-          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR (
-                CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:keyword AS string) OR
-                CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
-                CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string)
-              ))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-        GROUP BY t.approvalStatus
-    """)
-    List<Object[]> countByApprovalStatus(
-        @Param("scopeEnabled") boolean scopeEnabled,
-        @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
-        @Param("orgUnitId") UUID orgUnitId,
-        @Param("keyword") String keyword,
-        @Param("conditionStatus") String conditionStatus
-    );
-
-    @Query("""
-        SELECT t FROM RadarStation t
-        WHERE t.deletedAt IS NULL
-          AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (t.conditionStatus = '1' OR t.conditionStatus = 'OPERATIONAL' OR t.conditionStatus IS NULL)
-        ORDER BY t.stationName ASC
-    """)
-    List<RadarStation> findAllApprovedOptions(@Param("orgUnitId") UUID orgUnitId);
-
     @Query("SELECT t FROM RadarStation t WHERE " +
            "t.deletedAt IS NULL AND " +
-           "t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND " +
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
-           "(:search IS NULL OR CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:search AS string) OR CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:search AS string))")
+           "(:search IS NULL OR LOWER(t.stationName) LIKE :search OR LOWER(t.location) LIKE :search)")
     List<RadarStation> searchFiltered(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
 }
-

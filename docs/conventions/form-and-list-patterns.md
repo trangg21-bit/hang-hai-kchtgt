@@ -293,7 +293,6 @@ export default function SomePage() {
 8. Wrap form body trong `<Spin spinning={submitting}>` để disable khi submit
 9. Dùng `Row gutter={16} + Col xs={24} md={12}` cho form fields nằm ngang 2 cột
 10. `labelCol={{ style: { padding: 0, marginBottom: 4 } }}` trên Form
-11. **BẮT BUỘC hỗ trợ tìm kiếm tiếng Việt không dấu** trên mọi `Select` có `showSearch` bằng cách dùng `filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}` (import `normalizeSearchText` từ `components/org-unit`). CẤM dùng so sánh chuỗi thô `.toLowerCase().includes(...)`.
 
 ---
 

@@ -17,32 +17,7 @@
 -- so re-running is a no-op. The code rename is guarded against colliding with an
 -- English code that already exists (uk_permission_code is unique).
 
--- 1. permissions cleanup — delete redundant beaconlight rows if equivalent beaconstation target row already exists.
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'permissions') THEN
-        DELETE FROM permissions p_old
-         WHERE p_old.resource = 'beaconlight'
-           AND (
-               EXISTS (
-                   SELECT 1 FROM permissions p_new
-                    WHERE p_new.code = 'beaconstation:' || substring(p_old.code FROM length('beaconlight:') + 1)
-                      AND p_new.id <> p_old.id
-               )
-               OR (
-                   EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'permissions' AND column_name = 'action')
-                   AND EXISTS (
-                       SELECT 1 FROM permissions p_new
-                        WHERE p_new.resource = 'beaconstation'
-                          AND p_new.action = p_old.action
-                          AND p_new.id <> p_old.id
-                   )
-               )
-           );
-    END IF;
-END $$;
-
--- 2. permissions.code — skip any row whose English target is already taken.
+-- 1. permissions.code — skip any row whose English target is already taken.
 DO $$
 DECLARE
     r RECORD;
@@ -65,61 +40,33 @@ BEGIN
     END LOOP;
 END $$;
 
--- 3. permissions.resource — the first segment, kept consistent with code.
+-- 2. permissions.resource — the first segment, kept consistent with code.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_name = 'permissions' AND column_name = 'resource') THEN
-        UPDATE permissions
-           SET resource = 'beaconstation'
-         WHERE resource = 'beaconlight'
-           AND NOT EXISTS (
-               SELECT 1 FROM permissions p
-                WHERE p.resource = 'beaconstation'
-                  AND p.action = permissions.action
-                  AND p.id <> permissions.id
-           );
-        UPDATE permissions
-           SET resource = 'beaconstation'
-         WHERE code LIKE 'beaconstation:%'
-           AND resource <> 'beaconstation';
+        UPDATE permissions SET resource = 'beaconstation' WHERE resource = 'beaconlight';
     END IF;
 END $$;
 
--- 4. user_group_permissions.permission — per-group free-text copy of the codes.
+-- 3. user_group_permissions.permission — per-group free-text copy of the codes.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables
                WHERE table_name = 'user_group_permissions') THEN
-        DELETE FROM user_group_permissions ugp
-         WHERE ugp.permission LIKE 'beaconlight:%'
-           AND EXISTS (
-               SELECT 1 FROM user_group_permissions ugp2
-                WHERE ugp2.user_group_id = ugp.user_group_id
-                  AND ugp2.permission = 'beaconstation:' || substring(ugp.permission FROM length('beaconlight:') + 1)
-           );
-
         UPDATE user_group_permissions
            SET permission = 'beaconstation:' || substring(permission FROM length('beaconlight:') + 1)
          WHERE permission LIKE 'beaconlight:%';
     END IF;
 END $$;
 
--- 5. user_permission_override.permission_code — per-user free-text copy of the codes.
+-- 4. user_permission_override.permission_code — per-user free-text copy of the codes.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables
                WHERE table_name = 'user_permission_override')
        AND EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_name = 'user_permission_override' AND column_name = 'permission_code') THEN
-        DELETE FROM user_permission_override upo
-         WHERE upo.permission_code LIKE 'beaconlight:%'
-           AND EXISTS (
-               SELECT 1 FROM user_permission_override upo2
-                WHERE upo2.user_id = upo.user_id
-                  AND upo2.permission_code = 'beaconstation:' || substring(upo.permission_code FROM length('beaconlight:') + 1)
-           );
-
         UPDATE user_permission_override
            SET permission_code = 'beaconstation:' || substring(permission_code FROM length('beaconlight:') + 1)
          WHERE permission_code LIKE 'beaconlight:%';

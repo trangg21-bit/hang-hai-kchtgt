@@ -380,7 +380,7 @@ class VtsSystemServiceTest {
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
-        assertTrue(ex.getMessage().contains("Người phê duyệt cấp Cục không được trùng"));
+        assertTrue(ex.getMessage().contains("4-eyes principle"));
     }
 
     @Test

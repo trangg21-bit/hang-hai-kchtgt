@@ -47,7 +47,9 @@ public class PermissionController {
      * GET /api/permissions — trả về toàn bộ danh sách permission.
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage') or "
+            + "@auth.check(authentication, 'user:manage') or "
+            + "@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<Permission>>> list() {
         List<Permission> permissions = permissionRepository.findAll();
         return ResponseEntity.ok(ApiResponse.success(permissions));

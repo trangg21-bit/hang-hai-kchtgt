@@ -68,14 +68,6 @@ public class VtsSystemController {
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
     }
 
-    @PreAuthorize("isAuthenticated()")
-    @GetMapping("/options")
-    public ResponseEntity<ApiResponse<List<VtsSystemOptionResponse>>> getOptions(
-            @RequestParam(required = false) UUID orgUnitId) {
-        List<VtsSystemOptionResponse> options = service.getOptions(orgUnitId);
-        return ResponseEntity.ok(ApiResponse.success("Danh sách lựa chọn hệ thống VTS", options));
-    }
-
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @DataScope
     @GetMapping("/{id}")

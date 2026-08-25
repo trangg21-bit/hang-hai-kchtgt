@@ -64,22 +64,14 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             "/api/v1/integration/share/",
             "/api/org-units/options",
             "/api/v1/org-units/options",
-            "/api/v1/vts-system/options",
-            "/api/v1/vts-systems/options",
-            "/api/v1/vts-operation-center/options",
-            "/api/v1/ais-system/options",
             "/api/common/options/",
             "/api/field-visibility");
 
-    private static final List<String> SKIP_PERMISSION_GET_PREFIXES = List.of(
-            "/api/permissions",
-            "/api/v1/permissions",
+    private static final Set<String> SKIP_PERMISSION_ORG_UNIT_PATHS = Set.of(
             "/api/org-units",
+            "/api/org-units/",
             "/api/v1/org-units",
-            "/api/symbols",
-            "/api/v1/symbols",
-            "/api/map-icons",
-            "/api/v1/map-icons");
+            "/api/v1/org-units/");
 
     private final PermissionRoleService permissionRoleService;
     private final PermissionRepository permissionRepository;
@@ -150,8 +142,7 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (HttpMethod.OPTIONS.name().equalsIgnoreCase(method)) {
             return true;
         }
-        if (HttpMethod.GET.name().equalsIgnoreCase(method)
-                && SKIP_PERMISSION_GET_PREFIXES.stream().anyMatch(path::startsWith)) {
+        if (HttpMethod.GET.name().equalsIgnoreCase(method) && SKIP_PERMISSION_ORG_UNIT_PATHS.contains(path)) {
             return true;
         }
         return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
@@ -267,10 +258,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("vts-system", "vts"),
             entry("vts-systems", "vts"),
             entry("he-thong-vts", "vts"),
-            entry("vts-operation-center", "vtsoperationcenter"),
-            entry("vts-operation-centers", "vtsoperationcenter"),
-            entry("ais-system", "aissystem"),
-            entry("ais-systems", "aissystem"),
             entry("port-planning", "portplanning"),
             entry("planning-adjustments", "planningadjustment"),
             entry("operation-plans", "operationplan"),

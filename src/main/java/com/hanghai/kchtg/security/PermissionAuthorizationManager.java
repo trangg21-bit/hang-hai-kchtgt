@@ -40,36 +40,8 @@ public class PermissionAuthorizationManager {
      *
      * @return true if the user holds the required permission, false otherwise
      */
-    /**
-     * Check if the authenticated user has the required permission.
-     * Called by Spring Security's @PreAuthorize expression parser.
-     *
-     * @return true if the user holds the required permission, false otherwise
-     */
     public boolean check(Authentication authentication, String requiredPermission) {
         return effectivePermissionService.checkPermission(authentication, requiredPermission);
-    }
-
-    /**
-     * Check if the authenticated user has ANY of the required permissions.
-     */
-    public boolean check(Authentication authentication, String... requiredPermissions) {
-        if (requiredPermissions == null || requiredPermissions.length == 0) {
-            return false;
-        }
-        for (String perm : requiredPermissions) {
-            if (effectivePermissionService.checkPermission(authentication, perm)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Check if the authenticated user has ANY of the required permissions (alias for check).
-     */
-    public boolean checkAny(Authentication authentication, String... requiredPermissions) {
-        return check(authentication, requiredPermissions);
     }
 
     /**

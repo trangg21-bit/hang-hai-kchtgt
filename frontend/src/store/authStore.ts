@@ -16,13 +16,12 @@ interface JwtPayload {
 }
 
 interface User {
-  id?: string;
-  userId?: string;
   username: string;
   fullName: string;
   permissions: string[];
   role: string;
   status: string;
+  userId?: string;
   email?: string;
 }
 
@@ -61,13 +60,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
     const claims = parseJwt(storedToken);
     if (claims && claims.sub && claims.user_id && typeof claims.exp === 'number' && claims.exp * 1000 >= Date.now()) {
       initialUser = {
-        id: claims.user_id,
-        userId: claims.user_id,
         username: claims.sub,
         fullName: claims.sub || 'Unknown User',
         permissions: claims.permissions || [],
         role: claims.role || 'ROLE_USER',
         status: 'authenticated',
+        userId: claims.user_id,
         email: claims.email,
       };
     } else if (typeof localStorage !== 'undefined') {
@@ -96,13 +94,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
       const role = claims.role || 'ROLE_USER';
       set({
         user: {
-          id: claims.user_id,
-          userId: claims.user_id,
           username: username || claims.sub,
           fullName: claims.sub || username || 'Unknown User',
           permissions: claims.permissions || [],
           role,
           status: 'authenticated',
+          userId: claims.user_id,
           email: claims.email,
         },
         isAuthenticated: true,

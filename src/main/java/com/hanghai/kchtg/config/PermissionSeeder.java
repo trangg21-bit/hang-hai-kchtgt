@@ -400,38 +400,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "vts", "history", "Lịch sử phê duyệt hệ thống VTS",
                                 "Xem lịch sử thay đổi hệ thống VTS");
 
-                // 9.6 Trung tâm điều hành VTS (VTS Operation Center)
-                seedPermission(definitions, "vtsoperationcenter", "read", "Xem trung tâm điều hành VTS",
-                                "Tra cứu thông tin trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "create", "Thêm trung tâm điều hành VTS",
-                                "Tạo mới trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "update", "Cập nhật trung tâm điều hành VTS",
-                                "Chỉnh sửa thông tin trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "delete", "Xóa trung tâm điều hành VTS",
-                                "Xóa trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "approvec1", "Cảng vụ phê duyệt trung tâm điều hành VTS",
-                                "Phê duyệt cấp 1 (Chi cục/Cảng vụ) trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "approvec2", "Cục phê duyệt trung tâm điều hành VTS",
-                                "Phê duyệt cấp 2 (Cục Hàng hải) trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "history", "Lịch sử phê duyệt trung tâm điều hành VTS",
-                                "Xem lịch sử thay đổi trung tâm điều hành VTS");
-
-                // 9.7 Hệ thống AIS (AIS System)
-                seedPermission(definitions, "aissystem", "read", "Xem hệ thống AIS",
-                                "Tra cứu thông tin hệ thống AIS");
-                seedPermission(definitions, "aissystem", "create", "Thêm hệ thống AIS",
-                                "Tạo mới hệ thống AIS");
-                seedPermission(definitions, "aissystem", "update", "Cập nhật hệ thống AIS",
-                                "Chỉnh sửa thông tin hệ thống AIS");
-                seedPermission(definitions, "aissystem", "delete", "Xóa hệ thống AIS",
-                                "Xóa hệ thống AIS");
-                seedPermission(definitions, "aissystem", "approvec1", "Cảng vụ phê duyệt hệ thống AIS",
-                                "Phê duyệt cấp 1 (Chi cục/Cảng vụ) hệ thống AIS");
-                seedPermission(definitions, "aissystem", "approvec2", "Cục phê duyệt hệ thống AIS",
-                                "Phê duyệt cấp 2 (Cục Hàng hải) hệ thống AIS");
-                seedPermission(definitions, "aissystem", "history", "Lịch sử phê duyệt hệ thống AIS",
-                                "Xem lịch sử thay đổi hệ thống AIS");
-
                 // 10. Trạm hải đăng, Báo hiệu, Phao tiêu & Nhà trạm ven biển (Stations & Aids
                 // to Navigation)
                 seedPermission(definitions, "station", "read", "Xem nhà trạm", "Tra cứu danh mục nhà trạm");

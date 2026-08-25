@@ -24,24 +24,6 @@ Mọi bộ lọc có trường `Đơn vị`, `Đơn vị quản lý`, `Đơn v�
 Reference implementation: `frontend/src/pages/vtssystem/VtsSystemList.tsx` — biến `orgUnitTreeOptions` và bộ lọc `TreeSelect`.
 - Các bảng con trong form/detail có thể khai báo `scroll` riêng vì đó không phải bảng danh sách chính.
 
-### Thứ tự cột chuẩn màn hình Hệ thống VTS (VtsSystemList):
-1. `STT` (Cố định trái, 60px)
-2. `Đơn vị quản lý` (220px)
-3. `Trạng thái phê duyệt` (220px)
-4. `Ngày cập nhật` (180px)
-5. `Cán bộ cập nhật` (220px)
-6. `Đơn vị chủ quản` (220px)
-7. `Đơn vị vận hành` (220px)
-8. `Thuộc cảng biển` (200px)
-9. `Mã hệ thống VTS` (180px)
-10. `Tên hệ thống VTS` (260px)
-11. `Địa điểm` (240px)
-### Quy chuẩn căn lề cột và hiển thị Badge (Alignment Standards):
-- **Cột STT**: `align: 'center'` (Cố định trái, 60px).
-- **Cột Văn bản / Tên / Mã / Địa điểm / Đơn vị**: Mặc định căn trái (`align: 'left'`).
-- **Cột Trạng thái / Tình trạng (Badge/Tag)**: Đặt `align: 'center'`. Hệ thống tự động áp dụng quy tắc toàn cục từ `theme.ts` (`minWidth: 125px`, `margin: 0`, căn giữa tuyệt đối cả tiêu đề và nội dung) để loại bỏ hiện tượng thụt thò, lệch tâm.
-- **Cột Thao tác (Action)**: `align: 'center'` (Cố định phải, 60px).
-
 ## Kết cấu chuẩn
 
 ```text

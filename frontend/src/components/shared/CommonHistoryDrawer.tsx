@@ -89,17 +89,13 @@ const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: str
   DELETE_ATTACHMENT: { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c15' },
   ATTACHMENT_DELETED: { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c15' },
 
-  APPROVE: { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}15` },
-  APPROVED: { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}15` },
-  APPROVE_L1: { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C215' },
-  APPROVE_L2: { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}15` },
-  PROPOSED: { label: 'Gửi phê duyệt', color: actionPrimary, bg: `${actionPrimary}15` },
-  SUBMIT: { label: 'Gửi phê duyệt', color: actionPrimary, bg: `${actionPrimary}15` },
+  APPROVE: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
+  APPROVED: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
+  APPROVE_L1: { label: 'Phê duyệt C1', color: statusAttention, bg: `${statusAttention}15` },
+  APPROVE_L2: { label: 'Phê duyệt C2', color: statusOperational, bg: `${statusOperational}15` },
 
   REJECT: { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` },
   REJECTED: { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` },
-  REJECT_L1: { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}15` },
-  REJECT_L2: { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}15` },
 
   INVALIDATE: { label: 'Vô hiệu hóa', color: '#7c3aed', bg: '#7c3aed15' },
   LOCK: { label: 'Khóa tài khoản', color: '#d97706', bg: '#d9770615' },
@@ -147,28 +143,28 @@ function renderCommonHistoryValueTag(field: string, val: string) {
   if (normKey.includes('trang thai') || normKey.includes('status') || normKey.includes('hieu luc') || normKey.includes('tinh trang')) {
     if (normVal.includes('da phe duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500, color: statusOperational, background: `${statusOperational}18`, border: `1px solid ${statusOperational}40`, whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusOperational, background: `${statusOperational}18`, border: `1px solid ${statusOperational}40` }}>
           {val}
         </span>
       );
     }
     if (normVal.includes('tu choi') || normVal.includes('het hieu luc') || normVal.includes('hong') || normVal.includes('inactive') || normVal.includes('rejected') || normVal.includes('expired')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40`, whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusCritical, background: `${statusCritical}18`, border: `1px solid ${statusCritical}40` }}>
           {val}
         </span>
       );
     }
     if (normVal.includes('dang xem xet') || normVal.includes('chua co hieu luc') || normVal.includes('review') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40`, whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: actionPrimary, background: `${actionPrimary}18`, border: `1px solid ${actionPrimary}40` }}>
           {val}
         </span>
       );
     }
-    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed') || normVal.includes('cho cang vu') || normVal.includes('cho cuc')) {
+    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed')) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40`, whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500, color: statusAttention, background: `${statusAttention}18`, border: `1px solid ${statusAttention}40` }}>
           {val}
         </span>
       );
@@ -307,7 +303,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
   return (
     <Drawer
-      width={900}
+      width={880}
       placement="right"
       open={open}
       onClose={onClose}
@@ -430,7 +426,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   key={gIdx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(320px, 0.42fr) minmax(0, 1fr)',
+                    gridTemplateColumns: 'minmax(250px, 0.36fr) minmax(0, 1fr)',
                     gap: spaceLg,
                     alignItems: 'start',
                     paddingBottom: spaceSm,
@@ -439,11 +435,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                 >
                   {/* Left Column: Metadata */}
                   <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm, marginBottom: spaceXs }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm, flexWrap: 'wrap', marginBottom: spaceXs }}>
                       <Typography.Text
                         style={{
-                          display: 'block',
-                          minWidth: 140,
                           fontSize: fontSizeLg - 1,
                           color: textPrimary,
                           fontWeight: fontWeightBold,
@@ -545,9 +539,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 key={cIdx}
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: '140px 1fr',
+                                  gridTemplateColumns: 'minmax(140px, 1fr) minmax(160px, 2fr)',
                                   gap: spaceSm,
-                                  alignItems: 'flex-start',
                                   fontSize: fontSizeMd,
                                   lineHeight: 1.5,
                                 }}
@@ -564,7 +557,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 key={cIdx}
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: '140px 145px 20px 1fr',
+                                  gridTemplateColumns: 'minmax(120px, 1.2fr) minmax(90px, 0.8fr) 20px minmax(120px, 1.2fr)',
                                   gap: spaceSm,
                                   alignItems: 'center',
                                   fontSize: fontSizeMd,
@@ -574,11 +567,11 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 <span style={{ fontWeight: fontWeightMedium, color: textSecondary }}>
                                   {label}:
                                 </span>
-                                <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, textDecoration: ov !== '—' ? 'line-through' : 'none' }}>
+                                <div style={{ textDecoration: ov !== '—' ? 'line-through' : 'none' }}>
                                   {renderCommonHistoryValueTag(label, ov)}
                                 </div>
-                                <span style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none' }}>→</span>
-                                <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                                <span style={{ color: textTertiary, textAlign: 'center' }}>→</span>
+                                <div>
                                   {renderCommonHistoryValueTag(label, nv)}
                                 </div>
                               </div>

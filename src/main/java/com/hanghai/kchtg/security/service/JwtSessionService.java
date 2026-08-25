@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,13 +43,16 @@ public class JwtSessionService {
     public JwtSessionService(JwtSessionRepository sessionRepository,
                              UserRepository userRepository,
                              JwtUtil jwtUtil,
-                             @Lazy CacheManager cacheManager) {
+                             CacheManager cacheManager) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.cacheManager = cacheManager;
     }
 
+    /**
+     * Create a new JwtSession record after successful login.
+     */
     public RefreshTokenPair createSession(User user, String sessionId,
                                           String refreshTokenValue,
                                           String userAgent, String ipAddress,

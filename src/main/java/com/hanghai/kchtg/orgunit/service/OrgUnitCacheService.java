@@ -5,7 +5,6 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -32,8 +31,7 @@ public class OrgUnitCacheService {
     private final OrgUnitRepository orgUnitRepository;
     private final CacheManager cacheManager;
 
-    public OrgUnitCacheService(OrgUnitRepository orgUnitRepository,
-                               @Lazy CacheManager cacheManager) {
+    public OrgUnitCacheService(OrgUnitRepository orgUnitRepository, CacheManager cacheManager) {
         this.orgUnitRepository = orgUnitRepository;
         this.cacheManager = cacheManager;
     }

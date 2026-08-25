@@ -55,13 +55,9 @@ class LegalDocumentAttachmentServiceTest {
 
     private UUID documentId;
     private LegalDocument document;
-    private Path uploadDirectory;
 
     @BeforeEach
-    void setUp() throws Exception {
-        Path baseTmp = Path.of("target", "tmp");
-        Files.createDirectories(baseTmp);
-        uploadDirectory = Files.createTempDirectory(baseTmp, "legal-attachments-test");
+    void setUp() {
         documentId = UUID.randomUUID();
         document = LegalDocument.builder()
                 .documentName("Quy định kiểm thử")
@@ -71,7 +67,7 @@ class LegalDocumentAttachmentServiceTest {
     }
 
     @Test
-    void uploadAndDeleteAttachment_shouldPersistAndRemovePhysicalFile()
+    void uploadAndDeleteAttachment_shouldPersistAndRemovePhysicalFile(@org.junit.jupiter.api.io.TempDir Path uploadDirectory)
             throws Exception {
         ReflectionTestUtils.setField(service, "uploadDir", uploadDirectory.toString());
         when(legalDocumentRepository.findById(documentId)).thenReturn(Optional.of(document));

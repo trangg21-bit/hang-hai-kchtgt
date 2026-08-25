@@ -1,9 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { TreeSelect } from 'antd';
 import type { TreeSelectProps } from 'antd';
 import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import { actionPrimary, radiusPill } from '../../tokens';
-import { organizationService } from '../../services/organizationService';
 
 /** Dữ liệu tối thiểu để hiển thị một đơn vị trong cây. */
 export interface OrgUnitTreeOption {
@@ -131,7 +130,7 @@ export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[]): Org
 
 export interface OrgUnitTreeSelectProps
   extends Omit<TreeSelectProps, 'treeData'> {
-  organizations?: readonly OrgUnitTreeOption[];
+  organizations: readonly OrgUnitTreeOption[];
   /** Hiển thị đường dẫn đầy đủ (cấp cao nhất → cấp được chọn) trên thanh select. */
   showPath?: boolean;
   /** Hiển thị item đầu tiên "Tất cả" (value = '__all__') cùng cấp với cấp ngoài cùng — dùng cho bộ lọc. */
@@ -153,27 +152,8 @@ export default function OrgUnitTreeSelect({
   allLabel,
   ...props
 }: OrgUnitTreeSelectProps) {
-  const [internalOrgs, setInternalOrgs] = useState<OrgUnitTreeOption[]>([]);
-
-  useEffect(() => {
-    if (organizations === undefined) {
-      organizationService.list({ pageSize: 1000 })
-        .then((res) => {
-          if (res?.data && Array.isArray(res.data)) {
-            setInternalOrgs(res.data);
-          }
-        })
-        .catch(() => {
-          // ignore error
-        });
-    }
-  }, [organizations]);
-
-  const effectiveOrgs = organizations !== undefined ? organizations : internalOrgs;
-
   const treeData = useMemo(() => {
-    const list = effectiveOrgs || [];
-    const built = buildOrgUnitTreeData(list);
+    const built = buildOrgUnitTreeData(organizations);
     const base = allLabel
       ? [{ key: '__all__', value: '__all__', title: allLabel }, ...built]
       : built;
@@ -181,7 +161,7 @@ export default function OrgUnitTreeSelect({
 
     // Gắn label = đường dẫn đầy đủ (cấp cao nhất → cấp được chọn) cho từng node.
     // title giữ tên ngắn cho dropdown; label chỉ dùng để hiển thị trên thanh select.
-    const byId = new Map<string, OrgUnitTreeOption>(effectiveOrgs.map((o) => [o.id, o]));
+    const byId = new Map<string, OrgUnitTreeOption>(organizations.map((o) => [o.id, o]));
     const pathOf = (o: OrgUnitTreeOption): string => {
       const parts: string[] = [];
       let cur: OrgUnitTreeOption | undefined = o;

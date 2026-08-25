@@ -15,7 +15,6 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
@@ -162,10 +161,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Profile("!test")
     public FilterRegistrationBean<PermissionMiddleware> disablePermissionMiddlewareAutoRegistration(
-            PermissionMiddleware filter) {
-        FilterRegistrationBean<PermissionMiddleware> registration = new FilterRegistrationBean<>(filter);
+            @Nullable PermissionMiddleware filter) {
+        FilterRegistrationBean<PermissionMiddleware> registration = new FilterRegistrationBean<>();
+        if (filter != null) {
+            registration.setFilter(filter);
+        }
         registration.setEnabled(false);
         return registration;
     }

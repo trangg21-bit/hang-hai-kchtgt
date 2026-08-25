@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
+import { Form, Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
 import { PlusOutlined, DeleteOutlined, CompassOutlined, EnvironmentOutlined, HolderOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 
@@ -15,7 +15,6 @@ interface GisLocationSelectorProps {
   defaultGeometryType?: 'POINT' | 'LINE' | 'POLYGON';
   height?: number;
   disabled?: boolean;
-  inline?: boolean;
 }
 
 // Global script loading helper to avoid duplicates
@@ -74,9 +73,10 @@ const DMSToDD = (d: number, m: number, s: number) => {
 interface DmsInputProps {
   value: number;
   onChange: (val: number) => void;
+  placeholderPrefix: string;
 }
 
-function DmsInput({ value, onChange }: DmsInputProps) {
+function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
   const { d, m, s } = DDToDMS(value);
 
   const handleDChange = (newD: number | null) => {
@@ -160,11 +160,11 @@ export default function GisLocationSelector({
   defaultGeometryType,
   height = 550,
   disabled,
-  inline = false,
 }: GisLocationSelectorProps) {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [vertices, setVertices] = useState<{ lng: number; lat: number }[]>([]);
   const [internalGeom, setInternalGeom] = useState<string>('POINT');
+  const [internalToaDo, setInternalToaDo] = useState<string>('');
   const [internalBieuTuong, setInternalBieuTuong] = useState<string | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -172,8 +172,6 @@ export default function GisLocationSelector({
   const mapRef = useRef<any>(null);
   const drawnLayerRef = useRef<any>(null);
   const isUpdatingFromMap = useRef(false);
-  const hasInitialFitDone = useRef(false);
-  const lastSourceRef = useRef<'initial' | 'map' | 'table'>('initial');
 
   const internalGeomRef = useRef(internalGeom);
   const internalBieuTuongRef = useRef(internalBieuTuong);
@@ -183,16 +181,16 @@ export default function GisLocationSelector({
     internalBieuTuongRef.current = internalBieuTuong;
   }, [internalGeom, internalBieuTuong]);
 
-  // Auto trigger map resize when modal opens or inline mounts
+  // Auto trigger map resize when modal opens to prevent grey area issues
   useEffect(() => {
-    if ((modalOpen || inline) && mapRef.current) {
+    if (modalOpen && mapRef.current) {
       setTimeout(() => {
         if (mapRef.current) {
           mapRef.current.invalidateSize();
         }
       }, 300);
     }
-  }, [modalOpen, inline, mapReady]);
+  }, [modalOpen]);
 
   // Sync internal state with incoming props value
   useEffect(() => {
@@ -201,6 +199,7 @@ export default function GisLocationSelector({
     const bieuTuongId = value.symbolId;
 
     setInternalGeom(geometryType || '');
+    setInternalToaDo(toaDo);
     setInternalBieuTuong(bieuTuongId);
 
     // Parse WKT to vertices
@@ -332,9 +331,6 @@ export default function GisLocationSelector({
   const drawExistingShape = useCallback(() => {
     if (!leafletLoaded || !mapRef.current || !mapReady || isUpdatingFromMap.current) return;
 
-    // Nếu thao tác vừa tạo trực tiếp từ bản đồ thì đối tượng đã được vẽ trên map rồi, không vẽ lại và không can thiệp zoom/pan
-    if (lastSourceRef.current === 'map') return;
-
     const L = (window as any).L;
 
     // Clear old layer
@@ -371,19 +367,11 @@ export default function GisLocationSelector({
         layer.addTo(mapRef.current);
         drawnLayerRef.current = layer;
 
-        // Chỉ zoom/fitBounds vào đối tượng ở lần đầu tiên mở bản đồ lên
-        if (!hasInitialFitDone.current) {
-          if (internalGeom === 'POINT' && validVertices.length === 1) {
-            mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], 15);
-          } else {
-            mapRef.current.fitBounds(layer.getBounds(), { padding: [20, 20] });
-          }
-          hasInitialFitDone.current = true;
-        } else if (lastSourceRef.current === 'table') {
-          // Khi người dùng sửa tọa độ từ bảng, chỉ pan tâm đến điểm đó và GIỮ NGUYÊN mức zoom hiện tại của bản đồ
-          if (internalGeom === 'POINT' && validVertices.length === 1) {
-            mapRef.current.panTo([validVertices[0].lat, validVertices[0].lng]);
-          }
+        // Auto center map on the shape
+        if (internalGeom === 'POINT' && validVertices.length === 1) {
+          mapRef.current.setView([validVertices[0].lat, validVertices[0].lng], 15);
+        } else {
+          mapRef.current.fitBounds(layer.getBounds(), { padding: [20, 20] });
         }
 
         // Bind update listeners
@@ -439,6 +427,7 @@ export default function GisLocationSelector({
     mapRef.current.on('pm:remove', () => {
       drawnLayerRef.current = null;
       setVertices([]);
+      setInternalToaDo('');
       triggerChange(internalGeomRef.current, '', internalBieuTuongRef.current);
     });
 
@@ -459,25 +448,22 @@ export default function GisLocationSelector({
     }
   }, [initMap]);
 
-  // Cleanup map when modal is closed (or component unmounted)
+  // Cleanup map when modal is closed
   useEffect(() => {
-    if (!inline && !modalOpen) {
+    if (!modalOpen) {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
         drawnLayerRef.current = null;
       }
       setMapReady(false);
-      hasInitialFitDone.current = false;
-      lastSourceRef.current = 'initial';
     }
-  }, [modalOpen, inline]);
+  }, [modalOpen]);
 
   // Synchronize Leaflet Map drawn shapes with WKT coordinates
   const syncLayerToWkt = (layer: any) => {
     if (isUpdatingFromMap.current) return;
     isUpdatingFromMap.current = true;
-    lastSourceRef.current = 'map';
 
     const L = (window as any).L;
     let newWkt = '';
@@ -505,6 +491,7 @@ export default function GisLocationSelector({
     }
 
     setVertices(parsedPts);
+    setInternalToaDo(newWkt);
     triggerChange(
       layer instanceof L.Marker ? 'POINT' : (layer instanceof L.Polygon ? 'POLYGON' : 'LINE'),
       newWkt,
@@ -553,31 +540,31 @@ export default function GisLocationSelector({
   // Handle manual additions and updates to the vertices grid
   const handleVertexChange = (index: number, field: 'lng' | 'lat', val: number | null) => {
     if (val === null) return;
-    lastSourceRef.current = 'table';
     const newPts = [...vertices];
     newPts[index] = { ...newPts[index], [field]: val };
     setVertices(newPts);
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
+    setInternalToaDo(newWkt);
     triggerChange(internalGeom, newWkt, internalBieuTuong);
   };
 
   const addVertex = () => {
-    lastSourceRef.current = 'table';
     const newPt = { lng: undefined as any, lat: undefined as any };
     const newPts = [...vertices, newPt];
     setVertices(newPts);
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
+    setInternalToaDo(newWkt);
     triggerChange(internalGeom, newWkt, internalBieuTuong);
   };
 
   const removeVertex = (index: number) => {
-    lastSourceRef.current = 'table';
     const newPts = vertices.filter((_, i) => i !== index);
     setVertices(newPts);
 
     const newWkt = serializeVerticesToWkt(newPts, internalGeom);
+    setInternalToaDo(newWkt);
     triggerChange(internalGeom, newWkt, internalBieuTuong);
   };
 
@@ -587,191 +574,22 @@ export default function GisLocationSelector({
   const handleGeomTypeChange = (newGeom: string) => {
     setInternalGeom(newGeom);
     setVertices([]);
+    setInternalToaDo('');
     triggerChange(newGeom, '', internalBieuTuong);
   };
 
+  const handleSymbolChange = (newSym: string) => {
+    setInternalBieuTuong(newSym);
+    triggerChange(internalGeom, internalToaDo, newSym);
+  };
+
   const GEOM_TYPE_OPTIONS = [
-    { value: 'POINT', label: 'Đối tượng điểm' },
-    { value: 'LINE', label: 'Đối tượng đường' },
-    { value: 'POLYGON', label: 'Đối tượng vùng' },
+    { value: 'POINT', label: 'Đối tượng điểm (Point)' },
+    { value: 'LINE', label: 'Đối tượng đường (Line)' },
+    { value: 'POLYGON', label: 'Đối tượng vùng (Polygon)' },
   ];
 
   const pointsCount = vertices.length;
-
-  const mapContent = (
-    <div style={{ padding: '12px 0 0 0' }}>
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={14}>
-          <div style={{ position: 'relative' }}>
-            <div
-              ref={mapContainerRef}
-              style={{
-                height,
-                width: '100%',
-                borderRadius: 8,
-                border: `1px solid ${colors.borderBase}`,
-                overflow: 'hidden',
-                zIndex: 1,
-              }}
-            />
-            {!leafletLoaded && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 2,
-                  borderRadius: 8,
-                }}
-              >
-                <Space>
-                  <CompassOutlined spin style={{ fontSize: 24, color: colors.primary }} />
-                  <Typography.Text type="secondary">Đang tải bản đồ không gian...</Typography.Text>
-                </Space>
-              </div>
-            )}
-          </div>
-        </Col>
-
-        <Col xs={24} md={10}>
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Typography.Text strong style={{ fontSize: 13 }}>
-                  TỌA ĐỘ CÁC ĐIỂM ĐỈNH
-                </Typography.Text>
-                {internalGeom !== 'POINT' && (
-                  <Button
-                    type="dashed"
-                    size="small"
-                    icon={<PlusOutlined />}
-                    onClick={addVertex}
-                  >
-                    Thêm điểm
-                  </Button>
-                )}
-              </div>
-
-              {vertices.length === 0 ? (
-                <div
-                  style={{
-                    padding: '24px 0',
-                    textAlign: 'center',
-                    border: `1px dashed ${colors.borderBase}`,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                    Chưa có tọa độ nào. Nhấp vào bản đồ hoặc nút "Thêm điểm" để bắt đầu.
-                  </Typography.Text>
-                </div>
-              ) : (
-                <Table
-                  dataSource={vertices.map((v, i) => ({ key: i, ...v }))}
-                  pagination={false}
-                  size="small"
-                  bordered
-                  tableLayout="fixed"
-                  scroll={{ x: 680, y: 220 }}
-                  onRow={(_, index) => ({
-                    draggable: internalGeom !== 'POINT',
-                    style: { cursor: internalGeom !== 'POINT' ? 'grab' : 'default' },
-                    onDragStart: (e) => {
-                      e.dataTransfer.setData('text/plain', index!.toString());
-                    },
-                    onDragOver: (e) => {
-                      e.preventDefault();
-                    },
-                    onDrop: (e) => {
-                      e.preventDefault();
-                      const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                      const hoverIndex = index!;
-                      if (isNaN(dragIndex) || dragIndex === hoverIndex) return;
-
-                      const newPts = [...vertices];
-                      const temp = newPts[dragIndex];
-                      newPts[dragIndex] = newPts[hoverIndex];
-                      newPts[hoverIndex] = temp;
-                      setVertices(newPts);
-
-                      const newWkt = serializeVerticesToWkt(newPts, internalGeom);
-                      triggerChange(internalGeom, newWkt, internalBieuTuong);
-                    }
-                  })}
-                  columns={[
-                    {
-                      title: 'STT',
-                      key: 'index',
-                      width: 70,
-                      align: 'center',
-                      render: (_, __, i) => (
-                        <Space size={4}>
-                          {internalGeom !== 'POINT' && (
-                            <HolderOutlined style={{ cursor: 'grab', color: '#bfbfbf' }} />
-                          )}
-                          <span>{i + 1}</span>
-                        </Space>
-                      ),
-                    },
-                    {
-                      title: 'Vĩ độ (N) *',
-                      dataIndex: 'lat',
-                      key: 'lat',
-                      width: 280,
-                      render: (val, _, i) => (
-                        <DmsInput
-                          value={val}
-                          onChange={(v) => handleVertexChange(i, 'lat', v)}
-                        />
-                      ),
-                    },
-                    {
-                      title: 'Kinh độ (E) *',
-                      dataIndex: 'lng',
-                      key: 'lng',
-                      width: 280,
-                      render: (val, _, i) => (
-                        <DmsInput
-                          value={val}
-                          onChange={(v) => handleVertexChange(i, 'lng', v)}
-                        />
-                      ),
-                    },
-                    {
-                      title: '',
-                      key: 'actions',
-                      width: 50,
-                      align: 'center',
-                      render: (_, __, i) =>
-                        internalGeom !== 'POINT' ? (
-                          <Button
-                            type="text"
-                            danger
-                            size="small"
-                            icon={<DeleteOutlined />}
-                            onClick={() => removeVertex(i)}
-                          />
-                        ) : null,
-                    },
-                  ]}
-                />
-              )}
-            </div>
-          </Space>
-        </Col>
-      </Row>
-    </div>
-  );
-
-  if (inline) {
-    return mapContent;
-  }
 
   return (
     <>
@@ -812,16 +630,187 @@ export default function GisLocationSelector({
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         destroyOnHidden
-        centered
-        width="90vw"
-        style={{ maxWidth: '1400px' }}
+        width="96vw"
+        style={{ top: 12, maxWidth: '1600px' }}
         footer={[
           <Button key="close" type="primary" onClick={() => setModalOpen(false)}>
             Xác nhận & Đóng
           </Button>
         ]}
       >
-        {mapContent}
+        <div style={{ padding: '12px 0 0 0' }}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={14}>
+              <div style={{ position: 'relative' }}>
+                <div
+                  ref={mapContainerRef}
+                  style={{
+                    height,
+                    width: '100%',
+                    borderRadius: 8,
+                    border: `1px solid ${colors.borderBase}`,
+                    overflow: 'hidden',
+                    zIndex: 1,
+                  }}
+                />
+                {!leafletLoaded && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'rgba(255, 255, 255, 0.8)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 2,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Space>
+                      <CompassOutlined spin style={{ fontSize: 24, color: colors.primary }} />
+                      <Typography.Text type="secondary">Đang tải bản đồ không gian...</Typography.Text>
+                    </Space>
+                  </div>
+                )}
+              </div>
+            </Col>
+
+            <Col xs={24} md={10}>
+              <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Typography.Text strong style={{ fontSize: 13 }}>
+                      TỌA ĐỘ CÁC ĐIỂM ĐỈNH
+                    </Typography.Text>
+                    {internalGeom !== 'POINT' && (
+                      <Button
+                        type="dashed"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={addVertex}
+                      >
+                        Thêm điểm
+                      </Button>
+                    )}
+                  </div>
+
+                  {vertices.length === 0 ? (
+                    <div
+                      style={{
+                        padding: '24px 0',
+                        textAlign: 'center',
+                        border: `1px dashed ${colors.borderBase}`,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                        Chưa có tọa độ nào. Nhấp vào bản đồ hoặc nút "Thêm điểm" để bắt đầu.
+                      </Typography.Text>
+                    </div>
+                  ) : (
+                    <Table
+                      dataSource={vertices.map((v, i) => ({ key: i, ...v }))}
+                      pagination={false}
+                      size="small"
+                      bordered
+                      tableLayout="fixed"
+                      scroll={{ x: 680, y: 220 }}
+                      onRow={(_, index) => ({
+                        draggable: internalGeom !== 'POINT',
+                        style: { cursor: internalGeom !== 'POINT' ? 'grab' : 'default' },
+                        onDragStart: (e) => {
+                          e.dataTransfer.setData('text/plain', index!.toString());
+                        },
+                        onDragOver: (e) => {
+                          e.preventDefault();
+                        },
+                        onDrop: (e) => {
+                          e.preventDefault();
+                          const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                          const hoverIndex = index!;
+                          if (isNaN(dragIndex) || dragIndex === hoverIndex) return;
+
+                          const newPts = [...vertices];
+                          const temp = newPts[dragIndex];
+                          newPts[dragIndex] = newPts[hoverIndex];
+                          newPts[hoverIndex] = temp;
+                          setVertices(newPts);
+
+                          const newWkt = serializeVerticesToWkt(newPts, internalGeom);
+                          setInternalToaDo(newWkt);
+                          triggerChange(internalGeom, newWkt, internalBieuTuong);
+                        }
+                      })}
+                      columns={[
+                        {
+                          title: 'STT',
+                          key: 'index',
+                          width: 70,
+                          align: 'center',
+                          render: (_, __, i) => (
+                            <Space size={4}>
+                              {internalGeom !== 'POINT' && (
+                                <HolderOutlined style={{ cursor: 'grab', color: '#bfbfbf' }} />
+                              )}
+                              <span>{i + 1}</span>
+                            </Space>
+                          ),
+                        },
+                        {
+                          title: 'Vĩ độ (N) *',
+                          dataIndex: 'lat',
+                          key: 'lat',
+                          width: 280,
+                          render: (val, _, i) => (
+                            <DmsInput
+                              value={val}
+                              onChange={(v) => handleVertexChange(i, 'lat', v)}
+                              placeholderPrefix="Vĩ độ"
+                            />
+                          ),
+                        },
+                        {
+                          title: 'Kinh độ (E) *',
+                          dataIndex: 'lng',
+                          key: 'lng',
+                          width: 280,
+                          render: (val, _, i) => (
+                            <DmsInput
+                              value={val}
+                              onChange={(v) => handleVertexChange(i, 'lng', v)}
+                              placeholderPrefix="Kinh độ"
+                            />
+                          ),
+                        },
+                        {
+                          title: '',
+                          key: 'actions',
+                          width: 50,
+                          align: 'center',
+                          render: (_, __, i) =>
+                            internalGeom !== 'POINT' ? (
+                              <Button
+                                type="text"
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                onClick={() => removeVertex(i)}
+                              />
+                            ) : null,
+                        },
+                      ]}
+                    />
+                  )}
+                </div>
+              </Space>
+            </Col>
+          </Row>
+        </div>
       </Modal>
     </>
   );

@@ -62,9 +62,6 @@ class BeaconStationServiceTest {
     private OrgUnitRepository orgUnitRepo;
 
     @Mock
-    private com.hanghai.kchtg.orgunit.service.OrgUnitScopeService orgUnitScopeService;
-
-    @Mock
     private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
 
     @InjectMocks
@@ -92,8 +89,6 @@ class BeaconStationServiceTest {
         dummySpatial.setId(UUID.randomUUID());
         lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(dummySpatial);
-        lenient().when(orgUnitScopeService.currentUserScope()).thenReturn(com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope.allScope());
-        lenient().when(orgUnitCacheService.getName(any())).thenReturn("Đơn vị Test");
     }
 
     private BeaconStation makeEntity(UUID id, String status) {
@@ -101,7 +96,6 @@ class BeaconStationServiceTest {
                 .code("DEN-001")
                 .name("Đèn biển test")
                 .type("LIGHTHOUSE")
-                .unitId(UUID.randomUUID())
                 .lightRange(15.0)
                 .towerColor("Trắng")
                 .area(12.0)
@@ -129,7 +123,6 @@ class BeaconStationServiceTest {
         return CreateBeaconStationRequest.builder()
                 .code("DEN-002")
                 .name("Đèn biển mới")
-                .unitId(UUID.randomUUID())
                 .type("BEACON_LIGHT")
                 .lightRange(15.0)
                 .towerColor("Đỏ")
