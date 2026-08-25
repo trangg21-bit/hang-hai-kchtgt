@@ -6,8 +6,8 @@ status: proposed
 depends-on: []
 blocked-by: []
 created: 2026-08-25T07:34:20.884Z
-last-updated: 2026-08-25T10:39:48Z
-current-stage: engineering-solution-designer
+last-updated: 2026-08-25T11:05:30Z
+current-stage: engineering-backend-developer-wave-1
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -15,8 +15,6 @@ project: ""
 docs-path: docs/modules/M-024-tai-cau-truc-menu-navigation
 intel-path: docs/intel
 stages-queue:
-  - engineering-solution-designer
-  - engineering-qa-engineer-wave-1
   - engineering-backend-developer-wave-1
   - engineering-frontend-developer-wave-1
   - engineering-qa-engineer-wave-2
@@ -25,6 +23,16 @@ completed-stages:
   engineering-business-analyst:
     verdict: Pass
     artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md
+    performed: dispatched
+    completed-at: 2026-08-25
+  engineering-solution-designer:
+    verdict: Pass
+    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md
+    performed: dispatched
+    completed-at: 2026-08-25
+  engineering-qa-engineer-wave-1:
+    verdict: Pass
+    artifact: docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md
     performed: dispatched
     completed-at: 2026-08-25
 kpi:
@@ -53,8 +61,8 @@ Tái cấu trúc toàn bộ hệ thống menu và giao diện điều hướng, 
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
 | 1 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/ba/00-lean-spec.md | 2026-08-25 |
-| 2 | engineering-solution-designer | engineering-solution-designer | — | — | — |
-| 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
+| 2 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/design/00-design-plan.md | 2026-08-25 |
+| 3 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-024-tai-cau-truc-menu-navigation/qa/07-qa-report-w1.md | 2026-08-25 |
 | 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
 | 5 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | — | — | — |
 | 6 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | — | — | — |
@@ -62,11 +70,11 @@ Tái cấu trúc toàn bộ hệ thống menu và giao diện điều hướng, 
 
 ## Current Stage
 
-**engineering-solution-designer** — Ready to start. Input: `docs/modules/M-024-tai-cau-truc-menu-navigation/module-brief.md`.
+**engineering-backend-developer-wave-1** — Ready to start. Input: `docs/modules/M-024-tai-cau-truc-menu-navigation/module-brief.md`.
 
 ## Next Action
 
-Next stage `engineering-solution-designer` — dispatched by the project manager (via the build receptionist); no slash command to run.
+Next stage `engineering-backend-developer-wave-1` — dispatched by the project manager (via the build receptionist); no slash command to run.
 
 ## Active Blockers
 
