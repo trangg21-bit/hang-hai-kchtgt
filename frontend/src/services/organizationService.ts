@@ -196,7 +196,7 @@ const clearCachedOrgs = () => {
   globalWin.__orgUnitsCacheKey = null;
 };
 
-export const invalidateOrganizationCache = clearCachedOrgs;
+let inFlightOrgsPromise: Promise<Organization[]> | null = null;
 
 export const organizationService = {
   /**
@@ -221,139 +221,147 @@ export const organizationService = {
           pageSize,
         };
       }
+
+      if (inFlightOrgsPromise) {
+        const data = await inFlightOrgsPromise;
+        const page = params?.page || 1;
+        const pageSize = params?.pageSize || 1000;
+        const start = (page - 1) * pageSize;
+        return {
+          data: data.slice(start, start + pageSize),
+          total: data.length,
+          page,
+          pageSize,
+        };
+      }
     }
 
-    try {
-      const resp = isCacheable
-        ? await api.get("/common/options/org-units")
-        : await api.get("/org-units", {
-          params: {
-            size: 1000,
-            parentId: params?.parentId,
-          }
-        });
-      const rawData: any = extractData(resp);
-      const items: any[] = Array.isArray(rawData)
-        ? rawData
-        : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
+    const runFetch = async (): Promise<Organization[]> => {
+      try {
+        const resp = isCacheable
+          ? await api.get("/common/options/org-units")
+          : await api.get("/org-units", {
+            params: {
+              size: 1000,
+              parentId: params?.parentId,
+            }
+          });
+        const rawData: any = extractData(resp);
+        const items: any[] = Array.isArray(rawData)
+          ? rawData
+          : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
 
-      // Build flat list first for parent lookups
-      const flatList = items.map((item) => ({
-        ...item,
-        // Map to frontend Organization type
-        id: item.id ?? "",
-        name: item.name ?? "",
-        parentId: item.parentId ? String(item.parentId) : undefined,
-        level: item.level,
-        type: item.type as Organization["type"],
-        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
-        rank: item.rank as OrgUnitRankName | undefined,
-      }));
-
-      // Build parent name lookup map
-      const orgMap = new Map<string, Organization>();
-      flatList.forEach((item) => {
-        orgMap.set(item.id, {
-          id: item.id,
-          name: item.name,
-          parentId: item.parentId,
-          parentOrgName: undefined,
+        // Build flat list first for parent lookups
+        const flatList = items.map((item) => ({
+          ...item,
+          id: item.id ?? "",
+          name: item.name ?? "",
+          parentId: item.parentId ? String(item.parentId) : undefined,
           level: item.level,
           type: item.type as Organization["type"],
-          description: item.description,
-          provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
-          provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
-          detailAddress: item.detailAddress, phone: item.phone,
-          operationalStatus: item.operationalStatus as Organization["operationalStatus"],
+          operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
           rank: item.rank as OrgUnitRankName | undefined,
-          childCount: 0, // placeholder
-          createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
+        }));
+
+        // Build parent name lookup map
+        const orgMap = new Map<string, Organization>();
+        flatList.forEach((item) => {
+          orgMap.set(item.id, {
+            id: item.id,
+            name: item.name,
+            parentId: item.parentId,
+            parentOrgName: undefined,
+            level: item.level,
+            type: item.type as Organization["type"],
+            description: item.description,
+            provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+            provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+            detailAddress: item.detailAddress, phone: item.phone,
+            operationalStatus: item.operationalStatus as Organization["operationalStatus"],
+            rank: item.rank as OrgUnitRankName | undefined,
+            childCount: 0,
+            createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
+            updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
+          });
         });
-      });
 
-      // Now compute parentOrgName and level
-      const data: Organization[] = flatList.map((item) => {
-        let level = item.level ?? 1;
-        let parentOrgName: string | undefined;
-        if (item.parentId) {
-          const parent = orgMap.get(item.parentId);
-          if (parent) {
-            parentOrgName = parent.name;
+        // Now compute parentOrgName and level
+        const data: Organization[] = flatList.map((item) => {
+          let level = item.level ?? 1;
+          let parentOrgName: string | undefined;
+          if (item.parentId) {
+            const parent = orgMap.get(item.parentId);
+            if (parent) {
+              parentOrgName = parent.name;
+            }
           }
+
+          const childCount = flatList.filter(
+            (o) => o.parentId === item.id
+          ).length;
+
+          return {
+            id: item.id,
+            name: item.name,
+            parentId: item.parentId,
+            parentOrgName,
+            level,
+            type: item.type as Organization["type"],
+            description: item.description,
+            provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+            provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+            detailAddress: item.detailAddress, phone: item.phone,
+            operationalStatus: item.operationalStatus as Organization["operationalStatus"],
+            rank: item.rank as OrgUnitRankName | undefined,
+            childCount,
+            createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
+            updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
+          };
+        });
+
+        if (isCacheable) {
+          setCachedOrgs(data);
         }
-
-        // Compute childCount
-        const childCount = flatList.filter(
-          (o) => o.parentId === item.id
-        ).length;
-
-        return {
-          id: item.id,
-          name: item.name,
-          parentId: item.parentId,
-          parentOrgName,
-          level,
-          type: item.type as Organization["type"],
-          description: item.description,
-          provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
-          provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
-          detailAddress: item.detailAddress, phone: item.phone,
-          operationalStatus: item.operationalStatus as Organization["operationalStatus"],
-          rank: item.rank as OrgUnitRankName | undefined,
-          childCount,
-          createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
-        };
-      });
-
-      if (isCacheable) {
-        setCachedOrgs(data);
+        return data;
+      } catch {
+        await delay();
+        return [...organizations];
       }
+    };
 
-      // Apply filters
-      let filtered: Organization[] = [...data];
-
-      if (params?.search) {
-        const q = params.search.toLowerCase();
-        filtered = filtered.filter(
-          (o) =>
-            o.name.toLowerCase().includes(q) ||
-            (o.description || "").toLowerCase().includes(q)
-        );
+    let data: Organization[];
+    if (isCacheable) {
+      if (!inFlightOrgsPromise) {
+        inFlightOrgsPromise = runFetch().finally(() => {
+          inFlightOrgsPromise = null;
+        });
       }
-      const page = params?.page || 1;
-      const pageSize = params?.pageSize || 1000;
-      const start = (page - 1) * pageSize;
-
-      return {
-        data: filtered.slice(start, start + pageSize),
-        total: filtered.length,
-        page,
-        pageSize,
-      };
-    } catch {
-      await delay();
-      let filtered = [...organizations];
-      if (params?.search) {
-        const s = params.search.toLowerCase();
-        filtered = filtered.filter(o => o.name.toLowerCase().includes(s) || (o.description || '').toLowerCase().includes(s));
-      }
-      const page = params?.page || 1;
-      const pageSize = params?.pageSize || 1000;
-      const start = (page - 1) * pageSize;
-
-      if (isCacheable) {
-        setCachedOrgs(filtered);
-      }
-
-      return {
-        data: filtered.slice(start, start + pageSize),
-        total: filtered.length,
-        page,
-        pageSize,
-      };
+      data = await inFlightOrgsPromise;
+    } else {
+      data = await runFetch();
     }
+
+    // Apply filters
+    let filtered: Organization[] = [...data];
+
+    if (params?.search) {
+      const q = params.search.toLowerCase();
+      filtered = filtered.filter(
+        (o) =>
+          o.name.toLowerCase().includes(q) ||
+          (o.description || "").toLowerCase().includes(q)
+      );
+    }
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 1000;
+    const start = (page - 1) * pageSize;
+
+    return {
+      data: filtered.slice(start, start + pageSize),
+      total: filtered.length,
+      page,
+      pageSize,
+    };
   },
 
   /**

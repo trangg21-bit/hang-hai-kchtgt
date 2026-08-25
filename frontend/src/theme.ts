@@ -25,7 +25,7 @@ export const layout = {
   sidebarCollapsedWidth: 80,
   headerHeight: 64,
   footerHeight: 56,
-  listTableMinWidth: 1400,
+  listTableMinWidth: 1000,
   // Reserve the status bar, table header and pagination so the pager never
   // overlays the last visible row of a list table.
   listTableScrollY: 'calc(100vh - 410px)',
@@ -210,12 +210,15 @@ export const metronicTheme: ThemeConfig = {
 
     Dropdown: {
       fontSize: 13,
+      borderRadiusLG: radius.md,
+      boxShadowSecondary: shadow.dropdown,
     },
 
     Modal: {
       fontSize: 13,
       fontSizeLG: 13,
       titleFontSize: 15,
+      borderRadiusLG: radius.lg,
     },
 
     Input: {
@@ -251,15 +254,6 @@ export const metronicTheme: ThemeConfig = {
       // Nếu vẫn dùng progress bar trong card thống kê, làm mảnh & bo tròn hơn
       lineBorderRadius: radius.pill,
       defaultColor: colors.primary,
-    },
-
-    Modal: {
-      borderRadiusLG: radius.lg,
-    },
-
-    Dropdown: {
-      borderRadiusLG: radius.md,
-      boxShadowSecondary: shadow.dropdown,
     },
   },
 };
@@ -307,6 +301,7 @@ export const globalCssVars = `
   --shadow-card: ${shadow.card};
   --shadow-card-hover: ${shadow.cardHover};
   --list-table-scroll-y: ${layout.listTableScrollY};
+  --table-header-bg: ${colors.bodyBg};
 
   --font-family: ${fontFamily};
 }
@@ -417,18 +412,104 @@ export const globalCssVars = `
   background: transparent;
 }
 
-/* Bảng list-view: dành chỗ scrollbar dọc ổn định để header và body của cột ghim (fixed right)
-   luôn thẳng hàng — kể cả khi chưa đủ dữ liệu tạo thanh cuộn. */
-.list-view-table .ant-table-header,
-.list-view-table .ant-table-body {
-  scrollbar-gutter: stable;
+/* Layout chuỗi flex cho bảng danh sách lấp đầy 100% chiều cao khả dụng */
+/* Layout chuỗi flex cho bảng danh sách lấp đầy 100% chiều cao khả dụng */
+.list-view-table-shell {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 0% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.list-view-table,
+.ant-table-wrapper.list-view-table {
+  flex: 1 1 0% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.list-view-table .ant-spin,
+.list-view-table .ant-spin-nested-loading,
+.list-view-table .ant-spin-container,
+.list-view-table .ant-table,
+.list-view-table .ant-table-container {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
+
+.list-view-table .ant-table-header {
+  flex: 0 0 auto !important;
+  background: var(--table-header-bg, #f1f5f9) !important;
+  overflow: hidden !important;
+}
+
+.list-view-table .ant-table-content {
+  height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
 }
 
 /* Cột bảng không bị tràn text đè lên nhau */
 .list-view-table .ant-table-thead > tr > th {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  position: sticky !important;
+  top: 0 !important;
+  background: var(--table-header-bg, #F5F8FA) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  z-index: 10 !important;
+}
+
+.list-view-table th.ant-table-cell-scrollbar {
+  display: none !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-start {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  background: var(--table-header-bg, #F5F8FA) !important;
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
+  z-index: 25 !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-right,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-end {
+  position: sticky !important;
+  top: 0 !important;
+  right: 0 !important;
+  background: var(--table-header-bg, #F5F8FA) !important;
+  box-shadow: -1px 0 0 rgba(0, 0, 0, 0.06) !important;
+  z-index: 25 !important;
+}
+
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-start {
+  position: sticky !important;
+  left: 0 !important;
+  background: #ffffff !important;
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
+  z-index: 9 !important;
+}
+
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-right,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-end {
+  position: sticky !important;
+  right: 0 !important;
+  background: #ffffff !important;
+  box-shadow: -1px 0 0 rgba(0, 0, 0, 0.06) !important;
+  z-index: 9 !important;
 }
 
 /* Gắn icon sort ngay sau title của cột (antd mặc định đẩy icon ra mép phải,
@@ -439,13 +520,34 @@ export const globalCssVars = `
 }
 .list-view-table .ant-table-thead th.ant-table-cell-align-center .ant-table-column-sorters,
 .list-view-table .ant-table-thead th[align="center"] .ant-table-column-sorters {
-  justify-content: center;
+  justify-content: center !important;
+  text-align: center !important;
+}
+.list-view-table .ant-table-thead th.ant-table-cell-align-center,
+.list-view-table .ant-table-thead th[align="center"] {
+  text-align: center !important;
+}
+/* Đồng bộ độ rộng, xóa margin thừa và căn giữa toàn cục cho mọi Badge/Tag trong cột center */
+.list-view-table td.ant-table-cell-align-center .ant-tag,
+.list-view-table td.ant-table-cell-align-center .status-badge,
+.list-view-table td[align="center"] .ant-tag,
+.list-view-table td[align="center"] .status-badge {
+  min-width: 125px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  border-radius: 999px !important;
 }
 .list-view-table .ant-table-thead .ant-table-column-title {
   flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.list-view-table .ant-table-cell {
+  white-space: nowrap !important;
 }
 
 /* --- Navigation zone (BLUE — đồng nhất) --- */
@@ -531,6 +633,9 @@ export const globalCssVars = `
   font-weight: 600;
   padding: 3px 10px 3px 8px;
   border-radius: var(--radius-pill, 999px);
+  white-space: nowrap !important;
+  flex-shrink: 0;
+  line-height: 1.4;
 }
 .status-badge::before {
   content: '';

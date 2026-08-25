@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.radarstation.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import jakarta.persistence.*;
@@ -67,24 +68,6 @@ public class RadarStation extends BaseApprovableEntity {
     @Column(name = "note", length = 2000)
     private String note;
 
-    @Column(name = "status", nullable = false, length = 50)
-    @Builder.Default
-    private String status = "DRAFT";
-
-    @Column(name = "submitted_for_approval_by")
-    private UUID submittedForApprovalBy;
-
-    @Column(name = "submitted_for_approval_at")
-    private LocalDateTime submittedForApprovalAt;
-
-    @Column(name = "approved_level1")
-    @Builder.Default
-    private Boolean approvedLevel1 = false;
-
-    @Column(name = "approved_level2")
-    @Builder.Default
-    private Boolean approvedLevel2 = false;
-
     @Column(name = "vts_system_id")
     private UUID vtsSystemId;
 
@@ -100,9 +83,8 @@ public class RadarStation extends BaseApprovableEntity {
 
     @PrePersist
     protected void onCreate() {
-        if (status == null || status.isBlank()) status = "DRAFT";
-        if (getApprovalStatus() == null) setApprovalStatus(com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED);
-        if (approvedLevel1 == null) approvedLevel1 = false;
-        if (approvedLevel2 == null) approvedLevel2 = false;
+        if (getApprovalStatus() == null) {
+            setApprovalStatus(ApprovalStatus.DRAFT);
+        }
     }
 }

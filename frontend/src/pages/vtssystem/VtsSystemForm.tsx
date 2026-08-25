@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Form,
@@ -148,11 +148,22 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [portOptions, setPortOptions] = useState<any[]>([]);
+  const [rawPorts, setRawPorts] = useState<any[]>([]);
   const [tabKey, setTabKey] = useState('general');
   const [zoneList, setZoneList] = useState<any[]>([]);
   const [detailSectionsLoaded, setDetailSectionsLoaded] = useState({ zones: false, attachments: false });
   const [loadingDetailSection, setLoadingDetailSection] = useState<'zones' | 'attachments' | null>(null);
+
+  const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const selectedOwningOrgId = Form.useWatch('owningOrgId', form);
+  const effectiveOrgUnitId = selectedOrgUnitId || selectedOwningOrgId;
+
+  const filteredPortOptions = useMemo(() => {
+    if (!effectiveOrgUnitId) return [];
+    return rawPorts
+      .filter((port) => String(port.orgUnitId) === String(effectiveOrgUnitId))
+      .map((port) => ({ value: port.id, label: port.portName || port.portCode || port.id }));
+  }, [rawPorts, effectiveOrgUnitId]);
 
   const formInitialValues = useRef({
     conditionStatus: ConditionStatus.OPERATIONAL,
@@ -171,15 +182,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           ]);
           const allowedOrgUnitIds = new Set(scopedOrganizations.map((organization) => String(organization.id)));
           setOrganizations(scopedOrganizations);
-          setPortOptions(scopedPorts
-            .filter((port) => port.orgUnitId && allowedOrgUnitIds.has(String(port.orgUnitId)))
-            .map((port) => ({ value: port.id, label: port.portName || port.id })));
+          setRawPorts(scopedPorts.filter((port) => port.orgUnitId && allowedOrgUnitIds.has(String(port.orgUnitId))));
         } catch (err) {
           console.error('Không thể tải danh sách đơn vị và cảng biển', err);
         }
       })();
     } else {
-      setPortOptions([]);
+      setRawPorts([]);
     }
   }, [open, isDetailMode]);
 
@@ -350,6 +359,16 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         }
       } else if (id && isEditMode) {
         await vtsSystemCRUD.update(id, payload as UpdateVtsSystemRequest);
+        if (pendingFiles.length > 0) {
+          for (const file of pendingFiles) {
+            try {
+              await vtsSystemApproval.uploadAttachment(id, file);
+            } catch (err) {
+              console.error('Lỗi tải file lên:', file.name, err);
+            }
+          }
+        }
+        setPendingFiles([]);
         delete getVtsDetailCache()[id];
         toast.success('Cập nhật thành công');
         if (isModalMode) {
@@ -382,7 +401,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         };
         const updated = await vtsSystemApproval.approveC1(id, pheDuyetData);
         delete getVtsDetailCache()[id];
-        toast.success('Phê duyệt C1 thành công');
+        toast.success('Phê duyệt cấp Cảng vụ thành công');
         setRecord(updated);
         setHasChanges(true);
         if (onSuccess) onSuccess();
@@ -393,7 +412,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         };
         const updated = await vtsSystemApproval.approveC2(id, pheDuyetData);
         delete getVtsDetailCache()[id];
-        toast.success('Phê duyệt C2 thành công');
+        toast.success('Phê duyệt cấp Cục thành công');
         setRecord(updated);
         setHasChanges(true);
         if (onSuccess) onSuccess();
@@ -847,6 +866,19 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                       placeholder="Chọn đơn vị quản lý"
                       disabled={isEditMode}
                       style={{ borderRadius: radiusPill, height: 40 }}
+                      onChange={(val) => {
+                        form.setFieldValue('orgUnitId', val);
+                        if (!form.getFieldValue('owningOrgId')) {
+                          form.setFieldValue('owningOrgId', val);
+                        }
+                        if (!form.getFieldValue('operatingOrgId')) {
+                          form.setFieldValue('operatingOrgId', val);
+                        }
+                        const curPort = form.getFieldValue('portId');
+                        if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
+                          form.setFieldValue('portId', undefined);
+                        }
+                      }}
                     />
                   </Form.Item>
 
@@ -874,6 +906,14 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                           organizations={organizations}
                           placeholder="Chọn đơn vị chủ quản"
                           style={{ borderRadius: radiusPill, height: 40 }}
+                          onChange={(val) => {
+                            form.setFieldValue('owningOrgId', val);
+                            const curPort = form.getFieldValue('portId');
+                            const targetOrg = form.getFieldValue('orgUnitId') || val;
+                            if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(targetOrg))) {
+                              form.setFieldValue('portId', undefined);
+                            }
+                          }}
                         />
                       </Form.Item>
                     </Col>
@@ -901,11 +941,12 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         style={{ marginBottom: spaceFormField }}
                       >
                         <Select
-                          placeholder="Chọn cảng biển"
+                          placeholder={!effectiveOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+                          disabled={!effectiveOrgUnitId}
                           allowClear
                           showSearch
                           filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
-                          options={portOptions}
+                          options={filteredPortOptions}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>

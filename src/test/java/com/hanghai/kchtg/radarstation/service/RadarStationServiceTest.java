@@ -1,33 +1,34 @@
 package com.hanghai.kchtg.radarstation.service;
 
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.radarstation.dto.*;
 import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
-import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.radarstation.dto.RadarStationCreateRequest;
+import com.hanghai.kchtg.radarstation.dto.RadarStationResponse;
+import com.hanghai.kchtg.radarstation.dto.RadarStationUpdateRequest;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,6 +56,12 @@ class RadarStationServiceTest {
     private OrgUnitCacheService orgUnitCacheService;
 
     @Mock
+    private OrgUnitScopeService orgUnitScopeService;
+
+    @Mock
+    private InfrastructureApprovalService approvalService;
+
+    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
@@ -73,14 +80,15 @@ class RadarStationServiceTest {
                     spatial.setId(UUID.randomUUID());
                     return spatial;
                 });
+        lenient().when(orgUnitScopeService.currentUserScope())
+                .thenReturn(OrgUnitScopeService.Scope.all());
+
         entity = RadarStation.builder()
                 .id(TEST_ID)
                 .stationName("Tram ABC")
                 .location("Hà Nội")
-                .approvalStatus(ApprovalStatus.PROPOSED)
-                .approvedLevel1(false)
-                .approvedLevel2(false)
-                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
+                .approvalStatus(ApprovalStatus.DRAFT)
+                .createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
         createRequest = RadarStationCreateRequest.builder()
@@ -93,18 +101,16 @@ class RadarStationServiceTest {
     void testCreate() {
         RadarStation saved = RadarStation.builder()
                 .id(TEST_ID).stationName("Tram ABC").location("Hà Nội")
-                .approvalStatus(ApprovalStatus.PROPOSED)
-                .approvedLevel1(false).approvedLevel2(false)
-                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+                .approvalStatus(ApprovalStatus.DRAFT)
+                .createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
 
         when(repository.save(any())).thenReturn(saved);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         RadarStationResponse response = service.create(createRequest,
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+                UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
-        assertEquals(ApprovalStatus.PROPOSED,
-                response.getApprovalStatus());
+        assertEquals(ApprovalStatus.DRAFT, response.getApprovalStatus());
         verify(repository, times(1)).save(any());
     }
 
@@ -131,131 +137,100 @@ class RadarStationServiceTest {
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         RadarStationResponse response = service.update(TEST_ID, updateReq,
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+                UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
         verify(repository, times(1)).save(any());
     }
 
     @Test
-    void testDelete_ApprovedEntity() {
-        RadarStation approvedEntity = RadarStation.builder()
+    void testDelete() {
+        RadarStation draftEntity = RadarStation.builder()
                 .id(TEST_ID).stationName("ABC").location("Hà Nội")
-                .approvalStatus(ApprovalStatus.APPROVED)
-                .approvedLevel1(false).approvedLevel2(false)
-                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+                .approvalStatus(ApprovalStatus.DRAFT)
+                .createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
 
-        when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
-        when(repository.save(any())).thenReturn(approvedEntity);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(draftEntity));
+        when(repository.save(any())).thenReturn(draftEntity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        service.delete(TEST_ID, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertNotNull(approvedEntity.getDeletedAt());
-    }
-
-    @Test
-    void testDelete_NotApprovedEntity_Throws() {
-        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
-        assertThrows(RuntimeException.class,
-                () -> service.delete(TEST_ID, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
+        service.delete(TEST_ID, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertNotNull(draftEntity.getDeletedAt());
+        assertEquals(ApprovalStatus.ARCHIVED, draftEntity.getApprovalStatus());
     }
 
     @Test
     void testSubmitForApproval() {
-        entity.setStatus("DRAFT");
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.submitForApproval(TEST_ID,
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        assertEquals("PENDING_APPROVAL", entity.getStatus());
-        assertEquals(ApprovalStatus.PROPOSED, entity.getApprovalStatus());
+                UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        verify(approvalService, times(1)).submit(eq(entity), eq(InfrastructureType.RADAR_STATION), any());
     }
 
     @Test
-    void testSubmitForApproval_WrongStatus_Throws() {
-        entity.setStatus("APPROVED");
-        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
-
-        assertThrows(IllegalStateException.class,
-                () -> service.submitForApproval(TEST_ID,
-                        java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
-    }
-
-    @Test
-    void testApproveL1() {
-        entity.setStatus("PENDING_APPROVAL");
+    void testApproveLevel1() {
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        RadarStationResponse response = service.approveL1(TEST_ID,
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        assertEquals("APPROVED", entity.getStatus());
-        assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
-        assertTrue(entity.getApprovedLevel1());
+        service.approveLevel1(TEST_ID,
+                UUID.fromString("00000000-0000-0000-0000-000000000002"), "OK");
+        verify(approvalService, times(1)).approveC1(eq(entity), eq(InfrastructureType.RADAR_STATION), eq("APPROVED"), eq("OK"), any());
     }
 
     @Test
-    void testApproveL1_SelfApproval_Throws() {
-        entity.setStatus("PENDING_APPROVAL");
-        // entity.createdBy = ...0001 — phê duyệt bởi chính người tạo phải bị từ chối
-        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
-
-        assertThrows(IllegalStateException.class,
-                () -> service.approveL1(TEST_ID,
-                        java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
-    }
-
-    @Test
-    void testReject() {
-        entity.setStatus("PENDING_APPROVAL");
+    void testApproveLevel2() {
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        RadarStationResponse response = service.reject(TEST_ID, "Không đủ điều kiện",
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        assertEquals("DRAFT", entity.getStatus());
-        assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
-        assertEquals("Không đủ điều kiện", entity.getRejectionReason());
+        service.approveLevel2(TEST_ID,
+                UUID.fromString("00000000-0000-0000-0000-000000000003"), "OK C2");
+        verify(approvalService, times(1)).approveC2(eq(entity), eq(InfrastructureType.RADAR_STATION), eq("APPROVED"), eq("OK C2"), any());
     }
 
     @Test
-    void testReject_ReasonTooShort_Throws() {
-        entity.setStatus("PENDING_APPROVAL");
+    void testRejectLevel1() {
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
 
-        assertThrows(IllegalArgumentException.class,
-                () -> service.reject(TEST_ID, "ngắn",
-                        java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")));
+        service.rejectLevel1(TEST_ID,
+                UUID.fromString("00000000-0000-0000-0000-000000000002"), "Không đủ điều kiện");
+        verify(approvalService, times(1)).approveC1(eq(entity), eq(InfrastructureType.RADAR_STATION), eq("REJECTED"), eq("Không đủ điều kiện"), any());
+    }
+
+    @Test
+    void testRejectLevel2() {
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+
+        service.rejectLevel2(TEST_ID,
+                UUID.fromString("00000000-0000-0000-0000-000000000003"), "Lý do cấp 2");
+        verify(approvalService, times(1)).approveC2(eq(entity), eq(InfrastructureType.RADAR_STATION), eq("REJECTED"), eq("Lý do cấp 2"), any());
     }
 
     @Test
     void testGetHistory() {
         ApprovalHistory history = ApprovalHistory.builder()
-                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).refId(TEST_ID)
+                .id(UUID.fromString("00000000-0000-0000-0000-000000000001")).refId(TEST_ID)
                 .refType(InfrastructureType.RADAR_STATION)
-                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
-                .status(ApprovalHistoryStatus.fromValue("APPROVED"))
-                .approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
+                .approvalLevel(ApprovalLevel.LEVEL_1)
+                .status(ApprovalHistoryStatus.APPROVED)
+                .approvedBy(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now()).reason("Duyệt").build();
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))
-                .thenReturn(Arrays.asList(history));
+                .thenReturn(List.of(history));
 
-        List<HistoryEntry> entries = service.getHistory(TEST_ID);
+        List<com.hanghai.kchtg.radarstation.dto.HistoryEntry> entries = service.getHistory(TEST_ID);
         assertNotNull(entries);
         assertEquals(1, entries.size());
-        assertEquals("00000000-0000-0000-0000-000000000001", entries.get(0).getApprovedBy());
     }
 
     @Test
     void testSearch() {
-        when(repository.search(null, null, null, null, Pageable.unpaged()))
-                .thenReturn(org.springframework.data.domain.Page.empty());
+        when(repository.searchPaged(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(Page.empty());
         List<RadarStationResponse> responses = service.search(null, null, null, null);
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
     }
 }
-

@@ -1,6 +1,6 @@
 -- ============================================================
 -- MANUAL FIX: Add missing columns for M-002 Port/Berth
--- Run this directly in pgAdmin/DBeaver on vmd_csdl_v2_dev
+-- Run this directly in pgAdmin/DBeaver on vmd_csdl_v2
 -- Safe to run multiple times (all idempotent)
 -- ============================================================
 

@@ -52,19 +52,19 @@ import { colors } from '../../theme';
    Constants
    ─────────────────────────────────────────────── */
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Nháp' },
-  DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING: { color: statusAttention, label: 'Chờ phê duyệt' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  NHAP: { color: statusDraft, label: 'Lưu tạm' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PENDING: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
 };
 
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: textSecondary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING', label: 'Chờ phê duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 

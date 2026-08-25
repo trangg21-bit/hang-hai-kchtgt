@@ -1,5 +1,5 @@
 // RadarStation (Trạm Radar) — F-056..F-068
-// Contract khớp backend /api/v1/radar-station (backend đang cập nhật song song).
+// Contract khớp backend /api/v1/radar-station theo chuẩn M-1006.
 
 export interface RadarStationAttachment {
   id: string;
@@ -7,16 +7,33 @@ export interface RadarStationAttachment {
   fileSize?: number;
   uploadedDate?: string;
   filePath?: string;
+  documentType?: string;
+  uploadedBy?: string;
 }
 
-// Trạng thái phê duyệt 1 cấp (mirror beacon): Nháp → Chờ phê duyệt → Đã phê duyệt / Từ chối
-export type RadarStationStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+export type RadarStationStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED_LEVEL1'
+  | 'REJECTED_LEVEL1'
+  | 'REJECTED_LEVEL2'
+  | 'APPROVED'
+  | 'ARCHIVED'
+  | 'PROPOSED'
+  | 'APPROVED_LEVEL2'
+  | 'REJECTED'
+  | string;
 
-export const RADAR_STATION_STATUS_MAP: Record<RadarStationStatus, { label: string }> = {
-  DRAFT: { label: 'Nháp' },
-  PENDING_APPROVAL: { label: 'Chờ phê duyệt' },
-  APPROVED: { label: 'Đã phê duyệt' },
-  REJECTED: { label: 'Từ chối' },
+export const RADAR_STATION_STATUS_MAP: Record<string, { label: string }> = {
+  DRAFT: { label: 'Lưu tạm' },
+  PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt' },
+  REJECTED_LEVEL1: { label: 'Cảng vụ trả về' },
+  REJECTED_LEVEL2: { label: 'Cục trả về' },
+  APPROVED: { label: 'Đã duyệt' },
+  PROPOSED: { label: 'Lưu tạm' },
+  APPROVED_LEVEL2: { label: 'Đã duyệt' },
+  REJECTED: { label: 'Bị trả về' },
 };
 
 export interface RadarStationResponse {
@@ -33,6 +50,7 @@ export interface RadarStationResponse {
   vtsOperationCenterId?: string;
   vtsOperationCenterName?: string;
   operatingUnitId?: string;
+  operatingUnitName?: string;
   provinceId?: string;
   unitOfMeasure?: string;
   quantity?: number;
@@ -46,8 +64,8 @@ export interface RadarStationResponse {
   note?: string;
   longitude?: number;
   latitude?: number;
-  approvalStatus: string;
-  status: RadarStationStatus;
+  approvalStatus: RadarStationStatus;
+  status?: string;
   submittedForApprovalAt?: string;
   submittedForApprovalBy?: string;
   approvedLevel1?: boolean;
@@ -62,7 +80,18 @@ export interface RadarStationResponse {
   updatedAt?: string;
   createdBy?: string;
   updatedBy?: string;
+  spatialId?: string;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  coordinates?: string;
 }
+
+export interface RadarStationOptionResponse {
+  id: string;
+  code: string;
+  stationName: string;
+  orgUnitId?: string;
+}
+
 // Tạo mới: KHÔNG gửi `code` — mã tự sinh phía backend (RADAR-{seq}).
 export interface CreateRadarStationRequest {
   stationName: string;
@@ -77,7 +106,7 @@ export interface CreateRadarStationRequest {
   quantity?: number;
   conditionStatus?: string;
   towerHeight?: number;
-  radarRange?: string;
+  radarRange?: string | number;
   coverage?: string;
   emissionArea?: number;
   stationType?: string;
@@ -87,6 +116,7 @@ export interface CreateRadarStationRequest {
   latitude?: number;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
+  action?: 'draft' | 'submit';
 }
 
 export interface UpdateRadarStationRequest extends Partial<CreateRadarStationRequest> {}
@@ -100,61 +130,46 @@ export interface ListParams {
   operatingUnitId?: string;
   provinceId?: string;
   conditionStatus?: string;
-  status?: RadarStationStatus;
   approvalStatus?: string;
+  status?: string;
   updatedBy?: string;
   updatedFrom?: string;
   updatedTo?: string;
   page?: number;
   size?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 export interface HistoryEntry {
-  id?: string;
-  approvalLevel?: number | string;
-  status: string;
+  id: string;
+  approvalLevel?: string;
+  status?: string;
   approvedBy?: string;
   approvedDate?: string;
   reason?: string;
 }
 
-export interface SearchResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
-}
+export const CONDITION_STATUS_MAP: Record<string, { label: string }> = {
+  '1': { label: 'Đang khai thác' },
+  '0': { label: 'Ngừng hoạt động' },
+  '2': { label: 'Chưa hoạt động' },
+  OPERATIONAL: { label: 'Đang khai thác' },
+  STOPPED: { label: 'Ngừng hoạt động' },
+  MAINTENANCE: { label: 'Bảo trì' },
+};
 
-export interface GenerateCodeResponse {
-  code: string;
-}
-
-// ── Danh mục hiển thị (tiếng Việt có dấu) ────────────────────────────
-
-export const CONDITION_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: '0', label: 'Ngừng hoạt động' },
+export const CONDITION_STATUS_OPTIONS = [
   { value: '1', label: 'Đang khai thác' },
+  { value: '0', label: 'Ngừng hoạt động' },
   { value: '2', label: 'Chưa hoạt động' },
 ];
 
-export const CONDITION_STATUS_MAP: Record<string, string> = {
-  '0': 'Ngừng hoạt động',
-  '1': 'Đang khai thác',
-  '2': 'Chưa hoạt động',
-};
-
-export const APPROVAL_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'DRAFT', label: 'Nháp' },
-  { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt' },
-  { value: 'APPROVED', label: 'Đã phê duyệt' },
-  { value: 'REJECTED', label: 'Từ chối' },
-];
-
-// Danh mục DVT (đơn vị tính) — chưa có endpoint riêng, dùng danh sách tĩnh
-// theo danh mục `DVT` trong đặc tả F-056 (đơn vị tính thông dụng cho trạm radar).
-export const UNIT_OF_MEASURE_OPTIONS: { value: string; label: string }[] = [
+export const UNIT_OF_MEASURE_OPTIONS = [
   { value: 'Cái', label: 'Cái' },
+  { value: 'Trạm', label: 'Trạm' },
   { value: 'Bộ', label: 'Bộ' },
   { value: 'Hệ thống', label: 'Hệ thống' },
-  { value: 'Trạm', label: 'Trạm' },
 ];
+
+

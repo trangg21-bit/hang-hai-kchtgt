@@ -68,6 +68,8 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/ship-repair-facility': 'shiprepair:read',
   '/radar-station': 'radarstation:read',
   '/vts-system': 'vts:read',
+  '/vts-operation-center': 'vtsoperationcenter:read',
+  '/ais-system': 'aissystem:read',
   '/station/coastal': 'coastalstation:read',
   '/station/special': 'specialstation:read',
   '/connections': 'connection:read',
@@ -103,8 +105,8 @@ const pageTitles: Record<string, string> = {
   '/gis/layers': 'Quản lý lớp bản đồ',
   '/gis/search': 'Tra cứu thông tin KCHT hàng hải trên bản đồ',
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
-  '/gis/permits': 'Giấy phép S-63',
   '/beacon-stations': 'Đèn biển và nhà trạm',
+  '/beacon-lights': 'Đèn biển',
   '/buoys': 'Quản lý Phao, tiêu',
   '/buoy-station': 'Nhà trạm Phao, tiêu',
   '/history': 'Lịch sử thay đổi',
@@ -118,6 +120,8 @@ const pageTitles: Record<string, string> = {
   '/ship-repair-facility': 'Cơ sở sửa chữa & đóng tàu',
   '/radar-station': 'Trạm Radar',
   '/vts-system': 'Hệ thống VTS',
+  '/vts-operation-center': 'Trung tâm điều hành VTS',
+  '/ais-system': 'Quản lý hệ thống AIS',
   '/connections': 'Liên thông dữ liệu',
   '/interconnect': 'Quản lý kết nối liên thông',
   '/reports': 'Báo cáo & Thống kê',
@@ -177,7 +181,7 @@ export default function AppLayout() {
     selectedKey = 'berth-parent';
   } else if (pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
+  } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system' || pathSegments[0] === 'vts-operation-center' || pathSegments[0] === 'ais-system') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'reports') {
     selectedKey = location.pathname;
@@ -207,7 +211,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/documents')) {
         setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system', '/vts-operation-center', '/ais-system'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -331,6 +335,8 @@ export default function AppLayout() {
         canAccessMenu('/ship-repair-facility') ? { key: '/ship-repair-facility', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Trạm Radar' } : null,
         canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Hệ thống VTS' } : null,
+        canAccessMenu('/vts-operation-center') ? { key: '/vts-operation-center', label: 'Trung tâm điều hành VTS' } : null,
+        canAccessMenu('/ais-system') ? { key: '/ais-system', label: 'Quản lý hệ thống AIS' } : null,
       ].filter(Boolean),
     },
     {

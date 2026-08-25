@@ -23,6 +23,17 @@ export const colors = [dataNavy]; // works
 
 **Always use import-then-export pattern** when the same file needs to both re-export a token AND use it in computed values. Applies to `tokens-dashboard.ts`, `tokens.ts` layers, and any barrel file that computes derived values from re-exports.
 
+## Mandatory Planning Discipline (MANDATORY — Lên kế hoạch trước khi viết code)
+
+Trước khi thực hiện bất kỳ thay đổi code nào (Backend, Frontend, CSDL, Cấu hình), AI Agent **BẮT BUỘC** phải lên kế hoạch (Plan) chi tiết:
+1. **Mục tiêu & Phân tích nguyên nhân**: Nêu rõ vấn đề, nguyên nhân cốt lõi và yêu cầu từ User.
+2. **Danh sách file bị ảnh hưởng**: Liệt kê chính xác các file sẽ tạo mới hoặc sửa đổi.
+3. **Phân tích ảnh hưởng liên đới (Impact Analysis)**: BẮT BUỘC phân tích kỹ lưỡng các tác động phụ có thể xảy ra đối với những màn hình, module, API hoặc chức năng khác trong toàn hệ thống. Nếu có khả năng gây ảnh hưởng đến chức năng khác, BẮT BUỘC PHẢI HỎI Ý KIẾN NGƯỜI DÙNG NGAY trước khi thực hiện.
+4. **Giải pháp chi tiết**: Thiết kế giải pháp kỹ thuật, cấu trúc DTO/Entity/Components, tuân thủ nghiêm ngặt các quy tắc kiến trúc (không FQCN, dùng constants/enum, chuẩn hóa semantic tokens, hỗ trợ tìm tiếng Việt không dấu, auto-sync tài liệu SDLC).
+5. **Kế hoạch kiểm thử (Verification Plan)**: Các bước xác minh (`mvn test`, `npm run build`, kiểm tra giao diện).
+
+Chỉ bắt tay vào sửa code sau khi đã có plan rõ ràng và người dùng đã xác nhận, không sửa lan man ngoài phạm vi.
+
 ## Framework discipline (MANDATORY — read before delegating code work)
 
 This project is built on **spring-boot**. Its CLI/generator is `mvn`. Prefer the framework's CLI/generators over hand-writing files:
@@ -233,6 +244,7 @@ import { spaceFormField, radiusPill } from '../tokens';
 - `height: 40` cho mọi Input, Select
 - `labelProps()` helper cho label style nhất quán
 - Modal footer: Cancel (outlined) + Submit (primary), cả hai pill radius
+- **BẮT BUỘC hỗ trợ tìm kiếm tiếng Việt không dấu** trên mọi `Select` có `showSearch`: dùng `filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}` (import `normalizeSearchText` từ `components/org-unit`). **CẤM** so sánh chuỗi thô `.toLowerCase().includes(...)`.
 
 ### Reference Implementation
 
@@ -251,6 +263,7 @@ PMO Lead
          Filter đơn vị có parentId phải dùng TreeSelect/Cascader dạng cây, giữ value là orgUnitId.
          Form.Item marginBottom = spaceFormField (12px).
          Input/Select borderRadius = radiusPill (999px), height = 40.
+         MỌI Select có showSearch PHẢI dùng normalizeSearchText để tìm kiếm tiếng Việt không dấu.
          Xem UsersPage.tsx làm mẫu chuẩn.
          Đọc docs/conventions/form-and-list-patterns.md để biết chi tiết."
 ```
@@ -486,13 +499,37 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 _Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn ở đây để AI luôn tuân theo mỗi khi pair-programming._
 
 1. **Nguyên tắc chung**:
-   - **TUÂN THỦ TUYỆT ĐỐ TÀI LIỆU BRIEF (FEATURE BRIEF & LEAN SPEC)**:
+   - **TUÂN THỦ TUYỆT ĐỐI TÀI LIỆU BRIEF (FEATURE BRIEF & LEAN SPEC)**:
      - AI chỉ được phép lập trình, xây dựng giao diện và xử lý logic nghiệp vụ theo đúng cấu trúc cột, trường dữ liệu, acceptance criteria và business rules đã định nghĩa trong tài liệu brief (`feature-brief.md` và `00-lean-spec.md`).
    - Luôn kiểm tra cấu trúc dữ liệu thực tế và các màn hình quản lý CRUD trước khi đề xuất chỉnh sửa logic báo cáo hoặc nghiệp vụ.
    - Không tự động gán dữ liệu giả lập (placeholder/hardcoded) cho các cột khi database thực tế không hỗ trợ trường tương ứng.
-   - **TẠO SCRIPT SQL CHO THAY ĐỔI DB**: Khi thao tác liên quan đến thay đổi cấu trúc DB (schema, index, migrations...), bắt buộc phải tạo script SQL Flyway tương ứng (đặt trong thư mục `src/main/resources/db/migration/`) để khi đưa lên môi trường khác (UAT, Production) cấu trúc DB sẽ khớp 100%.
+   - **TẠO SCRIPT SQL CHO THAY ĐỔI DB THEO TIMESTAMP**: Khi thao tác liên quan đến thay đổi cấu trúc DB (schema, index, migrations...), bắt buộc phải tạo script SQL Flyway tương ứng (đặt trong thư mục `src/main/resources/db/migration/`) theo định dạng timestamp 14 chữ số `VYYYYMMDDHHmmss__<mo_ta_ngan_tieng_anh>.sql` (ví dụ: `V20260824210500__add_missing_indexes_for_vts.sql`). **TUYỆT ĐỐI CẤM** đặt số thứ tự tuần tự `V122`, `V123`... để tránh xung đột version.
    - **BẮT BUỘC RÀ SOÁT TÀI LIỆU & HH.CSDL**: Khi thực hiện sửa đổi, thêm mới, hoặc tìm kiếm/tra cứu bất kỳ chức năng nào, AI bắt buộc phải đối chiếu chi tiết cấu trúc dữ liệu và logic nghiệp vụ với tài liệu đặc tả dự án gốc (`hh.csdl`) trước khi đưa ra phương án thực thi.
    - **KHÔNG TỰ ĐỘNG THỰC HIỆN CÁC THAO TÁC GIT (ADD, COMMIT, PUSH)**: Trợ lý AI tuyệt đối không được tự ý chạy các lệnh `git add`, `git commit` hay `git push` lên kho lưu trữ sau khi sửa đổi mã nguồn. Mọi thay đổi phải được giữ ở trạng thái local (unstaged) để người dùng tự kiểm thử, kiểm tra độ chính xác và trực tiếp quyết định thực hiện commit/push.
+   - **QUY ƯỚC ĐẶT TÊN ĐA NGÔN NGỮ (ENGLISH FOR CODE - VIETNAMESE FOR TEXT)**:
+      - Tên bảng CSDL, tên cột, tên biến Java, tên thuộc tính DTO, tham số API JSON và Endpoint REST BẮT BUỘC 100% dùng **tiếng Anh chuẩn** (ví dụ: `decision` thay vì `quyetDinh`, `rejectionReason` thay vì `lyDoTuChoi`).
+      - Thông báo lỗi trả về cho client, Toast message và nội dung giao diện BẮT BUỘC 100% là **tiếng Việt có dấu** rõ nghĩa.
+   - **QUY CHUẨN KIẾN TRÚC MÀN HÌNH CHỨC NĂNG HẠ TẦNG (MANDATORY INFRASTRUCTURE ARCHITECTURE)**:
+      - Mọi màn hình chức năng quản lý tài sản kết cấu hạ tầng (KCHTGT) mới hoặc chỉnh sửa BẮT BUỘC 100% tuân theo tài liệu đặc tả chuẩn tại `docs/conventions/infrastructure-feature-standard-architecture.md`:
+        1. **Tầng 1 (Entity/DTO/Repository)**: Entity/DTO có `@FieldNameConstants`, kế thừa `BaseEntity` & implements `ApprovableEntity`. Query JPQL tìm kiếm bắt buộc có mệnh đề DataScope: `(:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds) AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)`.
+        2. **Tầng 2 (Service/Controller)**: Inject `OrgUnitScopeService`, dùng `resolveEffectiveScope` và `validateAllowedOrgUnit`. Tái sử dụng `ApprovalHistoryUtils.recordSoftDelete(...)` và `EntityUpdateUtils.copyPropertiesIfPresent(...)`. Cấm dùng FQCN trong code (import tường minh). Thêm `@PreAuthorize("<resource>:<action>")` và seed quyền vào `PermissionSeeder.java`. Cung cấp endpoint siêu nhẹ `GET /api/v1/<res>/options`.
+        3. **Tầng 3 (Frontend UI)**: Sử dụng `FilterTableLayout`. Cây đơn vị lọc `OrgUnitTreeSelect` dùng `placeholder="Tất cả"`, `allowClear`, `listHeight={256}`, mặc định mở rộng toàn bộ nhánh (`treeDefaultExpandAll={true}`), **CẤM** dùng `allLabel="Tất cả"` và `showPath` trong sidebar lọc để tránh lệch giao diện so với màn VTS. Form nhập liệu dùng `AppDrawer` với `size="50%"` và Pill radius (`radiusPill`, height: 40px). Nạp dữ liệu dropdown liên kết bắt buộc gọi `<res>CRUD.getOptions()` (cấm gọi phân trang `size=200`). Các dropdown con phụ thuộc (`portId`, `vtsSystemId`, `vtsOperationCenterId`...) **BẮT BUỘC** tự động lọc theo `orgUnitId` đang chọn (Cascading Filter) và **tự động reset giá trị về `undefined`** khi đổi đơn vị quản lý (áp dụng đồng bộ cả ở sidebar lọc danh sách và form drawer). Cột bảng dùng `label` + `ellipsis: false` và cấp đủ `width` (hiển thị trọn vẹn 100% chữ không bị `...`), cột thao tác **BẮT BUỘC** truyền qua prop `rowActions={rowActions}` của `DataTable` (**CẤM** tự thêm cột Thao tác thủ công vào mảng `columns` để tránh lệch icon 3 gạch ngang và bị cắt chữ).
+   - **QUY CHUẨN PHÊ DUYỆT 2 CẤP & NGUYÊN TẮC 4 MẮT (4-EYES PRINCIPLE)**:
+     - Tập đóng 7 trạng thái chuẩn: `DRAFT (0)`, `PENDING_APPROVAL (2)`, `APPROVED_LEVEL1 (3)`, `REJECTED_LEVEL1 (8)`, `REJECTED_LEVEL2 (9)`, `APPROVED (5)`, `ARCHIVED (7)`. Cấm dùng các mã legacy `PROPOSED(1)`, `APPROVED_LEVEL2(4)`, `REJECTED(6)`.
+     - Người tạo (`createdBy`) tuyệt đối không được tự duyệt bản ghi của chính mình (Backend gọi `validateNotSelfApproval`; Frontend disable nút duyệt kèm tooltip). Thao tác Trả về/Từ chối bắt buộc mở popup nhập lý do.
+   - **QUY CHUẨN MÀN HÌNH DANH SÁCH & FORM CHUNG**:
+     - Cột STT: `align: 'center'`, cố định trái `60px`, tính theo `(page - 1) * pageSize + index + 1`.
+     - Căn lề: Chữ căn trái, số liệu căn phải có dấu phân cách hàng nghìn, ngày tháng / Badge trạng thái / thao tác căn giữa.
+     - Badge 2 cột trạng thái độc lập (`approvalStatus` và `conditionStatus`): `minWidth: 125px`, `align: 'center'`, dùng màu semantic từ `tokens.ts`.
+     - Menu thao tác dòng (`rowActions`): Xem chi tiết luôn hiện; Sửa/Xóa/Gửi duyệt khi DRAFT/REJECTED; Duyệt C1/C2 khi Chờ duyệt và không vi phạm chống tự duyệt; Xóa có Modal Confirm.
+     - Drawer Form chuẩn 5 tab: 1. Thông tin chung; 2. Thông số kỹ thuật; 3. Vị trí GIS; 4. Tệp đính kèm; 5. Lịch sử phê duyệt.
+     - Tự động `.trim()` mọi ô tìm kiếm và trường văn bản trước khi gửi API.
+     - Phân trang: Backend 0-indexed (`apiPage = current - 1`), Frontend 1-indexed. Ngày tháng format `DD/MM/YYYY` (hoặc `DD/MM/YYYY HH:mm`) bằng `dayjs`.
+     - Xuất Excel: Tên file `<ten_chuc_nang>_<YYYYMMDD>.xlsx`, xuất theo bộ lọc và data scope.
+   - **TƯƠNG THÍCH ĐA CSDL CHO RUNNER & MIGRATOR**:
+     - Các lớp `CommandLineRunner`, `ApplicationRunner`, `JdbcTemplate` chạy trong Spring context bắt buộc phải tương thích với cả H2 in-memory DB (test) và PostgreSQL (production).
+     - Truy vấn `information_schema` dùng `LOWER(table_name) = '...' AND LOWER(column_name) = '...'`.
+     - Dùng cú pháp ANSI SQL chuẩn (như `CURRENT_TIMESTAMP`) và xử lý backfill qua JDBC Java.
    - **KHÔNG TỰ Ý CHẠY BACKEND (BE)**: Trợ lý AI tuyệt đối không được tự ý chạy/khởi động server Backend (Spring Boot). Khi có thay đổi code Backend, AI chỉ cần chạy lệnh `mvn clean compile` hoặc `mvn clean install` để xác nhận dự án biên dịch thành công.
    - **TÍNH ĐỒNG BỘ GIỮA CÁC MÀN HÌNH CÙNG MENU**: Đa phần cấu trúc các màn hình trong cùng một cụm menu sẽ có tính chất và chức năng tương tự nhau. Khi phát hiện và sửa bất kỳ lỗi nào ở một màn hình, AI bắt buộc phải rà soát và kiểm tra xem lỗi đó có xuất hiện trên tất cả các màn hình còn lại trong cùng cụm menu đó hay không để thực hiện sửa đổi đồng bộ.
    - **TỰ ĐỘNG CHÈN DỮ LIỆU MẪU**: Đối với mỗi màn hình/chức năng chưa có dữ liệu (hoặc bảng trống trong CSDL), AI cần tự động kết nối trực tiếp vào cơ sở dữ liệu (sử dụng thông tin kết nối từ các file cấu hình như `.env`) và thực hiện insert dữ liệu mẫu để người dùng có thể kiểm thử ngay lập tức. **KHÔNG** sử dụng Java Data Seeder (tránh việc yêu cầu khởi động lại ứng dụng và tránh xung đột dữ liệu).

@@ -826,7 +826,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>}
           open={open}
           onCancel={onCancel}
-          destroyOnClose
+          destroyOnHidden
           width={isDetailMode ? 900 : 760}
           maskClosable={false}
           footer={

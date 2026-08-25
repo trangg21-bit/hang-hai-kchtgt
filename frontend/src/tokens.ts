@@ -322,9 +322,9 @@ export const paginationSizeSelectStyle: React.CSSProperties = {
 
 // --- 5.5 Drawer ---
 
-/** Props chuẩn cho Drawer CRUD: width 1000px, right, không nút X mặc định */
+/** Props chuẩn cho Drawer CRUD: size 50% màn hình, right, không nút X mặc định */
 export const drawerProps = {
-  size: 1000 as any,
+  size: '50%',
   placement: 'right' as const,
   closable: false,
   styles: {

@@ -85,6 +85,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.operationStartDate AS operationStartDate
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
+          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
@@ -99,6 +100,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         SELECT COUNT(t)
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
+          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
@@ -136,6 +138,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.operationStartDate AS operationStartDate
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
+          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
@@ -152,6 +155,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         SELECT COUNT(t)
         FROM VtsSystem t
         WHERE t.deletedAt IS NULL
+          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR
@@ -177,6 +181,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
 
     @Query("SELECT t FROM VtsSystem t WHERE " +
            "t.deletedAt IS NULL AND " +
+           "t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND " +
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
            "(CAST(:search AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:search AS string) OR CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:search AS string) OR CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:search AS string))")
     List<VtsSystem> searchFiltered(
@@ -186,6 +191,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
     @Query("""
         SELECT t.approvalStatus, COUNT(t) FROM VtsSystem t
         WHERE t.deletedAt IS NULL
+          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR (
@@ -195,7 +201,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
         GROUP BY t.approvalStatus
-    """)
+        """)
     List<Object[]> countByApprovalStatus(
             @Param("scopeEnabled") boolean scopeEnabled,
             @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
@@ -204,7 +210,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             @Param("conditionStatus") ConditionStatus conditionStatus
     );
 
-    boolean existsByCode(String code);
+    @Query("SELECT COUNT(t) > 0 FROM VtsSystem t WHERE t.code = :code AND t.deletedAt IS NULL")
+    boolean existsByCode(@Param("code") String code);
 
-    boolean existsByCodeAndIdNot(String code, UUID id);
+    @Query("SELECT COUNT(t) > 0 FROM VtsSystem t WHERE t.code = :code AND t.id <> :id AND t.deletedAt IS NULL")
+    boolean existsByCodeAndIdNot(@Param("code") String code, @Param("id") UUID id);
 }

@@ -8,14 +8,16 @@ interface ApprovalStatusBadgeProps {
 }
 
 const STATUS_STYLE_MAP: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Nháp', color: textTertiary },
-  PROPOSED: { label: 'Nháp', color: statusDraft },
-  PENDING: { label: 'Chờ phê duyệt', color: statusAttention },
-  PENDING_APPROVAL: { label: 'Chờ phê duyệt', color: statusAttention },
-  APPROVED_LEVEL1: { label: 'Đã duyệt C1', color: actionPrimary },
-  APPROVED_LEVEL2: { label: 'Đã phê duyệt', color: statusOperational },
-  APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
+  DRAFT: { label: 'Lưu tạm', color: textTertiary },
+  PROPOSED: { label: 'Lưu tạm', color: statusDraft },
+  PENDING: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: '#0284c7' },
+  APPROVED_LEVEL2: { label: 'Đã duyệt', color: statusOperational },
+  APPROVED: { label: 'Đã duyệt', color: statusOperational },
   REJECTED: { label: 'Từ chối', color: statusCritical },
+  REJECTED_LEVEL1: { label: 'Cảng vụ trả về', color: statusCritical },
+  REJECTED_LEVEL2: { label: 'Cục trả về', color: statusCritical },
 };
 
 export default function ApprovalStatusBadge({ status, size = 'default' }: ApprovalStatusBadgeProps) {

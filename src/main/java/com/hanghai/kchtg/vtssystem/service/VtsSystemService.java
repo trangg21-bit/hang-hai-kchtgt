@@ -18,6 +18,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -91,6 +92,7 @@ public class VtsSystemService {
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
     private PermissionCacheService permissionCacheService;
+    private OrgUnitScopeService orgUnitScopeService;
 
     @Value("${app.upload.attachment-path:uploads/vts-attachments}")
     private String attachmentUploadPath;
@@ -117,6 +119,11 @@ public class VtsSystemService {
         this.zoneRepository = zoneRepository;
         this.userRepository = userRepository;
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Autowired(required = false)
+    public void setOrgUnitScopeService(OrgUnitScopeService orgUnitScopeService) {
+        this.orgUnitScopeService = orgUnitScopeService;
     }
 
     @Autowired
@@ -483,16 +490,25 @@ public class VtsSystemService {
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
             return Page.empty(pageable);
         }
+        Page<VtsSystemListProjection> rawPage;
         if (year == null) {
-            return repository.searchList(scope.enabled(), scope.orgUnitIds(), null, keywordLike,
-                    conditionStatus, approvalStatus, pageable)
-                    .map(this::toListItemResponse);
+            rawPage = repository.searchList(scope.enabled(), scope.orgUnitIds(), null, keywordLike,
+                    conditionStatus, approvalStatus, pageable);
+        } else {
+            LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
+            LocalDateTime toDate = fromDate.plusYears(1);
+            rawPage = repository.searchListByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), null,
+                    keywordLike, conditionStatus, approvalStatus, fromDate, toDate, pageable);
         }
-        LocalDateTime fromDate = LocalDateTime.of(year, Month.JANUARY, 1, 0, 0);
-        LocalDateTime toDate = fromDate.plusYears(1);
-        return repository.searchListByCreatedDateRange(scope.enabled(), scope.orgUnitIds(), null,
-                keywordLike, conditionStatus, approvalStatus, fromDate, toDate, pageable)
-                .map(this::toListItemResponse);
+
+        // Batch resolve user names in a single query to eliminate N+1 queries
+        Set<UUID> userIds = rawPage.getContent().stream()
+                .map(VtsSystemListProjection::getUpdatedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = resolveUserNames(userIds);
+
+        return rawPage.map(item -> toListItemResponse(item, userNameMap));
     }
 
     public VtsSystemResponse update(UUID id, VtsSystemUpdateRequest request, UUID userId) {
@@ -1128,6 +1144,17 @@ public class VtsSystemService {
     }
 
     private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item) {
+        return toListItemResponse(item, Collections.emptyMap());
+    }
+
+    private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item, Map<UUID, String> userNameMap) {
+        UUID updatedBy = item.getUpdatedBy();
+        String updatedByName = null;
+        if (updatedBy != null) {
+            updatedByName = userNameMap.containsKey(updatedBy)
+                    ? userNameMap.get(updatedBy)
+                    : resolveUserName(updatedBy);
+        }
         return VtsSystemListItemResponse.builder()
                 .id(item.getId())
                 .code(item.getCode())
@@ -1139,7 +1166,7 @@ public class VtsSystemService {
                 .approvalStatus(item.getApprovalStatus())
                 .approverLevel1(item.getApproverLevel1())
                 .updatedDate(item.getUpdatedDate())
-                .updatedByName(resolveUserName(item.getUpdatedBy()))
+                .updatedByName(updatedByName)
                 .owningOrgId(item.getOwningOrgId())
                 .owningOrgName(orgUnitCacheService.getName(item.getOwningOrgId()))
                 .operatingOrgId(item.getOperatingOrgId())
@@ -1552,5 +1579,35 @@ public class VtsSystemService {
             return null;
         Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
         return map.getOrDefault(userId, userId.toString());
+    }
+
+    public List<VtsSystemOptionResponse> getOptions(UUID orgUnitId) {
+        OrgUnitScopeService.Scope userScope = orgUnitScopeService != null ? orgUnitScopeService.currentUserScope() : OrgUnitScopeService.Scope.all();
+
+        List<VtsSystem> list = repository.findAll().stream()
+                .filter(s -> s.getDeletedAt() == null && (s.getApprovalStatus() == ApprovalStatus.APPROVED || s.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2))
+                .filter(s -> {
+                    if (orgUnitId != null) {
+                        return orgUnitId.equals(s.getOrgUnitId());
+                    }
+                    if (userScope != null && !userScope.unrestricted()) {
+                        return s.getOrgUnitId() != null && userScope.allows(s.getOrgUnitId());
+                    }
+                    return true;
+                })
+                .sorted((a, b) -> {
+                    String nameA = a.getSystemName() != null ? a.getSystemName() : "";
+                    String nameB = b.getSystemName() != null ? b.getSystemName() : "";
+                    return nameA.compareToIgnoreCase(nameB);
+                })
+                .toList();
+
+        return list.stream().map(s -> VtsSystemOptionResponse.builder()
+                .id(s.getId())
+                .code(s.getCode())
+                .name(s.getSystemName())
+                .orgUnitId(s.getOrgUnitId())
+                .build()
+        ).toList();
     }
 }

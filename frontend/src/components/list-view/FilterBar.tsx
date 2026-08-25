@@ -13,13 +13,22 @@ export interface FilterField {
   placeholder?: string; options?: { value: string | number; label: string }[]; width?: number;
 }
 
+export interface FilterBarExtraFilter {
+  key: string;
+  component: React.ReactNode;
+  label?: string;
+}
+
 export interface FilterBarProps {
   fields?: FilterField[];
-  onSearch?: (values: Record<string, any>) => void;
+  onSearch?: (values?: Record<string, any>) => void;
   onReset?: () => void;
   searchPlaceholder?: string;
   searchValue?: string;
+  keyword?: string;
   onSearchChange?: (val: string) => void;
+  onKeywordChange?: (val: string) => void;
+  extraFilters?: FilterBarExtraFilter[];
   statusOptions?: { value: string | number; label: string }[];
   statusValue?: string | number;
   onStatusChange?: (val: any) => void;
@@ -37,7 +46,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
   onReset,
   searchPlaceholder,
   searchValue,
+  keyword,
   onSearchChange,
+  onKeywordChange,
+  extraFilters,
   statusOptions,
   statusValue,
   onStatusChange,
@@ -45,6 +57,12 @@ const FilterBar: React.FC<FilterBarProps> = ({
   onFieldChange,
 }) => {
   const [values, setValues] = useState<Record<string, any>>({});
+
+  const currentSearch = keyword !== undefined ? keyword : (searchValue || '');
+  const handleSearchTextChange = (val: string) => {
+    if (onKeywordChange) onKeywordChange(val);
+    if (onSearchChange) onSearchChange(val);
+  };
 
   const handleFieldChange = (key: string, value: any) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -57,6 +75,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
 
   const handleReset = () => {
     setValues({});
+    if (onKeywordChange) onKeywordChange('');
     if (onSearchChange) onSearchChange('');
     if (onStatusChange) onStatusChange(undefined);
     if (onReset) onReset();
@@ -64,12 +83,13 @@ const FilterBar: React.FC<FilterBarProps> = ({
 
   // If fields prop is not provided, construct simple search bar UI
   const itemList = fields || [
-    ...(searchPlaceholder !== undefined || searchValue !== undefined ? [{
+    ...(searchPlaceholder !== undefined || searchValue !== undefined || keyword !== undefined ? [{
       key: 'search',
       type: 'search' as const,
       label: 'Tìm kiếm',
       placeholder: searchPlaceholder || 'Tìm theo tên, mã...',
     }] : []),
+    ...(extraFilters || []),
     ...(statusOptions ? [{
       key: 'status',
       type: 'select' as const,
@@ -124,12 +144,18 @@ const FilterBar: React.FC<FilterBarProps> = ({
                 placeholder={searchPlaceholder || 'Tìm theo tên, mã...'}
                 prefix={<SearchOutlined style={{ color: colors.sidebarBg }} />}
                 allowClear
-                value={searchValue || ''}
-                onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                value={currentSearch}
+                onChange={(e) => handleSearchTextChange(e.target.value)}
                 onPressEnter={() => onSearch && onSearch({})}
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
             </div>
+            {extraFilters?.map((extra) => (
+              <div key={extra.key}>
+                {extra.label && <div style={labelStyle}>{extra.label}</div>}
+                {extra.component}
+              </div>
+            ))}
             {statusOptions && (
               <div style={{ flex: '1 1 160px', minWidth: 140 }}>
                 <div style={labelStyle}>Trạng thái</div>

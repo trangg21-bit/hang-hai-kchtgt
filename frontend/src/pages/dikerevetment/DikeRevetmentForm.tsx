@@ -447,7 +447,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
           onCancel={handleCloseModal}
           footer={null}
           width={900}
-          destroyOnClose
+          destroyOnHidden
           mask={{ closable: false }}
         >
           <Spin spinning={isLoading}>

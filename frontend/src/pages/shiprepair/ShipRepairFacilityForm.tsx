@@ -203,7 +203,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        toast.success('Phê duyệt C1 thành công');
+        toast.success('Phê duyệt cấp Cảng vụ thành công');
         setRecord({ ...record, approvalStatus: 'PENDING_APPROVAL' });
         if (onSuccess) onSuccess();
       } else if (action === 'approveC2') {
@@ -215,7 +215,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        toast.success('Phê duyệt C2 thành công');
+        toast.success('Phê duyệt cấp Cục thành công');
         setRecord({ ...record, approvalStatus: 'APPROVED' });
         if (onSuccess) onSuccess();
       } else if (action === 'reject') {
@@ -372,7 +372,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
           onCancel={onCancel}
           footer={null}
           width={900}
-          destroyOnClose
+          destroyOnHidden
           mask={{ closable: false }}
         >
           {detailContent}
@@ -395,7 +395,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
         open={open}
         onCancel={onCancel}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         mask={{ closable: false }}
       >
         <Spin spinning={isLoading}>

@@ -4,7 +4,6 @@ import {
   Modal,
   Input,
   Select,
-  TreeSelect,
   Drawer,
   Space,
   Typography,
@@ -16,6 +15,7 @@ import {
   Table,
   InputNumber,
   Upload,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
@@ -40,10 +40,14 @@ import type {
   DikeRevetmentType,
   CreateDikeRevetmentRequest,
   UpdateDikeRevetmentRequest,
-  ApprovalStatus,
+} from '../../types/dikeRevetment';
+import {
+  DIKE_REVETMENT_STATUS_MAP,
+  CONDITION_STATUS_OPTIONS,
+  CONDITION_STATUS_MAP,
+  DIKE_REVETMENT_TYPE_LABELS,
 } from '../../types/dikeRevetment';
 import { organizationService } from '../../services/organizationService';
-import type { Organization } from '../../services/organizationService';
 import { portCRUD } from '../../services/portService';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { ScreenHeader, DataTable, FilterTableLayout } from '../../components/list-view';
@@ -54,6 +58,7 @@ import toast, { message } from '../../components/ToastNotification';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as MapSymbol } from '../../services/symbolService';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import { colors } from '../../theme';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -78,11 +83,14 @@ import {
   spaceXs,
   spaceSm,
   spaceMd,
+  spaceXl,
   spaceFormField,
   inputStyle,
   selectStyle,
   primaryButtonStyle,
   outlineButtonStyle,
+  dangerButtonStyle,
+  rejectReasonStyle,
   formFieldStyle,
   formRowGutter,
   drawerProps,
@@ -108,104 +116,48 @@ import {
   historyArrowStyle,
 } from '../../tokens';
 
-// ── Field name translation (lịch sử thay đổi) ───────────────────────
-
-const FIELD_LABELS: Record<string, string> = {
-  code: 'Mã đê kè',
-  dikeRevetmentName: 'Tên đê kè',
-  dikeRevetmentType: 'Loại kết cấu công trình',
-  orgUnitId: 'Đơn vị quản lý',
-  location: 'Địa điểm (Tỉnh/TP)',
-  locationDetail: 'Địa điểm chi tiết',
-  length: 'Chiều dài',
-  height: 'Chiều cao',
-  crestElevation: 'Cao trình đỉnh',
-  constructionDate: 'Thời điểm xây dựng',
-  commissioningDate: 'Thời điểm đưa vào khai thác',
-  lastMaintenanceYear: 'Năm bảo trì gần nhất',
-  status: 'Tình trạng',
-  note: 'Ghi chú',
-  approvalStatus: 'Trạng thái phê duyệt',
-  rejectionReason: 'Lý do từ chối',
-};
-
-const historyFieldName = (fn: string): string => FIELD_LABELS[fn] || fn;
-
 // ── Constants ────────────────────────────────────────────────────────
 
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
-  { key: 'PROPOSED', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
-  { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284c7' },
+  { key: 'REJECTED', label: 'Bị trả về', color: statusCritical },
+  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
 ];
 
-const TAB_QUERY_MAP: Record<string, ApprovalStatus | undefined> = {
+const TAB_QUERY_MAP: Record<string, string | undefined> = {
   '': undefined,
-  PROPOSED: 'PROPOSED',
+  DRAFT: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
-  APPROVED: 'APPROVED',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   REJECTED: 'REJECTED',
+  APPROVED: 'APPROVED',
 };
 
-// Loại kết cấu công trình — khớp backend enum dike_revetment_type
 const DIKE_REVETMENT_TYPE_OPTIONS = [
-  { label: 'Đê chắn sóng', value: 'RIVER_DIKE' },
-  { label: 'Đê chắn cát', value: 'SAND_DIKE' },
+  { label: 'Đê sông', value: 'RIVER_DIKE' },
+  { label: 'Đê cát', value: 'SAND_DIKE' },
   { label: 'Kè hướng dòng', value: 'FLOW_GUIDE_REVETMENT' },
   { label: 'Kè bảo vệ bờ', value: 'BANK_PROTECTION_REVETMENT' },
-  { label: 'Giao thông', value: 'TRAFFIC' },
+  { label: 'Đê giao thông', value: 'TRAFFIC' },
   { label: 'Kè chắn sóng', value: 'WAVE_BREAK_REVETMENT' },
   { label: 'Kè chắn cát', value: 'SAND_BREAK_REVETMENT' },
 ];
 
-const DIKE_REVETMENT_TYPE_MAP: Record<string, string> = {
-  RIVER_DIKE: 'Đê sông',
-  SAND_DIKE: 'Đê chắn cát',
-  FLOW_GUIDE_REVETMENT: 'Kè hướng dòng',
-  BANK_PROTECTION_REVETMENT: 'Kè bảo vệ bờ',
-  TRAFFIC: 'Giao thông',
-  WAVE_BREAK_REVETMENT: 'Kè chắn sóng',
-  SAND_BREAK_REVETMENT: 'Kè chắn cát',
-};
-
-// Tình trạng hoạt động — khớp backend OperationalStatus (integer enum)
-const OPERATIONAL_STATUS_OPTIONS = [
-  { value: '1', label: 'Chưa khai thác/vận hành' },
-  { value: '2', label: 'Đang khai thác/vận hành' },
-  { value: '3', label: 'Dừng khai thác/vận hành' },
-];
-
 const OPERATIONAL_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  '1': { color: statusAttention, label: 'Chưa khai thác/vận hành' },
-  '2': { color: statusOperational, label: 'Đang khai thác/vận hành' },
-  '3': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
-};
-
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
-
-const APPROVAL_STATUS_MAP: Record<string, string> = {
-  PROPOSED: 'Nháp',
-  PENDING_APPROVAL: 'Chờ phê duyệt',
-  APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối',
-};
-
-// History action colors — semantic tokens
-const HISTORY_ACTION_COLOR: Record<string, string> = {
-  TAO_MOI: statusOperational,
-  CAP_NHAT: actionPrimary,
-  GUI_DUYET: statusAttention,
-  PHE_DUYET_C1: statusAttention,
-  PHE_DUYET_C2: statusAttention,
-  TU_CHOI: statusCritical,
-  XOA_MEM: statusDraft,
+  '1': { color: statusOperational, label: 'Đang khai thác' },
+  '0': { color: statusCritical, label: 'Ngừng hoạt động' },
+  '2': { color: statusAttention, label: 'Chưa hoạt động' },
+  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác' },
+  STOPPED: { color: statusCritical, label: 'Ngừng hoạt động' },
+  MAINTENANCE: { color: statusAttention, label: 'Bảo trì' },
 };
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
+  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm'); } catch { return dateStr; }
 }
 
 function formatDateOnly(dateStr: string | null | undefined): string {
@@ -213,11 +165,10 @@ function formatDateOnly(dateStr: string | null | undefined): string {
   try { return dayjs(dateStr).format('DD/MM/YYYY'); } catch { return dateStr; }
 }
 
-// ── WKT helpers (chuẩn GIS /port) ────────────────────────────────
 function serializeVerticesToWkt(pts: { lng: number; lat: number }[], geomType: string): string {
   const validPts = pts.filter((p) => p && typeof p.lng === 'number' && typeof p.lat === 'number' && !isNaN(p.lng) && !isNaN(p.lat));
   if (validPts.length === 0) return '';
-  const type = (geomType || 'POINT').toUpperCase();
+  const type = (geomType || 'LINE').toUpperCase();
   if (type === 'POINT') {
     if (validPts.length === 1) {
       return `POINT(${validPts[0].lng.toFixed(6)} ${validPts[0].lat.toFixed(6)})`;
@@ -288,23 +239,6 @@ const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
 });
 
-const buildOrgTree = (nodes: Organization[]): any[] => {
-  const map = new Map<string, any>();
-  const roots: any[] = [];
-  nodes.forEach((org) => {
-    map.set(org.id, { title: org.name, value: org.id, parentId: org.parentId, children: [] });
-  });
-  nodes.forEach((org) => {
-    const node = map.get(org.id);
-    if (org.parentId && map.has(org.parentId)) {
-      map.get(org.parentId).children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-  return roots;
-};
-
 const tabBarStyle: React.CSSProperties = {
   marginBottom: 0,
   paddingTop: 0,
@@ -318,11 +252,7 @@ const tabBarStyle: React.CSSProperties = {
 
 export default function DikeRevetmentList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const currentUser = useAuthStore((s: any) => s.user);
-  const canSubmitForApproval = hasPerm('dikerevetment:update') || hasPerm('dikerevetment:approve');
-  // Đơn vị cha/Cục (scope_all, admin) được chọn đơn vị con khi thêm mới; tài khoản thường bị khóa theo đơn vị của mình
-  const isElevatedOrg = hasPerm('orgunit:scope_all') || hasPerm('admin:all') || hasPerm('*')
-    || currentUser?.role === 'ROLE_SYSTEM_ADMIN' || currentUser?.role === 'ROLE_SUPER_ADMIN';
+  const currentUserId = useAuthStore((s: any) => s.user?.id || s.user?.userId);
 
   // ── Filter state ─────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');
@@ -332,7 +262,6 @@ export default function DikeRevetmentList() {
   const [filterType, setFilterType] = useState<DikeRevetmentType | undefined>();
   const [filterStatusVal, setFilterStatusVal] = useState<string | undefined>();
   const [filterUnitId, setFilterUnitId] = useState<string | undefined>();
-  const [filterCommissioningYear, setFilterCommissioningYear] = useState<string | undefined>();
   const [filterUpdatedRange, setFilterUpdatedRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('');
@@ -349,14 +278,13 @@ export default function DikeRevetmentList() {
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // ── Organizations + Seaports ─────────────────────────────────────
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [organizations, setOrganizations] = useState<OrgUnitTreeOption[]>([]);
   const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string }[]>([]);
 
-  // ── GIS form state (chuẩn màn /port) ─────────────────────────────
+  // ── GIS form state ───────────────────────────────────────────────
   const [gpsCoordList, setGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
-  const [codeLoading, setCodeLoading] = useState(false);
 
   const ddToDms = (dd: number): { d: number; m: number; s: number } => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -368,14 +296,6 @@ export default function DikeRevetmentList() {
   };
   const dmToDd = (d: number, m: number, s: number): number => d + m / 60 + s / 3600;
 
-  const addGpsPoint = () => setGpsCoordList([...gpsCoordList, { lat: NaN, lng: NaN }]);
-  const removeGpsPoint = (i: number) => setGpsCoordList(gpsCoordList.filter((_, idx) => idx !== i));
-  const updateGpsPoint = (i: number, field: 'lat' | 'lng', d: number, m: number, s: number) => {
-    const next = [...gpsCoordList];
-    next[i] = { ...next[i], [field]: dmToDd(d, m, s) };
-    setGpsCoordList(next);
-  };
-
   // ── Drawer state ─────────────────────────────────────────────────
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<DikeRevetmentResponse | null>(null);
@@ -383,7 +303,6 @@ export default function DikeRevetmentList() {
   const [isDetailMode, setIsDetailMode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createForm] = Form.useForm();
-  const createGeometryType = Form.useWatch('geometryType', createForm);
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [logOpen, setLogOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
@@ -400,8 +319,10 @@ export default function DikeRevetmentList() {
   const [submittingRecord, setSubmittingRecord] = useState<DikeRevetmentResponse | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<DikeRevetmentResponse | null>(null);
+  const [approvingLevel, setApprovingLevel] = useState<'C1' | 'C2'>('C1');
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingRecord, setRejectingRecord] = useState<DikeRevetmentResponse | null>(null);
+  const [rejectingLevel, setRejectingLevel] = useState<'C1' | 'C2'>('C1');
   const [rejectReason, setRejectReason] = useState('');
 
   // ── History state ────────────────────────────────────────────────
@@ -413,28 +334,21 @@ export default function DikeRevetmentList() {
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
 
-  // ── Init: organizations + users ──────────────────────────────────
+  // ── Init: organizations + seaports + symbols ─────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const resp = await organizationService.list({ pageSize: 1000 });
-        setOrganizations(resp.data || []);
+        const tree = await organizationService.getTree();
+        setOrganizations(tree || []);
       } catch (err) {
-        console.error('Failed to load organizations', err);
+        console.error('Failed to load organizations tree', err);
       }
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      const list = await portCRUD.getOptions();
-      setSeaports(list || []);
-    })();
-  }, []);
-
-  // Load symbols for GIS tab (chuẩn /port)
-  useEffect(() => {
-    (async () => {
+      try {
+        const list = await portCRUD.getOptions();
+        setSeaports(list || []);
+      } catch (err) {
+        console.error('Failed to load seaports', err);
+      }
       try {
         const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
         setSymbols(res.data || []);
@@ -449,18 +363,15 @@ export default function DikeRevetmentList() {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await dikeRevetmentCRUD.search({
-        page: page - 1,
+      const res = await dikeRevetmentCRUD.searchPaged({
+        page,
         size: pageSize,
-        code: filterCode || undefined,
-        keyword: filterName || undefined,
+        keyword: filterName.trim() || undefined,
         seaportId: filterSeaportId,
-        location: filterLocation,
         dikeRevetmentType: filterType,
-        status: filterStatusVal,
+        conditionStatus: filterStatusVal,
         approvalStatus: TAB_QUERY_MAP[activeTab],
         orgUnitId: filterUnitId,
-        commissioningYear: filterCommissioningYear,
         updatedFrom: filterUpdatedRange?.[0] ? filterUpdatedRange[0].format('YYYY-MM-DD') : undefined,
         updatedTo: filterUpdatedRange?.[1] ? filterUpdatedRange[1].format('YYYY-MM-DD') : undefined,
       });
@@ -471,40 +382,31 @@ export default function DikeRevetmentList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterName, filterCode, filterSeaportId, filterLocation, filterType, filterStatusVal, filterUnitId, filterCommissioningYear, filterUpdatedRange, activeTab]);
+  }, [page, pageSize, filterName, filterSeaportId, filterType, filterStatusVal, filterUnitId, filterUpdatedRange, activeTab]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Tab counts — lấy tổng theo từng trạng thái
   const fetchTabCounts = useCallback(async () => {
-    const statuses: (ApprovalStatus | undefined)[] = ['PROPOSED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
-    const results = await Promise.allSettled(
-      statuses.map((st) => dikeRevetmentCRUD.search({ page: 0, size: 1, approvalStatus: st })),
-    );
-    const counts: Record<string, number> = {};
-    statuses.forEach((st, idx) => {
-      if (results[idx].status === 'fulfilled') {
-        counts[st as string] = (results[idx] as PromiseFulfilledResult<any>).value?.total || 0;
-      } else {
-        counts[st as string] = 0;
-      }
-    });
-    setTabCounts(counts);
-  }, []);
+    try {
+      const counts = await dikeRevetmentCRUD.getTabCounts(
+        filterUnitId,
+        filterName.trim() || undefined,
+        filterStatusVal
+      );
+      setTabCounts(counts || {});
+    } catch {
+      /* silent */
+    }
+  }, [filterUnitId, filterName, filterStatusVal]);
 
-  useEffect(() => {
-    fetchTabCounts();
-  }, [fetchTabCounts]);
+  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => { void fetchTabCounts(); }, [fetchTabCounts]);
 
   const statusTabs = useMemo(() =>
     STATUS_TAB_LIST.map((tab) => ({
       ...tab,
-      count: tab.key ? (tabCounts[tab.key] ?? 0) : dataSource.length,
+      count: tabCounts[tab.key] ?? 0,
       active: activeTab === tab.key,
     })),
-    [tabCounts, activeTab, dataSource.length],
+    [tabCounts, activeTab],
   );
 
   const handleTabChange = (key: string) => {
@@ -512,7 +414,7 @@ export default function DikeRevetmentList() {
     setPage(1);
   };
 
-  const handleFilterApply = () => { setPage(1); fetchData(); };
+  const handleFilterApply = () => { setPage(1); };
   const handleFilterReset = () => {
     setFilterName('');
     setFilterMa('');
@@ -521,7 +423,6 @@ export default function DikeRevetmentList() {
     setFilterType(undefined);
     setFilterStatusVal(undefined);
     setFilterUnitId(undefined);
-    setFilterCommissioningYear(undefined);
     setFilterUpdatedRange(null);
     setActiveTab('');
     setPage(1);
@@ -533,40 +434,17 @@ export default function DikeRevetmentList() {
     setDetailRecord(null);
     setIsDetailMode(false);
     createForm.resetFields();
+    createForm.setFieldsValue({ status: '1', dikeRevetmentType: 'WAVE_BREAK_REVETMENT', geometryType: 'LINE' });
     setGpsCoordList([]);
     setUploadFileList([]);
     setActiveTabKey('general');
     setDrawerVisible(true);
-    // Auto-generate mã đê kè mới (chuẩn /port)
-    setCodeLoading(true);
-    (async () => {
-      try {
-        const res = await api.get('/v1/dike-revetment/generate-code');
-        const code: string | undefined = res.data?.data?.code;
-        if (code) {
-          createForm.setFieldsValue({ code });
-        }
-      } catch {
-        // không chặn mở form nếu sinh mã lỗi
-      } finally {
-        setCodeLoading(false);
-      }
-    })();
-    // Mặc định đơn vị quản lý theo tài khoản; cha/Cục không bị khóa (được chọn đơn vị con)
-    if (!isElevatedOrg) {
-      (async () => {
-        try {
-          const res = await api.get('/users/me');
-          const profile = res.data?.data ?? res.data;
-          if (profile?.orgUnitId) {
-            createForm.setFieldsValue({ orgUnitId: profile.orgUnitId });
-          }
-        } catch {
-          // không chặn nếu không lấy được profile
-        }
-      })();
-    }
-  }, [createForm, isElevatedOrg]);
+    dikeRevetmentCRUD.generateCode()
+      .then((res) => {
+        if (res.code) createForm.setFieldsValue({ code: res.code });
+      })
+      .catch(() => {});
+  }, [createForm]);
 
   const openEditDrawer = useCallback((record: DikeRevetmentResponse) => {
     setEditingRecord(record);
@@ -585,14 +463,15 @@ export default function DikeRevetmentList() {
       crestElevation: record.crestElevation,
       commissioningDate: record.commissioningDate ? dayjs(record.commissioningDate) : null,
       height: record.height,
-      status: record.status,
+      surfaceMaterial: record.surfaceMaterial,
+      status: record.status || record.conditionStatus || '1',
       note: record.note,
       orgUnitId: record.orgUnitId,
       code: record.code,
-      geometryType: record.geometryType,
+      geometryType: record.geometryType || 'LINE',
       symbolId: record.symbolId,
     });
-    setGpsCoordList(parseWktToVertices(record.coordinates || '', record.geometryType || ''));
+    setGpsCoordList(parseWktToVertices(record.coordinates || '', record.geometryType || 'LINE'));
     setUploadFileList((record.attachments || []).map((a) => ({ uid: a.id, name: a.fileName, status: 'done', filePath: a.fileUrl })));
     setActiveTabKey('general');
     setDrawerVisible(true);
@@ -616,14 +495,16 @@ export default function DikeRevetmentList() {
     setDrawerVisible(false);
     setEditingRecord(null);
     setDetailRecord(null);
+    setGpsCoordList([]);
+    setUploadFileList([]);
   };
 
-  // ── Submit ───────────────────────────────────────────────────────
-  const handleSubmit = async (action: 'draft' | 'approve' | 'update') => {
+  // ── Submit Form ──────────────────────────────────────────────────
+  const handleSubmit = async () => {
     try {
       const values = await createForm.validateFields();
       setSubmitting(true);
-      const coordinates = serializeVerticesToWkt(gpsCoordList, values.geometryType || '');
+      const coordinates = serializeVerticesToWkt(gpsCoordList, values.geometryType || 'LINE');
       const payload: CreateDikeRevetmentRequest = {
         dikeRevetmentType: values.dikeRevetmentType,
         location: values.location,
@@ -637,55 +518,31 @@ export default function DikeRevetmentList() {
         crestElevation: values.crestElevation,
         commissioningDate: values.commissioningDate ? values.commissioningDate.format('YYYY-MM-DD') : undefined,
         height: values.height,
+        surfaceMaterial: values.surfaceMaterial,
         status: values.status,
         orgUnitId: values.orgUnitId,
         code: values.code,
         geometryType: values.geometryType,
         coordinates,
         symbolId: values.symbolId,
+        note: values.note,
       };
-      if (values.note !== undefined) {
-        (payload as any).note = values.note;
-      }
 
-      let savedId: string | null = null;
       if (editingRecord) {
         await dikeRevetmentCRUD.update(editingRecord.id, payload as UpdateDikeRevetmentRequest);
-        savedId = editingRecord.id;
         toast.success('Cập nhật đê kè thành công');
       } else {
-        const created = await dikeRevetmentCRUD.create(payload);
-        savedId = created.id;
-        if (action === 'approve') {
-          await dikeRevetmentApproval.submitForApproval(created.id);
-          toast.success('Tạo và gửi phê duyệt đê kè thành công');
-        } else {
-          toast.success('Lưu tạm đê kè thành công');
-        }
-      }
-
-      // Upload files sau khi lưu thành công (chuẩn /port)
-      if (savedId && uploadFileList.length > 0) {
-        let uploaded = 0;
-        for (const f of uploadFileList) {
-          if (!f.originFileObj) continue; // skip existing attachments
-          try {
-            const formData = new FormData();
-            formData.append('file', f.originFileObj as File);
-            await api.post(`/v1/documents/upload/dike-revetment/${savedId}`, formData, { headers: { 'Content-Type': undefined } });
-            uploaded++;
-          } catch { /* non-blocking */ }
-        }
-        if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
+        await dikeRevetmentCRUD.create(payload);
+        toast.success('Tạo mới đê kè (Lưu tạm) thành công');
       }
 
       setDrawerVisible(false);
       setEditingRecord(null);
       setUploadFileList([]);
-      fetchData();
-      fetchTabCounts();
+      void fetchData();
+      void fetchTabCounts();
     } catch (err) {
-      if ((err as any)?.errorFields) return; // validation errors handled by Form
+      if ((err as any)?.errorFields) return;
       toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
       setSubmitting(false);
@@ -701,9 +558,10 @@ export default function DikeRevetmentList() {
 
   const confirmDelete = async () => {
     if (!deletingRecord) return;
-    const expected = deletingRecord.dikeRevetmentName || deletingRecord.code || '';
-    if (deleteConfirmText.trim() !== 'XÓA' && deleteConfirmText.trim() !== expected) {
-      message.error('Vui lòng nhập đúng tên công trình hoặc gõ XÓA để xác nhận');
+    const expected = (deletingRecord.dikeRevetmentName || deletingRecord.code || '').trim().toLowerCase();
+    const input = deleteConfirmText.trim().toLowerCase();
+    if (input !== 'xóa' && input !== expected) {
+      toast.error('Vui lòng nhập đúng tên công trình hoặc gõ XÓA để xác nhận');
       return;
     }
     try {
@@ -712,16 +570,14 @@ export default function DikeRevetmentList() {
       setDeleteModalOpen(false);
       setDeletingRecord(null);
       setDeleteConfirmText('');
-      fetchData();
-      fetchTabCounts();
+      void fetchData();
+      void fetchTabCounts();
     } catch (err) {
-      // Lỗi đã được api.ts interceptor hiển thị — không toast trùng
-      setDeleteModalOpen(false);
-      setDeletingRecord(null);
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     }
   };
 
-  // ── Approval ────────────────────────────────────────────────────
+  // ── Submit Approval ─────────────────────────────────────────────
   const openSubmitModal = useCallback((record: DikeRevetmentResponse) => {
     setSubmittingRecord(record);
     setSubmitModalOpen(true);
@@ -734,38 +590,43 @@ export default function DikeRevetmentList() {
       toast.success('Đã gửi phê duyệt đê kè');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
-      fetchData();
-      fetchTabCounts();
+      void fetchData();
+      void fetchTabCounts();
     } catch (err) {
-      // Lỗi đã được api.ts interceptor hiển thị — không toast trùng
-      setSubmitModalOpen(false);
-      setSubmittingRecord(null);
+      toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
     }
   };
 
-  const openApproveModal = useCallback((record: DikeRevetmentResponse) => {
+  // ── Approve C1 / C2 ─────────────────────────────────────────────
+  const openApproveModal = useCallback((record: DikeRevetmentResponse, level: 'C1' | 'C2') => {
     setApprovingRecord(record);
+    setApprovingLevel(level);
     setApproveModalOpen(true);
   }, []);
 
   const confirmApprove = async () => {
     if (!approvingRecord) return;
     try {
-      await dikeRevetmentApproval.approveL1(approvingRecord.id);
-      toast.success('Phê duyệt thành công');
+      if (approvingLevel === 'C1') {
+        await dikeRevetmentApproval.approveLevel1(approvingRecord.id);
+        toast.success('Chi cục / Cảng vụ phê duyệt C1 thành công');
+      } else {
+        await dikeRevetmentApproval.approveLevel2(approvingRecord.id);
+        toast.success('Cục Hàng hải phê duyệt C2 thành công (Đã duyệt chính thức)');
+      }
       setApproveModalOpen(false);
       setApprovingRecord(null);
-      fetchData();
-      fetchTabCounts();
+      void fetchData();
+      void fetchTabCounts();
     } catch (err) {
-      // Lỗi đã được api.ts interceptor hiển thị (showUniqueError) — không toast trùng
-      setApproveModalOpen(false);
-      setApprovingRecord(null);
+      toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
     }
   };
 
-  const openRejectModal = useCallback((record: DikeRevetmentResponse) => {
+  // ── Reject C1 / C2 ─────────────────────────────────────────────
+  const openRejectModal = useCallback((record: DikeRevetmentResponse, level: 'C1' | 'C2') => {
     setRejectingRecord(record);
+    setRejectingLevel(level);
     setRejectReason('');
     setRejectModalOpen(true);
   }, []);
@@ -773,22 +634,24 @@ export default function DikeRevetmentList() {
   const confirmReject = async () => {
     if (!rejectingRecord) return;
     if (rejectReason.trim().length < 10) {
-      message.error('Lý do từ chối phải có tối thiểu 10 ký tự');
+      toast.error('Lý do từ chối phải có tối thiểu 10 ký tự');
       return;
     }
     try {
-      await dikeRevetmentApproval.reject(rejectingRecord.id, rejectReason.trim());
-      toast.success('Từ chối thành công');
+      if (rejectingLevel === 'C1') {
+        await dikeRevetmentApproval.rejectLevel1(rejectingRecord.id, rejectReason.trim());
+        toast.success('Đã từ chối C1 đê kè');
+      } else {
+        await dikeRevetmentApproval.rejectLevel2(rejectingRecord.id, rejectReason.trim());
+        toast.success('Đã từ chối C2 đê kè');
+      }
       setRejectModalOpen(false);
       setRejectingRecord(null);
       setRejectReason('');
-      fetchData();
-      fetchTabCounts();
+      void fetchData();
+      void fetchTabCounts();
     } catch (err) {
-      // Lỗi đã được api.ts interceptor hiển thị — không toast trùng
-      setRejectModalOpen(false);
-      setRejectingRecord(null);
-      setRejectReason('');
+      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
     }
   };
 
@@ -811,104 +674,7 @@ export default function DikeRevetmentList() {
     }
   }, []);
 
-  const formatHistoryValue = (fn: string, val: any): string => {
-    if (val === null || val === undefined || val === '') return '—';
-    if (fn === 'dikeRevetmentType') return DIKE_REVETMENT_TYPE_MAP[val] || val;
-    if (fn === 'status') return OPERATIONAL_STATUS_STYLE_MAP[val]?.label || val;
-    if (fn === 'approvalStatus') return APPROVAL_STATUS_MAP[val] || val;
-    if (fn === 'length' || fn === 'height' || fn === 'crestElevation') return `${val} m`;
-    return String(val);
-  };
-
-  const renderHistoryTimeline = (records: any[]) => {
-    if (!records || records.length === 0) {
-      return (
-        <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có lịch sử thay đổi</Typography.Text>
-      );
-    }
-    const filtered = records.filter((h: any) => {
-      if (historySearch) {
-        const haystack = `${h.fieldChanged || ''} ${h.oldValue || ''} ${h.newValue || ''} ${h.actionType || ''}`.toLowerCase();
-        if (!haystack.includes(historySearch.toLowerCase())) return false;
-      }
-      if (historyFrom && h.changedAt && dayjs(h.changedAt).isBefore(dayjs(historyFrom))) return false;
-      if (historyTo && h.changedAt && dayjs(h.changedAt).isAfter(dayjs(historyTo))) return false;
-      return true;
-    });
-    if (filtered.length === 0) {
-      return (
-        <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có lịch sử thay đổi</Typography.Text>
-      );
-    }
-    return filtered.map((h: any) => {
-      const actionType: string = h.actionType || '';
-      const badgeColor = HISTORY_ACTION_COLOR[actionType] || textTertiary;
-      const actionLabel = APPROVAL_STATUS_MAP[actionType] || actionType;
-      const isCreate = actionType === 'TAO_MOI';
-      const isDelete = actionType === 'XOA_MEM';
-      const isReject = actionType === 'TU_CHOI';
-      const changeKey = h.id != null ? String(h.id) : `${h.changedAt ?? 'x'}-${h.actionType ?? 'x'}`;
-      const changeItems = Array.isArray(h.changes) ? h.changes : [];
-
-      return (
-        <div key={changeKey} style={{ ...historyInfoCardStyle, marginBottom: spaceMd }}>
-          <div style={historyAccentBarStyle(badgeColor)} />
-          <div style={{ padding: spaceMd }}>
-            <div style={historyMetaRowStyle}>
-              <span style={historyBadgeStyle(badgeColor)}>{actionLabel}</span>
-              <span style={{ marginLeft: 'auto', color: textTertiary, fontSize: fontSizeSm }}>
-                {formatDate(h.changedAt)}
-              </span>
-            </div>
-            {h.changedByName && (
-              <div style={{ marginTop: spaceXs }}>
-                <span style={{ color: textSecondary, fontSize: fontSizeSm }}>Người thực hiện: </span>
-                <span style={{ color: textPrimary, fontSize: fontSizeSm, fontWeight: fontWeightMedium }}>{h.changedByName}</span>
-              </div>
-            )}
-            <div style={{ marginTop: spaceSm }}>
-              {isDelete ? (
-                <div style={{ color: statusCritical, fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>
-                  Công trình đã bị xóa mềm
-                </div>
-              ) : isReject ? (
-                <div style={historyChangeRowStyle}>
-                  <div style={historyFieldLabelStyle}>Lý do từ chối:</div>
-                  <span title={h.reason || h.note} style={historyNewValueStyle}>{h.reason || h.note || '—'}</span>
-                </div>
-              ) : changeItems.length > 0 ? (
-                changeItems.map((chg: any) => {
-                  const fn = chg.fieldChanged || '';
-                  const ov = formatHistoryValue(fn, chg.oldValue);
-                  const nv = formatHistoryValue(fn, chg.newValue);
-                    return isCreate ? (
-                    <div key={`${changeKey}-${chg.fieldChanged ?? 'v'}`} style={historyCreateRowStyle}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                      <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                    </div>
-                  ) : (
-                    <div key={`${changeKey}-${chg.fieldChanged ?? 'v'}`} style={historyChangeRowStyle}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                      <span title={ov} style={historyOldValueStyle}>{ov}</span>
-                      <span style={historyArrowStyle}>→</span>
-                      <span title={nv} style={historyNewValueStyle}>{nv}</span>
-                    </div>
-                  );
-                })
-              ) : (
-                <div style={{ color: textSecondary, fontSize: fontSizeMd }}>{actionLabel}</div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    });
-  };
-
   // ── Columns & row actions ────────────────────────────────────────
-  // Khớp 100% sheet QL đê kè — cột "Danh sách" = ✓, đúng thứ tự sheet:
-  // Mã, Tên, Đơn vị QL, Cảng biển, Địa điểm, Loại kết cấu, Tình trạng,
-  // Thời điểm khai thác, Ngày cập nhật, Cán bộ cập nhật, Trạng thái phê duyệt
   const columns = useMemo(() => [
     {
       key: 'sequenceNo',
@@ -916,70 +682,81 @@ export default function DikeRevetmentList() {
       width: 60,
       fixed: 'left' as const,
       align: 'center' as const,
-      render: (_: any, __: any, index?: number) => (
-        <span style={{ color: textSecondary, fontWeight: fontWeightMedium }}>{(index ?? 0) + 1}</span>
+      render: (_: any, __: any, index: number) => (
+        <span style={{ color: textSecondary, fontWeight: fontWeightMedium }}>{(page - 1) * pageSize + index + 1}</span>
       ),
-    },
-    {
-      key: 'orgUnitName',
-      label: 'Đơn vị quản lý',
-      dataIndex: 'orgUnitName',
-      width: 260,
-      fixed: 'left' as const,
-      render: (val: string | undefined, record: DikeRevetmentResponse) => val || record.orgUnitId || '',
-    },
-    {
-      key: 'dikeRevetmentName',
-      label: 'Tên đê kè',
-      dataIndex: 'dikeRevetmentName',
-      width: 250,
-      fixed: 'left' as const,
-      render: (val: string) => <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val || ''}</span>,
     },
     {
       key: 'code',
       label: 'Mã đê kè',
       dataIndex: 'code',
       width: 150,
-      render: (val: string) => <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val || ''}</span>,
+      fixed: 'left' as const,
+      render: (val: string) => <span style={{ color: textPrimary, fontWeight: fontWeightMedium }}>{val || '—'}</span>,
+    },
+    {
+      key: 'dikeRevetmentName',
+      label: 'Tên đê kè',
+      dataIndex: 'dikeRevetmentName',
+      width: 250,
+      ellipsis: false,
+      render: (val: string, record: DikeRevetmentResponse) => (
+        <Button
+          type="link"
+          onClick={() => openDetailDrawer(record)}
+          style={{ padding: 0, height: 'auto', fontWeight: fontWeightBold, color: actionPrimary, textAlign: 'left', whiteSpace: 'normal' }}
+        >
+          {val || '—'}
+        </Button>
+      ),
+    },
+    {
+      key: 'orgUnitName',
+      label: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitName',
+      width: 220,
+      ellipsis: false,
+      render: (val: string | undefined, record: DikeRevetmentResponse) => val || record.orgUnitId || '—',
     },
     {
       key: 'seaportName',
       label: 'Thuộc cảng biển',
       dataIndex: 'seaportName',
-      width: 170,
-      render: (val: string | undefined, record: DikeRevetmentResponse) => val || record.seaportId || '',
+      width: 180,
+      ellipsis: false,
+      render: (val: string | undefined, record: DikeRevetmentResponse) => val || record.seaportId || '—',
     },
     {
       key: 'location',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'location',
-      width: 190,
-      render: (val: string) => val || '',
+      width: 180,
+      render: (val: string) => val || '—',
     },
     {
       key: 'dikeRevetmentType',
       label: 'Loại kết cấu công trình',
       dataIndex: 'dikeRevetmentType',
-      width: 220,
-      render: (val: string) => <span style={{ fontWeight: fontWeightMedium }}>{DIKE_REVETMENT_TYPE_MAP[val] || val || ''}</span>,
+      width: 200,
+      render: (val: string) => <span style={{ fontWeight: fontWeightMedium }}>{DIKE_REVETMENT_TYPE_LABELS[val] || val || '—'}</span>,
     },
     {
       key: 'status',
       label: 'Tình trạng',
       dataIndex: 'status',
-      width: 220,
+      width: 160,
+      align: 'center' as const,
       render: (val: string) => {
-        if (!val) return '';
-        const st = OPERATIONAL_STATUS_STYLE_MAP[val];
-        return st ? <span style={historyBadgeStyle(st.color)}>{st.label}</span> : val;
+        const st = OPERATIONAL_STATUS_STYLE_MAP[val || '1'];
+        return st ? <span style={{ ...historyBadgeStyle(st.color), minWidth: 125, justifyContent: 'center' }}>{st.label}</span> : val;
       },
     },
     {
       key: 'commissioningDate',
-      label: 'Thời điểm đưa vào khai thác',
+      label: 'Thời điểm khai thác',
       dataIndex: 'commissioningDate',
-      width: 250,
+      width: 160,
+      align: 'center' as const,
       render: (val: string) => formatDateOnly(val),
     },
     {
@@ -987,6 +764,7 @@ export default function DikeRevetmentList() {
       label: 'Ngày cập nhật',
       dataIndex: 'updatedAt',
       width: 160,
+      align: 'center' as const,
       render: (val: string) => formatDate(val),
     },
     {
@@ -994,165 +772,154 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
       width: 160,
-      render: (val: string) => val || '',
+      ellipsis: true,
+      render: (val: string) => val || '—',
     },
     {
       key: 'approvalStatus',
-      label: 'Trạng thái',
+      label: 'Trạng thái phê duyệt',
       dataIndex: 'approvalStatus',
-      width: 160,
-      render: (status: string) => <ApprovalStatusBadge status={status} />,
+      width: 180,
+      align: 'center' as const,
+      render: (status: string) => <ApprovalStatusBadge status={status || 'DRAFT'} />,
     },
-  ], []);
+  ], [page, pageSize, openDetailDrawer]);
 
   const rowActions = useCallback((record: DikeRevetmentResponse) => {
     const actions: any[] = [];
-    const canRead = hasPerm('dikerevetment:read');
-    const canUpdate = hasPerm('dikerevetment:update');
-    const canDelete = hasPerm('dikerevetment:delete');
-    const isProposed = record.approvalStatus === 'PROPOSED';
-    const isPending = record.approvalStatus === 'PENDING_APPROVAL';
-    const isRejected = record.approvalStatus === 'REJECTED';
+    const canRead = hasPerm('dikerevetment:read') || hasPerm('admin:all');
+    const canUpdate = hasPerm('dikerevetment:update') || hasPerm('admin:all');
+    const canDelete = hasPerm('dikerevetment:delete') || hasPerm('admin:all');
+    const canApproveC1 = hasPerm('dikerevetment:approvec1') || hasPerm('admin:all');
+    const canApproveC2 = hasPerm('dikerevetment:approvec2') || hasPerm('admin:all');
+
+    const st = record.approvalStatus || 'DRAFT';
+    const isDraftOrRejected = st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED' || st === 'PROPOSED';
+    const isPendingC1 = st === 'PENDING_APPROVAL';
+    const isPendingC2 = st === 'APPROVED_LEVEL1';
 
     if (canRead) {
-      actions.push({
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => openDetailDrawer(record),
-      });
+      actions.push({ key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) });
     }
-    if (canUpdate) {
-      actions.push({
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEditDrawer(record),
-      });
+    if (canUpdate && isDraftOrRejected) {
+      actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) });
+      actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: <SendOutlined />, onClick: () => openSubmitModal(record) });
     }
-    if (canUpdate && (isProposed || isRejected)) {
-      actions.push({
-        key: 'submit',
-        label: 'Gửi phê duyệt',
-        icon: <SendOutlined />,
-        onClick: () => openSubmitModal(record),
-      });
+
+    if (isPendingC1 && canApproveC1) {
+      const isSelfCreated = currentUserId && record.createdBy && String(record.createdBy) === String(currentUserId);
+      if (isSelfCreated) {
+        actions.push({
+          key: 'approvec1',
+          label: (
+            <Tooltip title="Bạn không thể tự phê duyệt bản ghi do chính mình tạo">
+              <span style={{ color: textTertiary, cursor: 'not-allowed' }}>Phê duyệt C1</span>
+            </Tooltip>
+          ),
+          icon: <CheckCircleOutlined style={{ color: textTertiary }} />,
+          disabled: true,
+        });
+      } else {
+        actions.push({ key: 'approvec1', label: 'Phê duyệt C1', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record, 'C1') });
+      }
+      actions.push({ key: 'rejectc1', label: 'Trả về C1', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record, 'C1') });
     }
-    if (canUpdate && isPending) {
-      actions.push({
-        key: 'approve',
-        label: 'Phê duyệt',
-        icon: <CheckCircleOutlined />,
-        onClick: () => openApproveModal(record),
-      });
+
+    if (isPendingC2 && canApproveC2) {
+      const isSelfCreated = currentUserId && record.createdBy && String(record.createdBy) === String(currentUserId);
+      if (isSelfCreated) {
+        actions.push({
+          key: 'approvec2',
+          label: (
+            <Tooltip title="Bạn không thể tự phê duyệt bản ghi do chính mình tạo">
+              <span style={{ color: textTertiary, cursor: 'not-allowed' }}>Phê duyệt C2</span>
+            </Tooltip>
+          ),
+          icon: <CheckCircleOutlined style={{ color: textTertiary }} />,
+          disabled: true,
+        });
+      } else {
+        actions.push({ key: 'approvec2', label: 'Phê duyệt C2', icon: <CheckCircleOutlined />, onClick: () => openApproveModal(record, 'C2') });
+      }
+      actions.push({ key: 'rejectc2', label: 'Trả về C2', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record, 'C2') });
     }
-    if (canUpdate && isPending) {
-      actions.push({
-        key: 'reject',
-        label: 'Từ chối',
-        icon: <CloseCircleOutlined />,
-        danger: true,
-        onClick: () => openRejectModal(record),
-      });
+
+    actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistoryModal(record) });
+
+    if (canDelete && isDraftOrRejected) {
+      actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteModal(record) });
     }
-    // F-046: chỉ xóa bản ghi PROPOSED (xóa mềm)
-    if (canDelete && isProposed) {
-      actions.push({
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => openDeleteModal(record),
-      });
-    }
-    if (canRead) {
-      actions.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: <HistoryOutlined />,
-        onClick: () => openHistoryModal(record),
-      });
-    }
+
     return actions;
-  }, [hasPerm, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openDeleteModal, openHistoryModal]);
+  }, [hasPerm, currentUserId, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openDeleteModal, openHistoryModal]);
 
   // ── Filter content (sidebar) ─────────────────────────────────────
-  // Bộ lọc theo sheet QL đê kè: mặc định = Đơn vị quản lý + Tên đê kè (+ Trạng thái phê duyệt = StatusTabs),
-  // nâng cao (ẩn/hiện) = Mã đê kè, Thuộc cảng biển, Địa điểm, Loại kết cấu, Tình trạng, Thời điểm khai thác, Ngày cập nhật
   const filterContent = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceMd }}>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, marginTop: spaceMd }}>
-      <span style={filterLabelStyle}>Tên đê kè</span>
-        <Input
-          placeholder="Nhập Tên đê kè..."
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceFormField }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, marginTop: spaceMd }}>
+        <span style={filterLabelStyle}>Đơn vị quản lý</span>
+        <OrgUnitTreeSelect
+          organizations={organizations}
+          placeholder="Tất cả"
           allowClear
-          value={filterName}
-          onChange={(e) => setFilterName(e.target.value)}
-          onPressEnter={() => { setPage(1); fetchData(); }}
+          treeDefaultExpandAll
+          listHeight={256}
+          value={filterUnitId}
+          onChange={(val) => {
+            setFilterUnitId(val || undefined);
+            setFilterCangBienId(undefined);
+            setPage(1);
+          }}
           style={filterInputStyle}
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-        <span style={filterLabelStyle}>Đơn vị quản lý</span>
-        <TreeSelect
-          placeholder="Tất cả"
-          treeData={buildOrgTree(organizations)}
-          showSearch
-          treeNodeFilterProp="title"
-          treeDefaultExpandAll
-          value={filterUnitId}
-          onChange={(val) => setFilterUnitId(val)}
+        <span style={filterLabelStyle}>Tên đê kè</span>
+        <Input
+          placeholder="Nhập tên đê kè..."
           allowClear
-          style={selectStyle}
+          value={filterName}
+          onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+          onPressEnter={handleFilterApply}
+          style={filterInputStyle}
         />
       </div>
 
       {filterCollapsed && (
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-            <span style={filterLabelStyle}>Mã đê kè</span>
-            <Input
-              placeholder="Nhập Mã đê kè..."
-              allowClear
-              value={filterCode}
-              onChange={(e) => setFilterMa(e.target.value)}
-              onPressEnter={() => { setPage(1); fetchData(); }}
-              style={filterInputStyle}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
             <span style={filterLabelStyle}>Thuộc cảng biển</span>
             <Select
-              placeholder="Tất cả"
+              placeholder="Chọn cảng biển..."
               options={seaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
               value={filterSeaportId}
-              onChange={(val) => setFilterCangBienId(val)}
+              onChange={(val) => { setFilterCangBienId(val); setPage(1); }}
               allowClear
               showSearch
-              optionFilterProp="label"
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               style={selectStyle}
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
             <span style={filterLabelStyle}>Địa điểm (Tỉnh/TP)</span>
             <Select
-              placeholder="Tất cả"
+              placeholder="Chọn tỉnh/thành phố..."
               options={VIETNAM_PROVINCE_OPTIONS.map((p) => ({ value: p.label, label: p.label }))}
               value={filterLocation}
-              onChange={(val) => setFilterLocation(val)}
+              onChange={(val) => { setFilterLocation(val); setPage(1); }}
               allowClear
               showSearch
-              optionFilterProp="label"
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               style={selectStyle}
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
             <span style={filterLabelStyle}>Loại kết cấu công trình</span>
             <Select
-              placeholder="Tất cả"
+              placeholder="Chọn loại kết cấu..."
               options={DIKE_REVETMENT_TYPE_OPTIONS}
               value={filterType}
-              onChange={(val) => setFilterType(val)}
+              onChange={(val) => { setFilterType(val); setPage(1); }}
               allowClear
               style={selectStyle}
             />
@@ -1160,21 +927,11 @@ export default function DikeRevetmentList() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
             <span style={filterLabelStyle}>Tình trạng</span>
             <Select
-              placeholder="Tất cả"
-              options={OPERATIONAL_STATUS_OPTIONS}
+              placeholder="Chọn tình trạng..."
+              options={CONDITION_STATUS_OPTIONS}
               value={filterStatusVal}
-              onChange={(val) => setFilterStatusVal(val)}
+              onChange={(val) => { setFilterStatusVal(val); setPage(1); }}
               allowClear
-              style={selectStyle}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-            <span style={filterLabelStyle}>Thời điểm đưa vào khai thác</span>
-            <DatePicker
-              picker="year"
-              placeholder="Chọn năm"
-              value={filterCommissioningYear ? dayjs(filterCommissioningYear) : null}
-              onChange={(d) => setFilterCommissioningYear(d ? d.format('YYYY') : undefined)}
               style={selectStyle}
             />
           </div>
@@ -1182,7 +939,7 @@ export default function DikeRevetmentList() {
             <span style={filterLabelStyle}>Ngày cập nhật</span>
             <DatePicker.RangePicker
               value={filterUpdatedRange}
-              onChange={(range) => setFilterUpdatedRange(range)}
+              onChange={(range) => { setFilterUpdatedRange(range); setPage(1); }}
               style={selectStyle}
             />
           </div>
@@ -1191,8 +948,7 @@ export default function DikeRevetmentList() {
     </div>
   );
 
-  // ── Detail tabs (format chuẩn màn /beacon-stations) ───────────────
-  // DetailRow + renderDetailRows + renderToggleSection (▼/▶) + tabs riêng từng nhóm
+  // ── Detail rows ──────────────────────────────────────────────────
   type DetailRow = { label: string; value: React.ReactNode };
 
   const renderDetailRows = (rows: DetailRow[], paddingTop = spaceMd) => (
@@ -1222,77 +978,42 @@ export default function DikeRevetmentList() {
   );
 
   const detailBasicRows: DetailRow[] = detailRecord ? [
-    { label: 'Mã đê kè', value: detailRecord.code ?? '' },
-    { label: 'Tên đê kè', value: detailRecord.dikeRevetmentName ?? '' },
-    { label: 'Đơn vị quản lý', value: detailRecord.orgUnitName || detailRecord.orgUnitId || '' },
-    { label: 'Thuộc cảng biển', value: detailRecord.seaportName || detailRecord.seaportId || '' },
-    { label: 'Đơn vị vận hành', value: detailRecord.donViVanHanhName || detailRecord.donViVanHanhId || '' },
-    { label: 'Địa điểm (Tỉnh/TP)', value: detailRecord.location ?? '' },
-    { label: 'Địa điểm chi tiết', value: detailRecord.locationDetail ?? '' },
-    { label: 'Loại kết cấu công trình', value: detailRecord.dikeRevetmentType ? (DIKE_REVETMENT_TYPE_MAP[detailRecord.dikeRevetmentType] || detailRecord.dikeRevetmentType) : '' },
-    { label: 'Tình trạng', value: detailRecord.status ? (OPERATIONAL_STATUS_STYLE_MAP[detailRecord.status]?.label || detailRecord.status) : '' },
-    { label: 'Ghi chú', value: detailRecord.note ?? '' },
+    { label: 'Mã đê kè', value: detailRecord.code ?? '—' },
+    { label: 'Tên đê kè', value: detailRecord.dikeRevetmentName ?? '—' },
+    { label: 'Đơn vị quản lý', value: detailRecord.orgUnitName || detailRecord.orgUnitId || '—' },
+    { label: 'Thuộc cảng biển', value: detailRecord.seaportName || detailRecord.seaportId || '—' },
+    { label: 'Đơn vị vận hành', value: detailRecord.donViVanHanhName || detailRecord.donViVanHanhId || '—' },
+    { label: 'Địa điểm (Tỉnh/TP)', value: detailRecord.location ?? '—' },
+    { label: 'Địa điểm chi tiết', value: detailRecord.locationDetail ?? '—' },
+    { label: 'Loại kết cấu công trình', value: detailRecord.dikeRevetmentType ? (DIKE_REVETMENT_TYPE_LABELS[detailRecord.dikeRevetmentType] || detailRecord.dikeRevetmentType) : '—' },
+    { label: 'Tình trạng', value: detailRecord.status ? (OPERATIONAL_STATUS_STYLE_MAP[detailRecord.status]?.label || detailRecord.status) : '—' },
+    { label: 'Ghi chú', value: detailRecord.note ?? '—' },
   ] : [];
 
   const detailTechnicalRows: DetailRow[] = detailRecord ? [
-    { label: 'Chiều dài (m)', value: detailRecord.length != null ? String(detailRecord.length) : '' },
-    { label: 'Chiều cao (m)', value: detailRecord.height != null ? String(detailRecord.height) : '' },
-    { label: 'Cao trình đỉnh (m)', value: detailRecord.crestElevation != null ? String(detailRecord.crestElevation) : '' },
+    { label: 'Chiều dài (m)', value: detailRecord.length != null ? Number(detailRecord.length).toLocaleString('vi-VN') : '—' },
+    { label: 'Chiều cao (m)', value: detailRecord.height != null ? Number(detailRecord.height).toLocaleString('vi-VN') : '—' },
+    { label: 'Cao trình đỉnh (m)', value: detailRecord.crestElevation != null ? Number(detailRecord.crestElevation).toLocaleString('vi-VN') : '—' },
+    { label: 'Vật liệu bề mặt', value: detailRecord.surfaceMaterial ?? '—' },
     { label: 'Thời điểm xây dựng', value: formatDateOnly(detailRecord.constructionDate) },
     { label: 'Thời điểm đưa vào khai thác', value: formatDateOnly(detailRecord.commissioningDate) },
-    { label: 'Năm bảo trì gần nhất', value: detailRecord.lastMaintenanceYear ?? '' },
+    { label: 'Năm bảo trì gần nhất', value: detailRecord.lastMaintenanceYear ?? '—' },
   ] : [];
 
   const detailGisRows: DetailRow[] = detailRecord ? [
     { label: 'Loại đối tượng', value: detailRecord.geometryType === 'POINT' ? 'Đối tượng điểm' : detailRecord.geometryType === 'LINE' ? 'Đối tượng đường' : detailRecord.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—' },
-    {
-      label: 'Biểu tượng bản đồ',
-      value: detailRecord.symbolId
-        ? (() => {
-            const sym = symbols.find((s) => s.id === detailRecord.symbolId);
-            return sym
-              ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sym.image ? <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{sym.name}</span>
-              : detailRecord.symbolId;
-          })()
-        : '—',
-    },
-    { label: 'Hệ quy chiếu', value: '—' },
     { label: 'Quy tắc hiển thị', value: (detailRecord.geometryType || detailRecord.coordinates) ? 'Độ, phút, giây (DMS)' : '—' },
   ] : [];
 
   const detailLogRows: DetailRow[] = detailRecord ? [
     { label: 'Ngày cập nhật', value: formatDate(detailRecord.updatedAt) },
-    { label: 'Cán bộ cập nhật', value: detailRecord.updatedBy ?? '' },
-    { label: 'Ngày gửi phê duyệt', value: formatDate(detailRecord.submittedAt) },
-    { label: 'Cán bộ gửi phê duyệt', value: detailRecord.submittedByName ?? '' },
-    { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: formatDate(detailRecord.approvedDateLevel1) },
-    { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvedByNameLevel1 || detailRecord.approverLevel1 || '' },
-    { label: 'Nội dung phê duyệt', value: detailRecord.approvalNoteLevel1 ?? '' },
-    { label: 'Ngày phê duyệt cấp Cục', value: formatDate(detailRecord.approvedDateLevel2) },
-    { label: 'Cán bộ phê duyệt cấp Cục', value: detailRecord.approvedByNameLevel2 || detailRecord.approverLevel2 || '' },
-    { label: 'Nội dung phê duyệt', value: detailRecord.approvalNoteLevel2 ?? '' },
-    { label: 'Trạng thái (Trạng thái phê duyệt)', value: <ApprovalStatusBadge status={detailRecord.approvalStatus} /> },
-  ] : [];
-
-  const detailOperationRows: DetailRow[] = detailRecord ? [
-    { label: 'Mã kế hoạch', value: detailRecord.operationPlanCode ?? '' },
-    { label: 'Tên kế hoạch', value: detailRecord.operationPlanName ?? '' },
-    { label: 'Ngày bắt đầu', value: detailRecord.operationStartDate ?? '' },
-    { label: 'Ngày kết thúc', value: detailRecord.operationEndDate ?? '' },
-  ] : [];
-
-  const detailMaintenanceRows: DetailRow[] = detailRecord ? [
-    { label: 'Mã kế hoạch', value: detailRecord.maintenancePlanCode ?? '' },
-    { label: 'Tên kế hoạch', value: detailRecord.maintenancePlanName ?? '' },
-    { label: 'Thời gian bắt đầu', value: detailRecord.maintenanceStartDate ?? '' },
-    { label: 'Thời gian kết thúc', value: detailRecord.maintenanceEndDate ?? '' },
-  ] : [];
-
-  const detailIncidentRows: DetailRow[] = detailRecord ? [
-    { label: 'Mã sự cố', value: detailRecord.incidentCode ?? '' },
-    { label: 'Loại sự cố', value: detailRecord.incidentType ?? '' },
-    { label: 'Địa điểm', value: detailRecord.incidentLocation ?? '' },
-    { label: 'Thời gian', value: detailRecord.incidentTime ?? '' },
+    { label: 'Cán bộ cập nhật', value: detailRecord.updatedByName || detailRecord.updatedBy || '—' },
+    { label: 'Ngày phê duyệt cấp 1', value: formatDateOnly(detailRecord.approvedDateLevel1) },
+    { label: 'Cán bộ phê duyệt cấp 1', value: detailRecord.approvedByNameLevel1 || detailRecord.approverLevel1 || '—' },
+    { label: 'Ngày phê duyệt cấp 2', value: formatDateOnly(detailRecord.approvedDateLevel2) },
+    { label: 'Cán bộ phê duyệt cấp 2', value: detailRecord.approvedByNameLevel2 || detailRecord.approverLevel2 || '—' },
+    { label: 'Lý do từ chối (nếu có)', value: detailRecord.rejectionReason || '—' },
+    { label: 'Trạng thái phê duyệt', value: <ApprovalStatusBadge status={detailRecord.approvalStatus} /> },
   ] : [];
 
   const detailTabItems = detailRecord
@@ -1317,7 +1038,7 @@ export default function DikeRevetmentList() {
               <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
                 <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
                 {(() => {
-                  const pts = detailRecord ? parseWktToVertices(detailRecord.coordinates || '', detailRecord.geometryType || '') : [];
+                  const pts = detailRecord ? parseWktToVertices(detailRecord.coordinates || '', detailRecord.geometryType || 'LINE') : [];
                   return pts.length === 0 ? (
                     <div style={{ marginTop: spaceXs, color: textTertiary, fontSize: fontSizeMd }}>Không có tọa độ</div>
                   ) : (
@@ -1326,14 +1047,14 @@ export default function DikeRevetmentList() {
                         render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{i + 1}</span>}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                       <Table.Column title="Vĩ độ (N)" key="lat" align="center"
-                        render={(_: any, record: any) => {
-                          const dms = ddToDms(record.lat);
+                        render={(_: any, rec: any) => {
+                          const dms = ddToDms(rec.lat);
                           return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
                       <Table.Column title="Kinh độ (E)" key="lng" align="center"
-                        render={(_: any, record: any) => {
-                          const dms = ddToDms(record.lng);
+                        render={(_: any, rec: any) => {
+                          const dms = ddToDms(rec.lng);
                           return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}><InputNumber value={dms.d} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span><InputNumber value={dms.m} readOnly style={{ flex: 1, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span><InputNumber value={dms.s} readOnly style={{ flex: 1.2, textAlign: 'center' }} /><span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span></Space.Compact>;
                         }}
                         onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
@@ -1367,25 +1088,67 @@ export default function DikeRevetmentList() {
             </div>
           ),
         },
-        {
-          key: 'operation',
-          label: 'Các thông tin khác',
-          children: (
-            <>
-              {renderToggleSection(operationOpen, () => setOperationOpen(!operationOpen), 'Thông tin vận hành khai thác', detailOperationRows)}
-              {renderToggleSection(maintenanceOpen, () => setMaintenanceOpen(!maintenanceOpen), 'Thông tin bảo trì', detailMaintenanceRows)}
-              {renderToggleSection(incidentOpen, () => setIncidentOpen(!incidentOpen), 'Thông tin sự cố', detailIncidentRows)}
-            </>
-          ),
-        },
       ]
     : [];
 
-  // ── JSX ─────────────────────────────────────────────────────────
+  const renderHistoryTimeline = (records: any[]) => {
+    if (!records || records.length === 0) {
+      return (
+        <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có lịch sử thay đổi</Typography.Text>
+      );
+    }
+    const filtered = records.filter((h: any) => {
+      if (historySearch) {
+        const haystack = `${h.fieldChanged || ''} ${h.oldValue || ''} ${h.newValue || ''} ${h.actionType || ''} ${h.reason || ''}`.toLowerCase();
+        if (!haystack.includes(historySearch.toLowerCase())) return false;
+      }
+      if (historyFrom && h.approvedDate && dayjs(h.approvedDate).isBefore(dayjs(historyFrom))) return false;
+      if (historyTo && h.approvedDate && dayjs(h.approvedDate).isAfter(dayjs(historyTo))) return false;
+      return true;
+    });
+    if (filtered.length === 0) {
+      return (
+        <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có lịch sử phù hợp</Typography.Text>
+      );
+    }
+    return filtered.map((h: any, idx: number) => {
+      const isReject = h.status === 'REJECTED';
+      const isApprove = h.status === 'APPROVED';
+      const badgeColor = isReject ? statusCritical : isApprove ? statusOperational : actionPrimary;
+      const statusLabel = isReject ? 'Từ chối' : isApprove ? 'Phê duyệt' : (h.status || 'Thay đổi');
+
+      return (
+        <div key={h.id || idx} style={{ ...historyInfoCardStyle, marginBottom: spaceMd }}>
+          <div style={historyAccentBarStyle(badgeColor)} />
+          <div style={{ padding: spaceMd }}>
+            <div style={historyMetaRowStyle}>
+              <span style={historyBadgeStyle(badgeColor)}>{statusLabel}</span>
+              <span style={{ marginLeft: 'auto', color: textTertiary, fontSize: fontSizeSm }}>
+                {formatDate(h.approvedDate || h.createdAt)}
+              </span>
+            </div>
+            {h.approvedBy && (
+              <div style={{ marginTop: spaceXs }}>
+                <span style={{ color: textSecondary, fontSize: fontSizeSm }}>Người thực hiện: </span>
+                <span style={{ color: textPrimary, fontSize: fontSizeSm, fontWeight: fontWeightMedium }}>{h.approvedBy}</span>
+              </div>
+            )}
+            {h.reason && (
+              <div style={{ marginTop: spaceSm, ...historyChangeRowStyle }}>
+                <div style={historyFieldLabelStyle}>Lý do / Nội dung:</div>
+                <span style={historyNewValueStyle}>{h.reason}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
-        breadcrumb={[{ label: 'Quản lý KCHTGT' }, { label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' }]}
+        breadcrumb={[{ label: 'Quản lý KCHTGT' }, { label: 'Đê kè hàng hải' }]}
         actions={[{ key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreateDrawer }]}
       />
 
@@ -1402,20 +1165,22 @@ export default function DikeRevetmentList() {
         onRetry={() => void fetchData()}
       >
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <style>{`.logs-pagination-compact .list-view-pagination { padding-top: 20px !important; padding-bottom: 0 !important; } .logs-pagination-compact .list-view-pagination button { width: 40px !important; height: 40px !important; } .logs-pagination-compact .list-view-pagination .ant-select { height: 40px !important; }`}</style>
           <DataTable
+            fill
             columns={columns}
             dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
-            scroll={{ x: 2320, y: 550 }}
-            emptyState={<EmptyState description="Không có dữ liệu đê/kè nào phù hợp với bộ lọc" />}
+            scroll={{ x: 'max-content', y: 400 }}
+            emptyState={<EmptyState description="Không có dữ liệu đê kè nào phù hợp với bộ lọc" />}
           />
-          <div style={{ height: 55, overflow: 'visible', marginBottom: spaceSm }}>
+          <div className="logs-pagination-compact" style={{ height: 55, overflow: 'visible', marginBottom: 8 }}>
             <Pagination
               total={total}
               current={page}
               pageSize={pageSize}
-              pageSizeOptions={[10, 20, 50, 100]}
+              pageSizeOptions={[10, 20, 50]}
               onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
             />
           </div>
@@ -1425,12 +1190,13 @@ export default function DikeRevetmentList() {
       {/* ── Create / Edit / Detail Drawer ─────────────────────────── */}
       <Drawer
         {...drawerProps}
+        size="50%"
         title={
-          <span style={isDetailMode || editingRecord ? drawerTitleStyle : { ...drawerTitleStyle, fontSize: 16 }}>
+          <span style={drawerTitleStyle}>
             {isDetailMode
-              ? `Chi tiết đê kè${detailRecord?.dikeRevetmentName ? ` — ${detailRecord.dikeRevetmentName}` : ''}`
+              ? `Chi tiết đê kè${detailRecord ? ` — ${detailRecord.dikeRevetmentName}` : ''}`
               : editingRecord
-                ? `Chỉnh sửa — ${editingRecord.dikeRevetmentName || ''}`
+                ? `Chỉnh sửa — ${editingRecord.dikeRevetmentName || editingRecord.code}`
                 : 'Thêm mới đê kè'}
           </span>
         }
@@ -1439,20 +1205,12 @@ export default function DikeRevetmentList() {
         onClose={closeDrawer}
         extra={<Button type="text" onClick={closeDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          isDetailMode ? null : editingRecord ? (
+          isDetailMode ? null : (
             <div style={drawerFooterStyle}>
-              <Button type="primary" onClick={() => handleSubmit('update')} loading={submitting} style={primaryButtonStyle}>
-                Cập nhật
+              <Button onClick={closeDrawer} style={outlineButtonStyle}>Hủy</Button>
+              <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>
+                {editingRecord ? 'Cập nhật' : 'Tạo mới'}
               </Button>
-            </div>
-          ) : (
-            <div style={drawerFooterStyle}>
-              <Button onClick={() => handleSubmit('draft')} loading={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
-              {canSubmitForApproval && (
-                <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting} style={primaryButtonStyle}>
-                  Lưu và phê duyệt
-                </Button>
-              )}
             </div>
           )
         }
@@ -1462,292 +1220,137 @@ export default function DikeRevetmentList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{}}>
+            <Form form={createForm} layout="vertical" initialValues={{ status: '1', dikeRevetmentType: 'WAVE_BREAK_REVETMENT', geometryType: 'LINE' }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {
                     key: 'general',
-                    label: 'Thông tin chung',
+                    label: 'Thông tin cơ bản',
                     children: (
-                      <div style={{ paddingTop: spaceMd }}>
+                      <div style={{ paddingTop: 16 }}>
                         <Row gutter={formRowGutter}>
                           <Col span={12}>
-                            <Form.Item name="code" {...labelProps('Mã đê kè')} style={formFieldStyle}
-                              tooltip="Mã đê kè được sinh tự động, không thể chỉnh sửa">
-                              <Input disabled placeholder={codeLoading ? 'Đang sinh mã...' : 'Mã tự động'} maxLength={50}
-                                style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
+                            <Form.Item name="code" {...labelProps('Mã đê kè')} style={formFieldStyle}>
+                              <Input disabled placeholder="Mã tự sinh tự động" style={inputStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
                             <Form.Item name="dikeRevetmentName" {...labelProps('Tên đê kè')} required style={formFieldStyle}
                               rules={[{ required: true, message: 'Vui lòng nhập tên đê kè' }]}>
-                              <Input placeholder="Nhập Tên đê kè..." style={inputStyle} />
+                              <Input placeholder="VD: Đê chắn sóng phía Bắc" style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Row gutter={formRowGutter}>
+                          <Col span={12}>
+                            <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} style={formFieldStyle}>
+                              <OrgUnitTreeSelect
+                                organizations={organizations}
+                                placeholder="Chọn đơn vị..."
+                                allowClear
+                                showSearch
+                                onChange={() => createForm.setFieldValue('seaportId', undefined)}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={formFieldStyle}>
+                              <Select
+                                placeholder="Chọn cảng biển..."
+                                allowClear
+                                showSearch
+                                filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+                                options={seaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
+                                style={selectStyle}
+                              />
                             </Form.Item>
                           </Col>
                         </Row>
                         <Row gutter={formRowGutter}>
                           <Col span={12}>
                             <Form.Item name="dikeRevetmentType" {...labelProps('Loại kết cấu công trình')} required style={formFieldStyle}
-                              rules={[{ required: true, message: 'Vui lòng chọn loại kết cấu công trình' }]}>
-                              <Select placeholder="Chọn loại kết cấu..." options={DIKE_REVETMENT_TYPE_OPTIONS} style={selectStyle} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item name="status" {...labelProps('Tình trạng')} required style={formFieldStyle}
-                              rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}>
-                              <Select placeholder="Chọn tình trạng..." options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                        <Row gutter={formRowGutter}>
-                          <Col span={12}>
-                            <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={formFieldStyle}
-                              rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}>
-                              <TreeSelect placeholder="Chọn đơn vị..." treeData={buildOrgTree(organizations)}
-                                showSearch treeNodeFilterProp="title" treeDefaultExpandAll
-                                disabled={!!editingRecord || !isElevatedOrg} style={selectStyle} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item name="donViVanHanhName" {...labelProps('Đơn vị vận hành')} style={formFieldStyle}>
-                              <Input placeholder="VD: Công ty Hoa tiêu Hàng hải" style={inputStyle} />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                        <Row gutter={formRowGutter}>
-                          <Col span={12}>
-                            <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={formFieldStyle}>
-                              <Select placeholder="Chọn cảng biển..." allowClear showSearch optionFilterProp="label"
-                                options={seaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
-                                style={selectStyle} />
+                              rules={[{ required: true, message: 'Vui lòng chọn loại kết cấu' }]}>
+                              <Select placeholder="Chọn loại kết cấu" options={DIKE_REVETMENT_TYPE_OPTIONS} style={selectStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
                             <Form.Item name="location" {...labelProps('Địa điểm (Tỉnh/TP)')} required style={formFieldStyle}
-                              rules={[{ required: true, message: 'Vui lòng nhập địa điểm' }]}>
-                              <Input placeholder="VD: Hải Phòng" style={inputStyle} />
+                              rules={[{ required: true, message: 'Vui lòng chọn địa điểm' }]}>
+                              <Select
+                                placeholder="Chọn tỉnh/thành phố..."
+                                allowClear
+                                showSearch
+                                filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+                                options={VIETNAM_PROVINCE_OPTIONS.map((p) => ({ value: p.label, label: p.label }))}
+                                style={selectStyle}
+                              />
                             </Form.Item>
                           </Col>
                         </Row>
                         <Row gutter={formRowGutter}>
                           <Col span={12}>
-                            <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={formFieldStyle}>
-                              <Input placeholder="Nhập địa điểm chi tiết..." style={inputStyle} />
+                            <Form.Item name="status" {...labelProps('Tình trạng')} required style={formFieldStyle}
+                              rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}>
+                              <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
-                            <Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={formFieldStyle}>
-                              <DatePicker placeholder="Chọn ngày" format="DD/MM/YYYY" style={{ width: '100%', ...selectStyle }} />
+                            <Form.Item name="surfaceMaterial" {...labelProps('Vật liệu bề mặt')} style={formFieldStyle}>
+                              <Input placeholder="VD: Bê tông cốt thép" style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        <Row gutter={formRowGutter}>
-                          <Col span={12}>
-                            <Form.Item name="commissioningDate" {...labelProps('Thời điểm đưa vào khai thác')} style={formFieldStyle}>
-                              <DatePicker placeholder="Chọn ngày" format="DD/MM/YYYY" style={{ width: '100%', ...selectStyle }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì')} style={formFieldStyle}>
-                              <DatePicker picker="year" placeholder="Chọn năm" style={{ width: '100%', ...selectStyle }} />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                        <Row gutter={formRowGutter}>
-                          <Col span={8}>
-                            <Form.Item name="length" {...labelProps('Chiều dài (m)')} required style={formFieldStyle}
-                              rules={[{ required: true, message: 'Vui lòng nhập chiều dài' }]}>
-                              <InputNumber min={0.01} max={99999} step={0.01} precision={2} placeholder="VD: 850" style={{ width: '100%', ...inputStyle }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={8}>
-                            <Form.Item name="height" {...labelProps('Chiều cao (m)')} style={formFieldStyle}>
-                              <InputNumber min={0} max={99999} step={0.01} precision={2} placeholder="VD: 12.5" style={{ width: '100%', ...inputStyle }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={8}>
-                            <Form.Item name="crestElevation" {...labelProps('Cao trình đỉnh (m)')} style={formFieldStyle}>
-                              <InputNumber min={0} max={99999} step={0.01} precision={2} placeholder="VD: 5.2" style={{ width: '100%', ...inputStyle }} />
-                            </Form.Item>
-                          </Col>
-                        </Row>
+                        <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={formFieldStyle}>
+                          <Input.TextArea rows={2} placeholder="Nhập địa điểm chi tiết..." style={{ borderRadius: radiusPill }} />
+                        </Form.Item>
                         <Form.Item name="note" {...labelProps('Ghi chú')} style={formFieldStyle}>
-                          <Input.TextArea placeholder="Nhập ghi chú..." rows={3} maxLength={500}
-                            styles={{ textarea: { borderRadius: radiusPill, minHeight: 40 } }} />
+                          <Input.TextArea rows={3} maxLength={2000} placeholder="Nhập ghi chú..." showCount style={{ borderRadius: radiusPill }} />
                         </Form.Item>
                       </div>
                     ),
                   },
                   {
-                    key: 'gis',
-                    label: 'Tọa độ GIS',
+                    key: 'technical',
+                    label: 'Thông tin kỹ thuật',
                     children: (
-                      <div style={{ paddingTop: spaceMd }}>
+                      <div style={{ paddingTop: 16 }}>
                         <Row gutter={formRowGutter}>
                           <Col span={12}>
-                            <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={formFieldStyle}>
-                              <Select placeholder="Chọn loại đối tượng"
-                                options={[
-                                  { value: 'POINT', label: 'Đối tượng điểm' },
-                                  { value: 'LINE', label: 'Đối tượng đường' },
-                                  { value: 'POLYGON', label: 'Đối tượng vùng' },
-                                ]} style={selectStyle} />
+                            <Form.Item name="length" {...labelProps('Chiều dài (m)')} style={formFieldStyle}>
+                              <InputNumber min={0} step={0.1} placeholder="Nhập chiều dài" style={{ ...selectStyle, width: '100%' }} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
-                            <Form.Item name="symbolId" {...labelProps('Biểu tượng bản đồ')} style={formFieldStyle}>
-                              <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label"
-                                style={selectStyle}
-                                disabled={!createGeometryType}
-                                options={symbols.map((sym) => ({ value: sym.id, label: sym.code ? `${sym.name} (${sym.code})` : sym.name }))} />
+                            <Form.Item name="height" {...labelProps('Chiều cao (m)')} style={formFieldStyle}>
+                              <InputNumber min={0} step={0.1} placeholder="Nhập chiều cao" style={{ ...selectStyle, width: '100%' }} />
                             </Form.Item>
                           </Col>
                         </Row>
                         <Row gutter={formRowGutter}>
                           <Col span={12}>
-                            <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={formFieldStyle}>
-                              <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle}
-                                options={[{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }]} />
+                            <Form.Item name="crestElevation" {...labelProps('Cao trình đỉnh (m)')} style={formFieldStyle}>
+                              <InputNumber step={0.1} placeholder="Nhập cao trình đỉnh" style={{ ...selectStyle, width: '100%' }} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
-                            <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={formFieldStyle}>
-                              <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled
-                                style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
+                            <Form.Item name="commissioningDate" {...labelProps('Thời điểm đưa vào khai thác')} style={formFieldStyle}>
+                              <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày khai thác" style={selectStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
-                        {/* GPS Coordinates (DMS) */}
-                        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>
-                            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS{createGeometryType && <span style={{ color: statusCritical, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}</span>
-                          </span>
-                          {gpsCoordList.length > 0 && (
-                            <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>
-                              Thêm tọa độ
-                            </Button>
-                          )}
-                        </div>
-                        {gpsCoordList.length === 0 ? (
-                          <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
-                              Chưa có tọa độ nào.
-                            </span>
-                            <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
-                          </div>
-                        ) : (
-                          <Table className="list-view-table" dataSource={gpsCoordList.map((c, i) => ({ ...c, key: i, _idx: i }))}
-                            pagination={false} size="middle" bordered scroll={{ x: 820 }}>
-                            <Table.Column title="STT" key="stt" width={60} align="center"
-                              render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                              onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                            <Table.Column title="Vĩ độ (N)" key="lat"
-                              render={(_: any, record: any) => {
-                                const dms = ddToDms(record.lat);
-                                return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                  <InputNumber value={dms.d} min={0} max={90} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', v ?? 0, dms.m, dms.s)}
-                                    style={{ flex: 1 }} controls={false} />
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                                  <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, v ?? 0, dms.s)}
-                                    style={{ flex: 1 }} controls={false} />
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lat', dms.d, dms.m, v ?? 0)}
-                                    style={{ flex: 1.2 }} controls={false} />
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-                                </Space.Compact>;
-                              }}
-                              onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                            <Table.Column title="Kinh độ (E)" key="lng"
-                              render={(_: any, record: any) => {
-                                const dms = ddToDms(record.lng);
-                                return <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-                                  <InputNumber value={dms.d} min={0} max={180} placeholder="Độ"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', v ?? 0, dms.m, dms.s)}
-                                    style={{ flex: 1 }} controls={false} />
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-                                  <InputNumber value={dms.m} min={0} max={59} placeholder="Phút"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, v ?? 0, dms.s)}
-                                    style={{ flex: 1 }} controls={false} />
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-                                  <InputNumber value={dms.s} min={0} max={59.99} step={0.01} placeholder="Giây"
-                                    onChange={(v) => updateGpsPoint(record._idx, 'lng', dms.d, dms.m, v ?? 0)}
-                                    style={{ flex: 1.2 }} controls={false} />
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-                                </Space.Compact>;
-                              }}
-                              onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                            <Table.Column title="" key="actions" width={44} align="center"
-                              render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />}
-                              onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-                          </Table>
-                        )}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'files',
-                    label: 'File đính kèm',
-                    children: (
-                      <div style={{ paddingTop: spaceMd }}>
-                        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-                          {uploadFileList.length > 0 && (
-                            <Upload
-                              beforeUpload={(file) => {
-                                if (file.size > 20 * 1024 * 1024) { message.error('File vượt quá 20MB'); return false; }
-                                const ext = file.name.split('.').pop()?.toLowerCase();
-                                if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { message.error('Định dạng không hỗ trợ'); return false; }
-                                if (uploadFileList.length >= 10) { message.error('Tối đa 10 file'); return false; }
-                                setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, status: 'done', originFileObj: file }]);
-                                return false;
-                              }}
-                              showUploadList={false}
-                              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                              multiple
-                            >
-                              <Button type="dashed" size="small" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }}>Thêm file</Button>
-                            </Upload>
-                          )}
-                        </div>
-                        {uploadFileList.length === 0 ? (
-                          <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có file đính kèm.</span>
-                            <Upload
-                              beforeUpload={(file) => {
-                                if (file.size > 20 * 1024 * 1024) { message.error('File vượt quá 20MB'); return false; }
-                                const ext = file.name.split('.').pop()?.toLowerCase();
-                                if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { message.error('Định dạng không hỗ trợ'); return false; }
-                                if (uploadFileList.length >= 10) { message.error('Tối đa 10 file'); return false; }
-                                setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, status: 'done', originFileObj: file }]);
-                                return false;
-                              }}
-                              showUploadList={false}
-                              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                              multiple
-                            >
-                              <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
-                            </Upload>
-                          </div>
-                        ) : (
-                          <Table className="list-view-table" dataSource={uploadFileList.map((f, i) => ({ ...f, key: f.uid, _idx: i }))}
-                            pagination={false} size="middle" bordered scroll={{ x: 400 }}>
-                            <Table.Column title="STT" key="stt" width={60} align="center"
-                              render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                              onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                            <Table.Column title="Tên file" key="name" dataIndex="name"
-                              render={(name: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}><FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />{name}</span>}
-                              onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                            <Table.Column title="" key="actions" width={44} align="center"
-                              render={(_: any, record: any) => <Button type="link" danger size="small" icon={<DeleteOutlined />} onClick={() => setUploadFileList(uploadFileList.filter((x) => x.uid !== record.uid))} />}
-                              onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-                          </Table>
-                        )}
-                        <div style={{ marginTop: spaceSm }}>
-                          <span style={{ color: textTertiary, fontSize: fontSizeSm }}>Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.</span>
-                        </div>
+                        <Row gutter={formRowGutter}>
+                          <Col span={12}>
+                            <Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={formFieldStyle}>
+                              <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày xây dựng" style={selectStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={formFieldStyle}>
+                              <DatePicker picker="year" placeholder="Chọn năm bảo trì" style={selectStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
                       </div>
                     ),
                   },
@@ -1760,27 +1363,26 @@ export default function DikeRevetmentList() {
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa đê kè</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Xác nhận xóa đê kè</span>}
         open={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
         footer={[
           <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
             style={outlineButtonStyle}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={confirmDelete}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
+          <Button key="delete" type="primary" danger onClick={confirmDelete} style={dangerButtonStyle}>Xác nhận xóa</Button>,
         ]}
         width={480}
       >
         <div style={confirmModalBodyStyle}>
           <p style={{ marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên công trình</strong> hoặc gõ <strong>&quot;XÓA&quot;</strong> để xác nhận xóa.
+            Vui lòng nhập <strong>tên đê kè</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
           </p>
           {deletingRecord && (
             <p style={{ marginBottom: spaceFormField }}>
-              Đê/kè: <strong style={{ color: textPrimary }}>{deletingRecord.dikeRevetmentName || deletingRecord.code}</strong>
+              Đê kè: <strong style={{ color: textPrimary }}>{deletingRecord.dikeRevetmentName || deletingRecord.code}</strong>
             </p>
           )}
-          <Input placeholder="Nhập tên công trình hoặc XÓA" value={deleteConfirmText}
+          <Input placeholder="Nhập tên đê kè hoặc XÓA" value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={confirmDelete}
             style={inputStyle} autoFocus />
         </div>
@@ -1788,7 +1390,7 @@ export default function DikeRevetmentList() {
 
       {/* ── Submit Approval Modal ────────────────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Gửi duyệt đê kè</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Gửi duyệt đê kè</span>}
         open={submitModalOpen}
         onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
         footer={[
@@ -1799,22 +1401,23 @@ export default function DikeRevetmentList() {
         width={480}
       >
         <div style={confirmModalBodyStyle}>
-          <p>Xác nhận gửi <strong>{submittingRecord?.dikeRevetmentName}</strong> để phê duyệt?</p>
+          <p>
+            Xác nhận gửi <strong>{submittingRecord?.dikeRevetmentName || submittingRecord?.code || ''}</strong> để phê duyệt?
+          </p>
         </div>
       </Modal>
 
-      {/* ── Approve Modal ─────────────────────────────────────────── */}
+      {/* ── Approve Modal (C1 / C2) ───────────────────────────────── */}
       <Modal
         title={
-          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-            Phê duyệt
+          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+            Phê duyệt {approvingLevel === 'C1' ? 'Cấp 1 (Chi cục / Cảng vụ)' : 'Cấp 2 (Cục Hàng hải)'}
           </span>
         }
         open={approveModalOpen}
         onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
         footer={[
-          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
-            style={outlineButtonStyle}>Hủy</Button>,
+          <Button key="cancel" onClick={() => { setApproveModalOpen(false); setApprovingRecord(null); }} style={outlineButtonStyle}>Hủy</Button>,
           <Button key="approve" type="primary" onClick={confirmApprove}
             style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
             Xác nhận phê duyệt
@@ -1824,37 +1427,40 @@ export default function DikeRevetmentList() {
       >
         <div style={confirmModalBodyStyle}>
           <p>
-            Phê duyệt <strong>{approvingRecord?.dikeRevetmentName}</strong>?
+            Xác nhận phê duyệt {approvingLevel === 'C1' ? 'cấp 1' : 'cấp 2 (chính thức)'} cho đê kè <strong>{approvingRecord?.dikeRevetmentName || approvingRecord?.code || ''}</strong>?
           </p>
         </div>
       </Modal>
 
-      {/* ── Reject Modal ─────────────────────────────────────────── */}
+      {/* ── Reject Modal (C1 / C2) ───────────────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+        title={
+          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+            Từ chối phê duyệt {rejectingLevel === 'C1' ? 'Cấp 1' : 'Cấp 2'}
+          </span>
+        }
         open={rejectModalOpen}
         onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
         footer={[
           <Button key="cancel" onClick={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
             style={outlineButtonStyle}>Hủy</Button>,
-          <Button key="reject" type="primary" danger onClick={confirmReject}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận từ chối</Button>,
+          <Button key="reject" type="primary" danger onClick={confirmReject} style={dangerButtonStyle}>Xác nhận từ chối</Button>,
         ]}
         width={480}
       >
         <div style={confirmModalBodyStyle}>
           <p style={{ marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho <strong>{rejectingRecord?.dikeRevetmentName}</strong>:
+            Vui lòng nhập lý do từ chối cho <strong>{rejectingRecord?.dikeRevetmentName || rejectingRecord?.code || ''}</strong>:
           </p>
           <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500}
-            styles={{ textarea: { borderRadius: radiusPill, minHeight: 40 } }} />
+            onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500} showCount
+            style={rejectReasonStyle} />
         </div>
       </Modal>
 
       {/* ── History Modal ────────────────────────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Lịch sử thay đổi</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Lịch sử thay đổi</span>}
         open={historyOpen}
         onCancel={() => { setHistoryOpen(false); setHistoryTarget(null); setHistoryRecords([]); }}
         footer={null}
@@ -1862,18 +1468,18 @@ export default function DikeRevetmentList() {
       >
         {historyTarget && (
           <p style={{ marginBottom: spaceFormField }}>
-            <strong>Đê/kè:</strong> {historyTarget.code || ''} — {historyTarget.dikeRevetmentName}
+            <strong>Đê kè:</strong> {historyTarget.code} — {historyTarget.dikeRevetmentName}
           </p>
         )}
         <Space style={{ marginTop: spaceMd, marginBottom: spaceMd }} wrap>
           <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)} style={{ width: 240, ...inputStyle }} />
           <DatePicker placeholder="Từ ngày" value={historyFrom ? dayjs(historyFrom) : null}
-            onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm:ss') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm:ss" showTime />
+            onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
           <DatePicker placeholder="Đến ngày" value={historyTo ? dayjs(historyTo) : null}
-            onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm:ss') : '')}
-            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm:ss" showTime />
+            onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
+            style={{ width: 170, ...selectStyle }} format="DD/MM/YYYY HH:mm" showTime />
         </Space>
         <div style={{ maxHeight: 500, overflowY: 'auto', marginTop: spaceFormField }}>
           {historyLoading ? (

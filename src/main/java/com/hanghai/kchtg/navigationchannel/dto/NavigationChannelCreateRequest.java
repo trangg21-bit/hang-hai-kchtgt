@@ -14,8 +14,10 @@ import java.util.UUID;
 /**
  * Create request for NavigationChannel (F-038).
  */
-
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class NavigationChannelCreateRequest {
     private RecordSecurityLevel securityLevel;
     @NotBlank(message = "tên không được để trống")
@@ -40,4 +42,11 @@ public class NavigationChannelCreateRequest {
     private GisGeometryType geometryType;
     private String coordinates;
     private UUID symbolId;
+
+    private String clearanceHeight;
+    private String registeredArea;
+    private String operatingHours;
+    private LocalDate recordedDate;
+    private Integer quantity;
+    private String loadCapacity;
 }

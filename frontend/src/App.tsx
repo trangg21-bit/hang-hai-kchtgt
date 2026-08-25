@@ -69,6 +69,8 @@ const RadarStationList = lazy(() => import('./pages/radarstation/RadarStationLis
 const RadarStationForm = lazy(() => import('./pages/radarstation/RadarStationForm'));
 const VtsSystemList = lazy(() => import('./pages/vtssystem/VtsSystemList'));
 const VtsSystemForm = lazy(() => import('./pages/vtssystem/VtsSystemForm'));
+const VtsOperationCenterList = lazy(() => import('./pages/vtsoperationcenter/VtsOperationCenterList'));
+const AisSystemList = lazy(() => import('./pages/aissystem/AisSystemList'));
 
 // M-005 & M-006: Biến động tài sản & Văn bản pháp lý
 const AssetIncreaseList = lazy(() => import('./pages/assetmovement/AssetIncreaseList'));
@@ -225,6 +227,12 @@ export default function App() {
                 <Route path="/vts-system" element={<PermissionGuard permission="vts:read"><VtsSystemList /></PermissionGuard>} />
                 <Route path="/vts-system/create" element={<PermissionGuard permission="vts:create"><VtsSystemForm /></PermissionGuard>} />
                 <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
+
+                {/* Trung tâm điều hành VTS */}
+                <Route path="/vts-operation-center" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterList /></PermissionGuard>} />
+
+                {/* Quản lý hệ thống AIS */}
+                <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />

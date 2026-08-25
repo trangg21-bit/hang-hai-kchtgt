@@ -13,7 +13,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class NavigationChannelResponse {
     private UUID id;
     private RecordSecurityLevel securityLevel;
@@ -24,7 +27,9 @@ public class NavigationChannelResponse {
     private String note;
     private String channelCode;
     private UUID seaportId;
+    private String seaportName;
     private UUID operatingUnitId;
+    private String operatingUnitName;
     private String location;
     private String detailedLocation;
     private String channelManagementStation;
@@ -49,6 +54,7 @@ public class NavigationChannelResponse {
     private LocalDateTime updatedAt;
     private UUID createdBy;
     private UUID updatedBy;
+    private String updatedByName;
     private List<NavigationChannelAttachmentResponse> attachments;
     private List<ApprovalResponse> approvalHistory;
     private List<HistoryEntry> history;
@@ -59,7 +65,6 @@ public class NavigationChannelResponse {
     private String coordinates;
     private UUID symbolId;
 
-    // New fields
     private String registeredArea;
     private String operatingHours;
     private LocalDate recordedDate;

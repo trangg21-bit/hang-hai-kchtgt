@@ -47,7 +47,13 @@ class FlywayMigrationTest {
 
     @BeforeAll
     static void startDatabase() throws Exception {
-        postgres = EmbeddedPostgres.builder().start();
+        new java.io.File("target/tmp").mkdirs();
+        postgres = EmbeddedPostgres.builder()
+                .setServerConfig("shared_buffers", "16MB")
+                .setServerConfig("work_mem", "2MB")
+                .setServerConfig("maintenance_work_mem", "16MB")
+                .setServerConfig("max_connections", "20")
+                .start();
         dataSource = postgres.getPostgresDatabase();
         seedUatShapedSchema();
     }

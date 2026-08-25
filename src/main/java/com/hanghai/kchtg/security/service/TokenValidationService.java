@@ -5,6 +5,7 @@ import com.hanghai.kchtg.security.repository.JwtSessionRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import org.springframework.cache.CacheManager;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,7 +17,9 @@ public class TokenValidationService {
     private final CacheManager cacheManager;
     private final JwtSessionRepository sessionRepository;
 
-    public TokenValidationService(JwtUtil jwtUtil, CacheManager cacheManager, JwtSessionRepository sessionRepository) {
+    public TokenValidationService(JwtUtil jwtUtil,
+                                  @Lazy CacheManager cacheManager,
+                                  JwtSessionRepository sessionRepository) {
         this.jwtUtil = jwtUtil;
         this.cacheManager = cacheManager;
         this.sessionRepository = sessionRepository;

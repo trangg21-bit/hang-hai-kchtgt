@@ -10,7 +10,17 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.UUID;
 
+import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
+import java.util.List;
+
 public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
+
+    @Query("SELECT new com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse(s.id, s.name, s.code, s.image) " +
+           "FROM MapSymbol s " +
+           "WHERE s.status = com.hanghai.kchtg.mapicon.entity.MapSymbolStatus.ACTIVE " +
+           "AND s.deletedAt IS NULL " +
+           "ORDER BY s.name ASC")
+    List<MapSymbolOptionResponse> findOptions();
 
     @Query("SELECT s FROM MapSymbol s WHERE " +
            "(CAST(:search AS string) IS NULL OR " +

@@ -29,7 +29,9 @@ export const ApprovalStatus = {
   APPROVED_LEVEL2: 'APPROVED_LEVEL2',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
-  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  ARCHIVED: 'ARCHIVED',
+  REJECTED_LEVEL1: 'REJECTED_LEVEL1',
+  REJECTED_LEVEL2: 'REJECTED_LEVEL2',
 } as const;
 
 export type ApprovalStatus = typeof ApprovalStatus[keyof typeof ApprovalStatus];
@@ -146,12 +148,15 @@ export interface ApprovalRequest {
 }
 
 export interface HistoryEntry {
-  id: string;
+  id?: string | number;
   approvalLevel?: number | string;
-  status: string;
-  approvedBy: string;
+  status?: string;
+  approvedBy?: string;
+  approver?: string;
+  approverName?: string;
   orgUnitName?: string;
-  approvedDate: string;
+  approvedDate?: string;
+  approvalDate?: string;
   reason?: string;
   changedField?: string;
   previousValue?: string;
@@ -183,9 +188,43 @@ export const CONDITION_STATUS_OPTIONS = [
   { value: ConditionStatus.UNDER_CONSTRUCTION, label: 'Đang xây dựng' },
 ];
 
-export const CONDITION_STATUS_MAP: Record<ConditionStatus, string> = {
-  [ConditionStatus.OPERATIONAL]: 'Đang hoạt động',
-  [ConditionStatus.STOPPED]: 'Dừng hoạt động',
-  [ConditionStatus.MAINTENANCE]: 'Đang bảo trì',
-  [ConditionStatus.UNDER_CONSTRUCTION]: 'Đang xây dựng',
+export const CONDITION_STATUS_MAP: Record<string, string> = {
+  OPERATIONAL: 'Đang hoạt động',
+  STOPPED: 'Dừng hoạt động',
+  MAINTENANCE: 'Đang bảo trì',
+  UNDER_CONSTRUCTION: 'Đang xây dựng',
 };
+
+export const APPROVAL_STATUS_MAP: Record<string, string> = {
+  DRAFT: 'Lưu tạm',
+  PROPOSED: 'Chờ Cảng vụ duyệt',
+  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+  APPROVED_LEVEL1: 'Chờ Cục duyệt',
+  APPROVED_LEVEL2: 'Đã duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Từ chối',
+  ARCHIVED: 'Lưu trữ',
+  REJECTED_LEVEL1: 'Cảng vụ trả về',
+  REJECTED_LEVEL2: 'Cục trả về',
+};
+
+export const CONDITION_STATUS_TAG_MAP: Record<string, { label: string; color: string }> = {
+  OPERATIONAL: { label: 'Đang hoạt động', color: 'success' },
+  STOPPED: { label: 'Dừng hoạt động', color: 'default' },
+  MAINTENANCE: { label: 'Đang bảo trì', color: 'warning' },
+  UNDER_CONSTRUCTION: { label: 'Đang xây dựng', color: 'processing' },
+};
+
+export const APPROVAL_STATUS_TAG_MAP: Record<string, { label: string; color: string }> = {
+  DRAFT: { label: 'Lưu tạm', color: 'default' },
+  PROPOSED: { label: 'Chờ Cảng vụ duyệt', color: 'processing' },
+  PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: 'processing' },
+  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: 'cyan' },
+  APPROVED_LEVEL2: { label: 'Đã duyệt', color: 'success' },
+  APPROVED: { label: 'Đã duyệt', color: 'success' },
+  REJECTED: { label: 'Từ chối', color: 'error' },
+  ARCHIVED: { label: 'Lưu trữ', color: 'default' },
+  REJECTED_LEVEL1: { label: 'Cảng vụ trả về', color: 'error' },
+  REJECTED_LEVEL2: { label: 'Cục trả về', color: 'error' },
+};
+

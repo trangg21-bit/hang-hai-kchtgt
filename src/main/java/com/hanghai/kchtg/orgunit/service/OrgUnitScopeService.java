@@ -90,6 +90,10 @@ public class OrgUnitScopeService {
             return new Scope(true, List.of());
         }
 
+        public static Scope all() {
+            return allScope();
+        }
+
         public static Scope restricted(List<UUID> ids) {
             return new Scope(false, List.copyOf(ids));
         }
