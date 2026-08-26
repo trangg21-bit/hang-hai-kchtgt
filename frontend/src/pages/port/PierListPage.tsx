@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { pierCRUD, pierApproval, berthCRUD, portCRUD } from '../../services/portService';
+import { trangThaiPheDuyetBadge } from '../../services/port/schema';
 import type { Pier } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';

@@ -40,6 +40,15 @@ public class BuoyStationController {
         return ResponseEntity.ok(ApiResponse.success(service.findAll()));
     }
 
+    @GetMapping("/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'buoystation:create') or @auth.check(authentication, 'data:create')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateCode(
+            @RequestParam(required = false) UUID portId) {
+        String code = service.generateCode(portId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Sinh mã nhà trạm phao thành công", Map.of("code", code)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'data:read')")
     public ResponseEntity<ApiResponse<BuoyStationResponse>> findById(@PathVariable UUID id) {

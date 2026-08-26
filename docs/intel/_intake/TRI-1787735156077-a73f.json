@@ -1,0 +1,82 @@
+{
+  "triage_id": "TRI-1787735156077-a73f",
+  "created_at": 1787735156077,
+  "request_summary": "Fix compile errors (duplicate field/method + missing symbol) trong 3 ApprovalService — xóa khối legacy append (viết ApprovalLog, bảng đã drop V20260825162500) giữ luồng 2 cấp qua InfrastructureApprovalService. Escalation từ C1 do vượt LOC budget khi xóa 264 dòng code chết.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "API phê duyệt KCHT cảng: /api/v1/dry-ports/.../approve + approveC1/approveC2 (DryPortController:167, PierController:152, BerthController:149)",
+  "blast_radius": 3,
+  "done_oracle": "mvn compile không còn lỗi biên dịch; controller vẫn gọi được đúng signature approve/reject hiện có; hành vi phê duyệt 2 cấp không đổi.",
+  "verification_commands": [
+    {
+      "command": "mvn compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+    "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+    "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/DryPortApprovalService.java",
+      "line": 115,
+      "quote": "    public void approve(UUID id, String userId, String reason) {",
+      "source_hash": "5a9961b53c260fc9c90e3746464c1c07b7ff32decdd4b25ed50137b8d54009a6",
+      "quote_hash": "93e14294558e92fcb0fef1a2ec9d0391b3cef4cc677b43452dfed2cd7bab20e4",
+      "note": "Method deprecated approve 3 tham số còn giữ — DryPortController:167 gọi; sau khi xóa khối legacy trùng signature thì đây là method duy nhất tồn tại"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/PierApprovalService.java",
+      "line": 108,
+      "quote": "    public void approve(UUID id, String userId, String cap, String reason) {",
+      "source_hash": "9dd9b7a8d5787796a28202b3703e456c19c811c0568f7f6192f0524a76977e67",
+      "quote_hash": "d4dce9430ad1bdcc7a6bdc8cd65f37e5517273aae9f986bc0a76bd31cab5d220",
+      "note": "Method deprecated approve 4 tham số còn giữ — PierController:152 gọi; bản legacy trùng signature đã bị xóa"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/BerthApprovalService.java",
+      "line": 101,
+      "quote": "    public void approve(UUID id, String userId, String cap, String reason) {",
+      "source_hash": "e08a6bb38fece09a087c07912a649b38800c86617e27ee716f35b991bc4f5d17",
+      "quote_hash": "d4dce9430ad1bdcc7a6bdc8cd65f37e5517273aae9f986bc0a76bd31cab5d220",
+      "note": "Method deprecated approve 4 tham số còn giữ — BerthController:149 gọi; bản legacy trùng signature đã bị xóa"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1787735043488-af1b",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "97a62a2e50b49584125f39dc663894b8a59ad2ac",
+    "dirty": true,
+    "captured_at": 1787735156318
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

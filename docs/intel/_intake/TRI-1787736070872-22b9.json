@@ -1,0 +1,158 @@
+{
+  "triage_id": "TRI-1787736070872-22b9",
+  "created_at": 1787736070872,
+  "request_summary": "Sửa lỗi FE còn lại ở 7 màn cảng biển/bến/cầu/cạn/neo đậu/nhà trạm/phao tiêu: 5 lỗi thiếu import gây ReferenceError runtime (drawerFooterStyle x2, fontWeightMedium, trangThaiPheDuyetBadge, setFilterStatus) + ~50 lỗi type (thiếu field trên Pier/CangBienResponse, ddToDms prop quá hẹp, sort comparator trả sai kiểu, permissionStore circular-any gây TS7006 hàng loạt, GiayTo undefined)",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/app/document/DocumentUploadModal.tsx",
+      "frontend/src/app/document/types.ts",
+      "frontend/src/components/gis/GisLocationSelector.tsx",
+      "frontend/src/components/org-unit/OrgUnitTreeSelect.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/DryPortDetailContent.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy/BuoyDetailContent.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/port/PortApprovePage.tsx",
+      "frontend/src/services/port/PortCreatePage.tsx",
+      "frontend/src/services/port/PortDetailPage.tsx",
+      "frontend/src/services/port/PortFormContent.tsx",
+      "frontend/src/services/port/PortListPage.tsx",
+      "frontend/src/services/port/types.ts",
+      "frontend/src/store/permissionStore.ts",
+      "frontend/src/types/port.ts"
+    ],
+    "impact_files": [
+      "frontend/src/app/document/DocumentUploadModal.tsx",
+      "frontend/src/app/document/types.ts",
+      "frontend/src/components/gis/GisLocationSelector.tsx",
+      "frontend/src/components/org-unit/OrgUnitTreeSelect.tsx",
+      "frontend/src/pages/port/BerthForm.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/port/DryPortDetailContent.tsx",
+      "frontend/src/pages/port/DryPortListPage.tsx",
+      "frontend/src/pages/port/PierDetailContent.tsx",
+      "frontend/src/pages/port/PierForm.tsx",
+      "frontend/src/pages/port/PierListPage.tsx",
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy/BuoyDetailContent.tsx",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/port/PortApprovePage.tsx",
+      "frontend/src/services/port/PortCreatePage.tsx",
+      "frontend/src/services/port/PortDetailPage.tsx",
+      "frontend/src/services/port/PortFormContent.tsx",
+      "frontend/src/services/port/PortListPage.tsx",
+      "frontend/src/services/port/types.ts",
+      "frontend/src/store/permissionStore.ts",
+      "frontend/src/types/port.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": true,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "frontend/src/store/permissionStore.ts"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: security:frontend/src/store/permissionStore.ts — floors at C3 regardless of size (22 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "7 màn hình FE: Cảng biển, Bến cảng, Cầu cảng, Cảng cạn, Khu neo đậu, Nhà trạm phao tiêu, Phao tiêu",
+  "blast_radius": 22,
+  "done_oracle": "tsc scoped (tsconfig.port-check.json) báo 0 lỗi cho 7 module; mở 7 màn trên dev server localhost:3001 không còn ReferenceError (thiếu import token/badge/setter)",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit -p \"C:\\Users\\manhhv1\\AppData\\Local\\Temp\\ai-studio\\tsconfig.port-check.json\" --pretty false",
+      "cwd": "C:/Users/manhhv1/Desktop/Source/bxd.hh.kcht/frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/port/BerthListPage.tsx",
+      "line": 1093,
+      "quote": "<div style={drawerFooterStyle}>",
+      "source_hash": "6c406550e66bf07468484d41684cbfc63f2f79e2dfa4255de0d836f16e058c90",
+      "quote_hash": "246595bd0e0e5a60406b777c05fc94e57cea2e784c955465c98395f34e21cac4",
+      "note": "drawerFooterStyle dùng trong footer Drawer nhưng thiếu import từ tokens — runtime ReferenceError"
+    },
+    {
+      "file": "frontend/src/pages/port/PierListPage.tsx",
+      "line": 689,
+      "quote": "const badge = v ? trangThaiPheDuyetBadge(v) : null;",
+      "source_hash": "d77f5e3298a910666b98c3ec77f4a3a9caea4984830d0a0ef4624e58be7227b5",
+      "quote_hash": "51ca3a7ce1dda991cf4720b0994202f075a39249e471d643a65fa3627ece4271",
+      "note": "trangThaiPheDuyetBadge dùng nhưng thiếu import — runtime ReferenceError khi render cột Trạng thái"
+    },
+    {
+      "file": "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "line": 478,
+      "quote": "setFilterStatus(undefined); setFilterPortId(undefined);",
+      "source_hash": "52665a1d01712c75c2b03f588df5455415e77063e2d41fafe277acbf76d74053",
+      "quote_hash": "3d54b1e96e4595d245db63b67d57ededc8aceb3d84fe936702963a5b996bfbb9",
+      "note": "setter setFilterStatus không tồn tại (state đã đổi tên) — runtime ReferenceError khi reset filter"
+    },
+    {
+      "file": "frontend/src/store/permissionStore.ts",
+      "line": 96,
+      "quote": "export const usePermissionStore = create<PermissionState>((set, get) => ({",
+      "source_hash": "be2d02c9654f0f8edb3684ac51b817af9937feb94e7fd07ba0979049953b9ed0",
+      "quote_hash": "c9a08181fe8a2eda6ff26c778a91bac6a7081906fffec66a6acda2ec43dd6ccc",
+      "note": "circular any inference — gây TS7006 implicit any ở selector của 6 page khác"
+    },
+    {
+      "file": "frontend/src/pages/port/PierDetailContent.tsx",
+      "line": 24,
+      "quote": "ddToDms: (dd: number) => { d: number; m: number; s: number };",
+      "source_hash": "6d63fd9c298eb7173f8291d16a411703fb59a3e75a28f2e9dd889c47cacf426b",
+      "quote_hash": "e7b7c1d6c6f1c9fbd469189c6ad52af727f4d754a2272d6b851cccbf8dc9948b",
+      "note": "prop type quá hẹp — helper thực tế nhận null/undefined và trả nullable, gây TS2322 ở 5 file"
+    },
+    {
+      "file": "frontend/src/pages/port/PierForm.tsx",
+      "line": 140,
+      "quote": "coordinateSystem: d.geometryType ? d.coordinateSystem : undefined, displayRule: d.displayRule });",
+      "source_hash": "0e66b377e5c2103f48080142c887fee145489e3dd7fc6c8d8548ec9d291e1717",
+      "quote_hash": "f24761e88d1f5bd30d615dce139325744408766fac37680a7eddca1ce56f6352",
+      "note": "Pier type thiếu coordinateSystem/displayRule dù backend trả về"
+    },
+    {
+      "file": "frontend/src/app/document/DocumentUploadModal.tsx",
+      "line": 237,
+      "quote": "<Table<GiayTo>",
+      "source_hash": "046cb7a247ad297152caba454b71fa0e7574ab0bd7930d6edf9b8bd57b50fb7f",
+      "quote_hash": "b88f173071fc5be0016482c8ced075ecd4db987569c91d623b3cfa7b54e96db0",
+      "note": "type GiayTo không tồn tại trong toàn src — runtime ReferenceError khi render danh sách tài liệu"
+    },
+    {
+      "file": "frontend/src/pages/port/PierListPage.tsx",
+      "line": 230,
+      "quote": "const appliedFiltersRef = useRef<{",
+      "source_hash": "d77f5e3298a910666b98c3ec77f4a3a9caea4984830d0a0ef4624e58be7227b5",
+      "quote_hash": "eb3e8aeecab6b0c5db848f8efefd863700f9c2602d323c1f51d735ceb7ea440c",
+      "note": "type inline của ref thiếu các field lọc mới (waterwayId, constructionGrade, structureType, operationalFunction, updatedFrom, updatedTo) — TS2339/TS2353"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "97a62a2e50b49584125f39dc663894b8a59ad2ac",
+    "dirty": true,
+    "captured_at": 1787736071114
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

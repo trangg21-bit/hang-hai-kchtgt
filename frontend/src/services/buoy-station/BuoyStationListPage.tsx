@@ -95,6 +95,7 @@ import {
   historyNewValueStyle,
   historyArrowStyle,
   historyBadgeStyle,
+  drawerFooterStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
@@ -475,7 +476,7 @@ export default function BuoyStationListPage() {
     setFilterName('');
     setFilterCode('');
     setFilterProvince(undefined);
-    setFilterStatus(undefined); setFilterPortId(undefined);
+    setFilterPortId(undefined);
     setFilterWaterwayId(undefined); setFilterCondition(undefined);
     setFilterClassification(undefined); setFilterClassificationBuoy(undefined); setFilterClassificationMark(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
