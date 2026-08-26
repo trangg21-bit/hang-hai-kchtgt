@@ -513,7 +513,7 @@ export default function RadarStationList() {
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
     if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file'); return false; }
-    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file }]);
+    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file as any }]);
     return false;
   }, [uploadedFiles]);
 

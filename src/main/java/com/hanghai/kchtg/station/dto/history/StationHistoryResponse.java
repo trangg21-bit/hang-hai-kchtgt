@@ -24,9 +24,8 @@ public class StationHistoryResponse {
     private String changedField;
     private String previousValue;
     private String newValue;
-    private Long changedBy;
+    private UUID changedBy;
     private String changedByName;
     private LocalDateTime changedAt;
     private String reason;
-    private String diffData;
 }

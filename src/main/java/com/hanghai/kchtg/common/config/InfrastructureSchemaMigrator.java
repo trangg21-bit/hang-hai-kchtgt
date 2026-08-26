@@ -61,10 +61,36 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS approved_date_level2 " + dateType + ";");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS approver_level2 UUID;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS rejection_reason TEXT;");
+            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS submitted_at " + dateType + ";");
+            jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS submitted_by UUID;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;");
             jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS deleted_by UUID;");
+            coerceApprovedByToUuid(table);
         } catch (Exception e) {
             log.warn("Could not patch columns for table {}: {}", table, e.getMessage());
+        }
+    }
+
+    /**
+     * Cột {@code approved_by} ở một số bảng cũ còn kiểu VARCHAR trong khi entity đã khai UUID —
+     * lệch kiểu này khiến Postgres báo "operator does not exist: character varying = uuid".
+     * Chuyển về UUID, giá trị không phải UUID hợp lệ (ví dụ "1" của code cũ) đặt về NULL.
+     */
+    private void coerceApprovedByToUuid(String table) {
+        try {
+            jdbcTemplate.execute(
+                    "DO $$ BEGIN " +
+                    "  IF EXISTS (SELECT 1 FROM information_schema.columns " +
+                    "             WHERE table_name = '" + table + "' AND column_name = 'approved_by' " +
+                    "               AND udt_name <> 'uuid') THEN " +
+                    "    ALTER TABLE " + table + " ALTER COLUMN approved_by TYPE UUID USING (" +
+                    "      CASE WHEN approved_by::text ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' " +
+                    "           THEN approved_by::text::uuid ELSE NULL END); " +
+                    "  END IF; " +
+                    "END $$;");
+        } catch (Exception e) {
+            // H2 và các CSDL không hỗ trợ DO block: bỏ qua, schema ở đó đã đúng kiểu
+            log.debug("Skip approved_by type coercion for {}: {}", table, e.getMessage());
         }
     }
 

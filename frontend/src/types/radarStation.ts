@@ -83,6 +83,7 @@ export interface RadarStationResponse {
   spatialId?: string;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
+  mapIcon?: string;
 }
 
 export interface RadarStationOptionResponse {
@@ -116,6 +117,7 @@ export interface CreateRadarStationRequest {
   latitude?: number;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
+  mapIcon?: string;
   action?: 'draft' | 'submit';
 }
 

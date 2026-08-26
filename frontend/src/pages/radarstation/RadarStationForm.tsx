@@ -96,10 +96,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
 
-  const handleBeforeUpload = useCallback((file: File): false => {
+  const handleBeforeUpload = useCallback((file: any): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file đính kèm'); return false; }
-    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file }]);
+    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file as any }]);
     return false;
   }, [uploadedFiles]);
 
@@ -453,7 +453,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
             <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
             <Descriptions.Item label="Tình trạng">
-              {record.conditionStatus ? CONDITION_STATUS_MAP[record.conditionStatus] || record.conditionStatus : '—'}
+              {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
             </Descriptions.Item>
             <Descriptions.Item label="Loại trạm">{record.stationType || '—'}</Descriptions.Item>
             <Descriptions.Item label="Chiều cao tháp radar (m)">
