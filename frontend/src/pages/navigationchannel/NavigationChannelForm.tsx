@@ -52,9 +52,11 @@ import {
   formRowGutter,
   primaryButtonStyle,
   outlineButtonStyle,
+  spaceLg,
   spaceMd,
   spaceSm,
   spaceXs,
+  textPrimary,
   textSecondary,
   textTertiary,
   fontWeightBold,
@@ -597,13 +599,13 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     const fmtDateTime = (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—');
     const fmtDate = (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
     return (
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isModalMode ? 0 : '16px 24px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isModalMode ? 0 : `${spaceLg}px ${spaceLg}px` }}>
         {!isModalMode && <Breadcrumb items={breadcrumbs.map((b) => ({ title: <span>{b.title}</span> }))} style={{ marginBottom: 16 }} />}
         <Spin spinning={isLoading}>
           {formError ? (
             <Card>
               <Empty description={formError} style={{ marginTop: 24 }} />
-              <Button onClick={() => (isModalMode ? onCancel?.() : navigate('/navigation-channel'))} style={{ marginTop: 16, ...outlineButtonStyle }}>
+              <Button onClick={() => (isModalMode ? onCancel?.() : navigate('/navigation-channel'))} style={{ marginTop: spaceLg, ...outlineButtonStyle }}>
                 Quay lại
               </Button>
             </Card>
@@ -1060,7 +1062,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         width={1080}
         footer={null}
         title={
-          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
+          <span style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
             {isCreateMode ? 'Tạo mới Luồng hàng hải' : isEditMode ? 'Chỉnh sửa Luồng hàng hải' : 'Chi tiết Luồng hàng hải'}
           </span>
         }
