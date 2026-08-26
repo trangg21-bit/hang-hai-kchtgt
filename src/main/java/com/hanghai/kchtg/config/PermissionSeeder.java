@@ -270,6 +270,10 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "cctv", "update", "Cập nhật hệ thống CCTV", "Chỉnh sửa thông tin hệ thống CCTV");
                 seedPermission(definitions, "cctv", "delete", "Xóa hệ thống CCTV", "Xóa hệ thống CCTV khỏi hệ thống");
                 seedPermission(definitions, "cctv", "approve", "Phê duyệt hệ thống CCTV", "Phê duyệt dữ liệu hệ thống CCTV");
+                seedPermission(definitions, "cctv", "approvec1", "Phê duyệt C1 hệ thống CCTV",
+                                "Phê duyệt cấp 1 hệ thống CCTV");
+                seedPermission(definitions, "cctv", "approvec2", "Phê duyệt C2 hệ thống CCTV",
+                                "Phê duyệt cấp 2 hệ thống CCTV");
                 seedPermission(definitions, "cctv", "history", "Lịch sử phê duyệt CCTV",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống CCTV");
 

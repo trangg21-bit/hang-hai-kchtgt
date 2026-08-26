@@ -7,12 +7,11 @@ import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.gis.search.dto.GisObjectType;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.search.dto.KchtGisSearchPage;
 import com.hanghai.kchtg.gis.search.dto.KchtGisSearchResult;
-import com.hanghai.kchtg.gis.search.dto.TinhThanhPho;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
@@ -37,12 +36,41 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class KchtGis155Service {
+
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final Pattern WKT_COORDINATE_PATTERN = Pattern.compile(
+            "(-?\\d+(?:\\.\\d+)?)\\s+(-?\\d+(?:\\.\\d+)?)");
+    private static final List<InfrastructureType> SEARCHABLE_TYPES = List.of(
+            InfrastructureType.SEAPORT,
+            InfrastructureType.PORT_TERMINAL,
+            InfrastructureType.PIER,
+            InfrastructureType.WATER_AREA,
+            InfrastructureType.BUOY_BERTH,
+            InfrastructureType.ANCHORAGE_AREA,
+            InfrastructureType.TRANSSHIPMENT_AREA,
+            InfrastructureType.STORM_SHELTER_AREA,
+            InfrastructureType.SHIP_REPAIR_FACILITY,
+            InfrastructureType.LIGHTHOUSE,
+            InfrastructureType.BUOY_STATION,
+            InfrastructureType.BUOY,
+            InfrastructureType.VTS_SYSTEM,
+            InfrastructureType.RADAR_STATION_LEGACY,
+            InfrastructureType.DIKE_REVETMENT,
+            InfrastructureType.NAVIGATION_CHANNEL,
+            InfrastructureType.COASTAL_RADIO_STATION,
+            InfrastructureType.INMARSAT_STATION,
+            InfrastructureType.COSPAS_SARSAT_STATION,
+            InfrastructureType.LRIT_STATION,
+            InfrastructureType.HANOI_STATION,
+            InfrastructureType.DRY_PORT);
 
     private final PortRepository portRepository;
     private final BerthRepository berthRepository;
@@ -262,6 +290,56 @@ public class KchtGis155Service {
         }
     }
 
+    private UUID firstNonNull(UUID... values) {
+        for (UUID value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private boolean isApproved(ApprovalStatus status) {
+        return status == ApprovalStatus.APPROVED || status == ApprovalStatus.APPROVED_LEVEL2;
+    }
+
+    static double[] representativeCoordinate(String wkt, String geometryType) {
+        if (wkt == null || wkt.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            Matcher matcher = WKT_COORDINATE_PATTERN.matcher(wkt);
+            List<double[]> coordinates = new ArrayList<>();
+            while (matcher.find()) {
+                coordinates.add(new double[] {
+                        Double.parseDouble(matcher.group(2)),
+                        Double.parseDouble(matcher.group(1))
+                });
+            }
+            if (coordinates.isEmpty()) {
+                return null;
+            }
+            if (!"POLYGON".equalsIgnoreCase(geometryType)) {
+                return coordinates.get(0);
+            }
+            double minLat = coordinates.stream().mapToDouble(point -> point[0]).min().orElse(coordinates.get(0)[0]);
+            double maxLat = coordinates.stream().mapToDouble(point -> point[0]).max().orElse(coordinates.get(0)[0]);
+            double minLon = coordinates.stream().mapToDouble(point -> point[1]).min().orElse(coordinates.get(0)[1]);
+            double maxLon = coordinates.stream().mapToDouble(point -> point[1]).max().orElse(coordinates.get(0)[1]);
+            return new double[] { (minLat + maxLat) / 2, (minLon + maxLon) / 2 };
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private void enrichRepresentativeCoordinate(KchtGisSearchResult result) {
+        double[] coordinate = representativeCoordinate(result.getCoordinates(), result.getGeometryType());
+        if (coordinate != null) {
+            result.setLatitude(coordinate[0]);
+            result.setLongitude(coordinate[1]);
+        }
+    }
+
     private void populateSpatialAndFilter(List<KchtGisSearchResult> results, KchtGisSearchResult result,
             UUID khongGianId, GisObjectType objectType, GisObjectType fallbackType) {
         if (khongGianId != null) {
@@ -271,37 +349,16 @@ public class KchtGis155Service {
                 String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
                 result.setGeometryType(geomTypeStr);
                 result.setCoordinates(spatial.getCoordinates());
+                enrichRepresentativeCoordinate(result);
 
-                double[] coords = parseFirstCoordinateFromWkt(spatial.getCoordinates());
-                if (coords != null) {
-                }
-
-                if (objectType != null && geomTypeStr != null) {
-                    if (objectType == GisObjectType.POINT && !"POINT".equalsIgnoreCase(geomTypeStr)) {
-                        return;
-                    }
-                    if (objectType == GisObjectType.LINE && !"LINE".equalsIgnoreCase(geomTypeStr)) {
-                        return;
-                    }
-                    if (objectType == GisObjectType.POLYGON && !"POLYGON".equalsIgnoreCase(geomTypeStr)) {
-                        return;
-                    }
+                if (objectType != null && !objectType.name().equalsIgnoreCase(geomTypeStr)) {
+                    return;
                 }
             } else if (objectType != null) {
-                if (objectType != fallbackType) {
-                    return;
-                }
-                result.setGeometryType(fallbackType.name());
-            } else {
-                result.setGeometryType(fallbackType.name());
+                return;
             }
-        } else {
-            if (objectType != null) {
-                if (objectType != fallbackType) {
-                    return;
-                }
-            }
-            result.setGeometryType(fallbackType.name());
+        } else if (objectType != null) {
+            return;
         }
         results.add(result);
     }
@@ -315,75 +372,60 @@ public class KchtGis155Service {
                 String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
                 result.setGeometryType(geomTypeStr);
                 result.setCoordinates(spatial.getCoordinates());
+                enrichRepresentativeCoordinate(result);
 
-                double[] coords = parseFirstCoordinateFromWkt(spatial.getCoordinates());
-                if (coords != null) {
-                }
-
-                if (objectType != null && geomTypeStr != null) {
-                    if (objectType == GisObjectType.POINT && !"POINT".equalsIgnoreCase(geomTypeStr)) {
-                        return;
-                    }
-                    if (objectType == GisObjectType.LINE && !"LINE".equalsIgnoreCase(geomTypeStr)) {
-                        return;
-                    }
-                    if (objectType == GisObjectType.POLYGON && !"POLYGON".equalsIgnoreCase(geomTypeStr)) {
-                        return;
-                    }
+                if (objectType != null && !objectType.name().equalsIgnoreCase(geomTypeStr)) {
+                    return;
                 }
             } else if (objectType != null) {
-                if (objectType != fallbackType) {
-                    return;
-                }
-                result.setGeometryType(fallbackType.name());
-            } else {
-                result.setGeometryType(fallbackType.name());
+                return;
             }
-        } else {
-            if (objectType != null) {
-                if (objectType != fallbackType) {
-                    return;
-                }
-            }
-            result.setGeometryType(fallbackType.name());
+        } else if (objectType != null) {
+            return;
         }
         results.add(result);
     }
 
-    public List<KchtGisSearchResult> search(
+    public KchtGisSearchPage search(
             UUID rawOrgUnitId,
             List<InfrastructureType> kchtTypes,
-            TinhThanhPho tinhThanhPho,
+            Integer provinceId,
+            String province,
             String search,
-            GisObjectType objectType) {
+            GisObjectType objectType,
+            int requestedPage,
+            int requestedSize) {
 
         List<KchtGisSearchResult> results = new ArrayList<>();
         Map<String, UUID> spatialIdMap = new HashMap<>();
         List<InfrastructureType> types;
         if (kchtTypes == null || kchtTypes.isEmpty()) {
-            types = Arrays.asList(InfrastructureType.values());
+            types = SEARCHABLE_TYPES;
         } else {
-            types = kchtTypes.stream().filter(t -> t != null).collect(Collectors.toList());
+            types = kchtTypes.stream()
+                    .filter(Objects::nonNull)
+                    .filter(SEARCHABLE_TYPES::contains)
+                    .distinct()
+                    .collect(Collectors.toList());
             if (types.isEmpty()) {
-                types = Arrays.asList(InfrastructureType.values());
+                return KchtGisSearchPage.builder()
+                        .content(List.of())
+                        .totalElements(0)
+                        .page(Math.max(0, requestedPage))
+                        .size(Math.min(MAX_PAGE_SIZE, Math.max(1, requestedSize)))
+                        .build();
             }
         }
         String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
-        String tinhThanhStr = (tinhThanhPho != null) ? tinhThanhPho.getDisplayName() : null;
-        String provinceLocal = null; // Temporary fix for provinceId
+        String provinceLocal = null;
 
         Map<UUID, String> orgNameMap = new HashMap<>(orgUnitCacheService.getDirectory());
+        OrgUnitScopeService.Scope userScope = orgUnitScopeService.currentUserScope();
+        Set<UUID> effectiveOrgUnitIds = resolveEffectiveOrgUnitIds(rawOrgUnitId, userScope);
 
-        boolean isRootOrg = false;
-        if (rawOrgUnitId == null) {
-            isRootOrg = true;
-        } else {
-            String orgName = orgNameMap.getOrDefault(rawOrgUnitId, "");
-            if (orgName.contains("Cục Hàng hải Việt Nam")) {
-                isRootOrg = true;
-            }
-        }
-        final UUID orgUnitId = isRootOrg ? null : rawOrgUnitId;
+        // Các repository dùng null để lấy toàn bộ dữ liệu trong Hibernate DataScope hiện tại.
+        // Bộ lọc đơn vị người dùng chọn được áp dụng đồng nhất sau khi hợp nhất nhiều loại entity.
+        final UUID orgUnitId = null;
 
         for (InfrastructureType type : types) {
             long tStart = System.currentTimeMillis();
@@ -411,7 +453,9 @@ public class KchtGis155Service {
                                 .id(cb.getId() != null ? cb.getId().toString() : null)
                                 .name(cb.getPortName())
                                 .code(cb.getPortCode())
+                                .orgUnitId(cb.getOrgUnitId())
                                 .orgName(getOrgName(cb.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Cảng biển")
                                 .location(cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "")
                                 .diaChiChiTiet("")
@@ -457,8 +501,11 @@ public class KchtGis155Service {
                                 .id(bc.getId() != null ? bc.getId().toString() : null)
                                 .name(bc.getBerthName())
                                 .code(bc.getBerthCode())
+                                .orgUnitId(bc.getOrgUnitId())
                                 .orgName(getOrgName(bc.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Bến cảng")
+                                .provinceId(bc.getProvinceId())
                                 .location(parentProvince)
                                 .diaChiChiTiet(bc.getWaterway() != null ? bc.getWaterway() : "")
                                 .build();
@@ -525,7 +572,9 @@ public class KchtGis155Service {
                                 .id(cc.getId() != null ? cc.getId().toString() : null)
                                 .name(cc.getPierName())
                                 .code(cc.getPierCode())
+                                .orgUnitId(cc.getOrgUnitId())
                                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Cầu cảng")
                                 .location(parentProvince)
                                 .diaChiChiTiet(
@@ -564,9 +613,12 @@ public class KchtGis155Service {
                                 .id(cc.getId() != null ? cc.getId().toString() : null)
                                 .name(cc.getDryPortName())
                                 .code(cc.getDryPortCode())
+                                .orgUnitId(cc.getOrgUnitId())
                                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Cảng cạn")
-                                .location(cc.getProvinceId() != null ? String.valueOf(cc.getProvinceId()) : "")
+                                .provinceId(cc.getProvinceId())
+                                .location("")
                                 .diaChiChiTiet("")
                                 .build();
                         if (objectType != null) {
@@ -613,8 +665,11 @@ public class KchtGis155Service {
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
                                 .name(vn.getWaterZoneName())
                                 .code(vn.getWaterZoneCode())
+                                .orgUnitId(vn.getOrgUnitId())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Vùng nước")
+                                .provinceId(vn.getProvinceId())
                                 .location(parentProvince)
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .build();
@@ -654,11 +709,14 @@ public class KchtGis155Service {
                                 .name(nc.getChannelName() != null && !nc.getChannelName().isEmpty()
                                         ? nc.getChannelName()
                                         : "Luồng hàng hải")
-                                .code("NC_" + nc.getId())
+                                .code(nc.getChannelCode())
+                                .orgUnitId(nc.getOrgUnitId())
                                 .orgName(getOrgName(nc.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Luồng hàng hải")
                                 .location("")
-                                .diaChiChiTiet(nc.getNotes() != null ? nc.getNotes() : "")
+                                .diaChiChiTiet(nc.getDetailedLocation() != null ? nc.getDetailedLocation()
+                                        : (nc.getNotes() != null ? nc.getNotes() : ""))
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, nc.getSpatialId(), objectType,
@@ -694,12 +752,13 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(dk.getId()))
-                                .name(dk.getDikeRevetmentName() != null && !dk.getDikeRevetmentName().isEmpty()
-                                        ? dk.getDikeRevetmentName()
-                                        : "Đê kè")
-                                .code("DIR_" + dk.getId())
+                                .name(dk.getDikeRevetmentName())
+                                .code(dk.getCode())
+                                .orgUnitId(dk.getOrgUnitId())
                                 .orgName(getOrgName(dk.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Đê kè")
+                                .provinceId(dk.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet(dk.getLocation() != null ? dk.getLocation() : "")
                                 .build();
@@ -718,7 +777,7 @@ public class KchtGis155Service {
                 case SHIP_REPAIR_FACILITY:
                     String csSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
                     List<ShipRepairFacility> csList = shipRepairFacilityRepository.searchFiltered(orgUnitId,
-                            csSearchParam);
+                            csSearchParam).stream().filter(entity -> isApproved(entity.getApprovalStatus())).toList();
                     Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
                     if (!csList.isEmpty()) {
                         List<UUID> csSpatialIds = csList.stream().map(ShipRepairFacility::getSpatialId)
@@ -738,10 +797,12 @@ public class KchtGis155Service {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(cs.getId()))
                                 .name(cs.getFacilityName())
-                                .code("COSO_" + cs.getId())
+                                .orgUnitId(cs.getOrgUnitId())
                                 .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Cơ sở sửa chữa")
-                                .location(cs.getProvinceId() != null ? String.valueOf(cs.getProvinceId()) : "")
+                                .provinceId(cs.getProvinceId())
+                                .location("")
                                 .diaChiChiTiet(cs.getAddress() != null ? cs.getAddress() : "")
                                 .build();
                         if (objectType != null) {
@@ -776,8 +837,11 @@ public class KchtGis155Service {
                                 .id(beacon.getId() != null ? beacon.getId().toString() : null)
                                 .name(beacon.getName())
                                 .code(beacon.getCode())
-                                .orgName(getOrgName(beacon.getUnitId(), orgNameMap))
+                                .orgUnitId(firstNonNull(beacon.getOrgUnitId(), beacon.getUnitId()))
+                                .orgName(getOrgName(firstNonNull(beacon.getOrgUnitId(), beacon.getUnitId()), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Đèn biển")
+                                .provinceId(beacon.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: " + (beacon.getLocation() != null ? beacon.getLocation() : "")
                                         + ", Đặc tính ánh sáng: "
@@ -814,8 +878,11 @@ public class KchtGis155Service {
                                 .id(buoy.getId() != null ? buoy.getId().toString() : null)
                                 .name(buoy.getName())
                                 .code(buoy.getCode())
-                                .orgName(getOrgName(buoy.getUnitId(), orgNameMap))
+                                .orgUnitId(firstNonNull(buoy.getOrgUnitId(), buoy.getUnitId()))
+                                .orgName(getOrgName(firstNonNull(buoy.getOrgUnitId(), buoy.getUnitId()), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Phao, tiêu")
+                                .provinceId(buoy.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: " + (buoy.getDescription() != null ? buoy.getDescription() : "")
                                         + ", Màu sắc: " + (buoy.getColor() != null ? buoy.getColor() : "")
@@ -835,7 +902,8 @@ public class KchtGis155Service {
 
                 case BUOY_STATION:
                     String phaoSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<BuoyStation> phaoList = buoyStationRepository.searchGis(orgUnitId, phaoSearchParam);
+                    List<BuoyStation> phaoList = buoyStationRepository.searchGis(orgUnitId, phaoSearchParam).stream()
+                            .filter(entity -> isApproved(entity.getApprovalStatus())).toList();
                     Map<UUID, GisSpatialObject> phaoSpatialMap = new HashMap<>();
                     if (objectType != null && !phaoList.isEmpty()) {
                         List<UUID> phaoIds = phaoList.stream().map(BuoyStation::getId).collect(Collectors.toList());
@@ -847,8 +915,11 @@ public class KchtGis155Service {
                                 .id(phao.getId() != null ? phao.getId().toString() : null)
                                 .name(phao.getName())
                                 .code(phao.getCode())
+                                .orgUnitId(phao.getUnitId())
                                 .orgName(getOrgName(phao.getUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Nhà trạm phao tiêu")
+                                .provinceId(phao.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: " + (phao.getDescription() != null ? phao.getDescription() : "")
                                         + ", Màu sắc: " + (phao.getColor() != null ? phao.getColor() : "")
@@ -883,8 +954,11 @@ public class KchtGis155Service {
                                 .id(vtsStation.getId() != null ? vtsStation.getId().toString() : null)
                                 .name(vtsStation.getName())
                                 .code(vtsStation.getCode())
+                                .orgUnitId(vtsStation.getUnitId())
                                 .orgName(getOrgName(vtsStation.getUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Đài TTDH")
+                                .provinceId(vtsStation.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: "
                                         + (vtsStation.getDescription() != null ? vtsStation.getDescription() : ""))
@@ -916,8 +990,11 @@ public class KchtGis155Service {
                                 .id(inmarsat.getId() != null ? inmarsat.getId().toString() : null)
                                 .name(inmarsat.getName())
                                 .code(inmarsat.getCode())
+                                .orgUnitId(inmarsat.getUnitId())
                                 .orgName(getOrgName(inmarsat.getUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng")
+                                .provinceId(inmarsat.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: "
                                         + (inmarsat.getDescription() != null ? inmarsat.getDescription() : ""))
@@ -949,8 +1026,11 @@ public class KchtGis155Service {
                                 .id(cospasSarsat.getId() != null ? cospasSarsat.getId().toString() : null)
                                 .name(cospasSarsat.getName())
                                 .code(cospasSarsat.getCode())
+                                .orgUnitId(cospasSarsat.getUnitId())
                                 .orgName(getOrgName(cospasSarsat.getUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam")
+                                .provinceId(cospasSarsat.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: "
                                         + (cospasSarsat.getDescription() != null ? cospasSarsat.getDescription() : ""))
@@ -981,8 +1061,11 @@ public class KchtGis155Service {
                                 .id(lrit.getId() != null ? lrit.getId().toString() : null)
                                 .name(lrit.getName())
                                 .code(lrit.getCode())
+                                .orgUnitId(lrit.getUnitId())
                                 .orgName(getOrgName(lrit.getUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)")
+                                .provinceId(lrit.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: " + (lrit.getDescription() != null ? lrit.getDescription() : ""))
                                 .build();
@@ -1013,8 +1096,11 @@ public class KchtGis155Service {
                                 .id(haiphong.getId() != null ? haiphong.getId().toString() : null)
                                 .name(haiphong.getName())
                                 .code(haiphong.getCode())
+                                .orgUnitId(haiphong.getUnitId())
                                 .orgName(getOrgName(haiphong.getUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Đài Trung tâm xử lý thông tin hàng hải Hà Nội")
+                                .provinceId(haiphong.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Mô tả: "
                                         + (haiphong.getDescription() != null ? haiphong.getDescription() : ""))
@@ -1031,7 +1117,8 @@ public class KchtGis155Service {
 
                 case VTS_SYSTEM:
                     String vtsSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<VtsSystem> vtsList = vtsSystemRepository.searchFiltered(orgUnitId, vtsSearchParam);
+                    List<VtsSystem> vtsList = vtsSystemRepository.searchFiltered(orgUnitId, vtsSearchParam).stream()
+                            .filter(entity -> isApproved(entity.getApprovalStatus())).toList();
                     Map<UUID, GisSpatialObject> vtsSpatialMap = new HashMap<>();
                     if (!vtsList.isEmpty()) {
                         List<UUID> vtsSpatialIds = vtsList.stream().map(VtsSystem::getSpatialId)
@@ -1051,14 +1138,15 @@ public class KchtGis155Service {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(vts.getId()))
                                 .name(vts.getSystemName())
-                                .code("VTS_" + vts.getId())
+                                .code(vts.getCode())
+                                .orgUnitId(vts.getOrgUnitId())
                                 .orgName(getOrgName(vts.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Hệ thống VTS")
+                                .provinceId(vts.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Vị trí: "
-                                        + (vts.getAddress() != null ? vts.getAddress()
-                                                : (vts.getProvinceId() != null ? String.valueOf(vts.getProvinceId())
-                                                        : ""))
+                                        + (vts.getAddress() != null ? vts.getAddress() : "")
                                         + ", Tình trạng: "
                                         + (vts.getConditionStatus() != null ? switch (vts.getConditionStatus()) {
                                             case OPERATIONAL -> "Đang hoạt động";
@@ -1081,7 +1169,8 @@ public class KchtGis155Service {
 
                 case RADAR_STATION_LEGACY:
                     String radarSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<RadarStation> radarList = radarStationRepository.searchFiltered(orgUnitId, radarSearchParam);
+                    List<RadarStation> radarList = radarStationRepository.searchFiltered(orgUnitId, radarSearchParam)
+                            .stream().filter(entity -> isApproved(entity.getApprovalStatus())).toList();
                     Map<UUID, GisSpatialObject> radarSpatialMap = new HashMap<>();
                     if (!radarList.isEmpty()) {
                         List<UUID> radarIds = radarList.stream().map(RadarStation::getId).collect(Collectors.toList());
@@ -1100,9 +1189,12 @@ public class KchtGis155Service {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(rs.getId()))
                                 .name(rs.getStationName())
-                                .code("RADAR_" + rs.getId())
+                                .code(rs.getCode())
+                                .orgUnitId(rs.getOrgUnitId())
                                 .orgName(getOrgName(rs.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Trạm radar")
+                                .provinceId(rs.getProvinceId())
                                 .location("")
                                 .diaChiChiTiet("Vị trí: " + (rs.getLocation() != null ? rs.getLocation() : "")
                                         + ", Loại trạm: " + (rs.getStationType() != null ? rs.getStationType() : "")
@@ -1153,8 +1245,11 @@ public class KchtGis155Service {
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
                                 .name(vn.getWaterZoneName())
                                 .code(vn.getWaterZoneCode())
+                                .orgUnitId(vn.getOrgUnitId())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Bến phao")
+                                .provinceId(vn.getProvinceId())
                                 .location(parentProvince)
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .build();
@@ -1204,8 +1299,11 @@ public class KchtGis155Service {
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
                                 .name(vn.getWaterZoneName())
                                 .code(vn.getWaterZoneCode())
+                                .orgUnitId(vn.getOrgUnitId())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Khu neo đậu")
+                                .provinceId(vn.getProvinceId())
                                 .location(parentProvince)
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .build();
@@ -1255,8 +1353,11 @@ public class KchtGis155Service {
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
                                 .name(vn.getWaterZoneName())
                                 .code(vn.getWaterZoneCode())
+                                .orgUnitId(vn.getOrgUnitId())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Khu chuyển tải")
+                                .provinceId(vn.getProvinceId())
                                 .location(parentProvince)
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .build();
@@ -1306,8 +1407,11 @@ public class KchtGis155Service {
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
                                 .name(vn.getWaterZoneName())
                                 .code(vn.getWaterZoneCode())
+                                .orgUnitId(vn.getOrgUnitId())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
+                                .infrastructureType(type)
                                 .kchtTypeLabel("Khu tránh trú bão")
+                                .provinceId(vn.getProvinceId())
                                 .location(parentProvince)
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .build();
@@ -1359,23 +1463,60 @@ public class KchtGis155Service {
                         r.setGeometryType(geomTypeStr);
                         r.setCoordinates(spatial.getCoordinates());
 
-                        double[] coords = parseFirstCoordinateFromWkt(spatial.getCoordinates());
-                        if (coords != null) {
-                        }
+                        enrichRepresentativeCoordinate(r);
                     }
                 }
             }
         }
 
-        // Apply location/province filter post-collection
-        if (tinhThanhStr != null && !tinhThanhStr.isEmpty()) {
-            final String targetProv = tinhThanhStr.toLowerCase();
+        if (effectiveOrgUnitIds != null) {
             results = results.stream()
-                    .filter(r -> (r.getLocation() != null && r.getLocation().toLowerCase().contains(targetProv)) ||
-                            (r.getOrgName() != null && r.getOrgName().toLowerCase().contains(targetProv)))
+                    .filter(result -> result.getOrgUnitId() != null
+                            && effectiveOrgUnitIds.contains(result.getOrgUnitId()))
                     .collect(Collectors.toList());
         }
 
-        return results;
+        if (provinceId != null || (province != null && !province.isBlank())) {
+            final String targetProvince = province == null ? null : province.trim().toLowerCase(Locale.ROOT);
+            results = results.stream()
+                    .filter(result -> (provinceId != null && Objects.equals(result.getProvinceId(), provinceId))
+                            || (targetProvince != null && result.getLocation() != null
+                                    && result.getLocation().toLowerCase(Locale.ROOT).contains(targetProvince)))
+                    .collect(Collectors.toList());
+        }
+
+        results.sort(Comparator
+                .comparing(KchtGisSearchResult::getKchtTypeLabel,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(KchtGisSearchResult::getName,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+
+        int page = Math.max(0, requestedPage);
+        int size = Math.min(MAX_PAGE_SIZE, Math.max(1, requestedSize));
+        int fromIndex = Math.min(page * size, results.size());
+        int toIndex = Math.min(fromIndex + size, results.size());
+
+        return KchtGisSearchPage.builder()
+                .content(new ArrayList<>(results.subList(fromIndex, toIndex)))
+                .totalElements(results.size())
+                .page(page)
+                .size(size)
+                .build();
+    }
+
+    private Set<UUID> resolveEffectiveOrgUnitIds(UUID selectedOrgUnitId, OrgUnitScopeService.Scope userScope) {
+        Set<UUID> selectedIds = selectedOrgUnitId == null
+                ? null
+                : new LinkedHashSet<>(orgUnitScopeService.resolveSubtreeIds(selectedOrgUnitId));
+        if (userScope.unrestricted()) {
+            return selectedIds;
+        }
+
+        Set<UUID> scopedIds = new LinkedHashSet<>(userScope.orgUnitIds());
+        if (selectedIds == null) {
+            return scopedIds;
+        }
+        scopedIds.retainAll(selectedIds);
+        return scopedIds;
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -109,14 +110,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Tham số '" + ex.getName() + "' không đúng định dạng mong muốn: " + ex.getValue()));
     }
 
-    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceeded(
-            org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+            MaxUploadSizeExceededException ex) {
 
         log.warn("Upload size limit exceeded: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiResponse.error("Dung lượng file tải lên vượt quá giới hạn cho phép (tối đa 20MB/file, tổng 50MB/bản ghi)"));
+                .body(ApiResponse.error("Dung lượng file tải lên vượt quá giới hạn cho phép (tối đa 20MB/file, tối đa 10 file mỗi lần)"));
     }
 
     /**

@@ -171,29 +171,35 @@ body {
 /* ---- GIS Map: Sidebar tabs fill height ---- */
 .gis-sidebar-tabs .ant-tabs-content-holder {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 .gis-sidebar-tabs .ant-tabs-content,
 .gis-sidebar-tabs .ant-tabs-tabpane {
   height: 100%;
+  min-height: 0;
+}
+
+.gis-search-panel .list-view-pagination {
+  flex: 0 0 auto;
 }
 
 /* Custom scrollbar for GIS sidebar elements to make both vertical and horizontal scrollbars highly visible */
-.gis-sidebar-tabs ::-webkit-scrollbar {
+.gis-search-panel ::-webkit-scrollbar {
   width: 12px !important;
   height: 12px !important;
 }
-.gis-sidebar-tabs ::-webkit-scrollbar-track {
+.gis-search-panel ::-webkit-scrollbar-track {
   background: #f1f2f5 !important;
   border-radius: 6px !important;
 }
-.gis-sidebar-tabs ::-webkit-scrollbar-thumb {
+.gis-search-panel ::-webkit-scrollbar-thumb {
   background: #777777 !important;
   border-radius: 6px !important;
   border: 2px solid #f1f2f5 !important;
   transition: background 0.15s !important;
 }
-.gis-sidebar-tabs ::-webkit-scrollbar-thumb:hover {
+.gis-search-panel ::-webkit-scrollbar-thumb:hover {
   background: #444444 !important;
 }
 

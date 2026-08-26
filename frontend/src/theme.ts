@@ -312,6 +312,57 @@ export const globalCssVars = `
   --font-family: ${fontFamily};
 }
 
+/* --- GIS edit modal: fixed white frame, body-only scrolling (Ant Design 6) --- */
+.gis-edit-modal__wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden !important;
+  padding: ${spacing.md}px 0;
+  box-sizing: border-box;
+}
+.gis-edit-modal__wrapper .ant-modal {
+  display: flex !important;
+  flex-direction: column;
+  height: calc(100dvh - ${spacing.md * 2}px);
+  max-height: calc(100dvh - ${spacing.md * 2}px);
+  top: auto;
+  margin: 0;
+  max-width: calc(100vw - ${spacing.md * 2}px);
+  padding-bottom: 0;
+}
+.gis-edit-modal__container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden !important;
+}
+.gis-edit-modal__header,
+.gis-edit-modal__footer {
+  flex: 0 0 auto;
+}
+.gis-edit-modal__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden !important;
+}
+.gis-edit-modal__scroll-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: ${spacing.xs}px;
+}
+
 /* ---------- Sidebar: 1 MÀU XANH DƯƠNG ĐỒNG NHẤT (Rule 8 v3) ---------- */
 /* Header, Menu, Footer đều chung nền xanh #12468C — active item là PILL, không border-left. */
 

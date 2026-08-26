@@ -326,7 +326,6 @@ const DataTable: React.FC<DataTableProps> = ({
           background: tableHeaderBg,
           color: colors.sidebarBg,
           fontWeight: fontWeightBold,
-          fontSize: fontSizeMd,
           textTransform: 'uppercase',
           padding: '10px 12px',
           cursor: col.sortable ? 'pointer' : undefined,
@@ -346,9 +345,9 @@ const DataTable: React.FC<DataTableProps> = ({
       }),
       title: col.sortable ? (
         <Tooltip title={<span style={{ fontSize: 12 }}>{col.sortOrder === 'ascend' ? 'Nhấn để sắp xếp giảm dần' : 'Nhấn để sắp xếp tăng dần'}</span>}>
-          <span style={{ whiteSpace: 'nowrap' }}>{(col as any).title ?? col.label}</span>
+          <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{(col as any).title ?? col.label}</span>
         </Tooltip>
-      ) : <span style={{ whiteSpace: 'nowrap' }}>{((col as any).title ?? col.label)}</span>,
+      ) : <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{((col as any).title ?? col.label)}</span>,
       onCell: () => ({
         style: {
           fontSize: dense ? fontSizeSm : fontSizeMd,

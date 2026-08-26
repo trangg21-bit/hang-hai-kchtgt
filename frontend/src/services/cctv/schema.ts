@@ -3,13 +3,13 @@ import { z } from 'zod';
 // ── Status enums ────────────────────────────────────────────────────
 
 // Matches BeaconStation: 0=Chưa khai thác, 1=Đang khai thác, 2=Dừng khai thác
-export const TRANG_THAI_HOAT_DONG_OPTIONS: Array<{ label: string; value: number }> = [
+export const OPERATIONAL_STATUS_OPTIONS: Array<{ label: string; value: number }> = [
   { label: 'Chưa khai thác/vận hành', value: 0 },
   { label: 'Đang khai thác/vận hành', value: 1 },
   { label: 'Dừng khai thác/vận hành', value: 2 },
 ];
 
-export const TRANG_THAI_PHE_DUYET_OPTIONS: Array<{ label: string; value: string }> = [
+export const APPROVAL_STATUS_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' },
   { label: 'Đã phê duyệt', value: 'APPROVED' },
   { label: 'Từ chối', value: 'TU_CHOI' },
@@ -54,7 +54,7 @@ export const createSchema = z.object({
   quantity: z.coerce.number().int().min(1, 'Số lượng phải lớn hơn 0').positive('Số lượng phải > 0'),
   orgUnitId: z.string().uuid().optional().or(z.literal('')),
   operatingUnitId: z.string().uuid().optional().or(z.literal('')),
-  provinceId: z.string().uuid().optional().or(z.literal('')),
+  provinceName: z.string().optional(),
   attachedInfrastructureType: z.coerce.number().int().optional().or(z.nan()),
   attachedInfrastructureId: z.string().uuid().optional().or(z.literal('')),
   unitOfMeasure: z.coerce.number().int().optional().or(z.nan()),
@@ -84,7 +84,7 @@ export const updateSchema = z.object({
   quantity: z.coerce.number().int().min(1, 'Số lượng phải lớn hơn 0').positive('Số lượng phải > 0'),
   orgUnitId: z.string().uuid().optional().nullable(),
   operatingUnitId: z.string().uuid().optional().nullable(),
-  provinceId: z.string().uuid().optional().nullable(),
+  provinceName: z.string().optional().nullable(),
   attachedInfrastructureType: z.coerce.number().int().optional().or(z.nan()),
   attachedInfrastructureId: z.string().uuid().optional().nullable(),
   unitOfMeasure: z.coerce.number().int().optional().or(z.nan()),
@@ -131,14 +131,14 @@ export type DeleteFormValues = z.infer<typeof deleteConfirmSchema>;
 // ── Badge / colour helpers ──────────────────────────────────────────
 
 // Matches BeaconStation OPERATIONAL_STATUS_STYLE_MAP: 0/1/2
-export const trangThaiHoatDongBadge = (status: number | undefined | null): { color: string; label: string } => {
+export const operationalStatusBadge = (status: number | undefined | null): { color: string; label: string } => {
   if (status === 0) return { color: statusAttention, label: 'Chưa khai thác/vận hành' };
   if (status === 1) return { color: statusOperational, label: 'Đang khai thác/vận hành' };
   if (status === 2) return { color: statusCritical, label: 'Dừng khai thác/vận hành' };
   return { color: 'default', label: String(status ?? '—') };
 };
 
-export const trangThaiPheDuyetBadge = (status: string): { color: string; label: string } => {
+export const approvalStatusBadge = (status: string): { color: string; label: string } => {
   const norm = String(status || '').normalize('NFC').toUpperCase().trim();
   if (
     norm === 'CHO_PHE_DUYET' ||

@@ -243,7 +243,6 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
-    /* ẨN MENU: Quản lý KCHT trên nền bản đồ (GIS)
     {
       key: 'gis',
       icon: <CompassOutlined />,
@@ -256,7 +255,6 @@ export default function AppLayout() {
         canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
       ].filter(Boolean),
     },
-    */
     { type: 'divider' as const },
     {
       key: 'beacon',
@@ -499,7 +497,10 @@ export default function AppLayout() {
 
   const menuItems = filterEmptyChildren(rawMenuItems);
 
-  const isMobile = !screens.md;
+  // Keep the responsive mode aligned with Sider's `lg` breakpoint. Using
+  // `md` here left a 272px layout offset while AntD had already collapsed the
+  // Sider to 80px on tablet widths (768-991px).
+  const isMobile = !screens.lg;
 
   const handleMenuClick = (e: { key: string }) => {
     if (e.key.startsWith('/')) {

@@ -132,6 +132,7 @@ function mapOrgUnit(
   return {
     id: item.id ?? "",
     name: item.name ?? "",
+    code: item.code,
     parentId: item.parentId ? String(item.parentId) : undefined,
     parentOrgName,
     level,
@@ -278,6 +279,7 @@ export const organizationService = {
           orgMap.set(item.id, {
             id: item.id,
             name: item.name,
+            code: item.code,
             parentId: item.parentId,
             parentOrgName: undefined,
             level: item.level,
@@ -312,6 +314,7 @@ export const organizationService = {
           return {
             id: item.id,
             name: item.name,
+            code: item.code,
             parentId: item.parentId,
             parentOrgName,
             level,
@@ -383,6 +386,7 @@ export const organizationService = {
     return {
       id: item.id ?? "",
       name: item.name ?? "",
+      code: item.code,
       parentId: item.parentId ? String(item.parentId) : undefined,
       parentOrgName: undefined,
       level: item.level,
@@ -426,6 +430,7 @@ export const organizationService = {
       const org: Organization = {
         id: node.id ?? "",
         name: node.name ?? "",
+        code: node.code,
         parentId: node.parentId ? String(node.parentId) : undefined,
         parentOrgName: undefined,
         level: node.level,
