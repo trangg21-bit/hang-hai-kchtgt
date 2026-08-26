@@ -261,6 +261,55 @@ class InfrastructureApprovalServiceTest {
                 .hasMessageContaining("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm");
     }
 
+    // ── Quy tắc 11 — điều kiện xóa mềm (approval-2-level-spec.md mục 3.6) ────
+
+    @Test
+    @DisplayName("Quy tắc 11: cho xóa hồ sơ Lưu tạm")
+    void testAssertDeletable_AllowsDraft() {
+        TestEntity entity = new TestEntity();
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        approvalService.assertDeletable(entity);
+    }
+
+    @Test
+    @DisplayName("Quy tắc 11: cấm xóa hồ sơ Đã duyệt — hồ sơ đang có hiệu lực")
+    void testAssertDeletable_RejectsApproved() {
+        TestEntity entity = new TestEntity();
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        assertThatThrownBy(() -> approvalService.assertDeletable(entity))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm");
+    }
+
+    @Test
+    @DisplayName("Quy tắc 11: cấm xóa hồ sơ đang chờ Cảng vụ/Chi cục duyệt")
+    void testAssertDeletable_RejectsPendingApproval() {
+        TestEntity entity = new TestEntity();
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+
+        assertThatThrownBy(() -> approvalService.assertDeletable(entity))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm");
+    }
+
+    @Test
+    @DisplayName("Quy tắc 11: cấm xóa hồ sơ chờ Cục duyệt và hồ sơ bị trả về")
+    void testAssertDeletable_RejectsOtherStates() {
+        for (ApprovalStatus st : new ApprovalStatus[] {
+                ApprovalStatus.APPROVED_LEVEL1, ApprovalStatus.REJECTED_LEVEL1,
+                ApprovalStatus.REJECTED_LEVEL2, ApprovalStatus.ARCHIVED }) {
+            TestEntity entity = new TestEntity();
+            entity.setApprovalStatus(st);
+
+            assertThatThrownBy(() -> approvalService.assertDeletable(entity))
+                    .as("trạng thái %s phải bị từ chối xóa", st)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm");
+        }
+    }
+
     @Test
     @DisplayName("Tích hợp hệ thống ngoài lưu thẳng Đã duyệt (T14)")
     void testDirectApprove_Success() {

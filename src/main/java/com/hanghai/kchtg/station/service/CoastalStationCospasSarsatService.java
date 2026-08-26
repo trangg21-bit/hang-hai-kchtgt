@@ -75,6 +75,13 @@ public class CoastalStationCospasSarsatService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Cospas-Sarsat station not found with id: " + id));
 
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        approvalService.assertEditable(entity);
+
+        ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
         if (request.getSecurityLevel() != null) {
             RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "coastalstationcospassarsat",
                     SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
@@ -104,12 +111,19 @@ public class CoastalStationCospasSarsatService {
             entity.setOperatingMode(request.getOperatingMode());
 
         CoastalStationCospasSarsat saved = repository.save(entity);
+        // T12 — sửa hồ sơ đã duyệt: giữ nguyên trạng thái "Đã duyệt", chỉ ghi vết thay đổi
+        if (wasApproved) {
+            saved.setApprovalStatus(ApprovalStatus.APPROVED);
+            syncStationStatus(saved);
+            saved = repository.save(saved);
+        }
+
         historyService.recordHistory(
                 InfrastructureType.COSPAS_SARSAT_STATION,
                 saved.getId(),
                 StationHistoryActionType.UPDATE,
                 null,
-                "Cospas-Sarsat station updated",
+                wasApproved ? "Cập nhật sau phê duyệt" : "Cospas-Sarsat station updated",
                 SecurityUtils.getCurrentUserId());
         return saved;
     }

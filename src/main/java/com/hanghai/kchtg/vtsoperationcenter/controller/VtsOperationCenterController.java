@@ -33,6 +33,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
+import org.springframework.format.annotation.DateTimeFormat;
 import java.util.UUID;
 
 @RestController
@@ -116,6 +118,11 @@ public class VtsOperationCenterController {
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) ConditionStatus conditionStatus,
             @RequestParam(required = false) ApprovalStatus approvalStatus,
+            // Khoảng ngày cập nhật (bộ lọc nâng cao) — ISO-8601, ví dụ 2026-08-01T00:00:00
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -123,8 +130,8 @@ public class VtsOperationCenterController {
 
         PageRequest pageRequest = PageRequest.of(page, size, resolveListSort(sortBy, sortDir));
 
-        Page<VtsOperationCenterListItem> resultPage = service.search(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, pageRequest);
-        Map<String, Long> statusCounts = service.countByStatus(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus);
+        Page<VtsOperationCenterListItem> resultPage = service.search(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, updatedFrom, updatedTo, pageRequest);
+        Map<String, Long> statusCounts = service.countByStatus(keyword, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, updatedFrom, updatedTo);
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", resultPage.getContent());

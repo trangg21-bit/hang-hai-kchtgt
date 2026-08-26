@@ -2,9 +2,9 @@ package com.hanghai.kchtg.port;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.port.entity.ChangeLog;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,7 +27,8 @@ import static org.mockito.Mockito.*;
 
 /**
  * Tests proving INT-003: ChangeTrackingService.recordChanges writes per-field
- * diff records into the lich_su_thay_doi table.
+ * diff records into the shared `infrastructure_history` table
+ * (approval-2-level-spec.md muc 3.5).
  *
  * Uses real ChangeTrackingService (no @InjectMocks proxy) with a mocked repository
  * to verify the actual reflection-based diffing logic.
@@ -38,7 +39,7 @@ import static org.mockito.Mockito.*;
 class ChangeHistoryDiffTest {
 
     @Mock
-    private ChangeLogRepository changeLogRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     @InjectMocks
     private ChangeTrackingService changeTrackingService;
@@ -50,7 +51,7 @@ class ChangeHistoryDiffTest {
         entityId = UUID.randomUUID();
         // Save returns whatever is passed in (default Mockito behavior is fine since
         // we use captors on the save invocation)
-        when(changeLogRepository.save(any(ChangeLog.class)))
+        when(historyRepository.save(any(InfrastructureHistory.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -82,17 +83,17 @@ class ChangeHistoryDiffTest {
         assertTrue(changedFields.contains("portName"),
                 "Expected portName in changedFields but got: " + changedFields);
 
-        // Capture the ChangeLog saved for portName
-        ArgumentCaptor<ChangeLog> captor = ArgumentCaptor.forClass(ChangeLog.class);
-        verify(changeLogRepository, atLeastOnce()).save(captor.capture());
+        // Capture the InfrastructureHistory row saved for portName
+        ArgumentCaptor<InfrastructureHistory> captor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, atLeastOnce()).save(captor.capture());
 
         boolean foundPortNameRecord = captor.getAllValues().stream()
-                .anyMatch(r -> "portName".equals(r.getFieldName())
-                        && "Old Name".equals(r.getOldValue())
+                .anyMatch(r -> "portName".equals(r.getChangedField())
+                        && "Old Name".equals(r.getPreviousValue())
                         && "New Name".equals(r.getNewValue()));
 
         assertTrue(foundPortNameRecord,
-                "Expected a ChangeLog record for portName old='Old Name' new='New Name'");
+                "Expected an InfrastructureHistory row for portName old='Old Name' new='New Name'");
     }
 
     @Test
@@ -119,6 +120,6 @@ class ChangeHistoryDiffTest {
 
         assertTrue(changedFields.isEmpty(),
                 "Expected no changed fields but got: " + changedFields);
-        verify(changeLogRepository, never()).save(any());
+        verify(historyRepository, never()).save(any());
     }
 }

@@ -26,5 +26,6 @@ public enum InfrastructureType {
     BUOY_STATION,
     LEGAL_DOCUMENT,
     VTS_OPERATION_CENTER,
-    AIS_SYSTEM
+    AIS_SYSTEM,
+    CCTV
 }

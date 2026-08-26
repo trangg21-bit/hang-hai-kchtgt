@@ -21,6 +21,26 @@ Mọi bộ lọc có trường `Đơn vị`, `Đơn vị quản lý`, `Đơn v�
 - Chỉ dựng cây từ danh sách đã được backend giới hạn theo quyền. Nếu đơn vị cha không có trong response thì coi đơn vị đó là node gốc của danh sách hiện tại.
 - Dùng preset `selectStyle` từ `frontend/src/tokens.ts`; tìm kiếm của `TreeSelect` dùng `treeNodeFilterProp="title"`.
 
+## Quy chuẩn Ma trận trường dữ liệu CRUD & Bộ lọc (Field CRUD & Filter Matrix Standard)
+
+Nguồn gốc duy nhất của các trường dữ liệu trên Bảng danh sách, Sidebar bộ lọc, Drawer Xem chi tiết, Form Tạo mới và Chỉnh sửa **BẮT BUỘC** phải lấy chính xác từ bảng **Ma trận trường dữ liệu nghiệp vụ (CRUD & Filter Matrix)** trong tài liệu thiết kế chi tiết (TKCT) của BA:
+
+- **Danh sách (`List = TRUE`)**: Cột hiển thị trên bảng dữ liệu `DataTable`.
+- **Bộ lọc (`Filter = TRUE`)**: Trường lọc hiển thị trên Sidebar của `FilterTableLayout` (hoặc `StatusTabs` cho trạng thái phê duyệt `approvalStatus`, ô tìm kiếm cho `code`/`name`).
+- **Xem chi tiết (`Detail = TRUE`)**: Trường hiển thị trong Drawer chi tiết (`drawerMode === 'view'`).
+- **Tạo mới (`Create = TRUE`)**: Trường nhập liệu trong Form Tạo mới (`drawerMode === 'create'`).
+- **Sửa (`Edit = TRUE`)**: Trường nhập liệu trong Form Chỉnh sửa (`drawerMode === 'edit'`).
+
+### Quy chuẩn hiển thị các trường trên Sidebar bộ lọc (`Filter = TRUE`):
+1. `Đơn vị quản lý`: `OrgUnitTreeSelect` dạng cây theo DataScope phân quyền.
+2. `Trạng thái phê duyệt`: Dãy `StatusTabs` 6 tab màu semantic trên đầu bảng danh sách.
+3. `Mã` + `Tên`: Ô `Input` "Tìm kiếm từ khóa".
+4. `Địa điểm (Tỉnh/TP)`: Dropdown chọn Tỉnh/Thành phố có hỗ trợ tìm kiếm tiếng Việt không dấu.
+5. `Ngày cập nhật`: Ô `RangePicker` "Khoảng ngày cập nhật" (`DD/MM/YYYY`).
+6. `Tình trạng hoạt động`: Dropdown chọn trạng thái vận hành (`ConditionStatus`).
+7. `Các trường đặc thù` (Năm hoạt động, Đơn vị khai thác, Phân loại...): Hiển thị trực tiếp trên Sidebar theo đúng ma trận nghiệp vụ của đối tượng.
+8. **Cấu hình Sidebar `FilterTableLayout`**: Bắt buộc đặt `hideFilterToggle={true}` để ẩn nút phễu; toàn bộ các trường lọc được hiển thị trực tiếp trên thanh cuộn dọc 280px (`overflowY: 'auto'`), dưới đáy chỉ giữ 2 nút: **Reload** + **Tìm kiếm**.
+
 **Reference implementation chuẩn mẫu**: `frontend/src/services/port/PortListPage.tsx` (Màn hình Quản lý Cảng biển `/port`).
 - Các bảng con trong form/detail có thể khai báo `scroll` riêng vì đó không phải bảng danh sách chính.
 

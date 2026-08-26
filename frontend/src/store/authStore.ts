@@ -22,6 +22,7 @@ interface User {
   role: string;
   status: string;
   userId?: string;
+  id?: string;
   email?: string;
 }
 
@@ -66,6 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         role: claims.role || 'ROLE_USER',
         status: 'authenticated',
         userId: claims.user_id,
+        id: claims.user_id,
         email: claims.email,
       };
     } else if (typeof localStorage !== 'undefined') {
@@ -100,6 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           role,
           status: 'authenticated',
           userId: claims.user_id,
+          id: claims.user_id,
           email: claims.email,
         },
         isAuthenticated: true,

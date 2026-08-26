@@ -72,6 +72,13 @@ public class CoastalStationVTSService {
         CoastalStationVTS entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        approvalService.assertEditable(entity);
+
+        ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
         String previousCode = entity.getCode();
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
@@ -99,12 +106,19 @@ public class CoastalStationVTSService {
 
         CoastalStationVTS saved = repository.save(entity);
 
+        // T12 — sửa hồ sơ đã duyệt: giữ nguyên trạng thái "Đã duyệt", chỉ ghi vết thay đổi
+        if (wasApproved) {
+            saved.setApprovalStatus(ApprovalStatus.APPROVED);
+            syncStationStatus(saved);
+            saved = repository.save(saved);
+        }
+
         historyService.recordHistory(
                 InfrastructureType.COASTAL_RADIO_STATION,
                 saved.getId(),
                 StationHistoryActionType.UPDATE,
                 previousCode,
-                "Station updated",
+                wasApproved ? "Cập nhật sau phê duyệt" : "Station updated",
                 SecurityUtils.getCurrentUserId());
         return saved;
     }

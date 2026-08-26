@@ -30,8 +30,8 @@ public enum OperationalStatus {
             }
             String upper = name.toUpperCase().trim();
             switch (upper) {
-                case "CHUA_KHAI_THAC": case "DANG_KHAI_THAC": return OPERATIONAL;
-                case "DUNG_KHAI_THAC": return SUSPENDED;
+                case "ACTIVE": return OPERATIONAL;
+                case "INACTIVE": return SUSPENDED;
             }
             return OperationalStatus.valueOf(upper);
         } catch (IllegalArgumentException e) {

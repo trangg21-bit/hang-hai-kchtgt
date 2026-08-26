@@ -6,7 +6,6 @@ import {
   Input,
   Select,
   TreeSelect,
-  Drawer,
   Radio,
   Space,
   Typography,
@@ -64,13 +63,16 @@ import FormField from '../../components/FormField';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import RejectionModal from '../../components/shared/RejectionModal';
-import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import { colors } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as MapSymbol } from '../../services/symbolService';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import {
   statusOperational,
   statusAttention,
@@ -104,10 +106,7 @@ import {
   dangerButtonStyle,
   formFieldStyle,
   formRowGutter,
-  drawerProps,
   drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
   requiredMarkStyle,
   filterLabelStyle,
   filterInputStyle,
@@ -228,16 +227,6 @@ const COORD_SYS_OPTIONS = [
 
 const COORD_SYS_MAP: Record<number, string> = { 1: 'WGS-84', 2: 'VN-2000' };
 
-const APPROVAL_STATUS_MAP: Record<string, string> = {
-  DRAFT: 'Nháp',
-  PROPOSED: 'Đề xuất',
-  PENDING_APPROVAL: 'Chờ phê duyệt',
-  APPROVED_LEVEL1: 'Đã duyệt cấp 1',
-  APPROVED_LEVEL2: 'Đã duyệt cấp 2',
-  APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối',
-};
-
 // History action colors — semantic tokens (BEACON_HISTORY_ACTION_MAP keeps AntD names; use tokens for the accent bar/badge)
 const HISTORY_ACTION_COLOR: Record<string, string> = {
   CREATE: statusOperational,
@@ -255,10 +244,6 @@ function formatDate(dateStr: string | null | undefined): string {
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
   from || to ? [from ? dayjs(from) : null, to ? dayjs(to) : null] : null;
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 const buildOrgTree = (nodes: Organization[]): any[] => {
   const map = new Map<string, any>();
@@ -290,6 +275,8 @@ const tabBarStyle: React.CSSProperties = {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BeaconStationList() {
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
+
   // ── Filter state ─────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
@@ -758,10 +745,13 @@ export default function BeaconStationList() {
   const rowActions = useCallback((record: BeaconStation) => {
     const actions: any[] = [
       { key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) },
-      { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) },
     ];
     const st = record.status || '';
-    if (st === 'DRAFT') {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(st, { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) {
+      actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) });
+    }
+    if (st === 'DRAFT' || st === 'REJECTED' || st === 'REJECTED_LEVEL1') {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: <SendOutlined />, onClick: () => openSubmitModal(record) });
     }
     if (st === 'PENDING_APPROVAL') {
@@ -769,11 +759,11 @@ export default function BeaconStationList() {
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, danger: true, onClick: () => openRejectModal(record) });
     }
     actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
-    if (st === 'DRAFT') {
+    if (st === 'DRAFT' || st === 'REJECTED') {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => openDeleteConfirm(record) });
     }
     return actions;
-  }, [openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openHistory, openDeleteConfirm]);
+  }, [hasPerm, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openHistory, openDeleteConfirm]);
 
   // ── Table columns ───────────────────────────────────────────────
   const columns: any[] = useMemo(() => [
@@ -1316,8 +1306,7 @@ export default function BeaconStationList() {
       </FilterTableLayout>
 
       {/* ── Create / Edit / Detail Drawer ─────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={
           <span style={drawerTitleStyle}>
             {isDetailMode
@@ -1330,15 +1319,14 @@ export default function BeaconStationList() {
         open={drawerVisible}
         destroyOnHidden
         onClose={closeDrawer}
-        extra={<Button type="text" onClick={closeDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           isDetailMode ? null : (
-            <div style={drawerFooterStyle}>
+            <>
               <Button onClick={closeDrawer} style={outlineButtonStyle}>Hủy</Button>
               <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>
                 {editingRecord ? 'Cập nhật' : 'Tạo mới'}
               </Button>
-            </div>
+            </>
           )
         }
       >
@@ -1647,7 +1635,7 @@ export default function BeaconStationList() {
             </Form>
           </>
         )}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal

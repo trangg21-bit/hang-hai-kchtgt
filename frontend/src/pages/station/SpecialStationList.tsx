@@ -7,11 +7,8 @@ import {
   Input,
   InputNumber,
   Select,
-  Drawer,
-  Space,
   Typography,
   Form,
-  DatePicker,
   Row,
   Col,
   Upload,
@@ -31,8 +28,6 @@ import {
   SendOutlined,
   UploadOutlined,
   FileOutlined,
-  FileExcelOutlined,
-  ReloadOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -60,15 +55,22 @@ import { organizationService } from '../../services/organizationService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout, { type StatusTab } from '../../components/list-view/FilterTableLayout';
+import ListPageContainer from '../../components/list-view/ListPageContainer';
+import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import FormSaveFooter, { type FormSaveAction } from '../../components/shared/FormSaveFooter';
+import { FORM_TAB_LABEL } from '../../components/shared/formTabs';
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { formLabelProps } from '../../components/shared/formLabel';
 import {
   statusOperational,
   statusAttention,
@@ -78,7 +80,6 @@ import {
   textPrimary,
   textSecondary,
   textTertiary,
-  fontSizeSm,
   fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
@@ -87,7 +88,6 @@ import {
   radiusPill,
   surfaceCard,
   borderDefault,
-  spaceXs,
   spaceSm,
   spaceMd,
   spaceLg,
@@ -97,18 +97,15 @@ import {
   uploadHintStyle,
   inputStyle,
   selectStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
+  filterInputStyle,
   dangerButtonStyle,
   rejectReasonStyle,
   formFieldStyle,
   formRowGutter,
-  drawerProps,
   drawerTitleStyle,
   drawerCloseBtnStyle,
 } from '../../tokens';
 
-const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 const { Text } = Typography;
 
@@ -156,11 +153,11 @@ export default function SpecialStationList() {
   const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>(undefined);
   const [filterKeyword, setFilterKeyword] = useState<string>('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>(undefined);
-  const [filterDateRange, setFilterDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
   // Dropdown options
   const [operatingOrgOptions, setOperatingOrgOptions] = useState<{ value: string; label: string }[]>([]);
   const [mapSymbolOptions, setMapSymbolOptions] = useState<{ value: string; label: string }[]>([]);
+  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
 
   // Drawer States
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -168,7 +165,7 @@ export default function SpecialStationList() {
   const [selectedRecord, setSelectedRecord] = useState<CoastalStationInmarsatResponse | null>(null);
   const [activeDrawerTab, setActiveDrawerTab] = useState('1');
   const [form] = Form.useForm();
-  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [savingAction, setSavingAction] = useState<FormSaveAction | null>(null);
 
   // Form Cascading values
   const formOrgUnitId = Form.useWatch('orgUnitId', form);
@@ -191,6 +188,9 @@ export default function SpecialStationList() {
   useEffect(() => {
     (async () => {
       try {
+        const orgTree = await organizationService.getTree();
+        setOrgUnitOptions((orgTree || []) as OrgUnitTreeOption[]);
+
         const orgRes = await organizationService.list({ pageSize: 1000 });
         const orgs = orgRes.data || (orgRes as any).content || [];
         setOperatingOrgOptions(orgs.map((o: any) => ({ value: o.id, label: o.name })));
@@ -207,10 +207,6 @@ export default function SpecialStationList() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [fromStr, toStr] = filterDateRange && filterDateRange[0] && filterDateRange[1]
-        ? [filterDateRange[0].startOf('day').toISOString(), filterDateRange[1].endOf('day').toISOString()]
-        : [undefined, undefined];
-
       const res = await fetchInmarsatList({
         page: page - 1,
         size: pageSize,
@@ -220,8 +216,6 @@ export default function SpecialStationList() {
         keyword: filterKeyword ? filterKeyword.trim() : undefined,
         conditionStatus: filterConditionStatus,
         approvalStatus: activeTab === 'ALL' ? undefined : activeTab,
-        updatedFrom: fromStr,
-        updatedTo: toStr,
       });
 
       setData(res.content || []);
@@ -248,7 +242,6 @@ export default function SpecialStationList() {
     filterProvinceId,
     filterKeyword,
     filterConditionStatus,
-    filterDateRange,
   ]);
 
   useEffect(() => {
@@ -266,12 +259,12 @@ export default function SpecialStationList() {
   };
 
   const statusTabs: StatusTab[] = useMemo(() => [
-    { key: 'ALL', label: 'Tất cả', count: getTabCount('ALL'), active: activeTab === 'ALL' },
-    { key: 'DRAFT', label: 'Lưu tạm', count: getTabCount('DRAFT'), active: activeTab === 'DRAFT' },
-    { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: getTabCount('PENDING_APPROVAL'), active: activeTab === 'PENDING_APPROVAL' },
-    { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: getTabCount('APPROVED_LEVEL1'), active: activeTab === 'APPROVED_LEVEL1' },
-    { key: 'APPROVED', label: 'Đã duyệt', count: getTabCount('APPROVED'), active: activeTab === 'APPROVED' },
-    { key: 'REJECTED', label: 'Bị trả về', count: getTabCount('REJECTED'), active: activeTab === 'REJECTED' },
+    { key: 'ALL', label: 'Tất cả', count: getTabCount('ALL'), color: actionPrimary, active: activeTab === 'ALL' },
+    { key: 'DRAFT', label: 'Lưu tạm', count: getTabCount('DRAFT'), color: statusDraft, active: activeTab === 'DRAFT' },
+    { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: getTabCount('PENDING_APPROVAL'), color: statusAttention, active: activeTab === 'PENDING_APPROVAL' },
+    { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: getTabCount('APPROVED_LEVEL1'), color: '#0284C7', active: activeTab === 'APPROVED_LEVEL1' },
+    { key: 'APPROVED', label: 'Đã duyệt', count: getTabCount('APPROVED'), color: statusOperational, active: activeTab === 'APPROVED' },
+    { key: 'REJECTED', label: 'Từ chối', count: getTabCount('REJECTED'), color: statusCritical, active: activeTab === 'REJECTED' },
   ], [statusCounts, activeTab]);
 
   // Reset filter
@@ -281,7 +274,6 @@ export default function SpecialStationList() {
     setFilterProvinceId(undefined);
     setFilterKeyword('');
     setFilterConditionStatus(undefined);
-    setFilterDateRange(null);
     setPage(1);
   };
 
@@ -296,7 +288,6 @@ export default function SpecialStationList() {
     setDrawerOpen(true);
 
     if (record && record.id) {
-      setDrawerLoading(true);
       try {
         const detail = await fetchInmarsatById(record.id);
         setSelectedRecord(detail);
@@ -330,8 +321,7 @@ export default function SpecialStationList() {
       } catch (err: any) {
         toast.error(err.message || 'Lỗi khi tải chi tiết Đài Inmarsat');
       } finally {
-        setDrawerLoading(false);
-        setHistoryLoading(false);
+          setHistoryLoading(false);
       }
     } else {
       // Create mode default values
@@ -343,23 +333,39 @@ export default function SpecialStationList() {
     }
   };
 
-  // Submit Drawer Form
-  const handleDrawerSubmit = async () => {
+  // Submit Drawer Form — 'draft' chỉ lưu; 'submit' lưu rồi gửi phê duyệt;
+  // 'approve' lưu, gửi duyệt rồi duyệt luôn (dành cho người có quyền duyệt cấp Cục).
+  const handleDrawerSubmit = async (action: FormSaveAction = 'draft') => {
     try {
       const values = await form.validateFields();
-      setDrawerLoading(true);
+      setSavingAction(action);
 
       const payload: CoastalStationInmarsatRequest = {
         ...values,
         services: Array.isArray(values.services) ? JSON.stringify(values.services) : values.services,
       };
 
+      let recordId = selectedRecord?.id;
       if (drawerMode === 'create') {
-        await createInmarsat(payload);
+        const created = await createInmarsat(payload);
+        recordId = created?.id;
         toast.success('Tạo mới Đài Inmarsat thành công (Lưu tạm)!');
       } else if (drawerMode === 'edit' && selectedRecord) {
         await updateInmarsat(selectedRecord.id, payload as CoastalStationInmarsatUpdateRequest);
         toast.success('Cập nhật Đài Inmarsat thành công!');
+      }
+
+      if (action === 'submit' && recordId) {
+        await submitInmarsat(recordId);
+        toast.success('Đã gửi phê duyệt lên cấp Cảng vụ/Chi cục');
+      }
+
+      if (action === 'approve' && recordId) {
+        // Quy tắc 14: người gửi thuộc cấp Cục thì submit đưa hồ sơ thẳng vào "Chờ Cục duyệt",
+        // nên chỉ cần duyệt vòng 2 là hồ sơ có hiệu lực ngay.
+        await submitInmarsat(recordId);
+        await approveInmarsatL2(recordId);
+        toast.success('Đã lưu và phê duyệt Đài Inmarsat');
       }
 
       setDrawerOpen(false);
@@ -367,7 +373,7 @@ export default function SpecialStationList() {
     } catch (err: any) {
       toast.error(err.message || 'Thao tác không thành công');
     } finally {
-      setDrawerLoading(false);
+      setSavingAction(null);
     }
   };
 
@@ -476,14 +482,6 @@ export default function SpecialStationList() {
   };
 
   // Export Excel
-  const handleExportExcel = () => {
-    const filename = `danh_sach_dai_inmarsat_${dayjs().format('YYYYMMDD')}.xlsx`;
-    toast.info(`Đang tạo tệp ${filename}...`);
-    setTimeout(() => {
-      toast.success(`Xuất dữ liệu thành công: ${filename}`);
-    }, 800);
-  };
-
   // Anti-self-approval checker
   const isCreator = (record: CoastalStationInmarsatResponse) => {
     return currentUserId && record.createdBy && String(record.createdBy) === String(currentUserId);
@@ -641,6 +639,7 @@ export default function SpecialStationList() {
     const isRejected = record.approvalStatus === 'REJECTED_LEVEL1' || record.approvalStatus === 'REJECTED_LEVEL2' || record.approvalStatus === 'REJECTED';
     const isPendingL1 = record.approvalStatus === 'PENDING_APPROVAL' || record.approvalStatus === 'PROPOSED';
     const isPendingL2 = record.approvalStatus === 'APPROVED_LEVEL1';
+    // 4 mắt: người tạo hồ sơ không được tự phê duyệt (backend cũng chặn)
     const creatorBlocked = isCreator(record);
 
     return [
@@ -650,7 +649,8 @@ export default function SpecialStationList() {
         icon: <EyeOutlined />,
         onClick: () => handleOpenDrawer(record, 'view'),
       },
-      ...((isDraft || isRejected) && hasPerm('coastalstationinmarsat:update') ? [{
+      // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+      ...(canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationinmarsat' }) ? [{
         key: 'edit',
         label: 'Chỉnh sửa',
         icon: <EditOutlined />,
@@ -697,26 +697,21 @@ export default function SpecialStationList() {
 
   // Sidebar Filter Component
   const sidebarFilterContent = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceMd }}>
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Đơn vị quản lý
-        </Text>
+    <>
+      <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
         <OrgUnitTreeSelect
+          organizations={orgUnitOptions}
           value={filterOrgUnitId}
           onChange={(val) => setFilterOrgUnitId(val)}
           placeholder="Tất cả"
           allowClear
           treeDefaultExpandAll={true}
           listHeight={256}
-          style={{ width: '100%', marginTop: spaceXs, borderRadius: radiusPill }}
+          style={{ ...selectStyle, width: '100%' }}
         />
-      </div>
+      </SidebarFilterField>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Tỉnh / Thành phố
-        </Text>
+      <SidebarFilterField label="Tỉnh / Thành phố">
         <Select
           value={filterProvinceId}
           onChange={(val) => setFilterProvinceId(val)}
@@ -727,95 +722,63 @@ export default function SpecialStationList() {
           filterOption={(input, option) =>
             normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
           }
-          style={{ ...selectStyle, width: '100%', marginTop: spaceXs }}
+          style={{ ...selectStyle, width: '100%' }}
         />
-      </div>
+      </SidebarFilterField>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Tìm kiếm từ khóa
-        </Text>
-        <Input.Search
+      <SidebarFilterField label="Tìm kiếm từ khóa">
+        <Input
           value={filterKeyword}
           onChange={(e) => setFilterKeyword(e.target.value)}
-          onSearch={() => { setPage(1); loadData(); }}
+          onPressEnter={() => { setPage(1); loadData(); }}
           placeholder="Mã, tên đài, địa chỉ..."
           allowClear
-          style={{ ...inputStyle, width: '100%', marginTop: spaceXs }}
+          style={{ ...inputStyle, width: '100%' }}
         />
-      </div>
+      </SidebarFilterField>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Tình trạng hoạt động
-        </Text>
+      <SidebarFilterField label="Tình trạng hoạt động">
         <Select
           value={filterConditionStatus}
           onChange={(val) => setFilterConditionStatus(val)}
           options={CONDITION_STATUS_OPTIONS}
           placeholder="Tất cả tình trạng"
           allowClear
-          style={{ ...selectStyle, width: '100%', marginTop: spaceXs }}
+          style={{ ...selectStyle, width: '100%' }}
         />
-      </div>
+      </SidebarFilterField>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Khoảng ngày cập nhật
-        </Text>
-        <RangePicker
-          value={filterDateRange}
-          onChange={(dates) => setFilterDateRange(dates as any)}
-          format="DD/MM/YYYY"
-          style={{ width: '100%', marginTop: spaceXs, borderRadius: radiusPill, height: 40 }}
+      <SidebarFilterField label="Đơn vị khai thác">
+        <Select
+          value={filterOperatingOrgId}
+          onChange={(val) => setFilterOperatingOrgId(val)}
+          options={operatingOrgOptions}
+          placeholder="Tất cả đơn vị khai thác"
+          allowClear
+          showSearch
+          filterOption={(input, option) =>
+            normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+          }
+          style={{ ...selectStyle, width: '100%' }}
         />
-      </div>
-
-      <div style={{ display: 'flex', gap: spaceSm, marginTop: spaceSm }}>
-        <Button
-          type="primary"
-          icon={<ReloadOutlined />}
-          onClick={() => { setPage(1); loadData(); }}
-          style={{ ...primaryButtonStyle, flex: 1 }}
-        >
-          Áp dụng
-        </Button>
-        <Button
-          onClick={handleResetFilter}
-          style={{ ...outlineButtonStyle, flex: 1 }}
-        >
-          Đặt lại
-        </Button>
-      </div>
-    </div>
+      </SidebarFilterField>
+    </>
   );
 
   return (
-    <div style={{ padding: spaceMd }}>
+    <ListPageContainer>
       <ScreenHeader
         title="Quản lý Đài thông tin vệ tinh Inmarsat"
         breadcrumb={[{ label: 'Quản lý nhà trạm' }, { label: 'Đài vệ tinh Inmarsat' }]}
-        actions={
-          <Space>
-            {hasPerm('coastalstationinmarsat:create') && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => handleOpenDrawer(null, 'create')}
-                style={primaryButtonStyle}
-              >
-                Thêm đài Inmarsat
-              </Button>
-            )}
-            <Button
-              icon={<FileExcelOutlined />}
-              onClick={handleExportExcel}
-              style={outlineButtonStyle}
-            >
-              Xuất Excel
-            </Button>
-          </Space>
-        }
+        actions={[
+          ...(hasPerm('coastalstationinmarsat:create') ? [{
+            key: 'create',
+            label: 'Thêm đài Inmarsat',
+            variant: 'primary' as const,
+            icon: <PlusOutlined />,
+            onClick: () => handleOpenDrawer(null, 'create'),
+          }] : []),
+        ]}
       />
 
       <FilterTableLayout
@@ -830,6 +793,7 @@ export default function SpecialStationList() {
           loadData();
         }}
         onFilterReset={handleResetFilter}
+        hideFilterToggle={true}
       >
         <DataTable
           loading={loading}
@@ -859,11 +823,9 @@ export default function SpecialStationList() {
       </FilterTableLayout>
 
       {/* 5-TAB APP DRAWER */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        width="50%"
         title={
           <div style={drawerTitleStyle}>
             {drawerMode === 'create' && 'Thêm mới Đài vệ tinh Inmarsat'}
@@ -871,23 +833,15 @@ export default function SpecialStationList() {
             {drawerMode === 'view' && `Chi tiết Đài Inmarsat: ${selectedRecord?.name || selectedRecord?.code}`}
           </div>
         }
-        extra={
-          <Space>
-            <Button onClick={() => setDrawerOpen(false)} style={drawerCloseBtnStyle}>
-              {drawerMode === 'view' ? 'Đóng' : 'Hủy'}
-            </Button>
-            {drawerMode !== 'view' && (
-              <Button
-                type="primary"
-                loading={drawerLoading}
-                onClick={handleDrawerSubmit}
-                style={primaryButtonStyle}
-              >
-                {drawerMode === 'create' ? 'Tạo mới (Lưu tạm)' : 'Lưu thay đổi'}
-              </Button>
-            )}
-          </Space>
-        }
+        footer={drawerMode === 'view' ? null : (
+          <FormSaveFooter
+            onAction={handleDrawerSubmit}
+            loadingAction={savingAction}
+            canSubmitForApproval={hasPerm('coastalstationinmarsat:create') || hasPerm('coastalstationinmarsat:update')}
+            canApprove={hasPerm('coastalstationinmarsat:approvec2') || hasPerm('coastalstationinmarsat:approve')}
+            draftLabel={drawerMode === 'create' ? 'Lưu tạm' : 'Lưu thay đổi'}
+          />
+        )}
       >
         <Form
           form={form}
@@ -905,18 +859,19 @@ export default function SpecialStationList() {
             items={[
               {
                 key: '1',
-                label: '1. Thông tin cơ bản',
+                label: FORM_TAB_LABEL.GENERAL,
                 children: (
                   <div>
                     <Row gutter={formRowGutter}>
                       <Col span={12}>
                         <Form.Item
                           name="orgUnitId"
-                          label="Đơn vị quản lý"
+                          {...formLabelProps('Đơn vị quản lý')}
                           rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <OrgUnitTreeSelect
+                            organizations={orgUnitOptions}
                             placeholder="Chọn đơn vị quản lý"
                             allowClear
                             treeDefaultExpandAll={true}
@@ -931,7 +886,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="operatingOrgId"
-                          label="Đơn vị khai thác"
+                          {...formLabelProps('Đơn vị khai thác')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -952,7 +907,7 @@ export default function SpecialStationList() {
                       <Col span={8}>
                         <Form.Item
                           name="code"
-                          label="Mã đài (Tự sinh)"
+                          {...formLabelProps('Mã đài (Tự sinh)')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -965,7 +920,7 @@ export default function SpecialStationList() {
                       <Col span={16}>
                         <Form.Item
                           name="name"
-                          label="Tên đài Inmarsat"
+                          {...formLabelProps('Tên đài Inmarsat')}
                           rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -978,7 +933,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="provinceId"
-                          label="Địa điểm (Tỉnh/Thành phố)"
+                          {...formLabelProps('Địa điểm (Tỉnh/Thành phố)')}
                           rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -997,7 +952,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="conditionStatus"
-                          label="Tình trạng hoạt động"
+                          {...formLabelProps('Tình trạng hoạt động')}
                           rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
                           style={{ marginBottom: spaceFormField }}
                         >
@@ -1012,7 +967,7 @@ export default function SpecialStationList() {
 
                     <Form.Item
                       name="locationAddress"
-                      label="Địa điểm chi tiết"
+                      {...formLabelProps('Địa điểm chi tiết')}
                       rules={[{ required: true, message: 'Vui lòng nhập địa điểm chi tiết' }]}
                       style={{ marginBottom: spaceFormField }}
                     >
@@ -1023,14 +978,14 @@ export default function SpecialStationList() {
               },
               {
                 key: '2',
-                label: '2. Thông số kỹ thuật',
+                label: FORM_TAB_LABEL.TECHNICAL,
                 children: (
                   <div>
                     <Row gutter={formRowGutter}>
                       <Col span={12}>
                         <Form.Item
                           name="services"
-                          label="Dịch vụ cung cấp (Multi-select)"
+                          {...formLabelProps('Dịch vụ cung cấp (Multi-select)')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -1049,7 +1004,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="modemType"
-                          label="Loại Modem / Thiết bị"
+                          {...formLabelProps('Loại Modem / Thiết bị')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: Capsat, Sailor 6006..." style={inputStyle} />
@@ -1061,7 +1016,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="frequency"
-                          label="Tần số liên lạc"
+                          {...formLabelProps('Tần số liên lạc')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: 1.6 GHz, L-Band..." style={inputStyle} />
@@ -1070,7 +1025,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="sarCode"
-                          label="Mã SAR (Tìm kiếm cứu nạn)"
+                          {...formLabelProps('Mã SAR (Tìm kiếm cứu nạn)')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: SAR-INM-VN01..." style={inputStyle} />
@@ -1080,7 +1035,7 @@ export default function SpecialStationList() {
 
                     <Form.Item
                       name="coverageZone"
-                      label="Vùng phủ sóng"
+                      {...formLabelProps('Vùng phủ sóng')}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <TextArea rows={2} placeholder="Mô tả phạm vi, vùng biển và vệ tinh phủ sóng..." style={{ borderRadius: radiusMd }} />
@@ -1090,7 +1045,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="contactPerson"
-                          label="Người liên hệ / Trực ban"
+                          {...formLabelProps('Người liên hệ / Trực ban')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="Họ và tên cán bộ quản trị trạm..." style={inputStyle} />
@@ -1099,7 +1054,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="contactPhone"
-                          label="Số điện thoại liên hệ"
+                          {...formLabelProps('Số điện thoại liên hệ')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="Số điện thoại trực ban / hotline..." style={inputStyle} />
@@ -1109,7 +1064,7 @@ export default function SpecialStationList() {
 
                     <Form.Item
                       name="notes"
-                      label="Ghi chú kỹ thuật"
+                      {...formLabelProps('Ghi chú kỹ thuật')}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <TextArea rows={3} placeholder="Ghi chú bổ sung về vận hành, kỹ thuật..." style={{ borderRadius: radiusMd }} />
@@ -1119,14 +1074,14 @@ export default function SpecialStationList() {
               },
               {
                 key: '3',
-                label: '3. Vị trí & GIS',
+                label: FORM_TAB_LABEL.LOCATION,
                 children: (
                   <div>
                     <Row gutter={formRowGutter}>
                       <Col span={12}>
                         <Form.Item
                           name="objectType"
-                          label="Loại đối tượng GIS"
+                          {...formLabelProps('Loại đối tượng GIS')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select options={OBJECT_TYPE_OPTIONS} style={{ ...selectStyle, width: '100%' }} />
@@ -1135,7 +1090,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="symbol"
-                          label="Biểu tượng bản đồ"
+                          {...formLabelProps('Biểu tượng bản đồ')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -1156,7 +1111,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="coordinateSystem"
-                          label="Hệ quy chiếu"
+                          {...formLabelProps('Hệ quy chiếu')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input disabled style={{ ...inputStyle, backgroundColor: '#f5f5f5' }} />
@@ -1165,7 +1120,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="displayRule"
-                          label="Quy tắc hiển thị"
+                          {...formLabelProps('Quy tắc hiển thị')}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input placeholder="VD: ZoomLevel 8-18..." style={inputStyle} />
@@ -1177,7 +1132,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="latitude"
-                          label="Vĩ độ (Latitude WGS84)"
+                          {...formLabelProps('Vĩ độ (Latitude WGS84)')}
                           rules={[
                             { type: 'number', min: -90, max: 90, message: 'Vĩ độ trong khoảng -90 đến 90' },
                           ]}
@@ -1189,7 +1144,7 @@ export default function SpecialStationList() {
                       <Col span={12}>
                         <Form.Item
                           name="longitude"
-                          label="Kinh độ (Longitude WGS84)"
+                          {...formLabelProps('Kinh độ (Longitude WGS84)')}
                           rules={[
                             { type: 'number', min: -180, max: 180, message: 'Kinh độ trong khoảng -180 đến 180' },
                           ]}
@@ -1204,7 +1159,7 @@ export default function SpecialStationList() {
               },
               {
                 key: '4',
-                label: '4. Tệp đính kèm',
+                label: FORM_TAB_LABEL.ATTACHMENTS,
                 children: (
                   <div>
                     <Upload.Dragger
@@ -1223,9 +1178,9 @@ export default function SpecialStationList() {
                   </div>
                 ),
               },
-              {
+              ...(drawerMode !== 'create' ? [{
                 key: '5',
-                label: '5. Lịch sử & Phê duyệt',
+                label: FORM_TAB_LABEL.HISTORY,
                 children: (
                   <div>
                     {selectedRecord && (
@@ -1294,11 +1249,11 @@ export default function SpecialStationList() {
                     />
                   </div>
                 ),
-              },
+              }] : []),
             ]}
           />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* MODAL NHẬP LÝ DO TỪ CHỐI */}
       <Modal
@@ -1324,6 +1279,6 @@ export default function SpecialStationList() {
           style={{ borderRadius: radiusMd }}
         />
       </Modal>
-    </div>
+    </ListPageContainer>
   );
 }

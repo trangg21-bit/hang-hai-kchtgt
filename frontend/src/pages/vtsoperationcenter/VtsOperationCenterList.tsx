@@ -82,6 +82,10 @@ import {
   borderDefault,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import SidebarFilterField from '../../components/list-view/SidebarFilterField';
+import { type Dayjs } from 'dayjs';
 
 const HISTORY_FIELD_ORDER = [
   'orgUnitId',
@@ -412,7 +416,52 @@ function renderHistoryValueTag(field: string, val: string | null) {
   return <span>{val}</span>;
 }
 
-export const VtsOperationCenterList: React.FC = () => {
+export /**
+ * 6 cột kiểm toán phê duyệt trên bảng danh sách.
+ *
+ * Ma trận dữ liệu Trung tâm điều hành VTS (F-293) đánh `Danh sách = TRUE` cho các trường
+ * #20–#23 và #25–#26; quy chuẩn hiển thị ở `infrastructure-screen-template.md` §2.1.
+ * Trước đây chỉ xem được ở màn Chi tiết nên người quản lý phải mở từng hồ sơ mới biết
+ * ai gửi / ai duyệt / duyệt lúc nào.
+ */
+const auditDateCell = (value?: string) => (
+  <span style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+    {value ? dayjs(value).format('DD/MM/YYYY HH:mm') : '—'}
+  </span>
+);
+
+const auditUserCell = (name?: string) => (
+  <span style={{ fontSize: fontSizeMd, whiteSpace: 'nowrap' }}>{name || '—'}</span>
+);
+
+const AUDIT_COLUMNS = [
+  {
+    key: 'submittedAt', label: 'Ngày gửi phê duyệt', dataIndex: 'submittedAt', width: 150, ellipsis: false,
+    render: (v: string) => auditDateCell(v),
+  },
+  {
+    key: 'submittedByName', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedByName', width: 170, ellipsis: false,
+    render: (v: string) => auditUserCell(v),
+  },
+  {
+    key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approvedDateLevel1', width: 150, ellipsis: false,
+    render: (v: string) => auditDateCell(v),
+  },
+  {
+    key: 'approverLevel1Name', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1Name', width: 170, ellipsis: false,
+    render: (v: string) => auditUserCell(v),
+  },
+  {
+    key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', dataIndex: 'approvedDateLevel2', width: 150, ellipsis: false,
+    render: (v: string) => auditDateCell(v),
+  },
+  {
+    key: 'approverLevel2Name', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'approverLevel2Name', width: 170, ellipsis: false,
+    render: (v: string) => auditUserCell(v),
+  },
+];
+
+const VtsOperationCenterList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [data, setData] = useState<VtsOperationCenterListItem[]>([]);
@@ -427,13 +476,14 @@ export const VtsOperationCenterList: React.FC = () => {
 
   // Filter sidebar states
   const [filterCollapsed, setFilterCollapsed] = useState(false);
+  // Khoảng ngày cập nhật — bộ lọc nâng cao (ma trận dữ liệu TTĐH VTS, trường #18)
+  const [updatedRange, setUpdatedRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [keyword, setKeyword] = useState<string>('');
   const [orgUnitId, setOrgUnitId] = useState<string | undefined>();
   const [vtsSystemId, setVtsSystemId] = useState<string | undefined>();
   const [portId, setPortId] = useState<string | undefined>();
   const [provinceId, setProvinceId] = useState<number | undefined>();
   const [conditionStatus, setConditionStatus] = useState<ConditionStatus | undefined>();
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState<string | undefined>();
 
   // Reference data
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -527,7 +577,7 @@ export const VtsOperationCenterList: React.FC = () => {
       setLoading(true);
       setIsError(false);
 
-      const effectiveApprovalStatus = activeTab === 'ALL' ? approvalStatusFilter : activeTab;
+      const effectiveApprovalStatus = activeTab === 'ALL' ? undefined : activeTab;
 
       const res = await vtsOperationCenterService.search({
         keyword: keyword.trim() || undefined,
@@ -537,6 +587,8 @@ export const VtsOperationCenterList: React.FC = () => {
         provinceId: provinceId !== undefined ? provinceId : undefined,
         conditionStatus: conditionStatus !== undefined ? conditionStatus : undefined,
         approvalStatus: effectiveApprovalStatus || undefined,
+        updatedFrom: updatedRange?.[0] ? updatedRange[0].startOf('day').toISOString() : undefined,
+        updatedTo: updatedRange?.[1] ? updatedRange[1].endOf('day').toISOString() : undefined,
         page,
         size: pageSize,
         // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả, không chỉ trang
@@ -563,11 +615,10 @@ export const VtsOperationCenterList: React.FC = () => {
     portId,
     provinceId,
     conditionStatus,
-    approvalStatusFilter,
     activeTab,
     sortField,
     sortDirection,
-  ]);
+  , updatedRange]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortField(field);
@@ -589,13 +640,13 @@ export const VtsOperationCenterList: React.FC = () => {
   };
 
   const handleReset = () => {
+    setUpdatedRange(null);
     setKeyword('');
     setOrgUnitId(undefined);
     setVtsSystemId(undefined);
     setPortId(undefined);
     setProvinceId(undefined);
     setConditionStatus(undefined);
-    setApprovalStatusFilter(undefined);
     setActiveTab('ALL');
     setPage(1);
   };
@@ -708,14 +759,14 @@ export const VtsOperationCenterList: React.FC = () => {
     const allCount = draftCount + pendingCount + approvedL1Count + approvedCount + rejectedCount;
 
     return [
-      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary },
-      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft },
-      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention },
-      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7' },
-      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational },
-      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical },
+      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary, active: activeTab === 'ALL' },
+      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft, active: activeTab === 'DRAFT' },
+      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention, active: activeTab === 'PENDING_APPROVAL' },
+      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7', active: activeTab === 'APPROVED_LEVEL1' },
+      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational, active: activeTab === 'APPROVED' },
+      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical, active: activeTab === 'REJECTED_LEVEL1' || activeTab === 'REJECTED_LEVEL2' },
     ];
-  }, [statusCounts]);
+  }, [statusCounts, activeTab]);
 
   const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
     (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
@@ -864,41 +915,7 @@ export const VtsOperationCenterList: React.FC = () => {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
-      render: (status: ApprovalStatus) => {
-        if (!status) return '—';
-        const key = String(status);
-        const label = key === 'DRAFT' ? 'Lưu tạm'
-          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? 'Chờ Cảng vụ duyệt'
-          : key === 'APPROVED_LEVEL1' ? 'Chờ Cục duyệt'
-          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? 'Đã duyệt'
-          : (key === 'REJECTED_LEVEL1' || key === 'REJECTED') ? 'Cảng vụ trả về'
-          : key === 'REJECTED_LEVEL2' ? 'Cục trả về'
-          : key;
-        const color = key === 'DRAFT' ? statusDraft
-          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? statusAttention
-          : key === 'APPROVED_LEVEL1' ? '#0284C7'
-          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? statusOperational
-          : statusCritical;
-        return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 10px',
-              border: `1px solid ${color}40`,
-              borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
-              background: `${color}15`,
-              color,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {label}
-          </span>
-        );
-      },
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       key: 'updatedByName',
@@ -922,15 +939,20 @@ export const VtsOperationCenterList: React.FC = () => {
         );
       },
     },
+    // ── 6 cột kiểm toán phê duyệt ─────────────────────────────────────────
+    // Chốt 26/08/2026 theo ma trận dữ liệu F-293 (#20–#23, #25–#26); quy chuẩn ở
+    // infrastructure-screen-template.md §2.1. Đặt sau "Cán bộ cập nhật", trước "Thao tác".
+    // Tất cả read-only, hiển thị HỌ VÀ TÊN cán bộ — không phơi UUID.
+    ...AUDIT_COLUMNS,
   ], [page, pageSize, sortField, sortDirection]);
 
   const rowActions = useCallback((record: VtsOperationCenterListItem) => {
     const isDraft = record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
     const isPendingC1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
     const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-    const isApproved = record.approvalStatus === ApprovalStatus.APPROVED;
 
-    const isCreator = user?.id && record.createdBy === user.id;
+    const currentUserId = user?.userId || user?.id;
+    const isCreator = Boolean(currentUserId && record.createdBy === currentUserId);
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
 
@@ -952,8 +974,8 @@ export const VtsOperationCenterList: React.FC = () => {
       });
     }
 
-    // 3. Chỉnh sửa
-    if (canUpdate && !isApproved) {
+    // 3. Chỉnh sửa — quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm: hasPermission, resource: 'vtsoperationcenter' })) {
       actions.push({
         key: 'edit',
         icon: <EditOutlined />,
@@ -1272,37 +1294,21 @@ export const VtsOperationCenterList: React.FC = () => {
         onRetry={fetchData}
         filterContent={
           <>
-            <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Đơn vị quản lý
-              </div>
+            {/* ── Bộ lọc thường (luôn hiển thị) ─────────────────────────── */}
+            <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
               <OrgUnitTreeSelect
                 organizations={orgUnits}
                 placeholder="Tất cả"
                 allowClear
+                treeDefaultExpandAll={true}
                 listHeight={256}
                 value={orgUnitId}
                 onChange={handleOrgUnitChange}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Từ khóa tìm kiếm
-              </div>
-              <Input
-                placeholder="Tìm theo mã, tên trung tâm..."
-                allowClear
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                onPressEnter={handleSearch}
-                style={{ borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Thuộc cảng biển
-              </div>
+            </SidebarFilterField>
+
+            <SidebarFilterField label="Thuộc cảng biển">
               <Select
                 placeholder="Tất cả"
                 allowClear
@@ -1312,89 +1318,85 @@ export const VtsOperationCenterList: React.FC = () => {
                 }
                 value={portId}
                 onChange={setPortId}
-                options={filteredPortOptions.map((p) => ({ value: p.id, label: p.name }))}
+                options={filteredPortOptions.map((port) => ({ value: port.id, label: port.name }))}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Thuộc hệ thống VTS
-              </div>
-              <Select
-                placeholder="Tất cả"
+            </SidebarFilterField>
+
+            <SidebarFilterField label="Tên và mã trung tâm điều hành VTS">
+              <Input
+                placeholder="Tìm theo tên hoặc mã trung tâm..."
                 allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                }
-                value={vtsSystemId}
-                onChange={setVtsSystemId}
-                options={filteredVtsSystems.map((s) => ({ value: s.id, label: s.name }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onPressEnter={handleSearch}
+                style={{ borderRadius: radiusPill, height: 40 }}
               />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Địa điểm (Tỉnh/TP)
-              </div>
-              <Select
-                placeholder="Tất cả"
-                allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                }
-                value={provinceId}
-                onChange={setProvinceId}
-                options={VIETNAM_PROVINCE_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Tình trạng
-              </div>
-              <Select
-                placeholder="Tất cả"
-                allowClear
-                value={conditionStatus}
-                onChange={setConditionStatus}
-                options={[
-                  { value: ConditionStatus.OPERATIONAL, label: 'Đang hoạt động' },
-                  { value: ConditionStatus.STOPPED, label: 'Dừng hoạt động' },
-                  { value: ConditionStatus.MAINTENANCE, label: 'Đang bảo trì' },
-                  { value: ConditionStatus.UNDER_CONSTRUCTION, label: 'Đang xây dựng' },
-                ]}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-              />
-            </div>
-            {activeTab === 'ALL' && (
+            </SidebarFilterField>
+
+            {/* ── Bộ lọc nâng cao (mở bằng nút phễu cạnh nút Tìm kiếm) ──── */}
+            {filterCollapsed && (
               <>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Trạng thái phê duyệt
-                  </div>
+                <SidebarFilterField label="Tình trạng">
                   <Select
                     placeholder="Tất cả"
                     allowClear
-                    value={approvalStatusFilter}
-                    onChange={setApprovalStatusFilter}
+                    value={conditionStatus}
+                    onChange={setConditionStatus}
                     options={[
-                      { value: 'DRAFT', label: 'Lưu tạm' },
-                      { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                      { value: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt' },
-                      { value: 'APPROVED', label: 'Đã duyệt' },
-                      { value: 'REJECTED_LEVEL1', label: 'Cảng vụ trả về' },
-                      { value: 'REJECTED_LEVEL2', label: 'Cục trả về' },
+                      { value: ConditionStatus.OPERATIONAL, label: 'Đang hoạt động' },
+                      { value: ConditionStatus.STOPPED, label: 'Dừng hoạt động' },
+                      { value: ConditionStatus.MAINTENANCE, label: 'Đang bảo trì' },
+                      { value: ConditionStatus.UNDER_CONSTRUCTION, label: 'Đang xây dựng' },
                     ]}
                     style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                   />
-                </div>
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Thuộc hệ thống VTS">
+                  <Select
+                    placeholder="Tất cả"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
+                    value={vtsSystemId}
+                    onChange={setVtsSystemId}
+                    options={filteredVtsSystems.map((sys) => ({ value: sys.id, label: sys.name }))}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Ngày cập nhật">
+                  <DatePicker.RangePicker
+                    format="DD/MM/YYYY"
+                    placeholder={['Từ ngày', 'Đến ngày']}
+                    allowClear
+                    value={updatedRange}
+                    onChange={(range) => setUpdatedRange(range as [Dayjs | null, Dayjs | null] | null)}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </SidebarFilterField>
+
+                <SidebarFilterField label="Địa điểm (Tỉnh/TP)">
+                  <Select
+                    placeholder="Tất cả"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
+                    value={provinceId}
+                    onChange={setProvinceId}
+                    options={VIETNAM_PROVINCE_OPTIONS}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </SidebarFilterField>
               </>
             )}
           </>
         }
-        hideFilterToggle={true}
         statusTabs={statusTabsItems}
         onStatusTabChange={(key) => {
           setActiveTab(key);

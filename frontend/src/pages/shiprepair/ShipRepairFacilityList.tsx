@@ -31,8 +31,11 @@ import ShipRepairFacilityForm from './ShipRepairFacilityForm';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
-  { label: 'Chờ phê duyệt', value: 'PENDING_APPROVAL' },
-  { label: 'Đã phê duyệt', value: 'APPROVED' },
+  { label: 'Chờ Cảng vụ duyệt', value: 'PENDING_APPROVAL' },
+  { label: 'Chờ Cục duyệt', value: 'APPROVED_LEVEL1' },
+  { label: 'Đã duyệt', value: 'APPROVED' },
+  { label: 'Cảng vụ trả về', value: 'REJECTED_LEVEL1' },
+  { label: 'Cục trả về', value: 'REJECTED_LEVEL2' },
   { label: 'Từ chối', value: 'REJECTED' },
 ];
 

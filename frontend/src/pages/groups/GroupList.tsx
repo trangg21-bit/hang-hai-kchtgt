@@ -22,13 +22,12 @@ import toast, { modal } from '../../components/ToastNotification';
 import { normalizeSearchText } from '../../components/org-unit';
 import { ManagementDrawer, ManagementFormField, ManagementFormGrid } from '../../components/management';
 import { PERMISSIONS } from '../../constants/permissions';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const { confirm } = modal;
 
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
 const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['admin:all', '*']);
-
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onSearch }) => {
   const [value, setValue] = useState('');

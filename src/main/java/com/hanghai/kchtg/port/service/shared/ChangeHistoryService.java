@@ -6,8 +6,6 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.entity.ChangeLog;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,7 +31,6 @@ import java.util.UUID;
 public class ChangeHistoryService {
 
     private final InfrastructureHistoryRepository historyRepository;
-    private final ChangeLogRepository changeLogRepository;
 
     public static InfrastructureType resolveInfrastructureType(String entityName) {
         if (entityName == null) return InfrastructureType.SEAPORT;
@@ -220,7 +217,7 @@ public class ChangeHistoryService {
         } catch (Exception ignored) {}
 
         if (entityId != null && historyRepository != null) {
-            historyRepository.save(InfrastructureHistory.builder()
+            InfrastructureHistory saved = historyRepository.save(InfrastructureHistory.builder()
                     .refId(entityId)
                     .refType(resolveInfrastructureType(entityType))
                     .approvalLevel(ApprovalLevel.LEVEL_0)
@@ -231,6 +228,7 @@ public class ChangeHistoryService {
                     .previousValue(oldValue)
                     .newValue(newValue)
                     .build());
+            return saved.getId();
         }
 
         if (changeLogRepository != null) {

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Repository
@@ -54,6 +55,8 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
           AND (:approvalStatus IS NULL 
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2)))
+          AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
@@ -71,8 +74,25 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
         @Param("keyword") String keyword,
+        @Param("updatedFrom") LocalDateTime updatedFrom,
+        @Param("updatedTo") LocalDateTime updatedTo,
         Pageable pageable
     );
+
+    default Page<VtsOperationCenter> search(
+        boolean scopeEnabled,
+        List<UUID> scopeOrgUnitIds,
+        UUID orgUnitId,
+        UUID vtsSystemId,
+        UUID portId,
+        Integer provinceId,
+        ConditionStatus conditionStatus,
+        ApprovalStatus approvalStatus,
+        String keyword,
+        Pageable pageable
+    ) {
+        return search(scopeEnabled, scopeOrgUnitIds, orgUnitId, vtsSystemId, portId, provinceId, conditionStatus, approvalStatus, keyword, null, null, pageable);
+    }
 
     @Query("""
         SELECT t.approvalStatus, COUNT(t) FROM VtsOperationCenter t
@@ -83,6 +103,8 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
           AND (:portId IS NULL OR t.portId = :portId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:keyword AS string) IS NULL OR (
                 CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
@@ -99,7 +121,9 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         @Param("portId") UUID portId,
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") ConditionStatus conditionStatus,
-        @Param("keyword") String keyword
+        @Param("keyword") String keyword,
+        @Param("updatedFrom") LocalDateTime updatedFrom,
+        @Param("updatedTo") LocalDateTime updatedTo
     );
 
     List<VtsOperationCenter> findByVtsSystemIdAndDeletedAtIsNull(UUID vtsSystemId);

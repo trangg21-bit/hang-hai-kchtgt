@@ -51,7 +51,7 @@ source-paths:
 | 1 | Đơn vị chủ quản | Dropdown (searchable) | Có | Có | Placeholder: "Chọn đơn vị chủ quản" | FK → Organization |
 | 2 | Đơn vị vận hành | Dropdown (searchable) | Có | Có | Placeholder: "Chọn đơn vị vận hành" | FK → Organization |
 | 3 | Thuộc cảng biển | Dropdown (searchable) | Có | Không | Placeholder: "Chọn cảng biển" | FK → Port, có thể để trống |
-| 4 | Mã hệ thống VTS | Text input + counter | Có | Có | max 50, unique, placeholder: "Nhập mã hệ thống VTS" | Validate trùng trước khi lưu. Hiển thị "0/50" |
+| 4 | Mã hệ thống VTS | Text input (disabled) | Không | Có | Tự sinh: "VTS-{seq}" (VD: "VTS-000001") | Hệ thống tự sinh mã theo công thức VTS-%06d, bất biến sau khi tạo |
 | 5 | Tên hệ thống VTS | Text input + counter | Có | Có | max 255, placeholder: "Nhập tên hệ thống VTS" | Hiển thị "0/255" |
 | 6 | Địa điểm (Tỉnh/TP) | Dropdown (searchable) | Có | Có | Placeholder: "Chọn địa điểm" | Danh sách 63 tỉnh/thành phố |
 | 7 | Địa điểm chi tiết | Text input + counter | Có | Không | max 500, placeholder: "Nhập địa điểm chi tiết" | Hiển thị "0/500" |

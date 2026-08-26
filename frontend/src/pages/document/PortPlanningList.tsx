@@ -18,6 +18,7 @@ import Pagination from '../../components/list-view/Pagination';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
 import toast, { modal } from '../../components/ToastNotification';
 import { colors } from '../../theme';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import {
   fontSizeMd,
   fontWeightBold,
@@ -49,10 +50,6 @@ const PLANNING_STATUS_COLOR: Record<string, string> = {
   DA_THAY_THE: statusAttention,
   LICH_SU: statusDraft,
 };
-
-const labelProps = (label: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{label}</span>,
-});
 
 function statusBadge(value?: string) {
   const color = PLANNING_STATUS_COLOR[value || ''] || textSecondary;

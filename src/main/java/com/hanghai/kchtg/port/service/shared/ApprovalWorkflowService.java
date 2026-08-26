@@ -5,9 +5,7 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,8 +18,8 @@ import java.util.UUID;
  * Approval workflow state machine.
  * <p>
  * Transitions:
- *   - APPROVE(PENDING) → APPROVED + insert InfrastructureHistory / PheDuyetLog
- *   - REJECT(PENDING) → REJECTED + insert InfrastructureHistory / PheDuyetLog (reason required)
+ *   - APPROVE(PENDING) → APPROVED + insert InfrastructureHistory
+ *   - REJECT(PENDING) → REJECTED + insert InfrastructureHistory (reason required)
  *   - Any transition from non-PENDING → throws IllegalStateException (422)
  * </p>
  */
@@ -30,7 +28,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ApprovalWorkflowService {
 
-    private final ApprovalLogRepository approvalLogRepository;
     private final InfrastructureHistoryRepository historyRepository;
 
     /**

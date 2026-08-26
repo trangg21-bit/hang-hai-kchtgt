@@ -160,6 +160,8 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:portId IS NULL OR t.portId = :portId)
+          AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
@@ -169,7 +171,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2)))
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)
-          AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate < :toDate)
+          AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate <= :toDate)
+          AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR t.updatedAt <= :updatedTo)
         """,
         countQuery = """
         SELECT COUNT(t)
@@ -178,6 +182,8 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:portId IS NULL OR t.portId = :portId)
+          AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
@@ -187,7 +193,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2)))
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)
-          AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate < :toDate)
+          AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate <= :toDate)
+          AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR t.updatedAt <= :updatedTo)
         """)
     /**
      * Thứ tự sắp xếp lấy từ {@link Pageable} (mặc định createdAt DESC) chứ không
@@ -198,13 +206,31 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             @Param("scopeEnabled") boolean scopeEnabled,
             @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
+            @Param("portId") UUID portId,
+            @Param("provinceId") Integer provinceId,
             @Param("keyword") String keyword,
             @Param("conditionStatus") ConditionStatus conditionStatus,
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
+            @Param("updatedFrom") LocalDateTime updatedFrom,
+            @Param("updatedTo") LocalDateTime updatedTo,
             Pageable pageable
     );
+
+    default Page<VtsSystemListProjection> searchList(
+            boolean scopeEnabled,
+            List<UUID> scopeOrgUnitIds,
+            UUID orgUnitId,
+            String keyword,
+            ConditionStatus conditionStatus,
+            ApprovalStatus approvalStatus,
+            LocalDate fromDate,
+            LocalDate toDate,
+            Pageable pageable
+    ) {
+        return searchList(scopeEnabled, scopeOrgUnitIds, orgUnitId, null, null, keyword, conditionStatus, approvalStatus, fromDate, toDate, null, null, pageable);
+    }
 
     @Query(value = """
         SELECT t.id AS id,
@@ -306,6 +332,8 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:portId IS NULL OR t.portId = :portId)
+          AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (CAST(:keyword AS string) IS NULL OR (
                 CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
@@ -313,17 +341,23 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
               ))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)
-          AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate < :toDate)
+          AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate <= :toDate)
+          AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR t.updatedAt <= :updatedTo)
         GROUP BY t.approvalStatus
         """)
     List<Object[]> countByApprovalStatus(
             @Param("scopeEnabled") boolean scopeEnabled,
             @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
+            @Param("portId") UUID portId,
+            @Param("provinceId") Integer provinceId,
             @Param("keyword") String keyword,
             @Param("conditionStatus") ConditionStatus conditionStatus,
             @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate
+            @Param("toDate") LocalDate toDate,
+            @Param("updatedFrom") LocalDateTime updatedFrom,
+            @Param("updatedTo") LocalDateTime updatedTo
     );
 
     @Query("SELECT COUNT(t) > 0 FROM VtsSystem t WHERE LOWER(t.code) = LOWER(:code) AND t.deletedAt IS NULL")

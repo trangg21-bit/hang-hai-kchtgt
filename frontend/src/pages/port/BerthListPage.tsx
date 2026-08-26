@@ -1,7 +1,18 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Tag, Modal, Input, Select, Alert, Divider, DatePicker,
-  Drawer, Radio, Space, Typography, Table, Form,
+  Button,
+  Tag,
+  Modal,
+  Input,
+  Select,
+  Alert,
+  Divider,
+  DatePicker,
+  Radio,
+  Space,
+  Typography,
+  Table,
+  Form,
 } from 'antd';
 import {
   PlusOutlined,
@@ -82,14 +93,31 @@ import {
   surfaceCard,
   surfacePage,
   metaStyle,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
-  historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
-  historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
+  drawerTitleStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  requiredMarkStyle,
+  historyBadgeStyle,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyInfoTitleStyle,
+  historyChangeRowStyle,
+  historyCreateRowStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
+import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 
 // ── Field name translation ───────────────────────────────────────────
 
@@ -137,6 +165,10 @@ const STRUCTURE_TYPE_OPTIONS = [
 
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
+  // 7 trạng thái chuẩn — approval-2-level-spec.md mục 3.1.
+  // Trước đây tab "Chờ Cảng vụ duyệt" lại truy vấn APPROVED_LEVEL1 (hồ sơ đã qua vòng 1),
+  // tab "Chờ Cục duyệt" truy vấn APPROVED_LEVEL2 (mã legacy = Đã duyệt, luôn rỗng),
+  // và thiếu hẳn tab cho hồ sơ đang chờ vòng 1.
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
   { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
@@ -205,10 +237,6 @@ function getActionLabel(items: any[]): { label: string; color: string } {
   if (nullCount > items.length / 2) return { label: 'Tạo mới', color: 'blue' };
   return { label: 'Chỉnh sửa', color: 'blue' };
 }
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -719,7 +747,7 @@ export default function BerthList() {
       {/* ── Cơ bản: ĐVQL + Thuộc cảng biển + Tình trạng ──────────── */}
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+          Đơn vị quản lý
         </div>
         <OrgUnitTreeSelect
           organizations={organizations}
@@ -1031,19 +1059,18 @@ export default function BerthList() {
       </FilterTableLayout>
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến cảng</span>}
         open={createDrawerVisible}
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
+          <>
+
+          <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); berthFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); berthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button>
-          </div>
+          </>
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1055,15 +1082,13 @@ export default function BerthList() {
         <Form form={createForm} layout="vertical" initialValues={{}}>
           <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
         open={!!editBerthId}
         onClose={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setEditBerthId(undefined); setEditBerthName(''); updateForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editBerthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
@@ -1080,15 +1105,13 @@ export default function BerthList() {
             <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { setEditBerthId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={drawerTitleStyle}>Chi tiết bến cảng{detailRecord ? ` - ${detailRecord.berthName}` : ''}</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-        extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
@@ -1096,7 +1119,7 @@ export default function BerthList() {
         footer={null}
       >
         {renderDetailContent()}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
@@ -1197,13 +1220,11 @@ export default function BerthList() {
       </Modal>
 
       {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={950}
         title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
         open={pierDetailOpen}
         onClose={() => setPierDetailOpen(false)}
-        extra={<Button type="text" onClick={() => setPierDetailOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1233,11 +1254,10 @@ export default function BerthList() {
             waterwayMap={waterwayMap}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── History Drawer ──────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={880}
         mask
         title={
@@ -1253,7 +1273,6 @@ export default function BerthList() {
         }
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1294,7 +1313,7 @@ export default function BerthList() {
           <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
         ) : renderBerthHistoryTimeline(historyRecords)}
         </div>
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 }

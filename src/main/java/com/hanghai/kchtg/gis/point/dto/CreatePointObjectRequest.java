@@ -34,9 +34,13 @@ public class CreatePointObjectRequest {
     @NotNull(message = "Kinh độ không được để trống")
     @DecimalMin(value = "-180.0", message = "Kinh độ phải trong khoảng -180~180")
     @DecimalMax(value = "180.0", message = "Kinh độ phải trong khoảng -180~180")
+    private Double longitude;
+
     @NotNull(message = "Vĩ độ không được để trống")
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải trong khoảng -90~90")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải trong khoảng -90~90")
+    private Double latitude;
+
     private String description;
 
     @Builder.Default

@@ -45,6 +45,10 @@ class BuoyControllerTest {
 
     @MockBean
     private BuoyService buoyService;
+    // BuoyController nhận thêm repository nhật ký dùng chung khi lịch sử phao tiêu
+    // chuyển sang bảng `infrastructure_history`; lát cắt @WebMvcTest phải mock bean này.
+    @MockBean
+    private com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository infrastructureHistoryRepository;
 
     @MockBean
     private AsyncLogAppender asyncLogAppender;

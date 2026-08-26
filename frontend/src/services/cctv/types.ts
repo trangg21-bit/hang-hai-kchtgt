@@ -11,13 +11,26 @@ export interface CctvResponse {
   orgUnitId: string | null;
   orgUnitName: string | null;
   operatingUnitId: string | null;
-  provinceId: string | null;
+  provinceName: string | null;
   attachedInfrastructureType: number | null;
   attachedInfrastructureId: string | null;
+  attachedInfrastructureName: string | null;
   unitOfMeasure: number | null;
   yearOfUse: number | null;
   operationalStatus: string | null;
   approvalStatus: string | null;
+  approverLevel1: string | null;
+  approverLevel1Name: string | null;
+  approvedDateLevel1: string | null;
+  approverLevel2: string | null;
+  approverLevel2Name: string | null;
+  approvedDateLevel2: string | null;
+  rejectionReason: string | null;
+  submittedDate: string | null;
+  submittedBy: string | null;
+  submittedByName: string | null;
+  approvalContentLevel1: string | null;
+  approvalContentLevel2: string | null;
   specifications: string | null;
   maintenanceInformation: string | null;
   note: string | null;
@@ -46,7 +59,7 @@ export interface CreateCctvRequest {
   quantity: number;
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
-  provinceId?: string | null;
+  provinceName?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;
@@ -73,7 +86,7 @@ export interface UpdateCctvRequest {
   quantity?: number | null;
   orgUnitId?: string | null;
   operatingUnitId?: string | null;
-  provinceId?: string | null;
+  provinceName?: string | null;
   attachedInfrastructureType?: number | null;
   attachedInfrastructureId?: string | null;
   unitOfMeasure?: number | null;
@@ -124,6 +137,13 @@ export interface CctvOptionResponse {
 export interface ApprovalResult {
   success: boolean;
   message: string;
+}
+
+// ── Approval request (2 cấp: C1 Cảng vụ / C2 Cục) ──────────────────
+
+export interface ApprovalRequest {
+  decision: string;
+  reason?: string;
 }
 
 // ── Approval / Change history record ────────────────────────────────

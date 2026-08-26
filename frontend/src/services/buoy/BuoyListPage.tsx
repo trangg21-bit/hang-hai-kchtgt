@@ -5,7 +5,17 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Modal, Input, Alert, Space, Drawer, Form, DatePicker, TreeSelect, Select, Typography, Radio,
+  Button,
+  Modal,
+  Input,
+  Alert,
+  Space,
+  Form,
+  DatePicker,
+  TreeSelect,
+  Select,
+  Typography,
+  Radio,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined,
@@ -60,6 +70,12 @@ import {
 } from '../../tokens';
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
+import { approvalStatusColor } from '../../components/shared/ApprovalStatusBadge';
+import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 
 // ── Helpers (moved verbatim from BuoyList.tsx / BuoyForm.tsx) ────────
 
@@ -1041,7 +1057,7 @@ export default function BuoyListPage() {
     if (fn === 'lightCharacteristic') return LIGHT_CHAR_LABEL_MAP[val] || val;
     if (fn === 'unitId') return orgMap.get(val) || val;
     if (fn === 'status') return buoyStatusBadge(val).label;
-    if (fn === 'approvalStatus') return APPROVAL_STATUS_LABELS[val] || val;
+    if (fn === 'approvalStatus') return approvalStatusLabel(val);
     if (fn === 'geometryType') return GEOMETRY_TYPE_LABELS[val] || val;
     if (fn === 'provinceId') return VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === val)?.label || val;
     if (fn === 'coordinateSystem') return COORD_SYS_LABELS[val] || val;
@@ -1373,22 +1389,7 @@ export default function BuoyListPage() {
       dataIndex: 'status',
       width: 260,
       sortable: true,
-      render: (status: string | null | undefined) => {
-        const b = buoyStatusBadge(status);
-        return (
-          <span style={{
-            display: 'inline-flex',
-            padding: '2px 10px',
-            borderRadius: 999,
-            fontSize: fontSizeMd,
-            fontWeight: fontWeightMedium,
-            background: `${b.color}15`,
-            color: b.color,
-          }}>
-            {b.label}
-          </span>
-        );
-      },
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       key: 'updatedAt',
@@ -1469,7 +1470,8 @@ export default function BuoyListPage() {
       onClick: () => openDetailDrawer(record),
     });
 
-    if (hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update')) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.status, { hasPerm, resource: 'buoy', extraUpdatePerms: ['buoy:manage', 'data:update'], extraApprovePerms: ['buoy:manage'] })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -1578,7 +1580,7 @@ export default function BuoyListPage() {
           {/* ── Bộ lọc thường (luôn hiển thị) ──────────────────────── */}
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-              Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+              Đơn vị quản lý
             </div>
             <OrgUnitTreeSelect
               organizations={organizations}
@@ -1700,18 +1702,17 @@ export default function BuoyListPage() {
       </FilterTableLayout>
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới thông tin phao, tiêu</span>}
         open={createDrawerOpen}
         onClose={closeCreateDrawer}
-        extra={<Button type="text" onClick={closeCreateDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; createForm.submit(); }} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
+          <>
+
+          <Button onClick={() => { actionTypeRef.current = 'draft'; createForm.submit(); }} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; createForm.submit(); }} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approved'; createForm.submit(); }} disabled={submitting} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
-          </div>
+          </>
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1770,15 +1771,13 @@ export default function BuoyListPage() {
             ddToDms={ddToDms}
           />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin phao, tiêu — {editingRecord ? editingRecord.name : 'Phao, tiêu'}</span>}
         open={editDrawerOpen}
         onClose={closeEditDrawer}
-        extra={<Button type="text" onClick={closeEditDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approved'; updateForm.submit(); }} loading={submitting} disabled={submitting} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
@@ -1822,11 +1821,10 @@ export default function BuoyListPage() {
             ddToDms={ddToDms}
           />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={1000}
         title={<span style={drawerTitleStyle}>
           {detailRecord ? `Chi tiết thông tin phao, tiêu - ${detailRecord.name}` : 'Chi tiết thông tin phao, tiêu'}
@@ -1854,11 +1852,10 @@ export default function BuoyListPage() {
             ddToDms={ddToDms}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── History Drawer ─────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={880 as any}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -1873,7 +1870,6 @@ export default function BuoyListPage() {
         }
         open={historyDrawerOpen}
         onClose={() => setHistoryDrawerOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1919,7 +1915,7 @@ export default function BuoyListPage() {
             </div>
           ) : renderBuoyHistoryTimeline(historyData)}
         </div>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── DocumentUploadModal (detail drawer) ────────────────────── */}
       {detailRecord && (

@@ -1,35 +1,29 @@
 package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.entity.ApprovalLog;
-import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Approval service for Port entity.
  * Handles approve/reject operations.
- * <p>
- * Uses ApprovalWorkflowService for state machine transitions.
- * On approve: sets approvalStatus = APPROVED.
- * On reject: sets approvalStatus = REJECTED.
- * On update: resets to PENDING (handled in PortService).
- * </p>
  */
 @Slf4j
 @Service
@@ -39,8 +33,8 @@ public class PortApprovalService {
     private final PortRepository portRepository;
     private final ApprovalWorkflowService approvalWorkflowService;
     private final PortNotificationService notificationService;
-    private final ChangeLogRepository changeLogRepository;
-    private final ApprovalLogRepository approvalLogRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
     private final ChangeHistoryService changeHistoryService;
     private final PortCacheService portCacheService;
     private final InfrastructureApprovalService infrastructureApprovalService;
@@ -165,38 +159,86 @@ public class PortApprovalService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.Map<String, Object> getHistory(UUID id) {
+    public Map<String, Object> getHistory(UUID id) {
         Port entity = portRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
 
         String entityId = id.toString();
         String entityType = "Port";
 
-        List<ChangeLog> changeHistory = changeLogRepository.findByEntityTypeAndEntityId(entityType, entityId);
-        List<ApprovalLog> approvalLog = approvalLogRepository.findByEntityTypeAndEntityId(entityType, entityId);
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, id);
 
-        return java.util.Map.of(
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("fieldName", h.getChangedField());
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+                    return m;
+                })
+                .toList();
+
+        return Map.of(
                 "entityId", entityId,
                 "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus(),
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
                 "changeHistory", changeHistory,
-                "approvalLog", approvalLog
+                "approvalLog", approvalLog,
+                "histories", list
         );
     }
 
     @Transactional(readOnly = true)
-    public java.util.Map<String, Object> getAllHistory() {
+    public Map<String, Object> getAllHistory() {
         String entityType = "Port";
-        List<ChangeLog> changeHistory = changeLogRepository.findByEntityType(entityType);
-        java.util.Map<String, String> entityNames = new java.util.HashMap<>();
-        for (ChangeLog log : changeHistory) {
-            if (!entityNames.containsKey(log.getEntityId())) {
-                try {
-                    portRepository.findById(UUID.fromString(log.getEntityId()))
-                        .ifPresent(p -> entityNames.put(log.getEntityId(), p.getPortName()));
-                } catch (Exception e) { entityNames.put(log.getEntityId(), log.getEntityId()); }
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeOrderByApprovedDateDesc(InfrastructureType.SEAPORT);
+        Map<String, String> entityNames = new HashMap<>();
+        for (InfrastructureHistory logItem : list) {
+            if (logItem.getRefId() != null) {
+                String refIdStr = logItem.getRefId().toString();
+                if (!entityNames.containsKey(refIdStr)) {
+                    try {
+                        portRepository.findById(logItem.getRefId())
+                                .ifPresent(p -> entityNames.put(refIdStr, p.getPortName()));
+                    } catch (Exception e) { entityNames.put(refIdStr, refIdStr); }
+                }
             }
         }
-        return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
+        return Map.of("entityType", entityType, "changeHistory", list, "entityNames", entityNames);
     }
 }

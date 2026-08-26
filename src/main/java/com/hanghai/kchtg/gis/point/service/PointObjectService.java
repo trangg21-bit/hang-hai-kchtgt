@@ -70,7 +70,7 @@ public class PointObjectService {
             throw new IllegalArgumentException("Mã đối tượng đã tồn tại: " + request.getCode());
         }
 
-        // no-op
+        validateCoordinates(request.getLongitude(), request.getLatitude());
 
         PointObject entity = PointObject.builder()
                 .name(request.getName())
@@ -78,6 +78,8 @@ public class PointObjectService {
                 .objectType(request.getObjectType())
                 .categoryId(request.getCategoryId())
                 .iconId(request.getIconId())
+                .longitude(request.getLongitude())
+                .latitude(request.getLatitude())
                 .description(request.getDescription())
                 .status(request.getStatus())
                 .unitId(request.getUnitId())
@@ -101,6 +103,13 @@ public class PointObjectService {
         if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
         if (request.getCategoryId() != null) entity.setCategoryId(request.getCategoryId());
         if (request.getIconId() != null) entity.setIconId(request.getIconId());
+        if (request.getLongitude() != null || request.getLatitude() != null) {
+            Double longitude = request.getLongitude() != null ? request.getLongitude() : entity.getLongitude();
+            Double latitude = request.getLatitude() != null ? request.getLatitude() : entity.getLatitude();
+            validateCoordinates(longitude, latitude);
+            entity.setLongitude(longitude);
+            entity.setLatitude(latitude);
+        }
 
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
         if (request.getStatus() != null) entity.setStatus(request.getStatus());
@@ -195,6 +204,8 @@ public class PointObjectService {
                 .objectType(entity.getObjectType())
                 .categoryId(entity.getCategoryId())
                 .iconId(entity.getIconId())
+                .longitude(entity.getLongitude())
+                .latitude(entity.getLatitude())
                 .description(entity.getDescription())
                 .status(entity.getStatus())
                 .unitId(entity.getUnitId())
@@ -211,6 +222,9 @@ public class PointObjectService {
     }
 
     private void validateCoordinates(Double longitude, Double latitude) {
+        if (longitude == null || latitude == null) {
+            throw new IllegalArgumentException("Kinh độ và vĩ độ không được để trống");
+        }
         if (longitude < -180.0 || longitude > 180.0) {
             throw new IllegalArgumentException("Kinh độ phải trong khoảng -180~180 (WGS84)");
         }

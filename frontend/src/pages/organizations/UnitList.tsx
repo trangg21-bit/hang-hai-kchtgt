@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
+import dayjs from 'dayjs';
 import { Typography, Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, EyeOutlined, MoreOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
-import { organizationService, RANK_OPTIONS, RANK_LABELS } from '../../services/organizationService';
+import { organizationService, RANK_OPTIONS, RANK_LABELS, fromApiOperationalStatus } from '../../services/organizationService';
 import { userService } from '../../services/userService';
 
 import type { Organization, OrgUnitRankName } from '../../services/organizationService';
@@ -15,13 +16,12 @@ import { statusOperational, statusCritical, actionPrimary, textPrimary, textSeco
 import { colors } from '../../theme';
 import { normalizeSearchText } from '../../components/org-unit';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const { confirm } = modal;
 
 const STATUS_COLORS: Record<string, string> = { active: statusOperational, inactive: statusCritical };
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
-
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function fmtUser(s?: string, userMap?: Map<string, string>) {
@@ -33,9 +33,16 @@ function fmtUser(s?: string, userMap?: Map<string, string>) {
 
 function fmtDate(iso?: string) {
   if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  try {
+    const d = dayjs(iso);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : iso;
+  } catch {
+    return iso;
+  }
 }
+
+type SortField = 'name' | 'rank' | 'updatedAt' | 'updatedBy' | 'status';
+type SortOrder = 'ascend' | 'descend' | null;
 
 export default function UnitList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
@@ -53,6 +60,52 @@ export default function UnitList() {
   const [submitting, setSubmitting] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null);
+
+  const handleSort = (field: SortField) => {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortOrder('ascend');
+    } else if (sortOrder === 'ascend') {
+      setSortOrder('descend');
+    } else {
+      setSortField(null);
+      setSortOrder(null);
+    }
+  };
+
+  const getStatusKey = useCallback((org: Organization) => (
+    fromApiOperationalStatus(org.operationalStatus) === 'inactive' ? 'inactive' : 'active'
+  ), []);
+
+  const compareOrgs = useCallback((a: Organization, b: Organization): number => {
+    if (!sortField || !sortOrder) {
+      return a.name.localeCompare(b.name, 'vi');
+    }
+    let cmp = 0;
+    if (sortField === 'name') {
+      cmp = a.name.localeCompare(b.name, 'vi');
+    } else if (sortField === 'rank') {
+      const rA = RANK_LABELS[a.rank as OrgUnitRankName] ?? '';
+      const rB = RANK_LABELS[b.rank as OrgUnitRankName] ?? '';
+      cmp = rA.localeCompare(rB, 'vi');
+    } else if (sortField === 'updatedAt') {
+      const tA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const tB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      cmp = tA - tB;
+    } else if (sortField === 'updatedBy') {
+      const uA = fmtUser(a.updatedBy, userMap);
+      const uB = fmtUser(b.updatedBy, userMap);
+      cmp = uA.localeCompare(uB, 'vi');
+    } else if (sortField === 'status') {
+      const sA = getStatusKey(a);
+      const sB = getStatusKey(b);
+      cmp = sA.localeCompare(sB, 'vi');
+    }
+    return sortOrder === 'descend' ? -cmp : cmp;
+  }, [sortField, sortOrder, userMap, getStatusKey]);
+
   const toggleExpand = useCallback((id: string) => {
     setExpandedKeys(prev => {
       const next = new Set(prev);
@@ -66,7 +119,6 @@ export default function UnitList() {
     try {
       const tree = await organizationService.getTree();
       setAllOrgs(tree);
-      // Auto-expand L1 + L2 (root Cục + all Cảng vụ)
       const toExpand = new Set<string>();
       for (const o of tree) {
         if (o.level !== undefined && o.level <= 2 && tree.some(c => c.parentId === o.id)) {
@@ -78,7 +130,6 @@ export default function UnitList() {
     finally { setIsLoading(false); }
   }, []);
   useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
-  // UUID → tên cán bộ cho cột "Cán bộ cập nhật" (pattern giống BuoyList/BerthList)
   useEffect(() => {
     (async () => {
       try {
@@ -86,7 +137,7 @@ export default function UnitList() {
         const map = new Map<string, string>();
         resp.data.forEach((u) => { map.set(u.id, u.fullName || u.username || u.id); });
         setUserMap(map);
-      } catch { /* giữ map rỗng, fallback fmtUser */ }
+      } catch { }
     })();
   }, []);
 
@@ -100,7 +151,7 @@ export default function UnitList() {
   const openEditModal = useCallback((org: Organization) => {
     setIsViewing(false);
     setEditingOrg(org);
-    const opStatus = (org.operationalStatus || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
+    const opStatus = fromApiOperationalStatus(org.operationalStatus);
     form.setFieldsValue({
       name: org.name,
       parentId: org.parentId,
@@ -116,7 +167,7 @@ export default function UnitList() {
   const openViewModal = useCallback((org: Organization) => {
     setIsViewing(true);
     setEditingOrg(org);
-    const opStatus = (org.operationalStatus || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
+    const opStatus = fromApiOperationalStatus(org.operationalStatus);
     form.setFieldsValue({
       name: org.name,
       parentId: org.parentId,
@@ -166,7 +217,6 @@ export default function UnitList() {
 
   const parentOptions = useMemo(() => {
     const parentLevel = editingOrg?.level && editingOrg.level > 1 ? editingOrg.level - 1 : undefined;
-
     const isDescendantOfEditingUnit = (candidateId: string) => {
       if (!editingOrg) return false;
       let current = allOrgs.find((org) => org.id === candidateId);
@@ -178,7 +228,6 @@ export default function UnitList() {
       }
       return false;
     };
-
     return allOrgs
       .filter((org) => !editingOrg || (org.id !== editingOrg.id && !isDescendantOfEditingUnit(org.id)))
       .filter((org) => org.operationalStatus !== 'inactive')
@@ -187,7 +236,24 @@ export default function UnitList() {
   }, [allOrgs, editingOrg]);
 
   const handleDelete = useCallback((org: Organization) => {
-    confirm({ title: 'Xác nhận xóa', icon: <ExclamationCircleOutlined />, content: `Xóa "${org.name}"?`, okText: 'Xóa', okType: 'danger', cancelText: 'Hủy', onOk: async () => { try { await organizationService.delete(org.id); toast.success('Đã xóa'); fetchOrgs(); } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); } } });
+    confirm({
+      title: 'Xác nhận xóa',
+      icon: <ExclamationCircleOutlined />,
+      content: `Xóa "${org.name}"?`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await organizationService.delete(org.id);
+          toast.success('Đã xóa');
+          fetchOrgs();
+        } catch (err: any) {
+          const msg = err?.response?.data?.message || err?.message || 'Xóa thất bại';
+          toast.error(msg);
+        }
+      }
+    });
   }, [fetchOrgs]);
   const getActions = (record: Organization) => {
     const items: any[] = [];
@@ -203,15 +269,9 @@ export default function UnitList() {
     return items;
   };
 
-  // --- Build flat ordered rows with depth from org hierarchy ---
   const visibleRows = useMemo(() => {
     type Row = { org: Organization; depth: number; hasChildren: boolean };
     const rows: Row[] = [];
-
-    // The API returns only the user's allowed subtree. When the real parent
-    // is outside that scope, the first visible descendant must be treated as
-    // a root of the rendered tree; otherwise the status counts are non-zero
-    // while the tree has no rows to render.
     const visibleIds = new Set(allOrgs.map((org) => org.id));
 
     const walk = (parentId: string | undefined, depth: number) => {
@@ -219,7 +279,7 @@ export default function UnitList() {
         .filter(o => parentId
           ? o.parentId === parentId
           : !o.parentId || !visibleIds.has(o.parentId))
-        .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+        .sort(compareOrgs);
       for (const org of siblings) {
         const children = allOrgs.filter(o => o.parentId === org.id);
         const hasChildren = children.length > 0;
@@ -230,15 +290,14 @@ export default function UnitList() {
       }
     };
     walk(undefined, 0);
-    // Apply status filter after building tree
     if (filterStatus) {
       return rows.filter(r => {
-        const stKey = r.org.operationalStatus === 'inactive' ? 'inactive' : 'active';
+        const stKey = getStatusKey(r.org);
         return stKey === filterStatus;
       });
     }
     return rows;
-  }, [allOrgs, expandedKeys, filterStatus]);
+  }, [allOrgs, expandedKeys, filterStatus, compareOrgs, getStatusKey]);
 
   const handleFilterSearch = useCallback(() => {
     setSearchName(nameInput.trim());
@@ -249,11 +308,6 @@ export default function UnitList() {
     setFilterStatus('');
   }, []);
 
-  const getStatusKey = useCallback((org: Organization) => (
-    org.operationalStatus === 'inactive' ? 'inactive' : 'active'
-  ), []);
-
-  // --- Search mode: flat list ---
   const searchResults = useMemo(() => {
     const nameQuery = normalizeSearchText(searchName.trim());
     const hasFilter = nameQuery || filterStatus;
@@ -262,79 +316,102 @@ export default function UnitList() {
       .filter(o => {
         if (nameQuery && !normalizeSearchText(o.name).includes(nameQuery)) return false;
         if (filterStatus) {
-          const stKey = o.operationalStatus === 'inactive' ? 'inactive' : 'active';
+          const stKey = getStatusKey(o);
           if (stKey !== filterStatus) return false;
         }
         return true;
       })
-      .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+      .sort(compareOrgs)
       .map(org => {
         const parts: string[] = [org.name];
         let cur = org;
         while (cur.parentId) { const p = allOrgs.find(o => o.id === cur.parentId); if (p) { parts.unshift(p.name); cur = p; } else break; }
         return { ...org, _path: parts.join(' › ') };
       });
-  }, [allOrgs, filterStatus, searchName]);
+  }, [allOrgs, filterStatus, searchName, compareOrgs, getStatusKey]);
 
   const filterContent = (
     <>
-      <div style={{ marginBottom: 12, marginTop: 16 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 4 }}>Tên đơn vị</div>
-        <Input placeholder="Tìm theo tên đơn vị..." allowClear
+      <div style={{ marginBottom: 12, marginTop: 4 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
+          Tên đơn vị
+        </div>
+        <Input
+          placeholder="Tìm theo tên đơn vị..."
           value={nameInput}
           onChange={(e) => setNameInput(e.target.value)}
           onPressEnter={handleFilterSearch}
-          style={{ borderRadius: radiusPill, height: 40 }} />
+          allowClear
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
       </div>
     </>
   );
 
-  // Status counts must follow the committed keyword filter. The status tab
-  // itself is only a view filter, so counts remain comparable across tabs.
-  const countSource = useMemo(() => {
-    const nameQuery = normalizeSearchText(searchName.trim());
-    if (!nameQuery) return allOrgs;
-    return allOrgs.filter((org) => (
-      !nameQuery || normalizeSearchText(org.name).includes(nameQuery)
-    ));
-  }, [allOrgs, searchName]);
-  const countByStatus = useCallback((status: string) => countSource.filter((org) => getStatusKey(org) === status).length, [countSource, getStatusKey]);
+  const countByStatus = useCallback((st: string) => {
+    if (!st) return allOrgs.length;
+    return allOrgs.filter(o => getStatusKey(o) === st).length;
+  }, [allOrgs, getStatusKey]);
 
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: countSource.length, color: textSecondary, active: !filterStatus },
-    { key: 'active', label: 'Sử dụng', count: countByStatus('active'), color: statusOperational, active: filterStatus === 'active' },
-    { key: 'inactive', label: 'Không sử dụng', count: countByStatus('inactive'), color: statusCritical, active: filterStatus === 'inactive' },
+    { key: 'all', label: 'Tất cả', count: countByStatus(''), color: colors.sidebarBg },
+    { key: 'active', label: 'Sử dụng', count: countByStatus('active'), color: statusOperational },
+    { key: 'inactive', label: 'Không sử dụng', count: countByStatus('inactive'), color: statusCritical },
   ];
-  const headerActions = useMemo(() => {
-    const actions: any[] = [];
-    if (hasPerm('orgunit:create')) actions.push({ key: 'create', label: 'Thêm đơn vị', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
-    return actions;
-  }, [hasPerm, openCreateModal]);
+
+  const unitDetailItems: [string, ReactNode][] = editingOrg ? [
+    ['Tên đơn vị', editingOrg.name || '—'],
+    ['Cấp đơn vị', RANK_LABELS[editingOrg.rank as OrgUnitRankName] ?? '—'],
+    ['Đơn vị cha', editingOrg.parentOrgName || '—'],
+    ['Tỉnh/Thành phố', editingOrg.provinceId ? (getProvinceNameById(editingOrg.provinceId) || String(editingOrg.provinceId)) : '—'],
+    ['Địa điểm chi tiết', editingOrg.detailAddress || '—'],
+    ['Số điện thoại', editingOrg.phone || '—'],
+    ['Trạng thái', editingOrg.operationalStatus === 'inactive' ? 'Không sử dụng' : 'Sử dụng'],
+    ['Ghi chú', editingOrg.description || '—'],
+    ['Cán bộ cập nhật', fmtUser(editingOrg.updatedBy, userMap)],
+    ['Ngày cập nhật', fmtDate(editingOrg.updatedAt)],
+  ] : [];
 
   const treeRows = searchResults
     ? searchResults.map((org) => ({ org, depth: 0, hasChildren: false }))
     : visibleRows;
 
-  const unitDetailItems: Array<[string, ReactNode]> = editingOrg ? [
-    ['Tên đơn vị', editingOrg.name || '—'],
-    ['Đơn vị cha', editingOrg.parentId ? (allOrgs.find(o => o.id === editingOrg.parentId)?.name || '—') : '—'],
-    ['Cấp đơn vị', RANK_LABELS[editingOrg.rank as OrgUnitRankName] ?? '—'],
-    ['Địa điểm (Tỉnh/Thành phố)', editingOrg.provinceId != null ? (getProvinceNameById(editingOrg.provinceId) || '—') : '—'],
-    ['Địa điểm chi tiết', editingOrg.detailAddress || '—'],
-    ['Số điện thoại', editingOrg.phone || '—'],
-    ['Trạng thái', (() => {
-      const statusKey = getStatusKey(editingOrg);
-      const color = STATUS_COLORS[statusKey] || textTertiary;
-      return <span style={{ display: 'inline-flex', padding: `${spaceXs}px ${spaceSm}px`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{STATUS_LABELS[statusKey] || statusKey}</span>;
-    })()],
-    ['Ghi chú', editingOrg.description || '—'],
-    ['Ngày cập nhật', fmtDate(editingOrg.updatedAt)],
-    ['Cán bộ cập nhật', fmtUser(editingOrg.updatedBy, userMap)],
-  ] : [];
+  const renderSortHeader = (label: string, field: SortField, style: React.CSSProperties) => {
+    const isActive = sortField === field;
+    return (
+      <div
+        style={{ ...style, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+        onClick={() => handleSort(field)}
+      >
+        <span>{label}</span>
+        <span style={{ display: 'inline-flex', flexDirection: 'column', fontSize: 9, lineHeight: 1 }}>
+          <span style={{ color: isActive && sortOrder === 'ascend' ? actionPrimary : '#bfbfbf' }}>▲</span>
+          <span style={{ color: isActive && sortOrder === 'descend' ? actionPrimary : '#bfbfbf' }}>▼</span>
+        </span>
+      </div>
+    );
+  };
+
+  const headerActions = useMemo(() => {
+    const actions: any[] = [];
+    if (hasPerm('orgunit:create')) {
+      actions.push({
+        key: 'create',
+        label: 'Thêm đơn vị',
+        variant: 'primary' as const,
+        icon: <PlusOutlined />,
+        onClick: openCreateModal,
+      });
+    }
+    return actions;
+  }, [hasPerm, openCreateModal]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý đơn vị' }]} actions={headerActions} />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <ScreenHeader
+        breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý đơn vị' }]}
+        actions={headerActions}
+      />
       <FilterTableLayout
         hideFilterToggle
         onFilterApply={handleFilterSearch}
@@ -357,11 +434,11 @@ export default function UnitList() {
           <div style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, overflowY: 'auto', border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: 0, background: surfaceCard }}>
             <div style={{ width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', minHeight: 40, borderBottom: `1px solid ${borderDefault}`, padding: `0 ${spaceMd}px`, position: 'sticky', top: 0, background: surfaceCard, zIndex: 2 }}>
-                <div style={{ flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên đơn vị</div>
-                <div style={{ width: 260, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Cấp đơn vị</div>
-                <div style={{ width: 160, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ngày cập nhật</div>
-                <div style={{ width: 175, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Cán bộ cập nhật</div>
-                <div style={{ width: 140, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textAlign: 'center' }}>Trạng thái</div>
+                {renderSortHeader('Tên đơn vị', 'name', { flex: 1, minWidth: 0, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                {renderSortHeader('Cấp đơn vị', 'rank', { width: 220, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                {renderSortHeader('Ngày cập nhật', 'updatedAt', { width: 180, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                {renderSortHeader('Cán bộ cập nhật', 'updatedBy', { width: 175, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd })}
+                {renderSortHeader('Trạng thái', 'status', { width: 140, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, justifyContent: 'center' })}
                 <div style={{ width: 40 }} aria-hidden="true" />
               </div>
               {treeRows.map(({ org, depth, hasChildren }) => {
@@ -386,8 +463,8 @@ export default function UnitList() {
                         {org.name}
                       </Typography.Text>
                     </div>
-                    <div style={{ width: 260, color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{RANK_LABELS[org.rank as OrgUnitRankName] ?? '—'}</div>
-                    <div style={{ width: 160, color: textTertiary }}>{fmtDate(org.updatedAt)}</div>
+                    <div style={{ width: 220, color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{RANK_LABELS[org.rank as OrgUnitRankName] ?? '—'}</div>
+                    <div style={{ width: 180, color: textTertiary }}>{fmtDate(org.updatedAt)}</div>
                     <div style={{ width: 175, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtUser(org.updatedBy, userMap)}</div>
                     <div style={{ width: 140, textAlign: 'center' }}>
                       <span style={{ display: 'inline-flex', padding: `${spaceXs}px ${spaceSm}px`, borderRadius: radiusPill, color, background: `${color}15`, fontWeight: fontWeightMedium, whiteSpace: 'nowrap' }}>
@@ -406,7 +483,6 @@ export default function UnitList() {
           </div>
         )}
       </FilterTableLayout>
-
       <Drawer
         {...drawerProps}
         title={<span style={drawerTitleStyle}>{isViewing ? 'Chi tiết đơn vị' : (editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị')}</span>}

@@ -5,7 +5,6 @@ import {
   Input,
   Select,
   TreeSelect,
-  Drawer,
   Space,
   Typography,
   Form,
@@ -57,6 +56,10 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { colors } from '../../theme';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import {
   statusOperational,
   statusAttention,
@@ -85,9 +88,7 @@ import {
   outlineButtonStyle,
   formFieldStyle,
   formRowGutter,
-  drawerProps,
   drawerTitleStyle,
-  drawerCloseBtnStyle,
   drawerFooterStyle,
   requiredMarkStyle,
   filterLabelStyle,
@@ -291,10 +292,6 @@ function parseWktToVertices(wkt: string, geomType: string): { lng: number; lat: 
   }
   return [];
 }
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 const buildOrgTree = (nodes: Organization[]): any[] => {
   const map = new Map<string, any>();
@@ -823,7 +820,7 @@ export default function DikeRevetmentList() {
     if (val === null || val === undefined || val === '') return '—';
     if (fn === 'dikeRevetmentType') return DIKE_REVETMENT_TYPE_MAP[val] || val;
     if (fn === 'status') return OPERATIONAL_STATUS_STYLE_MAP[val]?.label || val;
-    if (fn === 'approvalStatus') return APPROVAL_STATUS_MAP[val] || val;
+    if (fn === 'approvalStatus') return approvalStatusLabel(val);
     if (fn === 'length' || fn === 'height' || fn === 'crestElevation') return `${val} m`;
     return String(val);
   };
@@ -1030,7 +1027,8 @@ export default function DikeRevetmentList() {
         onClick: () => openDetailDrawer(record),
       });
     }
-    if (canUpdate) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dikerevetment' })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -1431,8 +1429,7 @@ export default function DikeRevetmentList() {
       </FilterTableLayout>
 
       {/* ── Create / Edit / Detail Drawer ─────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={
           <span style={isDetailMode || editingRecord ? drawerTitleStyle : { ...drawerTitleStyle, fontSize: 16 }}>
             {isDetailMode
@@ -1445,16 +1442,13 @@ export default function DikeRevetmentList() {
         open={drawerVisible}
         destroyOnHidden
         onClose={closeDrawer}
-        extra={<Button type="text" onClick={closeDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           isDetailMode ? null : editingRecord ? (
-            <div style={drawerFooterStyle}>
-              <Button type="primary" onClick={() => handleSubmit('update')} loading={submitting} style={primaryButtonStyle}>
+            <Button type="primary" onClick={() => handleSubmit('update')} loading={submitting} style={primaryButtonStyle}>
                 Cập nhật
               </Button>
-            </div>
           ) : (
-            <div style={drawerFooterStyle}>
+            <div  style={drawerFooterStyle}>
               <Button onClick={() => handleSubmit('draft')} loading={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
               {canSubmitForApproval && (
                 <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting} style={primaryButtonStyle}>
@@ -1764,7 +1758,7 @@ export default function DikeRevetmentList() {
             </Form>
           </>
         )}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal

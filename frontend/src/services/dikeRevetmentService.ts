@@ -118,11 +118,23 @@ export const dikeRevetmentApproval = {
     return toSingle<DikeRevetmentResponse>(res.data) || ({} as DikeRevetmentResponse);
   },
 
+  async submit(id: string): Promise<DikeRevetmentResponse> {
+    return this.submitForApproval(id);
+  },
+
   async approveLevel1(id: string, note?: string): Promise<DikeRevetmentResponse> {
     const res = await api.post(`${BASE_PATH}/${id}/approvec1`, null, {
       params: { note },
     });
     return toSingle<DikeRevetmentResponse>(res.data) || ({} as DikeRevetmentResponse);
+  },
+
+  async approveL1(id: string, note?: string): Promise<DikeRevetmentResponse> {
+    return this.approveLevel1(id, note);
+  },
+
+  async approveC1(id: string, note?: string): Promise<DikeRevetmentResponse> {
+    return this.approveLevel1(id, note);
   },
 
   async approveLevel2(id: string, note?: string): Promise<DikeRevetmentResponse> {
@@ -132,6 +144,18 @@ export const dikeRevetmentApproval = {
     return toSingle<DikeRevetmentResponse>(res.data) || ({} as DikeRevetmentResponse);
   },
 
+  async approveL2(id: string, note?: string): Promise<DikeRevetmentResponse> {
+    return this.approveLevel2(id, note);
+  },
+
+  async approveC2(id: string, note?: string): Promise<DikeRevetmentResponse> {
+    return this.approveLevel2(id, note);
+  },
+
+  async approve(id: string, note?: string): Promise<DikeRevetmentResponse> {
+    return this.approveLevel2(id, note);
+  },
+
   async rejectLevel1(id: string, reason: string): Promise<DikeRevetmentResponse> {
     const res = await api.post(`${BASE_PATH}/${id}/rejectc1`, null, {
       params: { reason },
@@ -139,11 +163,23 @@ export const dikeRevetmentApproval = {
     return toSingle<DikeRevetmentResponse>(res.data) || ({} as DikeRevetmentResponse);
   },
 
+  async rejectC1(id: string, reason: string): Promise<DikeRevetmentResponse> {
+    return this.rejectLevel1(id, reason);
+  },
+
   async rejectLevel2(id: string, reason: string): Promise<DikeRevetmentResponse> {
     const res = await api.post(`${BASE_PATH}/${id}/rejectc2`, null, {
       params: { reason },
     });
     return toSingle<DikeRevetmentResponse>(res.data) || ({} as DikeRevetmentResponse);
+  },
+
+  async rejectC2(id: string, reason: string): Promise<DikeRevetmentResponse> {
+    return this.rejectLevel2(id, reason);
+  },
+
+  async reject(id: string, reason: string): Promise<DikeRevetmentResponse> {
+    return this.rejectLevel1(id, reason);
   },
 
   async getHistory(id: string): Promise<HistoryEntry[]> {

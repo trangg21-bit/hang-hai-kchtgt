@@ -34,4 +34,11 @@ public class CommonOptionsController {
     public ResponseEntity<ApiResponse<List<PortOptionResponse>>> getPortOptions() {
         return ResponseEntity.ok(ApiResponse.success("Danh sách cảng biển theo phạm vi phân quyền", service.getPortOptions()));
     }
+
+    @GetMapping("/operating-organizations")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<com.hanghai.kchtg.common.dto.OperatingOrganizationOptionResponse>>> getOperatingOrganizationOptions(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách đơn vị vận hành và khai thác", service.getOperatingOrganizationOptions(keyword)));
+    }
 }

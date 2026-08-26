@@ -4,30 +4,38 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+/**
+ * Response for a channel route detail row (#22-#38) of NavigationChannel (F-038).
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldNameConstants
 public class ChannelRouteDetailResponse {
+
     private UUID id;
     private Integer sequenceNo;
-    private String classification;
-    private String code;
-    private String name;
-    private Integer channelRouteType;
-    private String currentDepth;
-    private String designSlope;
-    private BigDecimal length;
-    private BigDecimal maxWidth;
-    private BigDecimal minWidth;
-    private BigDecimal depth;
-    private BigDecimal dredgingVolume;
-    private Boolean publicAccess;
-    private Boolean dedicated;
-    private String clearanceHeight;
+    private String routeClassification;
+    private String routeCode;
+    private String routeName;
+    private Integer routeType;
     private String turningBasinLocation;
-    private java.math.BigDecimal turningBasinRadius;
-    private java.math.BigDecimal minCurveRadius;
-    private String channelProtectionScope;
+    private BigDecimal turningBasinRadiusMeters;
+    private BigDecimal verticalClearanceMeters;
+    private BigDecimal channelLengthKilometers;
+    private BigDecimal maximumDesignWidthMeters;
+    private BigDecimal minimumDesignWidthMeters;
+    private BigDecimal designDepthMeters;
+    private BigDecimal currentDepthMeters;
+    private BigDecimal designSlope;
+    private BigDecimal minimumCurveRadiusMeters;
+    private BigDecimal routeLatestDredgingVolumeCubicMeters;
+    private Integer routeLatestMaintenanceYear;
+    private Integer routeGrade;
 }

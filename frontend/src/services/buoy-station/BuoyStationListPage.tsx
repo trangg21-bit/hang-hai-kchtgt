@@ -4,7 +4,16 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Modal, Input, Alert, Space, Drawer, Form, DatePicker, Select, Radio, Typography,
+  Button,
+  Modal,
+  Input,
+  Alert,
+  Space,
+  Form,
+  DatePicker,
+  Select,
+  Radio,
+  Typography,
 } from 'antd';
 import type { UploadFile } from 'antd';
 import {
@@ -51,19 +60,48 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
-  statusOperational, statusAttention, statusCritical, actionPrimary,
-  textPrimary, textSecondary, textTertiary, borderDefault,
-  fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField, radiusPill,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle, historyInfoCardStyle,
-  historyAccentBarStyle, historyInfoTitleStyle, historyCreateRowStyle, historyChangeRowStyle,
-  historyFieldLabelStyle, historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
+  statusOperational,
+  statusAttention,
+  statusCritical,
+  actionPrimary,
+  textPrimary,
+  textSecondary,
+  textTertiary,
+  borderDefault,
+  fontSizeMd,
+  fontSizeLg,
+  fontWeightMedium,
+  fontWeightBold,
+  spaceMd,
+  spaceSm,
+  spaceXs,
+  spaceXl,
+  spaceFormField,
+  radiusPill,
+  drawerTitleStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  requiredMarkStyle,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyInfoTitleStyle,
+  historyCreateRowStyle,
+  historyChangeRowStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
   historyBadgeStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -851,7 +889,8 @@ export default function BuoyStationListPage() {
   const rowActions = useCallback((r: BuoyStationResponse) => {
     const a: any[] = [];
     a.push({ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(r) });
-    if (hasPerm('buoystation:update') || hasPerm('data:update') || hasPerm('admin:manage')) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => void openEdit(r) });
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(r.status, { hasPerm, resource: 'buoystation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => void openEdit(r) });
     if (r.latitude != null && r.longitude != null) a.push({ key: 'loc', label: 'Xem vị trí', icon: <EnvironmentOutlined />, onClick: () => window.open(`https://www.google.com/maps?q=${r.latitude},${r.longitude}`, '_blank') });
     if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'del', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => openDelete(r), danger: true });
     if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openSubmit(r) });
@@ -887,7 +926,7 @@ export default function BuoyStationListPage() {
         onRetry={fetchData}
         filterContent={<>
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý <span style={{ color: statusCritical }}>*</span></div>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
             <OrgUnitTreeSelect
               organizations={organizations}
               placeholder="Chọn đơn vị..."
@@ -1016,13 +1055,11 @@ export default function BuoyStationListPage() {
       </FilterTableLayout>
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={1000}
         title={<span style={drawerTitleStyle}>{detailRecord ? `Chi tiết thông tin nhà trạm quản lý vận hành phao, tiêu - ${detailRecord.name}` : 'Chi tiết thông tin nhà trạm quản lý vận hành phao, tiêu'}</span>}
         open={detailOpen}
         onClose={closeDetail}
-        extra={<Button type="text" onClick={closeDetail} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1045,16 +1082,14 @@ export default function BuoyStationListPage() {
             symbolImageMap={symbolImageMap}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Buoy Detail Drawer (nested — đè lên chi tiết nhà trạm) ── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={950}
         title={<span style={drawerTitleStyle}>{viewBuoyRecord ? `Chi tiết phao tiêu - ${viewBuoyRecord.name}` : 'Chi tiết phao tiêu'}</span>}
         open={viewBuoyOpen}
         onClose={() => setViewBuoyOpen(false)}
-        extra={<Button type="text" onClick={() => setViewBuoyOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}
       >
@@ -1070,11 +1105,10 @@ export default function BuoyStationListPage() {
             ddToDms={ddToDms}
           />
         ) : <LoadingSkeleton rows={6} />}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── History Drawer ─────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={880 as any}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -1089,7 +1123,6 @@ export default function BuoyStationListPage() {
         }
         open={historyDrawerOpen}
         onClose={() => setHistoryDrawerOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1135,7 +1168,7 @@ export default function BuoyStationListPage() {
             </div>
           ) : renderHistoryTimeline(historyData)}
         </div>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Modal ───────────────────────────────────────────── */}
       <Modal
@@ -1217,33 +1250,30 @@ export default function BuoyStationListPage() {
       </Modal>
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới thông tin nhà trạm quản lý vận hành phao, tiêu</span>}
         open={createOpen}
         onClose={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button onClick={() => createFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button>
+          <>
+
+          <Button onClick={() => createFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button>
             <Button type="primary" onClick={() => createFormRef.current?.submit('SUBMIT')} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
             <Button type="primary" onClick={() => createFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
-          </div>
+          </>
         }
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" scrollToFirstError>
           <BuoyStationFormContent ref={createFormRef} form={createForm} isEdit={false} uploadedFiles={createUploaded} setUploadedFiles={setCreateUploaded} existingFiles={createExisting} organizations={organizations} onFinish={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); void fetchData(); }} />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin nhà trạm quản lý vận hành phao, tiêu — {editRecord ? editRecord.name : 'Nhà trạm quản lý vận hành phao, tiêu'}</span>}
         open={editOpen}
         onClose={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); }}
-        extra={<Button type="text" onClick={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
             <Button type="primary" onClick={() => editFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
@@ -1254,7 +1284,7 @@ export default function BuoyStationListPage() {
         <Form form={editForm} layout="vertical" scrollToFirstError>
           <BuoyStationFormContent ref={editFormRef} form={editForm} isEdit entityData={editRecord} uploadedFiles={editUploaded} setUploadedFiles={setEditUploaded} existingFiles={editExisting} organizations={organizations} onFinish={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); void fetchData(); }} />
         </Form>
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 }

@@ -61,6 +61,7 @@ import {
   statusOperational,
   actionPrimary,
   sidebarBg,
+  textAreaStyle,
 } from '../../tokens';
 
 const CONDITION_COLOR: Record<string, string> = {
@@ -592,7 +593,7 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
             placeholder="Nhập lý do từ chối phê duyệt..."
             maxLength={1000}
             showCount
-            style={{ borderRadius: radiusMd }}
+            style={textAreaStyle}
           />
         </div>
       </Modal>
@@ -619,7 +620,7 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
             placeholder="Nhập ý kiến phê duyệt nếu có..."
             maxLength={1000}
             showCount
-            style={{ borderRadius: radiusMd }}
+            style={textAreaStyle}
           />
         </div>
       </Modal>
@@ -646,7 +647,7 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
             placeholder="Nhập ý kiến phê duyệt nếu có..."
             maxLength={1000}
             showCount
-            style={{ borderRadius: radiusMd }}
+            style={textAreaStyle}
           />
         </div>
       </Modal>

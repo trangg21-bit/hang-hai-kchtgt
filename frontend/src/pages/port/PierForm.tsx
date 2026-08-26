@@ -17,6 +17,7 @@ import toast from '../../components/ToastNotification';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { textPrimary, textSecondary, textTertiary, borderDefault, fontSizeMd, fontSizeSm, fontWeightBold, fontWeightMedium, radiusPill, radiusMd, spaceSm, spaceFormField, surfaceCard, uploadHintStyle } from '../../tokens';
 import { colors } from '../../theme';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
 type UploadFile = { uid: string; name: string; size: number; type: string; status: string; originFileObj?: File };
@@ -56,8 +57,6 @@ const parseMonthYear = (s?: string | null) => {
 };
 const fmtMonthYear = (d: any) => (d ? dayjs(d).format('MM/YYYY') : undefined);
 const numberStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, width: '100%' };
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
-
 interface PierFormProps { form: any; id?: string; onFinish: (saved: boolean) => void; onSubmittingChange?: (submitting: boolean) => void; }
 
 const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmittingChange }, ref) => {

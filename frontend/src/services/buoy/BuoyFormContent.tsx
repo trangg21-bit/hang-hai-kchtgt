@@ -25,6 +25,7 @@ import {
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import PagedTable from '../../components/list-view/PagedTable';
 import { fmtInputNumber } from '../../utils/numFmt';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' },
@@ -32,10 +33,6 @@ const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POLYGON', label: 'Đối tượng vùng' },
 ];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };

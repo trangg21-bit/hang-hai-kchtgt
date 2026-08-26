@@ -211,13 +211,31 @@ export default function InfrastructureFeatureList() {
   ], [page, pageSize, userMap]);
 
   // 4. Menu Thao tác dòng (rowActions)
+  //
+  // ⚠️ BẮT BUỘC: nút "Chỉnh sửa" phải gọi `canEditApprovalRecord()` — CẤM tự viết lại
+  // điều kiện trạng thái ở từng màn. Ma trận chuẩn xem `approval-2-level-spec.md` mục 3.9:
+  //   DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 -> hiện, cần `<resource>:update`
+  //   PENDING_APPROVAL / APPROVED_LEVEL1        -> ẨN (hồ sơ đóng băng trong vòng duyệt)
+  //   APPROVED                                  -> hiện, cần `<resource>:approvec2` (T12)
+  //   ARCHIVED                                  -> ẨN
   const rowActions = useCallback((record: any) => {
     const isOwner = record.createdBy === user?.id;
-    return [
+    const st = record.approvalStatus;
+    const isDraftOrRejected = st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2';
+
+    const actions: any[] = [
       { key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('view'); setDrawerOpen(true); } },
-      { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('edit'); setDrawerOpen(true); } },
-      { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('view'); setDrawerOpen(true); } },
-      {
+    ];
+
+    if (canEditApprovalRecord(st, { hasPerm, resource: '<resource>' })) {
+      actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('edit'); setDrawerOpen(true); } });
+    }
+
+    actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('view'); setDrawerOpen(true); } });
+
+    // Xóa mềm: chỉ khi Lưu tạm (approval-2-level-spec.md mục 3.6)
+    if (st === 'DRAFT' && hasPerm('<resource>:delete')) {
+      actions.push({
         key: 'delete',
         label: 'Xóa',
         danger: true,
@@ -226,12 +244,14 @@ export default function InfrastructureFeatureList() {
           modal.confirm({
             title: 'Xác nhận xóa bản ghi',
             content: `Bạn có chắc chắn muốn xóa "${record.name}" không?`,
-            onOk: async () => { toast.success('Xóa thành công'); },
+            onOk: async () => { await deleteRecord(record.id); toast.success('Xóa thành công'); loadData(); },
           });
         },
-      },
-    ];
-  }, [user?.id]);
+      });
+    }
+
+    return actions;
+  }, [user?.id, hasPerm]);
 
   // 5. Sidebar lọc trái
   const sidebarFilterContent = (
@@ -352,7 +372,7 @@ Mọi form chi tiết/thêm mới/chỉnh sửa đều mở `AppDrawer` với `s
 > 2. **Kích thước & Hình dạng Ô Nhập liệu (Input Dimensions)**:
 >    - Chiều cao cố định: **`height: 40px`** cho mọi ô Input, Select, TreeSelect đơn dòng.
 >    - Bo góc viên thuốc tròn chuẩn: **`borderRadius: radiusPill` (`999px`)**.
->    - Ô văn bản nhiều dòng (`Input.TextArea`): Bo góc **`borderRadius: radiusMd` (`8px`)**.
+>    - Ô văn bản nhiều dòng (`Input.TextArea`): Bo cong mềm mại góc lớn **`borderRadius: 20`** (hoặc `style={textAreaStyle}`) kết hợp đệm lề trong **`padding: '10px 16px'`** để tạo đường cong đồng điệu 100% với ô Input viên thuốc mà không bị lẹm chữ.
 >    - Khoảng cách đáy mỗi Form Item: `marginBottom: spaceFormField` (**`12px`**).
 > 3. **Quy tắc Dropdown phụ thuộc đơn vị quản lý (Cascading Filter & Placeholders)**:
 >    - **Ô cha (`Đơn vị quản lý`)**: `<OrgUnitTreeSelect style={formTreeSelectStyle} placeholder="Chọn đơn vị quản lý..." />`.
@@ -432,6 +452,36 @@ Mọi form chi tiết/thêm mới/chỉnh sửa đều mở `AppDrawer` với `s
   - **Làm sạch dữ liệu**: Tự động gom nhóm các thay đổi trong cùng 1 giây của cùng 1 người, lọc bỏ triệt để các trường rỗng hoặc không có sự thay đổi (`ov === nv`).
 - **Backend Logic & CSDL**:
   - **Entity**: `InfrastructureHistory` (bảng `infrastructure_history` lưu `refId`, `refType`, `approvalLevel`, `status`, `approvedBy`, `reason`, `changedField`, `previousValue`, `newValue`, `createdAt`).
+### 2.1. CỘT KIỂM TOÁN PHÊ DUYỆT TRÊN BẢNG DANH SÁCH (chốt 26/08/2026)
+
+Ngoài bộ cột cố định, bảng danh sách KCHT **hiển thị thêm 6 cột kiểm toán** ghi vết đủ 3 mốc của
+quy trình phê duyệt 2 cấp. Trước đây các trường này chỉ có ở màn Chi tiết, nên người quản lý phải
+mở từng hồ sơ mới biết ai gửi / ai duyệt / duyệt lúc nào.
+
+| # | Nhãn cột | Trường | Bề rộng | Nội dung |
+| :-: | :--- | :--- | :-: | :--- |
+| 1 | Ngày gửi phê duyệt | `submittedAt` | 150px | `DD/MM/YYYY HH:mm`, rỗng thì `—` |
+| 2 | Cán bộ gửi phê duyệt | `submittedBy` | 170px | **Họ và tên**, không phơi UUID |
+| 3 | Ngày phê duyệt cấp Cảng vụ/Chi cục | `approvedDateLevel1` | 150px | `DD/MM/YYYY HH:mm` |
+| 4 | Cán bộ phê duyệt cấp Cảng vụ/Chi cục | `approverLevel1` | 170px | **Họ và tên** |
+| 5 | Ngày phê duyệt cấp Cục | `approvedDateLevel2` | 150px | `DD/MM/YYYY HH:mm` |
+| 6 | Cán bộ phê duyệt cấp Cục | `approverLevel2` | 170px | **Họ và tên** |
+
+**Quy định bắt buộc:**
+
+- Đặt **sau** cột "Cán bộ cập nhật", **trước** cột "Thao tác".
+- Tất cả đều **read-only**, không sắp xếp được trên client (sắp xếp phải chạy ở server nếu cần).
+- Hiển thị **họ và tên** cán bộ lấy từ `userMap`; **cấm** để lộ UUID ra giao diện.
+- Bảng chắc chắn tràn ngang khi bật đủ 6 cột — đó là chấp nhận được, `DataTable` đã có scroll ngang
+  và 2 cột đầu (STT, Tên/Mã) đã `fixed: 'left'` nên vẫn tra cứu được.
+- Bề rộng nêu trên là **tối thiểu**; `DataTable.headerMinWidth()` sẽ tự nới thêm nếu nhãn dài hơn.
+
+**Điều kiện tiên quyết:** entity phải kế thừa `BaseApprovableEntity` để có đủ `submittedAt`,
+`submittedBy`, `approverLevel1/2`, `approvedDateLevel1/2`. Loại KCHT nào chưa kế thừa thì phải
+chuyển trước, kèm migration bổ sung cột.
+
+---
+
 ### 3.6. Footer Drawer - QUY CHUẨN BỘ 3 NÚT HÀNH ĐỘNG KHI TẠO MỚI (LẤY TỪ MÀN CẢNG BIỂN `/port`):
 
 > 🔘 **QUY CÁCH VÀ MÀU SẮC BỘ 3 NÚT TẠI CHÂN DRAWER FORM TẠO MỚI:**
@@ -443,17 +493,42 @@ Mọi form chi tiết/thêm mới/chỉnh sửa đều mở `AppDrawer` với `s
 > | 2 | **`Lưu và gửi phê duyệt`** | `primaryButtonStyle` | Nền Xanh Dương (`#1B84FF`), chữ trắng | `PENDING_APPROVAL` (2) | Lưu bản ghi và lập tức chuyển trạng thái sang Chờ Cảng vụ/Chi cục duyệt (Vòng 1) |
 > | 3 | **`Lưu và phê duyệt`** | Primary Green Button | Nền Xanh Lá Cây `statusOperational` (`#1BAF7A` / `#00A389`), chữ trắng | `APPROVED` (5) | Dành cho cấp có thẩm quyền phê duyệt trực tiếp: Lưu và duyệt có hiệu lực ngay |
 > 
-> - **Khi Chỉnh sửa (`isEdit`)**: Chân Footer chỉ hiển thị 2 nút: **`Hủy`** (`outlineButtonStyle`) và **`Cập nhật`** (`primaryButtonStyle`).
+> - **Khi Chỉnh sửa (`isEdit`)**: bộ nút phụ thuộc **trạng thái phê duyệt của hồ sơ đang sửa**
+>   (theo `approval-2-level-spec.md` mục 3.9 — quy tắc 12). **CẤM** dùng chung một nút "Cập nhật" cho mọi trạng thái:
+>
+> | Trạng thái hồ sơ đang sửa | Các nút chân Form | Kết quả sau khi lưu |
+> | :--- | :--- | :--- |
+> | `DRAFT`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2` | `Hủy` · `Lưu tạm` · `Lưu và gửi phê duyệt` | Giữ `DRAFT` / chuyển `PENDING_APPROVAL` |
+> | `APPROVED` | `Hủy` · **`Lưu và phê duyệt`** (nút xanh lá `statusOperational`) | **Giữ nguyên `APPROVED`**, bản cũ ghi vào nhật ký thay đổi |
+> | `PENDING_APPROVAL`, `APPROVED_LEVEL1`, `ARCHIVED` | *Không mở được form sửa — nút "Chỉnh sửa" đã bị ẩn ở `rowActions`* | — |
+>
+> - ⚠️ **Tuyệt đối không hạ hồ sơ `APPROVED` về `DRAFT` khi sửa**: `/options` chỉ trả về bản ghi
+>   `APPROVED` (quy tắc APPROVED ONLY), hạ trạng thái sẽ làm hồ sơ đang khai thác biến mất khỏi
+>   mọi dropdown của các màn hình khác.
 > - **Mã nguồn JSX Mẫu chuẩn Footer**:
 >   ```tsx
 >   footer={
->     isEdit ? (
+>     isEdit && editingStatus === 'APPROVED' ? (
+>       // T12 - Sửa hồ sơ đã duyệt: giữ nguyên APPROVED, bản cũ vào nhật ký
 >       <>
 >         <Button onClick={onCancel} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>
 >           Hủy
 >         </Button>
->         <Button type="primary" onClick={() => handleSubmit('UPDATE')} loading={submitting && actionType === 'UPDATE'} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>
->           Cập nhật
+>         <Button type="primary" onClick={() => handleSubmit('APPROVE')} loading={submitting && actionType === 'APPROVE'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}>
+>           Lưu và phê duyệt
+>         </Button>
+>       </>
+>     ) : isEdit ? (
+>       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2: sửa rồi lưu tạm hoặc gửi (lại) duyệt
+>       <>
+>         <Button onClick={onCancel} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>
+>           Hủy
+>         </Button>
+>         <Button onClick={() => handleSubmit('DRAFT')} loading={submitting && actionType === 'DRAFT'} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>
+>           Lưu tạm
+>         </Button>
+>         <Button type="primary" onClick={() => handleSubmit('SUBMIT')} loading={submitting && actionType === 'SUBMIT'} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>
+>           Lưu và gửi phê duyệt
 >         </Button>
 >       </>
 >     ) : (
@@ -482,7 +557,7 @@ Khi bạn muốn AI xây dựng bất kỳ màn hình nào, chỉ cần gửi c�
 Hãy xây dựng/chuẩn hóa màn hình [TÊN PHÂN HỆ / VÍ DỤ: ĐÈN BIỂN / TRẠM RADAR / TUYẾN LUỒNG].
 BẮT BUỘC tuân thủ 100% tài liệu Golden Template tại docs/conventions/infrastructure-screen-template.md:
 1. UI Danh sách: ScreenHeader + FilterTableLayout + StatusTabs + DataTable + Pagination.
-2. Bảng: Cột STT cố định trái (60px), Cột Tên/Mã cố định trái (240px, cả 2 dòng đều dùng fontSizeMd 13px), Cột Cán bộ cập nhật (Họ và tên cán bộ 13px + ngày giờ), Badge Tình trạng (160px) và Trạng thái (180px) không có '...' thừa, Cột Thao tác truyền qua rowActions (60px).
+2. Bảng: Cột STT cố định trái (60px), Cột Tên/Mã cố định trái (240px, cả 2 dòng đều dùng fontSizeMd 13px), Cột Cán bộ cập nhật (Họ và tên cán bộ 13px + ngày giờ), Badge Tình trạng (160px) và Trạng thái (180px) không có '...' thừa, **6 cột kiểm toán phê duyệt** (xem §2.1), Cột Thao tác truyền qua rowActions (60px).
 3. Sidebar: OrgUnitTreeSelect + Tìm kiếm tiếng Việt không dấu (normalizeSearchText) + Cascading filters tự reset.
 4. Drawer 5 Tab: 
    - Tab 1 Thông tin chung (Pill radius 999px, height 40px)

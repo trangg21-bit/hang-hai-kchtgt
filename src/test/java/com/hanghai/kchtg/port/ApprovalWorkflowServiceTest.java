@@ -1,8 +1,10 @@
 package com.hanghai.kchtg.port;
 
-import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,21 +24,24 @@ import static org.mockito.Mockito.verify;
 /**
  * Unit tests for ApprovalWorkflowService — shared state-machine used by all
  * CangBen entity approval services (F-011/017/023/025/031).
- * Tests that ApprovalLog is persisted on each decision.
+ *
+ * Nhật ký quyết định duyệt đã chuyển từ bảng riêng `approval_log` sang bảng dùng chung
+ * `infrastructure_history` (xem approval-2-level-spec.md mục 3.5), nên test kiểm tra
+ * `InfrastructureHistoryRepository.save(...)`.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ApprovalWorkflowService — state-machine + ApprovalLog persistence")
+@DisplayName("ApprovalWorkflowService — state-machine + ghi nhật ký infrastructure_history")
 class ApprovalWorkflowServiceTest {
 
     @InjectMocks
     private ApprovalWorkflowService workflowService;
 
     @Mock
-    private ApprovalLogRepository approvalLogRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     private final String entityType = "Port";
     private final String entityId = UUID.randomUUID().toString();
-    private final String userId = "user-approver-1";
+    private final String userId = UUID.randomUUID().toString();
 
     // ── APPROVE ────────────────────────────────────────────────────────────
 
@@ -47,15 +52,14 @@ class ApprovalWorkflowServiceTest {
 
         assertEquals(ApprovalStatus.APPROVED, result);
 
-        ArgumentCaptor<ApprovalLog> captor = ArgumentCaptor.forClass(ApprovalLog.class);
-        verify(approvalLogRepository).save(captor.capture());
-        ApprovalLog log = captor.getValue();
-        assertEquals(entityType, log.getEntityType());
-        assertEquals(entityId, log.getEntityId());
-        assertEquals("APPROVED", log.getDecision());
-        assertNull(log.getReason());
-        assertEquals(userId, log.getDecidedBy());
-        assertNotNull(log.getDecidedAt());
+        ArgumentCaptor<InfrastructureHistory> captor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository).save(captor.capture());
+        InfrastructureHistory log = captor.getValue();
+        assertEquals(UUID.fromString(entityId), log.getRefId());
+        assertEquals(InfrastructureHistoryStatus.APPROVED, log.getStatus());
+        assertEquals(ApprovalLevel.LEVEL_2, log.getApprovalLevel());
+        assertEquals(UUID.fromString(userId), log.getApprovedBy());
+        assertNotNull(log.getApprovedDate());
     }
 
     @Test
@@ -63,7 +67,7 @@ class ApprovalWorkflowServiceTest {
     void approve_wrongStatus_throwsWithoutLog() {
         assertThrows(IllegalStateException.class,
                 () -> workflowService.approve("APPROVED", entityType, entityId, userId));
-        verify(approvalLogRepository, never()).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
     @Test
@@ -84,13 +88,14 @@ class ApprovalWorkflowServiceTest {
 
         assertEquals(ApprovalStatus.REJECTED, result);
 
-        ArgumentCaptor<ApprovalLog> captor = ArgumentCaptor.forClass(ApprovalLog.class);
-        verify(approvalLogRepository).save(captor.capture());
-        ApprovalLog log = captor.getValue();
-        assertEquals("REJECTED", log.getDecision());
+        ArgumentCaptor<InfrastructureHistory> captor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository).save(captor.capture());
+        InfrastructureHistory log = captor.getValue();
+        assertEquals(InfrastructureHistoryStatus.REJECTED, log.getStatus());
+        assertEquals(ApprovalLevel.LEVEL_1, log.getApprovalLevel());
         assertEquals(reason, log.getReason());
-        assertEquals(userId, log.getDecidedBy());
-        assertNotNull(log.getDecidedAt());
+        assertEquals(UUID.fromString(userId), log.getApprovedBy());
+        assertNotNull(log.getApprovedDate());
     }
 
     @Test
@@ -98,7 +103,7 @@ class ApprovalWorkflowServiceTest {
     void reject_blankReason_throwsWithoutLog() {
         assertThrows(IllegalArgumentException.class,
                 () -> workflowService.reject("PENDING_APPROVAL", entityType, entityId, userId, "  "));
-        verify(approvalLogRepository, never()).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
     @Test

@@ -6,7 +6,6 @@ import {
   Input,
   InputNumber,
   Select,
-  Drawer,
   Space,
   Typography,
   Form,
@@ -66,6 +65,9 @@ import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import {
   statusOperational,
   statusAttention,
@@ -99,10 +101,7 @@ import {
   rejectReasonStyle,
   formFieldStyle,
   formRowGutter,
-  drawerProps,
   drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
   requiredMarkStyle,
   filterLabelStyle,
   filterInputStyle,
@@ -191,10 +190,6 @@ function formatDate(dateStr: string | null | undefined): string {
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
   from || to ? [from ? dayjs(from) : null, to ? dayjs(to) : null] : null;
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 // Tabs bar style — giữ sticky khi cuộn form dài (khớp pattern BeaconList)
 const tabBarStyle: React.CSSProperties = {
@@ -513,7 +508,7 @@ export default function RadarStationList() {
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
     if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file'); return false; }
-    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file }]);
+    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file as any }]);
     return false;
   }, [uploadedFiles]);
 
@@ -719,7 +714,8 @@ export default function RadarStationList() {
     if (hasPerm('radarstation:read')) {
       actions.push({ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) });
     }
-    if (hasPerm('radarstation:update')) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'radarstation' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) });
     }
     const st = record.status || '';
@@ -1241,8 +1237,7 @@ export default function RadarStationList() {
       </FilterTableLayout>
 
       {/* ── Create / Edit / Detail Drawer ─────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={
           <span style={drawerTitleStyle}>
             {isDetailMode
@@ -1255,15 +1250,14 @@ export default function RadarStationList() {
         open={drawerVisible}
         destroyOnHidden
         onClose={closeDrawer}
-        extra={<Button type="text" onClick={closeDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           isDetailMode ? null : (
-            <div style={drawerFooterStyle}>
+            <>
               <Button onClick={closeDrawer} style={outlineButtonStyle}>Hủy</Button>
               <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>
                 {editingRecord ? 'Cập nhật' : 'Tạo mới'}
               </Button>
-            </div>
+            </>
           )
         }
       >
@@ -1515,7 +1509,7 @@ export default function RadarStationList() {
             </Form>
           </>
         )}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal

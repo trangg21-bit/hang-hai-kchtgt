@@ -23,6 +23,7 @@ Xây dựng hệ thống tra cứu KCHT trên bản đồ GIS nhằm cung cấp 
 Người dùng truy cập giao diện bản đồ GIS và chọn mục tra cứu KCHT, sau đó thực hiện các thao tác: nhập từ khóa tìm kiếm (tên, mã, loại) hoặc chọn bộ lọc theo loại đối tượng, khu vực địa lý, tình trạng; hệ thống hiển thị kết quả dưới dạng các marker trên bản đồ và danh sách bên cạnh; click vào marker trên bản đồ để xem popup thông tin tóm tắt hoặc mở panel chi tiết; phóng to/thu nhỏ, di chuyển bản đồ để khám phá KCHT trong khu vực quan tâm; xuất kết quả tra cứu ra PDF hoặc Excel; lưu các bộ lọc yêu thích để tra cứu nhanh sau này.
 
 ## Acceptance Criteria
+- Người dùng có quyền xem dữ liệu nhìn thấy nhóm menu "Quản lý KCHT trên nền bản đồ (GIS)" và có thể mở màn tra cứu bản đồ từ thanh menu chính.
 - Người dùng có thể nhập từ khóa hoặc chọn bộ lọc để tìm kiếm KCHT trên bản đồ, hệ thống hiển thị kết quả chính xác dưới dạng marker trên bản đồ và danh sách kết quả bên cạnh.
 - Người dùng có thể click vào marker trên bản đồ để xem thông tin tóm tắt trong popup và mở panel chi tiết với đầy đủ thuộc tính, hình ảnh và hồ sơ kỹ thuật của đối tượng KCHT.
 - Người dùng có thể lọc KCHT theo loại đối tượng (điểm/đường/vùng), danh mục, tình trạng và khu vực địa lý (bounding box), kết quả được cập nhật ngay lập tức trên bản đồ.

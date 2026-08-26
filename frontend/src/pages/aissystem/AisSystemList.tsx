@@ -80,6 +80,8 @@ import {
   borderDefault,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
 const HISTORY_FIELD_ORDER = [
   'orgUnitId',
@@ -445,7 +447,6 @@ export const AisSystemList: React.FC = () => {
   const [provinceId, setProvinceId] = useState<number | undefined>();
   const [commissioningYear, setCommissioningYear] = useState<number | undefined>();
   const [conditionStatus, setConditionStatus] = useState<number | undefined>();
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState<string | undefined>();
 
   // Reference data
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -525,7 +526,7 @@ export const AisSystemList: React.FC = () => {
       setLoading(true);
       setIsError(false);
 
-      const effectiveApprovalStatus = activeTab === 'ALL' ? approvalStatusFilter : activeTab;
+      const effectiveApprovalStatus = activeTab === 'ALL' ? undefined : activeTab;
 
       const res = await aisSystemService.search({
         keyword: keyword.trim() || undefined,
@@ -561,7 +562,6 @@ export const AisSystemList: React.FC = () => {
     provinceId,
     commissioningYear,
     conditionStatus,
-    approvalStatusFilter,
     activeTab,
     sortField,
     sortDirection,
@@ -593,7 +593,6 @@ export const AisSystemList: React.FC = () => {
     setProvinceId(undefined);
     setCommissioningYear(undefined);
     setConditionStatus(undefined);
-    setApprovalStatusFilter(undefined);
     setActiveTab('ALL');
     setPage(1);
   };
@@ -698,22 +697,22 @@ export const AisSystemList: React.FC = () => {
   };
 
   const statusTabsItems = useMemo(() => {
-    const allCount = total;
     const draftCount = statusCounts['DRAFT'] || 0;
     const pendingCount = (statusCounts['PENDING_APPROVAL'] || 0) + (statusCounts['PROPOSED'] || 0);
     const approvedL1Count = statusCounts['APPROVED_LEVEL1'] || 0;
     const approvedCount = (statusCounts['APPROVED'] || 0) + (statusCounts['APPROVED_LEVEL2'] || 0);
     const rejectedCount = (statusCounts['REJECTED'] || 0) + (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED_LEVEL2'] || 0);
+    const allCount = draftCount + pendingCount + approvedL1Count + approvedCount + rejectedCount;
 
     return [
-      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary },
-      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft },
-      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention },
-      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#13C2C2' },
-      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational },
-      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical },
+      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary, active: activeTab === 'ALL' },
+      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft, active: activeTab === 'DRAFT' },
+      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention, active: activeTab === 'PENDING_APPROVAL' },
+      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7', active: activeTab === 'APPROVED_LEVEL1' },
+      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational, active: activeTab === 'APPROVED' },
+      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical, active: activeTab === 'REJECTED_LEVEL1' || activeTab === 'REJECTED_LEVEL2' },
     ];
-  }, [total, statusCounts]);
+  }, [statusCounts, activeTab]);
 
   const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
     (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
@@ -871,41 +870,7 @@ export const AisSystemList: React.FC = () => {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
-      render: (status: ApprovalStatus) => {
-        if (!status) return '—';
-        const key = String(status);
-        const label = key === 'DRAFT' ? 'Lưu tạm'
-          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? 'Chờ Cảng vụ duyệt'
-          : key === 'APPROVED_LEVEL1' ? 'Chờ Cục duyệt'
-          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? 'Đã duyệt'
-          : (key === 'REJECTED_LEVEL1' || key === 'REJECTED') ? 'Cảng vụ trả về'
-          : key === 'REJECTED_LEVEL2' ? 'Cục trả về'
-          : key;
-        const color = key === 'DRAFT' ? statusDraft
-          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? statusAttention
-          : key === 'APPROVED_LEVEL1' ? '#0284C7'
-          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? statusOperational
-          : statusCritical;
-        return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 10px',
-              border: `1px solid ${color}40`,
-              borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
-              background: `${color}15`,
-              color,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {label}
-          </span>
-        );
-      },
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       key: 'updatedByName',
@@ -937,9 +902,9 @@ export const AisSystemList: React.FC = () => {
     const isDraft = record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
     const isPendingC1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
     const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-    const isApproved = record.approvalStatus === ApprovalStatus.APPROVED;
 
-    const isCreator = user?.id && record.createdBy === user.id;
+    const currentUserId = user?.userId || user?.id;
+    const isCreator = Boolean(currentUserId && record.createdBy === currentUserId);
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
 
@@ -961,8 +926,8 @@ export const AisSystemList: React.FC = () => {
       });
     }
 
-    // 3. Chỉnh sửa
-    if (canUpdate && !isApproved) {
+    // 3. Chỉnh sửa — quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm: hasPermission, resource: 'aissystem' })) {
       actions.push({
         key: 'edit',
         icon: <EditOutlined />,
@@ -1367,30 +1332,6 @@ export const AisSystemList: React.FC = () => {
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
             </div>
-            {activeTab === 'ALL' && (
-              <>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Trạng thái phê duyệt
-                  </div>
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    value={approvalStatusFilter}
-                    onChange={setApprovalStatusFilter}
-                    options={[
-                      { value: 'DRAFT', label: 'Lưu tạm' },
-                      { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                      { value: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt' },
-                      { value: 'APPROVED', label: 'Đã duyệt' },
-                      { value: 'REJECTED_LEVEL1', label: 'Cảng vụ trả về' },
-                      { value: 'REJECTED_LEVEL2', label: 'Cục trả về' },
-                    ]}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-              </>
-            )}
           </>
         }
         hideFilterToggle={true}
