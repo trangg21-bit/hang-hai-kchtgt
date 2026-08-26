@@ -11,14 +11,18 @@ import com.hanghai.kchtg.cctv.dto.CreateCctvRequest;
 import com.hanghai.kchtg.cctv.dto.UpdateCctvRequest;
 import com.hanghai.kchtg.cctv.service.CctvApprovalService;
 import com.hanghai.kchtg.cctv.service.CctvService;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import org.springframework.security.core.Authentication;
 
@@ -165,5 +169,37 @@ public class CctvController {
     log.info("Restoring CCTV id={}", id);
     CctvResponse response = cctvService.restore(id);
     return ResponseEntity.ok(ApiResponse.success("Khôi phục hệ thống CCTV thành công", response));
+  }
+
+  // ── Attachment endpoints (File đính kèm) ─────────────────────────
+
+  @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("@auth.check(authentication, 'cctv:update')")
+  public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
+      @PathVariable UUID id,
+      @RequestParam("files") List<MultipartFile> files) {
+    log.info("Uploading CCTV attachments: id={}, files={}", id, files.size());
+    return ResponseEntity.ok(ApiResponse.success(
+        "Tải file đính kèm thành công",
+        cctvService.uploadAttachments(id, files, SecurityUtils.getCurrentUserId())));
+  }
+
+  @GetMapping("/{id}/attachments")
+  @PreAuthorize("@auth.check(authentication, 'cctv:read')")
+  public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+    log.info("Listing CCTV attachments: id={}", id);
+    return ResponseEntity.ok(ApiResponse.success(
+        "Lấy danh sách file đính kèm thành công",
+        cctvService.listAttachments(id)));
+  }
+
+  @DeleteMapping("/{id}/attachments/{attachmentId}")
+  @PreAuthorize("@auth.check(authentication, 'cctv:update')")
+  public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+      @PathVariable UUID id,
+      @PathVariable UUID attachmentId) {
+    log.info("Deleting CCTV attachment: id={}, attachmentId={}", id, attachmentId);
+    cctvService.deleteAttachment(id, attachmentId);
+    return ResponseEntity.ok(ApiResponse.success("Đã xóa file đính kèm", null));
   }
 }

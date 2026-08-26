@@ -13,6 +13,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -249,6 +250,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({ AccessDeniedException.class, AuthorizationDeniedException.class })
     public void handleAccessDenied(Exception ex) throws Exception {
         throw ex;
+    }
+
+    /**
+     * Handles multipart uploads exceeding the configured size limits
+     * (spring.servlet.multipart.max-file-size / max-request-size).
+     * Returns 413 Payload Too Large with a clear Vietnamese message.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex) {
+        log.warn("Upload size exceeded: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiResponse
+                        .error("Kích thước file tải lên vượt quá giới hạn cho phép (tối đa 20MB mỗi file, tối đa 10 file mỗi lần)"));
     }
 
     /**

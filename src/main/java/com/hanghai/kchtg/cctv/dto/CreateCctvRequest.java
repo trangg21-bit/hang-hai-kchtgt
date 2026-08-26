@@ -63,4 +63,10 @@ public class CreateCctvRequest {
     private Integer coordinateSystem;
     private Integer displayRule;
     private UUID spatialId;
+
+    /**
+     * Hành động khi tạo: 'draft' (Lưu tạm) | 'submit' (Gửi duyệt — mặc định) | 'approve' (Lưu và phê duyệt).
+     * Cơ chế giống màn /port (CreatePortRequest.action).
+     */
+    private String action;
 }

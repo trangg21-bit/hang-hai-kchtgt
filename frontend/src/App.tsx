@@ -49,8 +49,6 @@ const PortDeleteConfirm = lazy(() => import('./services/port/PortDeleteConfirm')
 
 // M-NEW: CCTV Management
 const CctvListPage = lazy(() => import('./services/cctv/CctvListPage'));
-const CctvApprovePage = lazy(() => import('./services/cctv/CctvApprovePage'));
-
 const BerthList = lazy(() => import('./pages/port/BerthListPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
@@ -192,8 +190,6 @@ export default function App() {
                 <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
                 <Route path="/cctv" element={<PermissionGuard permission="cctv:read"><CctvListPage /></PermissionGuard>} />
-                <Route path="/cctv/:id/approve" element={<PermissionGuard permission="cctv:approve"><CctvApprovePage /></PermissionGuard>} />
-
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
 
                 <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />

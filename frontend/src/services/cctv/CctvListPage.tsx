@@ -49,6 +49,7 @@ import {
   ReloadOutlined,
   FileImageOutlined,
   FilePdfOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import { Tabs, Upload, Radio } from "antd";
 import type { RcFile, UploadFile } from "antd/es/upload/interface";
@@ -56,7 +57,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { SelectAppParams } from "../../components/SelectAppParams";
 import SelectCateOther from "../../components/SelectCateOther";
 import { LongLatTable, type CoordinateRow } from "../../components/LongLatTable";
-import { UploadFileTable } from "../../components/UploadFileTable";
 import {
   fetchCctvList,
   deleteCctv,
@@ -69,6 +69,9 @@ import {
   fetchCctvOptions,
   fetchCctvHistory,
   fetchAllCctvHistory,
+  fetchCctvAttachments,
+  uploadCctvAttachment,
+  deleteCctvAttachment,
 } from "./api";
 import {
   trangThaiHoatDongBadge,
@@ -194,6 +197,7 @@ import {
   outlineButtonStyle,
   requiredMarkStyle,
   detailSectionTitleStyle,
+  uploadHintStyle,
 } from "../../tokens";
 import dayjs from "dayjs";
 
@@ -279,8 +283,141 @@ function DetailInfoRow({ label, value, full }: { label: string; value: React.Rea
   );
 }
 
+/* Bảng tham chiếu (Vận hành khai thác / Bảo trì / Sự cố) — placeholder theo chuẩn
+   PortRefTable của /port; bảng rỗng chờ tích hợp dữ liệu kế hoạch/sự cố sau này */
+const CCTV_TAB_PAGE_SIZE = 20;
+function CctvRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
+  const [page, setPage] = useState(1);
+  const maxPage = Math.max(1, Math.ceil(dataSource.length / CCTV_TAB_PAGE_SIZE));
+  const cur = Math.min(page, maxPage);
+  const rows = dataSource
+    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __stt: idx + 1 }))
+    .slice((cur - 1) * CCTV_TAB_PAGE_SIZE, cur * CCTV_TAB_PAGE_SIZE);
+  const refHdr = () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } });
+  return (
+    <div style={{ paddingTop: 3 }}>
+      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
+        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>
+      </div>
+      <Table
+        className="list-view-table"
+        dataSource={rows}
+        pagination={false} size="middle" bordered
+        style={{ marginLeft: 12, marginRight: 12 }}
+        locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>{emptyText}</span></div> }}
+      >
+        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
+          render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
+          onHeaderCell={refHdr} />
+        {columns.map((c) => (
+          <Table.Column key={c.title} title={c.title} dataIndex={c.dataIndex} width={c.width} align="center"
+            render={(v: any) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>}
+            onHeaderCell={refHdr} />
+        ))}
+        <Table.Column title="Thao tác" key="actions" width={100} align="center"
+          render={() => <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>}
+          onHeaderCell={refHdr} />
+      </Table>
+      <div style={{ margin: '0 12px' }}>
+        <Pagination total={dataSource.length} current={cur} pageSize={CCTV_TAB_PAGE_SIZE} pageSizeOptions={[10, 20, 50]} onChange={setPage} />
+      </div>
+    </div>
+  );
+}
+
+/* Tab File đính kèm (Tạo mới/Cập nhật) — format theo chuẩn Port: label + nút Thêm file,
+   empty state, danh sách file cục bộ (upload thực hiện lúc submit) */
+function CctvFilesTab({ uploadFileList, setUploadFileList, entityId }: { uploadFileList: any[]; setUploadFileList: React.Dispatch<React.SetStateAction<any[]>>; entityId?: string }) {
+  const beforeUpload = (file: RcFile): boolean => {
+    if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
+    if (uploadFileList.length >= 10) { toast.error('Tối đa 10 file'); return false; }
+    setUploadFileList([...uploadFileList, { uid: `${Date.now()}`, name: file.name, status: 'done' as const, originFileObj: file }]);
+    return false;
+  };
+  return (
+    <div style={{ paddingTop: 16 }}>
+      <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
+        {uploadFileList.length > 0 && (
+          <Upload
+            beforeUpload={beforeUpload}
+            showUploadList={false}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
+            multiple
+          >
+            <Button type="dashed" size="small" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }}>
+              Thêm file
+            </Button>
+          </Upload>
+        )}
+      </div>
+      {uploadFileList.length === 0 ? (
+        <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+          <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>
+            Chưa có file đính kèm.
+          </span>
+          <Upload
+            beforeUpload={beforeUpload}
+            showUploadList={false}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
+            multiple
+          >
+            <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>
+              Chọn file
+            </Button>
+          </Upload>
+        </div>
+      ) : (
+        <PagedTable
+          dataSource={uploadFileList.map((f, i) => ({ ...f, _idx: i }))}
+          tableProps={{ scroll: { x: 400 } }}
+        >
+          <Table.Column
+            title="Tên file"
+            key="name"
+            dataIndex="name"
+            render={(name: string) => (
+              <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
+                <FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />
+                {name}
+              </span>
+            )}
+            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+          />
+          <Table.Column
+            title=""
+            key="actions"
+            width={44}
+            align="center"
+            render={(_: any, record: any) => (
+              <Button type="link" danger size="small" icon={<DeleteOutlined />}
+                onClick={() => {
+                  const uid = record.uid;
+                  if (entityId && typeof uid === 'string' && uid.includes('-')) {
+                    void deleteCctvAttachment(entityId, uid).catch(() => { /* ignore */ });
+                  }
+                  setUploadFileList(uploadFileList.filter((_, idx) => idx !== record._idx));
+                }} />
+            )}
+            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+          />
+        </PagedTable>
+      )}
+      <div style={{ marginTop: spaceSm }}>
+        <span style={uploadHintStyle}>
+          Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
+        </span>
+      </div>
+    </div>
+  );
+}
+
 const textAreaStyle: React.CSSProperties = {
-  borderRadius: radiusSm,
+  borderRadius: radiusPill,
+  resize: 'none' as const,
+  padding: '12px 16px',
   fontFamily: fontSans,
 };
 
@@ -357,19 +494,14 @@ function buildCctvCollapseItems(
   });
 
   // 3. GIS
-  const attachedTypeLabel = (t: number | null) => {
-    if (t === null) return '—';
-    const map: Record<number, string> = { 2: 'Trạm Radar' };
-    return map[t] || String(t);
-  };
   items.push({
     key: 'gis',
     label: '3. GIS',
     children: (
       <Row gutter={[spaceMd, 0]}>
         <DetailInfoRow
-          label="Loại đối tượng"
-          value={attachedTypeLabel(rec.objectType) || 'Đối tượng điểm'}
+          label="Thuộc loại hạ tầng"
+          value={rec.attachedInfrastructureName || '—'}
         />
         <DetailInfoRow
           label="Biểu tượng"
@@ -483,26 +615,6 @@ const CctvListPage = () => {
   });
   const [pageSize, setPageSize] = useState(20);
 
-  // Tab counts for approval status filter
-  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
-  const fetchTabCounts = useCallback(async () => {
-    const statuses = [
-      { key: "DRAFT", status: "DRAFT" },
-      { key: "PENDING", status: "PENDING" },
-      { key: "APPROVED", status: "APPROVED" },
-      { key: "REJECTED", status: "REJECTED" },
-    ];
-    const results = await Promise.allSettled(
-      statuses.map((s) => fetchCctvList({ page: 0, size: 1, approvalStatus: s.status }))
-    );
-    setTabCounts({
-      DRAFT: results[0].status === "fulfilled" ? (results[0].value?.totalElements ?? 0) : 0,
-      PENDING: results[1].status === "fulfilled" ? (results[1].value?.totalElements ?? 0) : 0,
-      APPROVED: results[2].status === "fulfilled" ? (results[2].value?.totalElements ?? 0) : 0,
-      REJECTED: results[3].status === "fulfilled" ? (results[3].value?.totalElements ?? 0) : 0,
-    });
-  }, []);
-
   // Filters
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState({
@@ -519,6 +631,29 @@ const CctvListPage = () => {
     updatedFrom: "" as string,
     updatedTo: "" as string,
   });
+
+  // Tab counts for approval status filter
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+  const [totalAll, setTotalAll] = useState(0);
+  const fetchTabCounts = useCallback(async () => {
+    const statuses = [
+      { key: "DRAFT", status: "DRAFT" },
+      { key: "PENDING", status: "PENDING" },
+      { key: "APPROVED", status: "APPROVED" },
+      { key: "REJECTED", status: "REJECTED" },
+    ];
+    const results = await Promise.allSettled([
+      ...statuses.map((s) => fetchCctvList({ page: 0, size: 1, orgUnitId: filterValues.orgUnitId || undefined, approvalStatus: s.status })),
+      fetchCctvList({ page: 0, size: 1, orgUnitId: filterValues.orgUnitId || undefined }),
+    ]);
+    setTabCounts({
+      DRAFT: results[0].status === "fulfilled" ? (results[0].value?.totalElements ?? 0) : 0,
+      PENDING: results[1].status === "fulfilled" ? (results[1].value?.totalElements ?? 0) : 0,
+      APPROVED: results[2].status === "fulfilled" ? (results[2].value?.totalElements ?? 0) : 0,
+      REJECTED: results[3].status === "fulfilled" ? (results[3].value?.totalElements ?? 0) : 0,
+    });
+    if (results[4].status === "fulfilled") setTotalAll(results[4].value?.totalElements ?? 0);
+  }, [filterValues.orgUnitId]);
 
   // Org units
   const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
@@ -602,6 +737,7 @@ const CctvListPage = () => {
 
   // GPS coordinates for create drawer
   const [gpsCoordList, setGpsCoordList] = useState<Array<{ lat: number; lng: number }>>([]);
+  const [uploadFileList, setUploadFileList] = useState<any[]>([]);
 
   // Update modal
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -619,29 +755,42 @@ const CctvListPage = () => {
   // GEOMETRY_POINT_COUNT mapping (same as Port)
   const GEOMETRY_POINT_COUNT = useMemo(() => ({ POINT: 1, LINE: 2, POLYGON: 3 }), []);
 
-  // Auto-initialize GPS coordinates when geometry type changes (create)
+  // Auto-fill Hệ quy chiếu + Quy tắc hiển thị + GPS khi chọn Loại đối tượng (giống /pier)
   useEffect(() => {
-    if (createGeometryType) {
-      const count = GEOMETRY_POINT_COUNT[createGeometryType] ?? 0;
-      setGpsCoordList(Array.from({ length: count }, () => ({ lat: 0, lng: 0 })));
-    } else {
+    if (!createGeometryType) {
+      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
       setGpsCoordList([]);
+      return;
     }
-  }, [createGeometryType, GEOMETRY_POINT_COUNT]);
+    createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    const count = GEOMETRY_POINT_COUNT[createGeometryType as keyof typeof GEOMETRY_POINT_COUNT] ?? 0;
+    setGpsCoordList(Array.from({ length: count }, () => ({ lat: 0, lng: 0 })));
+  }, [createGeometryType, GEOMETRY_POINT_COUNT, createForm]);
 
-  // Auto-initialize GPS coordinates when geometry type changes (edit)
+  // Chỉ reset Hệ quy chiếu/Quy tắc hiển thị khi NGƯỜI DÙNG xóa lựa chọn Loại đối tượng,
+  // không reset khi mở modal edit (CctvResponse không trả geometryType → watch luôn undefined khi mở)
+  const prevUpdateGeometryType = useRef<string | null>(null);
   useEffect(() => {
-    if (updateGeometryType) {
-      const count = GEOMETRY_POINT_COUNT[updateGeometryType] ?? 1;
-      setUpdateGpsCoordList((prev) => {
-        if (prev.length >= count) return prev;
-        const added = Array.from({ length: count - prev.length }, () => ({ lat: 0, lng: 0 }));
-        return [...prev, ...added];
-      });
-    } else {
+    const hadSelection = prevUpdateGeometryType.current != null;
+    prevUpdateGeometryType.current = (updateGeometryType as string | null) ?? null;
+    if (!updateGeometryType) {
       setUpdateGpsCoordList([]);
+      if (hadSelection) {
+        updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      }
+      return;
     }
-  }, [updateGeometryType, GEOMETRY_POINT_COUNT]);
+    updateForm.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
+    if (updateForm.getFieldValue('coordinateSystem') == null) {
+      updateForm.setFieldsValue({ coordinateSystem: 1 });
+    }
+    const count = GEOMETRY_POINT_COUNT[updateGeometryType as keyof typeof GEOMETRY_POINT_COUNT] ?? 1;
+    setUpdateGpsCoordList((prev) => {
+      if (prev.length >= count) return prev;
+      const added = Array.from({ length: count - prev.length }, () => ({ lat: 0, lng: 0 }));
+      return [...prev, ...added];
+    });
+  }, [updateGeometryType, GEOMETRY_POINT_COUNT, updateForm]);
 
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -843,9 +992,9 @@ const CctvListPage = () => {
         type: "status" as const,
         render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
-            "NON_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
+            "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
             "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
-            "STOPPED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
+            "SUSPENDED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
           };
           const s = map[String(val || "").toUpperCase()] || {
             color: textTertiary,
@@ -959,9 +1108,9 @@ const CctvListPage = () => {
         '0': 'Chưa khai thác/vận hành',
         '1': 'Đang khai thác/vận hành',
         '2': 'Dừng khai thác/vận hành',
-        NON_OPERATIONAL: 'Chưa khai thác/vận hành',
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        STOPPED: 'Dừng khai thác/vận hành',
+    NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+    OPERATIONAL: 'Đang khai thác/vận hành',
+    SUSPENDED: 'Dừng khai thác/vận hành',
       };
       return m[val] || val;
     }
@@ -1248,6 +1397,10 @@ const CctvListPage = () => {
           icon: <EditOutlined />,
           onClick: () => {
             setUpdateTarget(record);
+            setUploadFileList([]);
+            void fetchCctvAttachments(record.id).then((list: any[]) => {
+              setUploadFileList(list.map((a: any) => ({ uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const })));
+            }).catch(() => { /* ignore */ });
             // Convert operationalStatus từ string enum (backend @JsonValue) sang số (frontend dropdown)
             const safeRecord = {
               ...record,
@@ -1289,6 +1442,19 @@ const CctvListPage = () => {
         },
       ];
 
+      // DRAFT: Gửi phê duyệt (giống màn /port)
+      if (record.approvalStatus === "DRAFT" && hasPerm?.("cctv:update")) {
+        actions.push({
+          key: "submit",
+          label: "Gửi phê duyệt",
+          icon: <SendOutlined />,
+          onClick: () => {
+            setSubmittingRecord(record);
+            setSubmitModalOpen(true);
+          },
+        });
+      }
+
       // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
       const isPending =
         record.approvalStatus === "CHO_PHE_DUYET" ||
@@ -1313,13 +1479,6 @@ const CctvListPage = () => {
             setRejectTarget(record);
             setRejectModalOpen(true);
           },
-        });
-        // Navigate to approve page
-        actions.push({
-          key: "approve-page",
-          label: "Phê duyệt (trang riêng)",
-          icon: <CheckCircleOutlined />,
-          onClick: () => navigate(`/cctv/${record.id}/approve`),
         });
       }
 
@@ -1435,12 +1594,13 @@ const CctvListPage = () => {
       setDeleteTarget(null);
       setDeleteConfirmText("");
       fetchData();
+      fetchTabCounts();
     } catch (error: unknown) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi xóa");
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, deleteConfirmText, fetchData]);
+  }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(async () => {
     if (!approveTarget) return;
@@ -1451,12 +1611,13 @@ const CctvListPage = () => {
       setApproveTarget(null);
       setApproveModalOpen(false);
       fetchData();
+      fetchTabCounts();
     } catch (error: unknown) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi phê duyệt");
     } finally {
       setApproveLoading(false);
     }
-  }, [approveTarget, fetchData]);
+  }, [approveTarget, fetchData, fetchTabCounts]);
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
@@ -1469,12 +1630,13 @@ const CctvListPage = () => {
       setRejectModalOpen(false);
       rejectForm.resetFields();
       fetchData();
+      fetchTabCounts();
     } catch (error: unknown) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi từ chối");
     } finally {
       setRejectLoading(false);
     }
-  }, [rejectTarget, rejectForm, fetchData]);
+  }, [rejectTarget, rejectForm, fetchData, fetchTabCounts]);
 
   const handleCreate = useCallback(
     async (values: Record<string, unknown>) => {
@@ -1490,20 +1652,29 @@ const CctvListPage = () => {
           deviceCode: values.deviceCode || (await generateCctvCode()),
           operationalStatus: values.operationalStatus ?? 1,
           coordinateList,
+          // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
+          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
         };
-        await createCctv(payload);
+        const created = await createCctv(payload);
+        if (created?.id && uploadFileList.length > 0) {
+          for (const f of uploadFileList) {
+            if (f.originFileObj) await uploadCctvAttachment(created.id, f.originFileObj);
+          }
+        }
         toast.success("Tạo mới hệ thống CCTV thành công");
         setCreateModalOpen(false);
         createForm.resetFields();
         setGpsCoordList([]);
+        setUploadFileList([]);
         fetchData();
+        fetchTabCounts();
       } catch (error: unknown) {
         toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi tạo mới");
       } finally {
         setCreateLoading(false);
       }
     },
-    [createForm, fetchData, gpsCoordList]
+    [createForm, fetchData, fetchTabCounts, gpsCoordList, uploadFileList]
   );
 
   const handleUpdate = useCallback(
@@ -1516,58 +1687,74 @@ const CctvListPage = () => {
           .filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng))
           .map(c => ({ latitude: c.lat, longitude: c.lng }));
 
-        await updateCctv({ id: updateTarget.id, ...values, coordinateList });
+        await updateCctv({
+          id: updateTarget.id,
+          ...values,
+          coordinateList,
+          // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
+          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+        });
+        if (uploadFileList.length > 0) {
+          for (const f of uploadFileList) {
+            if (f.originFileObj) await uploadCctvAttachment(updateTarget.id, f.originFileObj);
+          }
+        }
         toast.success("Cập nhật hệ thống CCTV thành công");
         setUpdateModalOpen(false);
         setUpdateTarget(null);
         setUpdateGpsCoordList([]);
+        setUploadFileList([]);
         fetchData();
+        fetchTabCounts();
       } catch (error: unknown) {
         toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi cập nhật");
       } finally {
         setUpdateLoading(false);
       }
     },
-    [updateTarget, fetchData, updateGpsCoordList]
+    [updateTarget, fetchData, fetchTabCounts, updateGpsCoordList, uploadFileList]
   );
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     setSubmitLoading(true);
     try {
-      await approveCctv(submittingRecord.id);
+      await updateCctv({ id: submittingRecord.id, approvalStatus: "PENDING" });
       toast.success("Gửi phê duyệt thành công");
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
       fetchData();
+      fetchTabCounts();
     } catch (error: unknown) {
       toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi gửi phê duyệt");
     } finally {
       setSubmitLoading(false);
     }
-  }, [submittingRecord, fetchData]);
+  }, [submittingRecord, fetchData, fetchTabCounts]);
 
   return (
     <>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
           { label: "Quản lý hệ thống", path: "/cctv" },
         ]}
         actions={[
-          {
-            key: "create",
-            label: "Thêm mới",
-            icon: <PlusOutlined />,
-            variant: "primary" as const,
-            onClick: () => setCreateModalOpen(true),
-          },
-        ]}
+          hasPerm?.("cctv:create")
+            ? {
+                key: "create",
+                label: "Thêm mới",
+                icon: <PlusOutlined />,
+                variant: "primary" as const,
+                onClick: () => { setUploadFileList([]); setCreateModalOpen(true); },
+              }
+            : null,
+        ].filter(Boolean)}
       />
 
       <FilterTableLayout
         filterCollapsed={filterCollapsed}
-        filterActive={true}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
@@ -1691,6 +1878,11 @@ const CctvListPage = () => {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Ngày cập nhật</div>
                   <DatePicker.RangePicker
+                    format="DD/MM/YYYY"
+                    placeholder={["Chọn từ ngày", "Chọn đến ngày"]}
+                    allowClear
+                    className="port-range-picker"
+                    popupClassName="range-single-panel"
                     value={
                       filterValues.updatedFrom && filterValues.updatedTo
                         ? [
@@ -1702,11 +1894,12 @@ const CctvListPage = () => {
                     onChange={(dates) => {
                       setFilterValues((prev) => ({
                         ...prev,
-                        updatedFrom: dates?.[0]?.format("YYYY-MM-DD") || "",
-                        updatedTo: dates?.[1]?.format("YYYY-MM-DD") || "",
+                        updatedFrom: dates?.[0] ? dates[0].format("YYYY-MM-DD 00:00:00") : undefined,
+                        updatedTo: dates?.[1] ? dates[1].format("YYYY-MM-DD 23:59:59") : undefined,
                       }));
                     }}
-                    style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
+                    style={{ width: "100%", borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
+                  <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child{display:none!important}`}</style>
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Địa điểm (Tỉnh/Thành phố)</div>
@@ -1734,7 +1927,7 @@ const CctvListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: total || 0,
+            count: totalAll || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },
@@ -1783,7 +1976,7 @@ const CctvListPage = () => {
               dataSource={data}
               rowKey="id"
               loading={isLoading}
-              scroll={{ x: 2800, y: "calc(100vh - 320px)" }}
+              scroll={{ x: 'max-content', y: 550 }}
               onSort={handleSort}
               rowActions={rowActions}
               locale={{
@@ -1807,6 +2000,7 @@ const CctvListPage = () => {
             />
             </>
       </FilterTableLayout>
+      </div>
 
       {/* Detail Drawer */}
       <Drawer
@@ -1824,79 +2018,186 @@ const CctvListPage = () => {
         {selectedRecord && (
           <Tabs
             defaultActiveKey="general"
+            className="port-detail-tabs"
+            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
             items={[
               {
                 key: "general",
                 label: "Thông tin chung",
                 children: (
-              <Row gutter={[spaceMd, 0]}>
-                <DetailInfoRow label="Mã thiết bị" value={<Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0 }}>{selectedRecord.deviceCode}</Tag>} />
-                <DetailInfoRow label="Tên thiết bị" value={selectedRecord.deviceName} />
-                <DetailInfoRow label="Model" value={selectedRecord.model || "—"} />
-                <DetailInfoRow label="Hãng sản xuất" value={selectedRecord.manufacturer || "—"} />
-                <DetailInfoRow label="Số lượng" value={<span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span>} />
-                <DetailInfoRow label="Đơn vị tính" value={formatUnitOfMeasure(selectedRecord.unitOfMeasure)} />
-                <DetailInfoRow label="Đơn vị quản lý" value={selectedRecord.orgUnitName || "—"} />
-                <DetailInfoRow label="Đơn vị khai thác" value={selectedRecord.operatingUnitName || "—"} />
-                <DetailInfoRow label="Thuộc TTDH VTS / Trạm Radar" full value={selectedRecord.attachedInfrastructureName || "—"} />
-                <DetailInfoRow label="Tỉnh / Thành phố" value={selectedRecord.provinceName || "—"} />
-                <DetailInfoRow label="Địa điểm chi tiết" full value={selectedRecord.detailedLocation || "—"} />
-                <DetailInfoRow label="Năm đưa vào sử dụng" value={selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : "—"} />
-                <Col xs={24} sm={12}>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <Typography.Text style={fieldLabelStyle}>Tình trạng</Typography.Text>
-                    <div>
-                      {renderCctvStatusBadge({
-                        color: selectedRecord.operationalStatus === 0 ? 'orange' : selectedRecord.operationalStatus === 1 ? 'green' : selectedRecord.operationalStatus === 2 ? 'red' : textTertiary,
-                        label: selectedRecord.operationalStatus === 0 ? 'Chưa khai thác/vận hành' : selectedRecord.operationalStatus === 1 ? 'Đang khai thác/vận hành' : selectedRecord.operationalStatus === 2 ? 'Dừng khai thác/vận hành' : String(selectedRecord.operationalStatus || '—'),
-                      })}
+                  <div style={{ paddingTop: 3 }}>
+                    <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-label { width: 150px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; } .ant-tabs-nav{margin-bottom:0!important;padding-left:12px!important}`}</style>
+                    <div className="detail-grid">
+                      {[
+                        { label: 'Mã thiết bị', value: selectedRecord.deviceCode, badge: true },
+                        { label: 'Tên thiết bị', value: selectedRecord.deviceName, bold: true },
+                        { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || '—', bold: true },
+                        { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || '—' },
+                        { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || '—' },
+                        { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || '—' },
+                        { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || '—' },
+                        { label: 'Đơn vị tính', value: formatUnitOfMeasure(selectedRecord.unitOfMeasure) },
+                        { label: 'Số lượng', value: <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{fmtNum(selectedRecord.quantity)}</span> },
+                        { label: 'Năm đưa vào sử dụng', value: selectedRecord.yearOfUse ? String(selectedRecord.yearOfUse) : '—' },
+                        { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return renderCctvStatusBadge(st); })() },
+                        { label: 'Model', value: selectedRecord.model || '—' },
+                        { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
+                        { label: 'Phê duyệt', value: renderCctvStatusBadge(trangThaiPheDuyetBadge(selectedRecord.approvalStatus)) },
+                      ].map((row) => (
+                        <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                          <span className="detail-label">{row.label}</span>
+                          <span className="detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
+                            {row.badge ? (
+                              <Tag color={colors.primary} style={{ borderRadius: radiusPill, margin: 0, fontWeight: fontWeightMedium }}>{row.value}</Tag>
+                            ) : row.value}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <div style={{ marginBottom: spaceMd }}>
-                    <Typography.Text style={fieldLabelStyle}>Phê duyệt</Typography.Text>
-                    <div>
-                      {renderCctvStatusBadge(trangThaiPheDuyetBadge(selectedRecord.approvalStatus))}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
                 ),
               },
               {
                 key: "technical",
                 label: "Thông số kỹ thuật",
                 children: (
-                  <Row gutter={[spaceMd, 0]}>
-                    <DetailInfoRow label="Thông số kỹ thuật" full value={selectedRecord.specifications || "—"} />
-                    <DetailInfoRow label="Thông tin bảo trì" full value={selectedRecord.maintenanceInformation || "—"} />
-                    <DetailInfoRow label="Ghi chú" full value={selectedRecord.note || "—"} />
-                  </Row>
+                  <div style={{ paddingTop: 3 }}>
+                    <div className="detail-grid">
+                      {[
+                        ['Thông số kỹ thuật', selectedRecord.specifications || '—'],
+                        ['Thông tin bảo trì', selectedRecord.maintenanceInformation || '—'],
+                        ['Ghi chú', selectedRecord.note || '—'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="detail-row" style={{ gridColumn: '1 / -1' }}>
+                          <span className="detail-label">{label}</span>
+                          <span className="detail-value">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ),
               },
               {
                 key: "gis",
-                label: "GIS",
+                label: "Thông tin vị trí",
                 children: (
-                  <Row gutter={[spaceMd, 0]}>
-                    <DetailInfoRow label="Loại đối tượng" value={selectedRecord.objectType != null ? (selectedRecord.objectType === 1 ? 'TTDH VTS' : selectedRecord.objectType === 2 ? 'Trạm Radar' : String(selectedRecord.objectType)) : '—'} />
-                    <DetailInfoRow label="Biểu tượng" value={selectedRecord.mapSymbolName || "—"} />
-                    <DetailInfoRow label="Hệ quy chiếu" value={selectedRecord.coordinateSystem != null ? String(selectedRecord.coordinateSystem) : "—"} />
-                    <DetailInfoRow label="Quy tắc hiển thị" value={selectedRecord.displayRule != null ? String(selectedRecord.displayRule) : "—"} />
-                  </Row>
+                  <div style={{ paddingTop: 3 }}>
+                    <div className="detail-grid">
+                      {[
+                        ['Thuộc loại hạ tầng', selectedRecord.attachedInfrastructureName || '—'],
+                        ['Biểu tượng', (() => { const sym = (symbols || []).find((s) => s.id === selectedRecord.mapSymbolId); return sym ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{sym.image ? <img src={sym.image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{sym.name}</span> : selectedRecord.mapSymbolName || '—'; })(),],
+                        ['Hệ quy chiếu', selectedRecord.coordinateSystem === 1 ? 'WGS-84' : selectedRecord.coordinateSystem === 2 ? 'VN-2000' : (selectedRecord.coordinateSystem != null ? String(selectedRecord.coordinateSystem) : '—')],
+                        ['Quy tắc hiển thị', selectedRecord.displayRule != null ? String(selectedRecord.displayRule) : '—'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="detail-row">
+                          <span className="detail-label">{label}</span>
+                          <span className="detail-value">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: spaceSm, padding: '0 12px' }}>
+                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
+                      <PagedTable dataSource={[]}
+                        emptyText={<div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><EnvironmentOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>Không có tọa độ</span></div>}
+                      >
+                        <Table.Column title="Vĩ độ (N)" key="lat" align="center"
+                          render={(_: any, record: any) => {
+                            const dd = record.lat || 0;
+                            const d = Math.floor(dd);
+                            const m = Math.floor((dd - d) * 60);
+                            const s = ((dd - d - m / 60) * 3600);
+                            return (
+                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                                <InputNumber value={d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
+                                <InputNumber value={m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
+                                <InputNumber value={s.toFixed(2)} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>{'"'}</span>
+                              </Space.Compact>
+                            );
+                          }}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                        <Table.Column title="Kinh độ (E)" key="lng" align="center"
+                          render={(_: any, record: any) => {
+                            const dd = record.lng || 0;
+                            const d = Math.floor(dd);
+                            const m = Math.floor((dd - d) * 60);
+                            const s = ((dd - d - m / 60) * 3600);
+                            return (
+                              <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+                                <InputNumber value={d} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
+                                <InputNumber value={m} readOnly tabIndex={-1} style={{ flex: 1, textAlign: 'center', pointerEvents: 'none' }} />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
+                                <InputNumber value={s.toFixed(2)} readOnly tabIndex={-1} style={{ flex: 1.2, textAlign: 'center', pointerEvents: 'none' }} />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>{'"'}</span>
+                              </Space.Compact>
+                            );
+                          }}
+                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                      </PagedTable>
+                    </div>
+                  </div>
                 ),
               },
               {
-                key: "metadata",
-                label: "Hồ sơ",
+                key: "operation",
+                label: "Vận hành khai thác",
+                children: <CctvRefTable title="Thông tin vận hành khai thác" emptyText="Chưa có dữ liệu" columns={[
+                  { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', width: 180 },
+                  { title: 'Tên kế hoạch', dataIndex: 'opPlanName', width: 220 },
+                  { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', width: 200 },
+                  { title: 'Ngày kết thúc', dataIndex: 'opEndDate', width: 200 },
+                ]} />,
+              },
+              {
+                key: "maintenance",
+                label: "Bảo trì",
+                children: <CctvRefTable title="Thông tin bảo trì" emptyText="Chưa có dữ liệu" columns={[
+                  { title: 'Mã kế hoạch', dataIndex: 'maintCode', width: 180 },
+                  { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
+                  { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
+                  { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
+                ]} />,
+              },
+              {
+                key: "incident",
+                label: "Sự cố",
+                children: <CctvRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" columns={[
+                  { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
+                  { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
+                  { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
+                  { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
+                ]} />,
+              },
+              {
+                key: "xuLyTheoDoi",
+                label: "Xử lý & theo dõi",
                 children: (
-                  <Row gutter={[spaceMd, 0]}>
-                    <DetailInfoRow label="Người tạo" value={selectedRecord.createdByName || "—"} />
-                    <DetailInfoRow label="Ngày tạo" value={selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : "—"} />
-                    <DetailInfoRow label="Người cập nhật" value={selectedRecord.updatedByName || "—"} />
-                    <DetailInfoRow label="Ngày cập nhật" value={selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : "—"} />
-                  </Row>
+                  <div style={{ paddingTop: 3 }}>
+                    <div className="detail-grid">
+                      {[
+                        { key: 'ngayCapNhat', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
+                        { key: 'canBoCapNhat', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
+                        { key: 'ngayGuiPheDuyet', label: 'Ngày gửi phê duyệt', value: '—' },
+                        { key: 'canBoGuiPheDuyet', label: 'Cán bộ gửi phê duyệt', value: '—' },
+                        { key: 'noiDungPheDuyet1', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
+                        { key: 'ngayPheDuyetC1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
+                        { key: 'canBoPheDuyetC1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
+                        { key: 'noiDungPheDuyet2', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
+                        { key: 'ngayPheDuyetC2', label: 'Ngày phê duyệt cấp Cục', value: '—' },
+                        { key: 'canBoPheDuyetC2', label: 'Cán bộ phê duyệt cấp Cục', value: '—' },
+                        { key: 'noiDungPheDuyet3', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
+                        { key: 'trangThai', label: 'Trạng thái', value: renderCctvStatusBadge(trangThaiPheDuyetBadge(selectedRecord.approvalStatus)), fullWidth: true },
+                      ].map((row) => (
+                        <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                          <span className="detail-label">{row.label}</span>
+                          <span className="detail-value">{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ),
               },
             ]}
@@ -1950,6 +2251,58 @@ const CctvListPage = () => {
             Phê duyệt{" "}
             <strong>
               {approveTarget?.deviceCode} — {approveTarget?.deviceName}
+            </strong>
+            ?
+          </p>
+        </div>
+      </Modal>
+
+      {/* Submit Approval Modal — Gửi phê duyệt (giống màn /port) */}
+      <Modal
+        title={
+          <span
+            style={{
+              color: colors.sidebarBg,
+              fontWeight: fontWeightBold,
+              fontSize: fontSizeLg,
+            }}
+          >
+            Xác nhận gửi phê duyệt
+          </span>
+        }
+        open={submitModalOpen}
+        onCancel={() => {
+          setSubmittingRecord(null);
+          setSubmitModalOpen(false);
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setSubmittingRecord(null);
+              setSubmitModalOpen(false);
+            }}
+            style={outlineButtonStyle}
+          >
+            Hủy
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleConfirmSubmit}
+            loading={submitLoading}
+            style={primaryButtonStyle}
+          >
+            Xác nhận
+          </Button>,
+        ]}
+        width={480}
+      >
+        <div style={{ padding: "8px 0" }}>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            Gửi phê duyệt{" "}
+            <strong>
+              {submittingRecord?.deviceCode} — {submittingRecord?.deviceName}
             </strong>
             ?
           </p>
@@ -2137,6 +2490,7 @@ const CctvListPage = () => {
           setCreateModalOpen(false);
           createForm.resetFields();
           setGpsCoordList([]);
+          setUploadFileList([]);
         }}
         extra={
           <Button
@@ -2145,6 +2499,7 @@ const CctvListPage = () => {
               setCreateModalOpen(false);
               createForm.resetFields();
               setGpsCoordList([]);
+              setUploadFileList([]);
             }}
             style={drawerCloseBtnStyle}
           >
@@ -2158,6 +2513,7 @@ const CctvListPage = () => {
                 setCreateModalOpen(false);
                 createForm.resetFields();
                 setGpsCoordList([]);
+                setUploadFileList([]);
               }}
               style={outlineButtonStyle}
             >
@@ -2186,14 +2542,46 @@ const CctvListPage = () => {
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" onFinish={handleCreate}>
           <Tabs
-            defaultActiveKey="basic"
+            defaultActiveKey="general"
             style={{ marginTop: spaceMd }}
             items={[
               {
-                key: 'basic',
-                label: 'Thông tin cơ bản',
+                key: 'general',
+                label: 'Thông tin chung',
                 children: (
                   <>
+                    <Row gutter={24}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="deviceCode"
+                          {...labelProps('Mã thiết bị')}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Input
+                            disabled
+                            placeholder="Tự sinh CCTV-{seq}"
+                            style={{ ...pillStyle, fontFamily: fontSans }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="deviceName"
+                          {...labelProps('Tên thiết bị')}
+                          rules={[
+                            { required: true, message: "Vui lòng nhập tên thiết bị" },
+                            { warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 255 ? Promise.reject(new Error('Đã đạt tối đa 255 ký tự')) : Promise.resolve() },
+                          ]}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Input
+                            placeholder="Nhập tên thiết bị..."
+                            maxLength={255}
+                            style={{ ...pillStyle, fontFamily: fontSans }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
                     <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -2218,6 +2606,9 @@ const CctvListPage = () => {
                         <Form.Item
                           name="attachedInfrastructureType"
                           {...labelProps('Thuộc loại hạ tầng')}
+                          rules={[
+                            { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                          ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -2232,10 +2623,15 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
+                    </Row>
+                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="attachedInfrastructureId"
                           {...labelProps('Thuộc hạ tầng')}
+                          rules={[
+                            { required: true, message: "Vui lòng chọn hạ tầng" },
+                          ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -2252,8 +2648,6 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operatingUnitId"
@@ -2267,37 +2661,8 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceCode"
-                          {...labelProps('Mã thiết bị')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            disabled
-                            placeholder="Tự sinh CCTV-{seq}"
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
                     </Row>
                     <Row gutter={24}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceName"
-                          {...labelProps('Tên thiết bị')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập tên thiết bị" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            placeholder="Nhập tên thiết bị..."
-                            maxLength={255}
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="provinceName"
@@ -2315,12 +2680,11 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="detailedLocation"
                           {...labelProps('Địa điểm chi tiết')}
+                          rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -2329,6 +2693,8 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
+                    </Row>
+                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="unitOfMeasure"
@@ -2370,8 +2736,6 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="quantity"
@@ -2389,6 +2753,8 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
+                    </Row>
+                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="yearOfUse"
@@ -2402,8 +2768,6 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operationalStatus"
@@ -2421,14 +2785,6 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                  </>
-                ),
-              },
-              {
-                key: 'equipment',
-                label: 'Thông tin thiết bị',
-                children: (
-                  <>
                     <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -2461,6 +2817,7 @@ const CctvListPage = () => {
                     <Form.Item
                       name="specifications"
                       {...labelProps('Thông số kỹ thuật')}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -2473,6 +2830,7 @@ const CctvListPage = () => {
                     <Form.Item
                       name="maintenanceInformation"
                       {...labelProps('Thông tin bảo trì')}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -2485,6 +2843,7 @@ const CctvListPage = () => {
                     <Form.Item
                       name="note"
                       {...labelProps('Ghi chú')}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: 0 }}
                     >
                       <Input.TextArea
@@ -2728,7 +3087,7 @@ const CctvListPage = () => {
                 key: 'attachments',
                 label: 'File đính kèm',
                 children: (
-                  <UploadFileTable />
+                  <CctvFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
                 ),
               },
             ]}
@@ -2750,6 +3109,7 @@ const CctvListPage = () => {
           setUpdateTarget(null);
           updateForm.resetFields();
           setUpdateGpsCoordList([]);
+          setUploadFileList([]);
         }}
         extra={
           <Button
@@ -2759,6 +3119,7 @@ const CctvListPage = () => {
               setUpdateTarget(null);
               updateForm.resetFields();
               setUpdateGpsCoordList([]);
+              setUploadFileList([]);
             }}
             style={drawerCloseBtnStyle}
           >
@@ -2773,6 +3134,7 @@ const CctvListPage = () => {
                 setUpdateTarget(null);
                 updateForm.resetFields();
                 setUpdateGpsCoordList([]);
+                setUploadFileList([]);
               }}
               style={outlineButtonStyle}
             >
@@ -2801,14 +3163,45 @@ const CctvListPage = () => {
         <style>{requiredMarkStyle}</style>
         <Form form={updateForm} layout="vertical" onFinish={handleUpdate}>
           <Tabs
-            defaultActiveKey="basic"
+            defaultActiveKey="general"
             style={{ marginTop: spaceMd }}
             items={[
               {
-                key: 'basic',
-                label: 'Thông tin cơ bản',
+                key: 'general',
+                label: 'Thông tin chung',
                 children: (
                   <>
+                    <Row gutter={24}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="deviceCode"
+                          {...labelProps('Mã thiết bị')}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Input
+                            disabled
+                            placeholder="Tự sinh CCTV-{seq}"
+                            style={{ ...pillStyle, fontFamily: fontSans }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="deviceName"
+                          {...labelProps('Tên thiết bị')}
+                          rules={[
+                            { required: true, message: "Vui lòng nhập tên thiết bị" },
+                            { warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 255 ? Promise.reject(new Error('Đã đạt tối đa 255 ký tự')) : Promise.resolve() },
+                          ]}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Input
+                            maxLength={255}
+                            style={{ ...pillStyle, fontFamily: fontSans }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
                     <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -2830,6 +3223,9 @@ const CctvListPage = () => {
                         <Form.Item
                           name="attachedInfrastructureType"
                           {...labelProps('Thuộc loại hạ tầng')}
+                          rules={[
+                            { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                          ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -2843,10 +3239,15 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
+                    </Row>
+                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="attachedInfrastructureId"
                           {...labelProps('Thuộc hạ tầng')}
+                          rules={[
+                            { required: true, message: "Vui lòng chọn hạ tầng" },
+                          ]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Select
@@ -2863,8 +3264,6 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operatingUnitId"
@@ -2878,36 +3277,8 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceCode"
-                          {...labelProps('Mã thiết bị')}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            disabled
-                            placeholder="Tự sinh CCTV-{seq}"
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
                     </Row>
                     <Row gutter={24}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="deviceName"
-                          {...labelProps('Tên thiết bị')}
-                          rules={[
-                            { required: true, message: "Vui lòng nhập tên thiết bị" },
-                          ]}
-                          style={{ marginBottom: spaceFormField }}
-                        >
-                          <Input
-                            maxLength={255}
-                            style={{ ...pillStyle, fontFamily: fontSans }}
-                          />
-                        </Form.Item>
-                      </Col>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="provinceName"
@@ -2925,12 +3296,11 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="detailedLocation"
                           {...labelProps('Địa điểm chi tiết')}
+                          rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
                           style={{ marginBottom: spaceFormField }}
                         >
                           <Input
@@ -2939,6 +3309,8 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
+                    </Row>
+                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="unitOfMeasure"
@@ -2980,8 +3352,6 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="quantity"
@@ -2999,6 +3369,8 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
+                    </Row>
+                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="yearOfUse"
@@ -3012,8 +3384,6 @@ const CctvListPage = () => {
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-                    <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="operationalStatus"
@@ -3031,14 +3401,6 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                  </>
-                ),
-              },
-              {
-                key: 'equipment',
-                label: 'Thông tin thiết bị',
-                children: (
-                  <>
                     <Row gutter={24}>
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -3068,6 +3430,7 @@ const CctvListPage = () => {
                     <Form.Item
                       name="specifications"
                       {...labelProps('Thông số kỹ thuật')}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -3080,6 +3443,7 @@ const CctvListPage = () => {
                     <Form.Item
                       name="maintenanceInformation"
                       {...labelProps('Thông tin bảo trì')}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 2000 ? Promise.reject(new Error('Đã đạt tối đa 2000 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Input.TextArea
@@ -3092,6 +3456,7 @@ const CctvListPage = () => {
                     <Form.Item
                       name="note"
                       {...labelProps('Ghi chú')}
+                      rules={[{ warningOnly: true, validator: (_: unknown, v: unknown) => String(v ?? '').length >= 500 ? Promise.reject(new Error('Đã đạt tối đa 500 ký tự')) : Promise.resolve() }]}
                       style={{ marginBottom: 0 }}
                     >
                       <Input.TextArea
@@ -3335,7 +3700,7 @@ const CctvListPage = () => {
                 key: 'attachments',
                 label: 'File đính kèm',
                 children: (
-                  <UploadFileTable />
+                  <CctvFilesTab uploadFileList={uploadFileList} setUploadFileList={setUploadFileList} entityId={updateTarget?.id} />
                 ),
               },
             ]}

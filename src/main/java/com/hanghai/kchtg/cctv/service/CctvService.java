@@ -19,6 +19,10 @@ import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +60,8 @@ public class CctvService {
 
   @Value("${app.upload-path:/tmp/cctv-attachments}")
   private String uploadPath;
+
+  private final AttachmentRepository attachmentRepository;
 
   /**
    * Generate device code in format CCTV-NNNNNN.
@@ -121,7 +128,7 @@ public class CctvService {
       .operationalStatus(request.getOperationalStatus() != null
         ? request.getOperationalStatus()
         : OperationalStatus.OPERATIONAL)
-      .approvalStatus(ApprovalStatus.APPROVED)
+      .approvalStatus(resolveCreateApprovalStatus(request.getAction()))
       .specifications(request.getSpecifications())
       .maintenanceInformation(request.getMaintenanceInformation())
       .note(request.getNote())
@@ -138,6 +145,27 @@ public class CctvService {
     Cctv saved = cctvRepository.save(entity);
 
     return toResponse(saved);
+  }
+
+  /**
+   * Xác định trạng thái phê duyệt khi tạo mới theo action (giống màn /port):
+   * 'draft' → DRAFT, 'approve' → APPROVED, còn lại (mặc định 'submit') → PENDING_APPROVAL.
+   */
+  private ApprovalStatus resolveCreateApprovalStatus(String action) {
+    if (action == null || action.trim().isEmpty()) {
+      action = "submit";
+    }
+    if (!"draft".equals(action) && !"submit".equals(action) && !"approve".equals(action)) {
+      throw new IllegalArgumentException(
+        "Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft', 'submit' hoặc 'approve'");
+    }
+    if ("draft".equals(action)) {
+      return ApprovalStatus.DRAFT;
+    }
+    if ("approve".equals(action)) {
+      return ApprovalStatus.APPROVED;
+    }
+    return ApprovalStatus.PENDING_APPROVAL;
   }
 
   /**
@@ -255,8 +283,12 @@ public class CctvService {
     if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
     if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
 
-    // Reset to pending if status was approved
-    if (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())) {
+    // Xử lý trạng thái phê duyệt theo request (giống màn /port — PortService.update)
+    if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
+      entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+    } else if (request.getApprovalStatus() != null) {
+      entity.setApprovalStatus(request.getApprovalStatus());
+    } else {
       entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
     }
 
@@ -424,5 +456,74 @@ public class CctvService {
     } catch (Exception e) {
       return null;
     }
+  }
+
+  // ── ATTACHMENTS (File đính kèm) ───────────────────────────────────
+
+  @Transactional
+  public List<AttachmentDto> uploadAttachments(UUID entityId, List<MultipartFile> files, UUID userId) {
+    final String entityType = "CCTV";
+    long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
+    if (existingCount + files.size() > 10) {
+      throw new IllegalArgumentException("Tối đa 10 file đính kèm");
+    }
+    List<Attachment> saved = new ArrayList<>();
+    java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+    for (MultipartFile file : files) {
+      String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+      String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
+      try {
+        java.nio.file.Path dir = basePath.resolve(entityType).resolve(entityId.toString());
+        java.nio.file.Files.createDirectories(dir);
+        file.transferTo(dir.resolve(storageFileName).toFile());
+      } catch (Exception e) {
+        throw new RuntimeException("Không thể lưu file: " + originalFilename);
+      }
+      String storagePath = basePath.resolve(entityType).resolve(entityId.toString()).resolve(storageFileName).toString();
+      Attachment attachment = new Attachment();
+      attachment.setEntityType(entityType);
+      attachment.setEntityId(entityId);
+      attachment.setFileName(originalFilename);
+      attachment.setFilePath(storagePath);
+      attachment.setFileSize(file.getSize());
+      attachment.setContentType(file.getContentType());
+      attachment.setUploadedBy(userId);
+      saved.add(attachmentRepository.save(attachment));
+    }
+    return saved.stream().map(this::toAttachmentDto).toList();
+  }
+
+  public List<AttachmentDto> listAttachments(UUID entityId) {
+    return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("CCTV", entityId)
+        .stream().map(this::toAttachmentDto).toList();
+  }
+
+  @Transactional
+  public void deleteAttachment(UUID entityId, UUID attachmentId) {
+    Attachment attachment = attachmentRepository.findById(attachmentId)
+        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+    if (!attachment.getEntityId().equals(entityId)) {
+      throw new IllegalArgumentException("File không thuộc hệ thống CCTV này");
+    }
+    try {
+      java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
+    } catch (Exception e) {
+      // ignore file deletion failure; the DB record is still removed
+    }
+    attachmentRepository.delete(attachment);
+  }
+
+  private AttachmentDto toAttachmentDto(Attachment entity) {
+    AttachmentDto dto = new AttachmentDto();
+    dto.setId(entity.getId());
+    dto.setEntityType(entity.getEntityType());
+    dto.setEntityId(entity.getEntityId());
+    dto.setFileName(entity.getFileName());
+    dto.setFilePath(entity.getFilePath());
+    dto.setFileSize(entity.getFileSize());
+    dto.setContentType(entity.getContentType());
+    dto.setUploadedBy(entity.getUploadedBy());
+    dto.setUploadedAt(entity.getUploadedAt());
+    return dto;
   }
 }

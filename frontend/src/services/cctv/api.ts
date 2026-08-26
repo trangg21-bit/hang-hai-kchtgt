@@ -130,3 +130,24 @@ export async function restoreCctv(id: string): Promise<CctvResponse> {
   const res = await api.post(`${BASE}/${id}/restore`);
   return res.data.data;
 }
+
+// ── Attachments (File đính kèm) ────────────────────────────────────
+
+export async function fetchCctvAttachments(id: string): Promise<any[]> {
+  const res = await api.get(`${BASE}/${id}/attachments`);
+  return res.data.data || [];
+}
+
+export async function uploadCctvAttachment(id: string, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('files', file);
+  const res = await api.post(`${BASE}/${id}/attachments`, formData, {
+    headers: { 'Content-Type': undefined },
+  });
+  return res.data;
+}
+
+export async function deleteCctvAttachment(id: string, attachmentId: string): Promise<any> {
+  const res = await api.delete(`${BASE}/${id}/attachments/${attachmentId}`);
+  return res.data;
+}

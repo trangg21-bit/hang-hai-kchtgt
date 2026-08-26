@@ -14,6 +14,7 @@ export interface CctvResponse {
   provinceName: string | null;
   attachedInfrastructureType: number | null;
   attachedInfrastructureId: string | null;
+  attachedInfrastructureName: string | null;
   unitOfMeasure: number | null;
   yearOfUse: number | null;
   operationalStatus: string | null;
