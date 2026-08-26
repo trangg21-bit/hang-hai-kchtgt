@@ -20,10 +20,8 @@ import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
 import com.hanghai.kchtg.station.entity.BuoyStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.station.entity.StationHistory;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
-import com.hanghai.kchtg.station.repository.StationHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.station.dto.buoy.StationBuoySummary;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -46,7 +44,6 @@ import java.util.*;
 public class BuoyStationService {
 
     private final BuoyStationRepository phaoRepo;
-    private final StationHistoryRepository historyRepo;
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;

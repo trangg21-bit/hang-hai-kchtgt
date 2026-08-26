@@ -7,8 +7,6 @@ import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.DryPort;
 import com.hanghai.kchtg.port.repository.DryPortRepository;
-import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -33,9 +31,7 @@ public class DryPortApprovalService {
     private final InfrastructureApprovalService infrastructureApprovalService;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
-    private final ApprovalWorkflowService approvalWorkflowService;
     private final PortNotificationService notificationService;
-    private final ChangeHistoryService changeHistoryService;
 
     // -- Phe duyet 2 cap (approval-2-level-spec 3.2) --
     // Uy quyen cho InfrastructureApprovalService: noi cai dat dung 7 trang thai,
@@ -140,63 +136,6 @@ public class DryPortApprovalService {
     private DryPort loadForApproval(UUID id) {
         return dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
-    }
-    private final ApprovalWorkflowService approvalWorkflowService;
-    private final PortNotificationService notificationService;
-    private final ChangeLogRepository changeLogRepository;
-    private final ApprovalLogRepository approvalLogRepository;
-    private final ChangeHistoryService changeHistoryService;
-
-    @Transactional
-    public void approve(UUID id, String userId, String reason) {
-        DryPort entity = dryPortRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
-
-        ApprovalStatus currentStatus = entity.getApprovalStatus();
-        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
-
-        // Import DryPortService's captureSnapshot — use inline instead
-        DryPort snapshot = DryPort.builder()
-                .dryPortCode(entity.getDryPortCode()).dryPortName(entity.getDryPortName())
-                .provinceId(entity.getProvinceId()).orgUnitId(entity.getOrgUnitId())
-                .operatingUnit(entity.getOperatingUnit()).region(entity.getRegion())
-                .detailedLocation(entity.getDetailedLocation()).transportCorridor(entity.getTransportCorridor())
-                .area(entity.getArea()).warehouseArea(entity.getWarehouseArea()).yardArea(entity.getYardArea())
-                .teuCapacity(entity.getTeuCapacity()).connectionMode(entity.getConnectionMode())
-                .portStatus(entity.getPortStatus()).operationalStatus(entity.getOperationalStatus())
-                .remarks(entity.getRemarks())
-                .announcementTime(entity.getAnnouncementTime()).announcementDecisionNumber(entity.getAnnouncementDecisionNumber())
-                .announcementDecisionDate(entity.getAnnouncementDecisionDate()).announcementOrg(entity.getAnnouncementOrg())
-                .mapSymbolId(entity.getMapSymbolId())
-                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
-                .approvalStatus(entity.getApprovalStatus()).spatialId(entity.getSpatialId())
-                .build();
-
-        if (reason == null || reason.isBlank()) {
-            // Mô hình 2 trạng thái: Nháp → phê duyệt thẳng. Chỉ gọi workflow cũ khi
-            // đang ở PENDING_APPROVAL (legacy) vì workflow yêu cầu đúng trạng thái đó.
-            if (currentStatus == ApprovalStatus.PENDING_APPROVAL) {
-                approvalWorkflowService.approve(currentStatusStr, "DryPort", id.toString(), userId);
-            }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        } else {
-            approvalWorkflowService.reject(currentStatusStr, "DryPort", id.toString(), userId, reason);
-            entity.setApprovalStatus(currentStatus == ApprovalStatus.APPROVED_LEVEL2
-                    ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
-        }
-        DryPort saved = dryPortRepository.save(entity);
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
-
-        if (reason != null && !reason.isBlank()) {
-            changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Lý do từ chối", null, reason, userId);
-        }
-
-        if (reason == null || reason.isBlank()) {
-            log.info("DryPort [{}] approved by {}", id, userId);
-            notificationService.sendApprovalNotification("DryPort", id.toString(), userId, null);
-        } else {
-            log.info("DryPort [{}] rejected by {}: {}", id, userId, reason);
-        }
     }
 
     @Transactional(readOnly = true)

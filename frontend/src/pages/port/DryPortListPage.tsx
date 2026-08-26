@@ -70,6 +70,7 @@ import {
   drawerFooterStyle,
   primaryButtonStyle,
   outlineButtonStyle,
+  fontWeightMedium,
   requiredMarkStyle,
   uploadHintStyle,
 } from '../../tokens';

@@ -110,6 +110,7 @@ import {
   historyOldValueStyle,
   historyNewValueStyle,
   historyArrowStyle,
+  drawerFooterStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';

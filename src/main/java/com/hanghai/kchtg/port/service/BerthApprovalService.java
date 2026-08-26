@@ -125,67 +125,6 @@ public class BerthApprovalService {
         return berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
     }
-    private final ChangeLogRepository changeLogRepository;
-    private final ApprovalLogRepository approvalLogRepository;
-
-    @Transactional
-    public void approve(UUID id, String userId, String cap, String content) {
-        Berth entity = berthRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
-
-        if ("CANG_VU".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
-                throw new IllegalStateException("Không thể phê duyệt cấp Cảng vụ: trạng thái hiện tại không hợp lệ");
-            }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
-            entity.setPortAuthorityApprovedAt(LocalDateTime.now());
-            entity.setPortAuthorityApprovedBy(userId);
-            entity.setRejectionReason(null);
-            if (content != null && !content.isBlank()) {
-                entity.setPortAuthorityApprovalContent(content.trim());
-            }
-        } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
-                throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Cảng vụ trước");
-            }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-            entity.setDepartmentApprovedAt(LocalDateTime.now());
-            entity.setDepartmentApprovedBy(userId);
-            if (content != null && !content.isBlank()) {
-                entity.setDepartmentApprovalContent(content.trim());
-            }
-        } else {
-            throw new IllegalArgumentException("Cấp phê duyệt không hợp lệ: " + cap);
-        }
-
-        ApprovalLog approvalLogRecord = ApprovalLog.builder()
-                .entityType("Berth").entityId(id.toString()).decision("APPROVED").cap(cap)
-                .decidedBy(userId).decidedAt(LocalDateTime.now()).build();
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
-        // approvalLogRepository.save(approvalLogRecord);
-        berthRepository.save(entity);
-
-        log.info("Berth [{}] approved by {} at level {}", id, userId, cap);
-    }
-
-    @Transactional
-    public void reject(UUID id, String userId, String cap, String reason) {
-        Berth entity = berthRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
-
-        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
-                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
-        entity.setRejectionReason(reason);
-
-        ApprovalLog approvalLog = ApprovalLog.builder()
-                .entityType("Berth").entityId(id.toString()).decision("REJECTED").cap(cap)
-                .reason(reason).decidedBy(userId).decidedAt(LocalDateTime.now()).build();
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
-        // approvalLogRepository.save(approvalLog);
-        berthRepository.save(entity);
-
-        log.info("Berth [{}] rejected by {} at level {}: {}", id, userId, cap, reason);
-    }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getHistory(UUID id) {

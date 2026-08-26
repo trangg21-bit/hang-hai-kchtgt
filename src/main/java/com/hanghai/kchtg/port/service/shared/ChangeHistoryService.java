@@ -122,21 +122,6 @@ public class ChangeHistoryService {
                                 .build());
                     }
 
-                    if (changeLogRepository != null) {
-                        ChangeLog history = ChangeLog.builder()
-                                .id(UUID.randomUUID())
-                                .entityType(entityName)
-                                .entityId(entityId)
-                                .fieldName(fieldName)
-                                .oldValue(oldValueStr)
-                                .newValue(newValueStr)
-                                .changedBy(actualActor)
-                                .changedAt(LocalDateTime.now())
-                                .createdAt(LocalDateTime.now())
-                                .build();
-                        // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử thay đổi cũ
-                        // changeLogRepository.save(history);
-                    }
                     changedFields.add(fieldName);
                 }
             } catch (IllegalAccessException e) {
@@ -231,22 +216,6 @@ public class ChangeHistoryService {
             return saved.getId();
         }
 
-        if (changeLogRepository != null) {
-            ChangeLog record = ChangeLog.builder()
-                    .entityType(entityType)
-                    .entityId(entityId.toString())
-                    .fieldName(fieldName)
-                    .oldValue(oldValue)
-                    .newValue(newValue)
-                    .changedBy(actualActor)
-                    .changedAt(LocalDateTime.now())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử thay đổi cũ
-            // changeLogRepository.save(record);
-            return record.getId();
-        }
         return UUID.randomUUID();
     }
 
