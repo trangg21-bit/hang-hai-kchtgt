@@ -26,6 +26,27 @@ export const getPlanningFeatureKey = (
   String(fid ?? '').trim(),
 ].join(':');
 
+export const resolvePlanningPopupFeatures = <T extends Record<string, unknown>>(
+  queriedFeatures: unknown,
+  clickedFeature: T,
+): T[] => {
+  const queried = Array.isArray(queriedFeatures) ? queriedFeatures as T[] : [];
+  const clickedKey = getPlanningFeatureKey(
+    clickedFeature.geomType,
+    clickedFeature.schemaName,
+    clickedFeature.tableName,
+    clickedFeature.fid,
+  );
+  const containsClickedFeature = queried.some((feature) => getPlanningFeatureKey(
+    feature.geomType,
+    feature.schemaName,
+    feature.tableName,
+    feature.fid,
+  ) === clickedKey);
+
+  return containsClickedFeature ? queried : [clickedFeature, ...queried];
+};
+
 // AutoCAD Color Index used by the imported port-planning GIS dataset.
 const PLANNING_ACI_COLORS: Record<number, string> = {
   1: '#ff4d4f',

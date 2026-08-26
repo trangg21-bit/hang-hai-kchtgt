@@ -101,6 +101,7 @@ import {
   DEFAULT_SHOW_PLANNING,
   getPlanningFeatureKey,
   getPlanningLeafletColorStyle,
+  resolvePlanningPopupFeatures,
   getPlanningStatusPresentation,
   getPlanningStyleZoomBand,
   getPlanningVisualStyle,
@@ -2271,11 +2272,16 @@ export default function GISChartView() {
           const latlng = e.latlng;
           
           try {
-            const res = await api.get('/gis/planning/features/at-point', {
-              params: { lat: latlng.lat, lon: latlng.lng }
-            });
-            const featuresAtPoint = res.data?.data || [];
-            if (featuresAtPoint.length === 0) return;
+            let queriedFeatures: unknown = [];
+            try {
+              const res = await api.get('/gis/planning/features/at-point', {
+                params: { lat: latlng.lat, lon: latlng.lng }
+              });
+              queriedFeatures = res.data?.data;
+            } catch (queryError) {
+              console.warn('Unable to enrich planning popup at click point', queryError);
+            }
+            const featuresAtPoint = resolvePlanningPopupFeatures(queriedFeatures, feature);
 
             const itemsHtml = featuresAtPoint.map((feat: any, idx: number) => {
               const statusPresentation = getPlanningStatusPresentation(
