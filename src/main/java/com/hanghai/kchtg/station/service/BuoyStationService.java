@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
@@ -20,10 +21,8 @@ import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
 import com.hanghai.kchtg.station.entity.BuoyStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.station.entity.StationHistory;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
-import com.hanghai.kchtg.station.repository.StationHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.station.dto.buoy.StationBuoySummary;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -46,7 +45,7 @@ import java.util.*;
 public class BuoyStationService {
 
     private final BuoyStationRepository phaoRepo;
-    private final StationHistoryRepository historyRepo;
+    private final HistoryService historyService;
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
@@ -554,18 +553,31 @@ public class BuoyStationService {
 
     private void logHistory(BuoyStation entity,
             String action, String fields, String previousJson, String newJson) {
-        StationHistory entry = StationHistory.builder()
-                .stationType("PHAO")
-                .entityId(entity.getId())
-                .actionType(action)
-                .changedField(fields)
-                .previousValue(previousJson)
-                .newValue(newJson != null ? newJson : ("REJECT".equals(action) ? "REJECTED" : null))
-                .changedBy(resolveCurrentUserId())
-                .changedAt(LocalDateTime.now())
-                .reason("REJECT".equals(action) ? newJson : null)
-                .build();
-        historyRepo.save(entry);
+        String newValue = newJson != null ? newJson : ("REJECT".equals(action) ? "REJECTED" : null);
+        if (fields != null && !fields.isBlank()) {
+            newValue = newValue == null ? fields : (fields + " — " + newValue);
+        }
+        historyService.recordHistory(
+                InfrastructureType.BUOY_STATION,
+                entity.getId(),
+                toActionType(action),
+                previousJson,
+                newValue,
+                SecurityUtils.getCurrentUserId());
+    }
+
+    private StationHistoryActionType toActionType(String action) {
+        if (action == null) {
+            return StationHistoryActionType.UPDATE;
+        }
+        return switch (action) {
+            case "CREATE" -> StationHistoryActionType.CREATE;
+            case "SOFT_DELETE", "DELETE" -> StationHistoryActionType.DELETE;
+            case "APPROVE_L1" -> StationHistoryActionType.APPROVE_L1;
+            case "APPROVE_L2" -> StationHistoryActionType.APPROVE_L2;
+            case "REJECT" -> StationHistoryActionType.REJECT;
+            default -> StationHistoryActionType.UPDATE;
+        };
     }
 
     private BuoyStationResponse toResponse(BuoyStation entity) {
@@ -672,10 +684,6 @@ public class BuoyStationService {
 
     private java.util.UUID getCurrentUserUnitId() {
         return null;
-    }
-
-    private Long resolveCurrentUserId() {
-        return 1L;
     }
 
     private String getUserNameById(UUID userId) {

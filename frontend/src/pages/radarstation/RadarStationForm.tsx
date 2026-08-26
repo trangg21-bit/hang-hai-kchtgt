@@ -96,10 +96,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
 
-  const handleBeforeUpload = useCallback((file: File): false => {
+  const handleBeforeUpload = useCallback((file: any): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file đính kèm'); return false; }
-    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file }]);
+    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file as any }]);
     return false;
   }, [uploadedFiles]);
 

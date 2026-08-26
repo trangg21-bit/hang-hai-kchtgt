@@ -154,9 +154,10 @@ export const radarStationAttachment = {
     return toArray<RadarStationAttachment>(res.data);
   },
 
-  async upload(id: string, files: File[]): Promise<RadarStationAttachment[]> {
+  async upload(id: string, files: File | File[]): Promise<RadarStationAttachment[]> {
+    const fileList = Array.isArray(files) ? files : [files];
     const formData = new FormData();
-    files.forEach((f) => formData.append('files', f));
+    fileList.forEach((f) => formData.append('files', f));
     const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

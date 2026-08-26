@@ -5,7 +5,15 @@
 -- theo docs/conventions/approval-2-level-spec.md (mục 3) — giống
 -- coastal_station_inmarsat (V20260825093000).
 -- Format: VYYYYMMDDHHmmss__description.sql
--- Tương thích PostgreSQL và H2.
+--
+-- CHỈ CHẠY TRÊN POSTGRESQL. Phần backfill ở mục 3 dùng toán tử regex `~*`
+-- và ép kiểu `::uuid` của PostgreSQL. Điều này an toàn vì Flyway chỉ bật ở
+-- profile `local` và `prod` (đều PostgreSQL) — các profile H2 (`dev`,
+-- `local-h2`) và test đều đặt `spring.flyway.enabled=false` và dựng schema
+-- bằng Hibernate ddl-auto.
+--
+-- Các cột/kiểu ở đây cũng được InfrastructureSchemaMigrator vá lại lúc khởi
+-- động (idempotent) để môi trường nào lỡ bỏ qua migration vẫn chạy đúng.
 -- ============================================================
 
 -- ------------------------------------------------------------

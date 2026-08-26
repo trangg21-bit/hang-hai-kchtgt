@@ -34,13 +34,13 @@ public class StationHistoryController {
                         @RequestParam String type,
                         @RequestParam(required = false) UUID entityId,
                         @RequestParam(required = false) String actionType,
-                        @RequestParam(required = false) Long changedBy,
+                        @RequestParam(required = false) UUID changedBy,
                         @RequestParam(required = false) LocalDateTime from,
                         @RequestParam(required = false) LocalDateTime to,
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "20") int size) {
                 Pageable pageable = PageRequest.of(page, size,
-                                Sort.by("changedAt").descending());
+                                Sort.by("approvedDate").descending());
                 Page<StationHistoryResponse> result = historyService.getHistoryFiltered(
                                 type, entityId, actionType, changedBy, from, to, pageable);
                 return ResponseEntity.ok(ApiResponse.success(result));
