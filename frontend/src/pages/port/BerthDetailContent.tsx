@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, Table, Space, InputNumber, Collapse, Select, Button, Tooltip } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Tabs, Table, Space, InputNumber, Select, Button, Tooltip } from 'antd';
 import { FileOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../theme';
 import {
   textPrimary, textSecondary, textTertiary, borderDefault, surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, spaceMd, spaceXs, actionPrimary, radiusPill,
+  spaceSm, actionPrimary, radiusPill,
+  statusOperational, statusAttention, statusCritical,
 } from '../../tokens';
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -255,7 +256,7 @@ export default function BerthDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="detail-grid">
                 {[
-                  ['Loại đối tượng', { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
+                  ['Loại đối tượng', ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
                   ['Biểu tượng', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:24,height:24,objectFit:'contain' }} /> : null}{symName}</span>; })(),],
                   ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
                   ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],

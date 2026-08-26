@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tabs, Table, Space, InputNumber, Pagination } from 'antd';
+import { Tabs, Table, Space, InputNumber } from 'antd';
 import { FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { colors } from '../../theme';
@@ -10,6 +10,7 @@ import {
 } from '../../tokens';
 import type { DryPort } from '../../types/port';
 import PagedTable from '../../components/list-view/PagedTable';
+import Pagination from '../../components/list-view/Pagination';
 import { resolveOrgFullPath } from '../../components/org-unit';
 
 export interface DryPortDetailContentProps {
@@ -61,7 +62,7 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
   return out;
 };
 
-// Bảng tham chiếu (Thông tin quy hoạch / Vận hành khai thác / Bảo trì) — đồng bộ giao diện cảng biển (PortRefTable)
+// Bảng tham chiếu (Thông tin quy hoạch / Vận hành khai thác / Bảo trì / Sự cố) — đồng bộ giao diện cảng biển (PortRefTable)
 const TAB_PAGE_SIZE = 20;
 function DryPortRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
   const [page, setPage] = useState(1);
@@ -309,6 +310,15 @@ export default function DryPortDetailContent({
               { title: 'Tên kế hoạch', dataIndex: 'maintName', width: 220 },
               { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', width: 200 },
               { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', width: 200 },
+            ]} />,
+          },
+          {
+            key: 'incident', label: 'Thông tin sự cố',
+            children: <DryPortRefTable title="Thông tin sự cố" emptyText="Chưa có dữ liệu" dataSource={(r as any)?.incidentList} columns={[
+              { title: 'Mã sự cố', dataIndex: 'incidentCode', width: 150 },
+              { title: 'Loại sự cố', dataIndex: 'incidentType', width: 150 },
+              { title: 'Địa điểm', dataIndex: 'incidentLocation', width: 200 },
+              { title: 'Thời gian', dataIndex: 'incidentTime', width: 180 },
             ]} />,
           },
           ]}
