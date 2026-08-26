@@ -499,7 +499,10 @@ export default function AppLayout() {
 
   const menuItems = filterEmptyChildren(rawMenuItems);
 
-  const isMobile = !screens.md;
+  // Keep the responsive mode aligned with Sider's `lg` breakpoint. Using
+  // `md` here left a 272px layout offset while AntD had already collapsed the
+  // Sider to 80px on tablet widths (768-991px).
+  const isMobile = !screens.lg;
 
   const handleMenuClick = (e: { key: string }) => {
     if (e.key.startsWith('/')) {
