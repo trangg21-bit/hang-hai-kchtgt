@@ -11,6 +11,7 @@ import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
 import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITUpdateRequest;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
@@ -56,12 +57,12 @@ public class CoastalStationLRITService {
 
         CoastalStationLRIT saved = repository.save(entity);
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.LRIT_STATION,
+                saved.getId(),
                 StationHistoryActionType.CREATE,
                 null,
                 "LRIT station created",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -105,12 +106,12 @@ public class CoastalStationLRITService {
 
         CoastalStationLRIT saved = repository.save(entity);
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.LRIT_STATION,
+                saved.getId(),
                 StationHistoryActionType.UPDATE,
                 null,
                 "LRIT station updated",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -119,17 +120,16 @@ public class CoastalStationLRITService {
                 .orElseThrow(
                         () -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
 
-        String stationCode = entity.getCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(
-                stationCode,
+                InfrastructureType.LRIT_STATION,
+                entity.getId(),
                 StationHistoryActionType.DELETE,
                 "Active",
                 "LRIT station deleted",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
     }
 
     public CoastalStationLRIT getStationById(UUID id) {
@@ -189,13 +189,13 @@ public class CoastalStationLRITService {
             entity.setRejectionReason(null);
 
             historyService.recordHistory(
-                    entity.getCode(),
+                    InfrastructureType.LRIT_STATION,
+                    entity.getId(),
                     currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1
-                            : StationHistoryActionType.APPROVE_L2,
+                                                : StationHistoryActionType.APPROVE_L2,
                     "Pending approval",
                     "Approved at level " + entity.getApprovalLevel(),
-                    String.valueOf(userId),
-                    LocalDateTime.now());
+                    SecurityUtils.getCurrentUserId());
         } else {
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -203,12 +203,12 @@ public class CoastalStationLRITService {
             entity.setApprovedDate(null);
             entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
             historyService.recordHistory(
-                    entity.getCode(),
+                    InfrastructureType.LRIT_STATION,
+                    entity.getId(),
                     StationHistoryActionType.UPDATE,
                     "Approved L1",
                     "Reset to pending",
-                    String.valueOf(userId),
-                    LocalDateTime.now());
+                    SecurityUtils.getCurrentUserId());
         }
 
         return repository.save(entity);
@@ -231,12 +231,12 @@ public class CoastalStationLRITService {
         entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
 
         historyService.recordHistory(
-                entity.getCode(),
+                InfrastructureType.LRIT_STATION,
+                entity.getId(),
                 StationHistoryActionType.REJECT,
                 "Approved",
                 "Rejected: " + rejectionReason,
-                String.valueOf(userId),
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
 
         return repository.save(entity);
     }
@@ -245,7 +245,7 @@ public class CoastalStationLRITService {
         CoastalStationLRIT entity = repository.findById(id)
                 .orElseThrow(
                         () -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
-        return historyService.getHistory(entity.getCode()).stream()
+        return historyService.getHistory(InfrastructureType.LRIT_STATION, entity.getId(), entity.getCode()).stream()
                 .map(h -> {
                     CoastalStationLRITHistoryResponse r = new CoastalStationLRITHistoryResponse();
                     r.setId(h.getId());

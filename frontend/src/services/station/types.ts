@@ -164,3 +164,61 @@ export interface CoastalStationInmarsatHistoryResponse {
   changedBy?: string;
   changedAt?: string;
 }
+
+// --- COASTAL STATION COSPAS-SARSAT ---
+
+export interface CoastalStationCospasSarsatRequest {
+  stationCode: string;
+  stationName: string;
+  frequency?: string;
+  coverageArea?: string;
+  beaconProtocol?: string;
+  emergencyChannel?: string;
+  antennaType?: string;
+  locationAddress?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  signalRange?: number;
+  operatingMode?: string;
+}
+
+export interface CoastalStationCospasSarsatResponse {
+  id: string;
+  stationCode: string;
+  stationName: string;
+  frequency?: string;
+  coverageArea?: string;
+  beaconProtocol?: string;
+  emergencyChannel?: string;
+  antennaType?: string;
+  locationAddress?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  signalRange?: number;
+  operatingMode?: string;
+  status?: string;
+  approvalStatus: string;
+  approvalLevel?: number;
+  submittedAt?: string;
+  submittedBy?: string;
+  approverLevel1?: string;
+  approvedDateLevel1?: string;
+  approverLevel2?: string;
+  approvedDateLevel2?: string;
+  approvedBy?: string;
+  approvedDate?: string;
+  rejectionReason?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+}
+
+export interface CoastalStationCospasSarsatHistoryResponse {
+  id: string;
+  stationCode?: string;
+  actionType: string;
+  previousValue?: string;
+  newValue?: string;
+  changedBy?: string;
+  changedAt?: string;
+}

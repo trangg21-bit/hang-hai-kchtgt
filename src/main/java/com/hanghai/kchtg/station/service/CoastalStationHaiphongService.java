@@ -11,6 +11,7 @@ import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongResponse;
 import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongUpdateRequest;
 import com.hanghai.kchtg.station.entity.CoastalStationHaiphong;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationHaiphongRepository;
@@ -62,12 +63,12 @@ public class CoastalStationHaiphongService {
 
         CoastalStationHaiphong saved = repository.save(entity);
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.HANOI_STATION,
+                saved.getId(),
                 StationHistoryActionType.CREATE,
                 null,
                 "Haiphong station created",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -117,12 +118,12 @@ public class CoastalStationHaiphongService {
 
         CoastalStationHaiphong saved = repository.save(entity);
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.HANOI_STATION,
+                saved.getId(),
                 StationHistoryActionType.UPDATE,
                 null,
                 "Haiphong station updated",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -131,17 +132,16 @@ public class CoastalStationHaiphongService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Haiphong station not found with id: " + id));
 
-        String stationCode = entity.getCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(
-                stationCode,
+                InfrastructureType.HANOI_STATION,
+                entity.getId(),
                 StationHistoryActionType.DELETE,
                 "Active",
                 "Haiphong station deleted",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
     }
 
     public CoastalStationHaiphong getStationById(UUID id) {
@@ -197,13 +197,13 @@ public class CoastalStationHaiphongService {
             entity.setRejectionReason(null);
 
             historyService.recordHistory(
-                    entity.getCode(),
+                    InfrastructureType.HANOI_STATION,
+                    entity.getId(),
                     currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1
-                            : StationHistoryActionType.APPROVE_L2,
+                                                : StationHistoryActionType.APPROVE_L2,
                     "Pending approval",
                     "Approved at level " + entity.getApprovalLevel(),
-                    String.valueOf(userId),
-                    LocalDateTime.now());
+                    SecurityUtils.getCurrentUserId());
         } else {
             entity.setApprovalStatus(ApprovalStatus.PROPOSED);
             entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -211,12 +211,12 @@ public class CoastalStationHaiphongService {
             entity.setApprovedDate(null);
             entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
             historyService.recordHistory(
-                    entity.getCode(),
+                    InfrastructureType.HANOI_STATION,
+                    entity.getId(),
                     StationHistoryActionType.UPDATE,
                     "Approved L1",
                     "Reset to pending",
-                    String.valueOf(userId),
-                    LocalDateTime.now());
+                    SecurityUtils.getCurrentUserId());
         }
 
         return repository.save(entity);
@@ -239,12 +239,12 @@ public class CoastalStationHaiphongService {
         entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
 
         historyService.recordHistory(
-                entity.getCode(),
+                InfrastructureType.HANOI_STATION,
+                entity.getId(),
                 StationHistoryActionType.REJECT,
                 "Approved",
                 "Rejected: " + rejectionReason,
-                String.valueOf(userId),
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
 
         return repository.save(entity);
     }
@@ -253,7 +253,7 @@ public class CoastalStationHaiphongService {
         CoastalStationHaiphong entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException(
                         "Haiphong station not found with id: " + id));
-        return historyService.getHistory(entity.getCode()).stream()
+        return historyService.getHistory(InfrastructureType.HANOI_STATION, entity.getId(), entity.getCode()).stream()
                 .map(h -> {
                     CoastalStationHaiphongHistoryResponse r = new CoastalStationHaiphongHistoryResponse();
                     r.setId(h.getId());

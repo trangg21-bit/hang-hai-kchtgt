@@ -73,6 +73,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/cctv': 'cctv:read',
   '/station/coastal': 'coastalstation:read',
   '/station/special': 'specialstation:read',
+  '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
   '/connections': 'connection:read',
   '/interconnect': 'connection:read',
   '/reports': 'report:read',
@@ -135,6 +136,7 @@ const pageTitles: Record<string, string> = {
   '/documents/port-planning': 'Quy hoạch bến cảng',
   '/station/coastal': 'Đài duyên hải VTS',
   '/station/special': 'Đài vệ tinh Inmarsat',
+  '/station/cospas-sarsat': 'Đài Cospas-Sarsat',
   '/asset/increase': 'Yêu cầu tăng tài sản',
   '/asset/decrease': 'Yêu cầu giảm tài sản',
   '/asset/inventory': 'Kiểm kê tài sản',
@@ -349,6 +351,7 @@ export default function AppLayout() {
       children: [
         canAccessMenu('/station/coastal') ? { key: '/station/coastal', label: 'Đài duyên hải VTS' } : null,
         canAccessMenu('/station/special') ? { key: '/station/special', label: 'Đài vệ tinh Inmarsat' } : null,
+        canAccessMenu('/station/cospas-sarsat') ? { key: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },

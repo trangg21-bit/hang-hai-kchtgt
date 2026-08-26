@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -10,6 +11,7 @@ import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSResponse;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSUpdateRequest;
 import com.hanghai.kchtg.station.entity.CoastalStationVTS;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationVTSRepository;
@@ -27,6 +29,7 @@ public class CoastalStationVTSService {
 
     private final CoastalStationVTSRepository repository;
     private final HistoryService historyService;
+    private final InfrastructureApprovalService approvalService;
 
     public CoastalStationVTS createStation(CoastalStationVTSRequest request) {
         FieldWriteGuard.validateObject(request);
@@ -55,12 +58,12 @@ public class CoastalStationVTSService {
 
         CoastalStationVTS saved = repository.save(entity);
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.COASTAL_RADIO_STATION,
+                saved.getId(),
                 StationHistoryActionType.CREATE,
                 null,
                 "Station created",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -97,12 +100,12 @@ public class CoastalStationVTSService {
         CoastalStationVTS saved = repository.save(entity);
 
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.COASTAL_RADIO_STATION,
+                saved.getId(),
                 StationHistoryActionType.UPDATE,
                 previousCode,
                 "Station updated",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -110,17 +113,16 @@ public class CoastalStationVTSService {
         CoastalStationVTS entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
-        String stationCode = entity.getCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(
-                stationCode,
+                InfrastructureType.COASTAL_RADIO_STATION,
+                entity.getId(),
                 StationHistoryActionType.DELETE,
                 "Active",
                 "Deleted",
-                "system",
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
     }
 
     public CoastalStationVTS getStationById(UUID id) {
@@ -144,124 +146,89 @@ public class CoastalStationVTSService {
 
     public CoastalStationVTS submit(UUID id) {
         CoastalStationVTS entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT &&
-            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL1 &&
-            entity.getApprovalStatus() != ApprovalStatus.REJECTED_LEVEL2) {
-            throw new IllegalStateException("Chỉ bản ghi ở trạng thái Lưu tạm hoặc Bị trả về mới được gửi phê duyệt");
-        }
-
         UUID currentUserId = SecurityUtils.getCurrentUserId();
 
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-        entity.setStatus(StationStatus.PENDING_APPROVAL);
-        entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+        // Quy tắc 14: người gửi thuộc cấp Cục -> bỏ qua vòng 1, vào thẳng "Chờ Cục duyệt".
+        // Kiểm tra trạng thái hợp lệ, chống tự duyệt và ghi nhật ký do service dùng chung đảm nhiệm.
+        approvalService.submit(entity, InfrastructureType.COASTAL_RADIO_STATION, currentUserId);
+
         entity.setSubmittedAt(LocalDateTime.now());
         entity.setSubmittedBy(currentUserId);
-        entity.setRejectionReason(null);
-
-        historyService.recordHistory(
-                entity.getCode(),
-                StationHistoryActionType.UPDATE,
-                "Lưu tạm",
-                "Gửi phê duyệt cấp Cảng vụ/Chi cục",
-                String.valueOf(currentUserId),
-                LocalDateTime.now());
-
+        syncStationStatus(entity);
         return repository.save(entity);
     }
 
     public CoastalStationVTS approveLevel1(UUID id) {
         CoastalStationVTS entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt cấp Cảng vụ/Chi cục");
-        }
-
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-
-        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
-        entity.setStatus(StationStatus.APPROVED_L1);
-        entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
-        entity.setApproverLevel1(currentUserId);
-        entity.setApprovedDateLevel1(LocalDateTime.now());
-        entity.setRejectionReason(null);
-
-        historyService.recordHistory(
-                entity.getCode(),
-                StationHistoryActionType.APPROVE_L1,
-                "Chờ duyệt C1",
-                "Phê duyệt cấp 1 (Cảng vụ/Chi cục)",
-                String.valueOf(currentUserId),
-                LocalDateTime.now());
-
+        approvalService.approveC1(entity, InfrastructureType.COASTAL_RADIO_STATION, "APPROVED", null, currentUserId);
+        syncStationStatus(entity);
         return repository.save(entity);
     }
 
     public CoastalStationVTS approveLevel2(UUID id) {
         CoastalStationVTS entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
-            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt cấp Cục");
-        }
-
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-        // 4 mắt: người đã duyệt vòng 1 không được duyệt tiếp vòng 2
-        if (entity.getApproverLevel1() != null && entity.getApproverLevel1().equals(currentUserId)) {
-            throw new IllegalStateException(
-                    "Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Cảng vụ / Chi cục");
-        }
-
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setStatus(StationStatus.APPROVED_L2);
-        entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
-        entity.setApproverLevel2(currentUserId);
-        entity.setApprovedDateLevel2(LocalDateTime.now());
+        approvalService.approveC2(entity, InfrastructureType.COASTAL_RADIO_STATION, "APPROVED", null, currentUserId);
         entity.setApprovedBy(currentUserId);
         entity.setApprovedDate(LocalDateTime.now());
-        entity.setRejectionReason(null);
-
-        historyService.recordHistory(
-                entity.getCode(),
-                StationHistoryActionType.APPROVE_L2,
-                "Chờ duyệt C2",
-                "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam) - Ban hành chính thức",
-                String.valueOf(currentUserId),
-                LocalDateTime.now());
-
+        syncStationStatus(entity);
         return repository.save(entity);
     }
 
     public CoastalStationVTS reject(UUID id, String rejectionReason) {
         CoastalStationVTS entity = getStationById(id);
-        if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL &&
-            entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
-            throw new IllegalStateException("Bản ghi không ở trạng thái Chờ duyệt để từ chối");
-        }
-
+        // Quy tắc 5: từ chối ở bất kỳ vòng nào đều bắt buộc lý do tối thiểu 10 ký tự
         if (rejectionReason == null || rejectionReason.trim().length() < 10) {
             throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
-
-        ApprovalStatus nextStatus = (entity.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL)
-                ? ApprovalStatus.REJECTED_LEVEL1
-                : ApprovalStatus.REJECTED_LEVEL2;
-
-        entity.setApprovalStatus(nextStatus);
-        entity.setStatus(StationStatus.REJECTED);
-        entity.setRejectionReason(rejectionReason.trim());
-
-        historyService.recordHistory(
-                entity.getCode(),
-                StationHistoryActionType.REJECT,
-                "Chờ duyệt",
-                "Từ chối phê duyệt: " + rejectionReason.trim(),
-                String.valueOf(currentUserId),
-                LocalDateTime.now());
-
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
+            approvalService.approveC2(entity, InfrastructureType.COASTAL_RADIO_STATION, "REJECTED", rejectionReason.trim(), currentUserId);
+        } else {
+            approvalService.approveC1(entity, InfrastructureType.COASTAL_RADIO_STATION, "REJECTED", rejectionReason.trim(), currentUserId);
+        }
+        syncStationStatus(entity);
         return repository.save(entity);
+    }
+
+    /**
+     * Đồng bộ các trường hiển thị riêng của họ nhà trạm ({@code status}, {@code approvalLevel})
+     * theo trạng thái phê duyệt chuẩn do service dùng chung đặt.
+     */
+    private void syncStationStatus(CoastalStationVTS entity) {
+        ApprovalStatus st = entity.getApprovalStatus();
+        if (st == null) {
+            return;
+        }
+        switch (st) {
+            case DRAFT, PROPOSED -> {
+                entity.setStatus(StationStatus.DRAFT);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            }
+            case PENDING_APPROVAL -> {
+                entity.setStatus(StationStatus.PENDING_APPROVAL);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            }
+            case APPROVED_LEVEL1 -> {
+                entity.setStatus(StationStatus.APPROVED_L1);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            }
+            case APPROVED, APPROVED_LEVEL2 -> {
+                entity.setStatus(StationStatus.APPROVED_L2);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+            }
+            case REJECTED, REJECTED_LEVEL1 -> {
+                entity.setStatus(StationStatus.REJECTED);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
+            }
+            case REJECTED_LEVEL2 -> {
+                entity.setStatus(StationStatus.REJECTED);
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            }
+            case ARCHIVED -> entity.setStatus(StationStatus.DELETED);
+        }
     }
 
     // Tương thích ngược với endpoint /approve, /reject cũ
@@ -288,7 +255,7 @@ public class CoastalStationVTSService {
     public List<CoastalStationVTSHistoryResponse> getHistory(UUID id) {
         CoastalStationVTS entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
-        return historyService.getHistory(entity.getCode());
+        return historyService.getHistory(InfrastructureType.COASTAL_RADIO_STATION, entity.getId(), entity.getCode());
     }
 
     // -- HELPERS --
@@ -302,13 +269,6 @@ public class CoastalStationVTSService {
         }
         if (latitude < -90.0 || latitude > 90.0) {
             throw new IllegalArgumentException("Vĩ độ phải trong khoảng -90~90 (WGS84)");
-        }
-    }
-
-    /** Chống tự duyệt (4 mắt) — quy tắc 8 của quy trình phê duyệt 2 cấp. */
-    private void validateNotSelfApproval(UUID createdBy, UUID currentUserId) {
-        if (createdBy != null && currentUserId != null && createdBy.equals(currentUserId)) {
-            throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo (Nguyên tắc 4 mắt)");
         }
     }
 

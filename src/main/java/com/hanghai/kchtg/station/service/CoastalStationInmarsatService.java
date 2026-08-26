@@ -10,6 +10,7 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.inmarsat.*;
 import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationInmarsatRepository;
@@ -232,12 +233,12 @@ public class CoastalStationInmarsatService {
 
         CoastalStationInmarsat saved = repository.save(entity);
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.INMARSAT_STATION,
+                saved.getId(),
                 StationHistoryActionType.CREATE,
                 null,
                 "Tạo mới đài Inmarsat (Lưu tạm)",
-                String.valueOf(SecurityUtils.getCurrentUserId()),
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -311,12 +312,12 @@ public class CoastalStationInmarsatService {
 
         CoastalStationInmarsat saved = repository.save(entity);
         historyService.recordHistory(
-                saved.getCode(),
+                InfrastructureType.INMARSAT_STATION,
+                saved.getId(),
                 StationHistoryActionType.UPDATE,
                 null,
                 "Cập nhật thông tin đài Inmarsat",
-                String.valueOf(SecurityUtils.getCurrentUserId()),
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -349,12 +350,12 @@ public class CoastalStationInmarsatService {
         repository.save(entity);
 
         historyService.recordHistory(
-                code,
+                InfrastructureType.INMARSAT_STATION,
+                entity.getId(),
                 StationHistoryActionType.DELETE,
                 "Hoạt động",
                 "Xóa mềm đài Inmarsat",
-                String.valueOf(SecurityUtils.getCurrentUserId()),
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
     }
 
     @Transactional(readOnly = true)
@@ -399,12 +400,12 @@ public class CoastalStationInmarsatService {
         entity.setRejectionReason(null);
 
         historyService.recordHistory(
-                entity.getCode(),
+                InfrastructureType.INMARSAT_STATION,
+                entity.getId(),
                 StationHistoryActionType.UPDATE,
                 "Lưu tạm",
                 "Gửi phê duyệt cấp Cảng vụ/Chi cục",
-                String.valueOf(SecurityUtils.getCurrentUserId()),
-                LocalDateTime.now());
+                SecurityUtils.getCurrentUserId());
 
         return repository.save(entity);
     }
@@ -426,12 +427,12 @@ public class CoastalStationInmarsatService {
         entity.setRejectionReason(null);
 
         historyService.recordHistory(
-                entity.getCode(),
+                InfrastructureType.INMARSAT_STATION,
+                entity.getId(),
                 StationHistoryActionType.APPROVE_L1,
                 "Chờ duyệt C1",
                 "Phê duyệt cấp 1 (Cảng vụ/Chi cục)",
-                String.valueOf(currentUserId),
-                LocalDateTime.now());
+                currentUserId);
 
         return repository.save(entity);
     }
@@ -461,12 +462,12 @@ public class CoastalStationInmarsatService {
         entity.setRejectionReason(null);
 
         historyService.recordHistory(
-                entity.getCode(),
+                InfrastructureType.INMARSAT_STATION,
+                entity.getId(),
                 StationHistoryActionType.APPROVE_L2,
                 "Chờ duyệt C2",
                 "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam) - Ban hành chính thức",
-                String.valueOf(currentUserId),
-                LocalDateTime.now());
+                currentUserId);
 
         return repository.save(entity);
     }
@@ -494,12 +495,12 @@ public class CoastalStationInmarsatService {
         entity.setRejectionReason(rejectionReason.trim());
 
         historyService.recordHistory(
-                entity.getCode(),
+                InfrastructureType.INMARSAT_STATION,
+                entity.getId(),
                 StationHistoryActionType.REJECT,
                 "Chờ duyệt",
                 "Từ chối phê duyệt: " + rejectionReason.trim(),
-                String.valueOf(currentUserId),
-                LocalDateTime.now());
+                currentUserId);
 
         return repository.save(entity);
     }
@@ -546,7 +547,7 @@ public class CoastalStationInmarsatService {
     public List<CoastalStationInmarsatHistoryResponse> getHistory(UUID id) {
         CoastalStationInmarsat entity = getStationById(id);
         String code = entity.getCode() != null ? entity.getCode() : entity.getDeviceCode();
-        return historyService.getHistory(code).stream()
+        return historyService.getHistory(InfrastructureType.INMARSAT_STATION, entity.getId(), code).stream()
                 .map(h -> {
                     CoastalStationInmarsatHistoryResponse r = new CoastalStationInmarsatHistoryResponse();
                     r.setId(h.getId());

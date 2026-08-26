@@ -89,6 +89,7 @@ const BuoyStationListPage = lazy(() => import('./services/buoy-station/BuoyStati
 
 const CoastalStationList = lazy(() => import('./pages/station/CoastalStationList'));
 const SpecialStationList = lazy(() => import('./pages/station/SpecialStationList'));
+const CospasSarsatStationList = lazy(() => import('./pages/station/CospasSarsatStationList'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -253,6 +254,7 @@ export default function App() {
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />
                 <Route path="/station/special" element={<PermissionGuard permission="specialstation:read"><SpecialStationList /></PermissionGuard>} />
+                <Route path="/station/cospas-sarsat" element={<PermissionGuard permission="coastalstationcospassarsat:read"><CospasSarsatStationList /></PermissionGuard>} />
 
                 {/* Symbols — Biểu tượng bản đồ */}
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />

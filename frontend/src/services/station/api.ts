@@ -8,6 +8,9 @@ import type {
   CoastalStationInmarsatResponse,
   CoastalStationInmarsatOptionResponse,
   CoastalStationInmarsatHistoryResponse,
+  CoastalStationCospasSarsatRequest,
+  CoastalStationCospasSarsatResponse,
+  CoastalStationCospasSarsatHistoryResponse,
 } from './types';
 
 // ==========================================
@@ -179,5 +182,76 @@ export async function fetchInmarsatOptions(orgUnitId?: string): Promise<CoastalS
 
 export async function fetchInmarsatHistory(id: string): Promise<CoastalStationInmarsatHistoryResponse[]> {
   const res = await api.get(`/v1/stations/inmarsat/${id}/history`);
+  return res.data || [];
+}
+
+// ==========================================
+// 3. Đài Cospas-Sarsat
+// ==========================================
+export async function fetchCospasSarsatList(params: {
+  keyword?: string;
+}): Promise<CoastalStationCospasSarsatResponse[]> {
+  const url = params.keyword
+    ? `/v1/stations/cospas-sarsat/search?keyword=${encodeURIComponent(params.keyword)}`
+    : '/v1/stations/cospas-sarsat/list';
+  const res = await api.get(url);
+  const rawList = res.data || [];
+  return rawList.map((item: any) => ({
+    ...item,
+    stationCode: item.stationCode || item.code,
+    stationName: item.stationName || item.name,
+  }));
+}
+
+export async function fetchCospasSarsatById(id: string): Promise<CoastalStationCospasSarsatResponse> {
+  const res = await api.get(`/v1/stations/cospas-sarsat/${id}`);
+  return res.data;
+}
+
+export async function createCospasSarsat(
+  payload: CoastalStationCospasSarsatRequest,
+): Promise<CoastalStationCospasSarsatResponse> {
+  const res = await api.post('/v1/stations/cospas-sarsat/create', payload);
+  return res.data;
+}
+
+export async function updateCospasSarsat(
+  id: string,
+  payload: CoastalStationCospasSarsatRequest,
+): Promise<CoastalStationCospasSarsatResponse> {
+  const res = await api.put(`/v1/stations/cospas-sarsat/${id}`, payload);
+  return res.data;
+}
+
+export async function deleteCospasSarsat(id: string): Promise<void> {
+  await api.delete(`/v1/stations/cospas-sarsat/${id}`);
+}
+
+// Phê duyệt 2 cấp — docs/conventions/approval-2-level-spec.md (mục 3)
+export async function submitCospasSarsat(id: string): Promise<CoastalStationCospasSarsatResponse> {
+  const res = await api.post(`/v1/stations/cospas-sarsat/${id}/submit`);
+  return res.data;
+}
+
+export async function approveCospasSarsatL1(id: string): Promise<CoastalStationCospasSarsatResponse> {
+  const res = await api.post(`/v1/stations/cospas-sarsat/${id}/approve-l1`);
+  return res.data;
+}
+
+export async function approveCospasSarsatL2(id: string): Promise<CoastalStationCospasSarsatResponse> {
+  const res = await api.post(`/v1/stations/cospas-sarsat/${id}/approve-l2`);
+  return res.data;
+}
+
+export async function rejectCospasSarsat(
+  id: string,
+  rejectionReason: string,
+): Promise<CoastalStationCospasSarsatResponse> {
+  const res = await api.post(`/v1/stations/cospas-sarsat/${id}/reject`, { approved: false, rejectionReason });
+  return res.data;
+}
+
+export async function fetchCospasSarsatHistory(id: string): Promise<CoastalStationCospasSarsatHistoryResponse[]> {
+  const res = await api.get(`/v1/stations/cospas-sarsat/${id}/history`);
   return res.data || [];
 }
