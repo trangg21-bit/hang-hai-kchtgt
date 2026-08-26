@@ -80,19 +80,23 @@ UPDATE coastal_station_cospas_sarsat  SET status = 0 WHERE status IS NULL;
 -- 3. Backfill người duyệt / thời điểm duyệt theo từng vòng
 -- ------------------------------------------------------------
 UPDATE coastal_station_vts
-   SET approver_level1 = approved_by, approved_date_level1 = approved_date
+   SET approver_level1 = (CASE WHEN CAST(approved_by AS VARCHAR) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN CAST(CAST(approved_by AS VARCHAR) AS UUID) ELSE NULL END),
+       approved_date_level1 = approved_date
  WHERE approval_status IN (3, 5) AND approver_level1 IS NULL AND approved_by IS NOT NULL;
 
 UPDATE coastal_station_vts
-   SET approver_level2 = approved_by, approved_date_level2 = approved_date
+   SET approver_level2 = (CASE WHEN CAST(approved_by AS VARCHAR) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN CAST(CAST(approved_by AS VARCHAR) AS UUID) ELSE NULL END),
+       approved_date_level2 = approved_date
  WHERE approval_status = 5 AND approver_level2 IS NULL AND approved_by IS NOT NULL;
 
 UPDATE coastal_station_cospas_sarsat
-   SET approver_level1 = approved_by, approved_date_level1 = approved_date
+   SET approver_level1 = (CASE WHEN CAST(approved_by AS VARCHAR) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN CAST(CAST(approved_by AS VARCHAR) AS UUID) ELSE NULL END),
+       approved_date_level1 = approved_date
  WHERE approval_status IN (3, 5) AND approver_level1 IS NULL AND approved_by IS NOT NULL;
 
 UPDATE coastal_station_cospas_sarsat
-   SET approver_level2 = approved_by, approved_date_level2 = approved_date
+   SET approver_level2 = (CASE WHEN CAST(approved_by AS VARCHAR) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN CAST(CAST(approved_by AS VARCHAR) AS UUID) ELSE NULL END),
+       approved_date_level2 = approved_date
  WHERE approval_status = 5 AND approver_level2 IS NULL AND approved_by IS NOT NULL;
 
 -- 3.1. approval_level đồng bộ với trạng thái (LEVEL_0=0, LEVEL_1=1, LEVEL_2=2)

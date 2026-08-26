@@ -9,7 +9,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -25,12 +24,11 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Accessors(chain = true)
 @FieldNameConstants
 @SQLRestriction("deleted_at IS NULL")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "unit_id IN (:orgUnitIds)")
 @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
-public class CoastalStationCospasSarsat extends BaseEntity {
+public class CoastalStationCospasSarsat extends BaseEntity implements com.hanghai.kchtg.common.entity.ApprovableEntity {
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
@@ -109,6 +107,12 @@ public class CoastalStationCospasSarsat extends BaseEntity {
     private String contactPhone;
     private Double signalRange;
     private String operatingMode;
+
+    /** ApprovableEntity: đơn vị quản lý của họ nhà trạm lưu ở cột unit_id. */
+    @Override
+    public UUID getOrgUnitId() {
+        return this.unitId;
+    }
 
     @PrePersist
     protected void onCreate() {
