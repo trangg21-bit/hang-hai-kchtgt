@@ -1,17 +1,16 @@
 ---
 id: F-038
-name: "Tạo mới Luồng hàng hải"
+name: Tạo mới Luồng hàng hải
 slug: quan-ly-luong-hang-hai-tao-moi
 module-id: M-003
-status: proposed
+status: implemented
 classification: local
 priority: P0
-created: "2026-06-29T00:00:00Z"
-last-updated: "2026-08-24"
+created: 2026-06-29T00:00:00Z
+last-updated: 2026-08-25T11:35:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Đặc tả nghiệp vụ: Tạo mới Luồng hàng hải
 
 **Tài liệu:** Tài liệu chức năng — phần riêng theo template 7 section.  

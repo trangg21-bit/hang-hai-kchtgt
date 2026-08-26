@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Form,
@@ -12,29 +12,58 @@ import {
   Spin,
   Empty,
   Descriptions,
-  Space,
   Breadcrumb,
   Modal,
   Row,
   Col,
+  Upload,
 } from 'antd';
+import type { UploadFile } from 'antd';
+import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import { navigationChannelCRUD, navigationChannelApproval } from '../../services/navigationChannelService';
 import { organizationService } from '../../services/organizationService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { symbolService } from '../../services/symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { OrgUnitTreeSelect } from '../../components/org-unit';
 import type {
   NavigationChannelResponse,
   CreateNavigationChannelRequest,
   UpdateNavigationChannelRequest,
+  ApprovalRequest,
   ApprovalStatus,
+  ConditionStatus,
+  ChannelRouteDetailRequest,
+  NavigationChannelCoordinateRequest,
 } from '../../types/navigationChannel';
+import { CONDITION_STATUS_OPTIONS, GIS_GEOMETRY_TYPE_OPTIONS } from '../../types/navigationChannel';
+import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+  inputStyle,
+  selectStyle,
+  formFieldStyle,
+  formRowGutter,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  spaceMd,
+  spaceSm,
+  spaceXs,
+  textSecondary,
+  textTertiary,
+  fontWeightBold,
+  fontSizeSm,
+  fontSizeMd,
+  fontSizeLg,
+  cardStyle,
+} from '../../tokens';
+import { colors } from '../../theme';
 
 export interface NavigationChannelFormProps {
   open?: boolean;
@@ -43,6 +72,15 @@ export interface NavigationChannelFormProps {
   onCancel?: () => void;
   onSuccess?: () => void;
 }
+
+const trimString = (v: unknown): string | undefined =>
+  typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
+
+// #25 Loại tuyến luồng — mapping có sẵn trong codebase cũ (channelRouteType 1/2)
+const ROUTE_TYPE_OPTIONS = [
+  { value: 1, label: 'Công cộng' },
+  { value: 2, label: 'Chuyên dùng' },
+];
 
 export default function NavigationChannelForm({ open, editId, mode, onCancel, onSuccess }: NavigationChannelFormProps = {}) {
   const navigate = useNavigate();
@@ -67,75 +105,119 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [channelRouteList, setChannelRouteList] = useState<any[]>([]);
+  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string }[]>([]);
+  const [symbolOptions, setSymbolOptions] = useState<{ value: string; label: string }[]>([]);
 
+  const [routeRows, setRouteRows] = useState<ChannelRouteDetailRequest[]>([]);
+  const [coordRows, setCoordRows] = useState<NavigationChannelCoordinateRequest[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+
+  // ── Load dropdown data (org tree, seaports, symbols) ───────────────
   useEffect(() => {
     if (isDetailMode) return;
+    let isMounted = true;
     (async () => {
       try {
-        const resp = await organizationService.list({ pageSize: 1000 });
-        setOrganizations(resp.data || []);
+        const orgs = await organizationService.getTree();
+        if (isMounted) setOrganizations(orgs || []);
       } catch (err) {
-        console.error('Failed to load organizations', err);
+        console.error('Không tải được cây đơn vị quản lý', err);
+        if (isMounted) setOrganizations([]);
+      }
+      try {
+        const ports = await vtsSystemCRUD.getScopedPortOptions();
+        if (isMounted) setSeaportOptions(ports || []);
+      } catch (err) {
+        console.error('Không tải được danh sách cảng biển', err);
+        if (isMounted) setSeaportOptions([]);
+      }
+      try {
+        const res: any = await symbolService.list({ pageSize: 200 });
+        const items = Array.isArray(res) ? res : res?.items || [];
+        if (isMounted) {
+          setSymbolOptions(items.map((s: any) => ({ value: s.id || s.code || '', label: s.name || s.code || s.id || '' })));
+        }
+      } catch (err) {
+        console.error('Không tải được danh sách biểu tượng', err);
+        if (isMounted) setSymbolOptions([]);
       }
     })();
+    return () => { isMounted = false; };
   }, [isDetailMode]);
 
-  // Fetch detail data
+  // ── Load detail ────────────────────────────────────────────────────
   useEffect(() => {
     if (id) {
       const loadData = async () => {
         setIsLoading(true);
         setFormError(null);
         try {
-          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const cached = (window.parent as any)?.kchtDetailCache?.[id] as NavigationChannelResponse | undefined;
           const data = cached || await navigationChannelCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
-            channelName: data.channelName,
-            channelCode: data.channelCode,
-            stationAmountt: data.stationAmountt,
-            latestStationRepairDate: data.latestStationRepairDate ? dayjs(data.latestStationRepairDate) : null,
+            orgUnitId: data.orgUnitId,
             seaportId: data.seaportId,
             operatingUnitId: data.operatingUnitId,
-            location: data.location,
+            channelCode: data.channelCode,
+            channelName: data.channelName,
+            provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
             detailedLocation: data.detailedLocation,
-            channelManagementStation: data.channelManagementStation,
-            stationStaffAmount: data.stationStaffAmount,
-            latestMaintenanceYear: data.latestMaintenanceYear,
-            dredgingVolume: data.dredgingVolume,
-            buoyAmount: data.buoyAmount,
-            beaconAmount: data.beaconAmount,
-            status: data.status,
-            clearanceHeight: data.clearanceHeight,
-            stationArea: data.stationArea,
-            note: data.note,
-            orgUnitId: data.orgUnitId,
+            conditionStatus: data.conditionStatus,
+            managementStation: data.managementStation,
+            stationCount: data.stationCount,
+            stationStaffCount: data.stationStaffCount,
+            stationAreaSquareMeters: data.stationAreaSquareMeters,
+            latestStationRepairMonth: data.latestStationRepairMonth ? dayjs(data.latestStationRepairMonth) : null,
+            latestMaintenanceYear: data.latestMaintenanceYear ? dayjs(String(data.latestMaintenanceYear)) : null,
+            latestDredgingVolumeCubicMeters: data.latestDredgingVolumeCubicMeters,
+            buoyCount: data.buoyCount,
+            beaconCount: data.beaconCount,
+            notes: data.notes,
+            announcementDecisionNumber: data.announcementDecisionNumber,
+            announcementDecisionDate: data.announcementDecisionDate ? dayjs(data.announcementDecisionDate) : null,
+            announcementDecisionIssuer: data.announcementDecisionIssuer,
+            protectionScopeMeters: data.protectionScopeMeters,
+            protectionNotes: data.protectionNotes,
+            geometryType: data.geometryType,
+            mapIconId: data.mapIconId,
+            coordinateReferenceSystem: data.coordinateReferenceSystem,
+            displayRule: data.displayRule,
             spatialData: {
-              geometryType: data.geometryType,
-              coordinates: data.coordinates,
-              symbolId: data.symbolId,
-            }
+              geometryType: data.geometryType || 'LINE',
+              coordinates: data.coordinates?.map((c) => `${c.longitude},${c.latitude}`).join(';') || '',
+              symbolId: data.mapIconId,
+            },
           });
-          const routes = data.channelRouteList || (data as any).chiTietTuyenLuongList;
-          if (routes) {
-            setChannelRouteList(routes);
-          }
-        } catch (err) {
-          setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
-        } finally {
-          setIsLoading(false);
-        }
-      };
+          setRouteRows(data.routeDetails || []);
+          setCoordRows(data.coordinates || []);
+          setUploadedFiles(
+            (data.attachments || []).map((a, i) => ({
+              uid: a.id || `att-${i}`,
+              name: a.fileName,
+              size: a.fileSize,
+              type: a.contentType,
+              status: 'done',
+              url: a.fileUrl,
+            })),
+          );
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
       loadData();
     } else {
       form.resetFields();
       setRecord(null);
-      setChannelRouteList([]);
+      setRouteRows([]);
+      setCoordRows([]);
+      setUploadedFiles([]);
     }
-  }, [id, isEditMode, form, open]);
+  }, [id, form]);
 
-  // Fetch history
+  // ── Fetch history (detail mode) ────────────────────────────────────
   useEffect(() => {
     if (id && isDetailMode) {
       const loadHistory = async () => {
@@ -152,230 +234,274 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       };
       loadHistory();
     }
-  }, [id, isDetailMode, open]);
+  }, [id, isDetailMode]);
 
-  // Tuyến luồng chi tiết handlers
-  const updateChannelRouteField = (index: number, field: string, value: any) => {
-    setChannelRouteList((prev) => {
+  // ── Route detail (#22-#38) handlers ────────────────────────────────
+  const updateRouteRow = useCallback((index: number, field: keyof ChannelRouteDetailRequest, value: any) => {
+    setRouteRows((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
-  };
+  }, []);
 
-  const addRow = () => {
-    setChannelRouteList((prev) => [
-      ...prev,
+  const addRouteRow = useCallback(() => setRouteRows((prev) => [...prev, { sequenceNo: prev.length + 1 }]), []);
+  const deleteRouteRow = useCallback((index: number) => setRouteRows((prev) => prev.filter((_, i) => i !== index)), []);
+
+  // ── Coordinates (#45) handlers ─────────────────────────────────────
+  const updateCoordRow = useCallback((index: number, field: keyof NavigationChannelCoordinateRequest, value: any) => {
+    setCoordRows((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  }, []);
+
+  const addCoordRow = useCallback(() => setCoordRows((prev) => [...prev, { sequenceNo: prev.length + 1 }]), []);
+  const deleteCoordRow = useCallback((index: number) => setCoordRows((prev) => prev.filter((_, i) => i !== index)), []);
+
+  const routeColumns = useMemo(() => {
+    const inputCell = (style?: React.CSSProperties) => ({ ...inputStyle, width: '100%', ...(style || {}) });
+    return [
       {
-        name: '',
-        classification: '',
-        channelRouteType: undefined,
-        length: undefined,
-        maxWidth: undefined,
-        minWidth: undefined,
-        depth: undefined,
-        currentDepth: '',
-        designSlope: '',
-        dredgingVolume: undefined,
+        title: 'STT',
+        key: 'sequenceNo',
+        width: 48,
+        render: (_: any, __: any, index: number) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{index + 1}</span>,
       },
-    ]);
-  };
+      {
+        title: 'Phân loại (#22)',
+        dataIndex: 'routeClassification',
+        width: 110,
+        render: (text: string, _: any, index: number) => (
+          <Input value={text} onChange={(e) => updateRouteRow(index, 'routeClassification', e.target.value)} placeholder="Phân loại" style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Mã (#23)',
+        dataIndex: 'routeCode',
+        width: 120,
+        render: (text: string) => (
+          <Input value={text} disabled placeholder="Tự sinh" style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Tên (#24)',
+        dataIndex: 'routeName',
+        width: 160,
+        render: (text: string, _: any, index: number) => (
+          <Input value={text} onChange={(e) => updateRouteRow(index, 'routeName', e.target.value)} placeholder="Nhập tên tuyến" style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Loại tuyến (#25)',
+        dataIndex: 'routeType',
+        width: 130,
+        render: (value: number | undefined, _: any, index: number) => (
+          <Select value={value} onChange={(v) => updateRouteRow(index, 'routeType', v)} placeholder="Chọn loại" allowClear options={ROUTE_TYPE_OPTIONS} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Vị trí vũng quay tàu (#26)',
+        dataIndex: 'turningBasinLocation',
+        width: 150,
+        render: (text: string, _: any, index: number) => (
+          <Input value={text} onChange={(e) => updateRouteRow(index, 'turningBasinLocation', e.target.value)} placeholder="Vị trí" style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Bán kính vũng quay (m) (#27)',
+        dataIndex: 'turningBasinRadiusMeters',
+        width: 140,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'turningBasinRadiusMeters', v)} placeholder="Bán kính" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Chiều cao tĩnh không (m) (#28)',
+        dataIndex: 'verticalClearanceMeters',
+        width: 150,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'verticalClearanceMeters', v)} placeholder="Chiều cao" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Chiều dài (km) (#29)',
+        dataIndex: 'channelLengthKilometers',
+        width: 130,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'channelLengthKilometers', v)} placeholder="Chiều dài" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Rộng TK lớn nhất (m) (#30)',
+        dataIndex: 'maximumDesignWidthMeters',
+        width: 140,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'maximumDesignWidthMeters', v)} placeholder="Rộng lớn nhất" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Rộng TK nhỏ nhất (m) (#31)',
+        dataIndex: 'minimumDesignWidthMeters',
+        width: 140,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'minimumDesignWidthMeters', v)} placeholder="Rộng nhỏ nhất" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Độ sâu TK (m) (#32)',
+        dataIndex: 'designDepthMeters',
+        width: 130,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'designDepthMeters', v)} placeholder="Độ sâu TK" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Độ sâu hiện tại (m) (#33)',
+        dataIndex: 'currentDepthMeters',
+        width: 140,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'currentDepthMeters', v)} placeholder="Độ sâu HT" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Mái dốc TK (#34)',
+        dataIndex: 'designSlope',
+        width: 110,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'designSlope', v)} placeholder="Mái dốc" style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Bán kính cong NN (m) (#35)',
+        dataIndex: 'minimumCurveRadiusMeters',
+        width: 140,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'minimumCurveRadiusMeters', v)} placeholder="Bán kính cong" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'KL nạo vét (m³) (#36)',
+        dataIndex: 'routeLatestDredgingVolumeCubicMeters',
+        width: 130,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'routeLatestDredgingVolumeCubicMeters', v)} placeholder="KL nạo vét" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Năm bảo trì (#37)',
+        dataIndex: 'routeLatestMaintenanceYear',
+        width: 110,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'routeLatestMaintenanceYear', v)} placeholder="Năm" min={1990} max={2100} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Phân cấp (#38)',
+        dataIndex: 'routeGrade',
+        width: 100,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'routeGrade', v)} placeholder="Cấp" min={0} style={inputCell()} />
+        ),
+      },
+      {
+        title: 'Thao tác',
+        key: 'actions',
+        width: 60,
+        fixed: 'right' as const,
+        render: (_: any, __: any, index: number) => (
+          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => deleteRouteRow(index)} />
+        ),
+      },
+    ];
+  }, [updateRouteRow, deleteRouteRow]);
 
-  const deleteRow = (index: number) => {
-    setChannelRouteList((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const channelRouteColumns = [
+  const coordColumns = useMemo(() => [
     {
       title: 'STT',
-      width: 50,
-      render: (_: any, __: any, index: number) => index + 1,
+      key: 'sequenceNo',
+      width: 60,
+      render: (_: any, __: any, index: number) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{index + 1}</span>,
     },
     {
-      title: 'Tên tuyến luồng',
-      dataIndex: 'name',
-      width: 150,
-      render: (text: string, _: any, index: number) => (
-        <Input
-          value={text}
-          onChange={(e) => updateChannelRouteField(index, 'name', e.target.value)}
-          placeholder="Nhập tên"
-          size="small"
-        />
+      title: 'Kinh độ (longitude)',
+      dataIndex: 'longitude',
+      width: 200,
+      render: (value: number | undefined, _: any, index: number) => (
+        <InputNumber value={value} onChange={(v) => updateCoordRow(index, 'longitude', v)} placeholder="Ví dụ: 106.7000000" style={{ ...inputStyle, width: '100%' }} />
       ),
     },
     {
-      title: 'Phân loại',
-      dataIndex: 'classification',
-      width: 120,
-      render: (text: string, _: any, index: number) => (
-        <Input
-          value={text}
-          onChange={(e) => updateChannelRouteField(index, 'classification', e.target.value)}
-          placeholder="Nhập phân loại"
-          size="small"
-        />
-      ),
-    },
-    {
-      title: 'Loại tuyến luồng',
-      dataIndex: 'channelRouteType',
-      width: 150,
-      render: (value: number, _: any, index: number) => (
-        <Select
-          value={value}
-          onChange={(v) => updateChannelRouteField(index, 'channelRouteType', v)}
-          placeholder="Chọn loại"
-          size="small"
-          style={{ width: '100%' }}
-        >
-          <Select.Option value={1}>Tuyến công cộng</Select.Option>
-          <Select.Option value={2}>Tuyến chuyên dùng</Select.Option>
-        </Select>
-      ),
-    },
-    {
-      title: 'Chiều dài (km)',
-      dataIndex: 'length',
-      width: 120,
-      render: (value: number, _: any, index: number) => (
-        <InputNumber
-          value={value}
-          onChange={(v) => updateChannelRouteField(index, 'length', v)}
-          placeholder="Chiều dài"
-          size="small"
-          style={{ width: '100%' }}
-          min={0}
-        />
-      ),
-    },
-    {
-      title: 'Rộng LN (m)',
-      dataIndex: 'maxWidth',
-      width: 110,
-      render: (value: number, _: any, index: number) => (
-        <InputNumber
-          value={value}
-          onChange={(v) => updateChannelRouteField(index, 'maxWidth', v)}
-          placeholder="Rộng LN"
-          size="small"
-          style={{ width: '100%' }}
-          min={0}
-        />
-      ),
-    },
-    {
-      title: 'Rộng NN (m)',
-      dataIndex: 'minWidth',
-      width: 110,
-      render: (value: number, _: any, index: number) => (
-        <InputNumber
-          value={value}
-          onChange={(v) => updateChannelRouteField(index, 'minWidth', v)}
-          placeholder="Rộng NN"
-          size="small"
-          style={{ width: '100%' }}
-          min={0}
-        />
-      ),
-    },
-    {
-      title: 'Độ sâu TK (m)',
-      dataIndex: 'depth',
-      width: 110,
-      render: (value: number, _: any, index: number) => (
-        <InputNumber
-          value={value}
-          onChange={(v) => updateChannelRouteField(index, 'depth', v)}
-          placeholder="Độ sâu TK"
-          size="small"
-          style={{ width: '100%' }}
-          min={0}
-        />
-      ),
-    },
-    {
-      title: 'Độ sâu HT',
-      dataIndex: 'currentDepth',
-      width: 110,
-      render: (text: string, _: any, index: number) => (
-        <Input
-          value={text}
-          onChange={(e) => updateChannelRouteField(index, 'currentDepth', e.target.value)}
-          placeholder="Độ sâu HT"
-          size="small"
-        />
-      ),
-    },
-    {
-      title: 'Mái dốc TK',
-      dataIndex: 'designSlope',
-      width: 110,
-      render: (text: string, _: any, index: number) => (
-        <Input
-          value={text}
-          onChange={(e) => updateChannelRouteField(index, 'designSlope', e.target.value)}
-          placeholder="Mái dốc TK"
-          size="small"
-        />
-      ),
-    },
-    {
-      title: 'KL nạo vét (m³)',
-      dataIndex: 'dredgingVolume',
-      width: 120,
-      render: (value: number, _: any, index: number) => (
-        <InputNumber
-          value={value}
-          onChange={(v) => updateChannelRouteField(index, 'dredgingVolume', v)}
-          placeholder="KL nạo vét"
-          size="small"
-          style={{ width: '100%' }}
-          min={0}
-        />
+      title: 'Vĩ độ (latitude)',
+      dataIndex: 'latitude',
+      width: 200,
+      render: (value: number | undefined, _: any, index: number) => (
+        <InputNumber value={value} onChange={(v) => updateCoordRow(index, 'latitude', v)} placeholder="Ví dụ: 20.8500000" style={{ ...inputStyle, width: '100%' }} />
       ),
     },
     {
       title: 'Thao tác',
-      width: 80,
+      key: 'actions',
+      width: 60,
       render: (_: any, __: any, index: number) => (
-        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => deleteRow(index)} />
+        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => deleteCoordRow(index)} />
       ),
     },
-  ];
+  ], [updateCoordRow, deleteCoordRow]);
 
+  // ── Submit (trim + map + call API) ─────────────────────────────────
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
     try {
-      const spatialData = values.spatialData;
-      const payload = {
-        channelName: values.channelName,
-        channelCode: values.channelCode,
-        stationAmountt: values.stationAmountt,
-        latestStationRepairDate: values.latestStationRepairDate ? values.latestStationRepairDate.format('YYYY-MM-DD') : undefined,
+      const spatialData = values.spatialData || {};
+      const payload: CreateNavigationChannelRequest = {
+        orgUnitId: values.orgUnitId,
         seaportId: values.seaportId,
         operatingUnitId: values.operatingUnitId,
-        location: values.location,
-        detailedLocation: values.detailedLocation,
-        channelManagementStation: values.channelManagementStation,
-        stationStaffAmount: values.stationStaffAmount,
-        latestMaintenanceYear: values.latestMaintenanceYear,
-        dredgingVolume: values.dredgingVolume,
-        buoyAmount: values.buoyAmount,
-        beaconAmount: values.beaconAmount,
-        status: values.status,
-        clearanceHeight: values.clearanceHeight,
-        stationArea: values.stationArea,
-        note: values.note,
-        orgUnitId: values.orgUnitId,
-        geometryType: spatialData?.geometryType,
-        coordinates: spatialData?.coordinates,
-        symbolId: spatialData?.symbolId,
-        channelRouteList: channelRouteList,
+        channelName: trimString(values.channelName) || '',
+        provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
+        detailedLocation: trimString(values.detailedLocation),
+        conditionStatus: values.conditionStatus as ConditionStatus,
+        managementStation: trimString(values.managementStation),
+        stationCount: values.stationCount,
+        stationStaffCount: values.stationStaffCount,
+        stationAreaSquareMeters: values.stationAreaSquareMeters,
+        latestStationRepairMonth: values.latestStationRepairMonth ? values.latestStationRepairMonth.format('YYYY-MM-DD') : undefined,
+        latestMaintenanceYear: values.latestMaintenanceYear ? values.latestMaintenanceYear.year() : undefined,
+        latestDredgingVolumeCubicMeters: values.latestDredgingVolumeCubicMeters,
+        buoyCount: values.buoyCount,
+        beaconCount: values.beaconCount,
+        notes: trimString(values.notes),
+        announcementDecisionNumber: trimString(values.announcementDecisionNumber),
+        announcementDecisionDate: values.announcementDecisionDate ? values.announcementDecisionDate.format('YYYY-MM-DD') : undefined,
+        announcementDecisionIssuer: trimString(values.announcementDecisionIssuer),
+        protectionScopeMeters: values.protectionScopeMeters,
+        protectionNotes: trimString(values.protectionNotes),
+        geometryType: values.geometryType || spatialData.geometryType,
+        mapIconId: values.mapIconId || spatialData.symbolId,
+        coordinateReferenceSystem: trimString(values.coordinateReferenceSystem),
+        displayRule: trimString(values.displayRule),
+        routeDetails: routeRows.length > 0 ? routeRows.map((row, i) => ({
+          ...row,
+          sequenceNo: i + 1,
+          routeClassification: trimString(row.routeClassification),
+          routeName: trimString(row.routeName),
+          turningBasinLocation: trimString(row.turningBasinLocation),
+        })) : undefined,
+        coordinates: coordRows.length > 0 ? coordRows.map((row, i) => ({
+          ...row,
+          sequenceNo: i + 1,
+        })) : undefined,
+        attachments: uploadedFiles.length > 0 ? uploadedFiles.map((f) => ({
+          fileName: f.name,
+          fileSize: f.size,
+          contentType: f.type,
+        })) : undefined,
       };
 
       if (isCreateMode) {
-        await navigationChannelCRUD.create(payload as CreateNavigationChannelRequest);
+        await navigationChannelCRUD.create(payload);
         toast.success('Tạo mới thành công');
         if (isModalMode) {
           onSuccess?.();
@@ -385,7 +511,8 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
           navigate('/navigation-channel');
         }
       } else if (id && isEditMode) {
-        const res = await navigationChannelCRUD.update(id, payload as UpdateNavigationChannelRequest);
+        const updatePayload: UpdateNavigationChannelRequest = { ...payload, id };
+        const res = await navigationChannelCRUD.update(id, updatePayload);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
@@ -405,64 +532,55 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     }
   };
 
-  const handleApprovalAction = async (
-    action: 'approveC1' | 'approveC2' | 'reject' | 'delete',
-    payload?: Record<string, unknown>
-  ) => {
-    if (!id || !record) return;
-
-    setIsSubmitting(true);
-    try {
-      if (action === 'approveC1') {
-        const note = (payload?.note || payload?.lyDo || payload?.reason) as string | undefined;
-        const res = await navigationChannelApproval.approveLevel1(id, note);
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = res;
+  // ── Approval actions (detail mode — giữ nguyên luồng cũ) ───────────
+  const handleApprovalAction = useCallback(
+    async (action: 'approveC1' | 'approveC2' | 'reject' | 'delete', payload?: Record<string, unknown>) => {
+      if (!id || !record) return;
+      setIsSubmitting(true);
+      try {
+        if (action === 'approveC1') {
+          const req: ApprovalRequest = { status: 'APPROVED' };
+          const res = await navigationChannelApproval.approveC1(id, req);
+          if (window.parent && (window.parent as any).kchtDetailCache) (window.parent as any).kchtDetailCache[id] = res;
+          toast.success('Phê duyệt C1 thành công');
+          setRecord({ ...record, approvalStatus: 'APPROVED_LEVEL1' });
+        } else if (action === 'approveC2') {
+          const req: ApprovalRequest = { status: 'APPROVED' };
+          const res = await navigationChannelApproval.approveC2(id, req);
+          if (window.parent && (window.parent as any).kchtDetailCache) (window.parent as any).kchtDetailCache[id] = res;
+          toast.success('Phê duyệt C2 thành công');
+          setRecord({ ...record, approvalStatus: 'APPROVED' });
+        } else if (action === 'reject') {
+          const reason = payload?.lyDo ? String(payload.lyDo).trim() : undefined;
+          const req: ApprovalRequest = { status: 'REJECTED', reason };
+          let updatedRecord: NavigationChannelResponse;
+          if (record.approvalStatus === 'APPROVED_LEVEL1') {
+            updatedRecord = await navigationChannelApproval.rejectLevel2(id, req);
+          } else {
+            updatedRecord = await navigationChannelApproval.rejectLevel1(id, req);
+          }
+          if (window.parent && (window.parent as any).kchtDetailCache) (window.parent as any).kchtDetailCache[id] = updatedRecord;
+          toast.success('Từ chối thành công');
+          setRecord({ ...record, approvalStatus: updatedRecord.approvalStatus, rejectionReason: reason });
+        } else if (action === 'delete') {
+          await navigationChannelCRUD.delete(id);
+          toast.success('Xóa thành công');
+          if (isModalMode && onSuccess) {
+            onSuccess();
+          } else if (isIframe) {
+            window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+          } else {
+            navigate('/navigation-channel');
+          }
         }
-        toast.success('Phê duyệt cấp Cảng vụ thành công');
-        setRecord({ ...record, approvalStatus: 'PENDING_APPROVAL' });
-        if (onSuccess) onSuccess();
-      } else if (action === 'approveC2') {
-        const note = (payload?.note || payload?.lyDo || payload?.reason) as string | undefined;
-        const res = await navigationChannelApproval.approveLevel2(id, note);
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = res;
-        }
-        toast.success('Phê duyệt cấp Cục thành công');
-        setRecord({ ...record, approvalStatus: 'APPROVED' });
-        if (onSuccess) onSuccess();
-      } else if (action === 'reject') {
-        const rejectionReason = (payload?.reason || payload?.lyDo || '') as string;
-        let updatedRecord;
-        if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED' || record.approvalStatus === 'DRAFT') {
-          updatedRecord = await navigationChannelApproval.rejectLevel1(id, rejectionReason);
-        } else {
-          updatedRecord = await navigationChannelApproval.rejectLevel2(id, rejectionReason);
-        }
-        if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = updatedRecord;
-        }
-
-        toast.success('Từ chối thành công');
-        setRecord({ ...record, approvalStatus: 'REJECTED', rejectionReason });
-        if (onSuccess) onSuccess();
-      } else if (action === 'delete') {
-        await navigationChannelCRUD.delete(id);
-        toast.success('Xóa thành công');
-        if (isModalMode && onSuccess) {
-          onSuccess();
-        } else if (isIframe) {
-          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
-        } else {
-          navigate('/navigation-channel');
-        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    [id, record, isModalMode, onSuccess, isIframe, navigate],
+  );
 
   const breadcrumbs = [
     { title: 'Trang chủ', onClick: () => navigate('/') },
@@ -470,601 +588,492 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     { title: isCreateMode ? 'Tạo mới' : isEditMode ? 'Chỉnh sửa' : 'Chi tiết' },
   ];
 
-  if (isLoading) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Spin fullscreen description="Đang tải..." />
-      </div>
-    );
-  }
+  const sectionTitle = (text: string) => (
+    <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg, marginBottom: spaceMd }}>{text}</div>
+  );
 
-  if (formError) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Card>
-          <Empty description={formError} style={{ marginTop: '50px' }} />
-          <Button onClick={() => navigate('/navigation-channel')} style={{ marginTop: '16px' }}>
-            Quay lại
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  // Detail/Read-only view
+  // ── Detail / read-only view (#1-#71, #47-#71 read-only) ────────────
   if (isDetailMode) {
-    const detailContent = (
-      <Spin spinning={isLoading}>
-        <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
-          {!isModalMode && <h2>Chi tiết Luồng Hàng Hải</h2>}
-          {record && (
-            <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label="Tên luồng hàng hải">{record.channelName}</Descriptions.Item>
-              <Descriptions.Item label="Mã luồng hàng hải">{record.channelCode ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Số lượng trạm">{record.stationAmountt ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Thời điểm sửa chữa trạm gần nhất">
-                {record.latestStationRepairDate ? dayjs(record.latestStationRepairDate).format('DD/MM/YYYY') : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Cảng biển ID">{record.seaportId ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Đơn vị vận hành ID">{record.operatingUnitId ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Địa điểm">{record.location ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Địa điểm chi tiết">{record.detailedLocation ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Trạm quản lý luồng">{record.channelManagementStation ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Số lượng nhân sự tại trạm">{record.stationStaffAmount ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Năm bảo trì gần nhất">{record.latestMaintenanceYear ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Khối lượng nạo vét">{record.dredgingVolume ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Số lượng phao">{record.buoyAmount ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Số lượng tiêu">{record.beaconAmount ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Tình trạng">{record.status ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Chiều cao tĩnh không">{record.clearanceHeight ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Diện tích trạm">{record.stationArea ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Ghi chú" span={2}>
-                {record.note ?? '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitName || record.orgUnitId || '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                <ApprovalStatusBadge status={record.approvalStatus} />
-              </Descriptions.Item>
-            </Descriptions>
-          )}
-        </Card>
-
-        {/* Chi tiết tuyến luồng — read-only table for detail view */}
-        {isDetailMode && channelRouteList.length > 0 && (
-          <Card size="small" title="Chi tiết tuyến luồng" style={{ marginBottom: 16 }} bordered={!isModalMode}>
-            <Table
-              dataSource={channelRouteList}
-              pagination={false}
-              size="small"
-              rowKey={(_, index) => index!.toString()}
-              scroll={{ x: 'max-content' }}
-              columns={[
-                { title: 'STT', width: 50, render: (_: any, __: any, index: number) => index + 1 },
-                { title: 'Tên tuyến luồng', dataIndex: 'name', width: 200, ellipsis: true },
-                { title: 'Phân loại', dataIndex: 'classification', width: 100 },
-                {
-                  title: 'Loại tuyến', width: 130,
-                  render: (_: any, record: any) => record.channelRouteType === 1 ? 'Công cộng' : record.channelRouteType === 2 ? 'Chuyên dùng' : '—'
-                },
-                { title: 'Dài (km)', dataIndex: 'length', width: 100 },
-                { title: 'Rộng LN (m)', dataIndex: 'maxWidth', width: 110 },
-                { title: 'Rộng NN (m)', dataIndex: 'minWidth', width: 110 },
-                { title: 'Độ sâu (m)', dataIndex: 'depth', width: 100 },
-                { title: 'Mái dốc', dataIndex: 'designSlope', width: 100 },
-                { title: 'Độ sâu HT (m)', dataIndex: 'currentDepth', width: 110 },
-                { title: 'KL nạo vét (m³)', dataIndex: 'dredgingVolume', width: 130 },
-                {
-                  title: 'Công cộng', width: 90,
-                  render: (_: any, record: any) => record.publicAccess ? '✓' : ''
-                },
-                {
-                  title: 'Chuyên dùng', width: 90,
-                  render: (_: any, record: any) => record.dedicated ? '✓' : ''
-                },
-              ]}
-            />
-          </Card>
-        )}
-
-        {/* Tài liệu đính kèm */}
-        {record?.attachments && record.attachments.length > 0 && (
-          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
-            <h3>Tài liệu đính kèm</h3>
-            <AttachmentList attachments={record.attachments} readonly={true} />
-          </Card>
-        )}
-
-        {/* Approval Action Bar */}
-        {record && (
-          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
-            <ApprovalActionBar
-              currentStatus={record.approvalStatus as ApprovalStatus}
-              permissions={userPermissions}
-              entityPermissionPrefix="navigationchannel"
-              currentUserId={currentUser?.username}
-              nguoiPheDuyetC1={record.approverLevel1}
-              onAction={handleApprovalAction}
-              loading={isSubmitting}
-            />
-          </Card>
-        )}
-
-        {/* History Timeline */}
-        {record && (
-          <Card bordered={!isModalMode}>
-            <h3>Lịch sử phê duyệt</h3>
-            <HistoryTimeline
-              history={history}
-              loading={isLoadingHistory}
-              error={historyError || undefined}
-              onRetry={() => {
-                setIsLoadingHistory(true);
-                navigationChannelApproval
-                  .getHistory(id)
-                  .then(setHistory)
-                  .catch((err) => setHistoryError(err instanceof Error ? err.message : 'Lỗi'))
-                  .finally(() => setIsLoadingHistory(false));
-              }}
-            />
-          </Card>
-        )}
-      </Spin>
-    );
-
-    if (isModalMode) {
-      return (
-        <Modal
-          title="Chi tiết Luồng Hàng Hải"
-          open={open}
-          onCancel={onCancel}
-          footer={null}
-          width={900}
-          destroyOnHidden
-          mask={{ closable: false }}
-        >
-          {detailContent}
-        </Modal>
-      );
-    }
-
+    const fmtDateTime = (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—');
+    const fmtDate = (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
     return (
-      <div style={{ padding: '24px' }}>
-        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
-        {detailContent}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isModalMode ? 0 : '16px 24px' }}>
+        {!isModalMode && <Breadcrumb items={breadcrumbs.map((b) => ({ title: <span>{b.title}</span> }))} style={{ marginBottom: 16 }} />}
+        <Spin spinning={isLoading}>
+          {formError ? (
+            <Card>
+              <Empty description={formError} style={{ marginTop: 24 }} />
+              <Button onClick={() => (isModalMode ? onCancel?.() : navigate('/navigation-channel'))} style={{ marginTop: 16, ...outlineButtonStyle }}>
+                Quay lại
+              </Button>
+            </Card>
+          ) : record ? (
+            <>
+              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                {sectionTitle('Hồ sơ chính')}
+                <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
+                  <Descriptions.Item label="Đơn vị quản lý (#1)">{record.orgUnitName || record.orgUnitId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Thuộc cảng biển (#2)">{record.seaportName || record.seaportId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Đơn vị vận hành (#3)">{record.operatingUnitId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Mã luồng hàng hải (#4)">{record.channelCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tên luồng hàng hải (#5)">{record.channelName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Địa điểm (Tỉnh/TP) (#6)">{record.provinceId != null ? String(record.provinceId) : '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Địa điểm chi tiết (#7)">{record.detailedLocation || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tình trạng (#8)">
+                    {record.conditionStatus ? <ApprovalStatusBadge status={record.conditionStatus} size="small" /> : '—'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Trạm quản lý luồng (#9)">{record.managementStation || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng trạm (#10)">{record.stationCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng nhân sự tại trạm (#11)">{record.stationStaffCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Diện tích trạm m² (#12)">{record.stationAreaSquareMeters ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Sửa chữa trạm gần nhất (#13)">{fmtDate(record.latestStationRepairMonth)}</Descriptions.Item>
+                  <Descriptions.Item label="Năm bảo trì gần nhất (#14)">{record.latestMaintenanceYear ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="KL nạo vét m³ (#15)">{record.latestDredgingVolumeCubicMeters ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng phao (#16)">{record.buoyCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Số lượng tiêu (#17)">{record.beaconCount ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Quyết định công bố số (#19)">{record.announcementDecisionNumber || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày ra quyết định (#20)">{fmtDate(record.announcementDecisionDate)}</Descriptions.Item>
+                  <Descriptions.Item label="Đơn vị ra quyết định (#21)" span={2}>{record.announcementDecisionIssuer || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ghi chú (#18)" span={2}>{record.notes || '—'}</Descriptions.Item>
+                </Descriptions>
+              </Card>
+
+              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                {sectionTitle('Phạm vi bảo vệ và bản đồ (#39-#44)')}
+                <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
+                  <Descriptions.Item label="Phạm vi bảo vệ luồng (m) (#39)">{record.protectionScopeMeters ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ghi chú (#40)">{record.protectionNotes || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Loại đối tượng (#41)">{record.geometryType || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Biểu tượng (#42)">{record.mapIconId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Hệ quy chiếu (#43)">{record.coordinateReferenceSystem || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Quy tắc hiển thị (#44)">{record.displayRule || '—'}</Descriptions.Item>
+                </Descriptions>
+              </Card>
+
+              {record.routeDetails && record.routeDetails.length > 0 && (
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('Tuyến luồng (#22-#38)')}
+                  <Table
+                    dataSource={record.routeDetails}
+                    rowKey={(row, index) => row.id || String(index)}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 'max-content' }}
+                    columns={[
+                      { title: 'STT', width: 50, render: (_: any, __: any, i: number) => i + 1 },
+                      { title: 'Phân loại', dataIndex: 'routeClassification', width: 100 },
+                      { title: 'Mã', dataIndex: 'routeCode', width: 110 },
+                      { title: 'Tên', dataIndex: 'routeName', width: 180 },
+                      { title: 'Loại tuyến', width: 110, render: (_: any, r: any) => (r.routeType === 1 ? 'Công cộng' : r.routeType === 2 ? 'Chuyên dùng' : '—') },
+                      { title: 'Vị trí vũng quay tàu', dataIndex: 'turningBasinLocation', width: 150 },
+                      { title: 'Bán kính vũng quay (m)', dataIndex: 'turningBasinRadiusMeters', width: 130 },
+                      { title: 'Chiều cao tĩnh không (m)', dataIndex: 'verticalClearanceMeters', width: 140 },
+                      { title: 'Chiều dài (km)', dataIndex: 'channelLengthKilometers', width: 110 },
+                      { title: 'Rộng TK LN (m)', dataIndex: 'maximumDesignWidthMeters', width: 120 },
+                      { title: 'Rộng TK NN (m)', dataIndex: 'minimumDesignWidthMeters', width: 120 },
+                      { title: 'Độ sâu TK (m)', dataIndex: 'designDepthMeters', width: 110 },
+                      { title: 'Độ sâu HT (m)', dataIndex: 'currentDepthMeters', width: 110 },
+                      { title: 'Mái dốc TK', dataIndex: 'designSlope', width: 90 },
+                      { title: 'Bán kính cong NN (m)', dataIndex: 'minimumCurveRadiusMeters', width: 130 },
+                      { title: 'KL nạo vét (m³)', dataIndex: 'routeLatestDredgingVolumeCubicMeters', width: 120 },
+                      { title: 'Năm bảo trì', dataIndex: 'routeLatestMaintenanceYear', width: 90 },
+                      { title: 'Phân cấp', dataIndex: 'routeGrade', width: 80 },
+                    ]}
+                  />
+                </Card>
+              )}
+
+              {record.coordinates && record.coordinates.length > 0 && (
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('Tọa độ (#45)')}
+                  <Table
+                    dataSource={record.coordinates}
+                    rowKey={(row, index) => row.id || String(index)}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 'max-content' }}
+                    columns={[
+                      { title: 'STT', width: 60, render: (_: any, __: any, i: number) => i + 1 },
+                      { title: 'Kinh độ', dataIndex: 'longitude', width: 160 },
+                      { title: 'Vĩ độ', dataIndex: 'latitude', width: 160 },
+                    ]}
+                  />
+                </Card>
+              )}
+
+              {record.attachments && record.attachments.length > 0 && (
+                <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                  {sectionTitle('File đính kèm (#46)')}
+                  <AttachmentList
+                    attachments={(record.attachments || []).map((a) => ({
+                      id: a.id || '',
+                      fileName: a.fileName,
+                      filePath: a.fileUrl || '',
+                    }))}
+                    readonly={true}
+                  />
+                </Card>
+              )}
+
+              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                {sectionTitle('Trạng thái và phê duyệt (#47-#57)')}
+                <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
+                  <Descriptions.Item label="Trạng thái (#47)">
+                    <ApprovalStatusBadge status={record.approvalStatus} />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Ngày cập nhật (#48)">{fmtDateTime(record.updatedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ cập nhật (#49)">{record.updatedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày gửi phê duyệt (#50)">{fmtDateTime(record.submittedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ gửi phê duyệt (#51)">{record.submittedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày duyệt cấp Cảng vụ/Chi cục (#52)">{fmtDateTime(record.level1ApprovedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ duyệt cấp Cảng vụ/Chi cục (#53)">{record.level1ApprovedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Nội dung duyệt cấp 1 (#54)">{record.level1ApprovalContent || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày duyệt cấp Cục (#55)">{fmtDateTime(record.level2ApprovedAt)}</Descriptions.Item>
+                  <Descriptions.Item label="Cán bộ duyệt cấp Cục (#56)">{record.level2ApprovedBy || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Nội dung duyệt cấp 2 (#57)">{record.level2ApprovalContent || '—'}</Descriptions.Item>
+                </Descriptions>
+              </Card>
+
+              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                {sectionTitle('Thông tin liên quan (#58-#71)')}
+                <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
+                  <Descriptions.Item label="Tên KCHT (#58)">{record.relatedInfrastructureName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Loại KCHT (#59)">{record.relatedInfrastructureType || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Mã kế hoạch vận hành (#60)">{record.operationPlanCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tên kế hoạch vận hành (#61)">{record.operationPlanName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày bắt đầu vận hành (#62)">{fmtDate(record.operationStartDate)}</Descriptions.Item>
+                  <Descriptions.Item label="Ngày kết thúc vận hành (#63)">{fmtDate(record.operationEndDate)}</Descriptions.Item>
+                  <Descriptions.Item label="Mã kế hoạch bảo trì (#64)">{record.maintenancePlanCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Tên kế hoạch bảo trì (#65)">{record.maintenancePlanName || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Bảo trì bắt đầu (#66)">{record.maintenanceStartTime || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Bảo trì kết thúc (#67)">{record.maintenanceEndTime || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Mã sự cố (#68)">{record.incidentCode || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Loại sự cố (#69)">{record.incidentType || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Địa điểm sự cố (#70)">{record.incidentLocation || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Thời gian sự cố (#71)">{fmtDateTime(record.incidentTime)}</Descriptions.Item>
+                </Descriptions>
+              </Card>
+
+              <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+                <ApprovalActionBar
+                  currentStatus={record.approvalStatus as ApprovalStatus}
+                  permissions={userPermissions}
+                  entityPermissionPrefix="navigationchannel"
+                  currentUserId={currentUser?.username}
+                  nguoiPheDuyetC1={record.approverLevel1}
+                  onAction={handleApprovalAction}
+                  loading={isSubmitting}
+                />
+              </Card>
+
+              <Card style={{ ...cardStyle }}>
+                {sectionTitle('Lịch sử phê duyệt')}
+                <HistoryTimeline
+                  history={history}
+                  loading={isLoadingHistory}
+                  error={historyError || undefined}
+                  onRetry={() => {
+                    if (!id) return;
+                    setIsLoadingHistory(true);
+                    setHistoryError(null);
+                    navigationChannelApproval.getHistory(id)
+                      .then((hist) => setHistory(hist))
+                      .catch((err) => setHistoryError(err instanceof Error ? err.message : 'Không tải được lịch sử'))
+                      .finally(() => setIsLoadingHistory(false));
+                  }}
+                />
+              </Card>
+            </>
+          ) : (
+            <Empty description="Không có dữ liệu" />
+          )}
+        </Spin>
       </div>
     );
   }
+
+  // ── Create / Edit form (#1-#46) ────────────────────────────────────
+  const formContent = (
+    <Form form={form} layout="vertical" onFinish={handleSubmitForm} style={{ maxWidth: 1100 }}>
+      {/* Hồ sơ chính #1-#21 */}
+      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+        {sectionTitle('Hồ sơ chính (#1-#21)')}
+        <Row gutter={formRowGutter}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="orgUnitId"
+              label="Đơn vị quản lý (#1)"
+              style={formFieldStyle}
+              rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
+            >
+              <OrgUnitTreeSelect organizations={organizations} placeholder="Chọn đơn vị quản lý..." showPath treeDefaultExpandAll={false} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="seaportId" label="Thuộc cảng biển (#2)" style={formFieldStyle}>
+              <Select
+                placeholder="Chọn cảng biển"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+                style={selectStyle}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="operatingUnitId" label="Đơn vị vận hành (#3)" style={formFieldStyle}>
+              <Select
+                placeholder="Chọn đơn vị vận hành"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={organizations.map((org) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))}
+                style={selectStyle}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="channelCode" label="Mã luồng hàng hải (#4)" style={formFieldStyle}>
+              <Input disabled placeholder="Tự sinh khi lưu (LHH...)" style={inputStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="channelName"
+              label="Tên luồng hàng hải (#5)"
+              style={formFieldStyle}
+              rules={[{ required: true, message: 'Tên luồng hàng hải là bắt buộc' }]}
+            >
+              <Input.TextArea rows={2} maxLength={100} showCount placeholder="Nhập tên luồng hàng hải" style={{ borderRadius: 4, resize: 'vertical' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="provinceId" label="Địa điểm (Tỉnh/TP) (#6)" style={formFieldStyle}>
+              <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch optionFilterProp="label" options={VIETNAM_PROVINCE_OPTIONS} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="detailedLocation" label="Địa điểm chi tiết (#7)" style={formFieldStyle}>
+              <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập địa điểm chi tiết" style={{ borderRadius: 4, resize: 'vertical' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="conditionStatus"
+              label="Tình trạng (#8)"
+              style={formFieldStyle}
+              rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}
+            >
+              <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="managementStation" label="Trạm quản lý luồng (#9)" style={formFieldStyle}>
+              <Input.TextArea rows={2} maxLength={500} placeholder="Nhập trạm quản lý luồng" style={{ borderRadius: 4, resize: 'vertical' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="stationCount" label="Số lượng trạm (#10)" style={formFieldStyle}>
+              <InputNumber min={0} placeholder="Nhập số lượng trạm" style={{ ...inputStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="stationStaffCount" label="Số lượng nhân sự tại trạm (#11)" style={formFieldStyle}>
+              <InputNumber min={0} placeholder="Nhập số lượng nhân sự" style={{ ...inputStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="stationAreaSquareMeters" label="Diện tích trạm (m²) (#12)" style={formFieldStyle}>
+              <InputNumber min={0} placeholder="Nhập diện tích trạm" style={{ ...inputStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="latestStationRepairMonth" label="Sửa chữa trạm gần nhất (#13)" style={formFieldStyle}>
+              <DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={{ ...selectStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="latestMaintenanceYear" label="Năm bảo trì gần nhất (#14)" style={formFieldStyle}>
+              <DatePicker picker="year" format="YYYY" placeholder="Chọn năm" style={{ ...selectStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="latestDredgingVolumeCubicMeters" label="Khối lượng nạo vét (m³) (#15)" style={formFieldStyle}>
+              <InputNumber min={0} placeholder="Nhập khối lượng nạo vét" style={{ ...inputStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="buoyCount" label="Số lượng phao (#16)" style={formFieldStyle}>
+              <InputNumber min={0} placeholder="Nhập số lượng phao" style={{ ...inputStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="beaconCount" label="Số lượng tiêu (#17)" style={formFieldStyle}>
+              <InputNumber min={0} placeholder="Nhập số lượng tiêu" style={{ ...inputStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="announcementDecisionNumber" label="Quyết định công bố số (#19)" style={formFieldStyle}>
+              <Input maxLength={100} placeholder="Nhập số quyết định công bố" style={inputStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="announcementDecisionDate" label="Ngày ra quyết định công bố (#20)" style={formFieldStyle}>
+              <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày" style={{ ...selectStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="announcementDecisionIssuer" label="Đơn vị ra quyết định công bố (#21)" style={formFieldStyle}>
+              <Input.TextArea rows={2} maxLength={500} placeholder="Nhập đơn vị ra quyết định" style={{ borderRadius: 4, resize: 'vertical' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24}>
+            <Form.Item name="notes" label="Ghi chú (#18)" style={formFieldStyle}>
+              <Input.TextArea rows={3} maxLength={500} showCount placeholder="Nhập ghi chú" style={{ borderRadius: 4, resize: 'vertical' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Tuyến luồng #22-#38 */}
+      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+        {sectionTitle('Tuyến luồng (#22-#38)')}
+        <Button icon={<PlusOutlined />} onClick={addRouteRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
+          Thêm tuyến luồng
+        </Button>
+        <Table
+          dataSource={routeRows}
+          columns={routeColumns}
+          rowKey={(_, index) => String(index)}
+          pagination={false}
+          size="small"
+          scroll={{ x: 'max-content' }}
+          locale={{ emptyText: 'Chưa có tuyến luồng nào' }}
+        />
+      </Card>
+
+      {/* Phạm vi bảo vệ và bản đồ #39-#44 */}
+      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+        {sectionTitle('Phạm vi bảo vệ và bản đồ (#39-#44)')}
+        <Row gutter={formRowGutter}>
+          <Col xs={24} md={12}>
+            <Form.Item name="protectionScopeMeters" label="Phạm vi bảo vệ luồng (m) (#39)" style={formFieldStyle}>
+              <InputNumber min={0} placeholder="Nhập phạm vi bảo vệ" style={{ ...inputStyle, width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="protectionNotes" label="Ghi chú (#40)" style={formFieldStyle}>
+              <Input.TextArea rows={2} maxLength={500} placeholder="Nhập ghi chú phạm vi bảo vệ" style={{ borderRadius: 4, resize: 'vertical' }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="geometryType" label="Loại đối tượng (#41)" style={formFieldStyle}>
+              <Select placeholder="Chọn loại đối tượng" options={GIS_GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="mapIconId" label="Biểu tượng (#42)" style={formFieldStyle}>
+              <Select placeholder="Chọn biểu tượng" allowClear showSearch optionFilterProp="label" options={symbolOptions} style={selectStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="coordinateReferenceSystem" label="Hệ quy chiếu (#43)" style={formFieldStyle}>
+              <Input maxLength={50} placeholder="Ví dụ: WGS 84" style={inputStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="displayRule" label="Quy tắc hiển thị (#44)" style={formFieldStyle}>
+              <Input maxLength={500} placeholder="Nhập quy tắc hiển thị" style={inputStyle} />
+            </Form.Item>
+          </Col>
+          <Col xs={24}>
+            <Form.Item name="spatialData" label="Bản đồ GIS" style={formFieldStyle}>
+              <GisLocationSelector defaultGeometryType="LINE" />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Tọa độ #45 */}
+      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+        {sectionTitle('Tọa độ (#45)')}
+        <Button icon={<PlusOutlined />} onClick={addCoordRow} style={{ ...outlineButtonStyle, marginBottom: spaceSm }}>
+          Thêm tọa độ
+        </Button>
+        <Table
+          dataSource={coordRows}
+          columns={coordColumns}
+          rowKey={(_, index) => String(index)}
+          pagination={false}
+          size="small"
+          scroll={{ x: 'max-content' }}
+          locale={{ emptyText: 'Chưa có tọa độ nào' }}
+        />
+      </Card>
+
+      {/* File đính kèm #46 */}
+      <Card style={{ ...cardStyle, marginBottom: spaceMd }}>
+        {sectionTitle('File đính kèm (#46)')}
+        <Upload
+          multiple
+          beforeUpload={() => false}
+          fileList={uploadedFiles}
+          onChange={({ fileList }) => setUploadedFiles(fileList)}
+        >
+          <Button icon={<UploadOutlined />} style={{ ...outlineButtonStyle }}>
+            Chọn file đính kèm
+          </Button>
+        </Upload>
+        <div style={{ fontSize: fontSizeSm, color: textTertiary, marginTop: spaceXs }}>
+          Chọn file để đính kèm vào hồ sơ; file được tải lên cùng lúc lưu hồ sơ.
+        </div>
+      </Card>
+
+      {/* Footer */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: spaceSm, marginBottom: spaceMd }}>
+        <Button
+          htmlType="submit"
+          type="primary"
+          loading={isSubmitting}
+          style={{ ...primaryButtonStyle, minWidth: 120 }}
+        >
+          {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+        </Button>
+        <Button
+          onClick={isIframe
+            ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*')
+            : isModalMode ? onCancel : () => navigate('/navigation-channel')}
+          style={{ ...outlineButtonStyle, minWidth: 120 }}
+        >
+          Hủy
+        </Button>
+      </div>
+    </Form>
+  );
 
   if (isModalMode) {
     return (
       <Modal
-        title={isCreateMode ? 'Tạo mới Luồng Hàng Hải' : 'Chỉnh sửa Luồng Hàng Hải'}
         open={open}
         onCancel={onCancel}
+        width={1080}
         footer={null}
-        destroyOnHidden
-        mask={{ closable: false }}
-        width={1000}
+        title={
+          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
+            {isCreateMode ? 'Tạo mới Luồng hàng hải' : isEditMode ? 'Chỉnh sửa Luồng hàng hải' : 'Chi tiết Luồng hàng hải'}
+          </span>
+        }
       >
-        <Spin spinning={isLoading}>
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmitForm}
-            autoComplete="off"
-          >
-            <Form.Item
-              label="Tên luồng hàng hải"
-              name="channelName"
-              rules={[{ required: true, message: 'Vui lòng nhập tên luồng hàng hải' }]}
-            >
-              <Input placeholder="Nhập tên luồng hàng hải" />
-            </Form.Item>
-
-            <Form.Item
-              label="Mã luồng hàng hải"
-              name="channelCode"
-              rules={[{ required: true, message: 'Vui lòng nhập mã luồng hàng hải' }]}
-            >
-              <Input placeholder="Nhập mã luồng hàng hải" />
-            </Form.Item>
-
-            <Form.Item
-              label="Số lượng trạm"
-              name="stationAmountt"
-              rules={[
-                { pattern: /^\d+$/, message: 'Phải là số nguyên' },
-                {
-                  validator: (_, value) => {
-                    if (value === null || value === undefined || value === '') return Promise.resolve();
-                    if (Number(value) > 2147483647) {
-                      return Promise.reject(new Error('Số lượng không được vượt quá 2,147,483,647'));
-                    }
-                    return Promise.resolve();
-                  }
-                }
-              ]}
-            >
-              <InputNumber min={0} max={2147483647} placeholder="Nhập số lượng trạm" style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="Thời điểm sửa chữa trạm gần nhất"
-              name="latestStationRepairDate"
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (!value) return Promise.resolve();
-                    if (dayjs(value).isAfter(dayjs())) {
-                      return Promise.reject(new Error('Thời điểm sửa chữa không được là ngày tương lai'));
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-            >
-              <DatePicker placeholder="Chọn thời điểm sửa chữa" />
-            </Form.Item>
-
-            <Form.Item
-              label="Trạm quản lý luồng"
-              name="channelManagementStation"
-            >
-              <Input placeholder="Nhập trạm quản lý luồng" />
-            </Form.Item>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label="Cảng biển" name="seaportId">
-                  <Input placeholder="Nhập ID cảng biển" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Đơn vị vận hành" name="operatingUnitId">
-                  <Input placeholder="Nhập ID đơn vị vận hành" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label="Địa điểm" name="location">
-                  <Input placeholder="Nhập địa điểm" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Địa điểm chi tiết" name="detailedLocation">
-                  <Input placeholder="Nhập địa điểm chi tiết" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label="Tình trạng" name="status">
-                  <Select placeholder="Chọn tình trạng" allowClear>
-                    <Select.Option value={1}>Hoạt động</Select.Option>
-                    <Select.Option value={2}>Ngừng hoạt động</Select.Option>
-                    <Select.Option value={3}>Đang bảo trì</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Chiều cao tĩnh không" name="clearanceHeight">
-                  <Input placeholder="Nhập chiều cao tĩnh không" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              label="Số lượng nhân sự tại trạm"
-              name="stationStaffAmount"
-            >
-              <InputNumber min={0} placeholder="Nhập số lượng nhân sự" style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="Năm bảo trì gần nhất"
-              name="latestMaintenanceYear"
-            >
-              <InputNumber min={1900} max={2100} placeholder="Nhập năm bảo trì" style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="Khối lượng nạo vét"
-              name="dredgingVolume"
-            >
-              <InputNumber min={0} placeholder="Nhập khối lượng nạo vét" style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="Số lượng phao"
-              name="buoyAmount"
-            >
-              <InputNumber min={0} placeholder="Nhập số lượng phao" style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="Số lượng tiêu"
-              name="beaconAmount"
-            >
-              <InputNumber min={0} placeholder="Nhập số lượng tiêu" style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="Diện tích trạm"
-              name="stationArea"
-            >
-              <InputNumber min={0} placeholder="Nhập diện tích trạm" style={{ width: '100%' }} />
-            </Form.Item>
-
-            <Form.Item
-              label="Đơn vị quản lý"
-              name="orgUnitId"
-            >
-              <Select
-                placeholder="Chọn đơn vị quản lý"
-                allowClear
-                options={organizations.map((org) => ({
-                  value: org.id,
-                  label: org.code ? `${org.code} - ${org.name}` : org.name,
-                }))}
-              />
-            </Form.Item>
-
-            <Form.Item label="Ghi chú" name="note">
-              <Input.TextArea
-                placeholder="Nhập ghi chú"
-                maxLength={500}
-                showCount
-                rows={4}
-              />
-            </Form.Item>
-
-            <Card size="small" title="Thông tin chi tiết luồng" style={{ marginTop: 16, marginBottom: 16 }}>
-              <Button type="dashed" icon={<PlusOutlined />} onClick={addRow} style={{ marginBottom: 8 }}>
-                Thêm tuyến luồng
-              </Button>
-              <Table
-                dataSource={channelRouteList}
-                columns={channelRouteColumns}
-                pagination={false}
-                size="small"
-                rowKey={(_, index) => index!.toString()}
-                scroll={{ x: 'max-content' }}
-              />
-            </Card>
-
-            <Form.Item>
-              <Space style={{ display: 'flex', justifyContent: 'end', marginTop: 16 }}>
-                <Button onClick={onCancel}>Hủy</Button>
-                <Button type="primary" htmlType="submit" loading={isSubmitting}>
-                  {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </Spin>
+        {formContent}
       </Modal>
     );
   }
 
-  // Create/Edit form view
   return (
-    <div style={isIframe ? { padding: '16px 24px', background: '#fff', minHeight: '100vh' } : { padding: '24px' }}>
-      {!isIframe && <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />}
-      <Card
-        style={isIframe ? { border: 'none', boxShadow: 'none', padding: 0 } : { maxWidth: '800px' }}
-        styles={isIframe ? { body: { padding: 0 } } : undefined}
-      >
-        {!isIframe && <h2>{isCreateMode ? 'Tạo mới Luồng Hàng Hải' : 'Chỉnh sửa Luồng Hàng Hải'}</h2>}
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmitForm}
-          autoComplete="off"
-        >
-          <Form.Item
-            label="Tên luồng hàng hải"
-            name="channelName"
-            rules={[{ required: true, message: 'Vui lòng nhập tên luồng hàng hải' }]}
-          >
-            <Input placeholder="Nhập tên luồng hàng hải" />
-          </Form.Item>
-
-          <Form.Item
-            label="Mã luồng hàng hải"
-            name="channelCode"
-            rules={[{ required: true, message: 'Vui lòng nhập mã luồng hàng hải' }]}
-          >
-            <Input placeholder="Nhập mã luồng hàng hải" />
-          </Form.Item>
-
-          <Form.Item
-            label="Số lượng trạm"
-            name="stationAmountt"
-            rules={[
-              { pattern: /^\d+$/, message: 'Phải là số nguyên' },
-              {
-                validator: (_, value) => {
-                  if (value === null || value === undefined || value === '') return Promise.resolve();
-                  if (Number(value) > 2147483647) {
-                    return Promise.reject(new Error('Số lượng không được vượt quá 2,147,483,647'));
-                  }
-                  return Promise.resolve();
-                }
-              }
-            ]}
-          >
-            <InputNumber min={0} max={2147483647} placeholder="Nhập số lượng trạm" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="Thời điểm sửa chữa trạm gần nhất"
-            name="latestStationRepairDate"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value) return Promise.resolve();
-                  if (dayjs(value).isAfter(dayjs())) {
-                    return Promise.reject(new Error('Thời điểm sửa chữa không được là ngày tương lai'));
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <DatePicker placeholder="Chọn thời điểm sửa chữa" />
-          </Form.Item>
-
-          <Form.Item
-            label="Trạm quản lý luồng"
-            name="channelManagementStation"
-          >
-            <Input placeholder="Nhập trạm quản lý luồng" />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Cảng biển" name="seaportId">
-                <Input placeholder="Nhập ID cảng biển" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Đơn vị vận hành" name="operatingUnitId">
-                <Input placeholder="Nhập ID đơn vị vận hành" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Địa điểm" name="location">
-                <Input placeholder="Nhập địa điểm" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Địa điểm chi tiết" name="detailedLocation">
-                <Input placeholder="Nhập địa điểm chi tiết" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Tình trạng" name="status">
-                <Select placeholder="Chọn tình trạng" allowClear>
-                  <Select.Option value={1}>Hoạt động</Select.Option>
-                  <Select.Option value={2}>Ngừng hoạt động</Select.Option>
-                  <Select.Option value={3}>Đang bảo trì</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Chiều cao tĩnh không" name="clearanceHeight">
-                <Input placeholder="Nhập chiều cao tĩnh không" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            label="Số lượng nhân sự tại trạm"
-            name="stationStaffAmount"
-          >
-            <InputNumber min={0} placeholder="Nhập số lượng nhân sự" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="Năm bảo trì gần nhất"
-            name="latestMaintenanceYear"
-          >
-            <InputNumber min={1900} max={2100} placeholder="Nhập năm bảo trì" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="Khối lượng nạo vét"
-            name="dredgingVolume"
-          >
-            <InputNumber min={0} placeholder="Nhập khối lượng nạo vét" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="Số lượng phao"
-            name="buoyAmount"
-          >
-            <InputNumber min={0} placeholder="Nhập số lượng phao" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="Số lượng tiêu"
-            name="beaconAmount"
-          >
-            <InputNumber min={0} placeholder="Nhập số lượng tiêu" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="Diện tích trạm"
-            name="stationArea"
-          >
-            <InputNumber min={0} placeholder="Nhập diện tích trạm" style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            label="Đơn vị quản lý"
-            name="orgUnitId"
-          >
-            <Select
-              placeholder="Chọn đơn vị quản lý"
-              allowClear
-              options={organizations.map((org) => ({
-                value: org.id,
-                label: org.code ? `${org.code} - ${org.name}` : org.name,
-              }))}
-            />
-          </Form.Item>
-
-          <Form.Item label="Ghi chú" name="note">
-            <Input.TextArea
-              placeholder="Nhập ghi chú"
-              maxLength={500}
-              showCount
-              rows={4}
-            />
-          </Form.Item>
-
-            <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">
-              <GisLocationSelector defaultGeometryType="LINE" />
-            </Form.Item>
-
-            <Card size="small" title="Thông tin chi tiết luồng" style={{ marginTop: 16, marginBottom: 16 }}>
-              <Button type="dashed" icon={<PlusOutlined />} onClick={addRow} style={{ marginBottom: 8 }}>
-                Thêm tuyến luồng
-              </Button>
-              <Table
-                dataSource={channelRouteList}
-                columns={channelRouteColumns}
-                pagination={false}
-                size="small"
-                rowKey={(_, index) => index!.toString()}
-                scroll={{ x: 'max-content' }}
-              />
-            </Card>
-
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit" loading={isSubmitting}>
-                  {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
-                </Button>
-                <Button onClick={isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/navigation-channel')}>
-                Hủy
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Card>
+    <div style={{ padding: '16px 24px' }}>
+      <Breadcrumb items={breadcrumbs.map((b) => ({ title: <span style={{ color: textSecondary }}>{b.title}</span> }))} style={{ marginBottom: spaceMd }} />
+      {formContent}
     </div>
   );
 }
-

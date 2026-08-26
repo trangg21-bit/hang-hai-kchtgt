@@ -67,6 +67,18 @@ public abstract class BaseApprovableEntity extends BaseEntity implements Approva
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    @Column(name = "submitted_by")
+    private UUID submittedBy;
+
+    @Column(name = "level1_approval_content", length = 2000)
+    private String level1ApprovalContent;
+
+    @Column(name = "level2_approval_content", length = 2000)
+    private String level2ApprovalContent;
+
     @PrePersist
     protected void onBaseApprovablePrePersist() {
         if (this.securityLevel == null) {

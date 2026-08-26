@@ -1,117 +1,122 @@
 ---
 id: F-039
-name: "Quan ly Luong hang hai - Cap nhat"
+name: Quan ly Luong hang hai - Cap nhat
 slug: quan-ly-luong-hang-hai-cap-nhat
 module-id: M-003
-status: proposed
+status: implemented
 classification: local
 priority: P0
-created: "2026-06-29T00:00:00Z"
-last-updated: "2026-06-29T00:00:00Z"
+created: 2026-06-29T00:00:00Z
+last-updated: 2026-08-26T02:59:33Z
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Cập nhật Luồng hàng hải
 
-# Feature: Quan ly Luong hang hai - Cap nhat
+**Tài liệu:** Tài liệu chức năng — phần riêng theo template 7 section.
+**Chức năng:** F-039 — Cập nhật Luồng hàng hải.
+**Module:** M-003 — Quản lý tài sản KCHTGT khu nước & VTS.
+**Loại:** Chức năng có bước phê duyệt liên quan (sửa hồ sơ rồi gửi lại quy trình 2 cấp).
+**Tham chiếu:** Entity `NavigationChannel` 71 trường, bảng con `channel_route_detail`/`navigation_channel_coordinate`, attachment, migration `V20260825120000`, cơ chế phê duyệt 2 cấp và data scope đã được chốt tại F-038: `_features/F-038-quan-ly-luong-hang-hai-tao-moi/feature-brief.md`, `_features/F-038-quan-ly-luong-hang-hai-tao-moi/ba/00-lean-spec.md`, `design/00-design-plan.md`. File này CHỈ mô tả phần RIÊNG của F-039 — không lặp lại toàn bộ 71 trường.
 
-## Description
-Chuyen vien co the cap nhat luong hang hai do minh tao (trang thai DRAFT, PENDING_APPROVAL, APPROVED_LEVEL1, REJECTED_LEVEL1, hoac REJECTED_LEVEL2). Cap nhat luong hang hai phai duoc phe duyet lai tu 2 cap: phong (C1) → Cuc (C2). He thong ghi nhan lich su thay doi moi lan cap nhat du lieu. Du lieu da APPROVED khong duoc phe cap nhat (chi co the tao moi ban ghi khac).
+## 1. Mô tả ngắn
 
-## Business Intent
-Duy tri thong tin luong hang tai cac khu vuc khu nuoc va VTS luon chinh xac va cap nhat. Chuyen vien co the sua doi, bo sung thong tin luong hang da tao, sau do gui lai quy trinh phe duyet 2 cap de kieem tra, chap nhan thay doi.
+Chức năng F-039 cho phép người dùng có `navigationchannel:update` chỉnh sửa hồ sơ Luồng hàng hải đã tồn tại. Cập nhật theo kiểu partial update: chỉ các trường được gửi trong request mới được áp dụng; toàn bộ write surface là #1-#46 (hồ sơ chính, tuyến luồng, phạm vi bảo vệ, bản đồ, tọa độ, file đính kèm) giống F-038, các trường #47-#71 và mã tự sinh `channelCode`/`routeCode` không nhận từ client. Hệ thống ghi `updatedBy`/`updatedAt` từ phiên người thao tác. Sau khi sửa, hồ sơ có thể được gửi lại quy trình phê duyệt 2 cấp qua endpoint submit-approval (F-041). Dữ liệu đã duyệt (`APPROVED`) vẫn có thể mở form sửa theo code hiện tại (xem mục 3 — điểm cần PMO chốt).
 
-## Flow Summary
-1. Chuyen vien chon luong hang hai can cap nhat (trang thai DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2)
-2. Chuyen vien sua cac truong: loai_tau, so_luong, ngay_ghi_nhan, gio_dien, tai_trong, dien_tich_dang_bo, ghi_chu
-3. He thong kiem tra buoc: loai_tau (max 100 ky tu), so_luong (> 0), ngay_ghi_nhan (<= hom nay)
-4. He thong luu thay doi, ghi vao phe_duyet_lich_su (change_log)
-5. Cap nhat trang thai → DRAFT (neu dang PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2)
-6. Chuyen vien gui cho phe duyet lai → quy trinh 2 cap C1 → C2
+## 2. Trường dữ liệu
 
-## Acceptance Criteria
-- [x] Cap nhat Luong hang hai thanh cong
-- [x] Trang thai tro ve DRAFT sau khi cap nhat (neu dang PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2)
-- [x] Ye cau buoc: loai_tau (max 100), so_luong (> 0), ngay_ghi_nhan (<= hom nay)
-- [x] Ghi nhan lich su thay doi vao phe_duyet_lich_su
-- [x] Cap nhat du lieu da APPROVED → khong duoc phep (tra ve loi)
+Cập nhật dùng cùng write surface #1-#46 với F-038 (danh sách đầy đủ và control chuẩn tại F-038 brief mục 2). Điểm khác biệt của F-039:
 
-## In Scope
-- Tao moi luong hang hai (F-038)
-- Cap nhat luong hang hai (F-039)
-- Xoa luong hang hai (F-040)
-- Phe duyet luong hang hai (F-041, 2 cap: phong → Cuc)
-- Xem chi tiet (F-042)
-- Lich su thay doi (F-043)
+| # | Nhóm trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| 1 | `securityLevel` (Mức độ bảo mật) | Không | Enum | Chỉ áp dụng nếu gửi; validate `RecordSecurityLevel.validateAssignment` theo quyền user. |
+| 2 | Đơn vị quản lý (`orgUnitId` #1) | Không | TreeSelect | Nếu gửi phải nằm trong phạm vi đơn vị user (`OrgUnitScopeService.Scope.allows`) — BR-039-02. |
+| 3 | Hồ sơ chính #2-#21 (`seaportId`, `operatingUnitId`, `channelName`, `provinceId`, `detailedLocation`, `conditionStatus`, `managementStation`, `stationCount`, `stationStaffCount`, `stationAreaSquareMeters`, `latestStationRepairMonth`, `latestMaintenanceYear`, `latestDredgingVolumeCubicMeters`, `buoyCount`, `beaconCount`, `notes`, `announcementDecisionNumber`, `announcementDecisionDate`, `announcementDecisionIssuer`) | Không | Theo F-038 | Partial update: field không gửi thì giữ nguyên; text trim trước khi lưu. |
+| 4 | Tuyến luồng #22-#38 (`routeDetails`) | Không | Bảng con | Nếu gửi: thay thế toàn bộ danh sách cùng transaction; `routeCode` do server sinh, không nhận từ client. |
+| 5 | Phạm vi bảo vệ + bản đồ #39-#44 (`protectionScopeMeters`, `protectionNotes`, `geometryType`, `mapIconId`, `coordinateReferenceSystem`, `displayRule`, `coordinates` — chuỗi WKT) | Không | Theo F-038 | `coordinates` rỗng → xóa spatial object; khác → tạo/cập nhật `GisSpatialObject`. |
+| 6 | Tọa độ #45 (`coordinateList`) | Không | Bảng con | Nếu gửi: thay thế toàn bộ danh sách. |
+| 7 | File đính kèm #46 (`attachments`) | Không | UploadFileTable | Nếu gửi: xóa attachment cũ (refType=NAVIGATION_CHANNEL) và lưu lại danh sách mới. |
+| 8 | Mã tự sinh (`channelCode` #4, `routeCode` #23) | — | Không có trong DTO update | Client không được gửi; không thể sửa bằng API. |
+| 9 | Trạng thái và kiểm toán #47-#57, dữ liệu liên quan #58-#71 | — | Không có trong DTO update | Client gửi các trường này bị bỏ qua — BR-039-03. |
 
-## Out of Scope
-- Phuc vu thong ke, bao cao
-- Tich hop voi he thong khac (Phase 1)
-- Email/SMS notification
-- Export Excel/PDF
-- Cap nhat dong batch nhieu luong hang hai
+## 3. Trạng thái và phê duyệt
 
-## Roles + Permissions
+- Cập nhật không làm thay đổi `approvalStatus` trong code hiện tại: `NavigationChannelService.update` (NavigationChannelService.java:206-336) không có guard trạng thái, không reset về `DRAFT`, không ghi history `UPDATE`. Hồ sơ ở bất kỳ trạng thái chưa xóa (kể cả `APPROVED` = 5) đều nhận được PUT nếu có quyền — UI hiển thị nút Sửa theo quyền, không theo trạng thái (NavigationChannelList.tsx:322-325).
+- **⚠️ Điểm lệch so với kỳ vọng ban đầu của work order** ("chỉ sửa ở DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2; sửa xong về DRAFT + ghi history UPDATE; APPROVED không sửa được"): behavior này CHƯA có trong code. PMO cần chốt: (a) giữ behavior hiện tại và cập nhật tài liệu như file này, hoặc (b) yêu cầu dev bổ sung guard + reset DRAFT + ghi history UPDATE thành task riêng. Brief này mô tả behavior code hiện tại (phương án a).
+- Trạng thái hồ sơ lưu dạng số theo enum `ApprovalStatus` (DRAFT=0, PENDING_APPROVAL=2, APPROVED_LEVEL1=3, APPROVED=5, REJECTED_LEVEL1=8, REJECTED_LEVEL2=9… — ApprovalStatus.java:4-13); UI hiển thị label tiếng Việt.
+- Sau khi sửa, hồ sơ đi lại quy trình phê duyệt 2 cấp (F-041): chuyên viên gọi `POST /{id}/submit-approval`; hồ sơ chuyển `PENDING_APPROVAL` hoặc `APPROVED_LEVEL1` (Rule 14) tùy cấp đơn vị người gửi.
 
-| Role | Level | Notes |
+## 4. Quy tắc và phân quyền riêng
+
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| A-003 (Chuyen vien) | Cap nhat | Chi du lieu DRAFT/PENDING_APPROVAL/APPROVED_LEVEL1/REJECTED_LEVEL1/REJECTED_LEVEL2, co the cap nhat |
-| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PENDING_APPROVAL → APPROVED_LEVEL1 |
-| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | APPROVED_LEVEL1 → APPROVED |
+| BR-039-01 | Cập nhật là partial update: chỉ field có trong request được áp dụng; field thiếu giữ nguyên giá trị hiện tại. | Update |
+| BR-039-02 | Nếu request đổi `orgUnitId` (#1), đơn vị mới phải nằm trong phạm vi đơn vị user (`OrgUnitScopeService.Scope.allows`) — ngoài phạm vi → từ chối, không thay đổi dữ liệu. | Update |
+| BR-039-03 | `channelCode` (#4), `routeCode` (#23), #47-#71 không nằm trong DTO update; client gửi các trường này bị bỏ qua/không lưu. | Update |
+| BR-039-04 | Mọi text input trim trước khi lưu; không lưu khoảng trắng thừa đầu/cuối. | Update |
+| BR-039-05 | `updatedBy`/`updatedAt` ghi từ session người thao tác, không nhận từ client. | Update |
+| BR-039-06 | Bảng con `routeDetails`/`coordinateList`/`attachments` khi gửi sẽ thay thế toàn bộ danh sách cũ trong cùng transaction (cascade + orphanRemoval); lỗi ở bất kỳ phần nào rollback toàn bộ update. | Update |
+| BR-039-07 | Hồ sơ không tồn tại hoặc đã bị xóa mềm → trả lỗi tiếng Việt "Không tìm thấy luồng hàng hải với id: …", không tạo bản ghi mới. | Update |
+| BR-039-08 | `securityLevel` chỉ được nâng/hạ theo quyền tương ứng; user không đủ quyền → từ chối. | Update |
 
-## Entities
+### 4.2. Acceptance Criteria
 
-| Entity | Table | Primary Key | Description |
+| AC-ID | Given | When | Then | Oracle |
+|---|---|---|---|---|
+| AC-039-01 | Người dùng có `navigationchannel:update` và hồ sơ tồn tại | Gửi PUT với một số trường #1-#46 | Chỉ các trường gửi được áp dụng; các trường còn lại giữ nguyên; response trả hồ sơ đã cập nhật | So sánh response: field không gửi không đổi giá trị; `updatedAt`/`updatedBy` mới. |
+| AC-039-02 | Request đổi `orgUnitId` ngoài phạm vi user | Gửi PUT | API từ chối (403/denied) và dữ liệu không đổi | Không có thay đổi trong database; message tiếng Việt. |
+| AC-039-03 | Request gửi kèm `channelCode`/`routeCode` hoặc #47-#71 | Gửi PUT | Server bỏ qua các trường này, không lưu | Response giữ nguyên `channelCode` cũ; approval status không đổi. |
+| AC-039-04 | Request gửi `routeDetails` mới | Gửi PUT | Toàn bộ danh sách tuyến luồng cũ bị thay thế, `routeCode` tự sinh mới | DB chỉ còn danh sách mới gắn với `navigationChannelId`; lỗi một dòng → rollback. |
+| AC-039-05 | Request gửi text có khoảng trắng thừa | Gửi PUT | Giá trị lưu đã trim | Response không còn khoảng trắng đầu/cuối. |
+| AC-039-06 | Hồ sơ không tồn tại / đã xóa mềm | Gửi PUT | API trả lỗi tiếng Việt, không tạo bản ghi | HTTP 400-family + message "Không tìm thấy luồng hàng hải với id". |
+| AC-039-07 | User thiếu `navigationchannel:update` | Gửi PUT | HTTP 403; UI không hiển thị nút Sửa | Permission code khớp `navigationchannel:update`. |
+
+### 4.3. User Stories
+
+- **US-039-01:** Là Chuyên viên, tôi muốn sửa các trường #1-#46 của hồ sơ Luồng hàng hải đã tạo để cập nhật thông tin khi có thay đổi.
+- **US-039-02:** Là Chuyên viên, tôi muốn chỉ gửi các trường cần sửa mà không phải nhập lại toàn bộ form để cập nhật nhanh.
+- **US-039-03:** Là Chuyên viên, tôi muốn sau khi sửa có thể gửi lại hồ sơ vào quy trình phê duyệt 2 cấp để thay đổi được kiểm soát.
+
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Cập nhật hồ sơ | `navigationchannel:update` |
+| Gửi lại phê duyệt sau khi sửa | `navigationchannel:update` (endpoint submit-approval) |
+
+| Vai trò | Xem | Sửa | Gửi duyệt | Ghi chú |
+|---|---|---|---|---|
+| Chuyên viên thuộc đơn vị | Có, theo scope | Có nếu được gán quyền `navigationchannel:update` | Có | Chỉ sửa hồ sơ đọc được trong phạm vi `orgUnitId`; đổi đơn vị ngoài scope bị chặn. |
+| Lãnh đạo Cảng vụ/Chi cục | Có, theo scope | Có nếu được gán quyền | Có nếu được gán quyền | — |
+| Lãnh đạo Cục / Admin Cục | Có, toàn phạm vi Cục khi có `orgunit:scope_all`/`admin:all`/`*` | Có nếu được gán quyền | Có nếu được gán quyền | Xem được metadata nhạy cảm (người tạo, người sửa cuối, thời gian) theo quyền. |
+| Quản trị hệ thống | Có | Có | Có | ROLE_SYSTEM_ADMIN vượt qua mọi kiểm tra quyền. |
+| Người không có quyền tương ứng | Không | Không | Không | API trả 403 Forbidden. |
+
+**Admin Cục:** với F-039, Admin Cục được sửa hồ sơ Luồng hàng hải trong phạm vi Cục khi có permission `navigationchannel:update` hoặc quyền tổng `admin:all`/`*`; vẫn chịu ràng buộc write-scope theo đơn vị và không được phá yêu cầu data scope chung.
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không có guard trạng thái trong `service.update` (NavigationChannelService.java:206-336) — hồ sơ chưa xóa ở trạng thái nào cũng nhận PUT nếu có quyền; update không đổi `approvalStatus`. Điểm lệch với kỳ vọng work order đã ghi chú ở mục 3 để PMO chốt. |
+| 2 | Có bước phê duyệt không | Gián tiếp: sửa xong hồ sơ được gửi lại quy trình 2 cấp qua `POST /{id}/submit-approval` (F-041); bản thân thao tác sửa không có bước duyệt riêng. |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị. Field scope là #1 `orgUnitId` (bắt buộc khi tạo, có thể đổi khi sửa). Entity `NavigationChannel` khai `@Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")` (NavigationChannel.java:22); controller `NavigationChannelController` khai `@DataScope` class-level (NavigationChannelController.java:25) để `DataScopeAspect` bật filter. Chiều ghi validate đơn vị trong phạm vi user: `if (!orgUnitScopeService.currentUserScope().allows(req.getOrgUnitId())) throw AccessDeniedException` (NavigationChannelService.java:212-215). Cấm để `orgUnitId` NULL và cấm gán đơn vị ngoài phạm vi. |
+| 4 | Trường chỉ hiện trong điều kiện nào | `channelCode` (#4), `routeCode` (#23) disabled, không sửa được (NavigationChannelForm.tsx:838); #47-#71 không có trong DTO update nên không thể sửa qua API. |
+| 5 | Quyền riêng | `navigationchannel:update` (sửa + gửi duyệt lại). |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không. Endpoint PUT yêu cầu đăng nhập, RBAC và data scope. |
+| 7 | Tải lên tệp | Có. `attachments` (#46) gửi kèm update sẽ thay thế danh sách attachment cũ của hồ sơ trong cùng transaction. |
+| 8 | Giao diện khác mẫu chung | Không tạo layout riêng. Form sửa dùng chung `NavigationChannelForm.tsx` (create/edit/detail), tuân thủ convention chung và token system; không mô tả hardcode màu/spacing/font. |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| LuongHangHai | luong_hang_hai | id | Entity chinh, 32 fields |
-| LuongHangHaiAttachment | luong_hang_hai_attachment | id | Tai lieu dinh kem (MinIO) |
-| PheDuyetLichSu | phe_duyet_lich_su | id | History log |
+| PUT | `/api/v1/navigation-channel/{id}` | Cập nhật hồ sơ theo partial update #1-#46; không nhận `channelCode`/`routeCode`/#47-#71; ghi `updatedBy` từ session. | `navigationchannel:update` |
+| POST | `/api/v1/navigation-channel/{id}/submit-approval` | Gửi lại hồ sơ vào quy trình phê duyệt sau khi sửa (chi tiết F-041). | `navigationchannel:update` |
+| GET | `/api/v1/navigation-channel/{id}` | Lấy hồ sơ hiện tại để prefill form sửa (chi tiết F-042). | `navigationchannel:read` |
 
-## Business Rules
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
-| BR-039-01 | Cap nhat Luong hang hai phai duoc phe duyet | Update | UC-3347 |
-| BR-039-02 | Trang thai tro ve DRAFT sau khi cap nhat | Update | DESIGN.md |
-| BR-039-03 | Du lieu da APPROVED → khong duoc phe cap nhat | Update | DESIGN.md |
-| BR-039-04 | loai_tau buoc, max 100 ky tu | Update | DESIGN.md |
-| BR-039-05 | so_luong buoc, > 0 | Update | DESIGN.md |
-| BR-039-06 | ngay_ghi_nhan buoc, <= hom nay | Update | DESIGN.md |
-| BR-039-07 | Ghi nhan thay doi vao phe_duyet_lich_su | Update | DESIGN.md |
-
-## Technical Details
-
-### REST Endpoint
-- `PUT /api/v1/luong-hang-hai/{id}` — Cap nhat luong hang hai
-- Request body: `LuongHangHaiUpdateDTO`
-- Response: `LuongHangHaiDTO` (trang thai = DRAFT)
-
-### DTO Fields
-- `loai_tau` (String, required, max 100) — loai tau
-- `so_luong` (Integer, required, > 0) — so luong
-- `ngay_ghi_nhan` (LocalDate, required, <= hom nay) — ngay ghi nhan
-- `gio_dien` (LocalDateTime, optional) — gio dien
-- `tai_trong` (BigDecimal, optional) — tai trong
-- `dien_tich_dang_bo` (BigDecimal, optional) — dien tich dang bo
-- `ghi_chu` (String, optional, max 500) — ghi chu
-
-### Validation Rules
-- `loai_tau`: not blank, max 100 characters
-- `so_luong`: >= 1, integer
-- `ngay_ghi_nhan`: not null, <= current date
-- `tai_trong`: >= 0 (if provided)
-- `dien_tich_dang_bo`: >= 0 (if provided)
-- `status`: khong duoc = APPROED (tra ve 403 Forbidden)
-
-## Testing Strategy
-- Unit tests: Entity builder, getters/setters, JPA lifecycle callbacks
-- Service tests: Update luong hang hai → validate → luu → ghi history → tra ve DRAFT
-- Controller tests: PUT /api/v1/luong-hang-hai/{id}, validation error handling, auth filters
-- Integration: Update → gui phe duyet → phe duyet C1 → phe duyet C2, toan bo workflow
-- Negative tests: Update APPROVED → 403, validation error → 400
-- All unit tests must pass before feature seal
-
-## Design Reference
-- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
-- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
-- Tech-Lead Plan: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/tech-lead/04-plan.md
-- Source: UC-3347
+Không có thay đổi schema mới cho F-039: entity `NavigationChannel`, bảng con `channel_route_detail`/`navigation_channel_coordinate`, attachment `infrastructure_attachments` (refType=NAVIGATION_CHANNEL) và migration `V20260825120000__navigation_channel_excel_71_fields.sql` đã chốt tại F-038 (design/00-design-plan.md mục 4-5). Update sử dụng cơ chế cascade `ALL` + `orphanRemoval` có sẵn trên `channelRouteDetailList`/`coordinates` (NavigationChannel.java:104-113). Không thêm cột, không thêm index.

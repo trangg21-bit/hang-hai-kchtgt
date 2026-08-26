@@ -98,12 +98,21 @@ thái về một nguồn (mục **3.10**). Chi tiết đã làm:
 - Backend: `InfrastructureApprovalService.assertEditable()` + cắm vào 8 service `update()`;
   4 test mới trong `VtsSystemServiceTest`.
 
+**Bổ sung 26/08/2026 — quy tắc 11 (điều kiện xóa):** phát hiện khi merge nhánh
+`feat/f039-043-luong-hang-hai`. BR-040-01 của F-040 quy định ngược tài liệu nền — chỉ cho xóa
+hồ sơ `APPROVED`, cấm xóa `DRAFT`. Tài liệu đó tự khai trong ô *Assumptions* rằng luật được suy
+ra "**theo code hiện tại**", không từ nghiệp vụ. Đã đính chính F-040 (lean-spec + feature-brief),
+bổ sung `InfrastructureApprovalService.assertDeletable()` + `canDeleteApprovalRecord()`, siết
+`approval-2-level-spec.md` mục 3.6 và `.agents/AGENTS.md`, thêm 4 test luật + 2 test ủy quyền.
+
 Còn lại của hạng mục này:
 
 - [ ] **42 feature-brief** vẫn dùng tập trạng thái legacy (`APPROVED_L1`, `APPROVED_L2`,
       `PUBLISHED`, `REJECTED`, `DELETED`). 12 brief nói ngược quy tắc sửa đã được đính chính
       bằng khối cảnh báo đầu tài liệu; 30 brief còn lại chỉ liệt kê mã legacy chứ không sai luật —
       cần viết lại theo 7 trạng thái chuẩn khi rà soát tài liệu đợt tới.
+- [ ] Rà soát điều kiện **xóa** ở các màn/service KCHT còn lại cho khớp quy tắc 11 — hiện mỗi
+      nơi tự kiểm trạng thái, chưa gọi `assertDeletable()`/`canDeleteApprovalRecord()`.
 - [ ] Các service KCHT **chưa dùng** `InfrastructureApprovalService` (CCTV, đèn biển, phao tiêu,
       trạm phao, các đài LRIT/Hải Phòng, cơ sở sửa chữa tàu) chưa có `assertEditable()` ở backend —
       hiện chỉ được chặn ở frontend. Cắm nốt khi đưa các loại này về chuẩn 2 cấp (mục 4 ở trên).

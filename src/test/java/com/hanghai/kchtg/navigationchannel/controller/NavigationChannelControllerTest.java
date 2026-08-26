@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.navigationchannel.controller;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.navigationchannel.dto.ApprovalRequest;
+import com.hanghai.kchtg.navigationchannel.dto.ApprovalResponse;
 import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelCreateRequest;
 import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelResponse;
 import com.hanghai.kchtg.navigationchannel.service.NavigationChannelService;
@@ -14,6 +16,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Kiểm thử controller Luồng hàng hải.
+ *
+ * <p>Đã cập nhật theo API bản F-039..F-043: {@code delete} → {@code softDelete},
+ * {@code approveLevel1/2} → {@code approveC1/C2} nhận {@link ApprovalRequest},
+ * và trường {@code status} (int) được thay bằng {@code conditionStatus} (enum).</p>
+ */
 class NavigationChannelControllerTest {
 
     private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -24,6 +33,7 @@ class NavigationChannelControllerTest {
 
     private NavigationChannelResponse testResp;
     private NavigationChannelCreateRequest createReq;
+    private ApprovalResponse approvalResp;
 
     @BeforeEach
     void setUp() {
@@ -36,15 +46,15 @@ class NavigationChannelControllerTest {
                 .id(TEST_ID)
                 .channelName("Luong Hon Gai - Cai Lan")
                 .channelCode("NC-000001")
-                .status(1)
                 .approvalStatus(ApprovalStatus.DRAFT)
                 .createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
         createReq = NavigationChannelCreateRequest.builder()
                 .channelName("Luong Hon Gai - Cai Lan")
-                .status(1)
                 .build();
+
+        approvalResp = ApprovalResponse.builder().navigationChannelId(TEST_ID).build();
     }
 
     @Test
@@ -66,44 +76,56 @@ class NavigationChannelControllerTest {
     }
 
     @Test
-    void delete_shouldReturnOk() {
-        doNothing().when(service).delete(eq(TEST_ID), any());
-        var resp = controller.delete(TEST_ID, authentication);
+    void softDelete_shouldReturnOk() {
+        doNothing().when(service).softDelete(eq(TEST_ID), nullable(UUID.class));
+        var resp = controller.softDelete(TEST_ID, authentication);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
-        assertThat(resp.getBody().getMessage()).isEqualTo("Xóa luồng hàng hải thành công");
-        verify(service, times(1)).delete(eq(TEST_ID), any());
+        assertThat(resp.getBody().getMessage()).isEqualTo("Xóa mềm luồng hàng hải thành công");
+        verify(service, times(1)).softDelete(eq(TEST_ID), nullable(UUID.class));
+    }
+
+    @Test
+    void submitApproval_shouldReturnSuccess() {
+        when(service.submit(eq(TEST_ID), nullable(UUID.class))).thenReturn(testResp);
+        var resp = controller.submitApproval(TEST_ID, authentication);
+        assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+        verify(service, times(1)).submit(eq(TEST_ID), nullable(UUID.class));
     }
 
     @Test
     void approveC1_shouldReturnSuccess() {
-        when(service.approveLevel1(eq(TEST_ID), nullable(UUID.class), any())).thenReturn(testResp);
-        var resp = controller.approveC1(TEST_ID, "Duyệt C1", null, authentication);
+        ApprovalRequest req = ApprovalRequest.builder().status("APPROVED").reason("Duyệt C1").build();
+        when(service.approveC1(eq(TEST_ID), any(), nullable(UUID.class))).thenReturn(approvalResp);
+        var resp = controller.approveC1(TEST_ID, req, authentication);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        verify(service, times(1)).approveLevel1(eq(TEST_ID), nullable(UUID.class), eq("Duyệt C1"));
+        verify(service, times(1)).approveC1(eq(TEST_ID), eq(req), nullable(UUID.class));
     }
 
     @Test
     void approveC2_shouldReturnSuccess() {
-        when(service.approveLevel2(eq(TEST_ID), nullable(UUID.class), any())).thenReturn(testResp);
-        var resp = controller.approveC2(TEST_ID, "Duyệt C2", null, authentication);
+        ApprovalRequest req = ApprovalRequest.builder().status("APPROVED").reason("Duyệt C2").build();
+        when(service.approveC2(eq(TEST_ID), any(), nullable(UUID.class))).thenReturn(approvalResp);
+        var resp = controller.approveC2(TEST_ID, req, authentication);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        verify(service, times(1)).approveLevel2(eq(TEST_ID), nullable(UUID.class), eq("Duyệt C2"));
+        verify(service, times(1)).approveC2(eq(TEST_ID), eq(req), nullable(UUID.class));
     }
 
     @Test
-    void rejectC1_shouldReturnSuccess() {
-        when(service.rejectLevel1(eq(TEST_ID), nullable(UUID.class), any())).thenReturn(testResp);
-        var resp = controller.rejectC1(TEST_ID, "Từ chối C1", null, authentication);
+    void rejectLevel1_shouldReturnSuccess() {
+        ApprovalRequest req = ApprovalRequest.builder().status("REJECTED").reason("Từ chối C1").build();
+        when(service.rejectLevel1(eq(TEST_ID), any(), nullable(UUID.class))).thenReturn(approvalResp);
+        var resp = controller.rejectLevel1(TEST_ID, req, authentication);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        verify(service, times(1)).rejectLevel1(eq(TEST_ID), nullable(UUID.class), eq("Từ chối C1"));
+        verify(service, times(1)).rejectLevel1(eq(TEST_ID), eq(req), nullable(UUID.class));
     }
 
     @Test
-    void rejectC2_shouldReturnSuccess() {
-        when(service.rejectLevel2(eq(TEST_ID), nullable(UUID.class), any())).thenReturn(testResp);
-        var resp = controller.rejectC2(TEST_ID, "Từ chối C2", null, authentication);
+    void rejectLevel2_shouldReturnSuccess() {
+        ApprovalRequest req = ApprovalRequest.builder().status("REJECTED").reason("Từ chối C2").build();
+        when(service.rejectLevel2(eq(TEST_ID), any(), nullable(UUID.class))).thenReturn(approvalResp);
+        var resp = controller.rejectLevel2(TEST_ID, req, authentication);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        verify(service, times(1)).rejectLevel2(eq(TEST_ID), nullable(UUID.class), eq("Từ chối C2"));
+        verify(service, times(1)).rejectLevel2(eq(TEST_ID), eq(req), nullable(UUID.class));
     }
 }

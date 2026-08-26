@@ -1,124 +1,125 @@
 ---
 id: F-043
-name: "Quan ly Luong hang hai - Lich su"
+name: Quan ly Luong hang hai - Lich su
 slug: quan-ly-luong-hang-hai-lich-su
 module-id: M-003
-status: proposed
+status: implemented
 classification: local
 priority: P1
-created: "2026-06-29T00:00:00Z"
-last-updated: "2026-06-29T00:00:00Z"
+created: 2026-06-29T00:00:00Z
+last-updated: 2026-08-26T02:59:34Z
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Lịch sử thay đổi Luồng hàng hải
 
-# Feature: Quan ly Luong hang hai - Lich su
+**Tài liệu:** Tài liệu chức năng — phần riêng theo template 7 section.
+**Chức năng:** F-043 — Lịch sử thay đổi/phê duyệt Luồng hàng hải.
+**Module:** M-003 — Quản lý tài sản KCHTGT khu nước & VTS.
+**Loại:** Chức năng thường (màn hình đọc lịch sử, không có bước phê duyệt).
+**Tham chiếu:** Cơ chế lịch sử dùng chung bảng `approval_history` (`ApprovalHistory`/`ApprovalHistoryStatus`/`InfrastructureApprovalService`) + entity `NavigationChannel` tại F-038. File này CHỈ mô tả phần RIÊNG của F-043.
 
-## Description
-Chuyen vien (va cac role khac) co the xem lich su thay doi cua luong hang hai. He thong ghi nhan toan bo cac thao tac: tao moi, cap nhat, phe duyet C1/C2, tu tuyen C1/C2, xoa co che (soft delete). Lich su duoc luu vao bang phe_duyet_lich_su, bao gom: thoi gian, nguoi thuc hien, loai thao tac, du lieu cu, du lieu moi, va ghi chu/ly do.
+## 1. Mô tả ngắn
 
-## Business Intent
-Theo doi lich su thay doi — cho phep nguoi dung xem lai toan bo lich su cua luong hang hai, tu khi tao moi den khi xoa (neu co), bao gom lich su phe duyet va cac thao tac cap nhat. Phuc vu kiem tra, audit, va theo doi tang toc van de.
+Chức năng F-043 cung cấp dòng thời gian lịch sử của một hồ sơ Luồng hàng hải: mỗi bước gửi phê duyệt, phê duyệt, trả về được ghi thành một sự kiện trong bảng `approval_history` (refType = NAVIGATION_CHANNEL) và trả về theo thứ tự thời gian giảm dần qua `GET /{id}/history`. Response `HistoryEntry` gồm cấp phê duyệt, trạng thái sự kiện, người thao tác (tên hiển thị), thời điểm và lý do. Frontend hiển thị bằng `HistoryTimeline` ngay trong màn chi tiết (NavigationChannelForm.tsx:772).
 
-## Flow Summary
-1. Chuyen vien (hay role khac) truy cap module Luong hang hai
-2. Chuyen vien chon luong hang hai can xem lich su
-3. He thong hien thi danh sach cac su kien theo thu tu thoi gian:
-   - Su kien CREATE: chuyen vien tao moi luong hang hai (thoi gian, nguoi tao)
-   - Su kien UPDATE: chuyen vien cap nhat du lieu (thoi gian, nguoi sua, du lieu cu, du lieu moi)
-   - Su kien APPROVE_C1: truong phong phe duyet cap 1 (thoi gian, nguoi phe duyet)
-   - Su kien APPROVE_C2: cuc truong phe duyet cap 2 (thoi gian, nguoi phe duyet)
-   - Su kien REJECT_C1: truong phong tu tuyen cap 1 (thoi gian, nguoi tu tuyen, ly do)
-   - Su kien REJECT_C2: cuc truong tu tuyen cap 2 (thoi gian, nguoi tu tuyen, ly do)
-   - Su kien DELETE: chuyen vien xoa co che (thoi gian, nguoi xoa)
-4. Muc dich: theo doi lich su thay doi cua tung luong hang hai
+## 2. Trường dữ liệu
 
-## Acceptance Criteria
-- [x] Xem lich su Luong hang hai thanh cong
-- [x] Theo doi lich su thay doi
-- [x] Hien thi toan bo lich su theo thu tu thoi gian
-- [x] Bao gom: CREATE, UPDATE, APPROVE C1/C2, REJECT C1/C2, DELETE
-- [x] Hien thi: thoi gian, nguoi thuc hien, loai thao tac, ghi chu/ly do
+Response `List<HistoryEntry>` (HistoryEntry.java:10-28) — một dòng = một sự kiện:
 
-## In Scope
-- Tao moi luong hang hai (F-038)
-- Cap nhat luong hang hai (F-039)
-- Xoa luong hang hai (F-040)
-- Phe duyet luong hang hai (F-041, 2 cap: phong → Cuc)
-- Xem chi tiet (F-042)
-- Lich su thay doi (F-043)
+| # | Trường | Kiểu | Ghi chú |
+|---|---|---|---|
+| 1 | `id` | UUID | Id dòng `approval_history`. |
+| 2 | `navigationChannelId` | UUID | `refId` = id hồ sơ. |
+| 3 | `approvalLevel` | Enum | Cấp xử lý: `LEVEL_1` (Cảng vụ/Chi cục), `LEVEL_2` (Cục), `LEVEL_0` (submit). |
+| 4 | `status` | String | Code sự kiện `ApprovalHistoryStatus`: `PROPOSED` (submit), `APPROVED` (duyệt), `REJECTED` (trả về). |
+| 5 | `approvedBy` | String | Tên hiển thị người thao tác (fullName, fallback username, fallback id UUID) — NavigationChannelService.java:437-447. |
+| 6 | `approvedDate` | LocalDateTime | Thời điểm sự kiện; sắp xếp giảm dần (mới nhất trước). |
+| 7 | `reason` | String | Lý do/nội dung (bắt buộc khi trả về; null với duyệt không ghi lý do). |
 
-## Out of Scope
-- Phuc vu thong ke, bao cao
-- Tich hop voi he thong khac (Phase 1)
-- Email/SMS notification
-- Export Excel/PDF
-- So sánh so sanh chi tiet du lieu cu/moi theo truong
+**Sự kiện được ghi trong code hiện tại (NavigationChannel):**
 
-## Roles + Permissions
+| Hành động | Sự kiện (`ApprovalHistoryStatus`) | approvalLevel | Nguồn |
+|---|---|---|---|
+| Gửi phê duyệt (submit) | `PROPOSED` | LEVEL_0 | InfrastructureApprovalService.java:100-106 |
+| Phê duyệt C1 | `APPROVED` | LEVEL_1 | InfrastructureApprovalService.java:157-164 |
+| Trả về C1 | `REJECTED` | LEVEL_1 | InfrastructureApprovalService.java:141-147 |
+| Phê duyệt C2 | `APPROVED` | LEVEL_2 | InfrastructureApprovalService.java:220-228 |
+| Trả về C2 | `REJECTED` | LEVEL_2 | InfrastructureApprovalService.java:204-211 |
 
-| Role | Level | Notes |
+- **⚠️ Điểm lệch so với kỳ vọng ban đầu của work order** ("history gồm CREATE/UPDATE/APPROVE_C1/APPROVE_C2/REJECT_C1/REJECT_C2/DELETE"): enum `ApprovalHistoryStatus` (ApprovalHistoryStatus.java:4-15) không có các code `APPROVE_C1`/`REJECT_C1`… — duyệt/trả về dùng `APPROVED`/`REJECTED` kèm `approvalLevel` 1/2. Ngoài ra, code hiện tại KHÔNG ghi sự kiện `CREATED` khi tạo, `UPDATED` khi sửa, hay `DELETED` khi xóa mềm cho `NavigationChannel` (không có code path nào gọi ghi history cho 3 thao tác này — `ApprovalHistoryUtils.recordSoftDelete` tại ApprovalHistoryUtils.java:30 chưa có caller). PMO cần chốt: (a) giữ behavior hiện tại, hoặc (b) yêu cầu dev bổ sung ghi `CREATED`/`UPDATED`/`DELETED` (pattern đã có ở `RadarStationService`/`ShipRepairFacilityService`/`VtsSystemService`) thành task riêng. Brief này mô tả behavior code hiện tại (phương án a).
+
+## 3. Trạng thái và phê duyệt
+
+- F-043 là màn hình đọc lịch sử, không có bước phê duyệt riêng.
+- Lịch sử chỉ hiển thị cho hồ sơ chưa xóa và đọc được trong phạm vi đơn vị user (data scope).
+- Sự kiện trả về theo `approvedDate` giảm dần (mới nhất trước) — `findByRefTypeAndRefIdOrderByApprovedDateDesc` (NavigationChannelService.java:419-422).
+
+## 4. Quy tắc và phân quyền riêng
+
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| A-003 (Chuyen vien) | Xem | Xem lich su du lieu minh tao |
-| A-002 (Lanh dao) | Xem | Xem lich su du lieu phe duyet |
-| A-004 (Lanh dao Cuc) | Xem | Xem lich su du lieu phe duyet C2 |
+| BR-043-01 | Mỗi bước submit/approve/reject ghi một dòng `approval_history` với `refType = InfrastructureType.NAVIGATION_CHANNEL`, `refId` = id hồ sơ. | History |
+| BR-043-02 | Sự kiện gồm `status` (`PROPOSED`/`APPROVED`/`REJECTED`), `approvalLevel` (0/1/2), người thao tác từ session, thời điểm, lý do (nếu có). | History |
+| BR-043-03 | Danh sách sự kiện sắp xếp theo thời gian giảm dần (mới nhất trước). | History |
+| BR-043-04 | `approvedBy` trả tên hiển thị (fullName → username → id) qua ánh xạ user, không gọi API danh sách user từ frontend. | History |
+| BR-043-05 | Hồ sơ không tồn tại/đã xóa mềm → trả lỗi tiếng Việt "Không tìm thấy luồng hàng hải với id"; hồ sơ không có sự kiện → trả danh sách rỗng (không lỗi). | History |
+| BR-043-06 | User thiếu `navigationchannel:history` → HTTP 403; UI không hiển thị timeline. | Security |
 
-## Entities
+### 4.2. Acceptance Criteria
 
-| Entity | Table | Primary Key | Description |
+| AC-ID | Given | When | Then | Oracle |
+|---|---|---|---|---|
+| AC-043-01 | Hồ sơ đã qua submit + duyệt C1 + duyệt C2 | Gọi GET `/{id}/history` | Trả 3 sự kiện theo thứ tự giảm dần thời gian (C2 trước, C1, submit) | Response `List<HistoryEntry>` đúng thứ tự và nội dung. |
+| AC-043-02 | Hồ sơ bị trả về C1 | Gọi GET `/{id}/history` | Sự kiện `REJECTED` level 1 có `reason` = lý do trả về | `status=REJECTED`, `approvalLevel=LEVEL_1`, `reason` không rỗng. |
+| AC-043-03 | Hồ sơ chưa có sự kiện nào | Gọi GET `/{id}/history` | Trả danh sách rỗng, không lỗi | HTTP 200 + `[]`. |
+| AC-043-04 | Hồ sơ không tồn tại / đã xóa mềm | Gọi GET `/{id}/history` | Trả lỗi tiếng Việt "Không tìm thấy luồng hàng hải với id" | HTTP 400-family. |
+| AC-043-05 | User thiếu `navigationchannel:history` | Gọi GET `/{id}/history` | HTTP 403; UI không hiển thị timeline | Permission code khớp `navigationchannel:history`. |
+| AC-043-06 | Hồ sơ nằm ngoài phạm vi đơn vị | Gọi GET `/{id}/history` | Không trả dữ liệu lịch sử | Bị chặn bởi data scope, không rò rỉ. |
+
+### 4.3. User Stories
+
+- **US-043-01:** Là Lãnh đạo Cảng vụ/Chi cục hoặc Cục, tôi muốn xem dòng thời gian phê duyệt của hồ sơ để truy vết ai đã xử lý, khi nào và lý do.
+- **US-043-02:** Là Chuyên viên, tôi muốn xem lịch sử để biết hồ sơ của mình đang ở bước nào trong quy trình.
+
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xem lịch sử phê duyệt | `navigationchannel:history` |
+
+| Vai trò | Xem lịch sử | Ghi chú |
+|---|---|---|
+| Chuyên viên thuộc đơn vị | Có nếu được gán quyền | Chỉ xem hồ sơ trong phạm vi `orgUnitId`. |
+| Lãnh đạo Cảng vụ/Chi cục | Có | Theo scope. |
+| Lãnh đạo Cục / Admin Cục | Có | Xem được toàn bộ lịch sử trong phạm vi Cục + metadata nhạy cảm. |
+| Quản trị hệ thống | Có | ROLE_SYSTEM_ADMIN vượt qua mọi kiểm tra quyền. |
+| Người không có quyền tương ứng | Không | API trả 403 Forbidden. |
+
+**Admin Cục:** với F-043, Admin Cục được xem toàn bộ lịch sử phê duyệt của hồ sơ trong phạm vi Cục để truy vết trách nhiệm; vẫn chịu ràng buộc data scope chung.
+
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Không có trạng thái riêng; lịch sử phản ánh các bước của workflow phê duyệt F-041 (`PROPOSED`/`APPROVED`/`REJECTED` kèm cấp 1/2). |
+| 2 | Có bước phê duyệt không | Không có bước phê duyệt (màn hình đọc lịch sử). |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị. Hồ sơ phải đọc được trong phạm vi user (`@Filter(orgUnitFilter)` NavigationChannel.java:22 + `@DataScope` NavigationChannelController.java:25) thì lịch sử mới được trả; endpoint history đặt trong controller có `@DataScope` nên được bảo vệ cùng cơ chế. |
+| 4 | Trường chỉ hiện trong điều kiện nào | Timeline chỉ hiển thị khi có dữ liệu và user có `navigationchannel:history`; `reason` chỉ hiển thị khi có giá trị (reject). |
+| 5 | Quyền riêng | `navigationchannel:history` (đã đổi guard từ `read` sang `history` — NavigationChannelController.java:115-117). |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không. Endpoint history yêu cầu đăng nhập, RBAC và data scope. |
+| 7 | Tải lên tệp | Không. |
+| 8 | Giao diện khác mẫu chung | Không. Dùng `HistoryTimeline` shared component trong màn chi tiết; không mô tả hardcode màu/spacing/font. |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| LuongHangHai | luong_hang_hai | id | Entity chinh, 32 fields |
-| LuongHangHaiAttachment | luong_hang_hai_attachment | id | Tai lieu dinh kem (MinIO) |
-| PheDuyetLichSu | phe_duyet_lich_su | id | History log |
+| GET | `/api/v1/navigation-channel/{id}/history` | Trả `List<HistoryEntry>` các sự kiện submit/approve/reject của hồ sơ, sắp xếp giảm dần theo thời gian. | `navigationchannel:history` |
+| GET | `/api/v1/navigation-channel/{id}` | Chi tiết hồ sơ cũng kèm danh sách `ApprovalResponse` (history) khi includeDetails — phục vụ hiển thị nhanh. | `navigationchannel:read` |
 
-## Business Rules
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
-| BR-043-01 | Theo doi lich su thay doi | View History | UC-3350 |
-| BR-043-02 | Ghi nhan CREATE sau khi tao moi | History | DESIGN.md |
-| BR-043-03 | Ghi nhan UPDATE sau khi cap nhat | History | DESIGN.md |
-| BR-043-04 | Ghi nhan APPROVE/REJECT sau phe duyet | History | DESIGN.md |
-| BR-043-05 | Ghi nhan DELETE sau soft delete | History | DESIGN.md |
-| BR-043-06 | Hien thi lich su theo thu tu thoi gian | History | DESIGN.md |
-
-## Technical Details
-
-### REST Endpoints
-- `GET /api/v1/luong-hang-hai/{id}/history` — Xem lich su luong hang hai
-- Response: `List<HistoryEventDTO>`
-
-### HistoryEventDTO Fields
-- `eventId` (Long) — id su kien
-- `luongHangHaiId` (Long) — id luong hang hai
-- `actionType` (Enum): CREATE, UPDATE, APPROVE_C1, APPROVE_C2, REJECT_C1, REJECT_C2, DELETE
-- `userId` (String) — nguoi thuc hien
-- `userName` (String) — ten nguoi thuc hien
-- `actionDate` (LocalDateTime) — thoi gian thao tac
-- `oldValues` (Map<String, Object>) — du lieu cu (neu UPDATE)
-- `newValues` (Map<String, Object>) — du lieu moi (neu UPDATE)
-- `reason` (String) — ly do (neu REJECT)
-- `notes` (String) — ghi chu
-
-### History Actions
-- CREATE: sau khi tao moi luong hang hai (F-038)
-- UPDATE: sau khi cap nhat luong hang hai (F-039)
-- APPROVE_C1: sau phe duyet cap 1 (F-041)
-- APPROVE_C2: sau phe duyet cap 2 (F-041)
-- REJECT_C1: sau tu tuyen cap 1 (F-041)
-- REJECT_C2: sau tu tuyen cap 2 (F-041)
-- DELETE: sau soft delete (F-040)
-
-## Testing Strategy
-- Unit tests: Entity builder, getters/setters, JPA lifecycle callbacks
-- Service tests: Get history → tra ve danh sach su kien theo thu tu thoi gian
-- Controller tests: GET /api/v1/luong-hang-hai/{id}/history, auth filters
-- Integration: Tao moi → cap nhat → phe duyet C1 → phe duyet C2 → xem history → kiem tra 6 su kien
-- Negative tests: Xem history du lieu khong ton tai → 404, Xem history soft-deleted → 404
-- All unit tests must pass before feature seal
-
-## Design Reference
-- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
-- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
-- Tech-Lead Plan: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/tech-lead/04-plan.md
-- Source: UC-3350 (line ~3350)
+Không có thay đổi schema mới cho F-043. Nguồn dữ liệu là bảng `approval_history` dùng chung (`ApprovalHistory` — ref_id, ref_type, approval_level, status SMALLINT ordinal, approved_by, approved_date, reason, changed_field, previous_value, new_value), truy vấn theo `ref_type = InfrastructureType.NAVIGATION_CHANNEL` (ordinal 6) + `ref_id` + order `approved_date DESC` (NavigationChannelService.java:419-422). Không thêm bảng, không thêm cột, không thêm index.

@@ -18,7 +18,7 @@ public class ApprovalRequest {
 
     private ApprovalLevel approvalLevel;
 
-    @NotBlank(message = "Trang thai khong duoc de trong")
+    @NotBlank(message = "Trạng thái không được để trống")
     private String status;
 
     private String reason;

@@ -109,8 +109,19 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 
 ### 3.6. Xóa mềm — quy tắc 11
 
-- Chỉ xóa được hồ sơ đang ở trạng thái **"Lưu tạm"**.
+- Chỉ xóa được hồ sơ đang ở trạng thái **"Lưu tạm"** (`DRAFT`), do **người nhập** thực hiện,
+  cần quyền `<resource>:delete`. Mọi trạng thái khác — kể cả **"Đã duyệt"** — đều **từ chối**.
 - Xóa là **xóa mềm**: chuyển sang "Đã xóa (lịch sử)", không xóa khỏi cơ sở dữ liệu.
+
+**Vì sao không cho xóa hồ sơ "Đã duyệt":** hồ sơ đã qua 2 cấp ký và đang có hiệu lực; cho xóa
+chỉ với quyền `delete` là nhẹ hơn cả *sửa* nó (quy tắc 12 đòi `approvec2`) — xóa nặng hơn sửa
+mà lại dễ hơn. Hồ sơ hết giá trị sử dụng thì đổi **tình trạng hoạt động**, không xóa.
+
+**Triển khai dùng chung — CẤM tự viết lại điều kiện ở từng service/màn:**
+
+- Backend: `InfrastructureApprovalService.assertDeletable(entity)`.
+- Frontend: nút Xóa chỉ hiện khi `normalizeApprovalStatus(status) === 'DRAFT'`
+  (`utils/approvalEditPolicy.ts` → `canDeleteApprovalRecord()`).
 
 ### 3.7. Phân quyền + Admin Cục
 

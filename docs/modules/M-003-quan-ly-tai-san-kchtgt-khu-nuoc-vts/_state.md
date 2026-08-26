@@ -2,19 +2,23 @@
 feature-id: M-003
 feature-name: Quản lý tài sản KCHTGT - Khu nước & VTS
 pipeline-type: sdlc
-status: done
+status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
 last-updated: 2026-07-08T01:10:43Z
-current-stage: closed
+current-stage:  engineering-business-analyst
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts
 intel-path: docs/intel
-stages-queue: []
+stages-queue:
+  - engineering-business-analyst
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
 completed-stages:
   engineering-business-analyst:
     verdict: Ready

@@ -74,6 +74,10 @@ public class InfrastructureApprovalService {
         entity.setApprovalStatus(nextStatus);
         entity.setRejectionReason(null);
 
+        // Ghi thời điểm + người gửi phê duyệt (#50, #51) — refresh cả khi gửi lại sau từ chối
+        entity.setSubmittedAt(LocalDateTime.now());
+        entity.setSubmittedBy(userId);
+
         // Reset approver level nếu gửi lại từ đầu
         if (nextStatus == ApprovalStatus.PENDING_APPROVAL) {
             entity.setApproverLevel1(null);
@@ -116,6 +120,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(reason.trim());
             entity.setApproverLevel1(null);
             entity.setApprovedDateLevel1(null);
+            // #54 — nội dung trả về vẫn được ghi
+            entity.setLevel1ApprovalContent(reason.trim());
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
                     InfrastructureHistoryStatus.REJECTED, userId, reason.trim(),
@@ -126,6 +132,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(null);
             entity.setApproverLevel1(userId);
             entity.setApprovedDateLevel1(LocalDateTime.now());
+            // #54 — nội dung phê duyệt
+            entity.setLevel1ApprovalContent(reason);
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
                     InfrastructureHistoryStatus.APPROVED, userId, reason,
@@ -171,6 +179,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(reason.trim());
             entity.setApproverLevel2(null);
             entity.setApprovedDateLevel2(null);
+            // #57 — nội dung trả về vẫn được ghi
+            entity.setLevel2ApprovalContent(reason.trim());
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
                     InfrastructureHistoryStatus.REJECTED, userId, reason.trim(),
@@ -181,6 +191,8 @@ public class InfrastructureApprovalService {
             entity.setRejectionReason(null);
             entity.setApproverLevel2(userId);
             entity.setApprovedDateLevel2(LocalDateTime.now());
+            // #57 — nội dung phê duyệt
+            entity.setLevel2ApprovalContent(reason);
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
                     InfrastructureHistoryStatus.APPROVED, userId, reason,
@@ -229,6 +241,37 @@ public class InfrastructureApprovalService {
     }
 
     /**
+     * Kiểm tra hồ sơ có được phép xóa mềm ở trạng thái hiện tại hay không (quy tắc 11).
+     *
+     * <p>Nguồn: {@code QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md} — Ca dùng 9 ("Xóa hồ sơ nháp", điều kiện
+     * trước: hồ sơ đang "Lưu tạm") và bảng chuyển trạng thái mục 7 (chỉ có dòng
+     * {@code Lưu tạm → Xóa → Đã xóa}); chuẩn hóa tại {@code docs/conventions/approval-2-level-spec.md}
+     * mục 3.6. "Case test bắt buộc" của tài liệu gốc ghi rõ: <i>không được xóa hồ sơ khi không ở
+     * trạng thái "Lưu tạm"</i>.</p>
+     *
+     * <p>Vì sao không cho xóa hồ sơ <b>Đã duyệt</b>: hồ sơ đã qua 2 cấp ký và đang có hiệu lực; cho
+     * xóa chỉ với quyền {@code delete} là nhẹ hơn cả <i>sửa</i> nó (quy tắc 12 đòi
+     * {@code approvec2}) — xóa nặng hơn sửa mà lại dễ hơn. Hồ sơ hết giá trị sử dụng thì đổi
+     * <b>tình trạng hoạt động</b>, không xóa.</p>
+     *
+     * @throws IllegalStateException nếu hồ sơ không ở trạng thái Lưu tạm
+     */
+    public void assertDeletable(ApprovableEntity entity) {
+        if (entity == null) {
+            throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
+        }
+
+        ApprovalStatus status = entity.getApprovalStatus();
+        if (status == null) {
+            return;
+        }
+
+        if (status != ApprovalStatus.DRAFT && status != ApprovalStatus.PROPOSED) {
+            throw new IllegalStateException("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm");
+        }
+    }
+
+    /**
      * Hồ sơ đang ở trạng thái Đã duyệt — thao tác sửa phải đi qua "Lưu và phê duyệt" (T12):
      * giữ nguyên trạng thái Đã duyệt và ghi bản cũ vào nhật ký thay đổi.
      *
@@ -248,10 +291,8 @@ public class InfrastructureApprovalService {
             throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
         }
 
+        assertDeletable(entity);
         ApprovalStatus currentStatus = entity.getApprovalStatus();
-        if (currentStatus != ApprovalStatus.DRAFT && currentStatus != ApprovalStatus.PROPOSED) {
-            throw new IllegalStateException("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm (DRAFT)");
-        }
 
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
 

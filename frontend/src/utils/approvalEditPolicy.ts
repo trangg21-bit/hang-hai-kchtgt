@@ -117,6 +117,38 @@ export function canEditApprovalRecord(
   return false;
 }
 
+export interface ApprovalDeletePolicyOptions {
+  /** Hàm kiểm tra quyền của màn hình, thường là `usePermissionStore.hasPermission`. */
+  hasPerm: (key: string) => boolean;
+  /** Tiền tố resource của quyền, ví dụ `'navigationchannel'`, `'port'`. */
+  resource: string;
+  /** Các quyền được chấp nhận thay cho `<resource>:delete`, ví dụ `['admin:manage']`. */
+  extraDeletePerms?: string[];
+}
+
+/**
+ * Quyết định có hiện nút "Xóa" cho một bản ghi hay không — quy tắc 11.
+ *
+ * Nguồn: `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` Ca dùng 9 ("Xóa hồ sơ nháp", điều kiện trước:
+ * hồ sơ đang "Lưu tạm") + bảng chuyển trạng thái mục 7 (chỉ có dòng `Lưu tạm → Xóa`);
+ * chuẩn hóa tại `docs/conventions/approval-2-level-spec.md` mục 3.6.
+ *
+ * Chỉ hồ sơ **Lưu tạm** mới xóa được. Hồ sơ đã qua 2 cấp ký và đang có hiệu lực thì không
+ * xóa — cho xóa chỉ với quyền `delete` sẽ nhẹ hơn cả sửa nó (quy tắc 12 đòi `approvec2`).
+ * Hồ sơ hết giá trị sử dụng thì đổi **tình trạng hoạt động**, không xóa.
+ *
+ * CẤM tự viết lại điều kiện này ở từng màn hình.
+ */
+export function canDeleteApprovalRecord(
+  status: string | null | undefined,
+  { hasPerm, resource, extraDeletePerms = [] }: ApprovalDeletePolicyOptions,
+): boolean {
+  if (normalizeApprovalStatus(status) !== 'DRAFT') {
+    return false;
+  }
+  return [`${resource}:delete`, ...extraDeletePerms].some(hasPerm);
+}
+
 /**
  * Chế độ chân form khi mở drawer/modal ở chế độ sửa.
  * - `'approve'`: hồ sơ Đã duyệt → chỉ 2 nút `Hủy` · `Lưu và phê duyệt` (giữ nguyên APPROVED).

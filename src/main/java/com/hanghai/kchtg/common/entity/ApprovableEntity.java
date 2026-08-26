@@ -40,4 +40,30 @@ public interface ApprovableEntity {
     default UUID getOrgUnitId() {
         return null;
     }
+
+    /**
+     * Workflow timestamp when the record was submitted for approval (#50).
+     * Default no-op so generic approval services can write it for any ApprovableEntity;
+     * only BaseApprovableEntity stores it.
+     */
+    default void setSubmittedAt(LocalDateTime submittedAt) {
+    }
+
+    /**
+     * User who submitted the record for approval (#51).
+     */
+    default void setSubmittedBy(UUID userId) {
+    }
+
+    /**
+     * Content of the level-1 approval/rejection decision (#54).
+     */
+    default void setLevel1ApprovalContent(String content) {
+    }
+
+    /**
+     * Content of the level-2 approval/rejection decision (#57).
+     */
+    default void setLevel2ApprovalContent(String content) {
+    }
 }
