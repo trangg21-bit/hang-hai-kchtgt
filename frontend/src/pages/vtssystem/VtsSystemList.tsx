@@ -1240,8 +1240,7 @@ export default function VtsSystemList() {
                     { value: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ Cảng vụ duyệt' },
                     { value: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ Cục duyệt' },
                     { value: ApprovalStatus.APPROVED, label: 'Đã duyệt' },
-                    { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Cảng vụ trả về' },
-                    { value: ApprovalStatus.REJECTED_LEVEL2, label: 'Cục trả về' },
+                    { value: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối' },
                   ]}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                 />

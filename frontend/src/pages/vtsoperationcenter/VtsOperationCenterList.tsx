@@ -1385,8 +1385,7 @@ export const VtsOperationCenterList: React.FC = () => {
                       { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
                       { value: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt' },
                       { value: 'APPROVED', label: 'Đã duyệt' },
-                      { value: 'REJECTED_LEVEL1', label: 'Cảng vụ trả về' },
-                      { value: 'REJECTED_LEVEL2', label: 'Cục trả về' },
+                      { value: 'REJECTED_LEVEL1', label: 'Từ chối' },
                     ]}
                     style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                   />
