@@ -89,7 +89,9 @@ public class CctvController {
     @RequestParam(required = false) String operatingUnitId,
     @RequestParam(required = false) String updatedFrom,
     @RequestParam(required = false) String updatedTo,
-    @RequestParam(required = false) String search) {
+    @RequestParam(required = false) String search,
+    @RequestParam(required = false) String sortBy,
+    @RequestParam(required = false) String sortOrder) {
 
     log.info(
       "Listing CCTVs: page={}, size={}, orgUnitId={}, deviceCode={}, deviceName={}, province={}, status={}, approvalStatus={}, vtsSystemId={}, attachedInfraType={}, attachedInfraId={}",
@@ -101,7 +103,7 @@ public class CctvController {
       vtsSystemId,
       attachedInfrastructureType,
       attachedInfrastructureId,
-      yearOfUse, updatedFrom, updatedTo, search);
+      yearOfUse, updatedFrom, updatedTo, search, sortBy, sortOrder);
     return ResponseEntity.ok(ApiResponse.success("Lấy danh sách hệ thống CCTV thành công", result));
   }
 

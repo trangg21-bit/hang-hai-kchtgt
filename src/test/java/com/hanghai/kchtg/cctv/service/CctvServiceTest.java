@@ -16,7 +16,7 @@ import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,9 +35,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,7 +66,7 @@ class CctvServiceTest {
     @Mock
     private UserResolverService userResolverService;
     @Mock
-    private VtsSystemRepository vtsSystemRepository;
+    private VtsOperationCenterRepository vtsOperationCenterRepository;
     @Mock
     private RadarStationRepository radarStationRepository;
     @Mock
@@ -120,7 +122,7 @@ class CctvServiceTest {
 
     @Test
     void createWithoutActionDefaultsToDraft() {
-        when(cctvRepository.existsByDeviceCode("CCTV-001")).thenReturn(false);
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-001")).thenReturn(false);
         when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CctvResponse result = service.create(createRequest(null));
@@ -130,12 +132,15 @@ class CctvServiceTest {
 
     @Test
     void createWithSubmitActionGoesToPending() {
-        when(cctvRepository.existsByDeviceCode("CCTV-001")).thenReturn(false);
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-001")).thenReturn(false);
         when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CctvResponse result = service.create(createRequest("submit"));
 
         assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
+        // "Lưu và gửi phê duyệt" khi tạo mới phải ghi nhận thông tin gửi duyệt
+        assertNotNull(result.getSubmittedDate());
+        assertEquals(USER_ID, result.getSubmittedBy());
     }
 
     @Test
@@ -152,29 +157,41 @@ class CctvServiceTest {
 
         assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
         assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
+        // Sửa hồ sơ Đã duyệt mà KHÔNG "Lưu và phê duyệt" → về Chờ duyệt, KHÔNG ghi lịch sử
+        verify(changeHistoryService, never()).recordChanges(any(), any(), any(), any(), any());
     }
 
     @Test
-    void updatePendingRecordIsLocked() {
+    void updatePendingRecordKeepsStatus() {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("Camera cảng Hải Phòng (sửa giữa lúc chờ duyệt)");
+
+        CctvResponse result = service.update(req);
+
+        // Cho phép cập nhật bất kể trạng thái: hồ sơ đang chờ duyệt giữ nguyên trạng thái.
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
+        // Hồ sơ chưa duyệt → KHÔNG ghi nhật ký thay đổi (chỉ ghi khi đã duyệt + Lưu và phê duyệt)
+        verify(changeHistoryService, never()).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void updateApprovedLevel1RecordKeepsStatus() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdateCctvRequest req = new UpdateCctvRequest();
         req.setId(ID);
         req.setDeviceName("X");
 
-        assertThrows(IllegalStateException.class, () -> service.update(req));
-    }
+        CctvResponse result = service.update(req);
 
-    @Test
-    void updateApprovedLevel1RecordIsLocked() {
-        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
-        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
-
-        UpdateCctvRequest req = new UpdateCctvRequest();
-        req.setId(ID);
-
-        assertThrows(IllegalStateException.class, () -> service.update(req));
+        assertEquals(ApprovalStatus.APPROVED_LEVEL1, result.getApprovalStatus());
     }
 
     @Test
@@ -195,5 +212,56 @@ class CctvServiceTest {
         when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
 
         assertThrows(IllegalStateException.class, () -> service.softDelete(ID));
+    }
+
+    @Test
+    void updateApprovedWithSaveAndApproveKeepsApproved() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("Camera cảng Hải Phòng (nâng cấp)");
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse result = service.update(req);
+
+        // T12 — "Lưu và phê duyệt": hồ sơ đã duyệt được sửa, giữ trạng thái Đã duyệt
+        // và ghi nhận người duyệt/ngày duyệt.
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        assertEquals(USER_ID, entity.getApproverLevel2());
+        assertNotNull(entity.getApprovedDateLevel2());
+        // UC-8: chỉnh sửa hồ sơ ĐÃ DUYỆT thành công → ghi nhật ký thay đổi
+        verify(changeHistoryService).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createWithApproveActionIsApprovedWithAudit() {
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-001")).thenReturn(false);
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CctvResponse result = service.create(createRequest("approve"));
+
+        // "Lưu và phê duyệt" khi tạo mới: APPROVED + ghi nhận người duyệt/ngày duyệt (T12)
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        assertEquals(USER_ID, result.getApproverLevel2());
+        assertNotNull(result.getApprovedDateLevel2());
+    }
+
+    @Test
+    void updateDraftWithApprovedStatusDoesNotSelfApprove() {
+        // Request approvalStatus=APPROVED trên hồ sơ Lưu tạm KHÔNG được tự phê duyệt.
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("X");
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.DRAFT, result.getApprovalStatus());
     }
 }

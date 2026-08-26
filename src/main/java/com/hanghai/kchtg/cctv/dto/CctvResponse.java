@@ -42,6 +42,11 @@ public class CctvResponse {
     private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
     private String rejectionReason;
+    private LocalDateTime submittedDate;
+    private UUID submittedBy;
+    private String submittedByName;
+    private String approvalContentLevel1;
+    private String approvalContentLevel2;
     private String specifications;
     private String maintenanceInformation;
     private String note;

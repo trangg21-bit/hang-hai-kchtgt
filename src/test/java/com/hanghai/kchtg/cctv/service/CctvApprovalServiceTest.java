@@ -7,7 +7,6 @@ import com.hanghai.kchtg.cctv.repository.CctvRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,8 +45,6 @@ class CctvApprovalServiceTest {
     @Mock
     private CctvService cctvService;
     @Mock
-    private ApprovalLogRepository approvalLogRepository;
-    @Mock
     private ChangeLogRepository changeLogRepository;
     @Mock
     private InfrastructureHistoryRepository historyRepository;
@@ -63,7 +60,7 @@ class CctvApprovalServiceTest {
         InfrastructureApprovalService approvalService =
                 new InfrastructureApprovalService(historyRepository, userRepository);
         service = new CctvApprovalService(cctvRepository, approvalService, cctvService,
-                approvalLogRepository, changeLogRepository);
+                historyRepository, changeLogRepository, userRepository);
 
         // Người gửi không thuộc cấp Cục → submit đi qua vòng 1 (Rule 14).
         when(userRepository.findById(any())).thenReturn(Optional.empty());
@@ -100,6 +97,9 @@ class CctvApprovalServiceTest {
 
         assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
         assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
+        // Thông tin gửi phê duyệt được ghi nhận để hiển thị tại drawer chi tiết
+        assertEquals(APPROVER_A, entity.getSubmittedBy());
+        assertNotNull(entity.getSubmittedDate());
         verify(historyRepository).save(any());
     }
 
@@ -119,6 +119,7 @@ class CctvApprovalServiceTest {
         assertEquals(ApprovalStatus.APPROVED_LEVEL1, result.getApprovalStatus());
         assertEquals(APPROVER_A, entity.getApproverLevel1());
         assertNotNull(entity.getApprovedDateLevel1());
+        assertEquals("Đồng ý", entity.getApprovalContentLevel1());
     }
 
     @Test
@@ -158,6 +159,7 @@ class CctvApprovalServiceTest {
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
         assertEquals(APPROVER_B, entity.getApproverLevel2());
         assertNotNull(entity.getApprovedDateLevel2());
+        assertEquals("Đồng ý cấp Cục", entity.getApprovalContentLevel2());
     }
 
     @Test

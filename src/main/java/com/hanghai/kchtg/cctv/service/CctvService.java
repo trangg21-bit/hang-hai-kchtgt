@@ -7,7 +7,6 @@ import com.hanghai.kchtg.cctv.dto.UpdateCctvRequest;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.cctv.repository.CctvRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
@@ -17,7 +16,8 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
-import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
+import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
@@ -59,7 +59,7 @@ public class CctvService {
   private final OrgUnitScopeService orgUnitScopeService;
   private final ChangeHistoryService changeHistoryService;
   private final UserResolverService userResolverService;
-  private final VtsSystemRepository vtsSystemRepository;
+  private final VtsOperationCenterRepository vtsOperationCenterRepository;
   private final RadarStationRepository radarStationRepository;
 
   @Value("${app.upload-path:/tmp/cctv-attachments}")
@@ -73,23 +73,8 @@ public class CctvService {
    * Generate device code in format CCTV-NNNNNN.
    */
   public String generateCctvCode() {
-    Optional<String> maxCode = cctvRepository.findMaxDeviceCode();
-
-    int sequence = 1;
-    if (maxCode.isPresent() && !maxCode.get().isBlank()) {
-      String lastCode = maxCode.get();
-      try {
-        // Extract sequence from last code: CCTV-NNNNNN
-        int lastDash = lastCode.lastIndexOf('-');
-        if (lastDash > 0) {
-          String seqPart = lastCode.substring(lastDash + 1);
-          sequence = Integer.parseInt(seqPart) + 1;
-        }
-      } catch (NumberFormatException e) {
-        log.warn("Could not parse sequence from device code: {}", lastCode);
-      }
-    }
-
+    // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
+    int sequence = cctvRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
     return String.format("CCTV-%06d", sequence);
   }
 
@@ -106,17 +91,24 @@ public class CctvService {
       deviceCode = generateCctvCode();
     }
 
-    // Validate uniqueness
-    if (cctvRepository.existsByDeviceCode(deviceCode)) {
+    // Validate uniqueness — kể cả bản ghi đã xóa mềm (unique index device_code vẫn giữ)
+    if (cctvRepository.existsDeviceCodeAnyState(deviceCode)) {
       throw new IllegalArgumentException("Mã thiết bị đã tồn tại: " + deviceCode);
     }
 
-    // Validate org unit scope
-    if (request.getOrgUnitId() != null) {
-      orgUnitScopeService.requireOrganizationInScope(request.getOrgUnitId());
+    // Validate org unit scope + fallback đơn vị tài khoản thao tác
+    // (Data Scope convention — cấm cột org_unit_id NULL khi là dữ liệu nghiệp vụ)
+    UUID orgUnitId = request.getOrgUnitId();
+    if (orgUnitId != null) {
+      orgUnitScopeService.requireOrganizationInScope(orgUnitId);
+    } else {
+      orgUnitId = userRepository.findById(currentUserId)
+        .map(u -> u.getOrgUnit() != null ? u.getOrgUnit().getId() : null)
+        .orElse(null);
     }
 
     // Build entity
+    ApprovalStatus targetApprovalStatus = resolveCreateApprovalStatus(request.getAction());
     Cctv entity = Cctv.builder()
       .deviceCode(deviceCode)
       .deviceName(request.getDeviceName())
@@ -124,7 +116,7 @@ public class CctvService {
       .manufacturer(request.getManufacturer())
       .model(request.getModel())
       .quantity(request.getQuantity())
-      .orgUnitId(request.getOrgUnitId())
+      .orgUnitId(orgUnitId)
       .operatingUnitId(request.getOperatingUnitId())
       .provinceName(request.getProvinceName())
       .attachedInfrastructureType(request.getAttachedInfrastructureType())
@@ -134,7 +126,7 @@ public class CctvService {
       .operationalStatus(request.getOperationalStatus() != null
         ? request.getOperationalStatus()
         : OperationalStatus.OPERATIONAL)
-      .approvalStatus(resolveCreateApprovalStatus(request.getAction()))
+      .approvalStatus(targetApprovalStatus)
       .specifications(request.getSpecifications())
       .maintenanceInformation(request.getMaintenanceInformation())
       .note(request.getNote())
@@ -148,22 +140,39 @@ public class CctvService {
         : RecordSecurityLevel.NORMAL)
       .build();
 
+    // Persist trước để entity.getId() có giá trị khi ghi infrastructure_history (ref_id NOT NULL).
     Cctv saved = cctvRepository.save(entity);
+
+    String action = request.getAction();
+    if ("submit".equalsIgnoreCase(action)) {
+      // "Lưu và gửi phê duyệt" khi tạo mới — đi qua approvalService.submit() để áp dụng
+      // Rule 14 (người gửi cấp Cục → thẳng "Chờ Cục duyệt"; cấp dưới → "Chờ Cảng vụ / Chi cục duyệt")
+      // và ghi vết phê duyệt vào infrastructure_history (giống endpoint POST /{id}/submit).
+      approvalService.submit(saved, InfrastructureType.CCTV, currentUserId);
+      saved.setSubmittedDate(java.time.LocalDateTime.now());
+      saved.setSubmittedBy(currentUserId);
+      saved.setApprovalContentLevel1(null);
+      saved.setApprovalContentLevel2(null);
+      saved = cctvRepository.save(saved);
+    } else if ("approve".equalsIgnoreCase(action)) {
+      // "Lưu và phê duyệt" khi tạo mới (T12) — ghi nhận người duyệt, ngày duyệt
+      // và bản ghi lịch sử thay vì chỉ set trạng thái APPROVED.
+      approvalService.recordSaveAndApprove(saved, InfrastructureType.CCTV,
+          "Tạo mới và phê duyệt", currentUserId);
+      saved = cctvRepository.save(saved);
+    }
 
     return toResponse(saved);
   }
 
   /**
    * Xác định trạng thái phê duyệt khi tạo mới theo action:
-   * 'draft' → DRAFT, 'submit' → PENDING_APPROVAL, 'approve' → APPROVED.
-   * Mặc định (action null/không hợp lệ) → DRAFT (Lưu tạm).
+   * 'draft' → DRAFT, 'submit' → DRAFT (rồi approvalService.submit() route theo Rule 14),
+   * 'approve' → APPROVED. Mặc định (action null/không hợp lệ) → DRAFT (Lưu tạm).
    */
   private ApprovalStatus resolveCreateApprovalStatus(String action) {
-    if ("draft".equals(action)) {
+    if ("draft".equals(action) || "submit".equals(action)) {
       return ApprovalStatus.DRAFT;
-    }
-    if ("submit".equals(action)) {
-      return ApprovalStatus.PENDING_APPROVAL;
     }
     if ("approve".equals(action)) {
       return ApprovalStatus.APPROVED;
@@ -195,13 +204,22 @@ public class CctvService {
     UUID attachedInfrastructureId,
     Integer yearOfUse,
     String updatedFrom, String updatedTo,
-    String search) {
+    String search,
+    String sortBy, String sortOrder) {
 
     OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
     boolean includeAll = scope.unrestricted();
     Collection<UUID> orgUnitIds = scope.orgUnitIds();
 
-    Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(size, 100), Sort.by(Sort.Direction.DESC, "updatedAt"));
+    Sort sort = buildSort(sortBy, sortOrder);
+    Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(size, 100), sort);
+
+    // Filter "Đơn vị quản lý": lọc theo đơn vị được chọn + subtree con (cha xem được con),
+    // luôn nằm trong phạm vi scope của tài khoản (query vẫn AND với includeAll/orgUnitIds).
+    boolean filterEnabled = orgUnitId != null;
+    Collection<UUID> filterOrgUnitIds = filterEnabled
+        ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
+        : List.of();
 
     OperationalStatus opStatus = parseOperationalStatus(operationalStatus);
     ApprovalStatus apprStatus = parseApprovalStatus(approvalStatus);
@@ -211,6 +229,7 @@ public class CctvService {
 
     Page<Cctv> result = cctvRepository.searchCctv(
       includeAll, orgUnitIds,
+      filterEnabled, filterOrgUnitIds,
       deviceCode, deviceName,
       opStatus, apprStatus,
       yearOfUse,
@@ -286,17 +305,31 @@ public class CctvService {
     if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
     if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
 
-    // Khóa sửa khi hồ sơ đang chờ duyệt; hồ sơ đã duyệt khi sửa phải duyệt lại.
+    // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26):
+    // hồ sơ đang chờ duyệt được sửa và giữ nguyên trạng thái chờ duyệt.
     ApprovalStatus currentStatus = entity.getApprovalStatus();
-    if (currentStatus == ApprovalStatus.PENDING_APPROVAL || currentStatus == ApprovalStatus.APPROVED_LEVEL1) {
-      throw new IllegalStateException("Hồ sơ đang chờ duyệt không được chỉnh sửa");
-    }
+    boolean approvedEdit = false;
     if (currentStatus == ApprovalStatus.APPROVED) {
-      entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+      // T12 — "Lưu và phê duyệt": request có approvalStatus=APPROVED thì giữ trạng thái
+      // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
+      // người duyệt/ngày duyệt/lịch sử; ngoài ra phải duyệt lại.
+      if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
+        approvalService.recordSaveAndApprove(entity, InfrastructureType.CCTV,
+            "Cập nhật hồ sơ đã duyệt", currentUserId);
+        approvedEdit = true;
+      } else {
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+      }
     }
 
     Cctv saved = cctvRepository.save(entity);
-    changeHistoryService.recordChanges("CCTV", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
+
+    // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
+    // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") — bản nháp/lưu tạm,
+    // hồ sơ đang chờ duyệt hoặc bị trả về KHÔNG ghi lịch sử.
+    if (approvedEdit) {
+      changeHistoryService.recordChanges("CCTV", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
+    }
 
     return toResponse(saved);
   }
@@ -380,6 +413,11 @@ public class CctvService {
       .approverLevel2Name(resolveUserName(entity.getApproverLevel2()))
       .approvedDateLevel2(entity.getApprovedDateLevel2())
       .rejectionReason(entity.getRejectionReason())
+      .submittedDate(entity.getSubmittedDate())
+      .submittedBy(entity.getSubmittedBy())
+      .submittedByName(resolveUserName(entity.getSubmittedBy()))
+      .approvalContentLevel1(entity.getApprovalContentLevel1())
+      .approvalContentLevel2(entity.getApprovalContentLevel2())
       .specifications(entity.getSpecifications())
       .maintenanceInformation(entity.getMaintenanceInformation())
       .note(entity.getNote())
@@ -404,8 +442,10 @@ public class CctvService {
     Integer type = entity.getAttachedInfrastructureType();
     if (type == null) return null;
     if (type == 1) {
-      Optional<VtsSystem> vts = vtsSystemRepository.findById(entity.getAttachedInfrastructureId());
-      return vts.map(VtsSystem::getSystemName).orElse(null);
+      // Loại 1 = Trung tâm điều hành VTS (TTDH VTS)
+      Optional<VtsOperationCenter> oc = vtsOperationCenterRepository
+          .findByIdAndDeletedAtIsNull(entity.getAttachedInfrastructureId());
+      return oc.map(VtsOperationCenter::getName).orElse(null);
     }
     if (type == 2) {
       Optional<RadarStation> radar = radarStationRepository.findById(entity.getAttachedInfrastructureId());
@@ -434,10 +474,14 @@ public class CctvService {
     if (status == null || status.isBlank()) return null;
     try {
       String upper = status.trim().toUpperCase();
-      if ("HIEN_HANH".equals(upper) || "ACTIVE".equals(upper) || "OPERATIONAL".equals(upper)) {
+      // FE gửi số (0/1/2 — ordinal của enum) hoặc tên (OPERATIONAL...)
+      if ("0".equals(upper) || "NOT_YET_OPERATIONAL".equals(upper) || "CHUA_KHAI_THAC".equals(upper)) {
+        return OperationalStatus.NOT_YET_OPERATIONAL;
+      }
+      if ("1".equals(upper) || "HIEN_HANH".equals(upper) || "ACTIVE".equals(upper) || "OPERATIONAL".equals(upper)) {
         return OperationalStatus.OPERATIONAL;
       }
-      if ("TAM_NGUNG".equals(upper) || "INACTIVE".equals(upper) || "SUSPENDED".equals(upper)) {
+      if ("2".equals(upper) || "TAM_NGUNG".equals(upper) || "INACTIVE".equals(upper) || "SUSPENDED".equals(upper)) {
         return OperationalStatus.SUSPENDED;
       }
       return null;
@@ -450,7 +494,7 @@ public class CctvService {
     if (status == null || status.isBlank()) return null;
     try {
       String upper = status.trim().toUpperCase();
-      if ("CHO_PHE_DUYET".equals(upper) || "PENDING".equals(upper)) {
+      if ("CHO_PHE_DUYET".equals(upper) || "PENDING".equals(upper) || "PENDING_APPROVAL".equals(upper)) {
         return ApprovalStatus.PENDING_APPROVAL;
       }
       if ("DA_PHE_DUYET".equals(upper) || "APPROVED".equals(upper)) {
@@ -483,10 +527,43 @@ public class CctvService {
   private LocalDateTime parseLocalDateTime(String dateStr) {
     if (dateStr == null || dateStr.isBlank()) return null;
     try {
-      return LocalDateTime.parse(dateStr);
+      // FE gửi "yyyy-MM-dd HH:mm:ss" (dấu cách) — chuẩn hóa sang ISO với 'T' (giống /port)
+      return LocalDateTime.parse(dateStr.trim().replace(" ", "T"));
     } catch (Exception e) {
       return null;
     }
+  }
+
+  /**
+   * Xây dựng sort an toàn cho danh sách: chỉ chấp nhận field trong allowlist
+   * (chống injection / field không tồn tại), mặc định updatedAt DESC.
+   */
+  private Sort buildSort(String sortBy, String sortOrder) {
+    String field = sortBy == null || sortBy.isBlank() ? "updatedAt" : sortBy.trim();
+    switch (field) {
+      case "deviceCode":
+      case "deviceName":
+      case "code":
+      case "createdAt":
+      case "updatedAt":
+      case "yearOfUse":
+      case "quantity":
+      case "unitOfMeasure":
+      case "provinceName":
+      case "orgUnitId":
+      case "approvalStatus":
+      case "operationalStatus":
+        break;
+      case "updatedByName": // cột gộp "Cán bộ cập nhật/Ngày cập nhật" — sort theo ngày
+        field = "updatedAt";
+        break;
+      default:
+        field = "updatedAt";
+    }
+    Sort.Direction dir = "asc".equalsIgnoreCase(sortOrder)
+        ? Sort.Direction.ASC
+        : Sort.Direction.DESC;
+    return Sort.by(dir, field).and(Sort.by(Sort.Direction.ASC, "id"));
   }
 
   private UUID parseUUID(String uuidStr) {

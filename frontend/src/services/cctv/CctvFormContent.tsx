@@ -112,7 +112,7 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
         label="Mã thiết bị"
         rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
       >
-        <Input placeholder="Tự sinh nếu để trống" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
+        <Input placeholder="Mã tự động" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item

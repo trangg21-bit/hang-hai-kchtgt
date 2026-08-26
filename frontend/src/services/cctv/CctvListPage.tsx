@@ -88,6 +88,7 @@ import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { organizationService } from "../../services/organizationService";
+import { userService } from "../../services/userService";
 import { radarStationCRUD } from "../radarStationService";
 import { symbolService } from "../symbolService";
 import type { Symbol as MapSymbolType } from "../symbolService";
@@ -291,6 +292,52 @@ function renderApprovalBadge(status: string | null | undefined) {
     >
       {display}
     </span>
+  );
+}
+
+/** Timeline vết phê duyệt (infrastructure_history — chuẩn /vts-system) */
+const APPROVAL_LEVEL_LABEL: Record<string, string> = {
+  LEVEL_0: 'Gửi phê duyệt',
+  LEVEL_1: 'Cấp Cảng vụ / Chi cục',
+  LEVEL_2: 'Cấp Cục',
+};
+
+const APPROVAL_HISTORY_STATUS_LABEL: Record<string, { text: string; color: string }> = {
+  PROPOSED: { text: 'Gửi phê duyệt', color: statusAttention },
+  APPROVED: { text: 'Đồng ý', color: statusOperational },
+  REJECTED: { text: 'Từ chối', color: statusCritical },
+  UPDATED: { text: 'Cập nhật (Lưu và phê duyệt)', color: actionPrimary },
+  DELETED: { text: 'Xóa', color: statusCritical },
+};
+
+function renderApprovalTimeline(records: any[]) {
+  if (!records || records.length === 0) return null;
+  return (
+    <div style={{ marginBottom: spaceLg }}>
+      <div style={{ ...sectionHeader, marginTop: 0 }}>Vết phê duyệt</div>
+      {records.map((r: any, i: number) => {
+        const st = APPROVAL_HISTORY_STATUS_LABEL[r.status] || { text: r.status || '—', color: textTertiary };
+        const level = APPROVAL_LEVEL_LABEL[r.approvalLevel] || '—';
+        return (
+          <div key={r.id || i} style={{ ...historyGroupGridStyle, marginBottom: spaceSm }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+                <Typography.Text style={historyTimeStyle}>{r.approvedDate ? formatDate(r.approvedDate) : '—'}</Typography.Text>
+                <span style={{ flexShrink: 0 }}>
+                  <span style={historyBadgeStyle(st.color)}>{st.text}</span>
+                </span>
+              </div>
+              <Typography.Text style={historyMetaRowStyle}>Cấp: {level}</Typography.Text>
+              <Typography.Text style={historyMetaRowStyle}>Người thực hiện: {r.approvedByName || '—'}</Typography.Text>
+              {r.reason ? <Typography.Text style={historyMetaRowStyle}>Nội dung: {r.reason}</Typography.Text> : null}
+              {r.previousValue && r.newValue && r.previousValue !== r.newValue ? (
+                <Typography.Text style={historyMetaRowStyle}>Chuyển trạng thái: {r.previousValue} → {r.newValue}</Typography.Text>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -719,6 +766,37 @@ const CctvListPage = () => {
 
   // Org units
   const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
+
+  // Đơn vị của tài khoản đang đăng nhập — mặc định cho "Đơn vị quản lý"
+  const [myOrgUnitId, setMyOrgUnitId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    userService.getMe().then((me) => {
+      if (me?.orgUnitId) setMyOrgUnitId(me.orgUnitId);
+    });
+  }, []);
+
+  // Cục (admin:all / orgunit:scope_all) xem full; đơn vị cha xem subtree;
+  // đơn vị lá khóa ở đơn vị của mình.
+  const isAdminScope = hasPerm?.("admin:all") || hasPerm?.("orgunit:scope_all");
+  const orgUnitOptions = useMemo(() => {
+    if (!orgUnits.length || !myOrgUnitId) return orgUnits;
+    if (isAdminScope) return orgUnits;
+    const userNode = orgUnits.find((o) => o.id === myOrgUnitId);
+    if (!userNode) return orgUnits;
+    const result: { id: string; name: string; parentId?: string }[] = [];
+    const queue = [userNode];
+    while (queue.length) {
+      const n = queue.shift();
+      if (!n) break;
+      result.push({ id: n.id, name: n.name, parentId: n.parentId });
+      for (const child of orgUnits) {
+        if (child.parentId === n.id) queue.push(child);
+      }
+    }
+    return result;
+  }, [orgUnits, myOrgUnitId, isAdminScope]);
+  const canSelectOrg = !!myOrgUnitId && (!!isAdminScope || orgUnitOptions.some((o) => o.parentId === myOrgUnitId));
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
   // Symbols
@@ -736,6 +814,7 @@ const CctvListPage = () => {
 
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
+    { label: 'Trung Tâm Điều Hành VTS', value: 1 },
     { label: 'Trạm Radar', value: 2 },
   ];
 
@@ -794,6 +873,10 @@ const CctvListPage = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm] = Form.useForm();
   const [createLoading, setCreateLoading] = useState(false);
+  const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
+  // Hành động footer create (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
+  const [createActionType, setCreateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
+  const createActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
   // Reactive watch for attached infrastructure dropdown
   const createAttachedType = Form.useWatch('attachedInfrastructureType', createForm);
@@ -808,6 +891,12 @@ const CctvListPage = () => {
   const [updateTarget, setUpdateTarget] = useState<CctvResponse | null>(null);
   const [updateForm] = Form.useForm();
   const [updateLoading, setUpdateLoading] = useState(false);
+  // Hành động footer update (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
+  const [updateActionType, setUpdateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
+  const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+
+  // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
+  const canSaveAndApprove = !!hasPerm?.("cctv:approvec2");
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
@@ -866,6 +955,7 @@ const CctvListPage = () => {
   // ── History state ─────────────────────────────────────────────────────
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
@@ -906,15 +996,30 @@ const CctvListPage = () => {
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend">("descend");
   const handleSort = useCallback((field: string, order: "asc" | "desc") => {
-    setSortField((prev) => field === prev ? (order === "asc" ? "desc" : null) : field);
-    setSortOrder((prev) => order === prev ? "desc" : order);
+    setSortField(field);
+    setSortOrder(order === "asc" ? "ascend" : "descend");
     setPage(0);
   }, []);
 
   const columns = useMemo(
-    () => [
+    () => {
+      // Cột dạng "Cán bộ/Ngày": dòng 1 = tên (đậm), dòng 2 = ngày (màu phụ)
+      const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => (
+        <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
+          <div
+            title={name || "—"}
+            style={{ fontWeight: fontWeightBold, color: "#0F172A", fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+          >
+            {name || "—"}
+          </div>
+          <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
+            {date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "—"}
+          </div>
+        </div>
+      );
+      return [
       {
         key: "index",
         label: "STT",
@@ -1026,27 +1131,34 @@ const CctvListPage = () => {
         ),
       },
       {
-        key: "updatedAt",
-        label: "Ngày cập nhật",
-        dataIndex: "updatedAt",
-        width: 170,
-        type: "date" as const,
-        sortable: true,
-        sortOrder: sortField === "updatedAt" ? sortOrder : null,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>
-            {val ? dayjs(val).format("DD/MM/YYYY HH:mm:ss") : "—"}
-          </span>
-        ),
-      },
-      {
         key: "updatedByName",
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
-        render: (val: string) => (
-          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || "—"}</span>
-        ),
+        sortable: true,
+        sortOrder: sortField === "updatedAt" || sortField === "updatedByName" ? sortOrder : null,
+        render: (_: unknown, record: CctvResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
+      },
+      {
+        key: "submittedInfo",
+        label: "Cán bộ gửi phê duyệt",
+        dataIndex: "submittedByName",
+        width: 200,
+        render: (_: unknown, record: CctvResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
+      },
+      {
+        key: "approvedLevel1Info",
+        label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
+        dataIndex: "approverLevel1Name",
+        width: 200,
+        render: (_: unknown, record: CctvResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
+      },
+      {
+        key: "approvedLevel2Info",
+        label: "Cán bộ phê duyệt cấp Cục",
+        dataIndex: "approverLevel2Name",
+        width: 200,
+        render: (_: unknown, record: CctvResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
       {
         key: "operationalStatus",
@@ -1086,7 +1198,8 @@ const CctvListPage = () => {
         type: "status" as const,
         render: (val: string) => renderApprovalBadge(val),
       },
-    ],
+    ];
+    },
     [page, pageSize, sortField, sortOrder]
   );
 
@@ -1214,6 +1327,7 @@ const CctvListPage = () => {
   ];
 
   const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
+  const approvalHistoryCount = useMemo(() => approvalHistory.length, [approvalHistory]);
 
   const renderCctvHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
@@ -1445,22 +1559,21 @@ const CctvListPage = () => {
             setHistoryEntityName(record.deviceName || '');
             setHistoryModalVisible(true);
             setHistoryRecords([]);
+            setApprovalHistory([]);
             setLoadingHistory(true);
             fetchCctvHistory(record.id, { page: 0, size: 200 })
               .then((d: any) => {
                 setHistoryRecords(d.changeHistory || []);
+                setApprovalHistory(d.approvalHistory || []);
               })
-              .catch(() => toast.error('Không thể tải lịch sử'))
+              .catch(() => console.error('Không thể tải lịch sử CCTV'))
               .finally(() => setLoadingHistory(false));
           },
         },
       ];
 
-      // N09/BR-019: hồ sơ đang chờ duyệt bị khóa sửa (PENDING_APPROVAL / APPROVED_LEVEL1)
-      const isAwaitingApproval =
-        record.approvalStatus === "PENDING_APPROVAL" ||
-        record.approvalStatus === "APPROVED_LEVEL1";
-      if (!isAwaitingApproval) {
+      // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26).
+      {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
@@ -1598,7 +1711,7 @@ const CctvListPage = () => {
         search: filterValues.deviceCode || filterValues.deviceName || undefined,
         deviceCode: filterValues.deviceCode || undefined,
         deviceName: filterValues.deviceName || undefined,
-        operationalStatus: filterValues.operationalStatus || undefined,
+        operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
         approvalStatus: filterValues.approvalStatus || undefined,
         province: filterValues.province || undefined,
         vtsSystemId: filterValues.vtsSystemId || undefined,
@@ -1607,8 +1720,8 @@ const CctvListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: "updatedAt",
-        sortOrder: "desc",
+        sortBy: sortField || "updatedAt",
+        sortOrder: sortOrder === "ascend" ? "asc" : "desc",
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -1619,7 +1732,7 @@ const CctvListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterValues]);
+  }, [page, pageSize, filterValues, sortField, sortOrder]);
 
   const fetchOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
@@ -1653,9 +1766,14 @@ const CctvListPage = () => {
   }, [fetchData, fetchOrgUnits, fetchSymbols, fetchTabCounts]);
 
   const handleFilterApply = useCallback(() => {
+    // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
+    if (filterValues.updatedFrom && filterValues.updatedTo && filterValues.updatedFrom > filterValues.updatedTo) {
+      toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
+      return;
+    }
     setPage(0);
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, filterValues.updatedFrom, filterValues.updatedTo]);
 
   const handleFilterReset = useCallback(() => {
     setFilterValues({
@@ -1694,7 +1812,7 @@ const CctvListPage = () => {
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi xóa");
+      console.error("[cctv] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
     } finally {
       setDeleteLoading(false);
     }
@@ -1718,7 +1836,7 @@ const CctvListPage = () => {
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
-        toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi phê duyệt");
+        console.error("[cctv] approve error", error); // toast toàn cục đã xử lý ở interceptor api.ts
       } finally {
         setApproveLoading(false);
       }
@@ -1747,7 +1865,7 @@ const CctvListPage = () => {
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi từ chối");
+      console.error("[cctv] reject error", error); // toast toàn cục đã xử lý ở interceptor api.ts
     } finally {
       setRejectLoading(false);
     }
@@ -1770,13 +1888,25 @@ const CctvListPage = () => {
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
           displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
         };
-        const created = await createCctv(payload);
+        // Chuẩn VTS: tạo theo hành động footer — draft/submit/approve
+        // (backend resolveCreateApprovalStatus: DRAFT / PENDING_APPROVAL / APPROVED)
+        const currentAction = createActionTypeRef.current;
+        const created = await createCctv({
+          ...payload,
+          action: currentAction === 'draft' ? 'draft' : currentAction === 'submit' ? 'submit' : 'approve',
+        });
         if (created?.id && uploadFileList.length > 0) {
           for (const f of uploadFileList) {
             if (f.originFileObj) await uploadCctvAttachment(created.id, f.originFileObj);
           }
         }
-        toast.success("Tạo mới hệ thống CCTV thành công");
+        toast.success(
+          currentAction === 'draft'
+            ? 'Lưu tạm hệ thống CCTV thành công'
+            : currentAction === 'submit'
+              ? 'Lưu và gửi phê duyệt thành công'
+              : 'Lưu và phê duyệt thành công'
+        );
         setCreateModalOpen(false);
         createForm.resetFields();
         setGpsCoordList([]);
@@ -1784,7 +1914,7 @@ const CctvListPage = () => {
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
-        toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi tạo mới");
+        console.error("[cctv] create error", error); // toast toàn cục đã xử lý ở interceptor api.ts
       } finally {
         setCreateLoading(false);
       }
@@ -1802,19 +1932,32 @@ const CctvListPage = () => {
           .filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng))
           .map(c => ({ latitude: c.lat, longitude: c.lng }));
 
+        // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
+        // Lưu và phê duyệt (update + giữ Đã duyệt — T12 backend)
+        const currentAction = updateActionTypeRef.current;
         await updateCctv({
           id: updateTarget.id,
           ...values,
           coordinateList,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
           displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+          ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
         });
         if (uploadFileList.length > 0) {
           for (const f of uploadFileList) {
             if (f.originFileObj) await uploadCctvAttachment(updateTarget.id, f.originFileObj);
           }
         }
-        toast.success("Cập nhật hệ thống CCTV thành công");
+        if (currentAction === 'submit') {
+          await submitCctv(updateTarget.id);
+        }
+        toast.success(
+          currentAction === 'draft'
+            ? 'Lưu tạm hệ thống CCTV thành công'
+            : currentAction === 'submit'
+              ? 'Lưu và gửi phê duyệt thành công'
+              : 'Lưu và phê duyệt thành công'
+        );
         setUpdateModalOpen(false);
         setUpdateTarget(null);
         setUpdateGpsCoordList([]);
@@ -1822,7 +1965,7 @@ const CctvListPage = () => {
         fetchData();
         fetchTabCounts();
       } catch (error: unknown) {
-        toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi cập nhật");
+        console.error("[cctv] update error", error); // toast toàn cục đã xử lý ở interceptor api.ts
       } finally {
         setUpdateLoading(false);
       }
@@ -1841,7 +1984,7 @@ const CctvListPage = () => {
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi gửi phê duyệt");
+      console.error("[cctv] submit error", error); // toast toàn cục đã xử lý ở interceptor api.ts
     } finally {
       setSubmitLoading(false);
     }
@@ -1862,7 +2005,18 @@ const CctvListPage = () => {
                 label: "Thêm mới",
                 icon: <PlusOutlined />,
                 variant: "primary" as const,
-                onClick: () => { setUploadFileList([]); setCreateModalOpen(true); },
+                onClick: () => {
+                  setUploadFileList([]);
+                  // Mặc định Đơn vị quản lý = đơn vị của tài khoản (trừ cha/Cục được chọn con)
+                  if (myOrgUnitId) createForm.setFieldsValue({ orgUnitId: myOrgUnitId });
+                  setCreateModalOpen(true);
+                  // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
+                  setDeviceCodeLoading(true);
+                  generateCctvCode()
+                    .then((code) => { if (code) createForm.setFieldsValue({ deviceCode: code }); })
+                    .catch(() => { createForm.setFieldsValue({ deviceCode: '' }); /* Backend tự sinh khi lưu */ })
+                    .finally(() => setDeviceCodeLoading(false));
+                },
               }
             : null,
         ].filter(Boolean)}
@@ -1885,7 +2039,7 @@ const CctvListPage = () => {
                 <span style={{ color: statusCritical }}>*</span>
               </div>
               <OrgUnitTreeSelect
-                organizations={orgUnits}
+                organizations={orgUnitOptions}
                 placeholder="Chọn đơn vị"
                 allowClear
                 showPath
@@ -1962,8 +2116,10 @@ const CctvListPage = () => {
                   <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>Thuộc hạ tầng</div>
                   <Select placeholder={
                     filterValues.attachedInfraType === 2
-                      ? "Chọn trạm Radar..."
-                      : "Chọn loại hạ tầng trước"
+                        ? "Chọn trạm Radar"
+                        : filterValues.attachedInfraType === 1
+                          ? "Chọn Trung Tâm Điều Hành VTS"
+                          : "Chọn loại hạ tầng trước"
                   } allowClear
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
@@ -1972,9 +2128,9 @@ const CctvListPage = () => {
                         attachedInfraId: val as string | undefined,
                       }))
                     }
-                    options={radarStationOptions}
-                    loading={loadingRadars}
-                    disabled={filterValues.attachedInfraType !== 2}
+                    options={filterValues.attachedInfraType === 2 ? radarStationOptions : []}
+                    loading={filterValues.attachedInfraType === 2 ? loadingRadars : false}
+                    disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
                 </div>
                 <div style={{ marginBottom: 12 }}>
@@ -2095,14 +2251,15 @@ const CctvListPage = () => {
           fetchData();
         }}
       >
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
             <style>{`.list-view-table .ant-table-cell { padding-block: 8.5px !important; }`}</style>
             <DataTable
+              fill
               columns={columns}
               dataSource={data}
               rowKey="id"
               loading={isLoading}
-              scroll={{ x: 'max-content', y: 550 }}
+              scroll={{ x: 'max-content', y: 540 }}
               onSort={handleSort}
               rowActions={rowActions}
               locale={{
@@ -2111,7 +2268,7 @@ const CctvListPage = () => {
                 ),
               }}
             />
-
+            <div style={{ height: 6, flexShrink: 0 }} />
             <Pagination
               current={page + 1}
               total={total}
@@ -2124,14 +2281,14 @@ const CctvListPage = () => {
               showSizeChanger
               showTotal={(t) => `Tổng ${t} thiết bị`}
             />
-            </>
+          </div>
       </FilterTableLayout>
       </div>
 
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV</span>}
+        title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
         extra={<Button type="text" onClick={() => setDetailDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
@@ -2306,15 +2463,15 @@ const CctvListPage = () => {
                       {[
                         { key: 'updatedDate', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
                         { key: 'updatedByUser', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
-                        { key: 'submittedDate', label: 'Ngày gửi phê duyệt', value: '—' },
-                        { key: 'submittedByUser', label: 'Cán bộ gửi phê duyệt', value: '—' },
-                        { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
-                        { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
-                        { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
-                        { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
-                        { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: '—' },
-                        { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: '—' },
-                        { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
+                        { key: 'submittedDate', label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : '—' },
+                        { key: 'submittedByUser', label: 'Cán bộ gửi phê duyệt', value: selectedRecord.submittedByName || '—' },
+                        { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel1 || '—', fullWidth: true },
+                        { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : '—' },
+                        { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approverLevel1Name || '—' },
+                        { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: selectedRecord.approvalContentLevel2 || '—', fullWidth: true },
+                        { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : '—' },
+                        { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: selectedRecord.approverLevel2Name || '—' },
+                        { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: selectedRecord.rejectionReason || '—', fullWidth: true },
                         { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
                         <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
@@ -2595,25 +2752,30 @@ const CctvListPage = () => {
         footer={
           <div style={drawerFooterStyle}>
             <Button
-              onClick={() => {
-                setCreateModalOpen(false);
-                createForm.resetFields();
-                setGpsCoordList([]);
-                setUploadFileList([]);
-              }}
-              style={outlineButtonStyle}
+              onClick={() => { createActionTypeRef.current = 'draft'; setCreateActionType('draft'); createForm.submit(); }}
+              loading={createLoading && createActionType === 'draft'}
+              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
-              Hủy
+              Lưu tạm
             </Button>
             <Button
               type="primary"
-              htmlType="submit"
-              loading={createLoading}
-              style={primaryButtonStyle}
-              onClick={() => createForm.submit()}
+              onClick={() => { createActionTypeRef.current = 'submit'; setCreateActionType('submit'); createForm.submit(); }}
+              loading={createLoading && createActionType === 'submit'}
+              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
-              Tạo mới
+              Lưu và gửi phê duyệt
             </Button>
+            {canSaveAndApprove && (
+              <Button
+                type="primary"
+                onClick={() => { createActionTypeRef.current = 'approve'; setCreateActionType('approve'); createForm.submit(); }}
+                loading={createLoading && createActionType === 'approve'}
+                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
+              >
+                Lưu và phê duyệt
+              </Button>
+            )}
           </div>
         }
         styles={{
@@ -2629,23 +2791,24 @@ const CctvListPage = () => {
         <Form form={createForm} layout="vertical" onFinish={handleCreate}>
           <Tabs
             defaultActiveKey="general"
-            style={{ marginTop: spaceMd }}
+            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
             items={[
               {
                 key: 'general',
                 label: 'Thông tin chung',
                 children: (
-                  <>
-                    <Row gutter={24}>
+                  <div style={{ paddingTop: 16 }}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="deviceCode"
                           {...labelProps('Mã thiết bị')}
                           style={{ marginBottom: spaceFormField }}
+                          tooltip="Mã thiết bị được sinh tự động, không thể chỉnh sửa"
                         >
                           <Input
                             disabled
-                            placeholder="Tự sinh CCTV-{seq}"
+                            placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'}
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -2668,7 +2831,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="orgUnitId"
@@ -2679,11 +2842,12 @@ const CctvListPage = () => {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <OrgUnitTreeSelect
-                            organizations={orgUnits}
+                            organizations={orgUnitOptions}
                             placeholder="Chọn đơn vị"
                             loading={loadingOrgs}
                             showPath
                             treeDefaultExpandAll={false}
+                            disabled={!canSelectOrg}
                             style={{ ...pillStyle }}
                           />
                         </Form.Item>
@@ -2710,7 +2874,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="attachedInfrastructureId"
@@ -2724,12 +2888,14 @@ const CctvListPage = () => {
                             style={{ width: "100%", ...pillStyle }}
                             placeholder={
                               createAttachedType === 2
-                                ? "Chọn trạm Radar..."
-                                : "Chọn loại hạ tầng trước"
+                                ? "Chọn trạm Radar"
+                                : createAttachedType === 1
+                                  ? "Chọn Trung Tâm Điều Hành VTS"
+                                  : "Chọn loại hạ tầng trước"
                             }
-                            options={radarStationOptions}
-                            loading={loadingRadars}
-                            disabled={createAttachedType !== 2}
+                            options={createAttachedType === 2 ? radarStationOptions : []}
+                            loading={createAttachedType === 2 ? loadingRadars : false}
+                            disabled={createAttachedType !== 1 && createAttachedType !== 2}
                             allowClear
                           />
                         </Form.Item>
@@ -2748,7 +2914,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="provinceName"
@@ -2775,12 +2941,13 @@ const CctvListPage = () => {
                         >
                           <Input
                             maxLength={500}
+                            placeholder="Nhập địa điểm chi tiết..."
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="unitOfMeasure"
@@ -2840,7 +3007,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="yearOfUse"
@@ -2871,7 +3038,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="model"
@@ -2939,7 +3106,7 @@ const CctvListPage = () => {
                         style={textAreaStyle}
                       />
                     </Form.Item>
-                  </>
+                  </div>
                 ),
               },
               {
@@ -3215,26 +3382,32 @@ const CctvListPage = () => {
         footer={
           <div style={drawerFooterStyle}>
             <Button
-              onClick={() => {
-                setUpdateModalOpen(false);
-                setUpdateTarget(null);
-                updateForm.resetFields();
-                setUpdateGpsCoordList([]);
-                setUploadFileList([]);
-              }}
-              style={outlineButtonStyle}
+              onClick={() => { updateActionTypeRef.current = 'draft'; setUpdateActionType('draft'); updateForm.submit(); }}
+              loading={updateLoading && updateActionType === 'draft'}
+              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
             >
-              Hủy
+              Lưu tạm
             </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={updateLoading}
-              style={primaryButtonStyle}
-              onClick={() => updateForm.submit()}
-            >
-              Cập nhật
-            </Button>
+            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
+              <Button
+                type="primary"
+                onClick={() => { updateActionTypeRef.current = 'submit'; setUpdateActionType('submit'); updateForm.submit(); }}
+                loading={updateLoading && updateActionType === 'submit'}
+                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+              >
+                Lưu và gửi phê duyệt
+              </Button>
+            )}
+            {updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (
+              <Button
+                type="primary"
+                onClick={() => { updateActionTypeRef.current = 'approve'; setUpdateActionType('approve'); updateForm.submit(); }}
+                loading={updateLoading && updateActionType === 'approve'}
+                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
+              >
+                Lưu và phê duyệt
+              </Button>
+            )}
           </div>
         }
         styles={{
@@ -3250,23 +3423,24 @@ const CctvListPage = () => {
         <Form form={updateForm} layout="vertical" onFinish={handleUpdate}>
           <Tabs
             defaultActiveKey="general"
-            style={{ marginTop: spaceMd }}
+            tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
             items={[
               {
                 key: 'general',
                 label: 'Thông tin chung',
                 children: (
-                  <>
-                    <Row gutter={24}>
+                  <div style={{ paddingTop: 16 }}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="deviceCode"
                           {...labelProps('Mã thiết bị')}
                           style={{ marginBottom: spaceFormField }}
+                          tooltip="Mã thiết bị được sinh tự động, không thể chỉnh sửa"
                         >
                           <Input
                             disabled
-                            placeholder="Tự sinh CCTV-{seq}"
+                            placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'}
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
@@ -3288,7 +3462,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="orgUnitId"
@@ -3296,11 +3470,12 @@ const CctvListPage = () => {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <OrgUnitTreeSelect
-                            organizations={orgUnits}
+                            organizations={orgUnitOptions}
                             placeholder="Chọn đơn vị"
                             loading={loadingOrgs}
                             showPath
                             treeDefaultExpandAll={false}
+                            disabled={!canSelectOrg}
                             style={{ ...pillStyle }}
                           />
                         </Form.Item>
@@ -3326,7 +3501,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="attachedInfrastructureId"
@@ -3340,12 +3515,14 @@ const CctvListPage = () => {
                             style={{ width: "100%", ...pillStyle }}
                             placeholder={
                               updateAttachedType === 2
-                                ? "Chọn trạm Radar..."
-                                : "Chọn loại hạ tầng trước"
+                                ? "Chọn trạm Radar"
+                                : updateAttachedType === 1
+                                  ? "Chọn Trung Tâm Điều Hành VTS"
+                                  : "Chọn loại hạ tầng trước"
                             }
-                            options={radarStationOptions}
-                            loading={loadingRadars}
-                            disabled={updateAttachedType !== 2}
+                            options={updateAttachedType === 2 ? radarStationOptions : []}
+                            loading={updateAttachedType === 2 ? loadingRadars : false}
+                            disabled={updateAttachedType !== 1 && updateAttachedType !== 2}
                             allowClear
                           />
                         </Form.Item>
@@ -3364,7 +3541,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="provinceName"
@@ -3391,12 +3568,13 @@ const CctvListPage = () => {
                         >
                           <Input
                             maxLength={500}
+                            placeholder="Nhập địa điểm chi tiết..."
                             style={{ ...pillStyle, fontFamily: fontSans }}
                           />
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="unitOfMeasure"
@@ -3456,7 +3634,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="yearOfUse"
@@ -3487,7 +3665,7 @@ const CctvListPage = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Row gutter={24}>
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
                           name="model"
@@ -3552,7 +3730,7 @@ const CctvListPage = () => {
                         style={textAreaStyle}
                       />
                     </Form.Item>
-                  </>
+                  </div>
                 ),
               },
               {
@@ -3804,9 +3982,9 @@ const CctvListPage = () => {
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
               <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
               <span style={drawerTitleStyle}>
-                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — CCTV' : (historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi')}
+                {historyMode === 'all' ? 'Tất cả lịch sử phê duyệt & thay đổi — CCTV' : (historyEntityName ? `Lịch sử phê duyệt & thay đổi — ${historyEntityName}` : 'Lịch sử phê duyệt & thay đổi')}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount + approvalHistoryCount}</span>
             </Space>
           </div>
         }
@@ -3820,9 +3998,15 @@ const CctvListPage = () => {
         }}>
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {loadingHistory ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+          {loadingHistory ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 && (!approvalHistory || approvalHistory.length === 0) ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-          ) : renderCctvHistoryTimeline(historyRecords)}
+          ) : (
+            <>
+              {renderApprovalTimeline(approvalHistory)}
+              {historyRecords.length > 0 && <div style={sectionHeader}>Nhật ký thay đổi</div>}
+              {historyRecords.length > 0 ? renderCctvHistoryTimeline(historyRecords) : null}
+            </>
+          )}
         </div>
       </Drawer>
     </>

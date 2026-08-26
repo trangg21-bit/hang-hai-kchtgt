@@ -123,6 +123,20 @@ public class Cctv extends BaseEntity implements ApprovableEntity {
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
+    // ── Thông tin gửi & nội dung phê duyệt (hiển thị tại drawer chi tiết) ──
+
+    @Column(name = "submitted_date")
+    private LocalDateTime submittedDate;
+
+    @Column(name = "submitted_by")
+    private UUID submittedBy;
+
+    @Column(name = "approval_content_level1", length = 500)
+    private String approvalContentLevel1;
+
+    @Column(name = "approval_content_level2", length = 500)
+    private String approvalContentLevel2;
+
     // ── Identity fields ─────────────────────────────────────────────────
 
     @Column(name = "device_code", nullable = false, unique = true, length = 200)

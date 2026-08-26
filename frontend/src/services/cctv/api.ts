@@ -41,11 +41,11 @@ export async function fetchCctvList(params: {
   if (params.deviceCode) sp.set('deviceCode', params.deviceCode);
   if (params.deviceName) sp.set('deviceName', params.deviceName);
   if (params.province) sp.set('province', params.province);
-  if (params.operationalStatus) sp.set('operationalStatus', params.operationalStatus);
+  if (params.operationalStatus !== undefined && params.operationalStatus !== '') sp.set('operatingStatus', String(params.operationalStatus));
   if (params.approvalStatus) sp.set('approvalStatus', params.approvalStatus);
   if (params.vtsSystemId) sp.set('vtsSystemId', params.vtsSystemId);
-  if (params.attachedInfraType !== undefined) sp.set('attachedInfraType', String(params.attachedInfraType));
-  if (params.attachedInfraId) sp.set('attachedInfraId', params.attachedInfraId);
+  if (params.attachedInfraType !== undefined) sp.set('attachedInfrastructureType', String(params.attachedInfraType));
+  if (params.attachedInfraId) sp.set('attachedInfrastructureId', params.attachedInfraId);
   if (params.yearOfUse !== undefined) sp.set('yearOfUse', String(params.yearOfUse));
   if (params.updatedFrom) sp.set('updatedFrom', params.updatedFrom);
   if (params.updatedTo) sp.set('updatedTo', params.updatedTo);
