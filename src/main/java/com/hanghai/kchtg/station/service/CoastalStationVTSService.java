@@ -72,6 +72,9 @@ public class CoastalStationVTSService {
         CoastalStationVTS entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        approvalService.assertEditable(entity);
+
         ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;

@@ -37,26 +37,10 @@ import { colors } from '../../theme';
 import dayjs from 'dayjs';
 import { getProvinceNameById } from '../../types/common';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
-const APPROVAL_STATUS_MAP: Record<string, string> = {
-  [ApprovalStatus.DRAFT]: 'Lưu tạm',
-  [ApprovalStatus.PENDING_APPROVAL]: 'Chờ Cảng vụ duyệt',
-  [ApprovalStatus.APPROVED_LEVEL1]: 'Chờ Cục duyệt',
-  [ApprovalStatus.APPROVED]: 'Đã duyệt',
-  [ApprovalStatus.ARCHIVED]: 'Lưu trữ',
-  [ApprovalStatus.REJECTED_LEVEL1]: 'Cảng vụ trả về',
-  [ApprovalStatus.REJECTED_LEVEL2]: 'Cục trả về',
-};
 
-const APPROVAL_COLOR: Record<string, string> = {
-  [ApprovalStatus.DRAFT]: statusDraft,
-  [ApprovalStatus.PENDING_APPROVAL]: statusAttention,
-  [ApprovalStatus.APPROVED_LEVEL1]: '#0284c7',
-  [ApprovalStatus.APPROVED]: statusOperational,
-  [ApprovalStatus.ARCHIVED]: textSecondary,
-  [ApprovalStatus.REJECTED_LEVEL1]: statusCritical,
-  [ApprovalStatus.REJECTED_LEVEL2]: statusCritical,
-};
 
 const CONDITION_COLOR: Record<string, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
@@ -853,30 +837,7 @@ export default function VtsSystemList() {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
-      render: (val: ApprovalStatus) => {
-        if (!val) return '—';
-        const display = APPROVAL_STATUS_MAP[val] || val;
-        const color = APPROVAL_COLOR[val] || textSecondary;
-        return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 10px',
-              border: `1px solid ${color}40`,
-              borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
-              background: `${color}15`,
-              color,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {display}
-          </span>
-        );
-      },
+      render: (val: string) => <ApprovalStatusBadge status={val} />,
     },
     {
       key: 'updatedByName',
@@ -924,11 +885,7 @@ export default function VtsSystemList() {
     }
     // N09/BR-019: hồ sơ đang chờ duyệt bị khóa sửa. Hồ sơ đã duyệt vẫn sửa được
     // nhưng chỉ bởi người có quyền phê duyệt (T12 — "Lưu và phê duyệt").
-    const isAwaitingApproval = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL
-      || record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-    const canEditRecord = !isAwaitingApproval
-      && (record.approvalStatus !== ApprovalStatus.APPROVED || hasPerm('vts:approvec2'));
-    if (hasPerm('vts:update') && canEditRecord) {
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'vts' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditingId(record.id); setSelectedRecord(record); setModalMode('edit'); setIsModalOpen(true); } });
     }
     if (hasPerm('vts:update') && (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {

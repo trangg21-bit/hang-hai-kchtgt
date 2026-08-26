@@ -200,6 +200,9 @@ public class RadarStationService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        approvalService.assertEditable(entity);
+
         validateAllowedOrgUnit(entity.getOrgUnitId());
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());

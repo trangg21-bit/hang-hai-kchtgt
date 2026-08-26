@@ -64,6 +64,9 @@ import {
 } from '../../tokens';
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -816,11 +819,7 @@ export default function BuoyStationListPage() {
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 220, sortable: true,
-      render: (s: string) => {
-        if (!s) return <span style={{ color: textTertiary }}>—</span>;
-        const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${m.color}15`, color: m.color }}>{m.label}</span>;
-      },
+      render: (s: string) => <ApprovalStatusBadge status={s} />,
     },
     {
       key: 'updatedAt', label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', width: 200, ellipsis: true, sortable: true,
@@ -854,7 +853,8 @@ export default function BuoyStationListPage() {
   const rowActions = useCallback((r: BuoyStationResponse) => {
     const a: any[] = [];
     a.push({ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(r) });
-    if (hasPerm('buoystation:update') || hasPerm('data:update') || hasPerm('admin:manage')) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => void openEdit(r) });
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(r.status, { hasPerm, resource: 'buoystation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => void openEdit(r) });
     if (r.latitude != null && r.longitude != null) a.push({ key: 'loc', label: 'Xem vị trí', icon: <EnvironmentOutlined />, onClick: () => window.open(`https://www.google.com/maps?q=${r.latitude},${r.longitude}`, '_blank') });
     a.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistoryDrawer(r) });
     if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => openSubmit(r) });
@@ -890,7 +890,7 @@ export default function BuoyStationListPage() {
         onRetry={fetchData}
         filterContent={<>
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý <span style={{ color: statusCritical }}>*</span></div>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
             <OrgUnitTreeSelect
               organizations={organizations}
               placeholder="Chọn đơn vị..."
@@ -915,13 +915,7 @@ export default function BuoyStationListPage() {
             <Select placeholder="Tất cả" allowClear
               value={filterValues.status || undefined}
               onChange={(val) => setFilterValues((prev) => ({ ...prev, status: val }))}
-              options={[
-                { value: 'DRAFT', label: 'Nháp' },
-                { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
-                { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-                { value: 'REJECTED', label: 'Từ chối' },
-              ]}
+              options={APPROVAL_STATUS_OPTIONS}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
           {filterCollapsed && (<>

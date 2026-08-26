@@ -1,4 +1,4 @@
-import { Button, Col, Form, Input, Modal, Row, Select, Tag, TreeSelect } from 'antd';
+import { Button, Col, Form, Input, Modal, Row, Select, Tag } from 'antd';
 import { useEffect, useState } from 'react';
 import {
   actionPrimary, actionHover, textPrimary, textSecondary, textTertiary,
@@ -6,15 +6,28 @@ import {
   fontSizeSm, fontSizeMd, fontSizeLg,
   fontWeightNormal, fontWeightMedium, fontWeightBold,
   radiusSm, radiusMd, radiusLg, radiusPill,
-  spaceXs, spaceSm, spaceFormField, spaceMd, spaceLg, spaceXl,
+  spaceXs, spaceSm, spaceFormField, spaceMd, spaceLg,
 } from '../../tokens';
 import { organizationService } from '../../services/organizationService';
+import type { Organization } from '../../services/organizationService';
+import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { portCRUD } from '../../services/portService';
 import { pointObjectService } from '../../services/pointObjectService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { polygonObjectService } from '../../services/polygonObjectService';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import {
+  getKchtGisCategoryId,
+  KCHT_GIS_TYPE_OPTIONS,
+  normalizeKchtGisType,
+} from '../../types/gisSearch';
 import toast from '../../components/ToastNotification';
+import {
+  coordinateRowsToWkt,
+  geometryCoordinatesToRows,
+  type EditableCoordinateRow,
+  type EditableGeometryType,
+} from '../../utils/gisGeometry';
 
 const { TextArea } = Input;
 
@@ -56,34 +69,10 @@ const INPUT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40 
 const SELECT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const BTN_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontWeight: fontWeightMedium, fontSize: fontSizeMd };
 
-// Danh sách 16 loại KCHT khớp với dropdown filter bên ngoài
-const LOAI_KCHT_OPTIONS = [
-  { value: 'Berth', label: 'Bến cảng' },
-  { value: 'BENPHAO', label: 'Bến phao' },
-  { value: 'Port', label: 'Cảng biển' },
-  { value: 'Pier', label: 'Cầu cảng' },
-  { value: 'DryPort', label: 'Cảng cạn' },
-  { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
-  { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
-  { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
-  { value: 'DIKE_REVETMENT', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
-  { value: 'DAI_TTDH', label: 'Đài TTDH' },
-  { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
-  { value: 'NAVIGATION_CHANNEL', label: 'Luồng hàng hải' },
-  { value: 'DAI_LRIT', label: 'Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)' },
-  { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
-  { value: 'NHATRAM_PHAO', label: 'Nhà trạm quản lý vận hành phao tiêu' },
-  { value: 'PHAOTIEU', label: 'Phao, tiêu' },
-  { value: 'DAI_COSPAS_SARSAT', label: 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam' },
-  { value: 'KHUTRANH_TRU_BAO', label: 'Khu tránh, trú bão' },
-  { value: 'DAI_HANOI', label: 'Đài Trung tâm xử lý thông tin hàng hải Hà Nội' },
-  { value: 'HE_THONG_VTS', label: 'Hệ thống VTS' },
-];
-
 const mapToPointObjectType = (val: string): string => {
-  if (val === 'Port') return 'PORT';
-  if (val === 'DENBIEN') return 'LIGHTHOUSE';
-  if (val === 'PHAOTIEU') return 'BUOY';
+  if (val === 'SEAPORT') return 'PORT';
+  if (val === 'LIGHTHOUSE') return 'LIGHTHOUSE';
+  if (val === 'BUOY') return 'BUOY';
   return 'OTHER';
 };
 
@@ -94,33 +83,29 @@ const mapToLineObjectType = (val: string): string => {
 };
 
 const mapToPolygonObjectType = (val: string): string => {
-  if (val === 'WaterZone') return 'WATER_ZONE';
-  if (['KHUNEO_DAU', 'KHUCHUYEN_TAI'].includes(val)) return 'ANCHORAGE';
-  if (val === 'KHUTRANH_TRU_BAO') return 'STORM_SHELTER';
+  if (val === 'WATER_AREA') return 'WATER_ZONE';
+  if (['ANCHORAGE_AREA', 'TRANSSHIPMENT_AREA'].includes(val)) return 'ANCHORAGE';
+  if (val === 'STORM_SHELTER_AREA') return 'STORM_SHELTER';
   return 'OTHER';
-};
-
-const mapToCategoryId = (val: string): number => {
-  if (val === 'Port') return 1;
-  if (val === 'COSO_SUACHUA') return 2;
-  if (val === 'DIKE_REVETMENT') return 3;
-  if (val === 'DENBIEN') return 4;
-  if (val === 'HE_THONG_VTS') return 5;
-  if (val === 'KHUCHUYEN_TAI') return 6;
-  if (val === 'KHUNEO_DAU') return 7;
-  if (val === 'KHUTRANH_TRU_BAO') return 8;
-  if (val === 'NAVIGATION_CHANNEL') return 9;
-  if (val === 'PHAOTIEU') return 10;
-  if (val === 'TRAM_RADAR') return 11;
-  if (val === 'WaterZone') return 12;
-  if (val === 'DryPort') return 13;
-  return 99; // Khác
 };
 
 const TRANG_THAI_OPTIONS = [
   { label: 'Bản nháp', value: 'DRAFT' },
   { label: 'Sử dụng', value: 'PUBLISHED' },
 ];
+
+const coordinateRule = (label: string, min: number, max: number) => ({
+  validator: (_rule: unknown, value: unknown) => {
+    if (value === undefined || value === null || value === '') {
+      return Promise.reject(new Error(`Vui lòng nhập ${label.toLowerCase()}`));
+    }
+    const coordinate = Number(value);
+    if (!Number.isFinite(coordinate) || coordinate < min || coordinate > max) {
+      return Promise.reject(new Error(`${label} phải trong khoảng ${min} đến ${max}`));
+    }
+    return Promise.resolve();
+  },
+});
 
 export default function DrawSaveModal({
   open,
@@ -132,7 +117,9 @@ export default function DrawSaveModal({
 }: DrawSaveModalProps) {
   const [form] = Form.useForm();
   const loaiKcht = Form.useWatch('loaiKcht', form);
-  const isCangBien = loaiKcht === 'Port';
+  const isCangBien = loaiKcht === 'SEAPORT';
+  const geometryType: EditableGeometryType = editRecord?.type
+    || (drawResult?.type === 'draw-line' ? 'LineString' : drawResult?.type === 'draw-polygon' ? 'Polygon' : 'Point');
 
   // Automatically clear seaport field if current category is Seaport
   useEffect(() => {
@@ -142,7 +129,8 @@ export default function DrawSaveModal({
   }, [isCangBien, form]);
 
   const [loading, setLoading] = useState(false);
-  const [orgTree, setOrgTree] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
   const [seaPortList, setSeaPortList] = useState<any[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [portsPage, setPortsPage] = useState(1);
@@ -154,55 +142,25 @@ export default function DrawSaveModal({
     if (!open) return;
 
     const loadData = async () => {
+      setLoadingOrganizations(true);
       try {
-        // Load organization tree
-        const orgs = await organizationService.getTree();
-        const buildOrgTree = (nodes: any[]): any[] => {
-          const map = new Map<string, any>();
-          const roots: any[] = [];
-
-          nodes.forEach((org) => {
-            map.set(org.id, {
-              title: org.name,
-              value: org.id,
-              parentId: org.parentId,
-              children: [],
-            });
-          });
-
-          nodes.forEach((org) => {
-            const node = map.get(org.id);
-            if (org.parentId && map.has(org.parentId)) {
-              map.get(org.parentId).children.push(node);
-            } else {
-              roots.push(node);
-            }
-          });
-
-          const clean = (itemNodes: any[]) => {
-            itemNodes.forEach((n) => {
-              if (n.children.length === 0) {
-                delete n.children;
-              } else {
-                clean(n.children);
-              }
-            });
-          };
-          clean(roots);
-          return roots;
-        };
-        setOrgTree(buildOrgTree(orgs || []));
+        const response = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(response.data || []);
       } catch (err) {
-        console.error('Failed to load org tree:', err);
+        setOrganizations([]);
+        console.error('Không thể tải danh sách đơn vị quản lý:', err);
+        toast.error('Không thể tải danh sách đơn vị quản lý');
+      } finally {
+        setLoadingOrganizations(false);
       }
     };
 
     void loadData();
     setSeaPortList([]);
-    setSelectedOrgId(null);
+    setSelectedOrgId(editRecord?.unitId || null);
     setPortsPage(1);
     setHasMore(true);
-  }, [open]);
+  }, [open, editRecord?.unitId]);
 
   // Load seaports page by page
   const loadPorts = async (orgId: string, pageNum: number, append: boolean) => {
@@ -230,7 +188,7 @@ export default function DrawSaveModal({
   };
 
   // Load seaports dynamically based on selected managing unit (matching the original project)
-  const handleOrgChange = async (value: string) => {
+  const handleOrgChange = async (value?: string) => {
     form.setFieldValue('Port', undefined);
     setSelectedOrgId(value || null);
     setSeaPortList([]);
@@ -260,84 +218,30 @@ export default function DrawSaveModal({
         form.setFieldsValue({
           name: editRecord.name,
           code: editRecord.code,
-          loaiKcht: editRecord.loaiKcht,
+          loaiKcht: normalizeKchtGisType(editRecord.loaiKcht),
           donViQuanLy: editRecord.unitId,
           Port: editRecord.Port,
           location: editRecord.location,
           diaDiemChiTiet: editRecord.diaDiemChiTiet,
           moTa: editRecord.moTa,
           trangThai: editRecord.status,
+          _coords: geometryCoordinatesToRows(editRecord.type, editRecord.coordinates),
         });
 
-        if (editRecord.type === 'Point' && editRecord.coordinates) {
-          form.setFieldsValue({
-            _lat: editRecord.coordinates[1]?.toFixed(6),
-            _lng: editRecord.coordinates[0]?.toFixed(6),
-          });
-        } else {
-          form.setFieldsValue({
-            _lat: undefined,
-            _lng: undefined,
-          });
-        }
-
         if (editRecord.unitId) {
+          setSelectedOrgId(editRecord.unitId);
           void loadPorts(editRecord.unitId, 1, false);
         }
       } else if (drawResult) {
         const geom = drawResult.geojson?.geometry;
-        if (drawResult.type === 'draw-point' && geom?.coordinates) {
-          form.setFieldsValue({
-            _lat: geom.coordinates[1].toFixed(6),
-            _lng: geom.coordinates[0].toFixed(6),
-          });
-        } else {
-          form.setFieldsValue({
-            _lat: undefined,
-            _lng: undefined,
-          });
-        }
+        form.setFieldsValue({
+          _coords: geometryCoordinatesToRows(geometryType, geom?.coordinates),
+        });
       }
     } else {
       form.resetFields();
     }
   }, [open, drawResult, editRecord, form]);
-
-  // Convert Drawn GeoJSON to WKT format
-  const getWktString = (result: DrawResult | null, formLat?: number, formLng?: number): string => {
-    if (!result || !result.geojson?.geometry) return '';
-    const geom = result.geojson.geometry;
-
-    if (result.type === 'draw-point') {
-      const lat = formLat !== undefined ? formLat : geom.coordinates[1];
-      const lng = formLng !== undefined ? formLng : geom.coordinates[0];
-      return `POINT(${Number(lng).toFixed(6)} ${Number(lat).toFixed(6)})`;
-    }
-
-    if (result.type === 'draw-line') {
-      const coords = geom.coordinates.map((c: any) => `${c[0].toFixed(6)} ${c[1].toFixed(6)}`).join(', ');
-      return `LINESTRING(${coords})`;
-    }
-
-    if (result.type === 'draw-polygon') {
-      const rawCoords = geom.coordinates;
-      const ring = Array.isArray(rawCoords[0]) ? rawCoords[0] : rawCoords;
-      const coordsList = ring.map((c: any) => ({ lng: c[0], lat: c[1] }));
-      
-      // Ensure closed loop
-      if (coordsList.length > 0) {
-        const first = coordsList[0];
-        const last = coordsList[coordsList.length - 1];
-        if (first.lat !== last.lat || first.lng !== last.lng) {
-          coordsList.push({ ...first });
-        }
-      }
-      const coordsStr = coordsList.map((c: any) => `${c.lng.toFixed(6)} ${c.lat.toFixed(6)}`).join(', ');
-      return `POLYGON((${coordsStr}))`;
-    }
-
-    return '';
-  };
 
   const handleSave = async () => {
     if (!drawResult && !editRecord) return;
@@ -345,22 +249,34 @@ export default function DrawSaveModal({
       const values = await form.validateFields();
       setLoading(true);
 
-      const lat = values._lat ? parseFloat(values._lat) : undefined;
-      const lng = values._lng ? parseFloat(values._lng) : undefined;
-      const wkt = drawResult ? getWktString(drawResult, lat, lng) : undefined;
+      const coordinateRows = (values._coords || []).map((row: EditableCoordinateRow) => ({
+        lng: Number(row.lng),
+        lat: Number(row.lat),
+      }));
+      const wkt = coordinateRowsToWkt(geometryType, coordinateRows);
+      if (!wkt) {
+        throw new Error(
+          geometryType === 'Point'
+            ? 'Điểm phải có đầy đủ kinh độ và vĩ độ hợp lệ'
+            : geometryType === 'LineString'
+              ? 'Đường phải có ít nhất 2 điểm tọa độ hợp lệ'
+              : 'Vùng đa giác phải có ít nhất 3 đỉnh tọa độ hợp lệ',
+        );
+      }
 
       const isPoint = editRecord ? (editRecord.type === 'Point') : (drawResult?.type === 'draw-point');
       const isLine = editRecord ? (editRecord.type === 'LineString') : (drawResult?.type === 'draw-line');
       const isPolygon = editRecord ? (editRecord.type === 'Polygon') : (drawResult?.type === 'draw-polygon');
 
       if (isPoint) {
+        const pointCoordinate = coordinateRows[0];
         const payload = {
           name: values.name,
           code: values.code,
           objectType: mapToPointObjectType(values.loaiKcht),
-          categoryId: mapToCategoryId(values.loaiKcht),
-          longitude: lng ?? (drawResult?.geojson?.geometry?.coordinates?.[0] || editRecord?.coordinates?.[0]),
-          latitude: lat ?? (drawResult?.geojson?.geometry?.coordinates?.[1] || editRecord?.coordinates?.[1]),
+          categoryId: getKchtGisCategoryId(values.loaiKcht),
+          longitude: pointCoordinate.lng,
+          latitude: pointCoordinate.lat,
           description: values.moTa,
           unitId: values.donViQuanLy,
           status: values.trangThai,
@@ -379,8 +295,8 @@ export default function DrawSaveModal({
           name: values.name,
           code: values.code,
           objectType: mapToLineObjectType(values.loaiKcht),
-          categoryId: mapToCategoryId(values.loaiKcht),
-          coordinates: wkt || (editRecord?.coordinates ? (typeof editRecord.coordinates === 'string' ? editRecord.coordinates : undefined) : undefined),
+          categoryId: getKchtGisCategoryId(values.loaiKcht),
+          coordinates: wkt,
           description: values.moTa,
           unitId: values.donViQuanLy,
           status: values.trangThai,
@@ -399,8 +315,8 @@ export default function DrawSaveModal({
           name: values.name,
           code: values.code,
           objectType: mapToPolygonObjectType(values.loaiKcht),
-          categoryId: mapToCategoryId(values.loaiKcht),
-          coordinates: wkt || (editRecord?.coordinates ? (typeof editRecord.coordinates === 'string' ? editRecord.coordinates : undefined) : undefined),
+          categoryId: getKchtGisCategoryId(values.loaiKcht),
+          coordinates: wkt,
           description: values.moTa,
           unitId: values.donViQuanLy,
           status: values.trangThai,
@@ -463,6 +379,15 @@ export default function DrawSaveModal({
     <Modal
       open={open}
       width={560}
+      centered
+      rootClassName="gis-edit-modal-root"
+      classNames={{
+        wrapper: 'gis-edit-modal__wrapper',
+        container: 'gis-edit-modal__container',
+        header: 'gis-edit-modal__header',
+        body: 'gis-edit-modal__body',
+        footer: 'gis-edit-modal__footer',
+      }}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>{editRecord ? '📝 Chỉnh sửa đối tượng KCHT' : '💾 Lưu đối tượng KCHT'}</span>
@@ -484,12 +409,13 @@ export default function DrawSaveModal({
         </Button>,
       ]}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{ trangThai: 'PUBLISHED' }}
-        requiredMark="optional"
-      >
+      <div className="gis-edit-modal__scroll-body">
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ trangThai: 'PUBLISHED' }}
+          requiredMark="optional"
+        >
         <div
           style={{
             background: surfaceCard,
@@ -519,26 +445,63 @@ export default function DrawSaveModal({
             )}
           </div>
 
-          {drawResult?.type === 'draw-point' && drawResult.geojson?.geometry?.coordinates && (
-            <div style={{ display: 'grid', gap: spaceSm, gridTemplateColumns: '1fr 1fr', marginTop: spaceSm }}>
-              <Form.Item
-                label="Vĩ độ (Lat)"
-                name="_lat"
-                style={{ marginBottom: 0 }}
-                rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]}
-              >
-                <Input size="small" style={INPUT_STYLE} />
-              </Form.Item>
-              <Form.Item
-                label="Kinh độ (Lng)"
-                name="_lng"
-                style={{ marginBottom: 0 }}
-                rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]}
-              >
-                <Input size="small" style={INPUT_STYLE} />
-              </Form.Item>
+          <div style={{ marginTop: spaceSm }}>
+            <div style={{ color: textPrimary, fontWeight: fontWeightMedium, marginBottom: spaceSm }}>
+              Danh sách tọa độ
             </div>
-          )}
+            <Form.List name="_coords">
+              {(fields, { add, remove }) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
+                  <div style={{ maxHeight: 240, overflowY: 'auto', overscrollBehavior: 'contain', paddingRight: spaceXs }}>
+                    {fields.map((field, index) => (
+                      <div
+                        key={field.key}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: geometryType === 'Point'
+                            ? '52px minmax(0, 1fr) minmax(0, 1fr)'
+                            : '52px minmax(0, 1fr) minmax(0, 1fr) auto',
+                          gap: spaceSm,
+                          alignItems: 'start',
+                          marginBottom: spaceSm,
+                        }}
+                      >
+                        <span style={{ color: textSecondary, paddingTop: spaceFormField }}>
+                          Điểm {index + 1}
+                        </span>
+                        <Form.Item
+                          {...field}
+                          name={[field.name, 'lat']}
+                          style={{ marginBottom: 0 }}
+                          rules={[coordinateRule('Vĩ độ', -90, 90)]}
+                        >
+                          <Input type="number" step="any" placeholder="Vĩ độ" style={INPUT_STYLE} />
+                        </Form.Item>
+                        <Form.Item
+                          {...field}
+                          name={[field.name, 'lng']}
+                          style={{ marginBottom: 0 }}
+                          rules={[coordinateRule('Kinh độ', -180, 180)]}
+                        >
+                          <Input type="number" step="any" placeholder="Kinh độ" style={INPUT_STYLE} />
+                        </Form.Item>
+                        {geometryType !== 'Point' && (
+                          <Button danger type="text" onClick={() => remove(field.name)} style={BTN_STYLE}>
+                            Xóa
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {geometryType !== 'Point' && (
+                    <Button type="dashed" onClick={() => add({ lng: '', lat: '' })} style={BTN_STYLE}>
+                      Thêm điểm
+                    </Button>
+                  )}
+                </div>
+              )}
+            </Form.List>
+          </div>
         </div>
         <Row gutter={12}>
           <Col span={12}>
@@ -570,25 +533,35 @@ export default function DrawSaveModal({
           label="Loại kết cấu hạ tầng"
           name="loaiKcht"
           style={{ marginBottom: spaceFormField }}
+          rules={[{ required: true, message: 'Vui lòng chọn loại kết cấu hạ tầng' }]}
         >
-          <Select placeholder="Chọn loại KCHT" options={LOAI_KCHT_OPTIONS} style={SELECT_STYLE} />
+          <Select
+            placeholder="Chọn loại KCHT"
+            options={KCHT_GIS_TYPE_OPTIONS}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            style={SELECT_STYLE}
+          />
         </Form.Item>
 
         <Form.Item
           label="Đơn vị quản lý"
           name="donViQuanLy"
           style={{ marginBottom: spaceFormField }}
+          rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
         >
-          <TreeSelect
+          <OrgUnitTreeSelect
             placeholder="Chọn đơn vị quản lý"
-            treeData={orgTree}
+            organizations={organizations}
+            loading={loadingOrganizations}
             style={SELECT_STYLE}
             showSearch
-            treeDefaultExpandAll
-            filterTreeNode={(input, node) =>
-              (node?.title as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }
+            showPath
+            treeDefaultExpandAll={false}
             allowClear
+            notFoundContent={loadingOrganizations ? 'Đang tải...' : 'Không tìm thấy đơn vị quản lý'}
             onChange={handleOrgChange}
           />
         </Form.Item>
@@ -614,7 +587,10 @@ export default function DrawSaveModal({
         </Form.Item>
 
         <Form.Item label="Trạng thái" name="trangThai" style={{ marginBottom: spaceFormField }}>
-          <Select options={TRANG_THAI_OPTIONS} style={SELECT_STYLE} />
+          <Select
+            options={TRANG_THAI_OPTIONS}
+            style={SELECT_STYLE}
+          />
         </Form.Item>
 
         <Form.Item
@@ -640,7 +616,8 @@ export default function DrawSaveModal({
         <Form.Item label="Mô tả" name="moTa" style={{ marginBottom: spaceFormField }}>
           <TextArea placeholder="Ghi chú thêm về đối tượng..." rows={3} />
         </Form.Item>
-      </Form>
+        </Form>
+      </div>
     </Modal>
   );
 }

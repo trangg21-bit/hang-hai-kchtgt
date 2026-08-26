@@ -24,6 +24,7 @@ public class PointObjectResponse {
     private Long categoryId;
     private UUID iconId;
     private Double longitude;
+    private Double latitude;
     private String description;
     private Status status;
     private UUID unitId;

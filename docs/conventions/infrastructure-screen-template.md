@@ -211,13 +211,31 @@ export default function InfrastructureFeatureList() {
   ], [page, pageSize, userMap]);
 
   // 4. Menu Thao tác dòng (rowActions)
+  //
+  // ⚠️ BẮT BUỘC: nút "Chỉnh sửa" phải gọi `canEditApprovalRecord()` — CẤM tự viết lại
+  // điều kiện trạng thái ở từng màn. Ma trận chuẩn xem `approval-2-level-spec.md` mục 3.9:
+  //   DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 -> hiện, cần `<resource>:update`
+  //   PENDING_APPROVAL / APPROVED_LEVEL1        -> ẨN (hồ sơ đóng băng trong vòng duyệt)
+  //   APPROVED                                  -> hiện, cần `<resource>:approvec2` (T12)
+  //   ARCHIVED                                  -> ẨN
   const rowActions = useCallback((record: any) => {
     const isOwner = record.createdBy === user?.id;
-    return [
+    const st = record.approvalStatus;
+    const isDraftOrRejected = st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2';
+
+    const actions: any[] = [
       { key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('view'); setDrawerOpen(true); } },
-      { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('edit'); setDrawerOpen(true); } },
-      { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('view'); setDrawerOpen(true); } },
-      {
+    ];
+
+    if (canEditApprovalRecord(st, { hasPerm, resource: '<resource>' })) {
+      actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('edit'); setDrawerOpen(true); } });
+    }
+
+    actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => { setSelectedRecord(record); setDrawerMode('view'); setDrawerOpen(true); } });
+
+    // Xóa mềm: chỉ khi Lưu tạm (approval-2-level-spec.md mục 3.6)
+    if (st === 'DRAFT' && hasPerm('<resource>:delete')) {
+      actions.push({
         key: 'delete',
         label: 'Xóa',
         danger: true,
@@ -226,12 +244,14 @@ export default function InfrastructureFeatureList() {
           modal.confirm({
             title: 'Xác nhận xóa bản ghi',
             content: `Bạn có chắc chắn muốn xóa "${record.name}" không?`,
-            onOk: async () => { toast.success('Xóa thành công'); },
+            onOk: async () => { await deleteRecord(record.id); toast.success('Xóa thành công'); loadData(); },
           });
         },
-      },
-    ];
-  }, [user?.id]);
+      });
+    }
+
+    return actions;
+  }, [user?.id, hasPerm]);
 
   // 5. Sidebar lọc trái
   const sidebarFilterContent = (
@@ -443,17 +463,42 @@ Mọi form chi tiết/thêm mới/chỉnh sửa đều mở `AppDrawer` với `s
 > | 2 | **`Lưu và gửi phê duyệt`** | `primaryButtonStyle` | Nền Xanh Dương (`#1B84FF`), chữ trắng | `PENDING_APPROVAL` (2) | Lưu bản ghi và lập tức chuyển trạng thái sang Chờ Cảng vụ/Chi cục duyệt (Vòng 1) |
 > | 3 | **`Lưu và phê duyệt`** | Primary Green Button | Nền Xanh Lá Cây `statusOperational` (`#1BAF7A` / `#00A389`), chữ trắng | `APPROVED` (5) | Dành cho cấp có thẩm quyền phê duyệt trực tiếp: Lưu và duyệt có hiệu lực ngay |
 > 
-> - **Khi Chỉnh sửa (`isEdit`)**: Chân Footer chỉ hiển thị 2 nút: **`Hủy`** (`outlineButtonStyle`) và **`Cập nhật`** (`primaryButtonStyle`).
+> - **Khi Chỉnh sửa (`isEdit`)**: bộ nút phụ thuộc **trạng thái phê duyệt của hồ sơ đang sửa**
+>   (theo `approval-2-level-spec.md` mục 3.9 — quy tắc 12). **CẤM** dùng chung một nút "Cập nhật" cho mọi trạng thái:
+>
+> | Trạng thái hồ sơ đang sửa | Các nút chân Form | Kết quả sau khi lưu |
+> | :--- | :--- | :--- |
+> | `DRAFT`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2` | `Hủy` · `Lưu tạm` · `Lưu và gửi phê duyệt` | Giữ `DRAFT` / chuyển `PENDING_APPROVAL` |
+> | `APPROVED` | `Hủy` · **`Lưu và phê duyệt`** (nút xanh lá `statusOperational`) | **Giữ nguyên `APPROVED`**, bản cũ ghi vào nhật ký thay đổi |
+> | `PENDING_APPROVAL`, `APPROVED_LEVEL1`, `ARCHIVED` | *Không mở được form sửa — nút "Chỉnh sửa" đã bị ẩn ở `rowActions`* | — |
+>
+> - ⚠️ **Tuyệt đối không hạ hồ sơ `APPROVED` về `DRAFT` khi sửa**: `/options` chỉ trả về bản ghi
+>   `APPROVED` (quy tắc APPROVED ONLY), hạ trạng thái sẽ làm hồ sơ đang khai thác biến mất khỏi
+>   mọi dropdown của các màn hình khác.
 > - **Mã nguồn JSX Mẫu chuẩn Footer**:
 >   ```tsx
 >   footer={
->     isEdit ? (
+>     isEdit && editingStatus === 'APPROVED' ? (
+>       // T12 - Sửa hồ sơ đã duyệt: giữ nguyên APPROVED, bản cũ vào nhật ký
 >       <>
 >         <Button onClick={onCancel} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>
 >           Hủy
 >         </Button>
->         <Button type="primary" onClick={() => handleSubmit('UPDATE')} loading={submitting && actionType === 'UPDATE'} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>
->           Cập nhật
+>         <Button type="primary" onClick={() => handleSubmit('APPROVE')} loading={submitting && actionType === 'APPROVE'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}>
+>           Lưu và phê duyệt
+>         </Button>
+>       </>
+>     ) : isEdit ? (
+>       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2: sửa rồi lưu tạm hoặc gửi (lại) duyệt
+>       <>
+>         <Button onClick={onCancel} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>
+>           Hủy
+>         </Button>
+>         <Button onClick={() => handleSubmit('DRAFT')} loading={submitting && actionType === 'DRAFT'} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>
+>           Lưu tạm
+>         </Button>
+>         <Button type="primary" onClick={() => handleSubmit('SUBMIT')} loading={submitting && actionType === 'SUBMIT'} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>
+>           Lưu và gửi phê duyệt
 >         </Button>
 >       </>
 >     ) : (

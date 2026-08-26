@@ -60,6 +60,11 @@ import {
 } from '../../tokens';
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
+import { approvalStatusColor } from '../../components/shared/ApprovalStatusBadge';
+import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
 
 // ── Helpers (moved verbatim from BuoyList.tsx / BuoyForm.tsx) ────────
 
@@ -136,11 +141,6 @@ const HISTORY_FIELD_ORDER = ['code', 'name', 'type', 'classification', 'classifi
 // ── Bản đồ nhãn giá trị cho lịch sử (giống BerthList.historyFieldValue) ──
 const GEOMETRY_TYPE_LABELS: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
 const COORD_SYS_LABELS: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
-const APPROVAL_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Nháp', PROPOSED: 'Chờ phê duyệt', PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-  APPROVED_LEVEL1: 'Chờ Cục duyệt', APPROVED_LEVEL2: 'Đã duyệt L2', APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối',
-};
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
@@ -169,24 +169,18 @@ const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGO
 // Tab trạng thái giống BerthList (key = giá trị field `status` của Buoy: DRAFT → PENDING_APPROVAL → APPROVED_L1 → PUBLISHED)
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: actionPrimary },
-  { key: 'APPROVED_L1', label: 'Chờ Cục duyệt', color: statusAttention },
-  { key: 'PUBLISHED', label: 'Đã phê duyệt', color: statusOperational },
-  { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
+  // Nhãn theo 7 trạng thái chuẩn (approval-2-level-spec.md mục 3.1).
+  // `key` giữ nguyên mã đang gửi lên backend; ApprovalStatus.fromString đã nhận cả mã legacy.
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED_L1', label: 'Chờ Cục duyệt', color: '#0284C7' },
+  { key: 'PUBLISHED', label: 'Đã duyệt', color: statusOperational },
+  { key: 'REJECTED', label: 'Bị trả về', color: statusCritical },
 ];
 
+// Nhãn + màu trạng thái lấy từ nguồn chung, chấp nhận cả mã legacy (PUBLISHED, APPROVED_L1...).
 function buoyStatusBadge(status: string | null | undefined): { color: string; label: string } {
-  const m: Record<string, { color: string; label: string }> = {
-    DRAFT: { color: statusDraft, label: 'Nháp' },
-    PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
-    APPROVED_L1: { color: statusAttention, label: 'Chờ Cục duyệt' },
-    PUBLISHED: { color: statusOperational, label: 'Đã phê duyệt' },
-    REJECTED: { color: statusCritical, label: 'Từ chối' },
-    APPROVED_L2: { color: statusAttention, label: 'Đã duyệt L2' },
-    DELETED: { color: textTertiary, label: 'Đã xóa' },
-  };
-  return m[status || ''] || { color: textTertiary, label: status || '—' };
+  return { color: approvalStatusColor(status), label: approvalStatusLabel(status) };
 }
 
 // Style badge Tình trạng giống bến cảng (operationalStatus pill)
@@ -1018,7 +1012,7 @@ export default function BuoyListPage() {
     if (fn === 'lightCharacteristic') return LIGHT_CHAR_LABEL_MAP[val] || val;
     if (fn === 'unitId') return orgMap.get(val) || val;
     if (fn === 'status') return buoyStatusBadge(val).label;
-    if (fn === 'approvalStatus') return APPROVAL_STATUS_LABELS[val] || val;
+    if (fn === 'approvalStatus') return approvalStatusLabel(val);
     if (fn === 'geometryType') return GEOMETRY_TYPE_LABELS[val] || val;
     if (fn === 'provinceId') return VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === val)?.label || val;
     if (fn === 'coordinateSystem') return COORD_SYS_LABELS[val] || val;
@@ -1350,22 +1344,7 @@ export default function BuoyListPage() {
       dataIndex: 'status',
       width: 220,
       sortable: true,
-      render: (status: string | null | undefined) => {
-        const b = buoyStatusBadge(status);
-        return (
-          <span style={{
-            display: 'inline-flex',
-            padding: '2px 10px',
-            borderRadius: 999,
-            fontSize: fontSizeMd,
-            fontWeight: fontWeightMedium,
-            background: `${b.color}15`,
-            color: b.color,
-          }}>
-            {b.label}
-          </span>
-        );
-      },
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       key: 'updatedAt',
@@ -1446,7 +1425,8 @@ export default function BuoyListPage() {
       onClick: () => openDetailDrawer(record),
     });
 
-    if (hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update')) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.status, { hasPerm, resource: 'buoy', extraUpdatePerms: ['buoy:manage', 'data:update'], extraApprovePerms: ['buoy:manage'] })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -1555,7 +1535,7 @@ export default function BuoyListPage() {
           {/* ── Bộ lọc thường (luôn hiển thị) ──────────────────────── */}
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-              Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+              Đơn vị quản lý
             </div>
             <OrgUnitTreeSelect
               organizations={organizations}
@@ -1580,13 +1560,7 @@ export default function BuoyListPage() {
             <Select placeholder="Chọn trạng thái" allowClear
               value={filterApprovalStatus || undefined}
               onChange={(v) => { setFilterApprovalStatus(v); setPage(1); }}
-              options={[
-                { value: 'DRAFT', label: 'Nháp' },
-                { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                { value: 'APPROVED_L1', label: 'Chờ Cục duyệt' },
-                { value: 'PUBLISHED', label: 'Đã phê duyệt' },
-                { value: 'REJECTED', label: 'Từ chối' },
-              ]}
+              options={APPROVAL_STATUS_OPTIONS}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
 

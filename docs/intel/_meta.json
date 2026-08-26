@@ -364,6 +364,12 @@
       ],
       "version": 2
     },
+    "docs/modules/M-024-tai-cau-truc-menu-navigation/_state.md": {
+      "content_hash": "sha256:7c6b2c6737c7a4447f4f31182ae7dcf5a3512f81c60bcb71761f3d670814e8f4",
+      "last_modified": "2026-08-25T10:39:48Z",
+      "last_producer": "ai-kit/update_state(refit_lane)",
+      "version": 1
+    },
     "docs/modules/M-1003-fix-antd-static-message-context-warning/qa/07-qa-report-w1.md": {
       "content_hash": "sha256:82621bb349cffc87e6b644651c19d4de3c0d6959ed1937ff882c398d22bfef59",
       "last_modified": "2026-08-17T03:46:23Z",

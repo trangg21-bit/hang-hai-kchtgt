@@ -3,15 +3,8 @@ import { Button, Spin } from 'antd';
 import { SearchOutlined, ReloadOutlined, FilterOutlined } from '@ant-design/icons';
 import { cardStyle, borderDefault, textSecondary, actionPrimary, radiusPill, fontSizeMd } from '../../tokens';
 import { colors } from '../../theme';
-import StatusTabs from './StatusTabs';
-
-export interface StatusTab {
-  key: string;
-  label: string;
-  count: number;
-  color?: string;
-  active?: boolean;
-}
+import StatusTabs, { type StatusTab } from './StatusTabs';
+export type { StatusTab };
 
 export interface FilterTableLayoutProps {
   /** Filter fields rendered in the sidebar */
@@ -99,7 +92,7 @@ export default function FilterTableLayout({
           >
             Tìm kiếm
           </Button>
-          {!hideFilterToggle ? (
+          {!hideFilterToggle && (
             <Button
               icon={<FilterOutlined />}
               onClick={onToggleCollapse}
@@ -114,8 +107,6 @@ export default function FilterTableLayout({
                 flexShrink: 0,
               }}
             />
-          ) : (
-            <div style={{ width: 38, height: 38, flexShrink: 0 }} aria-hidden="true" />
           )}
         </div>
       </div>

@@ -13,6 +13,37 @@ consumed_by_modules: []
 ---
 # Đặc tả nghiệp vụ: Quản lý Cơ sở sửa chữa, đóng tàu — Cập nhật
 
+> ### ⚠️ ĐÍNH CHÍNH 26/08/2026 — Quy tắc chỉnh sửa theo trạng thái (quy tắc 12)
+>
+> Mọi câu/BR/AC trong tài liệu này quy định khác với bảng dưới đây đều **HẾT HIỆU LỰC**.
+> Nguồn có thẩm quyền: `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` (bảng chuyển trạng thái mục 7 + Ca dùng 8),
+> chuẩn hóa tại `docs/conventions/approval-2-level-spec.md` **mục 3.9**.
+>
+> | Trạng thái | Cho sửa? | Hành động | Ai được sửa | Quyền |
+> | :--- | :---: | :--- | :--- | :--- |
+> | `DRAFT` (Lưu tạm) | ✅ | Sửa tiếp, gửi duyệt | Người nhập | `<resource>:update` |
+> | `PENDING_APPROVAL` (Chờ Cảng vụ/Chi cục duyệt) | ❌ | — | — | — |
+> | `APPROVED_LEVEL1` (Chờ Cục duyệt) | ❌ | — | — | — |
+> | `REJECTED_LEVEL1` (Bị Cảng vụ/Chi cục trả về) | ✅ | Sửa **+ gửi lại** | Người nhập | `<resource>:update` |
+> | `REJECTED_LEVEL2` (Bị Cục trả về) | ✅ | Sửa **+ gửi lại** | Người nhập | `<resource>:update` |
+> | `APPROVED` (Đã duyệt) | ✅ | Sửa qua **"Lưu và phê duyệt"** | Người có quyền phê duyệt | `<resource>:approvec2` |
+> | `ARCHIVED` (Đã xóa) | ❌ | — | — | — |
+>
+> **Ba điểm bị đính chính so với nội dung cũ bên dưới:**
+> 1. **KHÔNG** hạ hồ sơ `APPROVED` về `DRAFT` khi cập nhật. Hồ sơ **giữ nguyên `APPROVED`**, bản cũ ghi vào
+>    nhật ký thay đổi (T12). Lý do: `/options` chỉ trả về bản ghi `APPROVED`, hạ trạng thái sẽ làm hồ sơ đang
+>    khai thác biến mất khỏi mọi dropdown của các màn hình khác.
+> 2. **PHẢI** cho sửa khi hồ sơ **bị trả về** (`REJECTED_LEVEL1`, `REJECTED_LEVEL2`) — đó là mục đích của việc
+>    trả về; cấm sửa sẽ làm tắc quy trình.
+> 3. **PHẢI** cấm sửa khi hồ sơ **đang chờ duyệt** (`PENDING_APPROVAL`, `APPROVED_LEVEL1`) — tránh việc nội dung
+>    bị đổi sau khi cán bộ đã đọc, khiến cán bộ ký duyệt vào nội dung mình chưa từng xem.
+>
+> **Tập trạng thái legacy** dùng trong tài liệu này (`APPROVED_L1`, `APPROVED_L2`, `PUBLISHED`, `REJECTED`,
+> `DELETED`) đã bị thay bằng 7 trạng thái chuẩn ở bảng trên (ánh xạ: `PUBLISHED`/`APPROVED_L2` → `APPROVED`,
+> `APPROVED_L1` → `APPROVED_LEVEL1`, `REJECTED` → `REJECTED_LEVEL1`, `DELETED` → `ARCHIVED`).
+
+
+
 **Tài liệu:** BA Feature Brief
 **Feature:** F-051
 **Module:** M-003 — Quản lý tài sản KCHTGT khu nước VTS

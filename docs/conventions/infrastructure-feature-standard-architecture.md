@@ -332,7 +332,20 @@ Mọi ô chọn tìm kiếm dropdown (`Select` có `showSearch`), ô tìm kiếm
 3. **Dọn sạch trạng thái legacy trong DB và Code**:
    - Trong quá trình phát triển, tuyệt đối không giữ các mã fallback legacy (`PROPOSED (1)`, `APPROVED_LEVEL2 (4)`, `REJECTED (6)`).
    - CSDL được chuẩn hóa hoàn toàn qua Flyway script: `1 -> 2`, `4 -> 5`, `6 -> 8`.
-4. **Quy chuẩn Style Badge**:
+4. **QUY TẮC CHỈNH SỬA THEO TRẠNG THÁI (quy tắc 12 — BẮT BUỘC)**:
+   - Ma trận chuẩn duy nhất: `docs/conventions/approval-2-level-spec.md` mục **3.9**. Tóm tắt:
+     `DRAFT` / `REJECTED_LEVEL1` / `REJECTED_LEVEL2` → **cho sửa** (quyền `<resource>:update`);
+     `PENDING_APPROVAL` / `APPROVED_LEVEL1` / `ARCHIVED` → **cấm sửa** (ẩn nút + backend trả 403);
+     `APPROVED` → **cho sửa qua "Lưu và phê duyệt"**, chỉ người có quyền `<resource>:approvec2`,
+     hồ sơ **giữ nguyên `APPROVED`**, bản cũ ghi vào nhật ký thay đổi (T12).
+   - Frontend dùng `canEditApprovalRecord()` (`frontend/src/utils/approvalEditPolicy.ts`);
+     backend dùng `InfrastructureApprovalService.assertEditable()`. **CẤM** tự viết lại điều kiện ở từng màn/từng service.
+   - Lý do cấm sửa khi đang chờ duyệt: nếu cho sửa, người nhập có thể đổi nội dung sau khi cán bộ đã đọc,
+     khiến cán bộ ký duyệt vào nội dung mình chưa từng xem. Đồng bộ với ràng buộc chỉ được xóa tệp đính kèm
+     khi hồ sơ ở `DRAFT`/`REJECTED_*`.
+   - Lý do cấm hạ `APPROVED` về `DRAFT` khi sửa: xem **QUY TẮC APPROVED ONLY** ở mục 4.x — hồ sơ đang khai thác
+     sẽ biến mất khỏi mọi dropdown `/options` của các màn hình khác.
+5. **Quy chuẩn Style Badge**:
    - `borderRadius: radiusPill` (`999px`), `fontSize: fontSizeMd` (`13px`), `fontWeight: 500`, `background: ${color}15`, `border: 1px solid ${color}40`, `color: ${color}`, `whiteSpace: 'nowrap'`, `padding: '2px 10px'`.
 
 ---

@@ -1,102 +1,140 @@
 ---
 id: F-040
-name: "Quan ly Luong hang hai - Xoa"
+name: Quan ly Luong hang hai - Xoa
 slug: quan-ly-luong-hang-hai-xoa
 module-id: M-003
-status: proposed
+status: implemented
 classification: local
 priority: P1
-created: "2026-06-29T00:00:00Z"
-last-updated: "2026-06-29T00:00:00Z"
+created: 2026-06-29T00:00:00Z
+last-updated: 2026-08-26T02:59:33Z
 locked-fields: []
 consumed_by_modules: []
 ---
+# Đặc tả nghiệp vụ: Xóa Luồng hàng hải
 
-# Feature: Quan ly Luong hang hai - Xoa
+> ### ⚠️ ĐÍNH CHÍNH 26/08/2026 — Điều kiện xóa mềm (quy tắc 11)
+>
+> Bản trước quy định "chỉ xóa mềm hồ sơ `APPROVED`". Quy định đó **HẾT HIỆU LỰC**: nó không
+> xuất phát từ nghiệp vụ mà được viết ngược lại từ code đang chạy (chính ô *Assumptions* của
+> tài liệu này ghi "…là đối tượng được phép xóa **theo code hiện tại**").
+>
+> Nguồn có thẩm quyền — `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`, nói nhất quán ở bốn chỗ:
+>
+> | Vị trí | Nội dung |
+> | :--- | :--- |
+> | Bảng 7 trạng thái | "Đã xóa (lịch sử) — Hồ sơ đã bị xóa (**chỉ xóa được khi đang "Lưu tạm"**)" |
+> | Sơ đồ trạng thái | `Nhap --> DaXoa: Xóa` — chỉ một mũi tên vào "Đã xóa", xuất phát từ "Lưu tạm" |
+> | Ca dùng 9 — Xóa hồ sơ nháp | Người thực hiện: **Người nhập hồ sơ** · Điều kiện trước: **Hồ sơ đang "Lưu tạm"** |
+> | Bảng chuyển trạng thái (mục 7) | `Lưu tạm │ Xóa │ Đã xóa (lịch sử) │ Người nhập` — không có dòng `Đã duyệt → Xóa` |
+>
+> Và **Case test bắt buộc** của tài liệu gốc ghi thẳng: *"không được xóa hồ sơ khi không ở
+> trạng thái "Lưu tạm""*. Chuẩn hóa tại `docs/conventions/approval-2-level-spec.md` **mục 3.6**.
+>
+> **Quy tắc đúng:** chỉ xóa mềm được hồ sơ **`DRAFT` (Lưu tạm)**, do **người nhập** thực hiện,
+> cần quyền `navigationchannel:delete`. Mọi trạng thái khác — kể cả `APPROVED` — đều **từ chối**.
+>
+> **Vì sao quy định cũ sai về hệ quả:**
+> 1. Hồ sơ **Lưu tạm** (bản nháp gõ dở, chưa ai duyệt) không xóa được → tồn đọng vĩnh viễn.
+> 2. Hồ sơ **Đã duyệt** đang có hiệu lực, đã qua 2 cấp ký, lại xóa được chỉ với quyền
+>    `navigationchannel:delete` — không cần quyền phê duyệt nào. Trong khi *sửa* hồ sơ đó
+>    (quy tắc 12) đòi `approvec2`. Xóa nặng hơn sửa mà lại dễ hơn.
+> 3. Backend dùng chung `InfrastructureApprovalService.assertDeletable()`; frontend chỉ hiện
+>    nút Xóa khi `approvalStatus === 'DRAFT'`.
 
-## Description
-Chuyen vien co the xoa luong hang hai da tao. Xoa chi voi du lieu da duoc phe duyet (trang thai APPROVED). He thong thuc hien xoa co che (soft delete) — co the phuc hoi sau nay neu can. Soft delete giu lai thong tin de theo doi tai lieu lien quan (tai lieu dinh kem, phe duyet lich su).
 
-## Business Intent
-Cho phep chuyen vien lo bo cac luong hang hai khong con dung, chi voi nhung du lieu da duoc phe duyet 2 cap (APPROVED). Soft delete giup bao toan thong tin lich su de audit, trong khi co phuc hoi khi can.
 
-## Flow Summary
-1. Chuyen vien chon luong hang hai can xoa (phai co trang thai = APPROVED)
-2. He thong kiem tra dieu kien: chi duoc xoa neu trang thai = APPROVED
-3. He thong hien hop thong bao xac nhan: "Ban co muon xoa Luong hang hai nay?"
-4. Chuyen vien xac nhan → he thong thuc hien soft delete (dat flag is_deleted = true)
-5. He thong ghi vao phe_duyet_lich_su (action = DELETE, ghi chu = "Chuyen vien xoa")
-6. Luong hang hai bi xoa khong hien thi trong danh sach (truy van loai tru is_deleted)
-7. Soft delete: co the phuc hoi bang quy trinh admin
+**Tài liệu:** Tài liệu chức năng — phần riêng theo template 7 section.
+**Chức năng:** F-040 — Xóa (soft delete) Luồng hàng hải.
+**Module:** M-003 — Quản lý tài sản KCHTGT khu nước & VTS.
+**Loại:** Chức năng thường (không có bước phê duyệt riêng cho thao tác xóa).
+**Tham chiếu:** Entity `NavigationChannel` và cơ chế audit/soft delete chung tại F-038 (`_features/F-038-quan-ly-luong-hang-hai-tao-moi/feature-brief.md`, `ba/00-lean-spec.md`, `design/00-design-plan.md`) + `BaseEntity` (common). File này CHỈ mô tả phần RIÊNG của F-040.
 
-## Acceptance Criteria
-- [x] Xoa Luong hang hai thanh cong (soft delete)
-- [x] Xoa chi voi du lieu da duoc phe duyet (trang thai = APPROVED)
-- [x] Soft delete → luu thong tin, co the phuc hoi
-- [x] Xoa → ghi vao phe_duyet_lich_su
-- [x] Du lieu da xoa khong hien thi trong danh sach (truy van loai tru is_deleted)
+## 1. Mô tả ngắn
 
-## In Scope
-- Tao moi luong hang hai (F-038)
-- Cap nhat luong hang hai (F-039)
-- Xoa luong hang hai (F-040)
-- Phe duyet luong hang hai (F-041, 2 cap: phong → Cuc)
-- Xem chi tiet (F-042)
-- Lich su thay doi (F-043)
+Chức năng F-040 cho phép người nhập có `navigationchannel:delete` xóa mềm hồ sơ Luồng hàng hải **đang ở trạng thái Lưu tạm** (`DRAFT` = 0). Hệ thống đánh dấu `deletedAt`/`deletedBy` từ phiên người thao tác và xóa đối tượng bản đồ GIS liên quan; hồ sơ bị xóa không còn xuất hiện trong danh sách, tìm kiếm hay chi tiết (filter `deleted_at IS NULL`). Hồ sơ ở trạng thái khác `APPROVED` bị từ chối với thông báo tiếng Việt rõ nghĩa. Thao tác xóa không thể hoàn tác qua UI.
 
-## Out of Scope
-- Phuc vu thong ke, bao cao
-- Tich hop voi he thong khac (Phase 1)
-- Email/SMS notification
-- Export Excel/PDF
-- Hard delete (khong the phuc hoi)
+## 2. Trường dữ liệu
 
-## Roles + Permissions
+Thao tác xóa không có form nhập liệu. Các trường do hệ thống ghi:
 
-| Role | Level | Notes |
+| # | Trường | Bắt buộc | Kiểu / ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| 1 | `deletedAt` (Thời điểm xóa) | Hệ thống ghi | `TIMESTAMP` | Gán `LocalDateTime.now()` khi xóa mềm (BaseEntity.java:111-115). |
+| 2 | `deletedBy` (Người xóa) | Hệ thống ghi | UUID | Lấy từ session người thao tác (`operatorId`), không nhận từ client. |
+| 3 | `approvalStatus` (Trạng thái — điều kiện xóa) | Hệ thống kiểm tra | Enum số | Chỉ `DRAFT` (0) được xóa — BR-040-01, quy tắc 11. |
+| 4 | `spatialId` (Đối tượng bản đồ) | Hệ thống xử lý | UUID | Nếu có, đối tượng `GisSpatialObject` bị xóa cùng lúc. |
+
+## 3. Trạng thái và phê duyệt
+
+- Xóa mềm chỉ áp dụng cho hồ sơ ở trạng thái **`DRAFT`** (Lưu tạm = 0): `approvalService.assertDeletable(nc)` ném `IllegalStateException("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm")` cho mọi trạng thái khác. Nguồn: `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` Ca dùng 9 + bảng chuyển trạng thái mục 7; chuẩn hóa tại `approval-2-level-spec.md` mục 3.6.
+- Hồ sơ đã xóa mềm: ẩn khỏi danh sách/tìm kiếm/chi tiết nhờ `@SQLRestriction("deleted_at IS NULL")` trên `BaseEntity` (BaseEntity.java:23) và `findByDeletedAtIsNull` ở repository; gọi GET/PUT/DELETE lại với id đã xóa → lỗi "Không tìm thấy luồng hàng hải với id".
+
+## 4. Quy tắc và phân quyền riêng
+
+### 4.1. Quy tắc nghiệp vụ (Business Rules)
+
+| ID | Quy tắc | Áp dụng |
 |---|---|---|
-| A-003 (Chuyen vien) | Xoa | Chi du lieu APPROVED, soft delete |
-| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PENDING_APPROVAL → APPROVED_LEVEL1 |
-| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | APPROVED_LEVEL1 → APPROVED |
+| BR-040-01 | Chỉ xóa mềm được hồ sơ ở trạng thái `DRAFT` (0) — quy tắc 11; trạng thái khác → `IllegalStateException` "Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm". | Delete |
+| BR-040-02 | Xóa mềm: gán `deletedAt` = thời điểm hiện tại và `deletedBy` = `operatorId` từ session; không xóa cứng bản ghi. | Delete |
+| BR-040-03 | Nếu hồ sơ có `spatialId`, xóa đối tượng `GisSpatialObject` tương ứng trong cùng thao tác (NavigationChannelService.java:344-347). | Delete |
+| BR-040-04 | Hồ sơ đã xóa mềm không xuất hiện trong danh sách/tìm kiếm/chi tiết; truy cập trực tiếp trả lỗi tiếng Việt "Không tìm thấy luồng hàng hải với id". | Read / Delete |
+| BR-040-05 | User thiếu `navigationchannel:delete` → HTTP 403; UI không hiển thị nút Xóa (NavigationChannelList.tsx:326-340). | Security |
+| BR-040-06 | Không cho xóa lại hồ sơ đã xóa (id không còn tồn tại trong view hoạt động). | Delete |
 
-## Entities
+### 4.2. Acceptance Criteria
 
-| Entity | Table | Primary Key | Description |
+| AC-ID | Given | When | Then | Oracle |
+|---|---|---|---|---|
+| AC-040-01 | Hồ sơ ở trạng thái `DRAFT` và user có `navigationchannel:delete` | Gọi DELETE `/{id}` | Hệ thống gán `deletedAt`/`deletedBy` (từ session) và trả thành công | DB: `deleted_at` khác NULL, `deleted_by` = id user thao tác; response 200. |
+| AC-040-02 | Hồ sơ ở trạng thái khác `DRAFT` (vd `APPROVED`, `PENDING_APPROVAL`) | Gọi DELETE `/{id}` | API từ chối, không thay đổi dữ liệu | HTTP 400-family + message "Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm". |
+| AC-040-03 | Hồ sơ đã xóa mềm | Gọi GET danh sách / tìm kiếm | Hồ sơ không xuất hiện | Response danh sách không chứa bản ghi đã xóa. |
+| AC-040-04 | Hồ sơ đã xóa mềm | Gọi GET/PUT/DELETE `/{id}` | API trả lỗi "Không tìm thấy luồng hàng hải với id" | HTTP 400-family, không có side effect. |
+| AC-040-05 | Hồ sơ `DRAFT` có `spatialId` | Gọi DELETE `/{id}` | Đối tượng GIS bị xóa cùng hồ sơ | `gis_spatial_object` không còn bản ghi tương ứng. |
+| AC-040-06 | User thiếu `navigationchannel:delete` | Gọi DELETE | HTTP 403; UI không hiển thị nút Xóa | Permission code khớp `navigationchannel:delete`. |
+
+### 4.3. User Stories
+
+- **US-040-01:** Là Chuyên viên/Lãnh đạo có quyền, tôi muốn xóa mềm hồ sơ Luồng hàng hải đã duyệt khi hồ sơ không còn giá trị sử dụng, để dữ liệu danh sách luôn phản ánh hiện trạng.
+- **US-040-02:** Là người quản lý, tôi muốn hồ sơ bị xóa vẫn được truy vết người thực hiện và thời điểm để kiểm soát trách nhiệm.
+
+### 4.4. Phân quyền riêng
+
+| Thao tác | Quyền (`<resource>:<action>`) |
+|---|---|
+| Xóa mềm hồ sơ | `navigationchannel:delete` |
+
+| Vai trò | Xem | Xóa | Ghi chú |
 |---|---|---|---|
-| LuongHangHai | luong_hang_hai | id | Entity chinh, 32 fields, co truong is_deleted (boolean) |
-| LuongHangHaiAttachment | luong_hang_hai_attachment | id | Tai lieu dinh kem (MinIO) |
-| PheDuyetLichSu | phe_duyet_lich_su | id | History log |
+| Chuyên viên thuộc đơn vị | Có, theo scope | Có nếu được gán quyền `navigationchannel:delete` | Chỉ xóa hồ sơ đọc được trong phạm vi `orgUnitId`. |
+| Lãnh đạo Cảng vụ/Chi cục | Có, theo scope | Có nếu được gán quyền | — |
+| Lãnh đạo Cục / Admin Cục | Có, toàn phạm vi Cục khi có `orgunit:scope_all`/`admin:all`/`*` | Có nếu được gán quyền | Xem được metadata nhạy cảm theo quyền. |
+| Quản trị hệ thống | Có | Có | ROLE_SYSTEM_ADMIN vượt qua mọi kiểm tra quyền. |
+| Người không có quyền tương ứng | Không | Không | API trả 403 Forbidden. |
 
-## Business Rules
+**Admin Cục:** với F-040, Admin Cục được xóa hồ sơ trong phạm vi Cục khi có `navigationchannel:delete` hoặc quyền tổng `admin:all`/`*`; vẫn tuân thủ guard trạng thái `DRAFT` và data scope chung.
 
-| ID | Rule | Applies-to | Source |
+## 5. Điểm khác biệt so với mẫu chung (bắt buộc điền đủ 8 dòng)
+
+| # | Điểm cần khai báo | Khai báo của chức năng này |
+|---|---|---|
+| 1 | Trạng thái riêng | Có. Chỉ xóa mềm được hồ sơ ở trạng thái `DRAFT` (0); trạng thái khác bị từ chối (NavigationChannelService.java:341). |
+| 2 | Có bước phê duyệt không | Không có bước phê duyệt cho thao tác xóa; hồ sơ phải đang ở trạng thái Lưu tạm (`DRAFT`) — chưa vào vòng duyệt — thì mới được xóa. |
+| 3 | Lọc cha-con / theo đơn vị | Theo đơn vị. Field scope là #1 `orgUnitId`; entity `NavigationChannel` khai `@Filter(orgUnitFilter)` (NavigationChannel.java:22), controller khai `@DataScope` (NavigationChannelController.java:25) → hồ sơ phải đọc được trong phạm vi user mới có thể xóa. Chiều ghi không gán đơn vị mới (không đổi `orgUnitId`), nên không có validate write-scope riêng; cấm để `orgUnitId` NULL vẫn giữ từ F-038. |
+| 4 | Trường chỉ hiện trong điều kiện nào | Nút Xóa chỉ hiển thị khi user có `navigationchannel:delete`; UI xác nhận trước khi gọi DELETE (NavigationChannelList.tsx:326-340). |
+| 5 | Quyền riêng | `navigationchannel:delete`. |
+| 6 | Đường dẫn dùng chung không cần đăng nhập | Không. Endpoint DELETE yêu cầu đăng nhập, RBAC và data scope. |
+| 7 | Tải lên tệp | Không. |
+| 8 | Giao diện khác mẫu chung | Không tạo layout riêng; dùng popup xác nhận (Modal) theo convention chung; không mô tả hardcode màu/spacing/font. |
+
+## 6. Phần kỹ thuật — đường dẫn gọi dữ liệu (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
+
+| Method | Đường dẫn | Mô tả | Quyền |
 |---|---|---|---|
-| BR-040-01 | Xoa chi voi du lieu da duoc phe duyet | Delete | UC-3348 |
-| BR-040-02 | Trang thai phai = APPROVED | Delete | DESIGN.md |
-| BR-040-03 | Soft delete (is_deleted = true) | Delete | DESIGN.md |
-| BR-040-04 | Ghi vao phe_duyet_lich_su khi xoa | Delete | DESIGN.md |
-| BR-040-05 | Soft delete → co the phuc hoi | Delete | DESIGN.md |
+| DELETE | `/api/v1/navigation-channel/{id}` | Xóa mềm hồ sơ `DRAFT`: gán `deletedAt`/`deletedBy` từ session, xóa GIS spatial object nếu có. | `navigationchannel:delete` |
+| GET | `/api/v1/navigation-channel` | Danh sách chỉ chứa hồ sơ chưa xóa (`deleted_at IS NULL`) — phục vụ kiểm chứng F-040. | `navigationchannel:read` |
 
-## Technical Details
+## 7. Phần kỹ thuật — cấu trúc bảng (ĐỀ XUẤT, chờ người thiết kế kỹ thuật xác nhận)
 
-### REST Endpoint
-- `DELETE /api/v1/luong-hang-hai/{id}` — Xoa co che (soft delete) luong hang hai
-- Response: 204 No Content (thanh cong)
-
-### Validation Rules
-- `status`: chi duoc xoa neu = APPROVED (neu khong phai → 403 Forbidden)
-- `is_deleted`: soft delete → dat is_deleted = true, khong xoa physically
-
-## Testing Strategy
-- Unit tests: Entity builder, getters/setters, JPA lifecycle callbacks
-- Service tests: Delete luong hang hai (APPROVED) → soft delete → ghi history
-- Controller tests: DELETE /api/v1/luong-hang-hai/{id}, validation, auth filters
-- Integration: Delete → soft delete → kiem tra danh sach (tru soft-deleted)
-- Negative tests: Delete du lieu khong APPROVED → 403, Delete da xoa → 404
-- All unit tests must pass before feature seal
-
-## Design Reference
-- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
-- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
-- Tech-Lead Plan: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/tech-lead/04-plan.md
-- Source: UC-3348
+Không có thay đổi schema mới cho F-040. Cột `deleted_at`/`deleted_by` đã có sẵn từ `BaseEntity` (BaseEntity.java:28-46) và được migration `V20260825120000` đảm bảo trên `navigation_channel`; filter đọc mặc định `deleted_at IS NULL`. History `DELETE` (nếu PMO yêu cầu theo phương án b ở mục 3) sẽ ghi vào bảng `approval_history` dùng chung qua `ApprovalHistoryUtils.recordSoftDelete` (ApprovalHistoryUtils.java:30-58) với `refType = InfrastructureType.NAVIGATION_CHANNEL` — là task bổ sung, không nằm trong behavior hiện tại.
