@@ -44,7 +44,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId OR t.unitId = :orgUnitId)
           AND (:operatingOrgId IS NULL OR t.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
-          AND (:keyword IS NULL OR
+          AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.deviceCode, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string) OR
@@ -79,7 +79,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds OR t.unitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId OR t.unitId = :orgUnitId)
-          AND (:keyword IS NULL OR (
+          AND (CAST(:keyword AS string) IS NULL OR (
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, t.stationName, ''))) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, t.deviceCode, ''))) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string)

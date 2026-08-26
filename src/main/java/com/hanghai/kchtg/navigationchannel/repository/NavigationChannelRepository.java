@@ -39,9 +39,9 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
             "(:status IS NULL OR l.status = :status) AND " +
             "(:approvalStatus IS NULL OR l.approvalStatus = :approvalStatus) AND " +
             "(:updatedBy IS NULL OR l.updatedBy = :updatedBy) AND " +
-            "(:updatedFrom IS NULL OR l.updatedAt >= :updatedFrom) AND " +
-            "(:updatedTo IS NULL OR l.updatedAt <= :updatedTo) AND " +
-            "(:keyword IS NULL OR " +
+            "(CAST(:updatedFrom AS timestamp) IS NULL OR l.updatedAt >= :updatedFrom) AND " +
+            "(CAST(:updatedTo AS timestamp) IS NULL OR l.updatedAt <= :updatedTo) AND " +
+            "(CAST(:keyword AS string) IS NULL OR " +
             "  CAST(function('immutable_unaccent', LOWER(l.channelName)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(l.channelCode)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(l.detailedLocation)) AS string) LIKE CAST(:keyword AS string) OR " +
@@ -63,7 +63,7 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
             "l.deletedAt IS NULL AND " +
             "(:scopeEnabled = false OR l.orgUnitId IN :scopeOrgUnitIds) AND " +
             "(:orgUnitId IS NULL OR l.orgUnitId = :orgUnitId) AND " +
-            "(:keyword IS NULL OR " +
+            "(CAST(:keyword AS string) IS NULL OR " +
             "  CAST(function('immutable_unaccent', LOWER(l.channelName)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(l.channelCode)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(l.detailedLocation)) AS string) LIKE CAST(:keyword AS string) OR " +

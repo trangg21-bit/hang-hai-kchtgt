@@ -37,7 +37,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
           AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
           AND (:operatingUnitId IS NULL OR t.operatingUnitId = :operatingUnitId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
-          AND (:keyword IS NULL OR
+          AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string) OR
@@ -75,7 +75,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (:keyword IS NULL OR (
+          AND (CAST(:keyword AS string) IS NULL OR (
                 CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string)
