@@ -87,9 +87,9 @@ public class PortCacheService {
     }
 
     private Map<UUID, String> loadDirectory() {
-        List<Port> ports = portRepository.findAllActiveForCache();
+        List<PortOptionResponse> ports = portRepository.findAllOptions();
         Map<UUID, String> directory = new LinkedHashMap<>();
-        for (Port port : ports) {
+        for (PortOptionResponse port : ports) {
             directory.put(port.getId(), port.getPortName());
         }
         return Map.copyOf(directory);
