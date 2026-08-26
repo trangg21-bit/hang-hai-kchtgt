@@ -294,7 +294,7 @@ const DataTable: React.FC<DataTableProps> = ({
           fontWeight: fontWeightBold,
           fontSize: fontSizeMd,
           textTransform: 'uppercase',
-          padding: '15px 16px',
+          padding: '10px 12px',
           cursor: col.sortable ? 'pointer' : undefined,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -318,7 +318,9 @@ const DataTable: React.FC<DataTableProps> = ({
         style: {
           fontSize: dense ? fontSizeSm : fontSizeMd,
           color: textPrimary,
-          whiteSpace: col.ellipsis === true ? undefined : 'nowrap',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: col.ellipsis === false ? 'clip' : 'ellipsis',
           background: col.fixed ? '#ffffff' : undefined,
           zIndex: col.fixed ? 9 : undefined,
         },
@@ -361,8 +363,12 @@ const DataTable: React.FC<DataTableProps> = ({
   }
 
   const handleTableChange = (pagination: any, filters: any, sorter: any, extra: any) => {
+    // Một lần click header phát `onSort` hai lần: một từ `onHeaderCell.onClick`,
+    // một từ đây. Chu kỳ nội bộ của antd là ascend → descend → không sắp xếp, nên
+    // phải quy "không sắp xếp" về `asc` thì hai đường mới ra cùng kết quả ở mọi
+    // bước; nếu quy về `desc` thì lần click thứ ba bị kẹt ở giảm dần.
     if (onSort && sorter.field) {
-      onSort(sorter.field as string, sorter.order === 'ascend' ? 'asc' : 'desc');
+      onSort(sorter.field as string, sorter.order === 'descend' ? 'desc' : 'asc');
     }
     if (rest.onChange) {
       rest.onChange(pagination, filters, sorter, extra);
@@ -370,7 +376,7 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   return (
-    <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <div ref={tableShellRef} className="list-view-table-shell" style={{ width: '100%', minWidth: 0, minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
       <Table columns={antdColumns} dataSource={dataSource} rowKey={rowKey} loading={loading}
         className="list-view-table"
         pagination={false}
@@ -378,7 +384,7 @@ const DataTable: React.FC<DataTableProps> = ({
         locale={{ emptyText: emptyState || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có dữ liệu" /> }}
         onChange={handleTableChange}
         scroll={tableScroll}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+        style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, height: '100%' }}
         {...rest} />
     </div>
   );

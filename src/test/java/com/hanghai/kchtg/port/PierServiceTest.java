@@ -164,7 +164,7 @@ class PierServiceTest {
         PierResponse result = service.update(request);
 
         assertEquals("Cầu Đã Cập Nhật", result.getPierName());
-        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
         assertEquals("CAU-001", result.getPierCode()); // code unchanged
         verify(changeHistoryService).recordChanges(eq("Pier"), any(), any(), any(), any());
     }

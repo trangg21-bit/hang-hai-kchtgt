@@ -213,7 +213,10 @@ Quy tắc bắt buộc cho bảng danh sách:
 - Bảng rỗng vẫn giữ chiều cao thân bảng theo `--list-table-scroll-y`; EmptyState không được làm thanh cuộn ngang nằm giữa bảng.
 - Thanh cuộn ngang phải nằm ở đáy thân bảng; sau khi lọc/reset, `DataTable` phải đưa `scrollLeft` về `0` để cột đầu tiên không bị che.
 - Cột thao tác luôn là cột cuối cùng và chỉ cột thao tác được cố định bên phải; không để cột dữ liệu hoặc tiêu đề lộ ra phía sau.
-- Nếu bộ cột thực tế ngắn hơn kích thước tối thiểu chung, dùng `scroll={{ x: 'max-content' }}` thay vì ép chiều rộng dư gây lệch cột.
+- Quy chuẩn màu sắc StatusTabs & Badge: `Tất cả` (`#0E6FD6`), `Lưu tạm` (`#93A3B3`), `Chờ Cảng vụ duyệt` (`#EDA100`), `Chờ Cục duyệt` (`#0284C7`), `Đã duyệt` (`#1BAF7A`), `Từ chối` (`#E34948`). Số lượng trên tab Tất cả bắt buộc bằng tổng số các tab con (`Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối`).
+- **Quy chuẩn Style hiển thị Badge trong ô bảng (Pill Badge Standard)**: Badge Trạng thái và Tình trạng **BẮT BUỘC** hiển thị dạng viên thuốc tròn 2 đầu (`borderRadius: radiusPill` / `999px`, `padding: '2px 10px'`, `fontSizeMd` / 13px, `fontWeightMedium` / 500, `background: ${color}15`, `border: 1px solid ${color}40`, `color: ${color}`). **TUYỆT ĐỐI CẤM** dùng Ant Design `<Tag color="processing">` hay Tag mặc định vuông/tím.
+- Dọn sạch trạng thái legacy: Chỉ dùng 7 trạng thái chuẩn, không fallback mã `PROPOSED (1)`, `APPROVED_LEVEL2 (4)`, `REJECTED (6)`. Dữ liệu CSDL migrate bằng script Flyway timestamp.
+- **Quy tắc hiển thị Tiêu đề cột vs Nội dung ô bản ghi**: Tiêu đề cột **BẮT BUỘC hiển thị đầy đủ 100% chữ** (dùng `label: '...'`, cấp đủ `width`, tuyệt đối không để bị cắt chữ hiển thị `...`). Ngược lại, nội dung văn bản trong ô bản ghi nếu dài quá thì **BẮT BUỘC hiển thị dấu ba chấm `...`** (`overflow: hidden; text-overflow: ellipsis; white-space: nowrap;` kèm `title` hoặc Tooltip khi hover), tuyệt đối không để chữ dài tràn/chờm đè sang cột bên cạnh.
 - Kiểm tra cả bốn trạng thái `loading`, `error`, `empty`, `data` trước khi hoàn tất màn hình.
 
 ### Bộ lọc đơn vị phân cấp (MANDATORY)

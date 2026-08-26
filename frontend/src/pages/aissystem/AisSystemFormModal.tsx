@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import {
   UploadOutlined,
+  InboxOutlined,
   PlusOutlined,
   DeleteOutlined,
   FileOutlined,
@@ -23,7 +24,7 @@ import {
 } from '@ant-design/icons';
 import type { UploadFile } from 'antd';
 import dayjs from 'dayjs';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { CONDITION_STATUS_OPTIONS, ConditionStatus } from '../../types/vtsSystem';
 import { UNIT_OF_MEASURE_OPTIONS, UnitOfMeasure } from '../../types/aisSystem';
@@ -38,16 +39,25 @@ import { organizationService } from '../../services/organizationService';
 import { symbolService, type Symbol as GisSymbol } from '../../services/symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import toast from '../../components/ToastNotification';
+import { useAuthStore } from '../../store/authStore';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { colors } from '../../theme';
 import {
   spaceFormField,
+  formFieldStyle,
+  formRowGutter,
   spaceSm,
   spaceMd,
   radiusPill,
   radiusMd,
   inputStyle,
   selectStyle,
+  readonlyInputStyle,
+  formTreeSelectStyle,
+  drawerTabsStyle,
+  drawerTabBarStyle,
+  drawerTabContentStyle,
+  ATTACHMENT_HELPER_TEXT,
   borderDefault,
   surfaceCard,
   textTertiary,
@@ -57,12 +67,22 @@ import {
   fontSizeSm,
   fontWeightMedium,
   fontWeightBold,
+  statusOperational,
+  outlineButtonStyle,
+  primaryButtonStyle,
+  actionPrimary,
 } from '../../tokens';
 
 interface CoordinateItem {
   latitude: number | null;
   longitude: number | null;
 }
+
+export const GEOMETRY_POINT_COUNT: Record<string, number> = {
+  POINT: 1,
+  LINE: 2,
+  POLYGON: 3,
+};
 
 const ddToDms = (dd: number | null | undefined) => {
   if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -140,8 +160,16 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   opCenters: propOpCenters,
 }) => {
   const [form] = Form.useForm();
+
+  // "Lưu và phê duyệt" bỏ qua cả 2 vòng duyệt nên chỉ dành cho tài khoản cấp Cục.
+  // Frontend dùng quyền duyệt cấp Cục làm dấu hiệu; backend mới là nơi kiểm tra
+  // thật theo cấp đơn vị của tài khoản.
+  const currentUser = useAuthStore((s) => s.user);
+  const canSaveAndApprove = (currentUser?.permissions || []).includes('aissystem:approvec2');
+
   const [activeTab, setActiveTab] = useState('basic');
   const [submitting, setSubmitting] = useState(false);
+  const [actionType, setActionType] = useState<'DRAFT' | 'SUBMIT' | 'APPROVE' | 'UPDATE'>('DRAFT');
   const [orgUnits, setOrgUnits] = useState<any[]>(propOrgUnits || []);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>(propOpCenters || []);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
@@ -161,8 +189,9 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
 
   const filteredOpCenters = useMemo(() => {
     if (!formOrgUnitId) return opCenters;
-    return opCenters.filter((c) => c.orgUnitId === formOrgUnitId);
-  }, [opCenters, formOrgUnitId]);
+    const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
+    return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId));
+  }, [opCenters, formOrgUnitId, orgUnits]);
 
   useEffect(() => {
     if (visible) {
@@ -209,12 +238,14 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           specifications: item.specifications,
           maintenanceInfo: item.maintenanceInfo,
           note: item.note,
-          geometryType: item.geometryType || 'POINT',
+          geometryType: item.geometryType,
           symbolId: item.symbolId || undefined,
+          coordinateSystem: item.geometryType ? 'WGS 84 / VN-2000' : undefined,
+          displayRule: item.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
         });
 
         const parsedCoords = parseWktToCoordinates(item.coordinates);
-        setCoordinateList(parsedCoords.length > 0 ? parsedCoords : [{ latitude: null, longitude: null }]);
+        setCoordinateList(parsedCoords);
 
         aisSystemService.listAttachments(item.id).then((atts) => {
           setExistingAttachments(atts || []);
@@ -222,21 +253,19 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       } else {
         form.resetFields();
         setExistingAttachments([]);
-        setCoordinateList([{ latitude: null, longitude: null }]);
+        setCoordinateList([]);
         aisSystemService.generateCode().then((res) => {
           form.setFieldsValue({
             code: res.code,
             conditionStatus: ConditionStatus.OPERATIONAL,
             unitOfMeasure: UnitOfMeasure.SET,
             quantity: 1,
-            geometryType: 'POINT',
           });
         }).catch(() => {
           form.setFieldsValue({
             conditionStatus: ConditionStatus.OPERATIONAL,
             unitOfMeasure: UnitOfMeasure.SET,
             quantity: 1,
-            geometryType: 'POINT',
           });
         });
       }
@@ -244,34 +273,63 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     }
   }, [visible, item, form]);
 
-  const handleAddCoordinateRow = () => {
-    setCoordinateList([...coordinateList, { latitude: null, longitude: null }]);
+  const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number, mVal: number, sVal: number) => {
+    const dMax = field === 'lat' ? 90 : 180;
+    const dClamped = Math.min(dMax, Math.max(0, dVal));
+    const mClamped = Math.min(59, Math.max(0, mVal));
+    const sClamped = Math.min(59.9999, Math.max(0, sVal));
+    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
+    setCoordinateList((p) => {
+      const n = [...p];
+      n[i] = { ...n[i], [field === 'lat' ? 'latitude' : 'longitude']: decimal };
+      return n;
+    });
   };
 
-  const handleRemoveCoordinateRow = (index: number) => {
-    if (coordinateList.length <= 1) {
-      setCoordinateList([{ latitude: null, longitude: null }]);
-      return;
-    }
-    setCoordinateList(coordinateList.filter((_, i) => i !== index));
-  };
-
-  const handleCoordinateChange = (index: number, field: 'latitude' | 'longitude', value: number | null) => {
-    const next = [...coordinateList];
-    next[index] = { ...next[index], [field]: value };
-    setCoordinateList(next);
-  };
-
-  const handleDmsChange = (
-    index: number,
-    field: 'latitude' | 'longitude',
-    part: 'd' | 'm' | 's',
-    val: number | null
-  ) => {
-    const cur = ddToDms(coordinateList[index]?.[field]);
-    const nextDms = { ...cur, [part]: val || 0 };
-    const dd = nextDms.d + nextDms.m / 60 + nextDms.s / 3600;
-    handleCoordinateChange(index, field, parseFloat(dd.toFixed(6)));
+  const renderDms = (i: number, field: 'lat' | 'lng', record: CoordinateItem) => {
+    const v = field === 'lat' ? (record.latitude ?? 0) : (record.longitude ?? 0);
+    const dms = ddToDms(v);
+    const maxD = field === 'lat' ? 90 : 180;
+    return (
+      <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
+        <InputNumber
+          value={dms.d}
+          min={0}
+          max={maxD}
+          precision={0}
+          placeholder="Độ"
+          controls={false}
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(x) => updateGpsPoint(i, field, x ?? 0, dms.m, dms.s)}
+          style={{ flex: 1 }}
+        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
+        <InputNumber
+          value={dms.m}
+          min={0}
+          max={59}
+          precision={0}
+          placeholder="Phút"
+          controls={false}
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(x) => updateGpsPoint(i, field, dms.d, x ?? 0, dms.s)}
+          style={{ flex: 1 }}
+        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
+        <InputNumber
+          value={dms.s}
+          min={0}
+          max={59.9999}
+          step={0.01}
+          placeholder="Giây"
+          controls={false}
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(x) => updateGpsPoint(i, field, dms.d, dms.m, x ?? 0)}
+          style={{ flex: 1.2 }}
+        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
+      </Space.Compact>
+    );
   };
 
   const handleDeleteExistingAttachment = async (attId: string) => {
@@ -285,9 +343,29 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (action: 'DRAFT' | 'SUBMIT' | 'APPROVE' | 'UPDATE' = 'DRAFT') => {
     try {
+      setActionType(action);
       const values = await form.validateFields();
+
+      if (values.geometryType) {
+        const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
+        const validCoords = coordinateList.filter(
+          (c) => c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude)
+        );
+        if (validCoords.length < minCount) {
+          const typeLabel =
+            values.geometryType === 'POLYGON'
+              ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+              : values.geometryType === 'LINE'
+                ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+                : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+          toast.error(typeLabel);
+          setActiveTab('gis');
+          return;
+        }
+      }
+
       setSubmitting(true);
 
       const geomType = values.geometryType || 'POINT';
@@ -298,6 +376,14 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           ? values.commissioningYear
           : values.commissioningYear.year()
         : undefined;
+
+      const targetStatus = isEdit
+        ? (item?.approvalStatus || 'APPROVED')
+        : action === 'DRAFT'
+          ? 'DRAFT'
+          : action === 'SUBMIT'
+            ? 'PENDING_APPROVAL'
+            : 'APPROVED';
 
       const payload: CreateAisSystemRequest = {
         code: values.code?.trim(),
@@ -319,6 +405,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         geometryType: geomType,
         symbolId: values.symbolId,
         coordinates: wkt || undefined,
+        approvalStatus: targetStatus as any,
       };
 
       let savedId = item?.id;
@@ -328,7 +415,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       } else {
         const created = await aisSystemService.create(payload);
         savedId = created.id;
-        toast.success('Tạo mới hệ thống AIS thành công');
+        const msg =
+          action === 'DRAFT'
+            ? 'Lưu tạm hệ thống AIS thành công'
+            : action === 'SUBMIT'
+              ? 'Lưu và gửi phê duyệt thành công'
+              : 'Lưu và phê duyệt thành công';
+        toast.success(msg);
       }
 
       // Upload files if any
@@ -358,21 +451,21 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const tabItems = [
     {
       key: 'basic',
-      label: 'Thông tin cơ bản',
+      label: 'Thông tin chung',
       children: (
-        <div style={{ marginTop: 12 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="orgUnitId"
                 label="Đơn vị quản lý"
                 rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <OrgUnitTreeSelect
                   organizations={orgUnits}
                   placeholder="Chọn đơn vị quản lý"
-                  style={{ width: '100%', height: 40 }}
+                  style={formTreeSelectStyle}
                   onChange={(val) => {
                     form.setFieldValue('orgUnitId', val);
                     const curOp = form.getFieldValue('vtsOperationCenterId');
@@ -391,9 +484,10 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 style={{ marginBottom: spaceFormField }}
               >
                 <Select
-                  placeholder="Chọn TTDH VTS / Trạm Radar"
+                  placeholder={formOrgUnitId ? 'Chọn TTDH VTS / Trạm Radar' : 'Vui lòng chọn đơn vị quản lý trước'}
+                  disabled={!formOrgUnitId}
                   options={filteredOpCenters.map((c) => ({ value: c.id, label: c.name }))}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
@@ -404,18 +498,18 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="operatingOrgId"
                 label="Đơn vị khai thác"
                 rules={[{ required: true, message: 'Vui lòng chọn đơn vị khai thác' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <OrgUnitTreeSelect
                   organizations={orgUnits}
                   placeholder="Chọn đơn vị khai thác"
-                  style={{ width: '100%', height: 40 }}
+                  style={formTreeSelectStyle}
                 />
               </Form.Item>
             </Col>
@@ -427,9 +521,9 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 style={{ marginBottom: spaceFormField }}
               >
                 <Input
-                  placeholder="Mã thiết bị tự sinh"
+                  placeholder="Mã thiết bị tự sinh (AIS-xxxxxx)"
                   disabled={!isEdit}
-                  style={{ ...inputStyle, borderRadius: radiusPill, height: 40, background: '#f5f5f5' }}
+                  style={{ ...inputStyle, borderRadius: radiusPill, height: 40, backgroundColor: '#f5f5f5' }}
                 />
               </Form.Item>
             </Col>
@@ -453,10 +547,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               <Form.Item
                 name="provinceId"
                 label="Địa điểm (Tỉnh/TP)"
+                rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
                 style={{ marginBottom: spaceFormField }}
               >
                 <Select
-                  placeholder="Chọn Tỉnh/TP"
+                  placeholder="Chọn Tỉnh/Thành phố"
                   options={VIETNAM_PROVINCE_OPTIONS}
                   style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
                   showSearch
@@ -477,7 +572,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
                 style={{ marginBottom: spaceFormField }}
               >
-                <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                <Input placeholder="Nhập địa điểm chi tiết (số nhà, đường, xã/phường...)" maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
               </Form.Item>
             </Col>
             <Col span={6}>
@@ -542,16 +637,16 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       key: 'device',
       label: 'Thông tin thiết bị',
       children: (
-        <div style={{ marginTop: 12 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="model"
                 label="Model"
                 rules={[{ max: 100, message: 'Model tối đa 100 ký tự' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
-                <Input placeholder="Nhập model" maxLength={100} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                <Input placeholder="Nhập model" maxLength={100} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -559,20 +654,20 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 name="manufacturer"
                 label="Hãng sản xuất"
                 rules={[{ max: 255, message: 'Hãng sản xuất tối đa 255 ký tự' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
-                <Input placeholder="Nhập hãng sản xuất" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                <Input placeholder="Nhập hãng sản xuất" maxLength={255} showCount style={inputStyle} />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="specifications"
                 label="Thông số kỹ thuật"
                 rules={[{ max: 1000, message: 'Thông số kỹ thuật tối đa 1000 ký tự' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={1000} showCount style={{ borderRadius: radiusMd }} />
               </Form.Item>
@@ -582,7 +677,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 name="maintenanceInfo"
                 label="Thông tin bảo trì"
                 rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ borderRadius: radiusMd }} />
               </Form.Item>
@@ -593,7 +688,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             name="note"
             label="Ghi chú"
             rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
-            style={{ marginBottom: spaceFormField }}
+            style={formFieldStyle}
           >
             <Input.TextArea rows={3} placeholder="Nhập ghi chú (nếu có)" maxLength={2000} showCount style={{ borderRadius: radiusMd }} />
           </Form.Item>
@@ -602,23 +697,44 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     },
     {
       key: 'gis',
-      label: 'Vị trí (GIS)',
+      label: 'Thông tin vị trí',
       children: (
-        <div style={{ marginTop: 12 }}>
-          <Row gutter={16}>
+        <div style={drawerTabContentStyle}>
+          {/* Row 1: 11. Loại đối tượng & 12. Biểu tượng */}
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="geometryType"
                 label="Loại đối tượng"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
+                  placeholder="Chọn loại đối tượng"
+                  allowClear
                   options={[
-                    { value: 'POINT', label: 'Điểm (Point)' },
-                    { value: 'LINE', label: 'Đường (LineString)' },
-                    { value: 'POLYGON', label: 'Vùng (Polygon)' },
+                    { value: 'POINT', label: 'Đối tượng điểm' },
+                    { value: 'LINE', label: 'Đối tượng đường' },
+                    { value: 'POLYGON', label: 'Đối tượng vùng' },
                   ]}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
+                  onChange={(val) => {
+                    form.setFieldValue('geometryType', val);
+                    if (val) {
+                      form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
+                      form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
+                      const minCount = GEOMETRY_POINT_COUNT[val] ?? 1;
+                      setCoordinateList((prev) => {
+                        if (prev.length >= minCount) return prev;
+                        const added = Array.from({ length: minCount - prev.length }, () => ({ latitude: null, longitude: null }));
+                        return [...prev, ...added];
+                      });
+                    } else {
+                      form.setFieldValue('coordinateSystem', undefined);
+                      form.setFieldValue('displayRule', undefined);
+                      form.setFieldValue('symbolId', undefined);
+                      setCoordinateList([]);
+                    }
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -626,170 +742,164 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               <Form.Item
                 name="symbolId"
                 label="Biểu tượng"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
-                  placeholder="Chọn biểu tượng"
+                  placeholder="Chọn biểu tượng bản đồ"
                   allowClear
                   showSearch
-                  filterOption={(input, option) =>
-                    normalizeSearchText(option?.label).includes(normalizeSearchText(input))
-                  }
-                  options={symbols.map((s) => ({ value: s.id, label: s.name }))}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  disabled={!watchedGeom}
+                  optionFilterProp="label"
+                  style={selectStyle}
+                >
+                  {symbols.map((sym) => (
+                    <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                      <Space>
+                        {sym.image && (
+                          <img
+                            src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+                            alt={sym.name}
+                            style={{ width: 18, height: 18, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Row 2: 13. Hệ quy chiếu & 14. Quy tắc hiển thị */}
+          <Row gutter={formRowGutter}>
+            <Col span={12}>
+              <Form.Item
+                name="coordinateSystem"
+                label="Hệ quy chiếu"
+                style={formFieldStyle}
+              >
+                <Select
+                  placeholder="Chọn hệ quy chiếu"
+                  disabled
+                  options={[
+                    { value: 'WGS 84 / VN-2000', label: 'WGS 84 / VN-2000' },
+                    { value: 'WGS-84', label: 'WGS-84' },
+                    { value: 'VN-2000', label: 'VN-2000' },
+                  ]}
+                  style={selectStyle}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="displayRule"
+                label="Quy tắc hiển thị"
+                style={formFieldStyle}
+              >
+                <Input
+                  placeholder="Chọn quy tắc hiển thị"
+                  disabled
+                  style={readonlyInputStyle}
                 />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Hệ quy chiếu" style={{ marginBottom: spaceFormField }}>
-                <Input value="WGS 84 (EPSG:4326) / VN-2000" disabled style={{ ...inputStyle, borderRadius: radiusPill, height: 40, background: '#f5f5f5' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Quy tắc hiển thị" style={{ marginBottom: spaceFormField }}>
-                <Input value="Độ, phút, giây (DMS)" disabled style={{ ...inputStyle, borderRadius: radiusPill, height: 40, background: '#f5f5f5' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceSm, marginTop: spaceSm }}>
-            <span style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>
-              Danh sách tọa độ
+          {/* Row 3: Tọa độ (LongLatTable / Bảng tọa độ kinh vĩ) */}
+          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
+              Tọa độ
             </span>
             <Space>
               <Button
-                type="primary"
-                ghost
+                type="dashed"
+                size="small"
                 icon={<EnvironmentOutlined />}
+                disabled={!watchedGeom}
                 onClick={() => setMapModalOpen(true)}
                 style={{ borderRadius: radiusPill }}
               >
-                Chọn từ bản đồ
+                Chọn vị trí trên bản đồ
               </Button>
-              <Button
-                type="dashed"
-                icon={<PlusOutlined />}
-                onClick={handleAddCoordinateRow}
-                style={{ borderRadius: radiusPill }}
-              >
-                Thêm điểm
-              </Button>
+              {watchedGeom && watchedGeom !== 'POINT' && (
+                <Button
+                  type="dashed"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
+                  style={{ borderRadius: radiusPill }}
+                >
+                  Thêm tọa độ
+                </Button>
+              )}
             </Space>
           </div>
 
-          <Table
-            dataSource={coordinateList}
-            rowKey={(_, idx) => String(idx)}
-            pagination={false}
-            size="small"
-            bordered
-            columns={[
-              {
-                title: 'STT',
-                width: 50,
-                align: 'center' as const,
-                render: (_: any, __: any, index: number) => index + 1,
-              },
-              {
-                title: 'Vĩ độ (Latitude - N)',
-                render: (_: any, row: CoordinateItem, index: number) => {
-                  const dms = ddToDms(row.latitude);
-                  return (
-                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                      <InputNumber
-                        value={row.latitude}
-                        onChange={(val) => handleCoordinateChange(index, 'latitude', val)}
-                        placeholder="Vĩ độ (DD.dddddd)"
-                        style={{ width: '100%', borderRadius: radiusPill }}
-                        step={0.000001}
-                      />
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: fontSizeSm, color: textSecondary }}>
-                        <span>DMS:</span>
-                        <InputNumber
-                          value={dms.d}
-                          onChange={(v) => handleDmsChange(index, 'latitude', 'd', v)}
-                          style={{ width: 45 }}
-                          size="small"
-                        />
-                        <span>°</span>
-                        <InputNumber
-                          value={dms.m}
-                          onChange={(v) => handleDmsChange(index, 'latitude', 'm', v)}
-                          style={{ width: 45 }}
-                          size="small"
-                        />
-                        <span>'</span>
-                        <InputNumber
-                          value={dms.s}
-                          onChange={(v) => handleDmsChange(index, 'latitude', 's', v)}
-                          style={{ width: 60 }}
-                          size="small"
-                        />
-                        <span>" N</span>
-                      </div>
-                    </Space>
-                  );
+          {coordinateList.length === 0 ? (
+            <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                disabled={!watchedGeom}
+                onClick={() => setCoordinateList([{ latitude: null, longitude: null }])}
+                style={{ borderRadius: radiusPill }}
+              >
+                Thêm tọa độ
+              </Button>
+            </div>
+          ) : (
+            <Table
+              className="list-view-table"
+              rowKey="_idx"
+              size="small"
+              bordered
+              pagination={false}
+              dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+              scroll={{ x: 600 }}
+              columns={[
+                {
+                  title: 'STT',
+                  key: 'stt',
+                  width: 60,
+                  align: 'center',
+                  render: (_: any, __: any, i: number) => (
+                    <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
+                  ),
+                  onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
                 },
-              },
-              {
-                title: 'Kinh độ (Longitude - E)',
-                render: (_: any, row: CoordinateItem, index: number) => {
-                  const dms = ddToDms(row.longitude);
-                  return (
-                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                      <InputNumber
-                        value={row.longitude}
-                        onChange={(val) => handleCoordinateChange(index, 'longitude', val)}
-                        placeholder="Kinh độ (DD.dddddd)"
-                        style={{ width: '100%', borderRadius: radiusPill }}
-                        step={0.000001}
-                      />
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: fontSizeSm, color: textSecondary }}>
-                        <span>DMS:</span>
-                        <InputNumber
-                          value={dms.d}
-                          onChange={(v) => handleDmsChange(index, 'longitude', 'd', v)}
-                          style={{ width: 45 }}
-                          size="small"
-                        />
-                        <span>°</span>
-                        <InputNumber
-                          value={dms.m}
-                          onChange={(v) => handleDmsChange(index, 'longitude', 'm', v)}
-                          style={{ width: 45 }}
-                          size="small"
-                        />
-                        <span>'</span>
-                        <InputNumber
-                          value={dms.s}
-                          onChange={(v) => handleDmsChange(index, 'longitude', 's', v)}
-                          style={{ width: 60 }}
-                          size="small"
-                        />
-                        <span>" E</span>
-                      </div>
-                    </Space>
-                  );
+                {
+                  title: 'Vĩ độ (N)',
+                  key: 'lat',
+                  render: (_: any, r: any) => renderDms(r._idx, 'lat', r),
+                  onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
                 },
-              },
-              {
-                title: '',
-                width: 50,
-                align: 'center' as const,
-                render: (_: any, __: any, index: number) => (
-                  <Button
-                    type="text"
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleRemoveCoordinateRow(index)}
-                  />
-                ),
-              },
-            ]}
-          />
+                {
+                  title: 'Kinh độ (E)',
+                  key: 'lng',
+                  render: (_: any, r: any) => renderDms(r._idx, 'lng', r),
+                  onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
+                },
+                {
+                  title: '',
+                  key: 'actions',
+                  width: 50,
+                  align: 'center',
+                  render: (_: any, r: any) => (
+                    <Button
+                      type="link"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                    />
+                  ),
+                  onHeaderCell: () => ({ style: { background: colors.bodyBg, padding: '10px 6px' } }),
+                },
+              ]}
+            />
+          )}
         </div>
       ),
     },
@@ -797,10 +907,37 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       key: 'attachment',
       label: 'File đính kèm',
       children: (
-        <div style={{ marginTop: 12 }}>
+        <div style={drawerTabContentStyle}>
+          <div style={{ marginBottom: spaceMd }}>
+            <Upload.Dragger
+              fileList={fileList}
+              beforeUpload={() => false}
+              onChange={({ fileList }) => setFileList(fileList)}
+              multiple
+              showUploadList={false}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif,.dwg"
+              style={{
+                background: '#fafbfc',
+                border: `1px dashed ${borderDefault}`,
+                borderRadius: radiusMd,
+                padding: '24px 16px',
+              }}
+            >
+              <p style={{ marginBottom: 8 }}>
+                <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
+              </p>
+              <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
+                Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
+              </p>
+              <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
+                {ATTACHMENT_HELPER_TEXT}
+              </p>
+            </Upload.Dragger>
+          </div>
+
           {existingAttachments.length > 0 && (
             <div style={{ marginBottom: spaceMd }}>
-              <div style={{ fontWeight: fontWeightBold, color: textPrimary, marginBottom: spaceSm }}>
+              <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
                 Tệp đính kèm hiện có ({existingAttachments.length})
               </div>
               <Table
@@ -847,6 +984,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                         danger
                         icon={<DeleteOutlined />}
                         onClick={() => handleDeleteExistingAttachment(row.id)}
+                        title="Xóa tệp"
                       />
                     ),
                   },
@@ -855,21 +993,63 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </div>
           )}
 
-          <Form.Item label="Thêm tệp đính kèm mới" style={{ marginBottom: spaceFormField }}>
-            <Upload
-              fileList={fileList}
-              beforeUpload={() => false}
-              onChange={({ fileList }) => setFileList(fileList)}
-              multiple
-            >
-              <Button icon={<UploadOutlined />} style={{ borderRadius: radiusPill, height: 40 }}>
-                Chọn tệp đính kèm
-              </Button>
-            </Upload>
-            <div style={{ fontSize: fontSizeSm, color: textTertiary, marginTop: 4 }}>
-              Hỗ trợ PDF, DOCX, XLSX, PNG, JPG tối đa 50MB
+          {fileList.length > 0 && (
+            <div style={{ marginBottom: spaceMd }}>
+              <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                Tệp mới chọn ({fileList.length})
+              </div>
+              <Table
+                dataSource={fileList}
+                rowKey={(f) => f.uid}
+                pagination={false}
+                size="small"
+                bordered
+                columns={[
+                  {
+                    title: 'STT',
+                    width: 50,
+                    align: 'center' as const,
+                    render: (_: any, __: any, idx: number) => idx + 1,
+                  },
+                  {
+                    title: 'Tên tệp',
+                    dataIndex: 'name',
+                    render: (t: string) => (
+                      <Space>
+                        <FileOutlined style={{ color: actionPrimary }} />
+                        <span>{t}</span>
+                      </Space>
+                    ),
+                  },
+                  {
+                    title: 'Dung lượng',
+                    dataIndex: 'size',
+                    width: 120,
+                    render: (bytes: number) => {
+                      if (!bytes) return '—';
+                      if (bytes < 1024) return `${bytes} B`;
+                      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                    },
+                  },
+                  {
+                    title: 'Thao tác',
+                    width: 80,
+                    align: 'center' as const,
+                    render: (_: any, file: UploadFile) => (
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => setFileList((prev) => prev.filter((f) => f.uid !== file.uid))}
+                        title="Hủy chọn tệp"
+                      />
+                    ),
+                  },
+                ]}
+              />
             </div>
-          </Form.Item>
+          )}
         </div>
       ),
     },
@@ -881,9 +1061,60 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         title={isEdit ? 'Chỉnh sửa hệ thống AIS' : 'Thêm mới hệ thống AIS'}
         open={visible}
         onClose={onCancel}
-        onOk={handleSubmit}
-        okText={isEdit ? 'Cập nhật' : 'Tạo mới'}
-        okLoading={submitting}
+        footer={
+          isEdit ? (
+            <>
+              <Button
+                onClick={onCancel}
+                style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => handleSubmit('UPDATE')}
+                loading={submitting && actionType === 'UPDATE'}
+                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+              >
+                Cập nhật
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                onClick={() => handleSubmit('DRAFT')}
+                loading={submitting && actionType === 'DRAFT'}
+                style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+              >
+                Lưu tạm
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => handleSubmit('SUBMIT')}
+                loading={submitting && actionType === 'SUBMIT'}
+                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+              >
+                Lưu và gửi phê duyệt
+              </Button>
+              {canSaveAndApprove && (
+                <Button
+                  type="primary"
+                  onClick={() => handleSubmit('APPROVE')}
+                  loading={submitting && actionType === 'APPROVE'}
+                  style={{
+                    ...primaryButtonStyle,
+                    background: statusOperational,
+                    borderColor: statusOperational,
+                    borderRadius: radiusPill,
+                    height: 40,
+                  }}
+                >
+                  Lưu và phê duyệt
+                </Button>
+              )}
+            </>
+          )
+        }
         size="50%"
       >
         <Form form={form} layout="vertical">
@@ -891,7 +1122,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
-            type="card"
+            tabBarStyle={drawerTabBarStyle}
           />
         </Form>
       </AppDrawer>

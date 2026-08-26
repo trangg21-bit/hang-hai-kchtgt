@@ -27,7 +27,7 @@ import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 
 import type {
   VtsOperationCenterListItem,
@@ -38,7 +38,6 @@ import { vtsOperationCenterService } from '../../services/vtsOperationCenterServ
 import { organizationService } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { portCRUD } from '../../services/portService';
-import { userService } from '../../services/userService';
 import {
   CONDITION_STATUS_TAG_MAP,
   APPROVAL_STATUS_TAG_MAP,
@@ -227,10 +226,9 @@ function historyNewValue(item: any): string | null {
   return item.newValue ?? null;
 }
 
-function historyActor(item: any, userMap?: Map<string, string>): string {
-  const raw = item.approvedBy || item.changedBy || item.performedBy || '';
-  if (!raw) return '';
-  return userMap?.get(raw) || raw;
+function historyActor(item: any): string {
+  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
+  return raw || '—';
 }
 
 function normalizedHistoryFields(value: string): string[] {
@@ -423,6 +421,9 @@ export const VtsOperationCenterList: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState<string>('ALL');
+  // Sắp xếp phía server; antd chỉ nhìn thấy trang hiện tại nên không tự sắp được.
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Filter sidebar states
   const [filterCollapsed, setFilterCollapsed] = useState(false);
@@ -475,15 +476,12 @@ export const VtsOperationCenterList: React.FC = () => {
   const canApproveC1 = hasPermission('vtsoperationcenter:approvec1');
   const canApproveC2 = hasPermission('vtsoperationcenter:approvec2');
 
-  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
-
   const loadReferenceData = useCallback(async () => {
     try {
-      const [vtsRes, orgRes, portRes, userRes] = await Promise.allSettled([
+      const [vtsRes, orgRes, portRes] = await Promise.allSettled([
         vtsSystemCRUD.getOptions(),
         organizationService.list({ pageSize: 1000 }),
         portCRUD.getOptions(),
-        userService.list({ pageSize: 1000 }),
       ]);
       if (vtsRes.status === 'fulfilled' && Array.isArray(vtsRes.value)) {
         setVtsSystems(vtsRes.value.map((s: any) => ({ id: s.id, name: s.name || s.systemName, orgUnitId: s.orgUnitId })));
@@ -494,12 +492,6 @@ export const VtsOperationCenterList: React.FC = () => {
       if (portRes.status === 'fulfilled' && Array.isArray(portRes.value)) {
         setPortOptions(portRes.value.map((p: any) => ({ id: p.id, name: p.portName || p.portCode || p.id, orgUnitId: p.orgUnitId })));
       }
-      if (userRes.status === 'fulfilled' && userRes.value) {
-        const users = userRes.value.data || (userRes.value as any).content || [];
-        const m = new Map<string, string>();
-        users.forEach((u: any) => m.set(u.id, u.fullName || u.username || u.id));
-        setUserMap(m);
-      }
     } catch {
       // ignore
     }
@@ -507,21 +499,24 @@ export const VtsOperationCenterList: React.FC = () => {
 
   const filteredVtsSystems = useMemo(() => {
     if (!orgUnitId) return vtsSystems;
-    return vtsSystems.filter((s) => s.orgUnitId === orgUnitId);
-  }, [vtsSystems, orgUnitId]);
+    const allowedIds = resolveOrgSubtreeIds(orgUnits, orgUnitId);
+    return vtsSystems.filter((s) => !s.orgUnitId || allowedIds.has(s.orgUnitId));
+  }, [vtsSystems, orgUnitId, orgUnits]);
 
   const filteredPortOptions = useMemo(() => {
     if (!orgUnitId) return portOptions;
-    return portOptions.filter((p) => p.orgUnitId === orgUnitId);
-  }, [portOptions, orgUnitId]);
+    const allowedIds = resolveOrgSubtreeIds(orgUnits, orgUnitId);
+    return portOptions.filter((p) => !p.orgUnitId || allowedIds.has(p.orgUnitId));
+  }, [portOptions, orgUnitId, orgUnits]);
 
   const handleOrgUnitChange = (val?: string) => {
     setOrgUnitId(val);
     if (val) {
-      if (portId && !portOptions.some((p) => p.id === portId && p.orgUnitId === val)) {
+      const allowedIds = resolveOrgSubtreeIds(orgUnits, val);
+      if (portId && !portOptions.some((p) => p.id === portId && (!p.orgUnitId || allowedIds.has(p.orgUnitId)))) {
         setPortId(undefined);
       }
-      if (vtsSystemId && !vtsSystems.some((v) => v.id === vtsSystemId && v.orgUnitId === val)) {
+      if (vtsSystemId && !vtsSystems.some((v) => v.id === vtsSystemId && (!v.orgUnitId || allowedIds.has(v.orgUnitId)))) {
         setVtsSystemId(undefined);
       }
     }
@@ -544,6 +539,10 @@ export const VtsOperationCenterList: React.FC = () => {
         approvalStatus: effectiveApprovalStatus || undefined,
         page,
         size: pageSize,
+        // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả, không chỉ trang
+        // đang hiển thị (backend đã nhận sortBy/sortDir sẵn).
+        sortBy: sortField,
+        sortDir: sortField ? sortDirection : undefined,
       });
 
       setData(res.items);
@@ -566,7 +565,15 @@ export const VtsOperationCenterList: React.FC = () => {
     conditionStatus,
     approvalStatusFilter,
     activeTab,
+    sortField,
+    sortDirection,
   ]);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
+    setSortField(field);
+    setSortDirection(order);
+    setPage(1);
+  }, []);
 
   useEffect(() => {
     loadReferenceData();
@@ -693,22 +700,29 @@ export const VtsOperationCenterList: React.FC = () => {
   };
 
   const statusTabsItems = useMemo(() => {
-    const allCount = total;
     const draftCount = statusCounts['DRAFT'] || 0;
-    const pendingCount = (statusCounts['PENDING_APPROVAL'] || 0) + (statusCounts['PROPOSED'] || 0);
+    const pendingCount = statusCounts['PENDING_APPROVAL'] || 0;
     const approvedL1Count = statusCounts['APPROVED_LEVEL1'] || 0;
-    const approvedCount = (statusCounts['APPROVED'] || 0) + (statusCounts['APPROVED_LEVEL2'] || 0);
-    const rejectedCount = (statusCounts['REJECTED'] || 0) + (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED_LEVEL2'] || 0);
+    const approvedCount = statusCounts['APPROVED'] || 0;
+    const rejectedCount = (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED_LEVEL2'] || 0);
+    const allCount = draftCount + pendingCount + approvedL1Count + approvedCount + rejectedCount;
 
     return [
       { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary },
       { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft },
       { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention },
-      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#13C2C2' },
+      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7' },
       { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational },
       { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical },
     ];
-  }, [total, statusCounts]);
+  }, [statusCounts]);
+
+  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
+    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+
+  // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
+  // biểu tượng sắp xếp mà không tự sắp lại trang đang xem.
+  const serverSideSorter = () => 0;
 
   const columns = useMemo(() => [
     {
@@ -720,109 +734,201 @@ export const VtsOperationCenterList: React.FC = () => {
       render: (_: any, __: any, index: number) => (page - 1) * pageSize + index + 1,
     },
     {
+      key: 'name',
+      label: <span>Tên/Mã TTDH VTS</span>,
+      dataIndex: 'name',
+      // list-screen-ui-standard §2: cột Tên/Mã KCHT rộng 220–260px.
+      width: 260,
+      fixed: 'left' as const,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('name'),
+      ellipsis: false,
+      render: (name: string, record: VtsOperationCenterListItem) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <a
+            title={name}
+            onClick={() => handleViewDetail(record)}
+            style={{
+              fontWeight: fontWeightBold,
+              color: actionPrimary,
+              cursor: 'pointer',
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {name || '—'}
+          </a>
+          <span style={{ opacity: 0.85, fontSize: fontSizeMd, color: textSecondary, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {record.code || '—'}
+          </span>
+        </div>
+      ),
+    },
+    {
       key: 'orgUnitName',
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
-      width: 250,
-      render: (orgName: string) => orgName || '—',
+      width: 260,
+      ellipsis: false,
+      // Tên đơn vị resolve từ cache sau truy vấn nên không sắp xếp được ở server;
+      // không bật sắp xếp để tránh chỉ sắp đúng trang đang xem.
+      render: (orgName: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={orgName}>
+          <span style={{ fontWeight: fontWeightBold }}>{orgName || '—'}</span>
+        </div>
+      ),
     },
     {
       key: 'portName',
       label: 'Thuộc cảng biển',
       dataIndex: 'portName',
-      width: 220,
-      render: (pName: string) => pName || '—',
+      width: 200,
+      ellipsis: false,
+      render: (pName: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={pName}>
+          {pName || '—'}
+        </div>
+      ),
     },
     {
       key: 'vtsSystemName',
       label: 'Thuộc hệ thống VTS',
       dataIndex: 'vtsSystemName',
-      width: 240,
-      render: (sName: string) => sName || '—',
-    },
-    {
-      key: 'code',
-      label: 'Mã TTDH VTS',
-      dataIndex: 'code',
-      width: 170,
-      sortable: true,
-      render: (code: string, record: VtsOperationCenterListItem) => (
-        <a
-          onClick={() => handleViewDetail(record)}
-          style={{ fontWeight: 600, color: colors.sidebarBg, cursor: 'pointer' }}
-        >
-          {code || '—'}
-        </a>
-      ),
-    },
-    {
-      key: 'name',
-      label: 'Tên trung tâm điều hành VTS',
-      dataIndex: 'name',
-      width: 400,
-      sortable: true,
-      render: (name: string, record: VtsOperationCenterListItem) => (
-        <span
-          onClick={() => handleViewDetail(record)}
-          style={{ cursor: 'pointer', fontWeight: 500 }}
-        >
-          {name || '—'}
-        </span>
+      width: 220,
+      ellipsis: false,
+      render: (sName: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={sName}>
+          {sName || '—'}
+        </div>
       ),
     },
     {
       key: 'provinceId',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
-      width: 200,
-      render: (pId: number) => (pId ? getProvinceNameById(pId) || pId : '—'),
+      width: 220,
+      ellipsis: false,
+      render: (pId: number) => {
+        const pName = pId ? getProvinceNameById(pId) || String(pId) : '—';
+        return (
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={pName}>
+            {pName}
+          </div>
+        );
+      },
     },
     {
       key: 'conditionStatus',
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
-      width: 170,
-      align: 'center' as const,
+      width: 160,
+      ellipsis: false,
       sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('conditionStatus'),
       render: (status: any) => {
-        const c = CONDITION_STATUS_TAG_MAP[String(status)] || { label: '—', color: 'default' };
-        return <Tag color={c.color}>{c.label}</Tag>;
+        if (!status) return '—';
+        const key = String(status);
+        const label = key === 'OPERATIONAL' ? 'Đang hoạt động' : key === 'MAINTENANCE' ? 'Đang bảo trì' : key === 'STOPPED' ? 'Dừng hoạt động' : key === 'UNDER_CONSTRUCTION' ? 'Đang xây dựng' : key;
+        const color = key === 'OPERATIONAL' ? statusOperational : key === 'MAINTENANCE' ? statusAttention : key === 'STOPPED' ? statusCritical : key === 'UNDER_CONSTRUCTION' ? actionPrimary : textSecondary;
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 10px',
+              border: `1px solid ${color}40`,
+              borderRadius: radiusPill,
+              fontSize: fontSizeMd,
+              fontWeight: fontWeightMedium,
+              background: `${color}15`,
+              color,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </span>
+        );
       },
     },
     {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 200,
-      align: 'center' as const,
+      width: 180,
+      ellipsis: false,
       sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: ApprovalStatus) => {
-        const a = APPROVAL_STATUS_TAG_MAP[status] || { label: '—', color: 'default' };
-        return <Tag color={a.color}>{a.label}</Tag>;
+        if (!status) return '—';
+        const key = String(status);
+        const label = key === 'DRAFT' ? 'Lưu tạm'
+          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? 'Chờ Cảng vụ duyệt'
+          : key === 'APPROVED_LEVEL1' ? 'Chờ Cục duyệt'
+          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? 'Đã duyệt'
+          : (key === 'REJECTED_LEVEL1' || key === 'REJECTED') ? 'Cảng vụ trả về'
+          : key === 'REJECTED_LEVEL2' ? 'Cục trả về'
+          : key;
+        const color = key === 'DRAFT' ? statusDraft
+          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? statusAttention
+          : key === 'APPROVED_LEVEL1' ? '#0284C7'
+          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? statusOperational
+          : statusCritical;
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 10px',
+              border: `1px solid ${color}40`,
+              borderRadius: radiusPill,
+              fontSize: fontSizeMd,
+              fontWeight: fontWeightMedium,
+              background: `${color}15`,
+              color,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </span>
+        );
       },
     },
     {
       key: 'updatedByName',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
-      width: 200,
-      render: (name: string) => name || '—',
+      width: 220,
+      // Tên cán bộ cũng resolve sau truy vấn — xem ghi chú ở cột đơn vị quản lý.
+      ellipsis: false,
+      render: (_: string, record: VtsOperationCenterListItem) => {
+        const name = record.updatedByName || record.createdByName || record.updatedBy || record.createdBy || '—';
+        const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35' }}>
+            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
     },
-    {
-      key: 'updatedAt',
-      label: 'Ngày cập nhật',
-      dataIndex: 'updatedAt',
-      width: 180,
-      sortable: true,
-      render: (date?: string) => (date ? dayjs(date).format('DD/MM/YYYY HH:mm') : '—'),
-    },
-  ], [page, pageSize]);
+  ], [page, pageSize, sortField, sortDirection]);
 
   const rowActions = useCallback((record: VtsOperationCenterListItem) => {
     const isDraft = record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
-    const isPendingC1 = record.approvalStatus === ApprovalStatus.PROPOSED || record.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
+    const isPendingC1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
     const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-    const isApproved = record.approvalStatus === ApprovalStatus.APPROVED || record.approvalStatus === ApprovalStatus.APPROVED_LEVEL2;
+    const isApproved = record.approvalStatus === ApprovalStatus.APPROVED;
 
     const isCreator = user?.id && record.createdBy === user.id;
 
@@ -922,8 +1028,8 @@ export const VtsOperationCenterList: React.FC = () => {
       });
     }
 
-    // 7. Xóa
-    if (canDelete && (isDraft || isApproved)) {
+    // 7. Xóa — T13/N04: chỉ hồ sơ đang "Lưu tạm" mới xóa được.
+    if (canDelete && record.approvalStatus === ApprovalStatus.DRAFT) {
       actions.push({
         key: 'delete',
         icon: <DeleteOutlined />,
@@ -932,7 +1038,7 @@ export const VtsOperationCenterList: React.FC = () => {
         onClick: () => {
           Modal.confirm({
             title: 'Xác nhận xóa trung tâm điều hành VTS',
-            content: 'Bạn có chắc chắn muốn xóa bản ghi này?',
+            content: 'Hồ sơ ở trạng thái Lưu tạm sẽ chuyển sang "Đã xóa (lịch sử)": không còn hiển thị trong danh sách nhưng vẫn được giữ lại để đối chiếu.',
             okText: 'Xóa',
             okType: 'danger',
             cancelText: 'Hủy',
@@ -961,7 +1067,7 @@ export const VtsOperationCenterList: React.FC = () => {
       if (historyDateFrom && new Date(historyTimestamp(r)) < new Date(historyDateFrom)) return false;
       if (historyDateTo && new Date(historyTimestamp(r)) > new Date(historyDateTo)) return false;
       if (q) {
-        const actorName = historyActor(r, userMap);
+        const actorName = historyActor(r);
         const txt = `${historyField(r)} ${historyOldValue(r)} ${historyNewValue(r)} ${actorName} ${r.reason || ''}`.toLowerCase();
         if (!txt.includes(q)) return false;
       }
@@ -973,7 +1079,7 @@ export const VtsOperationCenterList: React.FC = () => {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
-      const actor = historyActor(r, userMap);
+      const actor = historyActor(r);
       if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, items: [r] });
     }
@@ -1024,14 +1130,14 @@ export const VtsOperationCenterList: React.FC = () => {
               key={gi}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '240px minmax(0, 1fr)',
+                gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
                 gap: spaceLg,
                 alignItems: 'start',
                 marginBottom: gi < groups.length - 1 ? spaceMd : 0,
               }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm, marginBottom: spaceXs }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
                     {g.ts ? fmtTime(g.ts) : '—'}
                   </Typography.Text>
@@ -1043,7 +1149,7 @@ export const VtsOperationCenterList: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{userMap.get(g.actor) || g.actor || '—'}</span>
+                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || '—'}</span>
                   </Typography.Text>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
                     Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
@@ -1058,7 +1164,14 @@ export const VtsOperationCenterList: React.FC = () => {
                 </Typography.Text>
 
                 {(() => {
-                  const validChanges = changes.filter(c => formatHistoryValue(c.field, c.oldValue) != null || formatHistoryValue(c.field, c.newValue) != null);
+                  const validChanges = changes.filter((c: any) => {
+                    if (!c.field) return false;
+                    const ov = formatHistoryValue(c.field, c.oldValue);
+                    const nv = formatHistoryValue(c.field, c.newValue);
+                    if (ov == null && nv == null) return false;
+                    if (ov === nv) return false;
+                    return true;
+                  });
                   const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
 
                   if (validChanges.length > 0) {
@@ -1120,12 +1233,12 @@ export const VtsOperationCenterList: React.FC = () => {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const prev = groups[groups.length - 1];
-      const actor = historyActor(r, userMap);
+      const actor = historyActor(r);
       if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, items: [r] });
     }
     return groups.length;
-  }, [historyRecords, userMap]);
+  }, [historyRecords]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
@@ -1294,6 +1407,7 @@ export const VtsOperationCenterList: React.FC = () => {
           rowKey="id"
           rowActions={rowActions}
           loading={false}
+          onSort={handleSort}
           scroll={{ x: 'max-content' }}
           emptyState={
             data.length === 0 && !loading ? (
@@ -1356,7 +1470,7 @@ export const VtsOperationCenterList: React.FC = () => {
 
       {/* ── History Drawer (Identical to VTS System) ─────────────── */}
       <Drawer
-        width={960}
+        size={960}
         placement="right"
         open={historyDrawerVisible}
         onClose={() => {

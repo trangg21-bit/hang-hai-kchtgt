@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
 import java.util.UUID;
 
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
@@ -111,26 +112,48 @@ public class PortController {
         return ResponseEntity.ok(ApiResponse.success("Xóa cảng biển thành công", null));
     }
 
-    @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'port:approve')")
-    public ResponseEntity<ApiResponse<Void>> approve(
-            @PathVariable UUID id,
-            Authentication authentication) {
-        String userId = authentication.getName();
-        log.info("Approving Port: id={}, userId={}", id, userId);
-        portApprovalService.approve(id, userId, null);
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cảng biển thành công", null));
+    // ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ────────────────────────
+
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("@auth.check(authentication, 'port:update')")
+    public ResponseEntity<ApiResponse<Void>> submit(@PathVariable UUID id) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        log.info("Submitting Port for approval: id={}, userId={}", id, userId);
+        portApprovalService.submit(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt cảng biển thành công", null));
     }
 
+    @PostMapping("/{id}/approve/c1")
+    @PreAuthorize("@auth.check(authentication, 'port:approvec1')")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        log.info("Approving Port at level 1: id={}, userId={}", id, userId);
+        portApprovalService.approveC1(id, reason, userId);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    @PreAuthorize("@auth.check(authentication, 'port:approvec2')")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        log.info("Approving Port at level 2: id={}, userId={}", id, userId);
+        portApprovalService.approveC2(id, reason, userId);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
+    /** Vòng bị từ chối do trạng thái hiện tại quyết định (xem PortApprovalService). */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'port:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'port:approvec1', 'port:approvec2')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,
-            Authentication authentication) {
-        String userId = authentication.getName();
+            @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason) {
+        UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Rejecting Port: id={}, userId={}", id, userId);
-        portApprovalService.approve(id, userId, reason);
+        portApprovalService.reject(id, reason, userId);
         return ResponseEntity.ok(ApiResponse.success("Từ chối cảng biển thành công", null));
     }
 

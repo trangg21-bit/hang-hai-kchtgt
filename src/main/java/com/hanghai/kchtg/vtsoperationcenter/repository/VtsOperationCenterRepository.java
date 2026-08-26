@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.vtsoperationcenter.repository;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import org.springframework.data.domain.Page;
@@ -11,12 +12,29 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface VtsOperationCenterRepository extends JpaRepository<VtsOperationCenter, UUID>, JpaSpecificationExecutor<VtsOperationCenter> {
+
+    @Query("""
+        SELECT new com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse(t.id, t.code, t.name, t.orgUnitId, t.vtsSystemId)
+        FROM VtsOperationCenter t
+        WHERE t.deletedAt IS NULL
+          AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
+        ORDER BY LOWER(t.name) ASC
+    """)
+    List<VtsOperationCenterOptionResponse> findOptions(
+        @Param("scopeEnabled") boolean scopeEnabled,
+        @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
+        @Param("orgFiltered") boolean orgFiltered,
+        @Param("targetOrgUnitIds") Collection<UUID> targetOrgUnitIds
+    );
 
     Optional<VtsOperationCenter> findByIdAndDeletedAtIsNull(UUID id);
 
@@ -33,7 +51,9 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
           AND (:portId IS NULL OR t.portId = :portId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus)
+          AND (:approvalStatus IS NULL 
+               OR t.approvalStatus = :approvalStatus
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2)))
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR

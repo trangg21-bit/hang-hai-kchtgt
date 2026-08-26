@@ -96,6 +96,7 @@ export interface CreateVtsOperationCenterRequest {
   symbolId?: string;
   coordinateSystem?: string;
   displayRule?: string;
+  approvalStatus?: ApprovalStatus | string;
 }
 
 export interface UpdateVtsOperationCenterRequest extends CreateVtsOperationCenterRequest {}

@@ -114,6 +114,33 @@ public class PierController {
         return ResponseEntity.ok(ApiResponse.success("Xóa cầu cảng thành công", null));
     }
 
+    // ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ────────────────────────
+
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("@auth.check(authentication, 'pier:update')")
+    public ResponseEntity<ApiResponse<Void>> submitForApproval(@PathVariable UUID id) {
+        pierApprovalService.submit(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt cầu cảng thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c1")
+    @PreAuthorize("@auth.check(authentication, 'pier:approvec1')")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        pierApprovalService.approveC1(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    @PreAuthorize("@auth.check(authentication, 'pier:approvec2')")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        pierApprovalService.approveC2(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("@auth.check(authentication, 'pier:approve')")
     public ResponseEntity<ApiResponse<Void>> approve(

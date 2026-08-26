@@ -35,6 +35,7 @@ import {
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { UploadFile } from 'antd';
+import type { RcFile } from 'antd/es/upload/interface';
 import {
   beaconStationCRUD,
   approval,
@@ -553,7 +554,7 @@ export default function BeaconStationList() {
   }, [createForm]);
 
   // ── File đính kèm ───────────────────────────────────────────────
-  const handleBeforeUpload = useCallback((file: File): false => {
+  const handleBeforeUpload = useCallback((file: RcFile): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
@@ -1111,7 +1112,7 @@ export default function BeaconStationList() {
     },
     { key: 'technical', label: 'Thông tin kỹ thuật đèn biển', children: renderDetailRowsTwoCol(detailTechnicalRows) },
     { key: 'station', label: 'Thông tin nhà trạm', children: renderDetailRows(detailStationRows) },
-    { key: 'gis', label: 'Thông tin vị trí (tọa độ GIS)', children: renderDetailRows(detailGisRows) },
+    { key: 'gis', label: 'Thông tin vị trí', children: renderDetailRows(detailGisRows) },
     {
       key: 'files',
       label: 'File đính kèm',

@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.common.service;
 
 import com.hanghai.kchtg.common.entity.ApprovableEntity;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
 class InfrastructureApprovalServiceTest {
 
     @Mock
-    private ApprovalHistoryRepository historyRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -113,7 +113,7 @@ class InfrastructureApprovalServiceTest {
         approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCangVu);
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.PENDING_APPROVAL);
-        verify(historyRepository).save(any(ApprovalHistory.class));
+        verify(historyRepository).save(any(InfrastructureHistory.class));
     }
 
     @Test
@@ -125,7 +125,7 @@ class InfrastructureApprovalServiceTest {
         approvalService.submit(entity, InfrastructureType.VTS_SYSTEM, userIdCuc);
 
         assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
-        verify(historyRepository).save(any(ApprovalHistory.class));
+        verify(historyRepository).save(any(InfrastructureHistory.class));
     }
 
     @Test

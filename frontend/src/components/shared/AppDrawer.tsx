@@ -13,20 +13,22 @@ import {
 
 const { useBreakpoint } = Grid;
 
-export interface AppDrawerProps extends Omit<DrawerProps, 'title' | 'footer'> {
+export interface AppDrawerProps extends Omit<DrawerProps, 'title' | 'footer' | 'size'> {
   title: React.ReactNode;
   open: boolean;
   onClose: () => void;
   /** 
-   * Tỉ lệ % chiều rộng màn hình: 
+   * Kích thước hoặc Tỉ lệ % chiều rộng màn hình: 
    * - 'sm' (~40%-45%)
    * - 'md' (~55%-65% - mặc định cho form chuẩn)
    * - 'lg' (~75%-80% - cho form nhiều tab/bảng)
    * - 'xl' (~90%)
    * - 'full' (100%)
-   * Hoặc truyền chuỗi % tùy chỉnh như '65%'
+   * Hoặc truyền chuỗi/số tùy chỉnh như '50%', '65%', 960
    */
-  drawerSize?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | string | number;
+  drawerSize?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | string | number;
+  width?: string | number;
   /** Custom footer node, hoặc false/null để ẩn */
   footer?: React.ReactNode;
   /** Quick action callback: khi truyền onOk sẽ tự sinh bộ nút [Hủy] + [Lưu/Tạo mới] chuẩn */
@@ -48,7 +50,8 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   title,
   open,
   onClose,
-  drawerSize = 'md',
+  drawerSize,
+  size: propSize,
   width,
   footer,
   onOk,
@@ -61,17 +64,31 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
 }) => {
   const screens = useBreakpoint();
 
-  // Tính toán responsive width theo tỉ lệ % màn hình
-  const getResponsiveWidth = (): string | number => {
-    // Nếu truyền prop width trực tiếp thì ưu tiên
-    if (width) return width;
+  // Tính toán responsive size theo tỉ lệ % màn hình hoặc giá trị trực tiếp
+  const getResponsiveSize = (): string | number => {
+    const rawTarget = propSize || drawerSize || width || 'md';
+
+    if (typeof rawTarget === 'number') {
+      return rawTarget;
+    }
+
+    // Nếu truyền chuỗi số hoặc px hoặc %
+    if (typeof rawTarget === 'string') {
+      if (/^\d+$/.test(rawTarget)) return Number(rawTarget);
+      if (rawTarget.endsWith('px')) return rawTarget;
+      if (rawTarget.endsWith('%') && rawTarget !== '100%') {
+        if (!screens.md) return '100%';
+        if (!screens.lg) return '80%';
+        return rawTarget;
+      }
+    }
 
     // Mobile / Tablet nhỏ: Full 100% hoặc 80%
     if (!screens.md) return '100%';
     if (!screens.lg) return '80%';
 
     // Desktop: tính theo preset tỉ lệ %
-    switch (drawerSize) {
+    switch (rawTarget) {
       case 'sm':
         return screens.xxl ? '30%' : screens.xl ? '35%' : '40%';
       case 'lg':
@@ -82,15 +99,12 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
         return '100%';
       case 'md':
       default:
-        if (typeof drawerSize === 'string' && drawerSize.endsWith('%')) {
-          return drawerSize;
-        }
         // Mặc định 'md': 50% màn hình
         return screens.xl ? '50%' : '55%';
     }
   };
 
-  const calculatedWidth = getResponsiveWidth();
+  const calculatedWidth = getResponsiveSize();
 
   const headerExtra = extra ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

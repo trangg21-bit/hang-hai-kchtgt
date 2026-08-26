@@ -6,8 +6,6 @@ import {
   Table,
   Modal,
   Input,
-  Upload,
-  Popconfirm,
   Select,
   Spin,
   Empty,
@@ -15,7 +13,6 @@ import {
 import {
   FileOutlined,
   DeleteOutlined,
-  UploadOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   SendOutlined,
@@ -58,6 +55,7 @@ import {
   borderDefault,
   textPrimary,
   textSecondary,
+  textTertiary,
   statusCritical,
   statusAttention,
   statusOperational,
@@ -233,7 +231,7 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
   const isCreator = user?.id && current.createdBy === user.id;
 
   const showSubmit = canUpdate && (current.approvalStatus === ApprovalStatus.DRAFT || current.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || current.approvalStatus === ApprovalStatus.REJECTED_LEVEL2);
-  const showApproveC1 = canApproveC1 && (current.approvalStatus === ApprovalStatus.PENDING_APPROVAL || current.approvalStatus === ApprovalStatus.PROPOSED) && !isCreator;
+  const showApproveC1 = canApproveC1 && current.approvalStatus === ApprovalStatus.PENDING_APPROVAL && !isCreator;
   const showApproveC2 = canApproveC2 && current.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && !isCreator && current.approverLevel1 !== user?.id;
   const showReject = (showApproveC1 || showApproveC2);
 
@@ -303,26 +301,7 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
     }
   };
 
-  const handleFileUpload = async (files: File[]) => {
-    try {
-      await vtsOperationCenterService.uploadAttachments(current.id, files);
-      toast.success('Tải tệp đính kèm thành công');
-      const attList = await vtsOperationCenterService.listAttachments(current.id);
-      setAttachments(attList);
-    } catch (err: any) {
-      toast.error('Tải tệp đính kèm thất bại');
-    }
-  };
 
-  const handleDeleteAttachment = async (attId: string) => {
-    try {
-      await vtsOperationCenterService.deleteAttachment(current.id, attId);
-      toast.success('Xóa tệp đính kèm thành công');
-      setAttachments((prev) => prev.filter((a) => a.id !== attId));
-    } catch (err: any) {
-      toast.error('Xóa tệp đính kèm thất bại');
-    }
-  };
 
   // Dummy / linked infrastructure list
   const subInfrastructures: any[] = [];
@@ -335,7 +314,7 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
   const isApprovedC1 = current.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
   const isApprovedC2 = current.approvalStatus === ApprovalStatus.APPROVED;
   const isRejectedC1 = current.approvalStatus === ApprovalStatus.REJECTED_LEVEL1;
-  const isRejectedC2 = current.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 || current.approvalStatus === ApprovalStatus.REJECTED;
+  const isRejectedC2 = current.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
 
   const submitHistory = history.find((h) => h.action?.toUpperCase() === 'SUBMIT' || h.status === 'PROPOSED' || h.status === 'PENDING_APPROVAL');
   const submittedDate = !isDraft && (submitHistory?.performedDate ? dayjs(submitHistory.performedDate).format('DD/MM/YYYY HH:mm:ss') : (current.updatedAt ? dayjs(current.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'));
@@ -395,7 +374,7 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
     },
     {
       key: 'gis',
-      label: 'Vị trí (GIS)',
+      label: 'Thông tin vị trí',
       children: (
         <div style={{ paddingTop: 16 }}>
           <div className="detail-grid" style={{ marginBottom: 16 }}>
@@ -458,37 +437,22 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
       label: `File đính kèm (${attachments.length})`,
       children: (
         <div style={{ paddingTop: 16 }}>
-          {canUpdate && (
-            <div style={{ marginBottom: spaceMd }}>
-              <Upload
-                beforeUpload={(file) => {
-                  handleFileUpload([file]);
-                  return false;
-                }}
-                showUploadList={false}
-                multiple
-              >
-                <Button icon={<UploadOutlined />} style={{ ...primaryButtonStyle, borderRadius: radiusPill }}>
-                  Tải lên tệp mới
-                </Button>
-              </Upload>
-            </div>
-          )}
           <Table
             dataSource={attachments}
             rowKey="id"
             pagination={false}
             size="middle"
             bordered
+            locale={{ emptyText: 'Chưa có tệp đính kèm nào' }}
             columns={[
               {
                 title: 'Tên tệp',
                 dataIndex: 'fileName',
                 render: (text: string, record: VtsOperationCenterAttachment) => (
                   <Space>
-                    <FileOutlined />
+                    <FileOutlined style={{ color: textTertiary }} />
                     {record.filePath ? (
-                      <a href={record.filePath} target="_blank" rel="noopener noreferrer">
+                      <a href={record.filePath} target="_blank" rel="noopener noreferrer" style={{ color: actionPrimary }}>
                         {text}
                       </a>
                     ) : (
@@ -509,24 +473,6 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
                 width: 170,
                 render: (date?: string) => (date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'),
               },
-              ...(canUpdate
-                ? [
-                    {
-                      title: 'Thao tác',
-                      key: 'action',
-                      width: 80,
-                      align: 'center' as const,
-                      render: (_: any, record: VtsOperationCenterAttachment) => (
-                        <Popconfirm
-                          title="Xóa tệp đính kèm này?"
-                          onConfirm={() => handleDeleteAttachment(record.id)}
-                        >
-                          <Button type="text" danger icon={<DeleteOutlined />} />
-                        </Popconfirm>
-                      ),
-                    },
-                  ]
-                : []),
             ]}
           />
         </div>
@@ -595,120 +541,6 @@ export const VtsOperationCenterDetailDrawer: React.FC<VtsOperationCenterDetailDr
               <div>{current.rejectionReason}</div>
             </div>
           )}
-        </div>
-      ),
-    },
-    {
-      key: 'other_kcht',
-      label: 'KCHT khác thuộc TTDH VTS',
-      children: (
-        <div style={{ paddingTop: 16 }}>
-          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
-            <Select
-              placeholder="Lọc theo loại KCHT"
-              allowClear
-              value={infraFilter}
-              onChange={setInfraFilter}
-              style={{ width: 220, borderRadius: radiusPill }}
-              options={[
-                { value: 'AIS', label: 'Hệ thống AIS' },
-                { value: 'RADAR', label: 'Trạm Radar' },
-                { value: 'VHF', label: 'Trạm thông tin VHF' },
-                { value: 'CCTV', label: 'Hệ thống Camera CCTV' },
-              ]}
-            />
-          </div>
-          <Table
-            dataSource={subInfrastructures.filter((r) => !infraFilter || r.type === infraFilter)}
-            rowKey="id"
-            pagination={false}
-            size="middle"
-            bordered
-            columns={[
-              { title: 'STT', width: 60, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
-              { title: 'Tên kết cấu hạ tầng', dataIndex: 'name', key: 'name' },
-              { title: 'Loại kết cấu hạ tầng', dataIndex: 'typeLabel', key: 'typeLabel', width: 180 },
-              { title: 'Tình trạng', dataIndex: 'conditionStatus', key: 'conditionStatus', width: 140 },
-            ]}
-            locale={{
-              emptyText: <EmptyState description="Chưa có kết cấu hạ tầng nào trực thuộc trung tâm điều hành này" />,
-            }}
-          />
-        </div>
-      ),
-    },
-    {
-      key: 'operation',
-      label: 'Thông tin vận hành khai thác',
-      children: (
-        <div style={{ paddingTop: 16 }}>
-          <Table
-            dataSource={operationsList}
-            rowKey="id"
-            pagination={false}
-            size="middle"
-            bordered
-            columns={[
-              { title: 'STT', width: 60, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
-              { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', width: 140 },
-              { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName' },
-              { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 140 },
-              { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140 },
-            ]}
-            locale={{
-              emptyText: <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />,
-            }}
-          />
-        </div>
-      ),
-    },
-    {
-      key: 'maintenance',
-      label: 'Thông tin bảo trì',
-      children: (
-        <div style={{ paddingTop: 16 }}>
-          <Table
-            dataSource={maintenanceList}
-            rowKey="id"
-            pagination={false}
-            size="middle"
-            bordered
-            columns={[
-              { title: 'STT', width: 60, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
-              { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', width: 140 },
-              { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName' },
-              { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'startTime', width: 150 },
-              { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'endTime', width: 150 },
-            ]}
-            locale={{
-              emptyText: <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />,
-            }}
-          />
-        </div>
-      ),
-    },
-    {
-      key: 'incidents',
-      label: 'Thông tin sự cố',
-      children: (
-        <div style={{ paddingTop: 16 }}>
-          <Table
-            dataSource={incidentList}
-            rowKey="id"
-            pagination={false}
-            size="middle"
-            bordered
-            columns={[
-              { title: 'STT', width: 60, align: 'center', render: (_: any, __: any, i: number) => i + 1 },
-              { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', width: 130 },
-              { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', width: 160 },
-              { title: 'Địa điểm', dataIndex: 'location', key: 'location' },
-              { title: 'Thời gian', dataIndex: 'time', key: 'time', width: 150 },
-            ]}
-            locale={{
-              emptyText: <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />,
-            }}
-          />
         </div>
       ),
     },

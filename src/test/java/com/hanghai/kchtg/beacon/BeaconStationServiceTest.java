@@ -320,7 +320,7 @@ class BeaconStationServiceTest {
             assertThat(result.getCode()).isEqualTo("DEN-001");
 
             verify(beaconStationRepo, atLeastOnce()).save(any());
-            verify(historyRepo).save(any());
+            verify(historyRepo, never()).save(any());
         }
 
         @Test
@@ -359,12 +359,12 @@ class BeaconStationServiceTest {
         }
 
         @Test
-        @DisplayName("update on approved entity — reverts status to DRAFT")
+        @DisplayName("update on approved entity — keeps APPROVED status and records history")
         void updateApprovedEntityRevertsStatus() {
             UUID id = UUID.randomUUID();
-            BeaconStation entity = makeEntity(id, "APPROVED_L1");
+            BeaconStation entity = makeEntity(id, "APPROVED_L2");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
-            entity.setApprovalLevel(1);
+            entity.setApprovalLevel(2);
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -374,9 +374,9 @@ class BeaconStationServiceTest {
 
             BeaconStationResponse result = service.update(id, request);
 
-            assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
-            assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
+            assertThat(result.getStatus()).isEqualTo("APPROVED_L2");
+            assertThat(result.getApprovalStatus()).isEqualTo("APPROVED");
+            verify(historyRepo, atLeastOnce()).save(any());
         }
 
         @Test

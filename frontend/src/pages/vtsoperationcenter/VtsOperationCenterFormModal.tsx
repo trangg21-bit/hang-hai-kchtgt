@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Form, Input, Select, Row, Col, Upload, Button, Tabs, Table, Space, InputNumber, Modal } from 'antd';
-import { UploadOutlined, PlusOutlined, DeleteOutlined, FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { UploadOutlined, InboxOutlined, PlusOutlined, DeleteOutlined, FileOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { CONDITION_STATUS_OPTIONS, ConditionStatus } from '../../types/vtsSystem';
 import type { VtsOperationCenterResponse, CreateVtsOperationCenterRequest } from '../../types/vtsOperationCenter';
@@ -18,11 +18,19 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import { colors } from '../../theme';
 import {
   spaceFormField,
+  formFieldStyle,
+  formRowGutter,
   spaceSm,
   radiusPill,
   radiusMd,
   inputStyle,
   selectStyle,
+  readonlyInputStyle,
+  formTreeSelectStyle,
+  drawerTabsStyle,
+  drawerTabBarStyle,
+  drawerTabContentStyle,
+  ATTACHMENT_HELPER_TEXT,
   borderDefault,
   surfaceCard,
   textTertiary,
@@ -32,12 +40,23 @@ import {
   fontSizeSm,
   fontWeightMedium,
   fontWeightBold,
+  statusOperational,
+  outlineButtonStyle,
+  primaryButtonStyle,
+  spaceMd,
+  actionPrimary,
 } from '../../tokens';
 
 interface CoordinateItem {
   latitude: number | null;
   longitude: number | null;
 }
+
+export const GEOMETRY_POINT_COUNT: Record<string, number> = {
+  POINT: 1,
+  LINE: 2,
+  POLYGON: 3,
+};
 
 const ddToDms = (dd: number | null | undefined) => {
   if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -119,6 +138,7 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState('basic');
   const [submitting, setSubmitting] = useState(false);
+  const [actionType, setActionType] = useState<'DRAFT' | 'SUBMIT' | 'APPROVE' | 'UPDATE'>('DRAFT');
   const [orgUnits, setOrgUnits] = useState<any[]>(propOrgUnits || []);
   const [vtsSystems, setVtsSystems] = useState<{ id: string; name: string; orgUnitId?: string }[]>(propVtsSystems || []);
   const [portOptions, setPortOptions] = useState<{ id: string; name: string; orgUnitId?: string }[]>(propPortOptions || []);
@@ -139,13 +159,15 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
 
   const filteredVtsSystems = useMemo(() => {
     if (!formOrgUnitId) return vtsSystems;
-    return vtsSystems.filter((s) => s.orgUnitId === formOrgUnitId);
-  }, [vtsSystems, formOrgUnitId]);
+    const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
+    return vtsSystems.filter((s) => !s.orgUnitId || allowedIds.has(s.orgUnitId));
+  }, [vtsSystems, formOrgUnitId, orgUnits]);
 
   const filteredPortOptions = useMemo(() => {
     if (!formOrgUnitId) return portOptions;
-    return portOptions.filter((p) => p.orgUnitId === formOrgUnitId);
-  }, [portOptions, formOrgUnitId]);
+    const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
+    return portOptions.filter((p) => !p.orgUnitId || allowedIds.has(p.orgUnitId));
+  }, [portOptions, formOrgUnitId, orgUnits]);
 
   useEffect(() => {
     if (visible) {
@@ -187,7 +209,7 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
 
       if (item) {
         const parsedCoords = parseWktToCoordinates(item.coordinates);
-        setCoordinateList(parsedCoords.length > 0 ? parsedCoords : [{ latitude: null, longitude: null }]);
+        setCoordinateList(parsedCoords);
 
         form.setFieldsValue({
           code: item.code,
@@ -200,23 +222,23 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
           coverage: item.coverage,
           conditionStatus: item.conditionStatus ?? ConditionStatus.OPERATIONAL,
           note: item.note,
-          geometryType: item.geometryType || 'POINT',
+          geometryType: item.geometryType,
           symbolId: item.symbolId,
+          coordinateSystem: item.geometryType ? 'WGS 84 / VN-2000' : undefined,
+          displayRule: item.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
         });
       } else {
         form.resetFields();
-        setCoordinateList([{ latitude: null, longitude: null }]);
+        setCoordinateList([]);
 
         vtsOperationCenterService.generateCode().then((res) => {
           form.setFieldsValue({
             code: res.code,
             conditionStatus: ConditionStatus.OPERATIONAL,
-            geometryType: 'POINT',
           });
         }).catch(() => {
           form.setFieldsValue({
             conditionStatus: ConditionStatus.OPERATIONAL,
-            geometryType: 'POINT',
           });
         });
       }
@@ -283,13 +305,41 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
     );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (action: 'DRAFT' | 'SUBMIT' | 'APPROVE' | 'UPDATE' = 'DRAFT') => {
     try {
+      setActionType(action);
       const values = await form.validateFields();
+
+      if (values.geometryType) {
+        const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
+        const validCoords = coordinateList.filter(
+          (c) => c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude)
+        );
+        if (validCoords.length < minCount) {
+          const typeLabel =
+            values.geometryType === 'POLYGON'
+              ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+              : values.geometryType === 'LINE'
+                ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+                : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+          toast.error(typeLabel);
+          setActiveTab('gis');
+          return;
+        }
+      }
+
       setSubmitting(true);
 
       const currentGeom = values.geometryType || 'POINT';
       const coordsWkt = serializeCoordinatesToWkt(coordinateList, currentGeom);
+
+      const targetStatus = isEdit
+        ? (item?.approvalStatus || 'APPROVED')
+        : action === 'DRAFT'
+          ? 'DRAFT'
+          : action === 'SUBMIT'
+            ? 'PENDING_APPROVAL'
+            : 'APPROVED';
 
       const payload: CreateVtsOperationCenterRequest = {
         code: values.code?.trim(),
@@ -307,6 +357,7 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
         coordinateSystem: values.coordinateSystem?.trim() || 'WGS 84 / VN-2000',
         displayRule: values.displayRule?.trim() || 'Độ, phút, giây (DMS)',
         coordinates: coordsWkt || undefined,
+        approvalStatus: targetStatus as any,
       };
 
       let savedId = item?.id;
@@ -316,7 +367,13 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
       } else {
         const created = await vtsOperationCenterService.create(payload);
         savedId = created.id;
-        toast.success('Tạo mới trung tâm điều hành VTS thành công');
+        const msg =
+          action === 'DRAFT'
+            ? 'Lưu tạm trung tâm điều hành VTS thành công'
+            : action === 'SUBMIT'
+              ? 'Lưu và gửi phê duyệt thành công'
+              : 'Lưu và phê duyệt thành công';
+        toast.success(msg);
       }
 
       // Upload files if any
@@ -354,30 +411,31 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
   const tabItems = [
     {
       key: 'basic',
-      label: 'Thông tin cơ bản',
+      label: 'Thông tin chung',
       children: (
-        <div style={{ paddingTop: 8 }}>
+        <div style={drawerTabContentStyle}>
           {/* Row 1: 1. Đơn vị quản lý & 2. Thuộc cảng biển */}
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="orgUnitId"
                 label="Đơn vị quản lý"
                 rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <OrgUnitTreeSelect
                   organizations={orgUnits}
                   placeholder="Chọn đơn vị quản lý"
-                  style={{ width: '100%', height: 40 }}
+                  style={formTreeSelectStyle}
                   onChange={(val) => {
                     form.setFieldValue('orgUnitId', val);
+                    const allowedIds = val ? resolveOrgSubtreeIds(orgUnits, val) : new Set<string>();
                     const curPort = form.getFieldValue('portId');
-                    if (curPort && !portOptions.some((p) => p.id === curPort && p.orgUnitId === val)) {
+                    if (curPort && !portOptions.some((p) => p.id === curPort && (!p.orgUnitId || allowedIds.has(p.orgUnitId)))) {
                       form.setFieldValue('portId', undefined);
                     }
                     const curVts = form.getFieldValue('vtsSystemId');
-                    if (curVts && !vtsSystems.some((s) => s.id === curVts && s.orgUnitId === val)) {
+                    if (curVts && !vtsSystems.some((s) => s.id === curVts && (!s.orgUnitId || allowedIds.has(s.orgUnitId)))) {
                       form.setFieldValue('vtsSystemId', undefined);
                     }
                   }}
@@ -388,12 +446,13 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
               <Form.Item
                 name="portId"
                 label="Thuộc cảng biển"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
-                  placeholder="Chọn cảng biển"
+                  placeholder={formOrgUnitId ? 'Chọn cảng biển' : 'Vui lòng chọn đơn vị quản lý trước'}
+                  disabled={!formOrgUnitId}
                   options={filteredPortOptions.map((p) => ({ value: p.id, label: p.name }))}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
@@ -405,18 +464,19 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
           </Row>
 
           {/* Row 2: 3. Thuộc hệ thống VTS & 4. Mã trung tâm điều hành VTS */}
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="vtsSystemId"
                 label="Thuộc hệ thống VTS"
                 rules={[{ required: true, message: 'Vui lòng chọn hệ thống VTS' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
-                  placeholder="Chọn hệ thống VTS"
+                  placeholder={formOrgUnitId ? 'Chọn hệ thống VTS' : 'Vui lòng chọn đơn vị quản lý trước'}
+                  disabled={!formOrgUnitId}
                   options={filteredVtsSystems.map((s) => ({ value: s.id, label: s.name }))}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                   showSearch
                   allowClear
                   filterOption={(input, option) =>
@@ -430,19 +490,19 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
                 name="code"
                 label="Mã trung tâm điều hành VTS"
                 rules={[{ required: true, message: 'Vui lòng nhập mã trung tâm' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Input
                   disabled
                   placeholder="Mã tự sinh (TTDH-xxxxxx)"
-                  style={{ ...inputStyle, borderRadius: radiusPill, height: 40, backgroundColor: '#f5f5f5' }}
+                  style={readonlyInputStyle}
                 />
               </Form.Item>
             </Col>
           </Row>
 
           {/* Row 3: 5. Tên trung tâm điều hành VTS & 6. Địa điểm (Tỉnh/TP) */}
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="name"
@@ -451,13 +511,13 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
                   { required: true, message: 'Vui lòng nhập tên trung tâm' },
                   { max: 255, message: 'Tên trung tâm tối đa 255 ký tự' },
                 ]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Input
                   placeholder="Nhập tên trung tâm điều hành VTS"
                   maxLength={255}
                   showCount
-                  style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                  style={inputStyle}
                 />
               </Form.Item>
             </Col>
@@ -466,12 +526,12 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
                 name="provinceId"
                 label="Địa điểm (Tỉnh/TP)"
                 rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
                   placeholder="Chọn Tỉnh/Thành phố"
                   options={VIETNAM_PROVINCE_OPTIONS}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                   showSearch
                   filterOption={(input, option) =>
                     normalizeSearchText(option?.label).includes(normalizeSearchText(input))
@@ -482,19 +542,19 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
           </Row>
 
           {/* Row 4: 7. Địa điểm chi tiết & 8. Tình trạng */}
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="detailedLocation"
                 label="Địa điểm chi tiết"
                 rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Input
                   placeholder="Nhập địa điểm chi tiết (số nhà, đường, xã/phường...)"
                   maxLength={500}
                   showCount
-                  style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                  style={inputStyle}
                 />
               </Form.Item>
             </Col>
@@ -503,12 +563,12 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
                 name="conditionStatus"
                 label="Tình trạng"
                 rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
                   placeholder="Chọn tình trạng"
                   options={CONDITION_STATUS_OPTIONS}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                 />
               </Form.Item>
             </Col>
@@ -520,7 +580,7 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
       key: 'other',
       label: 'Thông tin khác',
       children: (
-        <div style={{ paddingTop: 8 }}>
+        <div style={drawerTabContentStyle}>
           <Form.Item
             name="coverage"
             label="Vùng phủ sóng"
@@ -555,24 +615,44 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
     },
     {
       key: 'gis',
-      label: 'Vị trí (GIS)',
+      label: 'Thông tin vị trí',
       children: (
-        <div style={{ paddingTop: 8 }}>
+        <div style={drawerTabContentStyle}>
           {/* Row 1: 11. Loại đối tượng & 12. Biểu tượng */}
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="geometryType"
                 label="Loại đối tượng"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
+                  placeholder="Chọn loại đối tượng"
+                  allowClear
                   options={[
                     { value: 'POINT', label: 'Đối tượng điểm' },
                     { value: 'LINE', label: 'Đối tượng đường' },
                     { value: 'POLYGON', label: 'Đối tượng vùng' },
                   ]}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
+                  onChange={(val) => {
+                    form.setFieldValue('geometryType', val);
+                    if (val) {
+                      form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
+                      form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
+                      const minCount = GEOMETRY_POINT_COUNT[val] ?? 1;
+                      setCoordinateList((prev) => {
+                        if (prev.length >= minCount) return prev;
+                        const added = Array.from({ length: minCount - prev.length }, () => ({ latitude: null, longitude: null }));
+                        return [...prev, ...added];
+                      });
+                    } else {
+                      form.setFieldValue('coordinateSystem', undefined);
+                      form.setFieldValue('displayRule', undefined);
+                      form.setFieldValue('symbolId', undefined);
+                      setCoordinateList([]);
+                    }
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -580,14 +660,15 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
               <Form.Item
                 name="symbolId"
                 label="Biểu tượng"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
                   placeholder="Chọn biểu tượng bản đồ"
                   allowClear
                   showSearch
+                  disabled={!watchedGeom}
                   optionFilterProp="label"
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                 >
                   {symbols.map((sym) => (
                     <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
@@ -609,22 +690,22 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
           </Row>
 
           {/* Row 2: 13. Hệ quy chiếu & 14. Quy tắc hiển thị */}
-          <Row gutter={16}>
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="coordinateSystem"
                 label="Hệ quy chiếu"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Select
+                  placeholder="Chọn hệ quy chiếu"
                   disabled
-                  defaultValue="WGS 84 / VN-2000"
                   options={[
                     { value: 'WGS 84 / VN-2000', label: 'WGS 84 / VN-2000' },
                     { value: 'WGS-84', label: 'WGS-84' },
                     { value: 'VN-2000', label: 'VN-2000' },
                   ]}
-                  style={{ ...selectStyle, borderRadius: radiusPill, height: 40 }}
+                  style={selectStyle}
                 />
               </Form.Item>
             </Col>
@@ -632,12 +713,12 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
               <Form.Item
                 name="displayRule"
                 label="Quy tắc hiển thị"
-                style={{ marginBottom: spaceFormField }}
+                style={formFieldStyle}
               >
                 <Input
+                  placeholder="Chọn quy tắc hiển thị"
                   disabled
-                  defaultValue="Độ, phút, giây (DMS)"
-                  style={{ ...inputStyle, borderRadius: radiusPill, height: 40, color: '#8c8c8c', cursor: 'not-allowed', backgroundColor: '#f5f5f5' }}
+                  style={readonlyInputStyle}
                 />
               </Form.Item>
             </Col>
@@ -653,12 +734,13 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
                 type="dashed"
                 size="small"
                 icon={<EnvironmentOutlined />}
+                disabled={!watchedGeom}
                 onClick={() => setMapModalOpen(true)}
                 style={{ borderRadius: radiusPill }}
               >
                 Chọn vị trí trên bản đồ
               </Button>
-              {watchedGeom !== 'POINT' && (
+              {watchedGeom && watchedGeom !== 'POINT' && (
                 <Button
                   type="dashed"
                   size="small"
@@ -675,24 +757,15 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
           {coordinateList.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
               <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-              <Space>
-                <Button
-                  type="dashed"
-                  icon={<EnvironmentOutlined />}
-                  onClick={() => setMapModalOpen(true)}
-                  style={{ borderRadius: radiusPill }}
-                >
-                  Chọn vị trí trên bản đồ
-                </Button>
-                <Button
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  onClick={() => setCoordinateList([{ latitude: null, longitude: null }])}
-                  style={{ borderRadius: radiusPill }}
-                >
-                  Thêm tọa độ
-                </Button>
-              </Space>
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                disabled={!watchedGeom}
+                onClick={() => setCoordinateList([{ latitude: null, longitude: null }])}
+                style={{ borderRadius: radiusPill }}
+              >
+                Thêm tọa độ
+              </Button>
             </div>
           ) : (
             <Table
@@ -727,20 +800,19 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
                   onHeaderCell: () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '10px 8px' } }),
                 },
                 {
-                  title: 'Thao tác',
+                  title: '',
                   key: 'actions',
-                  width: 70,
+                  width: 50,
                   align: 'center',
-                  render: (_: any, r: any) =>
-                    watchedGeom !== 'POINT' || coordinateList.length > 1 ? (
-                      <Button
-                        type="link"
-                        danger
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
-                      />
-                    ) : null,
+                  render: (_: any, r: any) => (
+                    <Button
+                      type="link"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                    />
+                  ),
                   onHeaderCell: () => ({ style: { background: colors.bodyBg, padding: '10px 6px' } }),
                 },
               ]}
@@ -796,103 +868,107 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
       key: 'files',
       label: 'File đính kèm',
       children: (
-        <div style={{ paddingTop: 8 }}>
-          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-            {fileList.length > 0 && (
-              <Upload
-                beforeUpload={(file) => {
-                  if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
-                  const ext = file.name.split('.').pop()?.toLowerCase();
-                  if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) {
-                    toast.error('Định dạng không hỗ trợ');
-                    return false;
-                  }
-                  setFileList((prev) => [...prev, { uid: `${Date.now()}-${Math.random()}`, name: file.name, originFileObj: file as any }]);
+        <div style={drawerTabContentStyle}>
+          <div style={{ marginBottom: spaceMd }}>
+            <Upload.Dragger
+              beforeUpload={(file) => {
+                if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
+                const ext = file.name.split('.').pop()?.toLowerCase();
+                if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) {
+                  toast.error('Định dạng không hỗ trợ');
                   return false;
-                }}
-                showUploadList={false}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                multiple
-              >
-                <Button type="dashed" size="small" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }}>Thêm file</Button>
-              </Upload>
-            )}
-          </div>
-
-          {fileList.length === 0 ? (
-            <div style={{ padding: '36px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard, marginBottom: spaceSm }}>
-              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có file đính kèm.</span>
-              <Upload
-                beforeUpload={(file) => {
-                  if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
-                  const ext = file.name.split('.').pop()?.toLowerCase();
-                  if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) {
-                    toast.error('Định dạng không hỗ trợ');
-                    return false;
-                  }
-                  setFileList((prev) => [...prev, { uid: `${Date.now()}-${Math.random()}`, name: file.name, originFileObj: file as any }]);
-                  return false;
-                }}
-                showUploadList={false}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                multiple
-              >
-                <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
-              </Upload>
-            </div>
-          ) : (
-            <Table
-              className="list-view-table"
-              dataSource={fileList.map((f, i) => ({ ...f, _idx: i, key: f.uid || i }))}
-              pagination={false}
-              size="middle"
-              bordered
-              scroll={{ x: 400 }}
-              style={{ marginBottom: spaceSm }}
+                }
+                setFileList((prev) => [...prev, { uid: `${Date.now()}-${Math.random()}`, name: file.name, size: file.size, originFileObj: file as any }]);
+                return false;
+              }}
+              showUploadList={false}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
+              multiple
+              style={{
+                background: '#fafbfc',
+                border: `1px dashed ${borderDefault}`,
+                borderRadius: radiusMd,
+                padding: '24px 16px',
+              }}
             >
-              <Table.Column
-                title="STT"
-                key="stt"
-                width={60}
-                align="center"
-                render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
-              />
-              <Table.Column
-                title="Tên file"
-                key="fileName"
-                dataIndex="name"
-                render={(name: string) => (
-                  <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
-                    <FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />
-                    {name}
-                  </span>
-                )}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
-              />
-              <Table.Column
-                title=""
-                key="actions"
-                width={44}
-                align="center"
-                render={(_: any, __: any, i: number) => (
-                  <Button
-                    type="link"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => setFileList((prev) => prev.filter((_, idx) => idx !== i))}
-                  />
-                )}
-                onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })}
-              />
-            </Table>
-          )}
-
-          <div style={{ fontSize: fontSizeSm, color: textTertiary }}>
-            Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
+              <p style={{ marginBottom: 8 }}>
+                <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
+              </p>
+              <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
+                Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
+              </p>
+              <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
+                {ATTACHMENT_HELPER_TEXT}
+              </p>
+            </Upload.Dragger>
           </div>
+
+          {fileList.length > 0 && (
+            <div style={{ marginBottom: spaceMd }}>
+              <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                Danh sách tệp đã chọn ({fileList.length})
+              </div>
+              <Table
+                className="list-view-table"
+                dataSource={fileList.map((f, i) => ({ ...f, _idx: i, key: f.uid || i }))}
+                pagination={false}
+                size="middle"
+                bordered
+                scroll={{ x: 400 }}
+              >
+                <Table.Column
+                  title="STT"
+                  key="stt"
+                  width={60}
+                  align="center"
+                  render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
+                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+                />
+                <Table.Column
+                  title="Tên file"
+                  key="fileName"
+                  dataIndex="name"
+                  render={(name: string) => (
+                    <span style={{ fontSize: fontSizeMd, color: textPrimary, display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>
+                      <FileOutlined style={{ color: actionPrimary }} />
+                      {name}
+                    </span>
+                  )}
+                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+                />
+                <Table.Column
+                  title="Dung lượng"
+                  key="size"
+                  dataIndex="size"
+                  width={120}
+                  render={(bytes: number) => {
+                    if (!bytes) return '—';
+                    if (bytes < 1024) return `${bytes} B`;
+                    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                  }}
+                  onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })}
+                />
+                <Table.Column
+                  title="Thao tác"
+                  key="actions"
+                  width={80}
+                  align="center"
+                  render={(_: any, __: any, i: number) => (
+                    <Button
+                      type="link"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => setFileList((prev) => prev.filter((_, idx) => idx !== i))}
+                      title="Xóa tệp"
+                    />
+                  )}
+                  onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })}
+                />
+              </Table>
+            </div>
+          )}
         </div>
       ),
     },
@@ -903,16 +979,65 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
       title={isEdit ? 'Chỉnh sửa trung tâm điều hành VTS' : 'Thêm mới trung tâm điều hành VTS'}
       open={visible}
       onClose={onCancel}
-      onOk={handleSubmit}
-      okText={isEdit ? 'Cập nhật' : 'Tạo mới'}
-      okLoading={submitting}
+      footer={
+        isEdit ? (
+          <>
+            <Button
+              onClick={onCancel}
+              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => handleSubmit('UPDATE')}
+              loading={submitting && actionType === 'UPDATE'}
+              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+            >
+              Cập nhật
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={() => handleSubmit('DRAFT')}
+              loading={submitting && actionType === 'DRAFT'}
+              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+            >
+              Lưu tạm
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => handleSubmit('SUBMIT')}
+              loading={submitting && actionType === 'SUBMIT'}
+              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+            >
+              Lưu và gửi phê duyệt
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => handleSubmit('APPROVE')}
+              loading={submitting && actionType === 'APPROVE'}
+              style={{
+                ...primaryButtonStyle,
+                background: statusOperational,
+                borderColor: statusOperational,
+                borderRadius: radiusPill,
+                height: 40,
+              }}
+            >
+              Lưu và phê duyệt
+            </Button>
+          </>
+        )
+      }
     >
       <Form form={form} layout="vertical">
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
           items={tabItems}
-          style={{ marginTop: -8 }}
+          tabBarStyle={drawerTabBarStyle}
         />
       </Form>
     </AppDrawer>

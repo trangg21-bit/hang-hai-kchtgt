@@ -1,6 +1,6 @@
 package com.hanghai.kchtg.document;
 
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.document.dto.AttachedDocumentResponse;
 import com.hanghai.kchtg.document.entity.AttachedDocument;
 import com.hanghai.kchtg.document.entity.LegalDocument;
@@ -51,7 +51,7 @@ class LegalDocumentAttachmentServiceTest {
     private SearchSuggestionRepository searchSuggestionRepository;
 
     @Mock
-    private ApprovalHistoryRepository approvalHistoryRepository;
+    private InfrastructureHistoryRepository approvalHistoryRepository;
 
     private UUID documentId;
     private LegalDocument document;

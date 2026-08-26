@@ -8,7 +8,6 @@ import com.hanghai.kchtg.aissystem.dto.HistoryEntry;
 import com.hanghai.kchtg.aissystem.service.AisSystemService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.ApprovalRequest;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.util.ApprovalUtils;
 import com.hanghai.kchtg.user.entity.User;
@@ -23,6 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +37,36 @@ import java.util.UUID;
 @RequestMapping("/api/v1/ais-system")
 @RequiredArgsConstructor
 @Slf4j
+// approval-2-level-spec §3.8: controller của thực thể KCHT phải khai @DataScope
+// để bộ lọc theo đơn vị được áp dụng cho mọi truy vấn trong request.
+@DataScope
 public class AisSystemController {
+
+    /**
+     * Các cột được phép sắp xếp. `sortBy` đến từ client nên phải qua danh sách
+     * trắng: tên thuộc tính lạ sẽ làm truy vấn ném lỗi 500, và các cột hiển thị
+     * tên (đơn vị, cán bộ) được resolve sau truy vấn nên không sắp xếp được ở DB.
+     */
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.of(
+            "name", "name",
+            "code", "code",
+            "detailedLocation", "detailedLocation",
+            "conditionStatus", "conditionStatus",
+            "approvalStatus", "approvalStatus",
+            "provinceId", "provinceId",
+            "updatedDate", "updatedAt",
+            "createdAt", "createdAt");
+
+    private static Sort resolveListSort(String sortBy, String sortDir) {
+        Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
+        if (property == null) {
+            return defaultSort;
+        }
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
+        return Sort.by(direction, property).and(defaultSort);
+    }
 
     private final AisSystemService service;
 
@@ -58,6 +87,9 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Sinh mã thành công", Map.of("code", code)));
     }
 
+    // Dropdown dùng liên module (form khác cũng cần danh sách này) nên không gắn
+    // `aissystem:read` — phạm vi dữ liệu do data scope trong query đảm nhiệm.
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/options")
     public ResponseEntity<ApiResponse<List<AisSystemOptionResponse>>> getOptions(
             @RequestParam(required = false) UUID orgUnitId) {
@@ -81,17 +113,17 @@ public class AisSystemController {
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) ConditionStatus conditionStatus,
+            @RequestParam(required = false) Integer commissioningYear,
             @RequestParam(required = false) ApprovalStatus approvalStatus,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir) {
 
-        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
-        PageRequest pageRequest = PageRequest.of(page, size, sort);
+        PageRequest pageRequest = PageRequest.of(page, size, resolveListSort(sortBy, sortDir));
 
-        Page<AisSystemListItem> resultPage = service.search(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, approvalStatus, pageRequest);
-        Map<String, Long> statusCounts = service.countByStatus(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus);
+        Page<AisSystemListItem> resultPage = service.search(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear, approvalStatus, pageRequest);
+        Map<String, Long> statusCounts = service.countByStatus(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear);
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", resultPage.getContent());
@@ -175,12 +207,17 @@ public class AisSystemController {
 
     @PreAuthorize("@auth.checkAny(authentication, 'aissystem:read', 'aissystem:history')")
     @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable UUID id) {
-        List<HistoryEntry> history = service.getHistory(id);
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        List<HistoryEntry> history = service.getHistory(id, page, pageSize);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", history));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'aissystem:create', 'aissystem:update')")
+    // OR-logic: `check(Authentication, String...)` là alias của `checkAny`. Dùng
+    // `checkAny` cho đúng nghĩa để người đọc không hiểu nhầm là bắt buộc cả hai.
+    @PreAuthorize("@auth.checkAny(authentication, 'aissystem:create', 'aissystem:update')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,

@@ -1,17 +1,17 @@
 package com.hanghai.kchtg.vtsoperationcenter.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.ApprovalHistoryUtils;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
@@ -39,8 +39,10 @@ import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -69,7 +72,7 @@ public class VtsOperationCenterService {
     private final PortRepository portRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final InfrastructureAttachmentRepository attachmentRepository;
-    private final ApprovalHistoryRepository historyRepository;
+    private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final InfrastructureApprovalService approvalService;
     private final OrgUnitScopeService orgUnitScopeService;
@@ -170,11 +173,11 @@ public class VtsOperationCenterService {
         }
 
         // Ghi lịch sử tạo mới
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.VTS_OPERATION_CENTER)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.CREATED)
+                .status(InfrastructureHistoryStatus.CREATED)
                 .approvedBy(userId)
                 .reason("Tạo mới trung tâm điều hành VTS: " + saved.getName())
                 .build());
@@ -221,27 +224,39 @@ public class VtsOperationCenterService {
             entity.setSpatialId(spatialId);
         }
 
+        ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getApprovalStatus() != null) {
+            entity.setApprovalStatus(request.getApprovalStatus());
+        }
+
         entity.setUpdatedBy(userId);
         entity.setUpdatedAt(LocalDateTime.now());
         VtsOperationCenter saved = repository.save(entity);
 
-        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-            String field = entry.getKey();
-            String fieldName = getFieldDisplayName(field);
-            String oldVal = formatDisplayValue(field, entry.getValue());
-            Object rawNew = getEntityFieldValue(saved, field);
-            String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
-            historyRepository.save(ApprovalHistory.builder()
-                    .refId(saved.getId())
-                    .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(ApprovalHistoryStatus.UPDATED)
-                    .approvedBy(userId)
-                    .changedField(fieldName)
-                    .previousValue(oldVal)
-                    .newValue(newVal)
-                    .reason("Cập nhật thông tin " + fieldName)
-                    .build());
+        if (wasApproved && !previousValues.isEmpty()) {
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                String field = entry.getKey();
+                String fieldName = getFieldDisplayName(field);
+                String oldVal = formatDisplayValue(field, entry.getValue());
+                Object rawNew = getEntityFieldValue(saved, field);
+                String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(saved.getId())
+                        .refType(InfrastructureType.VTS_OPERATION_CENTER)
+                        .approvalLevel(ApprovalLevel.LEVEL_2)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(userId)
+                        .changedField(fieldName)
+                        .previousValue(oldVal)
+                        .newValue(newVal)
+                        .reason("Cập nhật thông tin " + fieldName)
+                        .build());
+            }
         }
 
         return toResponse(saved);
@@ -270,6 +285,10 @@ public class VtsOperationCenterService {
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
+        // T13/N04/BR-017: chỉ hồ sơ "Lưu tạm" mới xóa được; xóa mềm chuyển sang
+        // "Đã xóa (lịch sử)" (ARCHIVED) và giữ nguyên bản ghi trong CSDL.
+        approvalService.deleteDraft(entity, InfrastructureType.VTS_OPERATION_CENTER, userId);
+
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
             entity.setSpatialId(null);
@@ -279,7 +298,7 @@ public class VtsOperationCenterService {
         entity.setDeletedBy(userId);
         repository.save(entity);
 
-        ApprovalHistoryUtils.recordSoftDelete(
+        InfrastructureHistoryUtils.recordSoftDelete(
                 historyRepository,
                 id,
                 InfrastructureType.VTS_OPERATION_CENTER,
@@ -290,7 +309,8 @@ public class VtsOperationCenterService {
     @Transactional(readOnly = true)
     public VtsOperationCenterResponse getById(UUID id) {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         return toResponse(entity);
     }
 
@@ -455,10 +475,27 @@ public class VtsOperationCenterService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id) {
-        List<ApprovalHistory> list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                InfrastructureType.VTS_OPERATION_CENTER, id);
+        return getHistory(id, null, null);
+    }
+
+    /**
+     * Nhật ký của một hồ sơ. Kiểm tra hồ sơ cha trước để không thể đọc lịch sử
+     * của đơn vị khác bằng cách đoán id, và phân trang để drawer không phải tải
+     * toàn bộ nhật ký trong một lần.
+     */
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+        VtsOperationCenter parent = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(parent.getOrgUnitId());
+
+        List<InfrastructureHistory> list = (page != null && pageSize != null && pageSize > 0)
+                ? historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.VTS_OPERATION_CENTER, id, PageRequest.of(page, pageSize))
+                : historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.VTS_OPERATION_CENTER, id);
         Set<UUID> userIds = list.stream()
-                .map(ApprovalHistory::getApprovedBy)
+                .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
@@ -468,10 +505,12 @@ public class VtsOperationCenterService {
         return list.stream()
                 .map(h -> {
                     User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+                    // list-screen-ui-standard §3: chỉ Họ và tên (hoặc tên đăng nhập);
+                    // không để lộ email hay UUID ra giao diện.
                     String userName = u != null
                             ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
-                                    : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : u.getEmail()))
-                            : (h.getApprovedBy() != null ? h.getApprovedBy().toString() : null);
+                                    : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
+                            : null;
                     String orgUnitName = u != null && u.getOrgUnit() != null ? u.getOrgUnit().getName() : null;
                     return HistoryEntry.builder()
                             .id(h.getId())
@@ -492,23 +531,40 @@ public class VtsOperationCenterService {
     @Transactional
     public List<VtsSystemAttachmentResponse> uploadAttachments(UUID id, List<MultipartFile> files, UUID userId) {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        ensureAttachmentEditable(entity);
 
-        Path dir = Paths.get(uploadDir, "vts_operation_center", id.toString());
+        Path dir = Paths.get(uploadDir, "vts_operation_center", id.toString())
+                .toAbsolutePath().normalize();
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {
             throw new RuntimeException("Không thể tạo thư mục lưu trữ file", e);
         }
 
+        long existing = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.VTS_OPERATION_CENTER).size();
+
         List<VtsSystemAttachmentResponse> uploaded = new ArrayList<>();
         for (MultipartFile f : files) {
             if (f.isEmpty())
                 continue;
+            if (existing + uploaded.size() >= MAX_ATTACHMENTS) {
+                throw new IllegalArgumentException(
+                        "Số lượng tài liệu đính kèm tối đa là " + MAX_ATTACHMENTS + " tệp theo quy định");
+            }
+            validateAttachment(f);
             String originalFilename = Objects.requireNonNullElse(f.getOriginalFilename(),
                     "file_" + System.currentTimeMillis());
-            String storedFileName = UUID.randomUUID() + "_" + originalFilename;
-            Path filePath = dir.resolve(storedFileName);
+            // Làm sạch tên tệp trước khi ghép vào đường dẫn, rồi chốt lại bằng kiểm
+            // tra thư mục đích để không thể ghi ra ngoài thư mục của hồ sơ.
+            String safeName = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
+            String storedFileName = UUID.randomUUID() + "_" + safeName;
+            Path filePath = dir.resolve(storedFileName).normalize();
+            if (!filePath.startsWith(dir)) {
+                throw new IllegalArgumentException("Tên tệp không hợp lệ");
+            }
 
             try {
                 Files.copy(f.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
@@ -530,11 +586,11 @@ public class VtsOperationCenterService {
             InfrastructureAttachment saved = attachmentRepository.save(attachment);
             uploaded.add(toAttachmentResponse(saved));
 
-            historyRepository.save(ApprovalHistory.builder()
+            historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.VTS_OPERATION_CENTER)
                     .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(ApprovalHistoryStatus.UPDATED)
+                    .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(userId)
                     .reason("Tải lên tài liệu đính kèm: " + originalFilename)
                     .changedField("Tài liệu đính kèm")
@@ -547,6 +603,14 @@ public class VtsOperationCenterService {
 
     @Transactional(readOnly = true)
     public List<VtsSystemAttachmentResponse> listAttachments(UUID id) {
+        VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        return loadAttachments(id);
+    }
+
+    /** Đọc tệp đính kèm sau khi hồ sơ cha đã được kiểm tra tồn tại và phạm vi. */
+    private List<VtsSystemAttachmentResponse> loadAttachments(UUID id) {
         return attachmentRepository
                 .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.VTS_OPERATION_CENTER)
                 .stream()
@@ -554,10 +618,57 @@ public class VtsOperationCenterService {
                 .toList();
     }
 
+    /** Số tệp đính kèm tối đa cho một hồ sơ (khớp giới hạn hiển thị ở giao diện). */
+    private static final int MAX_ATTACHMENTS = 10;
+
+    private static final long MAX_ATTACHMENT_SIZE = 10L * 1024 * 1024;
+
+    private static final List<String> ALLOWED_ATTACHMENT_TYPES = List.of(
+            "application/pdf", "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "image/jpeg", "image/png", "image/gif");
+
+    /**
+     * N09/BR-019 — hồ sơ đang chờ duyệt bị khóa sửa, hồ sơ đã duyệt và đã xóa
+     * cũng vậy. Chỉ "Lưu tạm" và "Bị trả về" mới được thay đổi tài liệu đính kèm.
+     */
+    private void ensureAttachmentEditable(VtsOperationCenter entity) {
+        ApprovalStatus status = entity.getApprovalStatus();
+        boolean editable = status == null
+                || status == ApprovalStatus.DRAFT
+                || status == ApprovalStatus.REJECTED_LEVEL1
+                || status == ApprovalStatus.REJECTED_LEVEL2;
+        if (!editable) {
+            throw new IllegalStateException(
+                    "Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về. "
+                            + "Trạng thái hiện tại: " + status.getLabel());
+        }
+    }
+
+    private void validateAttachment(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Tài liệu đính kèm không được để trống");
+        }
+        if (file.getSize() > MAX_ATTACHMENT_SIZE) {
+            throw new IllegalArgumentException("Tài liệu đính kèm không được vượt quá 10MB");
+        }
+        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
+        if (!ALLOWED_ATTACHMENT_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Định dạng tài liệu không được hỗ trợ");
+        }
+    }
+
     @Transactional
     public void deleteAttachment(UUID id, UUID attId, UUID userId) {
+        VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        ensureAttachmentEditable(entity);
+
         InfrastructureAttachment att = attachmentRepository.findById(attId)
-                .orElseThrow(() -> new IllegalArgumentException("File đính kèm không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("File đính kèm không tồn tại"));
 
         if (!Objects.equals(att.getRefId(), id) || att.getRefType() != InfrastructureType.VTS_OPERATION_CENTER) {
             throw new IllegalArgumentException("File đính kèm không thuộc trung tâm điều hành VTS này");
@@ -570,11 +681,11 @@ public class VtsOperationCenterService {
 
         attachmentRepository.delete(att);
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(id)
                 .refType(InfrastructureType.VTS_OPERATION_CENTER)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.UPDATED)
+                .status(InfrastructureHistoryStatus.UPDATED)
                 .approvedBy(userId)
                 .reason("Xóa tài liệu đính kèm: " + att.getFileName())
                 .changedField("Tài liệu đính kèm")
@@ -705,34 +816,31 @@ public class VtsOperationCenterService {
                     .orElse(null);
         }
 
-        String portName = null;
-        if (entity.getPortId() != null) {
-            portName = portRepository.findById(entity.getPortId())
-                    .map(Port::getPortName)
-                    .orElse(null);
+        // Tên cảng và tên đơn vị lấy từ cache dùng chung thay vì truy vấn riêng.
+        String portName = portCacheService.getName(entity.getPortId());
+        String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
+
+        // Gom 4 người dùng (tạo / sửa / duyệt C1 / duyệt C2) vào một truy vấn.
+        Set<UUID> relatedUserIds = Stream
+                .of(entity.getCreatedBy(), entity.getUpdatedBy(), entity.getApproverLevel1(),
+                        entity.getApproverLevel2())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        // Dùng HashMap thay cho Map.of(): các id dưới đây có thể null (hồ sơ chưa
+        // qua duyệt) và Map.of().get(null) ném NullPointerException.
+        Map<UUID, String> relatedUserNames = new HashMap<>();
+        if (!relatedUserIds.isEmpty()) {
+            userRepository.findAllById(relatedUserIds).stream()
+                    .filter(u -> u.getFullName() != null && !u.getFullName().isBlank())
+                    .forEach(u -> relatedUserNames.put(u.getId(), u.getFullName().trim()));
         }
 
-        String orgUnitName = null;
-        if (entity.getOrgUnitId() != null) {
-            orgUnitName = orgUnitRepository.findById(entity.getOrgUnitId())
-                    .map(OrgUnit::getName)
-                    .orElse(null);
-        }
+        String createdByName = relatedUserNames.get(entity.getCreatedBy());
+        String updatedByName = relatedUserNames.get(entity.getUpdatedBy());
+        String approver1Name = relatedUserNames.get(entity.getApproverLevel1());
+        String approver2Name = relatedUserNames.get(entity.getApproverLevel2());
 
-        String createdByName = entity.getCreatedBy() != null
-                ? userRepository.findById(entity.getCreatedBy()).map(User::getFullName).orElse(null)
-                : null;
-        String updatedByName = entity.getUpdatedBy() != null
-                ? userRepository.findById(entity.getUpdatedBy()).map(User::getFullName).orElse(null)
-                : null;
-        String approver1Name = entity.getApproverLevel1() != null
-                ? userRepository.findById(entity.getApproverLevel1()).map(User::getFullName).orElse(null)
-                : null;
-        String approver2Name = entity.getApproverLevel2() != null
-                ? userRepository.findById(entity.getApproverLevel2()).map(User::getFullName).orElse(null)
-                : null;
-
-        List<VtsSystemAttachmentResponse> attachments = listAttachments(entity.getId());
+        List<VtsSystemAttachmentResponse> attachments = loadAttachments(entity.getId());
 
         String coordinates = null;
         GisGeometryType geometryType = null;
@@ -879,31 +987,17 @@ public class VtsOperationCenterService {
     @Transactional(readOnly = true)
     public List<VtsOperationCenterOptionResponse> getOptions(UUID orgUnitId) {
         Scope userScope = orgUnitScopeService != null ? orgUnitScopeService.currentUserScope() : Scope.all();
-        List<VtsOperationCenter> list = repository.findAll().stream()
-                .filter(e -> e.getDeletedAt() == null && (e.getApprovalStatus() == ApprovalStatus.APPROVED || e.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2))
-                .filter(e -> {
-                    if (orgUnitId != null) {
-                        return orgUnitId.equals(e.getOrgUnitId());
-                    }
-                    if (userScope != null && !userScope.unrestricted()) {
-                        return e.getOrgUnitId() != null && userScope.allows(e.getOrgUnitId());
-                    }
-                    return true;
-                })
-                .sorted((a, b) -> {
-                    String nameA = a.getName() != null ? a.getName() : "";
-                    String nameB = b.getName() != null ? b.getName() : "";
-                    return nameA.compareToIgnoreCase(nameB);
-                })
-                .toList();
-        return list.stream()
-                .map(e -> VtsOperationCenterOptionResponse.builder()
-                        .id(e.getId())
-                        .code(e.getCode())
-                        .name(e.getName())
-                        .orgUnitId(e.getOrgUnitId())
-                        .vtsSystemId(e.getVtsSystemId())
-                        .build())
-                .toList();
+        boolean scopeEnabled = userScope != null && !userScope.unrestricted();
+        List<UUID> scopeOrgUnitIds = scopeEnabled ? userScope.orgUnitIds() : List.of();
+
+        boolean orgFiltered = orgUnitId != null;
+        List<UUID> targetOrgUnitIds = List.of();
+        if (orgFiltered) {
+            targetOrgUnitIds = orgUnitScopeService != null
+                    ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
+                    : List.of(orgUnitId);
+        }
+
+        return repository.findOptions(scopeEnabled, scopeOrgUnitIds, orgFiltered, targetOrgUnitIds);
     }
 }

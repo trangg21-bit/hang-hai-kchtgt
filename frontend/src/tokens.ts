@@ -1,3 +1,5 @@
+import React from 'react';
+
 // ============================================================
 // tokens.ts — Semantic design token architecture
 // Principle: tokens describe ROLE, not VALUE
@@ -200,10 +202,70 @@ export const iconButtonStyle: React.CSSProperties = {
 
 // --- 5.2 Form trong Drawer/Modal ---
 
+/**
+ * Style nhãn Form chuẩn toàn hệ thống:
+ * - Màu chữ: sidebarBg (#12468C - Xanh navy thương hiệu Cục Hàng hải)
+ * - Độ đậm: fontWeightBold (600)
+ * - Cỡ chữ: fontSizeMd (13px)
+ */
+export const formLabelStyle: React.CSSProperties = {
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd,
+};
+
+/**
+ * Helper tạo labelProps chuẩn cho <Form.Item {...labelProps('Tên trường')}>
+ */
+export const labelProps = (text: string) => ({
+  label: React.createElement('span', { style: formLabelStyle }, text),
+});
+
 /** marginBottom cho mọi <Form.Item> */
 export const formFieldStyle: React.CSSProperties = {
   marginBottom: spaceFormField,
 };
+
+/** Style chuẩn cho thanh TabBar bên trong Drawer / Modal: marginBottom 0, paddingTop 0, dính đỉnh */
+export const drawerTabBarStyle: React.CSSProperties = {
+  marginBottom: 0,
+  paddingTop: 0,
+  position: 'sticky',
+  top: 0,
+  zIndex: 1,
+  background: '#ffffff',
+};
+
+/** Style chuẩn cho nội dung bên trong từng Tab của Drawer: paddingTop 16px */
+export const drawerTabContentStyle: React.CSSProperties = {
+  paddingTop: 16,
+};
+
+/** Alias tương thích */
+export const drawerTabsStyle: React.CSSProperties = {
+  marginBottom: 0,
+};
+
+/** Style chuẩn cho ô Input disabled / read-only trong Form */
+export const readonlyInputStyle: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: controlHeight,
+  backgroundColor: '#f5f5f5',
+};
+
+/** Style chuẩn cho OrgUnitTreeSelect trong Form */
+export const formTreeSelectStyle: React.CSSProperties = {
+  width: '100%',
+  borderRadius: radiusPill,
+  height: controlHeight,
+};
+
+/** Text gợi ý chuẩn cho khu vực đính kèm file */
+export const ATTACHMENT_HELPER_TEXT =
+  'Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤10MB.';
+
+/** Giới hạn dung lượng file tối đa (MB) */
+export const ATTACHMENT_MAX_FILE_SIZE_MB = 10;
 
 /** Row gutter form 2 cột */
 export const formRowGutter: [number, number] = [16, 16];
@@ -324,7 +386,7 @@ export const paginationSizeSelectStyle: React.CSSProperties = {
 
 /** Props chuẩn cho Drawer CRUD: size 50% màn hình, right, không nút X mặc định */
 export const drawerProps = {
-  size: '50%',
+  width: '50%',
   placement: 'right' as const,
   closable: false,
   styles: {

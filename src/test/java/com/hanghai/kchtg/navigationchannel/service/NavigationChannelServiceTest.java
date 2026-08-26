@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -40,7 +40,7 @@ class NavigationChannelServiceTest {
     private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock private NavigationChannelRepository repo;
-    @Mock private ApprovalHistoryRepository approvalHistoryRepo;
+    @Mock private InfrastructureHistoryRepository approvalHistoryRepo;
     @Mock private InfrastructureApprovalService approvalService;
     @Mock private GisSpatialObjectService gisSpatialObjectService;
     @Mock private OrgUnitCacheService orgUnitCacheService;

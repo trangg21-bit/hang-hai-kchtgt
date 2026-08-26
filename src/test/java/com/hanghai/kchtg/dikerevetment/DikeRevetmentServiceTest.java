@@ -1,10 +1,10 @@
 package com.hanghai.kchtg.dikerevetment;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
@@ -49,7 +49,7 @@ class DikeRevetmentServiceTest {
 
     @Mock private DikeRevetmentRepository repo;
     @Mock private DikeRevetmentAttachmentRepository attachmentRepo;
-    @Mock private ApprovalHistoryRepository approvalHistoryRepo;
+    @Mock private InfrastructureHistoryRepository approvalHistoryRepo;
     @Mock private InfrastructureApprovalService approvalService;
     @Mock private GisSpatialObjectService gisSpatialObjectService;
     @Mock private OrgUnitCacheService orgUnitCacheService;

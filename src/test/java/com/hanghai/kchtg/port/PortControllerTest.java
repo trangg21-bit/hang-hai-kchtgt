@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -252,22 +254,48 @@ class PortControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/ports/{id}/approve — returns 200, userId from Authentication")
-    void approve_returns200() throws Exception {
+    @DisplayName("POST /api/v1/ports/{id}/submit — gửi hồ sơ đi duyệt")
+    void submit_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
-        mockMvc.perform(post("/api/v1/ports/{id}/approve", id)
+        mockMvc.perform(post("/api/v1/ports/{id}/submit", id)
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(portApprovalService).approve(id, "test-approver", null);
+        verify(portApprovalService).submit(eq(id), any());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/ports/{id}/approve/c1 — duyệt vòng 1 (Cảng vụ / Chi cục)")
+    void approveC1_returns200() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/ports/{id}/approve/c1", id)
+                        .with(userPrincipal("test-approver")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(portApprovalService).approveC1(eq(id), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/ports/{id}/approve/c2 — duyệt vòng 2 (Cục)")
+    void approveC2_returns200() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/ports/{id}/approve/c2", id)
+                        .with(userPrincipal("test-approver")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(portApprovalService).approveC2(eq(id), isNull(), any());
     }
 
     // ── POST /api/v1/ports/{id}/reject ──────────────────────────────
 
     @Test
-    @DisplayName("POST /api/v1/ports/{id}/reject — returns 200, userId from Authentication")
+    @DisplayName("POST /api/v1/ports/{id}/reject — vòng bị từ chối do service suy ra từ trạng thái")
     void reject_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
@@ -277,7 +305,7 @@ class PortControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(portApprovalService).approve(id, "test-approver", "Thiếu tài liệu đầy đủ");
+        verify(portApprovalService).reject(eq(id), eq("Thiếu tài liệu đầy đủ"), any());
     }
 
     // ── GET /api/v1/ports/{id}/history ────────────────────────────────

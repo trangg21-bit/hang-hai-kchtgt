@@ -183,13 +183,13 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
   const record = detail || item;
   const parsedCoords = parseWktToCoordinates(record?.coordinates);
 
-  const isDraft = record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 || (record?.approvalStatus as any) === 'REJECTED';
-  const isPendingC1 = record?.approvalStatus === ApprovalStatus.PROPOSED || record?.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
+  const isDraft = record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
+  const isPendingC1 = record?.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
   const isApprovedL1 = record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-  const isApproved = record?.approvalStatus === ApprovalStatus.APPROVED || record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL2;
+  const isApproved = record?.approvalStatus === ApprovalStatus.APPROVED;
 
-  const isRejectedC1 = record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || ((record?.approvalStatus as any) === 'REJECTED' && !record?.approverLevel2);
-  const isRejectedC2 = record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 || ((record?.approvalStatus as any) === 'REJECTED' && record?.approverLevel1);
+  const isRejectedC1 = record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1;
+  const isRejectedC2 = record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
 
   const submittedDate = !isDraft && record ? (record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : (record.createdAt ? dayjs(record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—')) : '—';
   const submittedByName = !isDraft && record ? (record.createdByName || '—') : '—';
@@ -346,7 +346,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
     },
     {
       key: 'gis',
-      label: 'Vị trí (GIS)',
+      label: 'Thông tin vị trí',
       children: (
         <div style={{ paddingTop: 16 }}>
           <div className="detail-grid" style={{ marginBottom: 16 }}>
@@ -512,7 +512,7 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
 
   return (
     <Drawer
-      width={960}
+      size={960}
       placement="right"
       open={visible}
       onClose={onClose}

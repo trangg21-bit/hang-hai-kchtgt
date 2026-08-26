@@ -7,19 +7,19 @@ import com.hanghai.kchtg.aissystem.dto.AisSystemResponse;
 import com.hanghai.kchtg.aissystem.dto.HistoryEntry;
 import com.hanghai.kchtg.aissystem.entity.AisSystem;
 import com.hanghai.kchtg.aissystem.repository.AisSystemRepository;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.ApprovalHistoryUtils;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -39,8 +39,11 @@ import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.persistence.EntityNotFoundException;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -69,7 +72,7 @@ public class AisSystemService {
     private final VtsSystemRepository vtsSystemRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final InfrastructureAttachmentRepository attachmentRepository;
-    private final ApprovalHistoryRepository historyRepository;
+    private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final InfrastructureApprovalService approvalService;
     private final OrgUnitScopeService orgUnitScopeService;
@@ -116,6 +119,18 @@ public class AisSystemService {
             throw new IllegalArgumentException("Mã thiết bị AIS '" + request.getCode() + "' đã tồn tại");
         }
 
+        ApprovalStatus initialStatus = request.getApprovalStatus() != null
+                ? request.getApprovalStatus()
+                : ApprovalStatus.DRAFT;
+        // Tạo thẳng ở trạng thái "Đã duyệt" là bỏ qua cả 2 vòng duyệt — chỉ dành
+        // cho tài khoản cấp Cục (bảng chuyển trạng thái không có đường này cho
+        // người dùng thường).
+        if (initialStatus == ApprovalStatus.APPROVED && !approvalService.isDepartmentLevelUser(userId)) {
+            throw new IllegalStateException(
+                    "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; "
+                            + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
+        }
+
         VtsOperationCenter opCenter = vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(request.getVtsOperationCenterId())
                 .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
 
@@ -143,7 +158,7 @@ public class AisSystemService {
                 .maintenanceInfo(request.getMaintenanceInfo())
                 .note(request.getNote())
                 .spatialId(request.getSpatialId())
-                .approvalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus() : ApprovalStatus.DRAFT)
+                .approvalStatus(initialStatus)
                 .createdBy(userId)
                 .updatedBy(userId)
                 .createdAt(LocalDateTime.now())
@@ -165,11 +180,11 @@ public class AisSystemService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.AIS_SYSTEM)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.CREATED)
+                .status(InfrastructureHistoryStatus.CREATED)
                 .approvedBy(userId)
                 .reason("Tạo mới hệ thống AIS: " + saved.getName())
                 .build());
@@ -218,27 +233,47 @@ public class AisSystemService {
             entity.setSpatialId(spatialId);
         }
 
+        ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getApprovalStatus() != null) {
+            // Chuyển thẳng sang "Đã duyệt" từ trạng thái chưa duyệt cũng là bỏ qua
+            // 2 vòng — áp cùng ràng buộc cấp Cục như lúc tạo mới.
+            if (request.getApprovalStatus() == ApprovalStatus.APPROVED
+                    && !approvalService.isDepartmentLevelUser(userId)) {
+                throw new IllegalStateException(
+                        "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; "
+                                + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
+            }
+            entity.setApprovalStatus(request.getApprovalStatus());
+        }
+
         entity.setUpdatedBy(userId);
         entity.setUpdatedAt(LocalDateTime.now());
         AisSystem saved = repository.save(entity);
 
-        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-            String field = entry.getKey();
-            String fieldName = getFieldDisplayName(field);
-            String oldVal = formatDisplayValue(field, entry.getValue());
-            Object rawNew = getEntityFieldValue(saved, field);
-            String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
-            historyRepository.save(ApprovalHistory.builder()
-                    .refId(saved.getId())
-                    .refType(InfrastructureType.AIS_SYSTEM)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(ApprovalHistoryStatus.UPDATED)
-                    .approvedBy(userId)
-                    .changedField(fieldName)
-                    .previousValue(oldVal)
-                    .newValue(newVal)
-                    .reason("Cập nhật thông tin " + fieldName)
-                    .build());
+        if (wasApproved && !previousValues.isEmpty()) {
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                String field = entry.getKey();
+                String fieldName = getFieldDisplayName(field);
+                String oldVal = formatDisplayValue(field, entry.getValue());
+                Object rawNew = getEntityFieldValue(saved, field);
+                String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(saved.getId())
+                        .refType(InfrastructureType.AIS_SYSTEM)
+                        .approvalLevel(ApprovalLevel.LEVEL_2)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(userId)
+                        .changedField(fieldName)
+                        .previousValue(oldVal)
+                        .newValue(newVal)
+                        .reason("Cập nhật thông tin " + fieldName)
+                        .build());
+            }
         }
 
         return toResponse(saved);
@@ -273,6 +308,10 @@ public class AisSystemService {
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
+        // T13/N04/BR-017: chỉ hồ sơ "Lưu tạm" mới xóa được; xóa mềm chuyển sang
+        // "Đã xóa (lịch sử)" (ARCHIVED) và giữ nguyên bản ghi trong CSDL.
+        approvalService.deleteDraft(entity, InfrastructureType.AIS_SYSTEM, userId);
+
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
             entity.setSpatialId(null);
@@ -282,7 +321,7 @@ public class AisSystemService {
         entity.setDeletedBy(userId);
         repository.save(entity);
 
-        ApprovalHistoryUtils.recordSoftDelete(
+        InfrastructureHistoryUtils.recordSoftDelete(
                 historyRepository,
                 id,
                 InfrastructureType.AIS_SYSTEM,
@@ -293,7 +332,8 @@ public class AisSystemService {
     @Transactional(readOnly = true)
     public AisSystemResponse getById(UUID id) {
         AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống AIS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         return toResponse(entity);
     }
 
@@ -305,6 +345,7 @@ public class AisSystemService {
             UUID operatingOrgId,
             Integer provinceId,
             ConditionStatus conditionStatus,
+            Integer commissioningYear,
             ApprovalStatus approvalStatus,
             Pageable pageable) {
 
@@ -314,7 +355,9 @@ public class AisSystemService {
         }
 
         String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        Page<AisSystem> page = repository.search(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, approvalStatus, kw, pageable);
+        Page<AisSystem> page = commissioningYear == null
+                ? repository.search(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, approvalStatus, kw, pageable)
+                : repository.searchWithYear(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear, approvalStatus, kw, pageable);
 
         List<AisSystem> content = page.getContent();
         if (content.isEmpty()) {
@@ -348,9 +391,22 @@ public class AisSystemService {
 
         List<AisSystemListItem> items = content.stream()
                 .map(e -> toListItem(e, opCenterMap, vtsSystemMap, orgUnitMap, userMap))
-                .toList();
+                .collect(Collectors.toList());
 
         return new PageImpl<>(items, pageable, page.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AisSystemListItem> search(
+            String keyword,
+            UUID orgUnitId,
+            UUID vtsOperationCenterId,
+            UUID operatingOrgId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            ApprovalStatus approvalStatus,
+            Pageable pageable) {
+        return search(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, null, approvalStatus, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -361,6 +417,18 @@ public class AisSystemService {
             UUID operatingOrgId,
             Integer provinceId,
             ConditionStatus conditionStatus) {
+        return countByStatus(keyword, orgUnitId, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(
+            String keyword,
+            UUID orgUnitId,
+            UUID vtsOperationCenterId,
+            UUID operatingOrgId,
+            Integer provinceId,
+            ConditionStatus conditionStatus,
+            Integer commissioningYear) {
 
         Scope scope = resolveEffectiveScope(orgUnitId);
         if (!scope.unrestricted() && scope.orgUnitIds().isEmpty()) {
@@ -373,7 +441,9 @@ public class AisSystemService {
         }
 
         String kw = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
-        List<Object[]> rows = repository.countByApprovalStatus(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, kw);
+        List<Object[]> rows = commissioningYear == null
+                ? repository.countByApprovalStatus(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, kw)
+                : repository.countByApprovalStatusWithYear(!scope.unrestricted(), scope.orgUnitIds(), null, vtsOperationCenterId, operatingOrgId, provinceId, conditionStatus, commissioningYear, kw);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("ALL", 0L);
@@ -397,7 +467,8 @@ public class AisSystemService {
     @Transactional
     public void submit(UUID id, UUID userId) {
         AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống AIS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.submit(entity, InfrastructureType.AIS_SYSTEM, userId);
         repository.save(entity);
     }
@@ -405,7 +476,8 @@ public class AisSystemService {
     @Transactional
     public void approveC1(UUID id, String decision, String reason, UUID userId) {
         AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống AIS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.approveC1(entity, InfrastructureType.AIS_SYSTEM, decision, reason, userId);
         repository.save(entity);
     }
@@ -413,7 +485,8 @@ public class AisSystemService {
     @Transactional
     public void approveC2(UUID id, String decision, String reason, UUID userId) {
         AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống AIS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.approveC2(entity, InfrastructureType.AIS_SYSTEM, decision, reason, userId);
         repository.save(entity);
     }
@@ -421,7 +494,8 @@ public class AisSystemService {
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
         AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống AIS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus == ApprovalStatus.APPROVED_LEVEL1) {
             approvalService.approveC2(entity, InfrastructureType.AIS_SYSTEM, ApprovalStatus.REJECTED.name(), reason, userId);
@@ -433,10 +507,27 @@ public class AisSystemService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id) {
-        List<ApprovalHistory> list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                InfrastructureType.AIS_SYSTEM, id);
+        return getHistory(id, null, null);
+    }
+
+    /**
+     * Nhật ký của một hồ sơ. Kiểm tra hồ sơ cha trước để không thể đọc lịch sử
+     * của đơn vị khác bằng cách đoán id, và phân trang để drawer không phải tải
+     * toàn bộ nhật ký trong một lần.
+     */
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
+        AisSystem parent = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(parent.getOrgUnitId());
+
+        List<InfrastructureHistory> list = (page != null && pageSize != null && pageSize > 0)
+                ? historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.AIS_SYSTEM, id, PageRequest.of(page, pageSize))
+                : historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                        InfrastructureType.AIS_SYSTEM, id);
         Set<UUID> userIds = list.stream()
-                .map(ApprovalHistory::getApprovedBy)
+                .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
@@ -446,10 +537,12 @@ public class AisSystemService {
         return list.stream()
                 .map(h -> {
                     User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+                    // list-screen-ui-standard §3: chỉ Họ và tên (hoặc tên đăng nhập);
+                    // không để lộ email hay UUID ra giao diện.
                     String userName = u != null
                             ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
-                                    : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : u.getEmail()))
-                            : (h.getApprovedBy() != null ? h.getApprovedBy().toString() : null);
+                                    : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
+                            : null;
                     String orgUnitName = u != null && u.getOrgUnit() != null ? u.getOrgUnit().getName() : null;
                     return HistoryEntry.builder()
                             .id(h.getId())
@@ -470,21 +563,37 @@ public class AisSystemService {
     @Transactional
     public List<VtsSystemAttachmentResponse> uploadAttachments(UUID id, List<MultipartFile> files, UUID userId) {
         AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new IllegalArgumentException("Hệ thống AIS không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        ensureAttachmentEditable(entity);
 
-        Path dir = Paths.get(uploadDir, "ais_system", id.toString());
+        Path dir = Paths.get(uploadDir, "ais_system", id.toString()).toAbsolutePath().normalize();
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {
             throw new RuntimeException("Không thể tạo thư mục lưu trữ file", e);
         }
 
+        long existing = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.AIS_SYSTEM).size();
+
         List<VtsSystemAttachmentResponse> uploaded = new ArrayList<>();
         for (MultipartFile f : files) {
             if (f.isEmpty()) continue;
+            if (existing + uploaded.size() >= MAX_ATTACHMENTS) {
+                throw new IllegalArgumentException(
+                        "Số lượng tài liệu đính kèm tối đa là " + MAX_ATTACHMENTS + " tệp theo quy định");
+            }
+            validateAttachment(f);
             String originalFilename = Objects.requireNonNullElse(f.getOriginalFilename(), "file_" + System.currentTimeMillis());
-            String storedFileName = UUID.randomUUID() + "_" + originalFilename;
-            Path filePath = dir.resolve(storedFileName);
+            // Làm sạch tên tệp trước khi ghép vào đường dẫn, rồi chốt lại bằng kiểm
+            // tra thư mục đích để không thể ghi ra ngoài thư mục của hồ sơ.
+            String safeName = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
+            String storedFileName = UUID.randomUUID() + "_" + safeName;
+            Path filePath = dir.resolve(storedFileName).normalize();
+            if (!filePath.startsWith(dir)) {
+                throw new IllegalArgumentException("Tên tệp không hợp lệ");
+            }
 
             try {
                 Files.copy(f.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
@@ -506,11 +615,11 @@ public class AisSystemService {
             InfrastructureAttachment saved = attachmentRepository.save(attachment);
             uploaded.add(toAttachmentResponse(saved));
 
-            historyRepository.save(ApprovalHistory.builder()
+            historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.AIS_SYSTEM)
                     .approvalLevel(ApprovalLevel.LEVEL_0)
-                    .status(ApprovalHistoryStatus.UPDATED)
+                    .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(userId)
                     .reason("Tải lên tài liệu đính kèm: " + originalFilename)
                     .changedField("Tài liệu đính kèm")
@@ -523,16 +632,71 @@ public class AisSystemService {
 
     @Transactional(readOnly = true)
     public List<VtsSystemAttachmentResponse> listAttachments(UUID id) {
+        AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        return loadAttachments(id);
+    }
+
+    /** Đọc tệp đính kèm sau khi hồ sơ cha đã được kiểm tra tồn tại và phạm vi. */
+    private List<VtsSystemAttachmentResponse> loadAttachments(UUID id) {
         return attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.AIS_SYSTEM)
                 .stream()
                 .map(this::toAttachmentResponse)
                 .toList();
     }
 
+    /** Số tệp đính kèm tối đa cho một hồ sơ (khớp giới hạn hiển thị ở giao diện). */
+    private static final int MAX_ATTACHMENTS = 10;
+
+    private static final long MAX_ATTACHMENT_SIZE = 10L * 1024 * 1024;
+
+    private static final List<String> ALLOWED_ATTACHMENT_TYPES = List.of(
+            "application/pdf", "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "image/jpeg", "image/png", "image/gif");
+
+    /**
+     * N09/BR-019 — hồ sơ đang chờ duyệt bị khóa sửa, hồ sơ đã duyệt và đã xóa
+     * cũng vậy. Chỉ "Lưu tạm" và "Bị trả về" mới được thay đổi tài liệu đính kèm.
+     */
+    private void ensureAttachmentEditable(AisSystem entity) {
+        ApprovalStatus status = entity.getApprovalStatus();
+        boolean editable = status == null
+                || status == ApprovalStatus.DRAFT
+                || status == ApprovalStatus.REJECTED_LEVEL1
+                || status == ApprovalStatus.REJECTED_LEVEL2;
+        if (!editable) {
+            throw new IllegalStateException(
+                    "Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về. "
+                            + "Trạng thái hiện tại: " + status.getLabel());
+        }
+    }
+
+    private void validateAttachment(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Tài liệu đính kèm không được để trống");
+        }
+        if (file.getSize() > MAX_ATTACHMENT_SIZE) {
+            throw new IllegalArgumentException("Tài liệu đính kèm không được vượt quá 10MB");
+        }
+        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
+        if (!ALLOWED_ATTACHMENT_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Định dạng tài liệu không được hỗ trợ");
+        }
+    }
+
     @Transactional
     public void deleteAttachment(UUID id, UUID attId, UUID userId) {
+        AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        ensureAttachmentEditable(entity);
+
         InfrastructureAttachment att = attachmentRepository.findById(attId)
-                .orElseThrow(() -> new IllegalArgumentException("File đính kèm không tồn tại"));
+                .orElseThrow(() -> new EntityNotFoundException("File đính kèm không tồn tại"));
 
         if (!Objects.equals(att.getRefId(), id) || att.getRefType() != InfrastructureType.AIS_SYSTEM) {
             throw new IllegalArgumentException("File đính kèm không thuộc hệ thống AIS này");
@@ -544,11 +708,11 @@ public class AisSystemService {
 
         attachmentRepository.delete(att);
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(id)
                 .refType(InfrastructureType.AIS_SYSTEM)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.UPDATED)
+                .status(InfrastructureHistoryStatus.UPDATED)
                 .approvedBy(userId)
                 .reason("Xóa tài liệu đính kèm: " + att.getFileName())
                 .changedField("Tài liệu đính kèm")
@@ -695,22 +859,31 @@ public class AisSystemService {
             }
         }
 
-        String operatingOrgName = null;
-        if (entity.getOperatingOrgId() != null) {
-            operatingOrgName = orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null);
+        // Tên đơn vị lấy từ cache dùng chung thay vì mỗi trường một truy vấn.
+        String operatingOrgName = orgUnitCacheService.getName(entity.getOperatingOrgId());
+        String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
+
+        // Gom 4 người dùng (tạo / sửa / duyệt C1 / duyệt C2) vào một truy vấn.
+        Set<UUID> relatedUserIds = Stream
+                .of(entity.getCreatedBy(), entity.getUpdatedBy(), entity.getApproverLevel1(),
+                        entity.getApproverLevel2())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        // HashMap chứ không phải Map.of(): các id trên có thể null và
+        // Map.of().get(null) ném NullPointerException.
+        Map<UUID, String> relatedUserNames = new HashMap<>();
+        if (!relatedUserIds.isEmpty()) {
+            userRepository.findAllById(relatedUserIds).stream()
+                    .filter(u -> u.getFullName() != null && !u.getFullName().isBlank())
+                    .forEach(u -> relatedUserNames.put(u.getId(), u.getFullName().trim()));
         }
 
-        String orgUnitName = null;
-        if (entity.getOrgUnitId() != null) {
-            orgUnitName = orgUnitRepository.findById(entity.getOrgUnitId()).map(OrgUnit::getName).orElse(null);
-        }
+        String createdByName = relatedUserNames.get(entity.getCreatedBy());
+        String updatedByName = relatedUserNames.get(entity.getUpdatedBy());
+        String approver1Name = relatedUserNames.get(entity.getApproverLevel1());
+        String approver2Name = relatedUserNames.get(entity.getApproverLevel2());
 
-        String createdByName = entity.getCreatedBy() != null ? userRepository.findById(entity.getCreatedBy()).map(User::getFullName).orElse(null) : null;
-        String updatedByName = entity.getUpdatedBy() != null ? userRepository.findById(entity.getUpdatedBy()).map(User::getFullName).orElse(null) : null;
-        String approver1Name = entity.getApproverLevel1() != null ? userRepository.findById(entity.getApproverLevel1()).map(User::getFullName).orElse(null) : null;
-        String approver2Name = entity.getApproverLevel2() != null ? userRepository.findById(entity.getApproverLevel2()).map(User::getFullName).orElse(null) : null;
-
-        List<VtsSystemAttachmentResponse> attachments = listAttachments(entity.getId());
+        List<VtsSystemAttachmentResponse> attachments = loadAttachments(entity.getId());
 
         String coordinates = null;
         GisGeometryType geometryType = null;
@@ -882,31 +1055,17 @@ public class AisSystemService {
     @Transactional(readOnly = true)
     public List<AisSystemOptionResponse> getOptions(UUID orgUnitId) {
         Scope userScope = orgUnitScopeService != null ? orgUnitScopeService.currentUserScope() : Scope.all();
-        List<AisSystem> list = repository.findAll().stream()
-                .filter(e -> e.getDeletedAt() == null && (e.getApprovalStatus() == ApprovalStatus.APPROVED || e.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2))
-                .filter(e -> {
-                    if (orgUnitId != null) {
-                        return orgUnitId.equals(e.getOrgUnitId());
-                    }
-                    if (userScope != null && !userScope.unrestricted()) {
-                        return e.getOrgUnitId() != null && userScope.allows(e.getOrgUnitId());
-                    }
-                    return true;
-                })
-                .sorted((a, b) -> {
-                    String nameA = a.getName() != null ? a.getName() : "";
-                    String nameB = b.getName() != null ? b.getName() : "";
-                    return nameA.compareToIgnoreCase(nameB);
-                })
-                .toList();
-        return list.stream()
-                .map(e -> AisSystemOptionResponse.builder()
-                        .id(e.getId())
-                        .code(e.getCode())
-                        .name(e.getName())
-                        .orgUnitId(e.getOrgUnitId())
-                        .vtsOperationCenterId(e.getVtsOperationCenterId())
-                        .build())
-                .toList();
+        boolean scopeEnabled = userScope != null && !userScope.unrestricted();
+        List<UUID> scopeOrgUnitIds = scopeEnabled ? userScope.orgUnitIds() : List.of();
+
+        boolean orgFiltered = orgUnitId != null;
+        List<UUID> targetOrgUnitIds = List.of();
+        if (orgFiltered) {
+            targetOrgUnitIds = orgUnitScopeService != null
+                    ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
+                    : List.of(orgUnitId);
+        }
+
+        return repository.findOptions(scopeEnabled, scopeOrgUnitIds, orgFiltered, targetOrgUnitIds);
     }
 }

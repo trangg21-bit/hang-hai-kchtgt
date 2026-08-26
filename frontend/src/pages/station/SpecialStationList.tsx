@@ -59,7 +59,7 @@ import type {
 import { organizationService } from '../../services/organizationService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
-import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import FilterTableLayout, { type StatusTab } from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
@@ -67,7 +67,7 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
-import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { colors } from '../../theme';
 import {
   statusOperational,
@@ -90,6 +90,7 @@ import {
   spaceXs,
   spaceSm,
   spaceMd,
+  spaceLg,
   spaceXl,
   spaceFormField,
   badgeBaseStyle,
@@ -190,7 +191,8 @@ export default function SpecialStationList() {
   useEffect(() => {
     (async () => {
       try {
-        const orgs = await organizationService.getAllActive();
+        const orgRes = await organizationService.list({ pageSize: 1000 });
+        const orgs = orgRes.data || (orgRes as any).content || [];
         setOperatingOrgOptions(orgs.map((o: any) => ({ value: o.id, label: o.name })));
 
         const symbols = await symbolService.getOptions();
@@ -263,14 +265,14 @@ export default function SpecialStationList() {
     return statusCounts[statusKey] || 0;
   };
 
-  const statusTabsItems = useMemo(() => [
-    { key: 'ALL', label: `Tất cả (${getTabCount('ALL')})` },
-    { key: 'DRAFT', label: `Lưu tạm (${getTabCount('DRAFT')})` },
-    { key: 'PENDING_APPROVAL', label: `Chờ Cảng vụ duyệt (${getTabCount('PENDING_APPROVAL')})` },
-    { key: 'APPROVED_LEVEL1', label: `Chờ Cục duyệt (${getTabCount('APPROVED_LEVEL1')})` },
-    { key: 'APPROVED', label: `Đã duyệt (${getTabCount('APPROVED')})` },
-    { key: 'REJECTED', label: `Bị trả về (${getTabCount('REJECTED')})` },
-  ], [statusCounts]);
+  const statusTabs: StatusTab[] = useMemo(() => [
+    { key: 'ALL', label: 'Tất cả', count: getTabCount('ALL'), active: activeTab === 'ALL' },
+    { key: 'DRAFT', label: 'Lưu tạm', count: getTabCount('DRAFT'), active: activeTab === 'DRAFT' },
+    { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: getTabCount('PENDING_APPROVAL'), active: activeTab === 'PENDING_APPROVAL' },
+    { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: getTabCount('APPROVED_LEVEL1'), active: activeTab === 'APPROVED_LEVEL1' },
+    { key: 'APPROVED', label: 'Đã duyệt', count: getTabCount('APPROVED'), active: activeTab === 'APPROVED' },
+    { key: 'REJECTED', label: 'Bị trả về', count: getTabCount('REJECTED'), active: activeTab === 'REJECTED' },
+  ], [statusCounts, activeTab]);
 
   // Reset filter
   const handleResetFilter = () => {
@@ -498,28 +500,38 @@ export default function SpecialStationList() {
       render: (_: any, __: any, index: number) => (page - 1) * pageSize + index + 1,
     },
     {
-      title: 'Mã đài',
-      dataIndex: 'code',
-      key: 'code',
-      width: 150,
-      ellipsis: false,
-      render: (code: string, record: CoastalStationInmarsatResponse) => (
-        <span style={{ fontWeight: fontWeightMedium, color: colors.sidebarBg }}>
-          {code || record.deviceCode || '-'}
-        </span>
-      ),
-    },
-    {
-      title: 'Tên đài',
+      // list-screen-ui-standard §2: Tên và Mã gộp thành MỘT cột 2 dòng, cố định
+      // trái ngay sau STT, rộng 220–260px. Trước đây tách làm hai cột rời.
+      title: 'Tên/Mã đài Inmarsat',
       dataIndex: 'name',
       key: 'name',
-      width: 220,
+      width: 260,
+      fixed: 'left' as const,
       ellipsis: false,
-      render: (name: string, record: CoastalStationInmarsatResponse) => (
-        <span style={{ fontWeight: fontWeightBold, color: textPrimary }}>
-          {name || record.stationName || '-'}
-        </span>
-      ),
+      render: (name: string, record: CoastalStationInmarsatResponse) => {
+        const displayName = name || record.stationName || '—';
+        const displayCode = record.code || record.deviceCode || '—';
+        return (
+          <div style={{ overflow: 'hidden' }}>
+            <div
+              title={displayName}
+              style={{
+                fontWeight: fontWeightBold,
+                color: colors.sidebarBg,
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {displayName}
+            </div>
+            <div style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {displayCode}
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: 'Đơn vị quản lý',
@@ -544,22 +556,38 @@ export default function SpecialStationList() {
       width: 160,
       ellipsis: false,
       render: (provId: number, record: CoastalStationInmarsatResponse) => {
-        const found = VIETNAM_PROVINCE_OPTIONS.find((p) => p.value === provId);
-        return found ? found.label : (record.provinceName || '-');
+        return (provId ? getProvinceNameById(provId) : undefined) || record.provinceName || '-';
       },
     },
     {
+      // list-screen-ui-standard §4: cột badge rộng 160px, §Alignment: căn trái.
+      // §5: badge dạng viên thuốc nền 15% / viền 40% — antd <Tag color> cho ra
+      // kiểu khác hẳn nên không dùng.
       title: 'Tình trạng',
       dataIndex: 'conditionStatus',
       key: 'conditionStatus',
-      width: 150,
-      align: 'center' as const,
+      width: 160,
+      ellipsis: false,
       render: (val: string) => {
         const found = CONDITION_STATUS_OPTIONS.find((c) => c.value === val);
+        const color = found?.color || statusOperational;
         return (
-          <Tag color={found?.color || statusOperational} style={{ borderRadius: radiusPill, minWidth: 110, textAlign: 'center' }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '2px 10px',
+              border: `1px solid ${color}40`,
+              borderRadius: radiusPill,
+              fontSize: fontSizeMd,
+              fontWeight: fontWeightMedium,
+              background: `${color}15`,
+              color,
+              whiteSpace: 'nowrap',
+            }}
+          >
             {found?.label || val || 'Đang khai thác'}
-          </Tag>
+          </span>
         );
       },
     },
@@ -567,25 +595,43 @@ export default function SpecialStationList() {
       title: 'Trạng thái phê duyệt',
       dataIndex: 'approvalStatus',
       key: 'approvalStatus',
-      width: 170,
-      align: 'center' as const,
-      render: (val: string) => <ApprovalStatusBadge status={val} minWidth={125} />,
+      width: 180,
+      ellipsis: false,
+      render: (val: string) => <ApprovalStatusBadge status={val} />,
     },
     {
-      title: 'Ngày cập nhật',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 140,
-      align: 'center' as const,
-      render: (val: string) => (val ? dayjs(val).format('DD/MM/YYYY') : '-'),
-    },
-    {
+      // list-screen-ui-standard §3: gộp Cán bộ cập nhật + Ngày giờ cập nhật thành
+      // một cột 2 dòng, rộng 190–220px, định dạng DD/MM/YYYY HH:mm:ss.
       title: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
       key: 'updatedByName',
-      width: 160,
+      width: 220,
       ellipsis: false,
-      render: (val: string, record: CoastalStationInmarsatResponse) => val || record.createdByName || '-',
+      render: (val: string, record: CoastalStationInmarsatResponse) => {
+        // §3: chỉ Họ và tên — không fallback sang mã UUID.
+        const name = val || record.createdByName || '—';
+        const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
     },
   ], [page, pageSize]);
 
@@ -748,7 +794,7 @@ export default function SpecialStationList() {
     <div style={{ padding: spaceMd }}>
       <ScreenHeader
         title="Quản lý Đài thông tin vệ tinh Inmarsat"
-        breadcrumb={[{ title: 'Quản lý nhà trạm' }, { title: 'Đài vệ tinh Inmarsat' }]}
+        breadcrumb={[{ label: 'Quản lý nhà trạm' }, { label: 'Đài vệ tinh Inmarsat' }]}
         actions={
           <Space>
             {hasPerm('coastalstationinmarsat:create') && (
@@ -774,12 +820,16 @@ export default function SpecialStationList() {
 
       <FilterTableLayout
         filterContent={sidebarFilterContent}
-        tabsItems={statusTabsItems}
-        activeTabKey={activeTab}
-        onTabChange={(key) => {
+        statusTabs={statusTabs}
+        onStatusTabChange={(key) => {
           setActiveTab(key);
           setPage(1);
         }}
+        onFilterApply={() => {
+          setPage(1);
+          loadData();
+        }}
+        onFilterReset={handleResetFilter}
       >
         <DataTable
           loading={loading}
@@ -790,8 +840,7 @@ export default function SpecialStationList() {
           scroll={{ x: 'max-content', y: 560 }}
           emptyState={
             <EmptyState
-              title="Không có dữ liệu Đài Inmarsat"
-              description="Thử thay đổi bộ lọc hoặc thêm mới đài vệ tinh Inmarsat."
+              description="Không có dữ liệu Đài Inmarsat"
             />
           }
         />

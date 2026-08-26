@@ -1,15 +1,15 @@
 package com.hanghai.kchtg.radarstation.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.ApprovalHistoryUtils;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 public class RadarStationService {
 
     private final RadarStationRepository repository;
-    private final ApprovalHistoryRepository historyRepository;
+    private final InfrastructureHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final VtsSystemRepository vtsSystemRepository;
     private final PortRepository portRepository;
@@ -156,11 +156,11 @@ public class RadarStationService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status("submit".equals(action) ? ApprovalHistoryStatus.PROPOSED : ApprovalHistoryStatus.CREATED)
+                .status("submit".equals(action) ? InfrastructureHistoryStatus.PROPOSED : InfrastructureHistoryStatus.CREATED)
                 .approvedBy(createdBy)
                 .reason("submit".equals(action) ? "Tạo mới và gửi phê duyệt trạm radar" : "Tạo mới trạm radar (Lưu tạm)")
                 .build());
@@ -205,14 +205,12 @@ public class RadarStationService {
             validateAllowedOrgUnit(request.getOrgUnitId());
         }
 
-        // Sau khi sửa, bản ghi chưa duyệt quay về Nháp (DRAFT)
-        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT && entity.getApprovalStatus() != ApprovalStatus.APPROVED) {
-            entity.setApprovalStatus(ApprovalStatus.DRAFT);
-            entity.setApproverLevel1(null);
-            entity.setApprovedDateLevel1(null);
-            entity.setApproverLevel2(null);
-            entity.setApprovedDateLevel2(null);
-            entity.setRejectionReason(null);
+        ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 
         if (request.getStationName() != null) entity.setStationName(request.getStationName().trim());
@@ -259,14 +257,16 @@ public class RadarStationService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(ApprovalHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.RADAR_STATION)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.UPDATED)
-                .approvedBy(updatedBy)
-                .reason("Cập nhật thông tin trạm radar")
-                .build());
+        if (wasApproved) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(updatedBy)
+                    .reason("Cập nhật thông tin trạm radar sau phê duyệt")
+                    .build());
+        }
 
         return toResponse(saved);
     }
@@ -277,7 +277,7 @@ public class RadarStationService {
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
-        ApprovalHistoryUtils.recordSoftDelete(historyRepository, entity.getId(), InfrastructureType.RADAR_STATION, userId, "Xóa trạm radar");
+        InfrastructureHistoryUtils.recordSoftDelete(historyRepository, entity.getId(), InfrastructureType.RADAR_STATION, userId, "Xóa trạm radar");
         entity.setDeletedAt(LocalDateTime.now());
         entity.setDeletedBy(userId);
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
@@ -413,10 +413,10 @@ public class RadarStationService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID radarStationId) {
-        List<ApprovalHistory> historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+        List<InfrastructureHistory> historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
                 InfrastructureType.RADAR_STATION, radarStationId);
         Set<UUID> userIds = historyList.stream()
-                .map(ApprovalHistory::getApprovedBy)
+                .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, String> userNames = resolveUserNames(userIds);

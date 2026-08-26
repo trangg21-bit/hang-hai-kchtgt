@@ -920,11 +920,30 @@ export default function BerthList() {
     ] : [];
 
     const tailColumns: any[] = [
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 200, sortable: true, sortOrder, ellipsis: false,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 170, sortable: true, sortOrder, ellipsis: false,
         render: (v: string) => {
           const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
           return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
         } },
+      ...(!isAuditViewer ? [{
+        key: 'updatedAt',
+        label: 'Cán bộ cập nhật',
+        dataIndex: 'updatedAt',
+        width: 190,
+        sortable: true,
+        sortOrder,
+        ellipsis: false,
+        render: (v: string | null, record: Berth) => (
+          <div style={{ lineHeight: '1.35' }}>
+            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {userMap.get(record.updatedBy || '') || record.updatedBy || '—'}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        ),
+      }] : []),
     ];
 
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];

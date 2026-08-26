@@ -147,6 +147,9 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(history);
     }
 
+    // Dropdown dùng liên module nên chỉ yêu cầu đã đăng nhập; phạm vi dữ liệu do
+    // data scope trong truy vấn đảm nhiệm (giống các module KCHT khác).
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/options")
     @Operation(summary = "Danh sách Đài Inmarsat phục vụ dropdown options (chỉ APPROVED & OPERATIONAL)")
     public ResponseEntity<List<CoastalStationInmarsatOptionResponse>> getOptions(
@@ -155,19 +158,26 @@ public class CoastalStationInmarsatController {
     }
 
     // --- COMPATIBILITY APIS ---
+    //
+    // Bốn endpoint dưới đây trước kia KHÔNG có @PreAuthorize: bất kỳ ai đăng nhập
+    // đều đọc được toàn bộ dữ liệu và — nghiêm trọng hơn — phê duyệt được hồ sơ.
+    // Nay gắn quyền đúng như các endpoint chính.
 
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
     @GetMapping("/list")
     @Operation(summary = "Lấy tất cả đài Inmarsat đang hoạt động (Legacy)")
     public ResponseEntity<List<CoastalStationInmarsat>> getAllStations() {
         return ResponseEntity.ok(service.getAllStations());
     }
 
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
     @GetMapping("/search")
     @Operation(summary = "Tìm kiếm GIS đài Inmarsat (Legacy)")
     public ResponseEntity<List<CoastalStationInmarsat>> searchStations(@RequestParam String keyword) {
         return ResponseEntity.ok(service.searchStations(keyword));
     }
 
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:read', 'specialstation:read', 'data:read', 'admin:all')")
     @GetMapping("/by-device/{code}")
     @Operation(summary = "Tìm đài Inmarsat theo mã thiết bị (Legacy)")
     public ResponseEntity<CoastalStationInmarsat> findByDeviceCode(@PathVariable String code) {
@@ -176,6 +186,11 @@ public class CoastalStationInmarsatController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /**
+     * Duyệt vòng đang mở. Giữ URL cũ cho tích hợp chưa chuyển đổi nhưng nay đòi
+     * đúng quyền duyệt như /approve-l1 và /approve-l2.
+     */
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approvec2', 'coastalstationinmarsat:approve', 'specialstation:approve', 'admin:all')")
     @PostMapping("/{id}/approve")
     @Operation(summary = "Phê duyệt Đài Inmarsat (Legacy)")
     public ResponseEntity<CoastalStationInmarsat> approveStation(

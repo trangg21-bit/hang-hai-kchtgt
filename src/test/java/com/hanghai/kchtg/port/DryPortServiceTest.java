@@ -143,7 +143,7 @@ class DryPortServiceTest {
             DryPortResponse result = service.update(request);
 
             assertEquals("Cảng Cạn Cập Nhật", result.getDryPortName());
-            assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
+            assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
             assertEquals("CC-001", result.getDryPortCode()); // code unchanged
             verify(changeHistoryService).recordChanges(eq("DryPort"), any(), any(), any(), any());
         }

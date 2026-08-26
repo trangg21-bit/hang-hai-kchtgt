@@ -27,7 +27,6 @@ import type {
   NavigationChannelResponse,
   CreateNavigationChannelRequest,
   UpdateNavigationChannelRequest,
-  ApprovalRequest,
   ApprovalStatus,
 } from '../../types/navigationChannel';
 import { useAuthStore } from '../../store/authStore';
@@ -415,37 +414,30 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     setIsSubmitting(true);
     try {
       if (action === 'approveC1') {
-        const approvalData: ApprovalRequest = {
-          status: 'APPROVED',
-        };
-        const res = await navigationChannelApproval.approveC1(id, approvalData);
+        const note = (payload?.note || payload?.lyDo || payload?.reason) as string | undefined;
+        const res = await navigationChannelApproval.approveLevel1(id, note);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
         toast.success('Phê duyệt cấp Cảng vụ thành công');
         setRecord({ ...record, approvalStatus: 'PENDING_APPROVAL' });
+        if (onSuccess) onSuccess();
       } else if (action === 'approveC2') {
-        const approvalData: ApprovalRequest = {
-          status: 'APPROVED',
-        };
-        const res = await navigationChannelApproval.approveC2(id, approvalData);
+        const note = (payload?.note || payload?.lyDo || payload?.reason) as string | undefined;
+        const res = await navigationChannelApproval.approveLevel2(id, note);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
         toast.success('Phê duyệt cấp Cục thành công');
         setRecord({ ...record, approvalStatus: 'APPROVED' });
+        if (onSuccess) onSuccess();
       } else if (action === 'reject') {
-        const rejectionReason = (payload?.reason || payload?.lyDo) as string;
-        const approvalData: ApprovalRequest = {
-          status: 'REJECTED',
-          reason: rejectionReason,
-        };
-
+        const rejectionReason = (payload?.reason || payload?.lyDo || '') as string;
         let updatedRecord;
-        if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED') {
-          updatedRecord = await navigationChannelApproval.approveC1(id, approvalData);
-        } else if (record.approvalStatus === 'PENDING_APPROVAL') {
-          updatedRecord = await navigationChannelApproval.approveC2(id, approvalData);
+        if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED' || record.approvalStatus === 'DRAFT') {
+          updatedRecord = await navigationChannelApproval.rejectLevel1(id, rejectionReason);
+        } else {
+          updatedRecord = await navigationChannelApproval.rejectLevel2(id, rejectionReason);
         }
         if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updatedRecord;
@@ -453,6 +445,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
 
         toast.success('Từ chối thành công');
         setRecord({ ...record, approvalStatus: 'REJECTED', rejectionReason });
+        if (onSuccess) onSuccess();
       } else if (action === 'delete') {
         await navigationChannelCRUD.delete(id);
         toast.success('Xóa thành công');

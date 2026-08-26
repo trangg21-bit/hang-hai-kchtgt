@@ -15,8 +15,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @Order(1)
@@ -689,22 +692,27 @@ public class PermissionSeeder implements CommandLineRunner {
 
                 int inserted = 0;
                 int updated = 0;
+                Map<String, Permission> existingMap = permissionRepository.findAll().stream()
+                                .collect(java.util.stream.Collectors.toMap(Permission::getCode, p -> p, (a, b) -> a));
+                List<Permission> toSave = new ArrayList<>();
                 for (Permission definition : definitions.values()) {
-                        var existing = permissionRepository.findByCode(definition.getCode());
-                        if (existing.isEmpty()) {
-                                permissionRepository.save(definition);
+                        Permission p = existingMap.get(definition.getCode());
+                        if (p == null) {
+                                toSave.add(definition);
                                 inserted++;
                         } else {
-                                Permission p = existing.get();
                                 if (!java.util.Objects.equals(p.getName(), definition.getName())
                                                 || !java.util.Objects.equals(p.getDescription(),
                                                                 definition.getDescription())) {
                                         p.setName(definition.getName());
                                         p.setDescription(definition.getDescription());
-                                        permissionRepository.save(p);
+                                        toSave.add(p);
                                         updated++;
                                 }
                         }
+                }
+                if (!toSave.isEmpty()) {
+                        permissionRepository.saveAll(toSave);
                 }
                 // Clean up deprecated / redundant permissions safely
                 if (jdbcTemplate != null) {

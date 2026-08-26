@@ -7,7 +7,7 @@ import com.hanghai.kchtg.aissystem.repository.AisSystemRepository;
 import com.hanghai.kchtg.common.dto.ApprovalRequest;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.user.entity.User;
@@ -68,7 +68,7 @@ public class AisSystemApprovalIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
-    private ApprovalHistoryRepository historyRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     private UUID orgUnitId;
     private UUID opCenterId;

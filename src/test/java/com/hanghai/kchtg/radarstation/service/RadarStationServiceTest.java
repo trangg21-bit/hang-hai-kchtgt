@@ -1,10 +1,10 @@
 package com.hanghai.kchtg.radarstation.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -44,7 +44,7 @@ class RadarStationServiceTest {
     private RadarStationRepository repository;
 
     @Mock
-    private ApprovalHistoryRepository historyRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     @Mock
     private InfrastructureAttachmentRepository attachmentRepository;
@@ -105,7 +105,7 @@ class RadarStationServiceTest {
                 .createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
 
         when(repository.save(any())).thenReturn(saved);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         RadarStationResponse response = service.create(createRequest,
                 UUID.fromString("00000000-0000-0000-0000-000000000001"));
@@ -134,7 +134,6 @@ class RadarStationServiceTest {
                 .stationName("Tram moi").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         RadarStationResponse response = service.update(TEST_ID, updateReq,
                 UUID.fromString("00000000-0000-0000-0000-000000000001"));
@@ -151,7 +150,7 @@ class RadarStationServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(draftEntity));
         when(repository.save(any())).thenReturn(draftEntity);
-        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
         service.delete(TEST_ID, UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(draftEntity.getDeletedAt());
@@ -210,11 +209,11 @@ class RadarStationServiceTest {
 
     @Test
     void testGetHistory() {
-        ApprovalHistory history = ApprovalHistory.builder()
+        InfrastructureHistory history = InfrastructureHistory.builder()
                 .id(UUID.fromString("00000000-0000-0000-0000-000000000001")).refId(TEST_ID)
                 .refType(InfrastructureType.RADAR_STATION)
                 .approvalLevel(ApprovalLevel.LEVEL_1)
-                .status(ApprovalHistoryStatus.APPROVED)
+                .status(InfrastructureHistoryStatus.APPROVED)
                 .approvedBy(UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now()).reason("Duyệt").build();
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))

@@ -498,7 +498,24 @@ export const portApproval = {
   },
 };
 
+// ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ──────────────────────────
+// Vòng 1 = Cảng vụ/Chi cục, vòng 2 = Cục. `approve()` giữ nguyên chữ ký cũ cho
+// các màn chưa chuyển đổi — backend nay tự duyệt đúng vòng đang mở thay vì
+// duyệt một phát, nên không còn đường vòng bỏ qua quy trình.
+
 export const berthApproval = {
+  async submit(id: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/submit`);
+  },
+
+  async approveC1(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/approve/c1`, null, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/berths/${id}/approve/c2`, null, { params: { reason } });
+  },
+
   async approve(id: string, cap: string, content?: string): Promise<void> {
     await api.post(`/v1/berths/${id}/approve`, { cap, content: content?.trim() || undefined });
   },
@@ -509,6 +526,18 @@ export const berthApproval = {
 };
 
 export const pierApproval = {
+  async submit(id: string): Promise<void> {
+    await api.post(`/v1/piers/${id}/submit`);
+  },
+
+  async approveC1(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/piers/${id}/approve/c1`, null, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/piers/${id}/approve/c2`, null, { params: { reason } });
+  },
+
   async approve(id: string, cap: string, content?: string): Promise<void> {
     await api.post(`/v1/piers/${id}/approve`, { cap, content: content?.trim() || undefined });
   },
@@ -519,6 +548,14 @@ export const pierApproval = {
 };
 
 export const dryPortApproval = {
+  async approveC1(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/dry-ports/${id}/approve/c1`, null, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/dry-ports/${id}/approve/c2`, null, { params: { reason } });
+  },
+
   async approve(id: string): Promise<void> {
     await api.post(`/v1/dry-ports/${id}/approve`);
   },
@@ -529,6 +566,18 @@ export const dryPortApproval = {
 };
 
 export const waterZoneApproval = {
+  async submit(id: string): Promise<void> {
+    await api.post(`/v1/water-zones/${id}/submit`);
+  },
+
+  async approveC1(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/water-zones/${id}/approve/c1`, null, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/water-zones/${id}/approve/c2`, null, { params: { reason } });
+  },
+
   async approve(id: string): Promise<void> {
     await api.post(`/v1/water-zones/${id}/approve`);
   },

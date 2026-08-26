@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,6 +17,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -42,7 +44,7 @@ import lombok.experimental.FieldNameConstants;
 @AllArgsConstructor
 @SuperBuilder
 @FieldNameConstants
-public class Port extends BaseEntity {
+public class Port extends BaseEntity implements ApprovableEntity {
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
@@ -76,6 +78,25 @@ public class Port extends BaseEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
+
+    // ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ────────────────────────
+    // Vòng 1 = Cảng vụ/Chi cục, vòng 2 = Cục. Các trường này là bắt buộc để
+    // chống tự duyệt (BR-015) và để truy vết ai duyệt lúc nào (BR-007).
+
+    @Column(name = "approver_level1")
+    private UUID approverLevel1;
+
+    @Column(name = "approved_date_level1")
+    private LocalDateTime approvedDateLevel1;
+
+    @Column(name = "approver_level2")
+    private UUID approverLevel2;
+
+    @Column(name = "approved_date_level2")
+    private LocalDateTime approvedDateLevel2;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 
     @Column(name = "port_group")
     private Integer portGroup;

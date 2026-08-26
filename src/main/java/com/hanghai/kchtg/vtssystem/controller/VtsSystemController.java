@@ -43,12 +43,8 @@ public class VtsSystemController {
     public ResponseEntity<ApiResponse<VtsSystemResponse>> create(
             @Valid @RequestBody VtsSystemCreateRequest request,
             Authentication authentication) {
-        try {
-            VtsSystemResponse response = service.create(request, SecurityUtils.getCurrentUserId());
-            return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
+        VtsSystemResponse response = service.create(request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
@@ -62,9 +58,10 @@ public class VtsSystemController {
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "true") boolean includeCounts) {
+            @RequestParam(defaultValue = "true") boolean includeCounts,
+            @RequestParam(required = false) String sort) {
         VtsSystemListResponse responses = service.findAllWithSearchAndCounts(
-                orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size, includeCounts);
+                orgUnitId, keyword, conditionStatus, approvalStatus, year, page, size, includeCounts, sort);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
     }
 
@@ -110,14 +107,8 @@ public class VtsSystemController {
             @PathVariable UUID id,
             @Valid @RequestBody VtsSystemUpdateRequest request,
             Authentication authentication) {
-        try {
-            VtsSystemResponse response = service.update(id, request, SecurityUtils.getCurrentUserId());
-            return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
-        } catch (Exception e) {
-            e.printStackTrace();
-            String msg = e.getMessage() != null && !e.getMessage().isEmpty() ? e.getMessage() : e.toString();
-            return ResponseEntity.badRequest().body(ApiResponse.error(msg));
-        }
+        VtsSystemResponse response = service.update(id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:delete')")
@@ -126,12 +117,18 @@ public class VtsSystemController {
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id,
             Authentication authentication) {
-        try {
-            service.delete(id, SecurityUtils.getCurrentUserId());
-            return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
+        service.delete(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
+    }
+
+    @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    @DataScope
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<ApiResponse<VtsSystemResponse>> submit(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        VtsSystemResponse response = service.submit(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:approvec1')")
@@ -141,12 +138,8 @@ public class VtsSystemController {
             @PathVariable UUID id,
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
-        try {
-            VtsSystemResponse response = service.approveC1(id, request, SecurityUtils.getCurrentUserId());
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
+        VtsSystemResponse response = service.approveC1(id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:approvec2')")
@@ -156,12 +149,8 @@ public class VtsSystemController {
             @PathVariable UUID id,
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
-        try {
-            VtsSystemResponse response = service.approveC2(id, request, SecurityUtils.getCurrentUserId());
-            return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
+        VtsSystemResponse response = service.approveC2(id, request, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
     }
 
     /**
@@ -215,12 +204,8 @@ public class VtsSystemController {
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,
             Authentication authentication) {
-        try {
-            VtsSystemAttachmentResponse response = service.uploadAttachment(id, file, SecurityUtils.getCurrentUserId());
-            return ResponseEntity.ok(ApiResponse.success("Tải lên tài liệu đính kèm thành công", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
+        VtsSystemAttachmentResponse response = service.uploadAttachment(id, file, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Tải lên tài liệu đính kèm thành công", response));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:update')")
@@ -229,12 +214,8 @@ public class VtsSystemController {
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attachmentId) {
-        try {
-            service.deleteAttachment(id, attachmentId);
-            return ResponseEntity.ok(ApiResponse.success("Xóa tài liệu đính kèm thành công", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
+        service.deleteAttachment(id, attachmentId);
+        return ResponseEntity.ok(ApiResponse.success("Xóa tài liệu đính kèm thành công", null));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:read')")

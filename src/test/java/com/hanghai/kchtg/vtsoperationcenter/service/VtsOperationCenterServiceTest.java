@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.vtsoperationcenter.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -61,7 +61,7 @@ class VtsOperationCenterServiceTest {
     private InfrastructureAttachmentRepository attachmentRepository;
 
     @Mock
-    private ApprovalHistoryRepository historyRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -74,6 +74,13 @@ class VtsOperationCenterServiceTest {
 
     @Mock
     private GisSpatialObjectService gisSpatialObjectService;
+
+    // toResponse lấy tên cảng / đơn vị từ cache dùng chung thay vì truy vấn riêng.
+    @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+
+    @Mock
+    private com.hanghai.kchtg.port.service.PortCacheService portCacheService;
 
     @InjectMocks
     private VtsOperationCenterService service;

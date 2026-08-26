@@ -50,7 +50,7 @@ export const vtsSystemCRUD = {
     }
   },
 
-  async list(params?: ListParams & { includeCounts?: boolean }): Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> {
+  async list(params?: ListParams & { includeCounts?: boolean; sort?: string }): Promise<{ items: VtsSystemListItem[]; total: number; statusCounts: Record<string, number> }> {
     const res = await api.get(VTS_BASE_PATH, {
       params: {
         orgUnitId: params?.orgUnitId,
@@ -61,6 +61,9 @@ export const vtsSystemCRUD = {
         approvalStatus: params?.approvalStatus,
         year: params?.year,
         includeCounts: params?.includeCounts ?? true,
+        // `<field>,<asc|desc>` — sắp xếp thực hiện ở server để áp dụng cho toàn bộ
+        // kết quả, không chỉ trang đang hiển thị.
+        sort: params?.sort,
       },
     });
     const data = res.data?.data || {};
@@ -132,6 +135,11 @@ export const vtsSystemCRUD = {
 };
 
 export const vtsSystemApproval = {
+  async submit(id: string): Promise<VtsSystemResponse> {
+    const res = await api.post(`${VTS_BASE_PATH}/${id}/submit`);
+    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+  },
+
   async approveC1(id: string, data: ApprovalRequest): Promise<VtsSystemResponse> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/approve/c1`, data);
     return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;

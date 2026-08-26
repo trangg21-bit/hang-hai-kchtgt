@@ -1,13 +1,13 @@
 package com.hanghai.kchtg.dikerevetment.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.ApprovalHistoryUtils;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentAttachment;
@@ -50,7 +50,7 @@ public class DikeRevetmentService {
 
     private final DikeRevetmentRepository repo;
     private final DikeRevetmentAttachmentRepository attachmentRepo;
-    private final ApprovalHistoryRepository approvalHistoryRepo;
+    private final InfrastructureHistoryRepository approvalHistoryRepo;
     private final InfrastructureApprovalService approvalService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
@@ -126,11 +126,11 @@ public class DikeRevetmentService {
             dr = repo.save(dr);
         }
 
-        approvalHistoryRepo.save(ApprovalHistory.builder()
+        approvalHistoryRepo.save(InfrastructureHistory.builder()
                 .refId(dr.getId())
                 .refType(InfrastructureType.DIKE_REVETMENT)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.CREATED)
+                .status(InfrastructureHistoryStatus.CREATED)
                 .approvedBy(userId)
                 .reason("Tạo mới đê kè (Lưu tạm)")
                 .build());
@@ -238,7 +238,15 @@ public class DikeRevetmentService {
             validateAllowedOrgUnit(req.getOrgUnitId());
         }
 
+        ApprovalStatus previousApprovalStatus = dr.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
         EntityUpdateUtils.copyPropertiesIfPresent(req, dr, Collections.emptyMap());
+
+        if (wasApproved) {
+            dr.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
 
         if (req.getStatus() != null) {
             dr.setStatus(req.getStatus());
@@ -267,14 +275,16 @@ public class DikeRevetmentService {
             saved = repo.save(saved);
         }
 
-        approvalHistoryRepo.save(ApprovalHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.DIKE_REVETMENT)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.UPDATED)
-                .approvedBy(userId)
-                .reason("Cập nhật thông tin đê kè")
-                .build());
+        if (wasApproved) {
+            approvalHistoryRepo.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .reason("Cập nhật sau phê duyệt")
+                    .build());
+        }
 
         return toResponse(saved);
     }
@@ -286,7 +296,7 @@ public class DikeRevetmentService {
 
         validateAllowedOrgUnit(dr.getOrgUnitId());
 
-        ApprovalHistoryUtils.recordSoftDelete(approvalHistoryRepo, dr.getId(), InfrastructureType.DIKE_REVETMENT, userId, "Xóa đê kè");
+        InfrastructureHistoryUtils.recordSoftDelete(approvalHistoryRepo, dr.getId(), InfrastructureType.DIKE_REVETMENT, userId, "Xóa đê kè");
         dr.setDeletedAt(LocalDateTime.now());
         dr.setDeletedBy(userId);
         dr.setApprovalStatus(ApprovalStatus.ARCHIVED);
@@ -353,7 +363,7 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id) {
-        List<ApprovalHistory> historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+        List<InfrastructureHistory> historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
                 InfrastructureType.DIKE_REVETMENT, id);
         return historyList.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())

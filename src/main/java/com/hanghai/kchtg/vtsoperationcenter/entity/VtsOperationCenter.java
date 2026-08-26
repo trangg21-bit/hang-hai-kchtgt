@@ -70,7 +70,7 @@ public class VtsOperationCenter extends BaseEntity implements ApprovableEntity {
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "approval_status", nullable = false, columnDefinition = "SMALLINT")
     @Builder.Default
-    private ApprovalStatus approvalStatus = ApprovalStatus.PROPOSED;
+    private ApprovalStatus approvalStatus = ApprovalStatus.DRAFT;
 
     @Column(name = "approver_level1")
     private UUID approverLevel1;
@@ -90,7 +90,7 @@ public class VtsOperationCenter extends BaseEntity implements ApprovableEntity {
     @PrePersist
     protected void onPrePersist() {
         if (this.approvalStatus == null) {
-            this.approvalStatus = ApprovalStatus.PROPOSED;
+            this.approvalStatus = ApprovalStatus.DRAFT;
         }
     }
 }

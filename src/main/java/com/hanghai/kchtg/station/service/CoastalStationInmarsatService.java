@@ -328,6 +328,20 @@ public class CoastalStationInmarsatService {
             validateAllowedOrgUnit(entity.getOrgUnitId());
         }
 
+        // BR-100-01: chỉ xóa được hồ sơ "Lưu tạm" hoặc "Bị trả về"; hồ sơ đang
+        // trong quy trình duyệt hoặc đã duyệt thì không. Trước đây không kiểm tra
+        // gì nên API xóa được ở mọi trạng thái dù giao diện có chặn.
+        ApprovalStatus status = entity.getApprovalStatus();
+        boolean deletable = status == null
+                || status == ApprovalStatus.DRAFT
+                || status == ApprovalStatus.REJECTED_LEVEL1
+                || status == ApprovalStatus.REJECTED_LEVEL2;
+        if (!deletable) {
+            throw new IllegalStateException(
+                    "Chỉ xóa được hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về. Trạng thái hiện tại: "
+                            + status.getLabel());
+        }
+
         String code = entity.getCode() != null ? entity.getCode() : entity.getDeviceCode();
         entity.softDelete(SecurityUtils.getCurrentUserId());
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
@@ -430,6 +444,12 @@ public class CoastalStationInmarsatService {
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         validateNotSelfApproval(entity.getCreatedBy(), currentUserId);
+        // BR-015/BR-065-02 (4 mắt): người đã duyệt vòng 1 không được duyệt tiếp
+        // vòng 2. Trước đây chỉ chặn người tạo nên một người vẫn qua được cả hai vòng.
+        if (entity.getApproverLevel1() != null && entity.getApproverLevel1().equals(currentUserId)) {
+            throw new IllegalStateException(
+                    "Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Cảng vụ / Chi cục");
+        }
 
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setStatus(StationStatus.APPROVED_L2);

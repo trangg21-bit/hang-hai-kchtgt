@@ -8,21 +8,20 @@ import {
   Card,
   Spin,
   Empty,
-  Descriptions,
   Space,
   Breadcrumb,
-  Drawer,
   Tabs,
   DatePicker,
   Table,
   Row,
   Col,
   Upload,
-  Tag,
+  Modal,
+  Tooltip,
 } from 'antd';
-import { MinusCircleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined, FileOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, UploadOutlined, InboxOutlined, FileOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import toast, { message } from '../../components/ToastNotification';
+import toast from '../../components/ToastNotification';
 import api from '../../services/api';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -32,17 +31,17 @@ import type {
   UpdateVtsSystemRequest,
   ApprovalRequest,
 } from '../../types/vtsSystem';
-import { ApprovalStatus, ConditionStatus, RecordSecurityLevel, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP, RECORD_SECURITY_LEVEL_OPTIONS } from '../../types/vtsSystem';
-import { drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, inputStyle, selectStyle, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, statusDraft, actionPrimary } from '../../tokens';
+import { ApprovalStatus, ConditionStatus, RecordSecurityLevel, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
+import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
 
 import { useAuthStore } from '../../store/authStore';
-import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
-import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
 export interface VtsSystemFormProps {
   open?: boolean;
@@ -107,6 +106,51 @@ const getVtsDetailCache = (): Record<string, VtsSystemResponse> => {
 const isCompleteVtsDetail = (data?: VtsSystemResponse | null): data is VtsSystemResponse =>
   Boolean(data?.id && Array.isArray(data.zones) && Array.isArray(data.attachments));
 
+/**
+ * Bỏ bản chi tiết đã cache của một hệ thống VTS.
+ *
+ * Mọi thao tác đổi trạng thái (gửi duyệt, phê duyệt, từ chối, xóa) — dù thực
+ * hiện từ drawer chi tiết hay từ màn danh sách — đều phải gọi hàm này, nếu
+ * không lần mở chi tiết kế tiếp sẽ đọc lại bản cache cũ và hiển thị sai trạng
+ * thái phê duyệt.
+ */
+export const invalidateVtsDetailCache = (id?: string | null): void => {
+  if (!id) return;
+  delete getVtsDetailCache()[id];
+};
+
+/**
+ * Ghép kết quả phê duyệt/từ chối vào bản ghi đang mở.
+ *
+ * Các endpoint approve/reject trả về bản rút gọn (`toLightResponse`): vùng VTS
+ * và tệp đính kèm là mảng rỗng, tọa độ và tên người dùng là null. Gán thẳng nó
+ * vào state sẽ làm drawer đang mở trống các phần đó, nên chỉ lấy đúng những
+ * trường thuộc luồng phê duyệt.
+ */
+const applyApprovalResult = (
+  current: VtsSystemResponse | null,
+  updated: VtsSystemResponse | null,
+): VtsSystemResponse | null => {
+  if (!updated) return current;
+  if (!current) return updated;
+  return {
+    ...current,
+    approvalStatus: updated.approvalStatus,
+    approverLevel1: updated.approverLevel1,
+    approverLevel1Name: updated.approverLevel1Name ?? current.approverLevel1Name,
+    approvedDateLevel1: updated.approvedDateLevel1,
+    approvalContentLevel1: updated.approvalContentLevel1 ?? current.approvalContentLevel1,
+    approverLevel2: updated.approverLevel2,
+    approverLevel2Name: updated.approverLevel2Name ?? current.approverLevel2Name,
+    approvedDateLevel2: updated.approvedDateLevel2,
+    approvalContentLevel2: updated.approvalContentLevel2 ?? current.approvalContentLevel2,
+    rejectionReason: updated.rejectionReason,
+    updatedBy: updated.updatedBy,
+    updatedByName: updated.updatedByName ?? current.updatedByName,
+    updatedDate: updated.updatedDate,
+  };
+};
+
 const loadVtsDetail = (
   id: string,
 ): Promise<VtsSystemResponse> => {
@@ -135,6 +179,11 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
+  // "Lưu và phê duyệt" bỏ qua cả 2 vòng duyệt nên chỉ dành cho tài khoản cấp Cục.
+  // Frontend dùng quyền duyệt cấp Cục (`vts:approvec2` — F-065 §4) làm dấu hiệu;
+  // backend mới là nơi kiểm tra thật theo cấp đơn vị của tài khoản.
+  const canSaveAndApprove = userPermissions.includes('vts:approvec2');
+
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
   const id = isModalMode ? (editId || undefined) : routeId;
@@ -143,6 +192,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   const isCreateMode = isModalMode ? mode === 'create' : !id;
 
   const [record, setRecord] = useState<VtsSystemResponse | null>(null);
+
+  // N09/BR-019 — tài liệu đính kèm chỉ sửa được khi hồ sơ ở "Lưu tạm" hoặc bị
+  // trả về; các trạng thái còn lại (đang chờ duyệt, đã duyệt, đã xóa) bị khóa.
+  const attachmentsEditable = !record?.approvalStatus
+    || record.approvalStatus === ApprovalStatus.DRAFT
+    || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1
+    || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -169,7 +225,16 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     conditionStatus: ConditionStatus.OPERATIONAL,
     recordSecurityLevel: RecordSecurityLevel.NORMAL,
   });
+  // Thanh phê duyệt trong drawer chi tiết (F-065 §1: duyệt được từ Form chi tiết
+  // hoặc menu ngữ cảnh trên danh sách).
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
+  const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
 
   useEffect(() => {
     if (isModalMode && !open) return;
@@ -311,13 +376,54 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     }
   };
 
+  /** Nạp lại hồ sơ từ server (đồng thời làm mới cache) sau thao tác đổi tài liệu. */
+  const refreshRecordFromServer = async (recordId: string) => {
+    invalidateVtsDetailCache(recordId);
+    try {
+      const fresh = await loadVtsDetail(recordId);
+      if (fresh) setRecord(fresh);
+    } catch (err) {
+      console.error('Không thể nạp lại hồ sơ VTS sau khi đổi tài liệu đính kèm', err);
+    }
+  };
+
+  /** Tải các tệp đang chờ lên hồ sơ; trả về tên những tệp tải lên thất bại. */
+  const uploadPendingFiles = async (recordId: string): Promise<string[]> => {
+    const failed: string[] = [];
+    for (const file of pendingFiles) {
+      try {
+        await vtsSystemApproval.uploadAttachment(recordId, file);
+      } catch (err) {
+        console.error('Lỗi tải file lên:', file.name, err);
+        failed.push(file.name);
+      }
+    }
+    return failed;
+  };
+
+  /** Tệp đính kèm hỏng không được nuốt im lặng sau một toast "thành công". */
+  const reportFailedUploads = (failed: string[]) => {
+    if (failed.length === 0) return;
+    toast.error(`Không tải lên được ${failed.length} tệp đính kèm: ${failed.join(', ')}`);
+  };
+
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
     try {
       const spatialData = values.spatialData;
+      const currentAction = actionTypeRef.current;
+      const targetApprovalStatus = isCreateMode
+        ? (currentAction === 'draft'
+          ? ApprovalStatus.DRAFT
+          : currentAction === 'submit'
+            ? ApprovalStatus.PENDING_APPROVAL
+            : ApprovalStatus.APPROVED)
+        : (record?.approvalStatus || ApprovalStatus.APPROVED);
+
       const payload: CreateVtsSystemRequest | UpdateVtsSystemRequest = {
         systemName: values.systemName,
         conditionStatus: values.conditionStatus,
+        approvalStatus: targetApprovalStatus as any,
         recordSecurityLevel: values.recordSecurityLevel || RecordSecurityLevel.NORMAL,
         scope: values.scope,
         orgUnitId: values.orgUnitId,
@@ -337,19 +443,33 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       };
 
       if (isCreateMode) {
-        const res = await vtsSystemCRUD.create(payload as CreateVtsSystemRequest);
-        if (pendingFiles.length > 0 && res.id) {
-          for (const file of pendingFiles) {
-            try {
-              await vtsSystemApproval.uploadAttachment(res.id, file);
-            } catch (err) {
-              console.error('Lỗi tải file lên:', file.name, err);
-            }
-          }
+        // Tệp đính kèm chỉ sửa được khi hồ sơ còn "Lưu tạm" — hồ sơ đang chờ duyệt
+        // bị khóa sửa và hồ sơ đã duyệt bị backend từ chối (N09/BR-019). Vì vậy
+        // luôn tạo ở trạng thái Lưu tạm, tải tệp lên, rồi mới chuyển sang trạng
+        // thái đích; làm ngược lại thì bản vừa gửi duyệt bị đưa về lại Lưu tạm.
+        const res = await vtsSystemCRUD.create({
+          ...(payload as CreateVtsSystemRequest),
+          approvalStatus: ApprovalStatus.DRAFT,
+        });
+        const failedUploads = res.id ? await uploadPendingFiles(res.id) : pendingFiles.map((file) => file.name);
+
+        if (res.id && currentAction === 'submit') {
+          await vtsSystemApproval.submit(res.id);
+        } else if (res.id && currentAction === 'approve') {
+          await vtsSystemCRUD.update(res.id, { approvalStatus: ApprovalStatus.APPROVED } as UpdateVtsSystemRequest);
         }
+        invalidateVtsDetailCache(res.id);
+
         setPendingFiles([]);
         setZoneList([]);
-        toast.success('Tạo mới thành công');
+        const msg =
+          currentAction === 'draft'
+            ? 'Lưu tạm hệ thống VTS thành công'
+            : currentAction === 'submit'
+              ? 'Lưu và gửi phê duyệt thành công'
+              : 'Lưu và phê duyệt thành công';
+        toast.success(msg);
+        reportFailedUploads(failedUploads);
         if (isModalMode) {
           onSuccess?.();
         } else if (isIframe) {
@@ -359,18 +479,11 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         }
       } else if (id && isEditMode) {
         await vtsSystemCRUD.update(id, payload as UpdateVtsSystemRequest);
-        if (pendingFiles.length > 0) {
-          for (const file of pendingFiles) {
-            try {
-              await vtsSystemApproval.uploadAttachment(id, file);
-            } catch (err) {
-              console.error('Lỗi tải file lên:', file.name, err);
-            }
-          }
-        }
+        const failedUploads = await uploadPendingFiles(id);
         setPendingFiles([]);
-        delete getVtsDetailCache()[id];
+        invalidateVtsDetailCache(id);
         toast.success('Cập nhật thành công');
+        reportFailedUploads(failedUploads);
         if (isModalMode) {
           onSuccess?.();
         } else if (isIframe) {
@@ -400,9 +513,9 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           reason: (payload?.lyDo as string) || 'Đã phê duyệt cấp 1',
         };
         const updated = await vtsSystemApproval.approveC1(id, pheDuyetData);
-        delete getVtsDetailCache()[id];
+        invalidateVtsDetailCache(id);
         toast.success('Phê duyệt cấp Cảng vụ thành công');
-        setRecord(updated);
+        setRecord((current) => applyApprovalResult(current, updated));
         setHasChanges(true);
         if (onSuccess) onSuccess();
       } else if (action === 'approveC2') {
@@ -411,9 +524,9 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           reason: (payload?.lyDo as string) || 'Đã phê duyệt cấp 2',
         };
         const updated = await vtsSystemApproval.approveC2(id, pheDuyetData);
-        delete getVtsDetailCache()[id];
+        invalidateVtsDetailCache(id);
         toast.success('Phê duyệt cấp Cục thành công');
-        setRecord(updated);
+        setRecord((current) => applyApprovalResult(current, updated));
         setHasChanges(true);
         if (onSuccess) onSuccess();
       } else if (action === 'reject') {
@@ -422,25 +535,25 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           reason: (payload?.lyDo as string) || 'Từ chối phê duyệt',
         };
         let updatedRecord: VtsSystemResponse | null = null;
-        if (record.approvalStatus === ApprovalStatus.PROPOSED || (record.approvalStatus as any) === 'proposed') {
+        if (record.approvalStatus === ApprovalStatus.PENDING_APPROVAL || (record.approvalStatus as any) === 'pending_approval') {
           updatedRecord = await vtsSystemApproval.approveC1(id, pheDuyetData);
-        } else if (record.approvalStatus === ApprovalStatus.PENDING_APPROVAL || (record.approvalStatus as any) === 'pending_approval') {
+        } else if (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as any) === 'approved_level1') {
           updatedRecord = await vtsSystemApproval.approveC2(id, pheDuyetData);
         } else {
-          throw new Error('Chỉ được từ chối bản ghi đang chờ C1 hoặc C2');
+          throw new Error('Chỉ được từ chối bản ghi đang chờ Cảng vụ duyệt (C1) hoặc chờ Cục duyệt (C2)');
         }
-        delete getVtsDetailCache()[id];
-        if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = updatedRecord;
-        }
+        // Không ghi `updatedRecord` ngược vào cache: API phê duyệt trả về bản rút
+        // gọn (vùng VTS / tệp đính kèm rỗng, chưa có tọa độ) nhưng vẫn qua được
+        // `isCompleteVtsDetail`, khiến lần mở chi tiết sau mất các phần đó.
+        invalidateVtsDetailCache(id);
 
         toast.success('Từ chối phê duyệt thành công');
-        setRecord(updatedRecord);
+        setRecord((current) => applyApprovalResult(current, updatedRecord));
         setHasChanges(true);
         if (onSuccess) onSuccess();
       } else if (action === 'delete') {
         await vtsSystemCRUD.delete(id);
-        delete getVtsDetailCache()[id];
+        invalidateVtsDetailCache(id);
         toast.success('Xóa thành công');
         if (isModalMode) {
           onSuccess?.();
@@ -458,35 +571,70 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   };
 
   const handleUploadAttachment = async (file: File) => {
+    // N09/BR-019: hồ sơ đang chờ duyệt / đã duyệt bị khóa sửa tài liệu. Chặn ngay
+    // ở đây để người dùng biết lý do thay vì chờ backend trả lỗi.
+    if (!isCreateMode && !attachmentsEditable) {
+      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về');
+      return;
+    }
+    // Ngưỡng dung lượng và định dạng bám đúng ràng buộc backend, tránh trường hợp
+    // giao diện cho chọn rồi server mới từ chối.
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Dung lượng mỗi file không được vượt quá 10MB theo quy định');
+      return;
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+      toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF)');
+      return;
+    }
+    const currentCount = isCreateMode ? pendingFiles.length : (record?.attachments?.length || 0);
+    if (currentCount >= 10) {
+      toast.error('Số lượng file đính kèm tối đa là 10 file theo quy định');
+      return;
+    }
+
     if (isCreateMode) {
       setPendingFiles((prev) => [...prev, file]);
       return;
     }
     if (!id) throw new Error('Cần lưu hệ thống VTS trước khi tải tài liệu lên');
     const uploaded = await vtsSystemApproval.uploadAttachment(id, file);
-    setRecord((prev) => {
-      const next = prev ? { ...prev, attachments: [...(prev.attachments || []), uploaded] } : prev;
-      if (next) getVtsDetailCache()[id] = next;
-      return next;
-    });
+    setRecord((prev) => (prev ? { ...prev, attachments: [...(prev.attachments || []), uploaded] } : prev));
+    // Thay đổi tài liệu sau khi đã gửi duyệt khiến backend đưa hồ sơ về "Lưu tạm"
+    // (approvalRestart), nên phải nạp lại từ server thay vì cache bản sửa cục bộ.
+    void refreshRecordFromServer(id);
     setHasChanges(true);
     toast.success('Tải tệp lên thành công');
   };
 
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (isCreateMode) {
-      setPendingFiles((prev) => prev.filter((_, idx) => `temp-${idx}` !== attachmentId));
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+
+  const handleDeleteAttachment = async (recordOrId: any) => {
+    const attachmentId = typeof recordOrId === 'string' ? recordOrId : recordOrId?.id;
+    if (!isCreateMode && !attachmentsEditable) {
+      toast.error('Chỉ thay đổi được tài liệu đính kèm khi hồ sơ ở trạng thái Lưu tạm hoặc Bị trả về');
       return;
     }
-    if (!id) return;
-    await vtsSystemApproval.deleteAttachment(id, attachmentId);
-    setRecord((prev) => {
-      const next = prev ? { ...prev, attachments: (prev.attachments || []).filter((a) => a.id !== attachmentId) } : prev;
-      if (next) getVtsDetailCache()[id] = next;
-      return next;
-    });
-    setHasChanges(true);
-    toast.success('Xóa tệp thành công');
+    if (isCreateMode) {
+      setPendingFiles((prev) => prev.filter((_, idx) => `temp-${idx}` !== attachmentId && idx !== recordOrId?._idx));
+      return;
+    }
+    if (!id || !attachmentId) return;
+    setDeletingAttachmentId(attachmentId);
+    try {
+      await vtsSystemApproval.deleteAttachment(id, attachmentId);
+      setRecord((prev) => (prev
+        ? { ...prev, attachments: (prev.attachments || []).filter((a) => a.id !== attachmentId) }
+        : prev));
+      void refreshRecordFromServer(id);
+      setHasChanges(true);
+      toast.success('Xóa tệp thành công');
+    } catch (err: any) {
+      toast.error('Lỗi khi xóa tệp đính kèm');
+    } finally {
+      setDeletingAttachmentId(null);
+    }
   };
 
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
@@ -504,8 +652,11 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       const resp = await api.get(url, {
         responseType: 'blob',
       });
+      const contentType = typeof resp.headers?.['content-type'] === 'string'
+        ? resp.headers['content-type']
+        : 'application/octet-stream';
       const blob = new Blob([resp.data], {
-        type: resp.headers['content-type'] || 'application/octet-stream',
+        type: contentType,
       });
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -560,6 +711,87 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
 
   // Detail/Read-only view
   if (isDetailMode) {
+    // Trạng thái quyết định vòng duyệt hiện tại, theo đúng 7 trạng thái chuẩn:
+    // vòng 1 mở khi "Chờ Cảng vụ duyệt", vòng 2 mở khi "Chờ Cục duyệt".
+    const canApproveC1 = userPermissions.includes('vts:approvec1')
+      && record?.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
+    const canApproveC2 = userPermissions.includes('vts:approvec2')
+      && record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
+    // BR-065-02 / 4 mắt: người đã duyệt vòng 1 không được duyệt tiếp vòng 2.
+    const isSelfApprovalC2 = Boolean(currentUser?.userId && record?.approverLevel1 === currentUser.userId);
+    const selfApprovalHint = isSelfApprovalC2
+      ? 'Bạn không thể tự phê duyệt hồ sơ do mình xét duyệt C1'
+      : '';
+
+    const openApprove = (level: 'c1' | 'c2') => { setApproveLevel(level); setApproveModalOpen(true); };
+    const openReject = () => { setRejectReason(''); setRejectModalOpen(true); };
+
+    const approvalActionBar = (canApproveC1 || canApproveC2) ? (
+      <div style={drawerFooterStyle}>
+        {canApproveC1 && (
+          <>
+            <Button danger onClick={openReject} loading={isSubmitting}
+              style={{ borderRadius: radiusPill, height: 40 }}>
+              Từ chối cấp Cảng vụ
+            </Button>
+            <Button type="primary" onClick={() => openApprove('c1')} loading={isSubmitting}
+              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>
+              Phê duyệt cấp Cảng vụ
+            </Button>
+          </>
+        )}
+        {canApproveC2 && (
+          <Tooltip title={selfApprovalHint}>
+            <Space size={spaceSm}>
+              <Button danger disabled={isSelfApprovalC2} onClick={openReject} loading={isSubmitting}
+                style={{ borderRadius: radiusPill, height: 40 }}>
+                Từ chối cấp Cục
+              </Button>
+              <Button type="primary" disabled={isSelfApprovalC2} onClick={() => openApprove('c2')} loading={isSubmitting}
+                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>
+                Phê duyệt cấp Cục
+              </Button>
+            </Space>
+          </Tooltip>
+        )}
+      </div>
+    ) : null;
+
+    const approvalDialogs = (
+      <>
+        <ApprovalModal
+          visible={approveModalOpen}
+          level={approveLevel}
+          onConfirm={(content: string) => {
+            setApproveModalOpen(false);
+            void handleApprovalAction(approveLevel === 'c1' ? 'approveC1' : 'approveC2', { lyDo: content });
+          }}
+          onCancel={() => setApproveModalOpen(false)}
+        />
+        <Modal
+          title="Từ chối phê duyệt"
+          open={rejectModalOpen}
+          okText="Từ chối"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true }}
+          onCancel={() => setRejectModalOpen(false)}
+          onOk={() => {
+            // BR-016: lý do từ chối bắt buộc, tối thiểu 10 ký tự sau khi trim.
+            if (rejectReason.trim().length < 10) {
+              toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
+              return;
+            }
+            setRejectModalOpen(false);
+            void handleApprovalAction('reject', { lyDo: rejectReason.trim() });
+          }}
+        >
+          <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
+          <Input.TextArea rows={3} value={rejectReason} maxLength={500} showCount
+            onChange={(e) => setRejectReason(e.target.value)} placeholder="Nhập lý do từ chối..." />
+        </Modal>
+      </>
+    );
+
     const detailContent = (
       <div style={{ paddingTop: 16 }}>
         <style>{`.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; } .detail-row { display: flex; padding: 10px 12px; border-bottom: 1px solid ${borderDefault}; } .detail-row--full { grid-column: 1 / -1; } .detail-label { width: 230px; flex-shrink: 0; color: ${colors.sidebarBg}; font-weight: ${fontWeightBold}; font-size: ${fontSizeMd}px; } .detail-label::after { content: ':'; margin-left: 2px; } .detail-value { color: ${textPrimary}; font-size: ${fontSizeMd}px; flex: 1; min-width: 0; overflow-wrap: anywhere; } .detail-value .ant-tag { margin-left: -6px !important; }`}</style>
@@ -581,7 +813,18 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                     <div className="detail-grid">
                       {[
                         ['Đơn vị quản lý', record.orgUnitName || '—'],
+                        ['Đơn vị chủ quản', record.owningOrgName || '—'],
+                        ['Đơn vị vận hành khai thác', record.operatingOrgName || '—'],
+                        ['Thuộc cảng biển', record.portName || '—'],
+                        ['Mã hệ thống VTS', record.code || '—'],
+                        ['Tên hệ thống VTS', record.systemName || '—'],
+                        ['Địa điểm (Tỉnh/Thành phố)', record.province || (record.provinceId ? getProvinceNameById(record.provinceId) : '—')],
+                        ['Địa điểm chi tiết', record.address || '—'],
+                        ['Thời gian bắt đầu hoạt động', record.operationStartDate ? dayjs(record.operationStartDate).format('DD/MM/YYYY') : '—'],
+                        ['Phạm vi áp dụng', record.scope || '—'],
+                        ['Thông báo hàng hải', record.maritimeNotice || '—'],
                         ['Ghi chú', record.note || '—'],
+                        ['Tình trạng', renderConditionStatusBadge(record.conditionStatus)],
                         ['Trạng thái', <ApprovalStatusBadge status={record.approvalStatus} />],
                       ].map(([label, value], i) => (
                         <div key={i} className="detail-row">
@@ -597,92 +840,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         <div>{record.rejectionReason}</div>
                       </div>
                     )}
-
-                  </div>
-                ),
-              },
-              {
-                key: 'update_log',
-                label: 'Thông tin log cập nhật',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <div className="detail-grid">
-                      <div className="detail-row">
-                        <span className="detail-label">Ngày cập nhật</span>
-                        <span className="detail-value">{record.updatedDate ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="detail-label">Cán bộ cập nhật</span>
-                        <span className="detail-value">{record.updatedByName || '—'}</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <span className="detail-label">Ngày gửi phê duyệt</span>
-                        <span className="detail-value">{(record.submittedDate || record.createdDate) ? dayjs(record.submittedDate || record.createdDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="detail-label">Cán bộ gửi phê duyệt</span>
-                        <span className="detail-value">{record.submittedByName || record.createdByName || '—'}</span>
-                      </div>
-
-                      <div className="detail-row">
-                        <span className="detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="detail-value">{record.approverLevel1Name || '—'}</span>
-                      </div>
-                      <div className="detail-row detail-row--full">
-                        <span className="detail-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="detail-value">
-                          {record.approvalContentLevel1 || (record.approverLevel1 || record.approverLevel1Name ? 'Đã phê duyệt' : (record.approvalStatus === ApprovalStatus.REJECTED && !record.approverLevel2 ? record.rejectionReason : '—')) || '—'}
-                        </span>
-                      </div>
-
-                      <div className="detail-row">
-                        <span className="detail-label">Ngày phê duyệt cấp Cục</span>
-                        <span className="detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="detail-label">Cán bộ phê duyệt cấp Cục</span>
-                        <span className="detail-value">{record.approverLevel2Name || '—'}</span>
-                      </div>
-                      <div className="detail-row detail-row--full">
-                        <span className="detail-label">Nội dung phê duyệt cấp Cục</span>
-                        <span className="detail-value">
-                          {record.approvalContentLevel2 || (record.approverLevel2 || record.approverLevel2Name || record.approvalStatus === ApprovalStatus.APPROVED ? 'Đã phê duyệt' : (record.approvalStatus === ApprovalStatus.REJECTED && record.approverLevel1 ? record.rejectionReason : '—')) || '—'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: 'system_info',
-                label: 'Thông tin hệ thống VTS',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <div className="detail-grid">
-                      {[
-                        ['Đơn vị chủ quản', record.owningOrgName || '—'],
-                        ['Đơn vị vận hành khai thác', record.operatingOrgName || '—'],
-                        ['Thuộc cảng biển', record.portName || '—'],
-                        ['Mã hệ thống VTS', record.code || '—'],
-                        ['Tên hệ thống VTS', record.systemName || '—'],
-                        ['Địa điểm (Tỉnh/Thành phố)', record.province || (record.provinceId ? getProvinceNameById(record.provinceId) : '—')],
-                        ['Địa điểm chi tiết', record.address || '—'],
-                        ['Thời gian bắt đầu hoạt động', record.operationStartDate ? dayjs(record.operationStartDate).format('DD/MM/YYYY') : '—'],
-                        ['Phạm vi áp dụng', record.scope || '—'],
-                        ['Thông báo hàng hải', record.maritimeNotice || '—'],
-                        ['Tình trạng', renderConditionStatusBadge(record.conditionStatus)],
-                      ].map(([label, value], i) => (
-                        <div key={i} className="detail-row">
-                          <span className="detail-label">{label}</span>
-                          <span className="detail-value">{value}</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 ),
               },
@@ -728,38 +885,59 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                 ),
               },
               {
-                key: 'other_kcht',
-                label: 'KCHT thuộc VTS',
+                key: 'update_log',
+                label: 'Thông tin log cập nhật',
                 children: (
                   <div style={{ paddingTop: 16 }}>
-                    <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />
-                  </div>
-                ),
-              },
-              {
-                key: 'operation',
-                label: 'Thông tin vận hành khai thác',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />
-                  </div>
-                ),
-              },
-              {
-                key: 'maintenance',
-                label: 'Thông tin bảo trì',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />
-                  </div>
-                ),
-              },
-              {
-                key: 'incidents',
-                label: 'Thông tin sự cố',
-                children: (
-                  <div style={{ paddingTop: 16 }}>
-                    <Empty description="Không có dữ liệu" style={{ margin: '32px 0' }} />
+                    <div className="detail-grid">
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày cập nhật</span>
+                        <span className="detail-value">{record.updatedDate ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ cập nhật</span>
+                        <span className="detail-value">{record.updatedByName || '—'}</span>
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày gửi phê duyệt</span>
+                        <span className="detail-value">{(record.submittedDate || record.createdDate) ? dayjs(record.submittedDate || record.createdDate).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ gửi phê duyệt</span>
+                        <span className="detail-value">{record.submittedByName || record.createdByName || '—'}</span>
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="detail-value">{record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="detail-value">{record.approverLevel1Name || '—'}</span>
+                      </div>
+                      <div className="detail-row detail-row--full">
+                        <span className="detail-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="detail-value">
+                          {record.approvalContentLevel1 || (record.approverLevel1 || record.approverLevel1Name ? 'Đã phê duyệt' : (record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 && !record.approverLevel2 ? record.rejectionReason : '—')) || '—'}
+                        </span>
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="detail-label">Ngày phê duyệt cấp Cục</span>
+                        <span className="detail-value">{record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <span className="detail-label">Cán bộ phê duyệt cấp Cục</span>
+                        <span className="detail-value">{record.approverLevel2Name || '—'}</span>
+                      </div>
+                      <div className="detail-row detail-row--full">
+                        <span className="detail-label">Nội dung phê duyệt cấp Cục</span>
+                        <span className="detail-value">
+                          {record.approvalContentLevel2 || (record.approverLevel2 || record.approverLevel2Name || record.approvalStatus === ApprovalStatus.APPROVED ? 'Đã phê duyệt' : (record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 && record.approverLevel1 ? record.rejectionReason : '—')) || '—'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 ),
               },
@@ -771,8 +949,8 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
 
     if (isModalMode) {
       return (
-        <Drawer
-          {...drawerProps}
+        <AppDrawer
+          size="50%"
           title={
             <span style={drawerTitleStyle}>
               {record?.systemName ? `Xem chi tiết hệ thống VTS - ${record.systemName}` : 'Xem chi tiết hệ thống VTS'}
@@ -780,19 +958,15 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           }
           open={open}
           onClose={handleCloseModal}
-          extra={<Button type="text" onClick={handleCloseModal} style={drawerCloseBtnStyle}>✕</Button>}
-          footer={null}
-          styles={{
-            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-            body: { padding: '0 24px 12px 24px' },
-          }}
+          footer={approvalActionBar}
         >
           <Spin spinning={isLoading}>
             <Form form={form} component={false}>
               {detailContent}
             </Form>
           </Spin>
-        </Drawer>
+          {approvalDialogs}
+        </AppDrawer>
       );
     }
 
@@ -802,14 +976,16 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         <Form form={form} component={false}>
           {detailContent}
         </Form>
+        {approvalActionBar}
+        {approvalDialogs}
       </div>
     );
   }
 
   if (isModalMode) {
     return (
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
+        size="50%"
         title={
           <span style={drawerTitleStyle}>
             {isCreateMode
@@ -819,19 +995,78 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         }
         open={open}
         onClose={handleCloseModal}
-        extra={<Button type="text" onClick={handleCloseModal} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button onClick={onCancel} style={outlineButtonStyle}>Hủy</Button>
-            <Button type="primary" onClick={() => form.submit()} loading={isSubmitting} style={primaryButtonStyle}>
-              {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
-            </Button>
+            {isCreateMode ? (
+              <>
+                <Button
+                  onClick={() => {
+                    actionTypeRef.current = 'draft';
+                    setActionType('draft');
+                    form.submit();
+                  }}
+                  loading={isSubmitting && actionType === 'draft'}
+                  style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Lưu tạm
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    actionTypeRef.current = 'submit';
+                    setActionType('submit');
+                    form.submit();
+                  }}
+                  loading={isSubmitting && actionType === 'submit'}
+                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Lưu và gửi phê duyệt
+                </Button>
+                {canSaveAndApprove && (
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      actionTypeRef.current = 'approve';
+                      setActionType('approve');
+                      form.submit();
+                    }}
+                    loading={isSubmitting && actionType === 'approve'}
+                    style={{
+                      ...primaryButtonStyle,
+                      background: statusOperational,
+                      borderColor: statusOperational,
+                      borderRadius: radiusPill,
+                      height: 40,
+                    }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={onCancel}
+                  style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    actionTypeRef.current = 'update';
+                    setActionType('update');
+                    form.submit();
+                  }}
+                  loading={isSubmitting && actionType === 'update'}
+                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Cập nhật
+                </Button>
+              </>
+            )}
           </div>
         }
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '0 24px 12px 24px' },
-        }}
         afterOpenChange={(visible) => {
           if (visible) {
             setTabKey('general');
@@ -984,7 +1219,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         <Select
                           showSearch
                           placeholder="Chọn địa điểm"
-                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                          filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
                           options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
@@ -1094,97 +1329,116 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                 key: 'files', label: 'File đính kèm',
                 children: (
                   <div style={{ paddingTop: 16 }}>
-                    <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-                      {(isCreateMode ? pendingFiles.length > 0 : record?.attachments && record.attachments.length > 0) && (
-                        <Upload
-                          beforeUpload={(file) => {
-                            if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
-                            const ext = file.name.split('.').pop()?.toLowerCase();
-                            if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
-                            handleUploadAttachment(file);
-                            return false;
-                          }}
-                          showUploadList={false}
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                          multiple
-                        >
-                          <Button type="dashed" size="small" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }}>Thêm file</Button>
-                        </Upload>
-                      )}
+                    <div style={{ marginBottom: spaceMd }}>
+                      <Upload.Dragger
+                        beforeUpload={(file) => {
+                          if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
+                          const ext = file.name.split('.').pop()?.toLowerCase();
+                          if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
+                          handleUploadAttachment(file);
+                          return false;
+                        }}
+                        showUploadList={false}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
+                        multiple
+                        style={{
+                          background: '#fafbfc',
+                          border: `1px dashed ${borderDefault}`,
+                          borderRadius: radiusMd,
+                          padding: '24px 16px',
+                        }}
+                      >
+                        <p style={{ marginBottom: 8 }}>
+                          <InboxOutlined style={{ fontSize: 44, color: actionPrimary }} />
+                        </p>
+                        <p style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary, marginBottom: 4 }}>
+                          Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
+                        </p>
+                        <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
+                          Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤20MB.
+                        </p>
+                      </Upload.Dragger>
                     </div>
-                    {((isCreateMode ? pendingFiles.length : (record?.attachments?.length || 0)) === 0) ? (
-                      <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                        <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có file đính kèm.</span>
-                        <Upload
-                          beforeUpload={(file) => {
-                            if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
-                            const ext = file.name.split('.').pop()?.toLowerCase();
-                            if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
-                            handleUploadAttachment(file);
-                            return false;
-                          }}
-                          showUploadList={false}
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.tif"
-                          multiple
+
+                    {((isCreateMode ? pendingFiles.length : (record?.attachments?.length || 0)) > 0) && (
+                      <div style={{ marginBottom: spaceMd }}>
+                        <div style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                          Danh sách tệp đính kèm ({isCreateMode ? pendingFiles.length : record?.attachments?.length})
+                        </div>
+                        <Table<any>
+                          className="list-view-table"
+                          dataSource={
+                            isCreateMode
+                              ? pendingFiles.map((f, i) => ({ id: `temp-${i}`, fileName: f.name, size: f.size, _idx: i, key: i }))
+                              : (record?.attachments || []).map((f: any, i: number) => ({ ...f, _idx: i, key: f.id || i, size: f.size ?? f.fileSize }))
+                          }
+                          pagination={false}
+                          size="middle"
+                          bordered
+                          scroll={{ x: 400 }}
                         >
-                          <Button type="dashed" icon={<UploadOutlined />} style={{ borderRadius: radiusPill }}>Chọn file</Button>
-                        </Upload>
-                      </div>
-                    ) : (
-                      <Table className="list-view-table" dataSource={isCreateMode ? pendingFiles.map((f, i) => ({ id: `temp-${i}`, fileName: f.name, _idx: i, key: i })) : record?.attachments?.map((f, i) => ({ ...f, _idx: i, key: i }))}
-                        pagination={false} size="middle" bordered scroll={{ x: 400 }}>
-                        <Table.Column title="STT" key="stt" width={60} align="center"
-                          render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
-                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                        <Table.Column title="Tên file" key="fileName" dataIndex="fileName"
-                          render={(name: string, record: any) => (
-                            <a
-                              style={{
-                                fontSize: fontSizeMd,
-                                color: actionPrimary,
-                                cursor: record.filePath ? 'pointer' : 'default',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                              }}
-                              onClick={(e) => {
-                                if (record.filePath) {
-                                  e.preventDefault();
-                                  handleDownloadAttachment(record);
-                                }
-                              }}
-                              title={record.filePath ? 'Nhấn để tải tệp xuống' : undefined}
-                            >
-                              <FileOutlined style={{ marginRight: spaceSm, color: textTertiary }} />
-                              {name}
-                            </a>
-                          )}
-                          onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
-                        <Table.Column title="" key="actions" width={80} align="center"
-                          render={(_: any, record: any) => (
-                            <Space size="small">
-                              {record.filePath && (
+                          <Table.Column title="STT" key="stt" width={60} align="center"
+                            render={(_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>}
+                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                          <Table.Column title="Tên file" key="fileName" dataIndex="fileName"
+                            render={(name: string, record: any) => (
+                              <a
+                                style={{
+                                  fontSize: fontSizeMd,
+                                  color: actionPrimary,
+                                  cursor: record.filePath ? 'pointer' : 'default',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: spaceSm,
+                                }}
+                                onClick={(e) => {
+                                  if (record.filePath) {
+                                    e.preventDefault();
+                                    handleDownloadAttachment(record);
+                                  }
+                                }}
+                                title={record.filePath ? 'Nhấn để tải tệp xuống' : undefined}
+                              >
+                                <FileOutlined style={{ color: actionPrimary }} />
+                                <span>{name}</span>
+                              </a>
+                            )}
+                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                          <Table.Column title="Dung lượng" key="size" dataIndex="size" width={120}
+                            render={(bytes: number) => {
+                              if (!bytes) return '—';
+                              if (bytes < 1024) return `${bytes} B`;
+                              if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                              return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                            }}
+                            onHeaderCell={() => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } })} />
+                          <Table.Column title="Thao tác" key="actions" width={80} align="center"
+                            render={(_: any, record: any) => (
+                              <Space size="small">
+                                {record.filePath && (
+                                  <Button
+                                    type="link"
+                                    size="small"
+                                    icon={<DownloadOutlined />}
+                                    loading={downloadingAttachmentId === record.id}
+                                    onClick={() => handleDownloadAttachment(record)}
+                                    title="Tải xuống"
+                                  />
+                                )}
                                 <Button
                                   type="link"
+                                  danger
                                   size="small"
-                                  icon={<DownloadOutlined />}
-                                  loading={downloadingAttachmentId === record.id}
-                                  onClick={() => handleDownloadAttachment(record)}
-                                  title="Tải xuống"
+                                  icon={<DeleteOutlined />}
+                                  loading={deletingAttachmentId === record.id}
+                                  onClick={() => handleDeleteAttachment(record)}
+                                  title="Xóa tệp"
                                 />
-                              )}
-                              <Button
-                                type="link"
-                                danger
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                onClick={() => handleDeleteAttachment(record.id)}
-                                title="Xóa"
-                              />
-                            </Space>
-                          )}
-                          onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
-                      </Table>
+                              </Space>
+                            )}
+                            onHeaderCell={() => ({ style: { background: colors.bodyBg, padding: '12px 6px' } })} />
+                        </Table>
+                      </div>
                     )}
                     <div style={{ marginTop: spaceSm }}>
                       <span style={uploadHintStyle}>
@@ -1197,7 +1451,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             ]} />
           </Form>
         </Spin>
-      </Drawer>
+      </AppDrawer>
     );
   }
   // Create/Edit form view
@@ -1291,7 +1545,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
               allowClear
               showSearch
               filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
-              options={portOptions}
+              options={filteredPortOptions}
             />
           </Form.Item>
 
@@ -1311,7 +1565,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             <Select
               showSearch
               placeholder="Chọn địa điểm"
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
             />
           </Form.Item>

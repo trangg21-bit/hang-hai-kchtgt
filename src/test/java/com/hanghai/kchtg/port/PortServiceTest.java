@@ -200,7 +200,7 @@ class PortServiceTest {
         PortResponse result = service.update(request);
 
         assertEquals("Cảng Đã Cập Nhật", result.getPortName());
-        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus()); // reset
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus()); // retains approved
         assertEquals("CB-001", result.getPortCode()); // code unchanged
     }
 

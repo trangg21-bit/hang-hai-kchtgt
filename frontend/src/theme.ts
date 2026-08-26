@@ -203,7 +203,8 @@ export const metronicTheme: ThemeConfig = {
     Table: {
       borderRadius: radius.md,
       headerBg: colors.bodyBg,
-      headerColor: colors.textSecondary,
+      headerColor: colors.sidebarBg,
+      headerSplitColor: 'transparent',
       rowHoverBg: '#F5F8FA',
       cellPaddingBlock: 9,
     },
@@ -254,6 +255,11 @@ export const metronicTheme: ThemeConfig = {
       // Nếu vẫn dùng progress bar trong card thống kê, làm mảnh & bo tròn hơn
       lineBorderRadius: radius.pill,
       defaultColor: colors.primary,
+    },
+
+    Form: {
+      labelColor: colors.sidebarBg,
+      labelFontSize: 13,
     },
   },
 };
@@ -438,10 +444,9 @@ export const globalCssVars = `
 .list-view-table .ant-spin-container,
 .list-view-table .ant-table,
 .list-view-table .ant-table-container {
-  height: 100% !important;
+  height: auto !important;
   display: flex !important;
   flex-direction: column !important;
-  flex: 1 1 0% !important;
   min-height: 0 !important;
 }
 
@@ -451,10 +456,10 @@ export const globalCssVars = `
   overflow: hidden !important;
 }
 
-.list-view-table .ant-table-content {
-  height: 100% !important;
+.list-view-table .ant-table-content,
+.list-view-table .ant-table-body {
+  height: auto !important;
   min-height: 0 !important;
-  flex: 1 1 0% !important;
   overflow-x: auto !important;
   overflow-y: auto !important;
 }
@@ -478,9 +483,7 @@ export const globalCssVars = `
 .list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-start {
   position: sticky !important;
   top: 0 !important;
-  left: 0 !important;
   background: var(--table-header-bg, #F5F8FA) !important;
-  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
   z-index: 25 !important;
 }
 
@@ -488,28 +491,36 @@ export const globalCssVars = `
 .list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-end {
   position: sticky !important;
   top: 0 !important;
-  right: 0 !important;
   background: var(--table-header-bg, #F5F8FA) !important;
-  box-shadow: -1px 0 0 rgba(0, 0, 0, 0.06) !important;
   z-index: 25 !important;
 }
 
 .list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-left,
 .list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-start {
   position: sticky !important;
-  left: 0 !important;
   background: #ffffff !important;
-  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
   z-index: 9 !important;
 }
 
 .list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-right,
 .list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-end {
   position: sticky !important;
-  right: 0 !important;
   background: #ffffff !important;
-  box-shadow: -1px 0 0 rgba(0, 0, 0, 0.06) !important;
   z-index: 9 !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-left-last,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-start-last,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-left-last,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-start-last {
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-right-first,
+.list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-end-first,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-right-first,
+.list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-end-first {
+  box-shadow: -1px 0 0 rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Gắn icon sort ngay sau title của cột (antd mặc định đẩy icon ra mép phải,
@@ -546,8 +557,16 @@ export const globalCssVars = `
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
+.list-view-table .ant-table-thead > tr > th {
+  padding: 10px 12px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  color: var(--bg-sidebar, #12468C) !important;
+}
 .list-view-table .ant-table-cell {
   white-space: nowrap !important;
+  overflow: hidden !important;
 }
 
 /* --- Navigation zone (BLUE — đồng nhất) --- */
@@ -857,6 +876,23 @@ body, .ant-layout {
 /* ---------- TextArea — bo góc chặt (4px) làm mặc định; từng form có thể override bằng token radiusPill ---------- */
 textarea.ant-input {
   border-radius: 4px;
+}
+
+/* ---------- Form Item Label chuẩn Cảng biển: Xanh Navy #12468C, Bold 600, 13px ---------- */
+.ant-form-item-label > label {
+  color: var(--bg-sidebar, #12468C) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+/* ---------- Drawer & Modal Tabs: Loại bỏ margin-bottom mặc định (16px) của AntD Tabs ---------- */
+.ant-drawer .ant-tabs-nav,
+.ant-modal .ant-tabs-nav {
+  margin-bottom: 0 !important;
+}
+.ant-drawer .ant-tabs-content-holder,
+.ant-modal .ant-tabs-content-holder {
+  padding-top: 0 !important;
 }
 
 /* ---------- Required mark (*) bên phải label ---------- */

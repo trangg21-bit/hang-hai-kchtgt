@@ -1,15 +1,15 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.ApprovalHistoryUtils;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -49,7 +49,7 @@ import java.util.*;
 public class NavigationChannelService {
 
     private final NavigationChannelRepository repo;
-    private final ApprovalHistoryRepository approvalHistoryRepo;
+    private final InfrastructureHistoryRepository approvalHistoryRepo;
     private final InfrastructureApprovalService approvalService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
@@ -137,11 +137,11 @@ public class NavigationChannelService {
 
         nc = repo.save(nc);
 
-        approvalHistoryRepo.save(ApprovalHistory.builder()
+        approvalHistoryRepo.save(InfrastructureHistory.builder()
                 .refId(nc.getId())
                 .refType(InfrastructureType.NAVIGATION_CHANNEL)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.CREATED)
+                .status(InfrastructureHistoryStatus.CREATED)
                 .approvedBy(userId)
                 .reason("Tạo mới tuyến luồng (Lưu tạm)")
                 .build());
@@ -247,7 +247,15 @@ public class NavigationChannelService {
             validateAllowedOrgUnit(req.getOrgUnitId());
         }
 
+        ApprovalStatus previousApprovalStatus = nc.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
         EntityUpdateUtils.copyPropertiesIfPresent(req, nc, Collections.emptyMap());
+
+        if (wasApproved) {
+            nc.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
 
         if (req.getSecurityLevel() != null) {
             nc.setSecurityLevel(req.getSecurityLevel());
@@ -276,14 +284,16 @@ public class NavigationChannelService {
             saved = repo.save(saved);
         }
 
-        approvalHistoryRepo.save(ApprovalHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.NAVIGATION_CHANNEL)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.UPDATED)
-                .approvedBy(userId)
-                .reason("Cập nhật thông tin tuyến luồng")
-                .build());
+        if (wasApproved) {
+            approvalHistoryRepo.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.NAVIGATION_CHANNEL)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .reason("Cập nhật sau phê duyệt")
+                    .build());
+        }
 
         return toResponse(saved);
     }
@@ -295,7 +305,7 @@ public class NavigationChannelService {
 
         validateAllowedOrgUnit(nc.getOrgUnitId());
 
-        ApprovalHistoryUtils.recordSoftDelete(approvalHistoryRepo, nc.getId(), InfrastructureType.NAVIGATION_CHANNEL, userId, "Xóa tuyến luồng");
+        InfrastructureHistoryUtils.recordSoftDelete(approvalHistoryRepo, nc.getId(), InfrastructureType.NAVIGATION_CHANNEL, userId, "Xóa tuyến luồng");
         nc.setDeletedAt(LocalDateTime.now());
         nc.setDeletedBy(userId);
         nc.setApprovalStatus(ApprovalStatus.ARCHIVED);
@@ -362,7 +372,7 @@ public class NavigationChannelService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id) {
-        List<ApprovalHistory> historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+        List<InfrastructureHistory> historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
                 InfrastructureType.NAVIGATION_CHANNEL, id);
         return historyList.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())

@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.security;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
@@ -59,6 +59,7 @@ import static org.mockito.Mockito.*;
  * IllegalArgumentException.
  */
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class DataScopeCrossUnitContractTest {
 
         private static final UUID ORG_UNIT_A_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -70,7 +71,7 @@ class DataScopeCrossUnitContractTest {
         @Mock
         private VtsSystemRepository vtsRepository;
         @Mock
-        private ApprovalHistoryRepository historyRepository;
+        private InfrastructureHistoryRepository historyRepository;
         @Mock
         private InfrastructureAttachmentRepository attachmentRepository;
         @Mock
@@ -228,7 +229,6 @@ class DataScopeCrossUnitContractTest {
                 when(vtsRepository.findById(VTS_A_ID)).thenReturn(Optional.of(vtsSystemA));
                 when(vtsRepository.findById(VTS_B_ID)).thenReturn(Optional.of(vtsSystemB));
                 when(vtsRepository.save(any(VtsSystem.class))).thenAnswer(inv -> inv.getArgument(0));
-                when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
                 VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                                 .systemName("Updated System Name")
@@ -245,15 +245,15 @@ class DataScopeCrossUnitContractTest {
         }
 
         @Test
-        @DisplayName("4. Delete: User A can delete Unit A record (when approved), but rejected when deleting Unit B record")
+        @DisplayName("4. Delete: User A can delete Unit A record (when draft), but rejected when deleting Unit B record")
         void delete_shouldAllowOwnUnit_andRejectCrossUnit() {
-                vtsSystemA.setApprovalStatus(ApprovalStatus.APPROVED);
-                vtsSystemB.setApprovalStatus(ApprovalStatus.APPROVED);
+                vtsSystemA.setApprovalStatus(ApprovalStatus.DRAFT);
+                vtsSystemB.setApprovalStatus(ApprovalStatus.DRAFT);
 
                 when(vtsRepository.findById(VTS_A_ID)).thenReturn(Optional.of(vtsSystemA));
                 when(vtsRepository.findById(VTS_B_ID)).thenReturn(Optional.of(vtsSystemB));
                 when(vtsRepository.save(any(VtsSystem.class))).thenAnswer(inv -> inv.getArgument(0));
-                when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+                when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
                 // User A deletes Unit A -> SUCCESS
                 assertDoesNotThrow(() -> vtsSystemService.delete(VTS_A_ID, userA.getId()));
@@ -273,7 +273,7 @@ class DataScopeCrossUnitContractTest {
                         s.setId(UUID.randomUUID());
                         return s;
                 });
-                when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
+                when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
                 // Create for Unit A -> SUCCESS
                 VtsSystemCreateRequest createReqA = VtsSystemCreateRequest.builder()

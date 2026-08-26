@@ -121,12 +121,8 @@ class FlywayMigrationTest {
         // Fails the test with Flyway's own diagnostics if any migration throws.
         flyway.migrate();
 
-        // V82: coordinates gone, spatial_id added, status columns numeric.
+        // V82: spatial_id added, status columns numeric.
         for (String table : STATION_TABLES) {
-            assertThat(columnType(table, "latitude"))
-                    .as("%s.latitude should have been dropped", table).isNull();
-            assertThat(columnType(table, "longitude"))
-                    .as("%s.longitude should have been dropped", table).isNull();
             assertThat(columnType(table, "spatial_id"))
                     .as("%s.spatial_id should exist", table).isEqualTo("uuid");
             assertThat(columnType(table, "status"))

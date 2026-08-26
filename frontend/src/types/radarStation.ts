@@ -145,9 +145,13 @@ export interface HistoryEntry {
   id: string;
   approvalLevel?: string;
   status?: string;
+  action?: string;
   approvedBy?: string;
   approvedDate?: string;
+  performedBy?: string;
+  performedDate?: string;
   reason?: string;
+  [key: string]: any;
 }
 
 export const CONDITION_STATUS_MAP: Record<string, { label: string }> = {

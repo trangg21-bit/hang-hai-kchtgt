@@ -13,9 +13,9 @@ import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
@@ -41,7 +41,7 @@ public class ShipRepairFacilityService {
 
     private final ShipRepairFacilityRepository repository;
     private final InfrastructureAttachmentRepository attachmentRepository;
-    private final ApprovalHistoryRepository historyRepository;
+    private final InfrastructureHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
@@ -90,11 +90,11 @@ public class ShipRepairFacilityService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.CREATED)
+                .status(InfrastructureHistoryStatus.CREATED)
                 .approvedBy(createdBy)
                 .approvedDate(LocalDateTime.now())
                 .reason("Tạo mới cơ sở sửa chữa, đóng tàu")
@@ -227,11 +227,11 @@ public class ShipRepairFacilityService {
 
         ShipRepairFacility saved = repository.save(entity);
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.UPDATED)
+                .status(InfrastructureHistoryStatus.UPDATED)
                 .approvedBy(updatedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason("Cập nhật cơ sở sửa chữa, đóng tàu")
@@ -254,11 +254,11 @@ public class ShipRepairFacilityService {
         entity.softDelete(deletedBy);
         repository.save(entity);
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(entity.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.DELETED)
+                .status(InfrastructureHistoryStatus.DELETED)
                 .approvedBy(deletedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason("Xóa cơ sở sửa chữa, đóng tàu")
@@ -298,22 +298,22 @@ public class ShipRepairFacilityService {
 
         ShipRepairFacility saved = repository.save(entity);
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_1)
-                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
+                .status(InfrastructureHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason(request.getReason())
                 .build());
 
         if (autoApproved) {
-            historyRepository.save(ApprovalHistory.builder()
+            historyRepository.save(InfrastructureHistory.builder()
                     .refId(saved.getId())
                     .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                     .approvalLevel(ApprovalLevel.LEVEL_2)
-                    .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
+                    .status(InfrastructureHistoryStatus.fromValue(request.getDecision()))
                     .approvedBy(approvedBy)
                     .approvedDate(LocalDateTime.now())
                     .reason(request.getReason())
@@ -350,11 +350,11 @@ public class ShipRepairFacilityService {
 
         ShipRepairFacility saved = repository.save(entity);
 
-        historyRepository.save(ApprovalHistory.builder()
+        historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
                 .approvalLevel(ApprovalLevel.LEVEL_2)
-                .status(ApprovalHistoryStatus.fromValue(request.getDecision()))
+                .status(InfrastructureHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason(request.getReason())
@@ -364,11 +364,11 @@ public class ShipRepairFacilityService {
     }
 
     public List<HistoryEntry> getHistory(UUID shipRepairFacilityId) {
-        List<ApprovalHistory> historyList = historyRepository
+        List<InfrastructureHistory> historyList = historyRepository
                 .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY,
                         shipRepairFacilityId);
         Set<UUID> userIds = historyList.stream()
-                .map(ApprovalHistory::getApprovedBy)
+                .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, String> userNames = resolveUserNames(userIds);

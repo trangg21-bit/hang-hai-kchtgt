@@ -23,12 +23,9 @@ export const RECORD_SECURITY_LEVEL_OPTIONS = [
 
 export const ApprovalStatus = {
   DRAFT: 'DRAFT',
-  PROPOSED: 'PROPOSED',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
   APPROVED_LEVEL1: 'APPROVED_LEVEL1',
-  APPROVED_LEVEL2: 'APPROVED_LEVEL2',
   APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
   ARCHIVED: 'ARCHIVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
@@ -120,56 +117,58 @@ export interface VtsZoneDto {
 }
 
 export interface CreateVtsSystemRequest {
-  zones?: VtsZoneDto[];
-  systemName?: string;
-  conditionStatus?: ConditionStatus;
-  recordSecurityLevel?: RecordSecurityLevel;
-  orgUnitId?: string;
+  code: string;
+  systemName: string;
+  orgUnitId: string;
   owningOrgId?: string;
   operatingOrgId?: string;
   portId?: string;
-  scope?: string;
-  note?: string;
-  code?: string;
   province?: string;
-  provinceId?: number;
+  provinceId: number;
   address?: string;
+  scope?: string;
   maritimeNotice?: string;
   operationStartDate?: string;
-  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
+  conditionStatus: ConditionStatus;
+  recordSecurityLevel?: RecordSecurityLevel;
+  approvalStatus?: ApprovalStatus;
+  note?: string;
+  zones?: VtsZoneDto[];
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | string;
   coordinates?: string;
 }
 
 export interface UpdateVtsSystemRequest extends CreateVtsSystemRequest {}
 
 export interface ApprovalRequest {
-  decision: string;
+  decision: 'APPROVED' | 'REJECTED';
   reason?: string;
 }
 
 export interface HistoryEntry {
-  id?: string | number;
-  approvalLevel?: number | string;
-  status?: string;
-  approvedBy?: string;
-  approver?: string;
-  approverName?: string;
-  orgUnitName?: string;
-  approvedDate?: string;
-  approvalDate?: string;
+  id: string;
+  refId: string;
+  refType: string;
+  action: string;
+  actor: string;
+  actorName?: string;
+  timestamp: string;
   reason?: string;
   changedField?: string;
-  previousValue?: string;
+  oldValue?: string;
   newValue?: string;
+  status?: string;
+  approvalLevel?: string;
 }
 
 export interface ListParams {
   page?: number;
   size?: number;
-  orgUnitId?: string;
   keyword?: string;
   conditionStatus?: ConditionStatus;
   approvalStatus?: ApprovalStatus;
+  orgUnitId?: string;
+  portId?: string;
   year?: number;
 }
 
@@ -197,12 +196,9 @@ export const CONDITION_STATUS_MAP: Record<string, string> = {
 
 export const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
-  PROPOSED: 'Chờ Cảng vụ duyệt',
   PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
   APPROVED_LEVEL1: 'Chờ Cục duyệt',
-  APPROVED_LEVEL2: 'Đã duyệt',
   APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
   ARCHIVED: 'Lưu trữ',
   REJECTED_LEVEL1: 'Cảng vụ trả về',
   REJECTED_LEVEL2: 'Cục trả về',
@@ -217,14 +213,10 @@ export const CONDITION_STATUS_TAG_MAP: Record<string, { label: string; color: st
 
 export const APPROVAL_STATUS_TAG_MAP: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Lưu tạm', color: 'default' },
-  PROPOSED: { label: 'Chờ Cảng vụ duyệt', color: 'processing' },
   PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: 'processing' },
   APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: 'cyan' },
-  APPROVED_LEVEL2: { label: 'Đã duyệt', color: 'success' },
   APPROVED: { label: 'Đã duyệt', color: 'success' },
-  REJECTED: { label: 'Từ chối', color: 'error' },
   ARCHIVED: { label: 'Lưu trữ', color: 'default' },
   REJECTED_LEVEL1: { label: 'Cảng vụ trả về', color: 'error' },
   REJECTED_LEVEL2: { label: 'Cục trả về', color: 'error' },
 };
-

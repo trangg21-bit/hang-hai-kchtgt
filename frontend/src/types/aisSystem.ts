@@ -139,6 +139,7 @@ export interface CreateAisSystemRequest {
   geometryType?: string;
   coordinates?: string;
   symbolId?: string;
+  approvalStatus?: ApprovalStatus;
 }
 
 export interface UpdateAisSystemRequest extends CreateAisSystemRequest {}

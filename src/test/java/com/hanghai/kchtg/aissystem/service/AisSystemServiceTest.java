@@ -6,7 +6,7 @@ import com.hanghai.kchtg.aissystem.entity.AisSystem;
 import com.hanghai.kchtg.aissystem.repository.AisSystemRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -63,7 +63,7 @@ class AisSystemServiceTest {
     private InfrastructureAttachmentRepository attachmentRepository;
 
     @Mock
-    private ApprovalHistoryRepository historyRepository;
+    private InfrastructureHistoryRepository historyRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -76,6 +76,13 @@ class AisSystemServiceTest {
 
     @Mock
     private GisSpatialObjectService gisSpatialObjectService;
+
+    // toResponse lấy tên đơn vị từ cache dùng chung thay vì truy vấn riêng.
+    @Mock
+    private com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService;
+
+    @Mock
+    private com.hanghai.kchtg.port.service.PortCacheService portCacheService;
 
     @InjectMocks
     private AisSystemService service;
@@ -230,7 +237,7 @@ class AisSystemServiceTest {
         when(repository.search(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
-        Page<?> result = service.search("Hải Phòng", ORG_UNIT_ID, CENTER_ID, OPERATING_ORG_ID, 1, ConditionStatus.OPERATIONAL, ApprovalStatus.DRAFT, PageRequest.of(0, 20));
+        Page<?> result = service.search("Hải Phòng", ORG_UNIT_ID, CENTER_ID, OPERATING_ORG_ID, 1, ConditionStatus.OPERATIONAL, null, ApprovalStatus.DRAFT, PageRequest.of(0, 20));
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
