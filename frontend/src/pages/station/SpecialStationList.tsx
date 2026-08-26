@@ -31,7 +31,6 @@ import {
   SendOutlined,
   UploadOutlined,
   FileOutlined,
-  FileExcelOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -99,7 +98,6 @@ import {
   filterLabelStyle,
   filterInputStyle,
   primaryButtonStyle,
-  outlineButtonStyle,
   dangerButtonStyle,
   rejectReasonStyle,
   formFieldStyle,
@@ -165,6 +163,7 @@ export default function SpecialStationList() {
   const [operatingOrgOptions, setOperatingOrgOptions] = useState<{ value: string; label: string }[]>([]);
   const [mapSymbolOptions, setMapSymbolOptions] = useState<{ value: string; label: string }[]>([]);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
+  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
 
   // Drawer States
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -195,6 +194,9 @@ export default function SpecialStationList() {
   useEffect(() => {
     (async () => {
       try {
+        const orgTree = await organizationService.getTree();
+        setOrgUnitOptions((orgTree || []) as OrgUnitTreeOption[]);
+
         const orgRes = await organizationService.list({ pageSize: 1000 });
         const orgs = orgRes.data || (orgRes as any).content || [];
         setOperatingOrgOptions(orgs.map((o: any) => ({ value: o.id, label: o.name })));
@@ -487,14 +489,6 @@ export default function SpecialStationList() {
   };
 
   // Export Excel
-  const handleExportExcel = () => {
-    const filename = `danh_sach_dai_inmarsat_${dayjs().format('YYYYMMDD')}.xlsx`;
-    toast.info(`Đang tạo tệp ${filename}...`);
-    setTimeout(() => {
-      toast.success(`Xuất dữ liệu thành công: ${filename}`);
-    }, 800);
-  };
-
   // Anti-self-approval checker
   const isCreator = (record: CoastalStationInmarsatResponse) => {
     return currentUserId && record.createdBy && String(record.createdBy) === String(currentUserId);
@@ -712,6 +706,7 @@ export default function SpecialStationList() {
       <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
         <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
         <OrgUnitTreeSelect
+          organizations={orgUnitOptions}
           value={filterOrgUnitId}
           onChange={(val) => setFilterOrgUnitId(val)}
           placeholder="Tất cả"
@@ -828,13 +823,6 @@ export default function SpecialStationList() {
                 Thêm đài Inmarsat
               </Button>
             )}
-            <Button
-              icon={<FileExcelOutlined />}
-              onClick={handleExportExcel}
-              style={outlineButtonStyle}
-            >
-              Xuất Excel
-            </Button>
           </Space>
         }
       />
@@ -940,6 +928,7 @@ export default function SpecialStationList() {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <OrgUnitTreeSelect
+                            organizations={orgUnitOptions}
                             placeholder="Chọn đơn vị quản lý"
                             allowClear
                             treeDefaultExpandAll={true}

@@ -1365,29 +1365,6 @@ export const AisSystemList: React.FC = () => {
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
             </div>
-            {activeTab === 'ALL' && (
-              <>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Trạng thái phê duyệt
-                  </div>
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    value={approvalStatusFilter}
-                    onChange={setApprovalStatusFilter}
-                    options={[
-                      { value: 'DRAFT', label: 'Lưu tạm' },
-                      { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                      { value: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt' },
-                      { value: 'APPROVED', label: 'Đã duyệt' },
-                      { value: 'REJECTED_LEVEL1', label: 'Từ chối' },
-                    ]}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-              </>
-            )}
           </>
         }
         hideFilterToggle={true}
