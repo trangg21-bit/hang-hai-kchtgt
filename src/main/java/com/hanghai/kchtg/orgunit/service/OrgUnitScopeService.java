@@ -88,6 +88,10 @@ public class OrgUnitScopeService {
     }
 
     public record Scope(boolean unrestricted, List<UUID> orgUnitIds) {
+        public static Scope all() {
+            return new Scope(true, List.of());
+        }
+
         public static Scope allScope() {
             return new Scope(true, List.of());
         }

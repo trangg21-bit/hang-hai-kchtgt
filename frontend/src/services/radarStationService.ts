@@ -3,17 +3,15 @@ import { toArray, toSingle, toTotalCount } from './resilient';
 import type {
   RadarStationResponse,
   RadarStationAttachment,
+  RadarStationOptionResponse,
   CreateRadarStationRequest,
   UpdateRadarStationRequest,
   HistoryEntry,
   ListParams,
-  SearchResponse,
-  GenerateCodeResponse,
 } from '../types/radarStation';
 
 const BASE_PATH = '/v1/radar-station';
 
-// Helper: bỏ undefined/empty, page 1-based → 0-based, size mặc định 20.
 function buildSearchParams(params: Record<string, string | number | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -22,10 +20,29 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
   return sp;
 }
 
+export interface SearchResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+}
+
 export const radarStationCRUD = {
   async getById(id: string): Promise<RadarStationResponse> {
     const res = await api.get(`${BASE_PATH}/${id}`);
-    return toSingle<RadarStationResponse>(res.data) || {} as RadarStationResponse;
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
+  },
+
+  async getOptions(orgUnitId?: string): Promise<RadarStationOptionResponse[]> {
+    const sp = buildSearchParams({ orgUnitId });
+    const res = await api.get(`${BASE_PATH}/options?${sp}`);
+    return toArray<RadarStationOptionResponse>(res.data);
+  },
+
+  async getTabCounts(orgUnitId?: string, keyword?: string, conditionStatus?: string): Promise<Record<string, number>> {
+    const sp = buildSearchParams({ orgUnitId, keyword, conditionStatus });
+    const res = await api.get(`${BASE_PATH}/tab-counts?${sp}`);
+    return toSingle<Record<string, number>>(res.data) || {};
   },
 
   async searchPaged(params?: ListParams): Promise<SearchResponse<RadarStationResponse>> {
@@ -43,8 +60,10 @@ export const radarStationCRUD = {
       updatedBy: params?.updatedBy,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
-      page: params?.page !== undefined ? params.page - 1 : 0,
+      page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
       size: params?.size || 20,
+      sortBy: params?.sortBy,
+      sortOrder: params?.sortOrder,
     });
     const res = await api.get(`${BASE_PATH}/search-paged?${sp}`);
     const pageData = res.data?.data;
@@ -56,19 +75,19 @@ export const radarStationCRUD = {
     };
   },
 
-  async generateCode(): Promise<GenerateCodeResponse> {
+  async generateCode(): Promise<{ code: string }> {
     const res = await api.get(`${BASE_PATH}/generate-code`);
-    return toSingle<GenerateCodeResponse>(res.data) || { code: '' };
+    return toSingle<{ code: string }>(res.data) || { code: '' };
   },
 
   async create(data: CreateRadarStationRequest): Promise<RadarStationResponse> {
     const res = await api.post(BASE_PATH, data);
-    return toSingle<RadarStationResponse>(res.data) || {} as RadarStationResponse;
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
   },
 
   async update(id: string, data: UpdateRadarStationRequest): Promise<RadarStationResponse> {
     const res = await api.put(`${BASE_PATH}/${id}`, data);
-    return toSingle<RadarStationResponse>(res.data) || {} as RadarStationResponse;
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
   },
 
   async delete(id: string): Promise<void> {
@@ -77,22 +96,46 @@ export const radarStationCRUD = {
 };
 
 export const radarStationApproval = {
-  async submitForApproval(id: string): Promise<void> {
-    await api.post(`${BASE_PATH}/${id}/submit-approval`);
+  async submitForApproval(id: string): Promise<RadarStationResponse> {
+    const res = await api.post(`${BASE_PATH}/${id}/submit`);
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
   },
 
-  async approveL1(id: string, approverId: string): Promise<RadarStationResponse> {
-    const res = await api.post(`${BASE_PATH}/${id}/approve-l1`, null, {
-      params: { approverId },
+  async approveLevel1(id: string, note?: string): Promise<RadarStationResponse> {
+    const res = await api.post(`${BASE_PATH}/${id}/approvec1`, null, {
+      params: { note },
     });
-    return toSingle<RadarStationResponse>(res.data) || {} as RadarStationResponse;
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
   },
 
-  async reject(id: string, rejectReason: string, approverId: string): Promise<RadarStationResponse> {
-    const res = await api.post(`${BASE_PATH}/${id}/reject`, null, {
-      params: { rejectReason, approverId },
+  async approveLevel2(id: string, note?: string): Promise<RadarStationResponse> {
+    const res = await api.post(`${BASE_PATH}/${id}/approvec2`, null, {
+      params: { note },
     });
-    return toSingle<RadarStationResponse>(res.data) || {} as RadarStationResponse;
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
+  },
+
+  async rejectLevel1(id: string, reason: string): Promise<RadarStationResponse> {
+    const res = await api.post(`${BASE_PATH}/${id}/rejectc1`, null, {
+      params: { reason },
+    });
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
+  },
+
+  async rejectLevel2(id: string, reason: string): Promise<RadarStationResponse> {
+    const res = await api.post(`${BASE_PATH}/${id}/rejectc2`, null, {
+      params: { reason },
+    });
+    return toSingle<RadarStationResponse>(res.data) || ({} as RadarStationResponse);
+  },
+
+  // Legacy aliases
+  async approveL1(id: string, approverId?: string): Promise<RadarStationResponse> {
+    return this.approveLevel1(id);
+  },
+
+  async reject(id: string, rejectReason: string, approverId?: string): Promise<RadarStationResponse> {
+    return this.rejectLevel1(id, rejectReason);
   },
 
   async getHistory(id: string): Promise<HistoryEntry[]> {
@@ -102,21 +145,21 @@ export const radarStationApproval = {
 };
 
 export const radarStationAttachment = {
-  async upload(id: string, file: File): Promise<RadarStationAttachment> {
-    const formData = new FormData();
-    formData.append('files', file);
-    const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return res.data?.data || {} as RadarStationAttachment;
-  },
-
   async list(id: string): Promise<RadarStationAttachment[]> {
     const res = await api.get(`${BASE_PATH}/${id}/attachments`);
     return toArray<RadarStationAttachment>(res.data);
   },
 
-  async remove(id: string, attachmentId: string): Promise<void> {
+  async upload(id: string, files: File[]): Promise<RadarStationAttachment[]> {
+    const formData = new FormData();
+    files.forEach((f) => formData.append('files', f));
+    const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return toArray<RadarStationAttachment>(res.data);
+  },
+
+  async delete(id: string, attachmentId: string): Promise<void> {
     await api.delete(`${BASE_PATH}/${id}/attachments/${attachmentId}`);
   },
 };

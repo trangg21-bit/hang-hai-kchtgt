@@ -43,6 +43,11 @@ public class MapSymbolController {
         return ResponseEntity.ok(ApiResponse.success(service.search(search, code, symbolStatus, pageable)));
     }
 
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<java.util.List<com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse>>> getOptions() {
+        return ResponseEntity.ok(ApiResponse.success(service.getOptions()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MapSymbolResponse>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.findById(id)));

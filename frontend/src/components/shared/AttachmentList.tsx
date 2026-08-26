@@ -11,10 +11,10 @@ import {
 } from '../../tokens';
 import { colors } from '../../theme';
 
-interface Attachment {
+export interface Attachment {
   id: string;
   fileName: string;
-  filePath: string;
+  filePath?: string;
 }
 
 interface AttachmentListProps {
@@ -107,7 +107,7 @@ export default function AttachmentList({
         responseType: 'blob',
       });
       const blob = new Blob([resp.data], {
-        type: resp.headers['content-type'] || 'application/octet-stream',
+        type: String(resp.headers['content-type'] || 'application/octet-stream'),
       });
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

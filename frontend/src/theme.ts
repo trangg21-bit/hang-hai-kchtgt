@@ -261,15 +261,6 @@ export const metronicTheme: ThemeConfig = {
       labelColor: colors.sidebarBg,
       labelFontSize: 13,
     },
-
-    Modal: {
-      borderRadiusLG: radius.lg,
-    },
-
-    Dropdown: {
-      borderRadiusLG: radius.md,
-      boxShadowSecondary: shadow.dropdown,
-    },
   },
 };
 

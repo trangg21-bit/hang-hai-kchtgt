@@ -35,6 +35,13 @@ export interface UpdateSymbolPayload {
   status?: 'active' | 'inactive';
 }
 
+export interface SymbolOption {
+  id: string;
+  name: string;
+  code?: string;
+  image: string;
+}
+
 export interface SymbolFilters {
   search?: string;
   status?: string;
@@ -120,6 +127,41 @@ export const symbolService = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/symbols/${id}`);
+    this.invalidateCache();
+  },
+
+  async getOptions(): Promise<SymbolOption[]> {
+    if (cachedOptions) {
+      return cachedOptions;
+    }
+    if (optionsPromise) {
+      return optionsPromise;
+    }
+
+    optionsPromise = (async () => {
+      try {
+        const resp = await api.get('/symbols/options');
+        const rawData: any = extractData(resp);
+        const items: any[] = Array.isArray(rawData) ? rawData : (rawData?.content || []);
+        const result = items.map((item) => ({
+          id: item.id || '',
+          name: item.name || '',
+          code: item.code || '',
+          image: item.image || item.hinhAnh || '',
+        }));
+        cachedOptions = result;
+        return result;
+      } finally {
+        optionsPromise = null;
+      }
+    })();
+
+    return optionsPromise;
+  },
+
+  invalidateCache(): void {
+    cachedOptions = null;
+    optionsPromise = null;
   },
 
   async searchByValue(value: string): Promise<Symbol[]> {
@@ -131,3 +173,6 @@ export const symbolService = {
     return items.map(mapSymbol);
   },
 };
+
+let cachedOptions: SymbolOption[] | null = null;
+let optionsPromise: Promise<SymbolOption[]> | null = null;

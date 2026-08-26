@@ -104,7 +104,7 @@ public class InfrastructureApprovalService {
 
         // Quy tắc chống tự duyệt (BR-015): Người tạo hồ sơ không được tự phê duyệt
         if (entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
-            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi (4-eyes principle)");
+            throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo hoặc đề xuất");
         }
 
         if (isRejectDecision(decision)) {
@@ -137,7 +137,7 @@ public class InfrastructureApprovalService {
 
     /**
      * Phê duyệt Vòng 2 (Cục) (T08, T09).
-     * Áp dụng nguyên tắc 4-eyes: Người duyệt C2 không được trùng người duyệt C1.
+     * Áp dụng nguyên tắc: Người duyệt C2 không được trùng người duyệt C1.
      */
     @Transactional
     public void approveC2(ApprovableEntity entity, InfrastructureType refType, String decision, String reason, UUID userId) {
@@ -151,15 +151,15 @@ public class InfrastructureApprovalService {
             throw new IllegalStateException("Chỉ có thể phê duyệt C2 từ trạng thái Chờ Cục duyệt (APPROVED_LEVEL1)");
         }
 
-        // Quy tắc 4-eyes: Người duyệt C2 không được trùng người duyệt C1
+        // Quy tắc: Người duyệt C2 không được trùng người duyệt C1
         UUID c1Approver = entity.getApproverLevel1();
         if (c1Approver != null && c1Approver.equals(userId)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (4-eyes principle)");
+            throw new IllegalStateException("Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Cảng vụ / Chi cục");
         }
 
         // Quy tắc chống tự duyệt: Người tạo hồ sơ không được tự duyệt
         if (entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
-            throw new IllegalStateException("Người tạo hồ sơ không được tự phê duyệt (4-eyes principle)");
+            throw new IllegalStateException("Người tạo hồ sơ không được tự phê duyệt bản ghi");
         }
 
         if (isRejectDecision(decision)) {
@@ -273,8 +273,7 @@ public class InfrastructureApprovalService {
         String upper = decision.trim().toUpperCase();
         return ApprovalStatus.REJECTED.name().equals(upper)
                 || ApprovalStatus.REJECTED_LEVEL1.name().equals(upper)
-                || ApprovalStatus.REJECTED_LEVEL2.name().equals(upper)
-                || "REJECT".equals(upper);
+                || ApprovalStatus.REJECTED_LEVEL2.name().equals(upper);
     }
 
     private boolean isApproveDecision(String decision) {
@@ -282,8 +281,7 @@ public class InfrastructureApprovalService {
         String upper = decision.trim().toUpperCase();
         return ApprovalStatus.APPROVED.name().equals(upper)
                 || ApprovalStatus.APPROVED_LEVEL1.name().equals(upper)
-                || ApprovalStatus.APPROVED_LEVEL2.name().equals(upper)
-                || "APPROVE".equals(upper);
+                || ApprovalStatus.APPROVED_LEVEL2.name().equals(upper);
     }
 
     private void recordHistory(UUID refId, InfrastructureType refType, ApprovalLevel level,

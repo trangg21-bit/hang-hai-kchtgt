@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -13,7 +14,7 @@ class RadarStationEntityTest {
     void testBuilderCreation() {
         RadarStation entity = RadarStation.builder()
                 .stationName("Tram ABC").location("Hà Nội")
-                .stationType("Radar X").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+                .stationType("Radar X").createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNotNull(entity);
         assertEquals("Tram ABC", entity.getStationName());
         assertEquals("Hà Nội", entity.getLocation());
@@ -22,22 +23,20 @@ class RadarStationEntityTest {
     @Test
     void testDefaultValues() {
         RadarStation entity = RadarStation.builder()
-                .stationName("ABC").location("Hà Nội").stationType("Radar X").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
-        assertFalse(entity.getApprovedLevel1());
-        assertFalse(entity.getApprovedLevel2());
+                .stationName("ABC").location("Hà Nội").stationType("Radar X").createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNull(entity.getDeletedAt());
     }
 
     @Test
     void testSettersAndGetters() {
         RadarStation entity = new RadarStation();
-        java.util.UUID uuid = java.util.UUID.randomUUID();
+        UUID uuid = UUID.randomUUID();
         entity.setId(uuid);
         entity.setStationName("Tram ABC");
         entity.setLocation("Hà Nội");
         entity.setStationType("Radar X");
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        entity.setUpdatedBy(UUID.fromString("00000000-0000-0000-0000-000000000001"));
         entity.setUpdatedAt(LocalDateTime.now());
 
         assertEquals(uuid, entity.getId());
@@ -49,23 +48,20 @@ class RadarStationEntityTest {
     @Test
     void testPrePersist_ApprovalStatusDefault() {
         RadarStation entity = RadarStation.builder()
-                .stationName("ABC").location("Hà Nội").stationType("X").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+                .stationName("ABC").location("Hà Nội").stationType("X").createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNull(entity.getApprovalStatus());  // null before persist
     }
 
     @Test
     void testFullLifecycle() {
         RadarStation entity = RadarStation.builder()
-                .stationName("Tram ABC").location("Hà Nội").stationType("X").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+                .stationName("Tram ABC").location("Hà Nội").stationType("X").createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNull(entity.getApprovalStatus());  // null before persist
-        assertFalse(entity.getApprovedLevel1());
 
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setApprovedLevel1(true);
-        entity.setApprovedLevel2(true);
         assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
 
-        entity.softDelete(java.util.UUID.randomUUID());
+        entity.softDelete(UUID.randomUUID());
         assertNotNull(entity.getDeletedAt());
     }
 }

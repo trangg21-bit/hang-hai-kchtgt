@@ -1,4 +1,6 @@
 import React from 'react';
+import { colors } from './theme';
+export { colors };
 
 // ============================================================
 // tokens.ts — Semantic design token architecture
@@ -14,8 +16,10 @@ export const actionHover = '#0A5AB8';
 // Status — semantic meaning, NOT color names
 export const statusOperational = '#1BAF7A';   // good, operating, increase
 export const statusAttention = '#EDA100';     // pending, warning, not-exploited
+export const statusWarning = statusAttention;  // alias for backward compatibility
 export const statusCritical = '#E34948';      // bad, stopped, rejected, decrease
 export const statusDraft = '#93a3b3';         // draft, inactive
+export const statusNeutral = statusDraft;     // alias for backward compatibility
 
 // Data — chart series, NOT "blue" / "pink"
 export const dataPrimary = '#2A78D6';         // main data series (domestic, primary)

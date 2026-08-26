@@ -4,12 +4,12 @@ import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
-import org.hibernate.annotations.Filter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,9 +19,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "navigation_channel")
-@Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-@Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
@@ -107,6 +106,9 @@ public class NavigationChannel extends BaseApprovableEntity {
 
     @Column(name = "load_capacity", length = 100)
     private String loadCapacity;
+
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
     @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
