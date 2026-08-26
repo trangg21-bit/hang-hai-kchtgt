@@ -45,6 +45,7 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
         }
 
         patchInfrastructureHistoryTable();
+        patchCctvTable();
 
         log.info("InfrastructureSchemaMigrator finished successfully.");
     }
@@ -85,6 +86,69 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
                     ");");
         } catch (Exception e) {
             log.warn("Could not ensure infrastructure_history table: {}", e.getMessage());
+        }
+    }
+
+    private void patchCctvTable() {
+        try {
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS cctv (" +
+                    "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
+                    "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+                    "deleted_at TIMESTAMP, " +
+                    "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+                    "created_by UUID, " +
+                    "deleted_by UUID, " +
+                    "updated_by UUID, " +
+                    "security_level SMALLINT NOT NULL DEFAULT 0, " +
+                    "org_unit_id UUID, " +
+                    "attached_infrastructure_type INT2, " +
+                    "attached_infrastructure_id UUID, " +
+                    "operating_unit_id UUID, " +
+                    "province_id UUID, " +
+                    "unit_of_measure INT4, " +
+                    "quantity INT4 NOT NULL DEFAULT 1, " +
+                    "year_of_use INT2, " +
+                    "operational_status INT4 NOT NULL DEFAULT 0, " +
+                    "specifications VARCHAR(2000), " +
+                    "maintenance_information VARCHAR(2000), " +
+                    "note VARCHAR(2000), " +
+                    "object_type INT2, " +
+                    "map_symbol_id UUID, " +
+                    "coordinate_system INT4, " +
+                    "display_rule INT4, " +
+                    "spatial_id UUID, " +
+                    "approval_status SMALLINT NOT NULL DEFAULT 0, " +
+                    "device_code VARCHAR(200) NOT NULL, " +
+                    "device_name VARCHAR(255) NOT NULL, " +
+                    "detailed_location VARCHAR(500), " +
+                    "model VARCHAR(255), " +
+                    "manufacturer VARCHAR(50)" +
+                    ");");
+
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS province_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS attached_infrastructure_type INT2;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS attached_infrastructure_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS operating_unit_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS unit_of_measure INT4;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS quantity INT4 DEFAULT 1;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS year_of_use INT2;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS operational_status INT4 DEFAULT 0;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS specifications VARCHAR(2000);");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS maintenance_information VARCHAR(2000);");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS note VARCHAR(2000);");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS object_type INT2;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS map_symbol_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS coordinate_system INT4;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS display_rule INT4;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS spatial_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS detailed_location VARCHAR(500);");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS model VARCHAR(255);");
+            jdbcTemplate.execute("ALTER TABLE cctv ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(50);");
+            try {
+                jdbcTemplate.execute("ALTER TABLE cctv DROP CONSTRAINT IF EXISTS check_cctv_approval_status_range;");
+            } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Could not patch CCTV table: {}", e.getMessage());
         }
     }
 }
