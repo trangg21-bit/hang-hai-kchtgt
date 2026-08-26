@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.common.service;
 
 import com.hanghai.kchtg.common.entity.ApprovableEntity;
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InfrastructureApprovalService {
 
-    private final ApprovalHistoryRepository historyRepository;
+    private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
 
     /**
@@ -84,7 +84,7 @@ public class InfrastructureApprovalService {
 
         // Ghi lịch sử phê duyệt
         recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_0,
-                ApprovalHistoryStatus.PROPOSED, userId, null,
+                InfrastructureHistoryStatus.PROPOSED, userId, null,
                 "Trạng thái phê duyệt", currentStatus.getLabel(), nextStatus.getLabel());
     }
 
@@ -118,7 +118,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel1(null);
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
-                    ApprovalHistoryStatus.REJECTED, userId, reason.trim(),
+                    InfrastructureHistoryStatus.REJECTED, userId, reason.trim(),
                     "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.REJECTED_LEVEL1.getLabel());
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 1 (T06) -> Chuyển sang Chờ Cục duyệt (APPROVED_LEVEL1)
@@ -128,7 +128,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel1(LocalDateTime.now());
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_1,
-                    ApprovalHistoryStatus.APPROVED, userId, reason,
+                    InfrastructureHistoryStatus.APPROVED, userId, reason,
                     "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.APPROVED_LEVEL1.getLabel());
         } else {
             throw new IllegalArgumentException("Quyết định phê duyệt C1 không hợp lệ: " + decision);
@@ -173,7 +173,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel2(null);
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                    ApprovalHistoryStatus.REJECTED, userId, reason.trim(),
+                    InfrastructureHistoryStatus.REJECTED, userId, reason.trim(),
                     "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.REJECTED_LEVEL2.getLabel());
         } else if (isApproveDecision(decision)) {
             // Đồng ý vòng 2 (T08) -> Đã duyệt (APPROVED)
@@ -183,7 +183,7 @@ public class InfrastructureApprovalService {
             entity.setApprovedDateLevel2(LocalDateTime.now());
 
             recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                    ApprovalHistoryStatus.APPROVED, userId, reason,
+                    InfrastructureHistoryStatus.APPROVED, userId, reason,
                     "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.APPROVED.getLabel());
         } else {
             throw new IllegalArgumentException("Quyết định phê duyệt C2 không hợp lệ: " + decision);
@@ -207,7 +207,7 @@ public class InfrastructureApprovalService {
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
 
         recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_0,
-                ApprovalHistoryStatus.DELETED, userId, null,
+                InfrastructureHistoryStatus.DELETED, userId, null,
                 "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.ARCHIVED.getLabel());
     }
 
@@ -225,7 +225,7 @@ public class InfrastructureApprovalService {
         entity.setApprovedDateLevel2(LocalDateTime.now());
 
         recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                ApprovalHistoryStatus.UPDATED, userId, changeDescription,
+                InfrastructureHistoryStatus.UPDATED, userId, changeDescription,
                 "Hồ sơ đã duyệt cập nhật", "Đã duyệt", "Đã duyệt");
     }
 
@@ -244,7 +244,7 @@ public class InfrastructureApprovalService {
         entity.setApprovedDateLevel2(LocalDateTime.now());
 
         recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                ApprovalHistoryStatus.APPROVED, userId, "Tích hợp hệ thống ngoài lưu thẳng Đã duyệt",
+                InfrastructureHistoryStatus.APPROVED, userId, "Tích hợp hệ thống ngoài lưu thẳng Đã duyệt",
                 "Trạng thái phê duyệt", currentStatus.getLabel(), ApprovalStatus.APPROVED.getLabel());
     }
 
@@ -287,10 +287,10 @@ public class InfrastructureApprovalService {
     }
 
     private void recordHistory(UUID refId, InfrastructureType refType, ApprovalLevel level,
-                               ApprovalHistoryStatus status, UUID userId, String reason,
+                               InfrastructureHistoryStatus status, UUID userId, String reason,
                                String changedField, String previousValue, String newValue) {
         try {
-            historyRepository.save(ApprovalHistory.builder()
+            historyRepository.save(InfrastructureHistory.builder()
                     .refId(refId)
                     .refType(refType)
                     .approvalLevel(level)

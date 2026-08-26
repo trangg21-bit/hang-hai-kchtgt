@@ -15,8 +15,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @Order(1)
@@ -511,6 +514,20 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "specialstation", "update", "Cập nhật trạm chuyên dùng",
                                 "Chỉnh sửa trạm chuyên dùng");
                 seedPermission(definitions, "specialstation", "delete", "Xóa trạm chuyên dùng", "Xóa trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "approve", "Phê duyệt trạm chuyên dùng", "Phê duyệt trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "approvec1", "Phê duyệt C1 trạm chuyên dùng", "Phê duyệt cấp 1 trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "approvec2", "Phê duyệt C2 trạm chuyên dùng", "Phê duyệt cấp 2 trạm chuyên dùng");
+                seedPermission(definitions, "specialstation", "reject", "Từ chối trạm chuyên dùng", "Từ chối phê duyệt trạm chuyên dùng");
+
+                // 10.3 Đài thông tin vệ tinh Inmarsat (Coastal Station Inmarsat - M-004)
+                seedPermission(definitions, "coastalstationinmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approve", "Phê duyệt đài Inmarsat", "Phê duyệt đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "reject", "Từ chối đài Inmarsat", "Từ chối phê duyệt đài Inmarsat");
 
                 // 11. Quản lý tài sản kết cấu hạ tầng, Điều chuyển, Kiểm kê & Bảo trì (Asset
                 // Management & Operations)
@@ -656,22 +673,27 @@ public class PermissionSeeder implements CommandLineRunner {
 
                 int inserted = 0;
                 int updated = 0;
+                Map<String, Permission> existingMap = permissionRepository.findAll().stream()
+                                .collect(java.util.stream.Collectors.toMap(Permission::getCode, p -> p, (a, b) -> a));
+                List<Permission> toSave = new ArrayList<>();
                 for (Permission definition : definitions.values()) {
-                        var existing = permissionRepository.findByCode(definition.getCode());
-                        if (existing.isEmpty()) {
-                                permissionRepository.save(definition);
+                        Permission p = existingMap.get(definition.getCode());
+                        if (p == null) {
+                                toSave.add(definition);
                                 inserted++;
                         } else {
-                                Permission p = existing.get();
                                 if (!java.util.Objects.equals(p.getName(), definition.getName())
                                                 || !java.util.Objects.equals(p.getDescription(),
                                                                 definition.getDescription())) {
                                         p.setName(definition.getName());
                                         p.setDescription(definition.getDescription());
-                                        permissionRepository.save(p);
+                                        toSave.add(p);
                                         updated++;
                                 }
                         }
+                }
+                if (!toSave.isEmpty()) {
+                        permissionRepository.saveAll(toSave);
                 }
                 // Clean up deprecated / redundant permissions safely
                 if (jdbcTemplate != null) {

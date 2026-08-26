@@ -64,7 +64,9 @@ import { LineObject } from '../../types/lineObject';
 import {
   fetchCangBienList,
   deleteCangBien,
-  approveCangBien,
+  approveCangBienC1,
+  approveCangBienC2,
+  submitCangBien,
   rejectCangBien,
   fetchCangBienById,
   updateCangBien,
@@ -388,13 +390,23 @@ function PortRefTable({ title, emptyText, columns, dataSource = [] }: { title: s
   );
 }
 
+// 7 trạng thái chuẩn (approval-2-level-spec §3.1). Lưu ý APPROVED_LEVEL1 nghĩa là
+// ĐÃ qua vòng 1, tức đang chờ Cục duyệt — trước đây bị gán nhầm thành "Chờ Cảng vụ
+// duyệt". APPROVED_LEVEL2 / REJECTED / PROPOSED là giá trị legacy, chỉ giữ để đọc
+// dữ liệu cũ chứ không phát sinh mới.
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Nháp' },
-  DRAFT: { color: statusDraft, label: 'Nháp' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cục duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ trả về' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục trả về' },
+  ARCHIVED: { color: statusDraft, label: 'Đã xóa (lịch sử)' },
+  // ── legacy ──
+  NHAP: { color: statusDraft, label: 'Lưu tạm' },
+  PROPOSED: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL2: { color: statusOperational, label: 'Đã duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
 };
@@ -581,7 +593,7 @@ export default function PortListPage() {
       waterZoneCRUD.findAll({ portId: selectedRecord.id, size: 50 }),
     ]).then(([b, w]) => {
       if (cancelled) return;
-      const rows: Array<{ id: string; name: string; typeLabel: string; route: string }> = [];
+      const rows: Array<{ id: string; name: string; typeLabel: string; kchtType: 'berth' | 'waterzone' }> = [];
       if (b.status === 'fulfilled') {
         rows.push(...(b.value.data || []).map((x: any) => ({
           id: x.id, name: x.berthName || x.berthCode || '—', typeLabel: 'Bến cảng',
@@ -1391,8 +1403,15 @@ export default function PortListPage() {
   const handleConfirmApprove = useCallback(async () => {
     if (!approvingRecord) return;
     try {
-      await approveCangBien(approvingRecord.id);
-      toast.success('Phê duyệt thành công');
+      // Vòng duyệt do trạng thái hiện tại quyết định: "Chờ Cảng vụ duyệt" là
+      // vòng 1, "Chờ Cục duyệt" là vòng 2 (approval-2-level-spec §3.2).
+      const isLevel2 = approvingRecord.approvalStatus === 'APPROVED_LEVEL1';
+      if (isLevel2) {
+        await approveCangBienC2(approvingRecord.id);
+      } else {
+        await approveCangBienC1(approvingRecord.id);
+      }
+      toast.success(isLevel2 ? 'Phê duyệt cấp Cục thành công' : 'Phê duyệt cấp Cảng vụ thành công');
       setApproveModalOpen(false);
       setApprovingRecord(null);
       fetchData();
@@ -1415,7 +1434,10 @@ export default function PortListPage() {
     if (!submittingRecord) return;
     setSubmitModalOpen(false);
     try {
-      await updateCangBien({ id: submittingRecord.id, approvalStatus: 'PENDING' } as any);
+      // Trước đây gửi duyệt bằng cách PUT approvalStatus = 'PENDING' — trạng thái
+      // không thuộc tập 7 trạng thái chuẩn và bỏ qua quy tắc phân cấp theo đơn vị
+      // gửi. Nay dùng đúng endpoint gửi duyệt của backend.
+      await submitCangBien(submittingRecord.id);
       toast.success('Đã gửi phê duyệt');
       setSubmittingRecord(null);
       fetchData();
@@ -1666,8 +1688,8 @@ export default function PortListPage() {
         key: 'portName',
         label: 'Tên cảng biển',
         dataIndex: 'portName',
-        width: 190,
-        fixed: 'left' as const,
+        width: 280,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'portName' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => (
@@ -1684,6 +1706,7 @@ export default function PortListPage() {
         label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
         width: 260,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'orgUnitId' ? sortOrder : null,
         render: (_v: string | null, record: CangBienResponse) => {
@@ -1704,7 +1727,7 @@ export default function PortListPage() {
         key: 'portClass',
         label: 'Phân cấp cảng biển',
         dataIndex: 'portClass',
-        width: 200,
+        width: 180,
         sortable: true,
         sortOrder: sortField === 'portClass' ? sortOrder : null,
         render: (v: number | null) => v != null ? (v === 5 ? 'Cấp đặc biệt' : `Cấp ${v}`) : '—',
@@ -1713,7 +1736,8 @@ export default function PortListPage() {
         key: 'province',
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'province',
-        width: 250,
+        width: 220,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'province' ? sortOrder : null,
         render: (v: string | null) => v || '—',
@@ -1722,7 +1746,7 @@ export default function PortListPage() {
         key: 'approvalStatus',
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
-        width: 160,
+        width: 170,
         sortable: true,
         sortOrder: sortField === 'approvalStatus' ? sortOrder : null,
         render: (v: string) => {
@@ -1757,23 +1781,26 @@ export default function PortListPage() {
       },
       {
         key: 'updatedBy',
-        label: 'Người cập nhật',
+        label: 'Cán bộ cập nhật',
         dataIndex: 'updatedByName',
-        width: 170,
+        width: 190,
+        ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'updatedBy' ? sortOrder : null,
-        render: (v: string | null) => <span style={{ fontWeight: fontWeightBold }}>{v || '—'}</span>,
-      },
-      {
-        key: 'updatedAt',
-        label: 'Ngày cập nhật',
-        dataIndex: 'updatedAt',
-        width: 170,
-        sortable: true,
-        sortOrder: sortField === 'updatedAt' ? sortOrder : null,
-        render: (v: string | null) => (
-          <span>{formatDate(v)}</span>
-        ),
+        render: (v: string | null, record: CangBienResponse) => {
+          const name = v || record.updatedByName || (record as any).createdByName || '—';
+          const date = record.updatedAt || (record as any).createdAt;
+          return (
+            <div style={{ lineHeight: '1.35' }}>
+              <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {name}
+              </div>
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+              </div>
+            </div>
+          );
+        },
       },
     ],
     [page, pageSize, getPortGroupLabel, orgLevel2Map, sortField, sortOrder, openDetail],
@@ -2083,7 +2110,7 @@ export default function PortListPage() {
                 })}
                 rowKey="id" rowActions={rowActions} loading={false}
                 onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
-                scroll={{ x: 1400, y: 550 }}
+                scroll={{ x: 'max-content', y: 550 }}
               />
             ) : null}
             <Pagination total={total} current={page} pageSize={pageSize}

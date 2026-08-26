@@ -1,34 +1,34 @@
 package com.hanghai.kchtg.common.util;
 
-import com.hanghai.kchtg.common.entity.ApprovalHistory;
 import com.hanghai.kchtg.common.entity.EntityFields;
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.repository.ApprovalHistoryRepository;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 import java.util.UUID;
 
 /**
- * Utility helper ghi nhận Lịch sử Phê duyệt và Lịch sử Xóa mềm (Soft Delete) dùng chung cho tất cả các đối tượng KCHTGT.
+ * Utility helper ghi nhận Lịch sử Biến động KCHTGT và Lịch sử Xóa mềm (Soft Delete) dùng chung cho tất cả các đối tượng KCHTGT.
  */
-public final class ApprovalHistoryUtils {
+public final class InfrastructureHistoryUtils {
 
-    private ApprovalHistoryUtils() {
+    private InfrastructureHistoryUtils() {
         // Utility class
     }
 
     /**
      * Ghi nhận lịch sử xóa mềm (Soft Delete) dùng chung cho mọi loại hạ tầng.
      *
-     * @param repository  ApprovalHistoryRepository
+     * @param repository  InfrastructureHistoryRepository
      * @param refId       ID của bản ghi hạ tầng bị xóa
      * @param refType     Loại hạ tầng (InfrastructureType)
      * @param userId      ID người thực hiện xóa
      * @param reason      Lý do xóa (nếu có)
      */
     public static void recordSoftDelete(
-            ApprovalHistoryRepository repository,
+            InfrastructureHistoryRepository repository,
             UUID refId,
             InfrastructureType refType,
             UUID userId,
@@ -36,11 +36,11 @@ public final class ApprovalHistoryUtils {
         if (repository == null || refId == null || refType == null) {
             return;
         }
-        repository.save(ApprovalHistory.builder()
+        repository.save(InfrastructureHistory.builder()
                 .refId(refId)
                 .refType(refType)
                 .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(ApprovalHistoryStatus.DELETED)
+                .status(InfrastructureHistoryStatus.DELETED)
                 .approvedBy(userId)
                 .reason(reason != null && !reason.isBlank() ? reason : "Xóa bản ghi")
                 .changedField(EntityFields.DELETED_AT)
@@ -50,7 +50,7 @@ public final class ApprovalHistoryUtils {
     }
 
     public static void recordSoftDelete(
-            ApprovalHistoryRepository repository,
+            InfrastructureHistoryRepository repository,
             UUID refId,
             InfrastructureType refType,
             UUID userId) {

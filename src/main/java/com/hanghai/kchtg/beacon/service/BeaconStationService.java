@@ -10,6 +10,9 @@ import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconStation;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
@@ -53,6 +56,7 @@ public class BeaconStationService {
     private final BeaconStationRepository beaconStationRepo;
     private final BuoyRepository buoyRepo;
     private final BeaconHistoryRepository historyRepo;
+    private final InfrastructureHistoryRepository infraHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
@@ -115,8 +119,7 @@ public class BeaconStationService {
                 parseLocalDate(commissionedFrom),
                 parseLocalDate(commissionedTo),
                 parseLocalDateTime(updatedFrom),
-                parseLocalDateTime(updatedTo)
-        ).stream()
+                parseLocalDateTime(updatedTo)).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -284,11 +287,16 @@ public class BeaconStationService {
             entity.setPrimaryLightModel(request.getPrimaryLightModel());
         }
         // BUG FIX #2: Apply lightRange on update
-        if (request.getLightRange() != null) entity.setLightRange(request.getLightRange());
-        if (request.getArea() != null) entity.setArea(request.getArea());
-        if (request.getLocation() != null) entity.setLocation(request.getLocation());
-        if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
-        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
+        if (request.getLightRange() != null)
+            entity.setLightRange(request.getLightRange());
+        if (request.getArea() != null)
+            entity.setArea(request.getArea());
+        if (request.getLocation() != null)
+            entity.setLocation(request.getLocation());
+        if (request.getUnitId() != null)
+            entity.setUnitId(request.getUnitId());
+        if (request.getProvinceId() != null)
+            entity.setProvinceId(request.getProvinceId());
         if (request.getLastRepairDate() != null) {
             entity.setLastRepairDate(request.getLastRepairDate());
         }
@@ -317,23 +325,33 @@ public class BeaconStationService {
         if (request.getStationArea() != null)
             entity.setStationArea(request.getStationArea());
 
-        if (request.getSeaportId() != null) entity.setSeaportId(request.getSeaportId());
-        if (request.getOperator() != null) entity.setOperator(request.getOperator());
-        if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getOperationalStatus() != null) entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getRegion() != null) entity.setRegion(request.getRegion());
-        if (request.getIdentifyingFeature() != null) entity.setIdentifyingFeature(request.getIdentifyingFeature());
-        if (request.getNote() != null) entity.setNote(request.getNote());
-        if (request.getGeometryType() != null) entity.setGeometryType(request.getGeometryType());
-        if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+        if (request.getSeaportId() != null)
+            entity.setSeaportId(request.getSeaportId());
+        if (request.getOperator() != null)
+            entity.setOperator(request.getOperator());
+        if (request.getDetailedLocation() != null)
+            entity.setDetailedLocation(request.getDetailedLocation());
+        if (request.getOperationalStatus() != null)
+            entity.setOperationalStatus(request.getOperationalStatus());
+        if (request.getRegion() != null)
+            entity.setRegion(request.getRegion());
+        if (request.getIdentifyingFeature() != null)
+            entity.setIdentifyingFeature(request.getIdentifyingFeature());
+        if (request.getNote() != null)
+            entity.setNote(request.getNote());
+        if (request.getGeometryType() != null)
+            entity.setGeometryType(request.getGeometryType());
+        if (request.getMapSymbolId() != null)
+            entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getCoordinateSystem() != null)
+            entity.setCoordinateSystem(request.getCoordinateSystem());
+        boolean wasApproved = isApprovedStatus(entity.getStatus())
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
-        // Status revert logic for approved states
-        if (isApprovedStatus(entity.getStatus())) {
-            entity.setStatus("DRAFT");
-            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
-            entity.setApprovalLevel(1);
+        if (wasApproved) {
+            entity.setStatus("APPROVED_L2");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 
         entity = beaconStationRepo.save(entity);
@@ -354,10 +372,9 @@ public class BeaconStationService {
             }
         }
 
-        // BUG FIX #1: Use JsonNode.equals() for reliable comparison (not string equals)
-        // BUG FIX #3: Use real field diff instead of static "fields_updated"
+        // Only record history when the record is already approved
         String newJson = toJson(entity);
-        if (!compareJsonNodes(oldJson, newJson)) {
+        if (wasApproved && !compareJsonNodes(oldJson, newJson)) {
             logHistory(entity, BeaconHistoryActionType.UPDATE,
                     getChangedFields(oldJson, newJson), oldJson, newJson);
         }
@@ -520,6 +537,8 @@ public class BeaconStationService {
 
     private void logHistory(BeaconStation entity,
             BeaconHistoryActionType action, String fields, String previousJson, String newJson) {
+        Long legacyUserId = resolveCurrentUserId();
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
         BeaconHistory entry = BeaconHistory.builder()
                 .beaconType(BeaconType.BEACON_LIGHT)
                 .entityId(entity.getId())
@@ -527,11 +546,40 @@ public class BeaconStationService {
                 .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
                 .previousValue(previousJson)
                 .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
-                .changedBy(resolveCurrentUserId())
+                .changedBy(legacyUserId)
                 .changedAt(LocalDateTime.now())
                 .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
                 .build();
-        historyRepo.save(entry);
+        if (historyRepo != null) {
+            historyRepo.save(entry);
+        }
+
+        if (infraHistoryRepo != null && entity.getId() != null) {
+            InfrastructureHistoryStatus status = switch (action) {
+                case CREATE -> InfrastructureHistoryStatus.CREATED;
+                case UPDATE -> InfrastructureHistoryStatus.UPDATED;
+                case SOFT_DELETE -> InfrastructureHistoryStatus.DELETED;
+                case APPROVE_L1, APPROVE_L2 -> InfrastructureHistoryStatus.APPROVED;
+                case REJECT -> InfrastructureHistoryStatus.REJECTED;
+                default -> InfrastructureHistoryStatus.UPDATED;
+            };
+            infraHistoryRepo.save(InfrastructureHistory.builder()
+                    .refId(entity.getId())
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .approvalLevel(action == BeaconHistoryActionType.APPROVE_L2
+                            ? ApprovalLevel.LEVEL_2
+                            : (action == BeaconHistoryActionType.APPROVE_L1
+                                    ? ApprovalLevel.LEVEL_1
+                                    : ApprovalLevel.LEVEL_0))
+                    .status(status)
+                    .approvedBy(currentUserId)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField(fields)
+                    .previousValue(previousJson)
+                    .newValue(newJson)
+                    .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
+                    .build());
+        }
     }
 
     private BeaconStationResponse toResponse(BeaconStation entity) {
@@ -700,7 +748,8 @@ public class BeaconStationService {
             } catch (Exception e) {
                 throw new RuntimeException("Không thể lưu file: " + originalFilename);
             }
-            String storagePath = basePath.resolve(entityType).resolve(entityId.toString()).resolve(storageFileName).toString();
+            String storagePath = basePath.resolve(entityType).resolve(entityId.toString()).resolve(storageFileName)
+                    .toString();
             Attachment attachment = new Attachment();
             attachment.setEntityType(entityType);
             attachment.setEntityId(entityId);

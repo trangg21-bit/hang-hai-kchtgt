@@ -87,6 +87,27 @@ export function resolveOrgFullPath(orgUnits: readonly OrgUnitTreeOption[], orgUn
 }
 
 /**
+ * Lấy tập hợp tất cả ID của đơn vị gốc và toàn bộ đơn vị cấp con/cháu bên dưới.
+ * Dùng cho logic lọc Cascading (chọn Cục -> hiển thị KCHT thuộc Cục và toàn bộ Cảng vụ con).
+ */
+export function resolveOrgSubtreeIds(orgUnits: readonly OrgUnitTreeOption[], rootOrgUnitId?: string | null): Set<string> {
+  const result = new Set<string>();
+  if (!rootOrgUnitId) return result;
+  result.add(rootOrgUnitId);
+  const queue = [rootOrgUnitId];
+  while (queue.length > 0) {
+    const parentId = queue.shift()!;
+    for (const org of orgUnits) {
+      if (org.parentId === parentId && !result.has(org.id)) {
+        result.add(org.id);
+        queue.push(org.id);
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Dựng cây từ danh sách phẳng. Có thể tái sử dụng cho Tree, Cascader hoặc
  * các component khác cần cùng một cấu trúc đơn vị.
  */

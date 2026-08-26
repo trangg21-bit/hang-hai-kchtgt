@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
@@ -9,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.FieldNameConstants;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,9 +20,12 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@FieldNameConstants
 public class VtsSystemCreateRequest {
     @NotBlank(message = "Tên hệ thống không được để trống")
     private String systemName;
+
+    private ApprovalStatus approvalStatus;
 
     @NotNull(message = "Tình trạng không được để trống")
     private ConditionStatus conditionStatus;

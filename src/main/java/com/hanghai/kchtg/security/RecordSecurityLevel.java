@@ -2,6 +2,8 @@ package com.hanghai.kchtg.security;
 
 import com.hanghai.kchtg.user.entity.User;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -75,6 +77,20 @@ public enum RecordSecurityLevel {
         }
 
         return NORMAL;
+    }
+
+    /**
+     * Các mức bảo mật mà tài khoản hiện tại được phép nhìn thấy.
+     *
+     * Dùng cho mệnh đề {@code IN (:levels)} của truy vấn: JPQL không so sánh được
+     * enum bằng {@code <=}, nên trần quyền được quy đổi sẵn thành danh sách mức.
+     */
+    public static List<RecordSecurityLevel> allowedLevels(Set<String> permissions, String module,
+                                                          boolean elevatedAdministrator) {
+        RecordSecurityLevel max = maxAllowed(permissions, module, elevatedAdministrator);
+        return Arrays.stream(values())
+                .filter(level -> level.ordinal() <= max.ordinal())
+                .toList();
     }
 
     public static boolean isAllowed(RecordSecurityLevel recordLevel, User user, boolean elevatedAdministrator) {

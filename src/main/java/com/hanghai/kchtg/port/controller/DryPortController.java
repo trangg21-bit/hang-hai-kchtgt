@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.port.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.dto.dryport.CreateDryPortRequest;
 import com.hanghai.kchtg.port.dto.dryport.DryPortResponse;
 import com.hanghai.kchtg.port.dto.dryport.UpdateDryPortRequest;
@@ -132,14 +133,38 @@ public class DryPortController {
 
     // ── Approval ───────────────────────────────────────────────
 
+    // ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ────────────────────────
+
+    @PostMapping("/{id}/approve/c1")
+    @PreAuthorize("@auth.check(authentication, 'dryport:approvec1')")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        dryPortApprovalService.approveC1(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    @PreAuthorize("@auth.check(authentication, 'dryport:approvec2')")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        dryPortApprovalService.approveC2(id, reason, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
+    /**
+     * Giữ URL cũ để giao diện chưa chuyển đổi không hỏng, nhưng nay duyệt đúng
+     * vòng đang mở thay vì duyệt một phát — không còn đường vòng bỏ qua quy trình.
+     */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'dryport:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'dryport:approvec1', 'dryport:approvec2', 'dryport:approve')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             Authentication authentication) {
-        String userId = authentication.getName();
+        UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Approving DryPort: id={}, userId={}", id, userId);
-        dryPortApprovalService.approve(id, userId, null);
+        dryPortApprovalService.approveCurrentStage(id, null, userId);
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt cảng cạn thành công", null));
     }
 
@@ -149,9 +174,9 @@ public class DryPortController {
             @PathVariable UUID id,
             @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,
             Authentication authentication) {
-        String userId = authentication.getName();
+        UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Rejecting DryPort: id={}, userId={}", id, userId);
-        dryPortApprovalService.approve(id, userId, reason);
+        dryPortApprovalService.reject(id, reason, userId);
         return ResponseEntity.ok(ApiResponse.success("Từ chối cảng cạn thành công", null));
     }
 

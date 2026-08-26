@@ -158,13 +158,13 @@ class VtsSystemRepositoryTest {
                 false, List.of(), null, null, null);
 
         assertNotNull(counts);
-        long proposedCount = 0;
+        long draftCount = 0;
         for (Object[] row : counts) {
-            if (row[0] instanceof ApprovalStatus && ((ApprovalStatus) row[0]) == ApprovalStatus.PROPOSED) {
-                proposedCount = ((Number) row[1]).longValue();
+            if (row[0] instanceof ApprovalStatus && ((ApprovalStatus) row[0]) == ApprovalStatus.DRAFT) {
+                draftCount = ((Number) row[1]).longValue();
             }
         }
-        assertEquals(2, proposedCount);
+        assertEquals(2, draftCount);
     }
 
     @Test
@@ -193,18 +193,69 @@ class VtsSystemRepositoryTest {
     }
 
     @Test
-    void testDeleteSoft() {
-        VtsSystem saved = repository.save(createVtsSystem("VTS-SOFT"));
+    void testSearchList_WithPendingApproval_MatchesPendingApproval() {
+        VtsSystem pending1 = createVtsSystem("VTS-P1");
+        pending1.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        repository.save(pending1);
+
+        VtsSystem pending2 = createVtsSystem("VTS-P2");
+        pending2.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        repository.save(pending2);
+
+        VtsSystem approved = createVtsSystem("VTS-P3");
+        approved.setApprovalStatus(ApprovalStatus.APPROVED);
+        repository.save(approved);
+
         entityManager.flush();
 
-        saved.softDelete(UUID.randomUUID());
-        repository.save(saved);
+        var result = repository.searchList(false, List.of(), null, null, null,
+                ApprovalStatus.PENDING_APPROVAL, null, null, org.springframework.data.domain.PageRequest.of(0, 20));
+
+        assertEquals(2, result.getTotalElements());
+    }
+
+    @Test
+    void testSearchList_WithApproved_MatchesApproved() {
+        VtsSystem app1 = createVtsSystem("VTS-A1");
+        app1.setApprovalStatus(ApprovalStatus.APPROVED);
+        repository.save(app1);
+
+        VtsSystem app2 = createVtsSystem("VTS-A2");
+        app2.setApprovalStatus(ApprovalStatus.APPROVED);
+        repository.save(app2);
+
+        VtsSystem pending = createVtsSystem("VTS-A3");
+        pending.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        repository.save(pending);
+
         entityManager.flush();
 
-        assertTrue(saved.getDeletedAt() != null);
+        var result = repository.searchList(false, List.of(), null, null, null,
+                ApprovalStatus.APPROVED, null, null, org.springframework.data.domain.PageRequest.of(0, 20));
 
-        // Should not appear in status search
-        assertEquals(0, repository.findByApprovalStatusAndIsDeletedFalse(ApprovalStatus.PROPOSED).size());
+        assertEquals(2, result.getTotalElements());
+    }
+
+    @Test
+    void testSearchList_WithRejected_MatchesRejectedLevel1AndLevel2() {
+        VtsSystem r1 = createVtsSystem("VTS-R1");
+        r1.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
+        repository.save(r1);
+
+        VtsSystem r2 = createVtsSystem("VTS-R2");
+        r2.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL2);
+        repository.save(r2);
+
+        VtsSystem pending = createVtsSystem("VTS-R3");
+        pending.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        repository.save(pending);
+
+        entityManager.flush();
+
+        var result = repository.searchList(false, List.of(), null, null, null,
+                ApprovalStatus.REJECTED_LEVEL1, null, null, org.springframework.data.domain.PageRequest.of(0, 20));
+
+        assertEquals(2, result.getTotalElements());
     }
 
     // Helper methods
@@ -222,7 +273,7 @@ class VtsSystemRepositoryTest {
         vts.setOwningOrgId(testOwningOrgId);
         vts.setOperatingOrgId(testOperatingOrgId);
         vts.setProvinceId(1);
-        vts.setApprovalStatus(ApprovalStatus.PROPOSED);
+        vts.setApprovalStatus(ApprovalStatus.DRAFT);
         return vts;
     }
 }

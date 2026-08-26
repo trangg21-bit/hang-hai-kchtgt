@@ -27,7 +27,6 @@ import type {
   NavigationChannelResponse,
   CreateNavigationChannelRequest,
   UpdateNavigationChannelRequest,
-  PheDuyetRequest,
   ApprovalStatus,
 } from '../../types/navigationChannel';
 import { useAuthStore } from '../../store/authStore';
@@ -68,7 +67,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [chiTietList, setChiTietList] = useState<any[]>([]);
+  const [channelRouteList, setChannelRouteList] = useState<any[]>([]);
 
   useEffect(() => {
     if (isDetailMode) return;
@@ -113,12 +112,14 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
             note: data.note,
             orgUnitId: data.orgUnitId,
             spatialData: {
-              loaiHinhHoc: data.loaiHinhHoc,
-              toaDo: data.toaDo,
+              geometryType: data.geometryType,
+              coordinates: data.coordinates,
+              symbolId: data.symbolId,
             }
           });
-          if (data.chiTietTuyenLuongList) {
-            setChiTietList(data.chiTietTuyenLuongList);
+          const routes = data.channelRouteList || (data as any).chiTietTuyenLuongList;
+          if (routes) {
+            setChannelRouteList(routes);
           }
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -130,7 +131,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     } else {
       form.resetFields();
       setRecord(null);
-      setChiTietList([]);
+      setChannelRouteList([]);
     }
   }, [id, isEditMode, form, open]);
 
@@ -153,9 +154,9 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     }
   }, [id, isDetailMode, open]);
 
-  // Chi tiết tuyến luồng handlers
-  const updateChiTietField = (index: number, field: string, value: any) => {
-    setChiTietList((prev) => {
+  // Tuyến luồng chi tiết handlers
+  const updateChannelRouteField = (index: number, field: string, value: any) => {
+    setChannelRouteList((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       return updated;
@@ -163,7 +164,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
   };
 
   const addRow = () => {
-    setChiTietList((prev) => [
+    setChannelRouteList((prev) => [
       ...prev,
       {
         name: '',
@@ -181,10 +182,10 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
   };
 
   const deleteRow = (index: number) => {
-    setChiTietList((prev) => prev.filter((_, i) => i !== index));
+    setChannelRouteList((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const chiTietColumns = [
+  const channelRouteColumns = [
     {
       title: 'STT',
       width: 50,
@@ -197,7 +198,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'name', e.target.value)}
+          onChange={(e) => updateChannelRouteField(index, 'name', e.target.value)}
           placeholder="Nhập tên"
           size="small"
         />
@@ -210,7 +211,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'classification', e.target.value)}
+          onChange={(e) => updateChannelRouteField(index, 'classification', e.target.value)}
           placeholder="Nhập phân loại"
           size="small"
         />
@@ -223,7 +224,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (value: number, _: any, index: number) => (
         <Select
           value={value}
-          onChange={(v) => updateChiTietField(index, 'channelRouteType', v)}
+          onChange={(v) => updateChannelRouteField(index, 'channelRouteType', v)}
           placeholder="Chọn loại"
           size="small"
           style={{ width: '100%' }}
@@ -240,7 +241,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'length', v)}
+          onChange={(v) => updateChannelRouteField(index, 'length', v)}
           placeholder="Chiều dài"
           size="small"
           style={{ width: '100%' }}
@@ -255,7 +256,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'maxWidth', v)}
+          onChange={(v) => updateChannelRouteField(index, 'maxWidth', v)}
           placeholder="Rộng LN"
           size="small"
           style={{ width: '100%' }}
@@ -270,7 +271,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'minWidth', v)}
+          onChange={(v) => updateChannelRouteField(index, 'minWidth', v)}
           placeholder="Rộng NN"
           size="small"
           style={{ width: '100%' }}
@@ -285,7 +286,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'depth', v)}
+          onChange={(v) => updateChannelRouteField(index, 'depth', v)}
           placeholder="Độ sâu TK"
           size="small"
           style={{ width: '100%' }}
@@ -300,7 +301,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'currentDepth', e.target.value)}
+          onChange={(e) => updateChannelRouteField(index, 'currentDepth', e.target.value)}
           placeholder="Độ sâu HT"
           size="small"
         />
@@ -313,7 +314,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'designSlope', e.target.value)}
+          onChange={(e) => updateChannelRouteField(index, 'designSlope', e.target.value)}
           placeholder="Mái dốc TK"
           size="small"
         />
@@ -326,7 +327,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'dredgingVolume', v)}
+          onChange={(v) => updateChannelRouteField(index, 'dredgingVolume', v)}
           placeholder="KL nạo vét"
           size="small"
           style={{ width: '100%' }}
@@ -367,9 +368,10 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         stationArea: values.stationArea,
         note: values.note,
         orgUnitId: values.orgUnitId,
-        loaiHinhHoc: spatialData?.loaiHinhHoc,
-        toaDo: spatialData?.toaDo,
-        chiTietTuyenLuongList: chiTietList,
+        geometryType: spatialData?.geometryType,
+        coordinates: spatialData?.coordinates,
+        symbolId: spatialData?.symbolId,
+        channelRouteList: channelRouteList,
       };
 
       if (isCreateMode) {
@@ -412,46 +414,38 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     setIsSubmitting(true);
     try {
       if (action === 'approveC1') {
-        const pheDuyetData: PheDuyetRequest = {
-          nguoiPheDuyet: currentUser?.username || 'unknown',
-          trangThai: 'APPROVED',
-        };
-        const res = await navigationChannelApproval.approveC1(id, pheDuyetData);
+        const note = (payload?.note || payload?.lyDo || payload?.reason) as string | undefined;
+        const res = await navigationChannelApproval.approveLevel1(id, note);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        toast.success('Phê duyệt C1 thành công');
+        toast.success('Phê duyệt cấp Cảng vụ thành công');
         setRecord({ ...record, approvalStatus: 'PENDING_APPROVAL' });
+        if (onSuccess) onSuccess();
       } else if (action === 'approveC2') {
-        const pheDuyetData: PheDuyetRequest = {
-          nguoiPheDuyet: currentUser?.username || 'unknown',
-          trangThai: 'APPROVED',
-        };
-        const res = await navigationChannelApproval.approveC2(id, pheDuyetData);
+        const note = (payload?.note || payload?.lyDo || payload?.reason) as string | undefined;
+        const res = await navigationChannelApproval.approveLevel2(id, note);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        toast.success('Phê duyệt C2 thành công');
+        toast.success('Phê duyệt cấp Cục thành công');
         setRecord({ ...record, approvalStatus: 'APPROVED' });
+        if (onSuccess) onSuccess();
       } else if (action === 'reject') {
-        const pheDuyetData: PheDuyetRequest = {
-          nguoiPheDuyet: currentUser?.username || 'unknown',
-          trangThai: 'REJECTED',
-          lyDo: payload?.lyDo as string,
-        };
-
+        const rejectionReason = (payload?.reason || payload?.lyDo || '') as string;
         let updatedRecord;
-        if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED') {
-          updatedRecord = await navigationChannelApproval.approveC1(id, pheDuyetData);
-        } else if (record.approvalStatus === 'PENDING_APPROVAL') {
-          updatedRecord = await navigationChannelApproval.approveC2(id, pheDuyetData);
+        if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED' || record.approvalStatus === 'DRAFT') {
+          updatedRecord = await navigationChannelApproval.rejectLevel1(id, rejectionReason);
+        } else {
+          updatedRecord = await navigationChannelApproval.rejectLevel2(id, rejectionReason);
         }
         if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
         toast.success('Từ chối thành công');
-        setRecord({ ...record, approvalStatus: 'REJECTED', rejectionReason: payload?.lyDo as string });
+        setRecord({ ...record, approvalStatus: 'REJECTED', rejectionReason });
+        if (onSuccess) onSuccess();
       } else if (action === 'delete') {
         await navigationChannelCRUD.delete(id);
         toast.success('Xóa thành công');
@@ -538,10 +532,10 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         </Card>
 
         {/* Chi tiết tuyến luồng — read-only table for detail view */}
-        {isDetailMode && chiTietList.length > 0 && (
+        {isDetailMode && channelRouteList.length > 0 && (
           <Card size="small" title="Chi tiết tuyến luồng" style={{ marginBottom: 16 }} bordered={!isModalMode}>
             <Table
-              dataSource={chiTietList}
+              dataSource={channelRouteList}
               pagination={false}
               size="small"
               rowKey={(_, index) => index!.toString()}
@@ -627,7 +621,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
           onCancel={onCancel}
           footer={null}
           width={900}
-          destroyOnClose
+          destroyOnHidden
           mask={{ closable: false }}
         >
           {detailContent}
@@ -650,7 +644,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         open={open}
         onCancel={onCancel}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         mask={{ closable: false }}
         width={1000}
       >
@@ -834,8 +828,8 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
                 Thêm tuyến luồng
               </Button>
               <Table
-                dataSource={chiTietList}
-                columns={chiTietColumns}
+                dataSource={channelRouteList}
+                columns={channelRouteColumns}
                 pagination={false}
                 size="small"
                 rowKey={(_, index) => index!.toString()}
@@ -1049,8 +1043,8 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
                 Thêm tuyến luồng
               </Button>
               <Table
-                dataSource={chiTietList}
-                columns={chiTietColumns}
+                dataSource={channelRouteList}
+                columns={channelRouteColumns}
                 pagination={false}
                 size="small"
                 rowKey={(_, index) => index!.toString()}

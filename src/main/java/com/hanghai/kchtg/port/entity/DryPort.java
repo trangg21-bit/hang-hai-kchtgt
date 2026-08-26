@@ -2,6 +2,7 @@ package com.hanghai.kchtg.port.entity;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import jakarta.persistence.*;
@@ -35,7 +36,7 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
-public class DryPort extends BaseEntity {
+public class DryPort extends BaseEntity implements ApprovableEntity {
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
@@ -67,6 +68,25 @@ public class DryPort extends BaseEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
+
+    // -- Phe duyet 2 cap (approval-2-level-spec 3.2) --
+    // Vong 1 = Cang vu/Chi cuc, vong 2 = Cuc. Cac truong nay bat buoc de chong
+    // tu duyet (BR-015) va truy vet ai duyet luc nao (BR-007).
+
+    @Column(name = "approver_level1")
+    private UUID approverLevel1;
+
+    @Column(name = "approved_date_level1")
+    private LocalDateTime approvedDateLevel1;
+
+    @Column(name = "approver_level2")
+    private UUID approverLevel2;
+
+    @Column(name = "approved_date_level2")
+    private LocalDateTime approvedDateLevel2;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 
     @Column(name = "map_symbol_id")
     private UUID mapSymbolId;

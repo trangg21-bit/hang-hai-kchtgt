@@ -1,5 +1,10 @@
 package com.hanghai.kchtg.port.service.shared;
 
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
@@ -15,13 +20,10 @@ import java.util.UUID;
  * Approval workflow state machine.
  * <p>
  * Transitions:
- *   - APPROVE(PENDING) → APPROVED + insert PheDuyetLog
- *   - REJECT(PENDING) → REJECTED + insert PheDuyetLog (reason required)
+ *   - APPROVE(PENDING) → APPROVED + insert InfrastructureHistory / PheDuyetLog
+ *   - REJECT(PENDING) → REJECTED + insert InfrastructureHistory / PheDuyetLog (reason required)
  *   - Any transition from non-PENDING → throws IllegalStateException (422)
  * </p>
- *
- * This is the single source of truth for approval state-machine logic.
- * Each entity's approval service delegates to this class.
  */
 @Slf4j
 @Service
@@ -29,6 +31,7 @@ import java.util.UUID;
 public class ApprovalWorkflowService {
 
     private final ApprovalLogRepository approvalLogRepository;
+    private final InfrastructureHistoryRepository historyRepository;
 
     /**
      * Transition entity to approved.
@@ -52,18 +55,44 @@ public class ApprovalWorkflowService {
 
         log.info("APPROVE: {} [{}] approved by {}", entityType, entityId, decidedBy);
 
-        // Insert PheDuyetLog record
-        ApprovalLog approvalLog = ApprovalLog.builder()
-                .id(UUID.randomUUID())
-                .entityType(entityType)
-                .entityId(entityId)
-                .decision("APPROVED")
-                .reason(null)
-                .decidedBy(decidedBy)
-                .decidedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .build();
-        approvalLogRepository.save(approvalLog);
+        UUID userUuid = null;
+        try {
+            if (decidedBy != null) userUuid = UUID.fromString(decidedBy);
+        } catch (Exception ignored) {}
+
+        UUID refUuid = null;
+        try {
+            if (entityId != null) refUuid = UUID.fromString(entityId);
+        } catch (Exception ignored) {}
+
+        if (refUuid != null && historyRepository != null) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(refUuid)
+                    .refType(ChangeHistoryService.resolveInfrastructureType(entityType))
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.APPROVED)
+                    .approvedBy(userUuid)
+                    .approvedDate(LocalDateTime.now())
+                    .reason("Phê duyệt hồ sơ")
+                    .changedField("Trạng thái phê duyệt")
+                    .previousValue(currentStatus)
+                    .newValue(ApprovalStatus.APPROVED.getLabel())
+                    .build());
+        }
+
+        if (approvalLogRepository != null) {
+            ApprovalLog approvalLog = ApprovalLog.builder()
+                    .id(UUID.randomUUID())
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .decision("APPROVED")
+                    .reason(null)
+                    .decidedBy(decidedBy)
+                    .decidedAt(LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            approvalLogRepository.save(approvalLog);
+        }
 
         return ApprovalStatus.APPROVED;
     }
@@ -96,18 +125,44 @@ public class ApprovalWorkflowService {
 
         log.info("REJECT: {} [{}] rejected by {} — reason: {}", entityType, entityId, decidedBy, reason);
 
-        // Insert PheDuyetLog record
-        ApprovalLog rejectionLog = ApprovalLog.builder()
-                .id(UUID.randomUUID())
-                .entityType(entityType)
-                .entityId(entityId)
-                .decision("REJECTED")
-                .reason(reason)
-                .decidedBy(decidedBy)
-                .decidedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .build();
-        approvalLogRepository.save(rejectionLog);
+        UUID userUuid = null;
+        try {
+            if (decidedBy != null) userUuid = UUID.fromString(decidedBy);
+        } catch (Exception ignored) {}
+
+        UUID refUuid = null;
+        try {
+            if (entityId != null) refUuid = UUID.fromString(entityId);
+        } catch (Exception ignored) {}
+
+        if (refUuid != null && historyRepository != null) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(refUuid)
+                    .refType(ChangeHistoryService.resolveInfrastructureType(entityType))
+                    .approvalLevel(ApprovalLevel.LEVEL_1)
+                    .status(InfrastructureHistoryStatus.REJECTED)
+                    .approvedBy(userUuid)
+                    .approvedDate(LocalDateTime.now())
+                    .reason(reason)
+                    .changedField("Trạng thái phê duyệt")
+                    .previousValue(currentStatus)
+                    .newValue(ApprovalStatus.REJECTED.getLabel())
+                    .build());
+        }
+
+        if (approvalLogRepository != null) {
+            ApprovalLog rejectionLog = ApprovalLog.builder()
+                    .id(UUID.randomUUID())
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .decision("REJECTED")
+                    .reason(reason)
+                    .decidedBy(decidedBy)
+                    .decidedAt(LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            approvalLogRepository.save(rejectionLog);
+        }
 
         return ApprovalStatus.REJECTED;
     }

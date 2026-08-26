@@ -41,15 +41,17 @@ class PermissionSeederTest {
 
     @Test
     void run_seedsAllPermissionsAndAllPassValidation() {
-        when(permissionRepository.findByCode(anyString())).thenReturn(Optional.empty());
+        when(permissionRepository.findAll()).thenReturn(List.of());
 
         permissionSeeder.run();
 
-        ArgumentCaptor<Permission> captor = ArgumentCaptor.forClass(Permission.class);
-        verify(permissionRepository, atLeast(100)).save(captor.capture());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Permission>> captor = ArgumentCaptor.forClass(List.class);
+        verify(permissionRepository).saveAll(captor.capture());
 
-        List<Permission> savedPermissions = captor.getAllValues();
+        List<Permission> savedPermissions = captor.getValue();
         assertThat(savedPermissions).isNotEmpty();
+        assertThat(savedPermissions.size()).isGreaterThanOrEqualTo(100);
 
         for (Permission p : savedPermissions) {
             var violations = validator.validate(p);

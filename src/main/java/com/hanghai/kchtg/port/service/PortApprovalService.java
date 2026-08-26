@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.Port;
@@ -41,7 +43,73 @@ public class PortApprovalService {
     private final ApprovalLogRepository approvalLogRepository;
     private final ChangeHistoryService changeHistoryService;
     private final PortCacheService portCacheService;
+    private final InfrastructureApprovalService infrastructureApprovalService;
 
+    // ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ────────────────────────
+    // Bốn thao tác dưới đây uỷ quyền cho InfrastructureApprovalService — nơi cài
+    // đặt đúng 7 trạng thái, phân cấp theo đơn vị gửi (BR-003/014), chống tự
+    // duyệt (BR-015) và bắt buộc lý do từ chối (BR-016).
+
+    /** T02/T03: gửi hồ sơ đi duyệt. Người gửi cấp Cục vào thẳng "Chờ Cục duyệt". */
+    @Transactional
+    public void submit(UUID id, UUID userId) {
+        Port entity = loadPort(id);
+        infrastructureApprovalService.submit(entity, InfrastructureType.SEAPORT, userId);
+        portRepository.save(entity);
+        portCacheService.evictAfterCommit();
+    }
+
+    /** T06: Cảng vụ / Chi cục duyệt vòng 1. */
+    @Transactional
+    public void approveC1(UUID id, String reason, UUID userId) {
+        Port entity = loadPort(id);
+        infrastructureApprovalService.approveC1(entity, InfrastructureType.SEAPORT,
+                ApprovalStatus.APPROVED.name(), reason, userId);
+        portRepository.save(entity);
+        portCacheService.evictAfterCommit();
+        notificationService.sendApprovalNotification("Port", id.toString(), String.valueOf(userId), null);
+    }
+
+    /** T08: Cục duyệt vòng 2 — hồ sơ trở thành "Đã duyệt". */
+    @Transactional
+    public void approveC2(UUID id, String reason, UUID userId) {
+        Port entity = loadPort(id);
+        infrastructureApprovalService.approveC2(entity, InfrastructureType.SEAPORT,
+                ApprovalStatus.APPROVED.name(), reason, userId);
+        portRepository.save(entity);
+        portCacheService.evictAfterCommit();
+        notificationService.sendApprovalNotification("Port", id.toString(), String.valueOf(userId), null);
+    }
+
+    /**
+     * T07/T09: từ chối. Vòng bị từ chối suy ra từ trạng thái hiện tại nên giao
+     * diện không phải tự chọn cấp — tránh lệch giữa nút bấm và dữ liệu.
+     */
+    @Transactional
+    public void reject(UUID id, String reason, UUID userId) {
+        Port entity = loadPort(id);
+        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
+            infrastructureApprovalService.approveC2(entity, InfrastructureType.SEAPORT,
+                    ApprovalStatus.REJECTED.name(), reason, userId);
+        } else {
+            infrastructureApprovalService.approveC1(entity, InfrastructureType.SEAPORT,
+                    ApprovalStatus.REJECTED.name(), reason, userId);
+        }
+        portRepository.save(entity);
+        portCacheService.evictAfterCommit();
+        changeHistoryService.insertChangeRecord("Port", id, "Lý do từ chối", null, reason, String.valueOf(userId));
+    }
+
+    private Port loadPort(UUID id) {
+        return portRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
+    }
+
+    /**
+     * @deprecated Duyệt một lần của cơ chế cũ. Giữ lại cho các luồng chưa chuyển
+     *             đổi; luồng cảng biển đã dùng {@link #approveC1}/{@link #approveC2}.
+     */
+    @Deprecated
     @Transactional
     public void approve(UUID id, String userId, String reason) {
         Port entity = portRepository.findById(id)

@@ -457,14 +457,14 @@ public class PortService {
         if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
         if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
         entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
-        // Khi chỉnh sửa: nếu đang "Được phê duyệt" → quay về "Chờ phê duyệt" để duyệt lại;
-        // "Nháp" giữ nguyên Nháp, các trạng thái còn lại giữ nguyên.
-        if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        ApprovalStatus previousApprovalStatus = preImage.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
         } else if (request.getApprovalStatus() != null) {
             entity.setApprovalStatus(request.getApprovalStatus());
-        } else {
-            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
         // Update extended fields
@@ -539,8 +539,10 @@ public class PortService {
             saved = portRepository.save(saved);
         }
 
-        // Record field-level change history
-        changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", preImage, saved);
+        // Record field-level change history only if the record was already approved
+        if (wasApproved) {
+            changeTrackingService.recordChanges("Port", saved.getId().toString(), "system", preImage, saved);
+        }
 
         log.info("Updated Port [{}] code={}", saved.getId(), saved.getPortCode());
         portCacheService.evictAfterCommit();

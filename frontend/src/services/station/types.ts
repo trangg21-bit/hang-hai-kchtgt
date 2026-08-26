@@ -40,38 +40,117 @@ export interface CoastalStationVTSResponse {
   updatedAt: string;
 }
 
+// --- COASTAL STATION INMARSAT (M-004: F-098..F-103) ---
+
 export interface CoastalStationInmarsatRequest {
-  deviceCode: string;
-  stationName: string;
-  latitude?: number;
-  longitude?: number;
-  modemType?: string;
-  frequency?: string;
-  coverageZone?: string;
-  sarCode?: string;
+  orgUnitId?: string;
+  operatingOrgId?: string;
+  code?: string;
+  deviceCode?: string;
+  name?: string;
+  stationName?: string;
+  provinceId?: number;
   locationAddress?: string;
+  locationDetail?: string;
+  conditionStatus?: string;
+  coverageZone?: string;
+  coverageArea?: string;
+  services?: string;
+  frequency?: string;
+  modemType?: string;
+  sarCode?: string;
+  satelliteSystem?: string;
+  notes?: string;
+  description?: string;
   contactPerson?: string;
   contactPhone?: string;
-  status: string;
+  spatialId?: string;
+  objectType?: string;
+  symbol?: string;
+  coordinateSystem?: string;
+  displayRule?: string;
+  latitude?: number;
+  longitude?: number;
+  securityLevel?: number;
 }
+
+export interface CoastalStationInmarsatUpdateRequest extends CoastalStationInmarsatRequest {}
 
 export interface CoastalStationInmarsatResponse {
   id: string;
-  deviceCode: string;
-  stationName: string;
-  latitude?: number;
-  longitude?: number;
-  modemType?: string;
-  frequency?: string;
-  coverageZone?: string;
-  sarCode?: string;
+  securityLevel?: number;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  operatingOrgId?: string;
+  operatingOrgName?: string;
+  code?: string;
+  deviceCode?: string;
+  name?: string;
+  stationName?: string;
+  provinceId?: number;
+  provinceName?: string;
   locationAddress?: string;
+  locationDetail?: string;
+  conditionStatus?: string;
+  status?: string;
+  isActive?: boolean;
+  coverageZone?: string;
+  coverageArea?: string;
+  services?: string;
+  frequency?: string;
+  modemType?: string;
+  sarCode?: string;
+  satelliteSystem?: string;
+  notes?: string;
+  description?: string;
   contactPerson?: string;
   contactPhone?: string;
-  status: string;
-  approvalStatus: string;
+  spatialId?: string;
+  objectType?: string;
+  symbol?: string;
+  coordinateSystem?: string;
+  displayRule?: string;
+  latitude?: number;
+  longitude?: number;
+  approvalStatus?: string;
+  approvalLevel?: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  submittedByName?: string;
+  approverLevel1?: string;
+  approverNameLevel1?: string;
+  approvedDateLevel1?: string;
+  approverLevel2?: string;
+  approverNameLevel2?: string;
+  approvedDateLevel2?: string;
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedDate?: string;
+  rejectionReason?: string;
   createdBy?: string;
   createdByName?: string;
   createdAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
   updatedAt?: string;
+  deletedBy?: string;
+  deletedAt?: string;
+}
+
+export interface CoastalStationInmarsatOptionResponse {
+  id: string;
+  code: string;
+  name: string;
+  orgUnitId?: string;
+  conditionStatus?: string;
+}
+
+export interface CoastalStationInmarsatHistoryResponse {
+  id: string;
+  deviceCode: string;
+  actionType: string;
+  previousValue?: string;
+  newValue?: string;
+  changedBy?: string;
+  changedAt?: string;
 }

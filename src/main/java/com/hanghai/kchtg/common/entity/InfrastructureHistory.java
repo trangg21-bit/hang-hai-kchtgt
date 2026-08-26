@@ -1,10 +1,11 @@
 package com.hanghai.kchtg.common.entity;
 
-import com.hanghai.kchtg.common.enums.ApprovalHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.FieldNameConstants;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -12,9 +13,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "approval_history", indexes = {
-        @Index(name = "idx_approval_history_ref", columnList = "ref_type, ref_id, approved_date DESC"),
-        @Index(name = "idx_approval_history_ref_id_date", columnList = "ref_id, approved_date DESC")
+@Table(name = "infrastructure_history", indexes = {
+        @Index(name = "idx_infra_history_ref", columnList = "ref_type, ref_id, approved_date DESC"),
+        @Index(name = "idx_infra_history_ref_id_date", columnList = "ref_id, approved_date DESC")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -22,7 +23,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ApprovalHistory {
+@FieldNameConstants
+public class InfrastructureHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -41,7 +43,7 @@ public class ApprovalHistory {
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "status", nullable = false)
-    private ApprovalHistoryStatus status;
+    private InfrastructureHistoryStatus status;
 
     @Column(name = "approved_by")
     private UUID approvedBy;
@@ -62,16 +64,4 @@ public class ApprovalHistory {
 
     @Column(name = "new_value", columnDefinition = "TEXT")
     private String newValue;
-
-    /**
-     * The auditing listener normally fills this field. Keep a local fallback so
-     * history entries created through builders never lose their event time when
-     * auditing metadata is unavailable in a test or alternate persistence path.
-     */
-    @PrePersist
-    protected void initializeApprovedDate() {
-        if (approvedDate == null) {
-            approvedDate = LocalDateTime.now();
-        }
-    }
 }
