@@ -1,0 +1,79 @@
+{
+  "triage_id": "TRI-1787714056785-c682",
+  "created_at": 1787714056785,
+  "request_summary": "User chọn tắt lịch sử cho module Khu neo đậu thay vì tạo lại bảng: comment các lệnh ghi lịch sử (changeHistoryService.recordChanges/insertChangeRecord trong AnchorageService create/update/softDelete) và ghi/đọc ApprovalLog+ChangeLog trong AnchorageApprovalService (approve/reject/getHistory/getAllHistory) — vì bảng change_logs/approval_logs đã bị migration V20260825162500 drop nên code đang ghi vào bảng không tồn tại gây lỗi tạo mới.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageApprovalService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Thêm mới Khu neo đậu — POST /api/v1/anchorage (AnchorageForm → AnchorageService.create)",
+  "blast_radius": 2,
+  "done_oracle": "POST /api/v1/anchorage trả 200, tạo mới khu neo đậu thành công, KHÔNG còn lỗi 'relation change_logs does not exist'; update/softDelete/approve/reject/history không crash (lịch sử trả rỗng); trạng thái lưu vẫn đúng theo nút bấm (DRAFT/APPROVED_LEVEL1/APPROVED).",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" clean compile -q",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 131,
+      "quote": "changeHistoryService.recordChanges(\"Anchorage\", saved.getId().toString(), \"system\", new Anchorage(), saved);",
+      "source_hash": "20e1917137e62a562a2626acee8f06009cc201b812287361d94197f8fb2a8dad",
+      "quote_hash": "5f427949328aaae0cc92be4f830d4a697490ccaa40686ba52d6102094e7d833e",
+      "note": "create ghi change_logs — bảng đã bị drop → crash"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageService.java",
+      "line": 288,
+      "quote": "changeHistoryService.insertChangeRecord(\"Anchorage\", entity.getId(), \"Trạng thái\", null, \"Đã xóa\", \"system\");",
+      "source_hash": "20e1917137e62a562a2626acee8f06009cc201b812287361d94197f8fb2a8dad",
+      "quote_hash": "00e886347ae8dab5659173e693935b07a9bbf98de4ce49cb2c48d18789094398",
+      "note": "softDelete ghi change_logs"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageApprovalService.java",
+      "line": 76,
+      "quote": "approvalLogRepository.save(approvalLogRecord);",
+      "source_hash": "35682a59f21ff726f9b80f7c643869e36aa551ae31414c461511bf9049afb3f4",
+      "quote_hash": "a1b01839cd5661ac3dfb0949a18a0b0771c48ba9d1bda89d3cd150703a0b3a49",
+      "note": "approve ghi approval_logs — cũng bị drop cùng migration"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/service/AnchorageApprovalService.java",
+      "line": 113,
+      "quote": "List<ChangeLog> changeHistory = changeLogRepository.findByEntityTypeAndEntityId(entityType, entityId);",
+      "source_hash": "35682a59f21ff726f9b80f7c643869e36aa551ae31414c461511bf9049afb3f4",
+      "quote_hash": "1280b28ab713b1aa186050d5846762f9177f098f28f93d2bc999f91266222c11",
+      "note": "getHistory đọc change_logs — crash nếu mở tab lịch sử"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787714056962
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

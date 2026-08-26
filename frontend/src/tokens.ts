@@ -398,6 +398,8 @@ export const drawerProps = {
   width: '50%',
   placement: 'right' as const,
   closable: false,
+  // Chống Drawer con đẩy Drawer cha (antd v6 mặc định push {distance:180} khi lồng nhau)
+  push: false,
   styles: {
     header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
     body: { padding: '0 24px 12px 24px' },

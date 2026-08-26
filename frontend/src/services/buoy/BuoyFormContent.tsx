@@ -263,8 +263,8 @@ export default function BuoyFormContent({
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn Địa điểm (Tỉnh/Thành phố)" options={VIETNAM_PROVINCE_OPTIONS} showSearch allowClear style={selectStyle} />
+              <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Chọn Địa điểm (Tỉnh/Thành Phố)" options={VIETNAM_PROVINCE_OPTIONS} showSearch allowClear style={selectStyle} />
               </Form.Item>
             </Col>
           </Row>
@@ -445,14 +445,12 @@ export default function BuoyFormContent({
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}
-                rules={geometryType ? [{ required: true, message: 'Hệ quy chiếu là bắt buộc khi chọn loại đối tượng' }] : []}>
+              <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn Hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}
-                rules={geometryType ? [{ required: true, message: 'Quy tắc hiển thị là bắt buộc khi chọn loại đối tượng' }] : []}>
+              <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
                 <Input placeholder="Nhập Quy tắc hiển thị" maxLength={255} disabled style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }} />
               </Form.Item>
             </Col>
@@ -461,7 +459,6 @@ export default function BuoyFormContent({
           <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>
               <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ GPS</span>
-              {geometryType && <span style={{ color: colors.error, marginLeft: 4, fontSize: fontSizeMd }}>*</span>}
             </span>
             {gpsCoordList.length > 0 && (
               <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!geometryType} style={{ borderRadius: radiusPill }}>

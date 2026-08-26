@@ -1,0 +1,63 @@
+{
+  "triage_id": "TRI-1787723456492-3b59",
+  "created_at": 1787723456492,
+  "request_summary": "User đổi yêu cầu: muốn thêm điểm neo khi CHƯA chọn Loại đối tượng. Bỏ: (1) disabled={!waterAreaGeometryType} trên 2 nút Thêm điểm neo + bỏ Tooltip/span wrapper; (2) guard trong addAnchorPoint; (3) disabled trên Input Tên điểm neo + 2 cột Vĩ độ/Kinh độ (renderDmsGroup bỏ param disabled); (4) gỡ import Tooltip nếu không còn dùng.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer con Khu nước neo buộc tàu — nút Thêm điểm neo + input tọa độ",
+  "blast_radius": 1,
+  "done_oracle": "Trong Drawer con: nút \"Thêm điểm neo\" và toàn bộ input Tọa độ điểm neo (Tên/Vĩ độ/Kinh độ) hoạt động NGAY CẢ KHI chưa chọn Loại đối tượng; không còn tooltip/guard chặn.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 374,
+      "quote": "if (!waterAreaGeometryType) { toast.warning('Vui lòng chọn Loại đối tượng trước khi thêm điểm neo'); return; }",
+      "source_hash": "cb01aec8878303ed2811525d47e1f4de3a655439e4aad4cfa80ec083898fe211",
+      "quote_hash": "59fe747de0e332a3412baf89b19ceb3bff0b897c42d7211b3b9718f8a1fb66ab",
+      "note": "Guard addAnchorPoint — bỏ để cho thêm khi chưa chọn Loại đối tượng"
+    },
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 849,
+      "quote": "<Button type=\"dashed\" size=\"small\" icon={<PlusOutlined />} onClick={addAnchorPoint} disabled={!waterAreaGeometryType} style={{ borderRadius: radiusPill }}>Thêm điểm neo</Button>",
+      "source_hash": "cb01aec8878303ed2811525d47e1f4de3a655439e4aad4cfa80ec083898fe211",
+      "quote_hash": "1153a397797cc714e7fc0dea864181f0c3fa4be84f5abbbac17429b5258e755e",
+      "note": "Nút Thêm điểm neo disabled + Tooltip — bỏ"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787723456828
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

@@ -185,7 +185,7 @@ export default function BerthDetailContent({
                   ['Tên bến cảng', <span style={{ fontWeight: fontWeightBold }}>{r.berthName || '—'}</span>],
                   ['Thuộc luồng hàng hải', waterwayMap.get(r.waterwayId || '') || r.waterwayId || '—'],
                   ['Đơn vị khai thác', r.operator || '—'],
-                  ['Địa điểm (Tỉnh/TP)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
+                  ['Địa điểm (Tỉnh/Thành Phố)', r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'],
                   ['Địa điểm chi tiết', r.detailedLocation || '—'],
                   ['Loại kết cấu bến cảng', structureTypeOptions.find(o => o.value === r.structureType)?.label || r.structureType || '—'],
                   ['Công năng khai thác', r.operationalFunction || '—'],
@@ -323,7 +323,7 @@ export default function BerthDetailContent({
               title={(
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại kết cấu hạ tầng</span>
-                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter}
+                  <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter || undefined}
                     onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
                     options={BERTH_INFRA_TYPE_OPTIONS} style={{ width: 360, borderRadius: radiusPill, height: 40 }} />
                 </div>

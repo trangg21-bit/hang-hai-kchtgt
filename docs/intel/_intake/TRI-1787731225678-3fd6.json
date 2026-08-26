@@ -1,0 +1,105 @@
+{
+  "triage_id": "TRI-1787731225678-3fd6",
+  "created_at": 1787731225678,
+  "request_summary": "Cập nhật 2 test BuoyServiceTest cho khớp hành vi đúng: (1) submitForApprovalNotDraft — message guard mới (đã thêm REJECTED_L1/L2); (2) rejectValid — reject cấp 1 set REJECTED_L1 + REJECTED_LEVEL1 (test cũ assert REJECTED, drift có sẵn trước phiên này).",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy-station/schema.ts",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/buoy/schema.ts",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "src/test/java/com/hanghai/kchtg/beacon/BuoyServiceTest.java"
+    ],
+    "impact_files": [
+      "frontend/src/services/buoy-station/BuoyStationListPage.tsx",
+      "frontend/src/services/buoy-station/schema.ts",
+      "frontend/src/services/buoy/BuoyListPage.tsx",
+      "frontend/src/services/buoy/schema.ts",
+      "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java",
+      "src/main/java/com/hanghai/kchtg/station/service/BuoyStationService.java",
+      "src/test/java/com/hanghai/kchtg/beacon/BuoyServiceTest.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "frontend/src/services/buoy-station/schema.ts"
+      },
+      {
+        "group": "schema",
+        "path": "frontend/src/services/buoy/schema.ts"
+      }
+    ],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C3: one-way door: schema:frontend/src/services/buoy-station/schema.ts, schema:frontend/src/services/buoy/schema.ts — floors at C3 regardless of size (7 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Unit test BuoyServiceTest (mvn -Dtest=BuoyServiceTest test) — 2 test assert hành vi cũ của guard submit + reject, giờ khớp hành vi đã sửa.",
+  "blast_radius": 7,
+  "done_oracle": "BuoyServiceTest pass đầy đủ: submitForApprovalNotDraft assert message mới (DRAFT/REJECTED/REJECTED_L1/REJECTED_L2/PENDING_APPROVAL); rejectValid assert REJECTED_L1 + REJECTED_LEVEL1 cho reject cấp 1. mvn -Dtest=BuoyServiceTest test xanh; tsc --noEmit xanh.",
+  "verification_commands": [
+    {
+      "command": "mvn -Dtest=BuoyServiceTest test",
+      "cwd": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin",
+      "timeout_ms": 600000
+    },
+    {
+      "command": "npx tsc --noEmit",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/test/java/com/hanghai/kchtg/beacon/BuoyServiceTest.java",
+      "line": 519,
+      "quote": ".hasMessageContaining(\"Chỉ có thể gửi phê duyệt khi status = DRAFT, REJECTED hoặc PENDING_APPROVAL\");",
+      "source_hash": "620659337b5538c0e376b29f39ec8461b156493b40eaf5dc270ecebc6eca0b45",
+      "quote_hash": "8baa3fa849d81d713afae0e7e4a82dcd6f31def91640df36aae2b23da5f66feb",
+      "note": "Assert message cũ của guard submit — phải cập nhật theo message mới"
+    },
+    {
+      "file": "src/test/java/com/hanghai/kchtg/beacon/BuoyServiceTest.java",
+      "line": 601,
+      "quote": "assertThat(saved.getStatus()).isEqualTo(\"REJECTED\");",
+      "source_hash": "620659337b5538c0e376b29f39ec8461b156493b40eaf5dc270ecebc6eca0b45",
+      "quote_hash": "2d05bdba29c6b507e766646f502eb50fb825d575bad8fd8f8a30c0f5d6709511",
+      "note": "Assert status REJECTED cũ — code reject cấp 1 set REJECTED_L1"
+    },
+    {
+      "file": "src/test/java/com/hanghai/kchtg/beacon/BuoyServiceTest.java",
+      "line": 602,
+      "quote": "assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.REJECTED);",
+      "source_hash": "620659337b5538c0e376b29f39ec8461b156493b40eaf5dc270ecebc6eca0b45",
+      "quote_hash": "81c3fbf4e5b0e8a60b68f31b07c17540bbce9e8680745d629fd405a74c6c67eb",
+      "note": "Assert approvalStatus REJECTED cũ — code set REJECTED_LEVEL1"
+    },
+    {
+      "file": "src/test/java/com/hanghai/kchtg/beacon/BuoyServiceTest.java",
+      "line": 603,
+      "quote": "assertThat(result.getStatus()).isEqualTo(\"REJECTED\");",
+      "source_hash": "620659337b5538c0e376b29f39ec8461b156493b40eaf5dc270ecebc6eca0b45",
+      "quote_hash": "6663ff15dbc3cb7b2511a0cf0a6b0a87cee7b1601a6ea8d32b600da2f52fada2",
+      "note": "Assert result status REJECTED cũ"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787731225927
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

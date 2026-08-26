@@ -1,0 +1,65 @@
+{
+  "triage_id": "TRI-1787717104280-ef81",
+  "created_at": 1787717104280,
+  "request_summary": "User yêu cầu đổi popup Modal 'Thêm mới khu nước neo buộc tàu' trong AnchorageForm thành Drawer, đảm bảo không đẩy Drawer cha (translateX -180). Hiện AnchorageForm.tsx:782 dùng Modal; token drawerProps (tokens.ts:392) KHÔNG có push:false nên Drawer cha mặc định push {distance:180}. Sửa: (1) tokens.ts drawerProps thêm push:false (guard chung cho mọi Drawer CRUD), (2) AnchorageForm đổi Modal → Drawer placement right width 950 push={false} maskClosable={false} onClose footer styles.body.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "frontend/src/tokens.ts"
+    ],
+    "impact_files": [
+      "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "frontend/src/tokens.ts"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Form Thêm mới/Chỉnh sửa Khu neo đậu — tab Khu nước neo buộc tàu → nút Thêm mới khu nước neo buộc tàu",
+  "blast_radius": 2,
+  "done_oracle": "Trong form Thêm mới/Chỉnh sửa Khu neo đậu, bấm \"Thêm mới khu nước neo buộc tàu\" → mở Drawer (phải, width 950) thay vì Modal; Drawer cha (Thêm mới/Chỉnh sửa Khu neo đậu) KHÔNG bị đẩy translateX(-180px) khi Drawer con mở; form con lưu được khu nước neo + điểm neo như cũ.",
+  "verification_commands": [
+    {
+      "command": "npm run build",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht\\frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/anchorage/AnchorageForm.tsx",
+      "line": 783,
+      "quote": "title={<span style={drawerTitleStyle}>{editingWaterAreaIndex == null ? 'Thêm mới khu nước neo buộc tàu' : 'Chỉnh sửa khu nước neo buộc tàu'}</span>}",
+      "source_hash": "ba49111a706cf67d09c9ddb0d19e91ac5976dccb98d01c67c431414294ffc1fb",
+      "quote_hash": "1df36f165931fc979b3fd59760155cae444d33ca3f9e24393e4da38cb9e4311c",
+      "note": "Popup con hiện là Modal với title khu nước neo buộc tàu — đổi sang Drawer"
+    },
+    {
+      "file": "frontend/src/tokens.ts",
+      "line": 392,
+      "quote": "export const drawerProps = {",
+      "source_hash": "056945b12f9b3fa834ca7f500d12601e3b23989f9537770c233630d8054faafd",
+      "quote_hash": "9de9b0681851a6d2c0eb028fa2007bf5336e9c986e425ea633b6e1c5418750b0",
+      "note": "drawerProps thiếu push:false — Drawer cha sẽ bị đẩy khi Drawer con mở"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787717104538
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

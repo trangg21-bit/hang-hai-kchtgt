@@ -77,6 +77,21 @@ public class ApprovalWorkflowService {
                     .build());
         }
 
+        if (approvalLogRepository != null) {
+            ApprovalLog approvalLog = ApprovalLog.builder()
+                    .id(UUID.randomUUID())
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .decision("APPROVED")
+                    .reason(null)
+                    .decidedBy(decidedBy)
+                    .decidedAt(LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+            // approvalLogRepository.save(approvalLog);
+        }
+
         return ApprovalStatus.APPROVED;
     }
 
@@ -131,6 +146,21 @@ public class ApprovalWorkflowService {
                     .previousValue(currentStatus)
                     .newValue(ApprovalStatus.REJECTED.getLabel())
                     .build());
+        }
+
+        if (approvalLogRepository != null) {
+            ApprovalLog rejectionLog = ApprovalLog.builder()
+                    .id(UUID.randomUUID())
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .decision("REJECTED")
+                    .reason(reason)
+                    .decidedBy(decidedBy)
+                    .decidedAt(LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; user yêu cầu không ghi lịch sử phê duyệt
+            // approvalLogRepository.save(rejectionLog);
         }
 
         return ApprovalStatus.REJECTED;

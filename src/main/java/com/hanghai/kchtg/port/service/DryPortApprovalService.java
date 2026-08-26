@@ -76,13 +76,8 @@ public class DryPortApprovalService {
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
         DryPort entity = loadForApproval(id);
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
-            infrastructureApprovalService.approveC2(entity, InfrastructureType.DRY_PORT,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        } else {
-            infrastructureApprovalService.approveC1(entity, InfrastructureType.DRY_PORT,
-                    ApprovalStatus.REJECTED.name(), reason, userId);
-        }
+        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
+                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         dryPortRepository.save(entity);
     }
 
@@ -145,6 +140,63 @@ public class DryPortApprovalService {
     private DryPort loadForApproval(UUID id) {
         return dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
+    }
+    private final ApprovalWorkflowService approvalWorkflowService;
+    private final PortNotificationService notificationService;
+    private final ChangeLogRepository changeLogRepository;
+    private final ApprovalLogRepository approvalLogRepository;
+    private final ChangeHistoryService changeHistoryService;
+
+    @Transactional
+    public void approve(UUID id, String userId, String reason) {
+        DryPort entity = dryPortRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
+
+        ApprovalStatus currentStatus = entity.getApprovalStatus();
+        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
+
+        // Import DryPortService's captureSnapshot — use inline instead
+        DryPort snapshot = DryPort.builder()
+                .dryPortCode(entity.getDryPortCode()).dryPortName(entity.getDryPortName())
+                .provinceId(entity.getProvinceId()).orgUnitId(entity.getOrgUnitId())
+                .operatingUnit(entity.getOperatingUnit()).region(entity.getRegion())
+                .detailedLocation(entity.getDetailedLocation()).transportCorridor(entity.getTransportCorridor())
+                .area(entity.getArea()).warehouseArea(entity.getWarehouseArea()).yardArea(entity.getYardArea())
+                .teuCapacity(entity.getTeuCapacity()).connectionMode(entity.getConnectionMode())
+                .portStatus(entity.getPortStatus()).operationalStatus(entity.getOperationalStatus())
+                .remarks(entity.getRemarks())
+                .announcementTime(entity.getAnnouncementTime()).announcementDecisionNumber(entity.getAnnouncementDecisionNumber())
+                .announcementDecisionDate(entity.getAnnouncementDecisionDate()).announcementOrg(entity.getAnnouncementOrg())
+                .mapSymbolId(entity.getMapSymbolId())
+                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
+                .approvalStatus(entity.getApprovalStatus()).spatialId(entity.getSpatialId())
+                .build();
+
+        if (reason == null || reason.isBlank()) {
+            // Mô hình 2 trạng thái: Nháp → phê duyệt thẳng. Chỉ gọi workflow cũ khi
+            // đang ở PENDING_APPROVAL (legacy) vì workflow yêu cầu đúng trạng thái đó.
+            if (currentStatus == ApprovalStatus.PENDING_APPROVAL) {
+                approvalWorkflowService.approve(currentStatusStr, "DryPort", id.toString(), userId);
+            }
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else {
+            approvalWorkflowService.reject(currentStatusStr, "DryPort", id.toString(), userId, reason);
+            entity.setApprovalStatus(currentStatus == ApprovalStatus.APPROVED_LEVEL2
+                    ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        }
+        DryPort saved = dryPortRepository.save(entity);
+        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
+
+        if (reason != null && !reason.isBlank()) {
+            changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Lý do từ chối", null, reason, userId);
+        }
+
+        if (reason == null || reason.isBlank()) {
+            log.info("DryPort [{}] approved by {}", id, userId);
+            notificationService.sendApprovalNotification("DryPort", id.toString(), userId, null);
+        } else {
+            log.info("DryPort [{}] rejected by {}: {}", id, userId, reason);
+        }
     }
 
     @Transactional(readOnly = true)

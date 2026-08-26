@@ -1,0 +1,66 @@
+{
+  "triage_id": "TRI-1787718932739-7cb5",
+  "created_at": 1787718932739,
+  "request_summary": "Lỗi list khu neo đậu sau khi lưu khu nước neo buộc tàu: ClassCastException 'Cannot cast java.lang.String to java.util.UUID' khi Hibernate đọc bảng mooring_water_areas (đã verify DB: created_by/updated_by/deleted_by = character varying(100) trong khi entity MooringWaterArea extends BaseEntity map UUID). Bảng mooring_water_area_anchor_points đã được migration V20260826110000 chuyển UUID (đã áp dụng). Fix: migration mới ALTER TABLE mooring_water_areas chuyển 3 cột audit sang UUID với safe cast (CASE WHEN null/empty THEN NULL ELSE ::uuid), dữ liệu hiện có là UUID string hợp lệ.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/resources/db/migration/V20260826120000__convert_mooring_water_areas_audit_to_uuid.sql"
+    ],
+    "impact_files": [
+      "src/main/resources/db/migration/V20260826120000__convert_mooring_water_areas_audit_to_uuid.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V20260826120000__convert_mooring_water_areas_audit_to_uuid.sql"
+      }
+    ],
+    "dev_footprint": "backend"
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V20260826120000__convert_mooring_water_areas_audit_to_uuid.sql — floors at C3 regardless of size (1 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn danh sách Khu neo đậu — GET /api/v1/anchorage (AnchorageService.findAll → toMooringWaterAreaResponses)",
+  "blast_radius": 1,
+  "done_oracle": "Sau khi restart app + migration chạy: GET /api/v1/anchorage trả 200 kèm mooringWaterAreas (không còn ClassCastException String→UUID); information_schema cho thấy mooring_water_areas.created_by/updated_by/deleted_by kiểu uuid; dữ liệu cũ (1 row) được cast giữ nguyên.",
+  "verification_commands": [
+    {
+      "command": "\"C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd\" compile -q && echo BUILD_EXIT_OK",
+      "cwd": "C:\\Users\\manhhv1\\Desktop\\Source\\bxd.hh.kcht",
+      "timeout_ms": 180000
+    }
+  ],
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/resources/db/migration/V20260825130000__anchorage_gis_mooring.sql",
+      "line": 21,
+      "quote": "created_by VARCHAR(100),",
+      "source_hash": "c8b41800c1fe9d54218e68377251bcb0356e290ef43eb824d9a569b5348ad931",
+      "quote_hash": "8a4392a298901afc6f603afe913da99ed4ba183b02a72044dfe30556c2bb04a8",
+      "note": "mooring_water_areas.created_by VARCHAR(100) — lệch entity UUID"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/port/entity/MooringWaterArea.java",
+      "line": 28,
+      "quote": "public class MooringWaterArea extends BaseEntity {",
+      "source_hash": "4931189baebee5b5ed7a226731a0fd7c77ab94440ec667ef4e7925b00c8c8935",
+      "quote_hash": "001d6a37045346392a7a6323c402bf822230a7af550fd545c99a274502c2019e",
+      "note": "Entity kế thừa BaseEntity → createdBy/updatedBy/deletedBy map UUID"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "f3ecfba9369df3a1e7f844a1231d7c53479d7b57",
+    "dirty": true,
+    "captured_at": 1787718932978
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}
