@@ -29,8 +29,6 @@ import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.entity.BuoyStation;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
-import com.hanghai.kchtg.port.entity.ChangeLog;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +61,6 @@ public class BuoyService {
     private final BuoyStationRepository buoyStationRepo;
     private final ChangeHistoryService changeHistoryService;
     private final PointObjectSyncService pointObjectSyncService;
-    private final ChangeLogRepository changeLogRepository;
 
     // -- READ --
 

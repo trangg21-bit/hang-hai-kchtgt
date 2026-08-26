@@ -87,6 +87,15 @@ function toApiOperationalStatus(status?: Organization["operationalStatus"]): "OP
   return status === "inactive" ? "SUSPENDED" : "OPERATIONAL";
 }
 
+export function fromApiOperationalStatus(status?: any): Organization["operationalStatus"] {
+  if (status == null) return "active";
+  const s = String(status).toUpperCase().trim();
+  if (s === "INACTIVE" || s === "SUSPENDED" || s === "DUNG_KHAI_THAC" || s === "2") {
+    return "inactive";
+  }
+  return "active";
+}
+
 // ============================================================
 // Service -- real API calls
 // ============================================================
@@ -131,7 +140,7 @@ function mapOrgUnit(
     provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
     provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
     detailAddress: item.detailAddress, phone: item.phone,
-    operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+    operationalStatus: fromApiOperationalStatus(item.operationalStatus),
     rank: item.rank as OrgUnitRankName | undefined,
     childCount,
     createdAt: item.createdAt
@@ -259,7 +268,7 @@ export const organizationService = {
           parentId: item.parentId ? String(item.parentId) : undefined,
           level: item.level,
           type: item.type as Organization["type"],
-          operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+          operationalStatus: fromApiOperationalStatus(item.operationalStatus),
           rank: item.rank as OrgUnitRankName | undefined,
         }));
 
@@ -323,9 +332,8 @@ export const organizationService = {
           setCachedOrgs(data);
         }
         return data;
-      } catch {
-        await delay();
-        return [...organizations];
+      } catch (err) {
+        throw err;
       }
     };
 
@@ -368,23 +376,120 @@ export const organizationService = {
    * GET /api/org-units/:id
    */
   async getById(id: string): Promise<Organization> {
-    try {
-      const resp = await api.get(`/org-units/${id}`);
-      const item: any = extractData(resp);
-      if (!item) throw new Error("Đơn vị không tồn tại");
+    const resp = await api.get(`/org-units/${id}`);
+    const item: any = extractData(resp);
+    if (!item) throw new Error("Đơn vị không tồn tại");
 
-      return {
+    return {
+      id: item.id ?? "",
+      name: item.name ?? "",
+      parentId: item.parentId ? String(item.parentId) : undefined,
+      parentOrgName: undefined,
+      level: item.level,
+      type: item.type as Organization["type"],
+      description: item.description,
+      provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
+      provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+      detailAddress: item.detailAddress, phone: item.phone,
+      operationalStatus: fromApiOperationalStatus(item.operationalStatus),
+      rank: item.rank as OrgUnitRankName | undefined,
+      childCount: 0,
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : "",
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : "",
+      updatedBy: item.updatedBy ?? undefined,
+    };
+  },
+
+  /**
+   * GET /api/org-units/tree
+   * Returns hierarchical tree with children populated.
+   */
+  async getTree(): Promise<Organization[]> {
+    const cached = getCachedOrgs();
+    if (cached) {
+      return cached;
+    }
+
+    const resp = await api.get("/org-units/tree");
+    const items: any[] = extractData(resp) ?? [];
+
+    if (!Array.isArray(items)) return [];
+
+    const flatList: Organization[] = [];
+
+    const flatten = (node: any) => {
+      if (!node) return;
+      const org: Organization = {
+        id: node.id ?? "",
+        name: node.name ?? "",
+        parentId: node.parentId ? String(node.parentId) : undefined,
+        parentOrgName: undefined,
+        level: node.level,
+        type: node.type as Organization["type"],
+        description: node.description,
+        provinceId: node.provinceId != null ? Number(node.provinceId) : undefined,
+        provinceName: node.provinceId != null ? getProvinceNameById(Number(node.provinceId)) : undefined,
+        detailAddress: node.detailAddress,
+        phone: node.phone,
+        operationalStatus: fromApiOperationalStatus(node.operationalStatus),
+        rank: node.rank as OrgUnitRankName | undefined,
+        childCount: Array.isArray(node.children) ? node.children.length : 0,
+        createdAt: node.createdAt ? new Date(node.createdAt).toISOString() : "",
+        updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "", updatedBy: (node.updatedBy ?? undefined),
+      };
+      flatList.push(org);
+
+      if (Array.isArray(node.children)) {
+        node.children.forEach(flatten);
+      }
+    };
+
+    items.forEach(flatten);
+
+    // Enrich parentOrgName
+    const orgMap = new Map<string, Organization>();
+    flatList.forEach((org) => orgMap.set(org.id, org));
+    flatList.forEach((org) => {
+      if (org.parentId) {
+        const parent = orgMap.get(org.parentId);
+        if (parent) {
+          org.parentOrgName = parent.name;
+        }
+      }
+    });
+
+    setCachedOrgs(flatList);
+    return flatList;
+  },
+
+  /**
+   * GET /api/org-units?parentId=:id
+   * Fetches direct children of a parent unit.
+   */
+  async getChildren(parentId: string): Promise<Organization[]> {
+    const resp = await api.get("/org-units", {
+      params: { parentId },
+    });
+    const items: any[] = extractData(resp) ?? [];
+
+    const orgMap = new Map<string, Organization>();
+    const flatList = items.map((item) => {
+      const org: Organization = {
         id: item.id ?? "",
         name: item.name ?? "",
+        code: item.code,
         parentId: item.parentId ? String(item.parentId) : undefined,
-        parentOrgName: undefined,
-        level: item.level,
-        type: item.type as Organization["type"],
+        parentOrgName: "",
+        level: undefined,
         description: item.description,
         provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
         provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
         detailAddress: item.detailAddress, phone: item.phone,
-        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
+        operationalStatus: fromApiOperationalStatus(item.operationalStatus),
         rank: item.rank as OrgUnitRankName | undefined,
         childCount: 0,
         createdAt: item.createdAt
@@ -395,150 +500,19 @@ export const organizationService = {
           : "",
         updatedBy: item.updatedBy ?? undefined,
       };
-    } catch {
-      await delay();
-      const found = organizations.find(o => o.id === id);
-      if (!found) throw new Error("Đơn vị không tồn tại");
-      return { ...found };
-    }
-  },
+      orgMap.set(item.id ?? "", org);
+      return org;
+    });
 
-  /**
-   * GET /api/org-units/tree
-   * Returns hierarchical tree with children populated.
-   */
-  async getTree(options?: { allowMockFallback?: boolean }): Promise<Organization[]> {
-    const cached = getCachedOrgs();
-    if (cached) {
-      return cached;
-    }
-
-    try {
-      const resp = await api.get("/org-units/tree");
-      const items: any[] = extractData(resp) ?? [];
-
-      if (!Array.isArray(items)) return [];
-
-      const flatList: Organization[] = [];
-
-      const flatten = (node: any) => {
-        if (!node) return;
-        const org: Organization = {
-          id: node.id ?? "",
-          name: node.name ?? "",
-          parentId: node.parentId ? String(node.parentId) : undefined,
-          parentOrgName: undefined,
-          level: node.level,
-          type: node.type as Organization["type"],
-          description: node.description,
-          provinceId: node.provinceId != null ? Number(node.provinceId) : undefined,
-          provinceName: node.provinceId != null ? getProvinceNameById(Number(node.provinceId)) : undefined,
-          detailAddress: node.detailAddress,
-          phone: node.phone,
-          operationalStatus: (node.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
-          rank: node.rank as OrgUnitRankName | undefined,
-          childCount: Array.isArray(node.children) ? node.children.length : 0,
-          createdAt: node.createdAt ? new Date(node.createdAt).toISOString() : "",
-          updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "", updatedBy: (node.updatedBy ?? undefined),
-        };
-        flatList.push(org);
-
-        if (Array.isArray(node.children)) {
-          node.children.forEach(flatten);
-        }
-      };
-
-      items.forEach(flatten);
-
-      // Enrich parentOrgName
-      const orgMap = new Map<string, Organization>();
-      flatList.forEach((org) => orgMap.set(org.id, org));
-      flatList.forEach((org) => {
-        if (org.parentId) {
-          const parent = orgMap.get(org.parentId);
-          if (parent) {
-            org.parentOrgName = parent.name;
-          }
-        }
-      });
-
-      setCachedOrgs(flatList);
-      return flatList;
-    } catch (error) {
-      if (options?.allowMockFallback === false) {
-        throw error;
+    // Compute parentOrgName
+    flatList.forEach((org) => {
+      if (org.parentId) {
+        const parent = orgMap.get(org.parentId);
+        if (parent) org.parentOrgName = parent.name;
       }
-      await delay();
-      // Build a tree-like flat list from MOCK_ORGANIZATIONS
-      const orgMap = new Map<string, Organization>();
-      organizations.forEach(o => orgMap.set(o.id, { ...o }));
-      // Enrich parentOrgName
-      organizations.forEach(o => {
-        if (o.parentId) {
-          const parent = orgMap.get(o.parentId);
-          if (parent) {
-            o.parentOrgName = parent.name;
-          }
-        }
-      });
-      const fallback = [...organizations];
-      setCachedOrgs(fallback);
-      return fallback;
-    }
-  },
+    });
 
-  /**
-   * GET /api/org-units?parentId=:id
-   * Fetches direct children of a parent unit.
-   */
-  async getChildren(parentId: string): Promise<Organization[]> {
-    try {
-      const resp = await api.get("/org-units", {
-        params: { parentId },
-      });
-      const items: any[] = extractData(resp) ?? [];
-
-      const orgMap = new Map<string, Organization>();
-      const flatList = items.map((item) => {
-        const org: Organization = {
-          id: item.id ?? "",
-          name: item.name ?? "",
-          code: item.code,
-          parentId: item.parentId ? String(item.parentId) : undefined,
-          parentOrgName: "",
-          level: undefined,
-          description: item.description,
-          provinceId: item.provinceId != null ? Number(item.provinceId) : undefined,
-          provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
-          detailAddress: item.detailAddress, phone: item.phone,
-          operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
-          rank: item.rank as OrgUnitRankName | undefined,
-          childCount: 0,
-          createdAt: item.createdAt
-            ? new Date(item.createdAt).toISOString()
-            : "",
-          updatedAt: item.updatedAt
-            ? new Date(item.updatedAt).toISOString()
-            : "",
-          updatedBy: item.updatedBy ?? undefined,
-        };
-        orgMap.set(item.id ?? "", org);
-        return org;
-      });
-
-      // Compute parentOrgName
-      flatList.forEach((org) => {
-        if (org.parentId) {
-          const parent = orgMap.get(org.parentId);
-          if (parent) org.parentOrgName = parent.name;
-        }
-      });
-
-      return flatList;
-    } catch {
-      await delay();
-      return organizations.filter(o => o.parentId === parentId);
-    }
+    return flatList;
   },
 
   /**
@@ -547,68 +521,38 @@ export const organizationService = {
   async create(
     payload: CreateOrganizationPayload
   ): Promise<Organization> {
-    try {
-      const resp = await api.post("/org-units", {
-        name: payload.name,
-        parentId: payload.parentId,
-        type: payload.type,
-        description: payload.description,
-        provinceId: payload.provinceId,
-        detailAddress: payload.detailAddress,
-        phone: payload.phone,
-        operationalStatus: toApiOperationalStatus(payload.operationalStatus),
-        rank: payload.rank,
-      });
-      const item: any = extractData(resp);
-      clearCachedOrgs();
+    const resp = await api.post("/org-units", {
+      name: payload.name,
+      parentId: payload.parentId,
+      type: payload.type,
+      description: payload.description,
+      provinceId: payload.provinceId,
+      detailAddress: payload.detailAddress,
+      phone: payload.phone,
+      operationalStatus: toApiOperationalStatus(payload.operationalStatus),
+      rank: payload.rank,
+    });
+    const item: any = extractData(resp);
+    clearCachedOrgs();
 
-      return {
-        id: item.id ?? "",
-        name: item.name ?? payload.name,
-        parentId: payload.parentId,
-        parentOrgName: undefined,
-        level: undefined,
-        type: item.type as Organization["type"],
-        description: item.description ?? payload.description,
-        provinceId: item.provinceId != null ? Number(item.provinceId) : payload.provinceId,
-        provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
-        detailAddress: item.detailAddress ?? payload.detailAddress,
-        phone: item.phone ?? payload.phone,
-        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
-        rank: item.rank as OrgUnitRankName | undefined,
-        childCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(), updatedBy: undefined,
-      };
-    } catch {
-      await delay();
-      // Find parent name if parentId provided
-      let parentOrgName: string | undefined;
-      if (payload.parentId) {
-        const parent = organizations.find(o => o.id === payload.parentId);
-        if (parent) parentOrgName = parent.name;
-      }
-      const newOrg: Organization = {
-        id: `org-${Date.now()}`,
-        name: payload.name,
-        parentId: payload.parentId,
-        parentOrgName,
-        level: parentOrgName ? 2 : 1,
-        type: payload.type,
-        description: payload.description,
-        provinceId: payload.provinceId,
-        detailAddress: payload.detailAddress,
-        phone: payload.phone,
-        operationalStatus: payload.operationalStatus ?? 'active',
-        rank: payload.rank,
-        childCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(), updatedBy: undefined,
-      };
-      organizations.push(newOrg);
-      clearCachedOrgs();
-      return { ...newOrg };
-    }
+    return {
+      id: item.id ?? "",
+      name: item.name ?? payload.name,
+      parentId: payload.parentId,
+      parentOrgName: undefined,
+      level: undefined,
+      type: item.type as Organization["type"],
+      description: item.description ?? payload.description,
+      provinceId: item.provinceId != null ? Number(item.provinceId) : payload.provinceId,
+      provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+      detailAddress: item.detailAddress ?? payload.detailAddress,
+      phone: item.phone ?? payload.phone,
+      operationalStatus: fromApiOperationalStatus(item.operationalStatus ?? payload.operationalStatus),
+      rank: item.rank as OrgUnitRankName | undefined,
+      childCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(), updatedBy: undefined,
+    };
   },
 
   /**
@@ -618,109 +562,77 @@ export const organizationService = {
     id: string,
     payload: UpdateOrganizationPayload
   ): Promise<Organization> {
-    try {
-      const body: Record<string, any> = {
-        name: payload.name,
-        type: payload.type,
-        description: payload.description,
-        provinceId: payload.provinceId,
-        detailAddress: payload.detailAddress,
-        phone: payload.phone,
-        operationalStatus: payload.operationalStatus
-          ? toApiOperationalStatus(payload.operationalStatus)
-          : undefined,
-        rank: payload.rank,
-      };
-      if (payload.parentId !== undefined) {
-        body.parentId = payload.parentId;
-      }
-      const resp = await api.put(`/org-units/${id}`, body);
-      const item: any = extractData(resp);
-      clearCachedOrgs();
-
-      return {
-        id: item.id ?? id,
-        name: item.name ?? payload.name ?? "",
-        parentId: payload.parentId,
-        parentOrgName: undefined,
-        level: undefined,
-        type: item.type as Organization["type"],
-        description: item.description ?? payload.description,
-        provinceId: item.provinceId != null ? Number(item.provinceId) : payload.provinceId,
-        provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
-        detailAddress: item.detailAddress ?? payload.detailAddress,
-        phone: item.phone ?? payload.phone,
-        operationalStatus:
-          (payload.operationalStatus ?? item.operationalStatus?.toLowerCase()) as Organization["operationalStatus"] ??
-          "active",
-        rank: item.rank as OrgUnitRankName | undefined,
-        childCount: 0,
-        createdAt: item.createdAt
-          ? new Date(item.createdAt).toISOString()
-          : "",
-        updatedAt: item.updatedAt
-          ? new Date(item.updatedAt).toISOString()
-          : "",
-      };
-    } catch {
-      await delay();
-      const idx = organizations.findIndex(o => o.id === id);
-      if (idx === -1) throw new Error("Đơn vị không tồn tại");
-      organizations[idx] = {
-        ...organizations[idx],
-        ...payload,
-        updatedAt: new Date().toISOString(), updatedBy: undefined,
-      };
-      clearCachedOrgs();
-      return { ...organizations[idx] };
+    const body: Record<string, any> = {
+      name: payload.name,
+      type: payload.type,
+      description: payload.description,
+      provinceId: payload.provinceId,
+      detailAddress: payload.detailAddress,
+      phone: payload.phone,
+      operationalStatus: payload.operationalStatus
+        ? toApiOperationalStatus(payload.operationalStatus)
+        : undefined,
+      rank: payload.rank,
+    };
+    if (payload.parentId !== undefined) {
+      body.parentId = payload.parentId;
     }
+    const resp = await api.put(`/org-units/${id}`, body);
+    const item: any = extractData(resp);
+    clearCachedOrgs();
+
+    return {
+      id: item.id ?? id,
+      name: item.name ?? payload.name ?? "",
+      parentId: payload.parentId,
+      parentOrgName: undefined,
+      level: undefined,
+      type: item.type as Organization["type"],
+      description: item.description ?? payload.description,
+      provinceId: item.provinceId != null ? Number(item.provinceId) : payload.provinceId,
+      provinceName: item.provinceId != null ? getProvinceNameById(Number(item.provinceId)) : undefined,
+      detailAddress: item.detailAddress ?? payload.detailAddress,
+      phone: item.phone ?? payload.phone,
+      operationalStatus: fromApiOperationalStatus(payload.operationalStatus ?? item.operationalStatus),
+      rank: item.rank as OrgUnitRankName | undefined,
+      childCount: 0,
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : "",
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : "",
+    };
   },
 
   /**
    * DELETE /api/org-units/:id
    */
   async delete(id: string): Promise<void> {
-    try {
-      await api.delete(`/org-units/${id}`);
-      clearCachedOrgs();
-    } catch {
-      await delay();
-      const idx = organizations.findIndex(o => o.id === id);
-      if (idx === -1) throw new Error("Đơn vị không tồn tại");
-      organizations.splice(idx, 1);
-      clearCachedOrgs();
-    }
+    await api.delete(`/org-units/${id}`);
+    clearCachedOrgs();
   },
 
   async search(query: string): Promise<Organization[]> {
-    try {
-      const resp = await api.get("/org-units/search", {
-        params: { q: query }
-      });
-      const rawData: any[] = extractData(resp) || [];
-      return rawData.map((item) => ({
-        id: item.id ?? "",
-        name: item.name ?? "",
-        code: item.code,
-        parentId: item.parentId ? String(item.parentId) : undefined,
-        parentOrgName: undefined,
-        level: item.level,
-        type: item.type as Organization["type"],
-        description: item.description,
-        detailAddress: item.detailAddress, phone: item.phone,
-        operationalStatus: (item.operationalStatus?.toLowerCase() as Organization["operationalStatus"]) ?? "active",
-        rank: item.rank as OrgUnitRankName | undefined,
-        childCount: 0,
-        createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
-      }));
-    } catch {
-      await delay();
-      const s = query.toLowerCase();
-      return organizations.filter(o =>
-        o.name.toLowerCase().includes(s) ||
-        (o.description || '').toLowerCase().includes(s)
-      );
-    }
+    const resp = await api.get("/org-units/search", {
+      params: { q: query }
+    });
+    const rawData: any[] = extractData(resp) || [];
+    return rawData.map((item) => ({
+      id: item.id ?? "",
+      name: item.name ?? "",
+      code: item.code,
+      parentId: item.parentId ? String(item.parentId) : undefined,
+      parentOrgName: undefined,
+      level: item.level,
+      type: item.type as Organization["type"],
+      description: item.description,
+      detailAddress: item.detailAddress, phone: item.phone,
+      operationalStatus: fromApiOperationalStatus(item.operationalStatus),
+      rank: item.rank as OrgUnitRankName | undefined,
+      childCount: 0,
+      createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined),
+    }));
   },
 };

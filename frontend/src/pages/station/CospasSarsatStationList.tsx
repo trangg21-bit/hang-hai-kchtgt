@@ -34,6 +34,7 @@ import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { usePermissionStore } from '../../store/permissionStore';
 import toast, { message, modal } from '../../components/ToastNotification';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 
 const { confirm } = modal;
 
@@ -210,7 +211,8 @@ export default function CospasSarsatStationList() {
     const canApproveC1 = hasPerm('coastalstationcospassarsat:approvec1') || hasPerm('coastalstationcospassarsat:approve');
     const canApproveC2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('coastalstationcospassarsat:approve');
 
-    if (hasPerm('coastalstationcospassarsat:update')) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(st, { hasPerm, resource: 'coastalstationcospassarsat' })) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
     }
     if (isDraftOrReturned && hasPerm('coastalstationcospassarsat:update')) {

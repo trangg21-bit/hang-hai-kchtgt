@@ -189,6 +189,8 @@ class VtsSystemServiceTest {
 
     @Test
     void testUpdate() {
+        // Quy tắc 12: chỉ hồ sơ Lưu tạm/Bị trả về mới sửa được — bản mẫu mặc định đang Chờ duyệt
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .systemName("VTS mới").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -196,7 +198,7 @@ class VtsSystemServiceTest {
 
         VtsSystemResponse response = service.update(TEST_ID, updateReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
-        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
+        assertEquals(ApprovalStatus.DRAFT, entity.getApprovalStatus());
         assertNull(entity.getApproverLevel1());
         assertNull(entity.getApproverLevel2());
         verify(repository, times(1)).save(any());
@@ -214,7 +216,69 @@ class VtsSystemServiceTest {
     }
 
     @Test
+    void testUpdate_RejectsWhenAwaitingLevel1Approval() {
+        // Quy tắc 12: hồ sơ Chờ Cảng vụ/Chi cục duyệt bị khóa sửa
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .systemName("VTS sửa trộm").build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.update(TEST_ID, updateReq, UUID.randomUUID()));
+
+        assertEquals("Không thể sửa hồ sơ đang trong quy trình phê duyệt", exception.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void testUpdate_RejectsWhenAwaitingLevel2Approval() {
+        // Quy tắc 12: hồ sơ Chờ Cục duyệt cũng bị khóa sửa
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .systemName("VTS sửa trộm").build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.update(TEST_ID, updateReq, UUID.randomUUID()));
+
+        assertEquals("Không thể sửa hồ sơ đang trong quy trình phê duyệt", exception.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void testUpdate_AllowsWhenRejectedAtLevel1() {
+        // Quy tắc 12: hồ sơ bị trả về BẮT BUỘC sửa được, nếu không quy trình sẽ tắc
+        entity.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .systemName("VTS đã sửa theo góp ý").build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+
+        VtsSystemResponse response = service.update(TEST_ID, updateReq, UUID.randomUUID());
+
+        assertNotNull(response);
+        assertEquals("VTS đã sửa theo góp ý", entity.getSystemName());
+    }
+
+    @Test
+    void testUpdate_RejectsWhenArchived() {
+        // Quy tắc 12: hồ sơ đã xóa mềm không sửa được
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .systemName("VTS đã xóa").build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.update(TEST_ID, updateReq, UUID.randomUUID()));
+
+        assertEquals("Không thể sửa hồ sơ đã xóa", exception.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void testUpdate_RejectsChangingImmutableCode() {
+        // Quy tắc 12: chỉ hồ sơ Lưu tạm/Bị trả về mới sửa được — bản mẫu mặc định đang Chờ duyệt
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .code("VTS-NEW")
                 .build();
@@ -231,6 +295,8 @@ class VtsSystemServiceTest {
 
     @Test
     void testUpdate_RejectsDuplicateCodeBeforeImmutableCodeCheck() {
+        // Quy tắc 12: chỉ hồ sơ Lưu tạm/Bị trả về mới sửa được — bản mẫu mặc định đang Chờ duyệt
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .code("VTS-DUPLICATE")
                 .build();
@@ -247,6 +313,8 @@ class VtsSystemServiceTest {
 
     @Test
     void testUpdate_RejectsChangingImmutableManagingUnit() {
+        // Quy tắc 12: chỉ hồ sơ Lưu tạm/Bị trả về mới sửa được — bản mẫu mặc định đang Chờ duyệt
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000099"))
                 .build();
@@ -546,6 +614,8 @@ class VtsSystemServiceTest {
                 .zones(List.of())
                 .build();
 
+        // Quy tắc 12: chỉ hồ sơ Lưu tạm/Bị trả về mới sửa được — bản mẫu mặc định đang Chờ duyệt
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
 
@@ -617,6 +687,8 @@ class VtsSystemServiceTest {
 
     @Test
     void testGetById_WithZonesAndAttachments() {
+        // Quy tắc 12: chỉ hồ sơ Lưu tạm/Bị trả về mới sửa được — bản mẫu mặc định đang Chờ duyệt
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .zones(List.of())
                 .build();

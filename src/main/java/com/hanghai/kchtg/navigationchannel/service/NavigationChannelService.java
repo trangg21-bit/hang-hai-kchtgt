@@ -242,6 +242,9 @@ public class NavigationChannelService {
             throw new RuntimeException("Không thể chỉnh sửa tuyến luồng đã bị xóa hoặc lưu trữ");
         }
 
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        approvalService.assertEditable(nc);
+
         validateAllowedOrgUnit(nc.getOrgUnitId());
         if (req.getOrgUnitId() != null && !req.getOrgUnitId().equals(nc.getOrgUnitId())) {
             validateAllowedOrgUnit(req.getOrgUnitId());

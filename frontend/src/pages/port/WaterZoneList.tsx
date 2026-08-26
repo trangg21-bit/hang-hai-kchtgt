@@ -16,19 +16,18 @@ import {
   waterZoneApproval,
 } from '../../services/portService';
 import type { WaterZone } from '../../types/port';
-import {
-  BECBANG_STATUS_MAP,
-} from '../../types/port';
 import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import { usePermissionStore } from '../../store/permissionStore';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import {
   statusOperational,
   statusAttention,
-  statusCritical,
   cardStyle,
   textPrimary,
   textSecondary,
@@ -40,14 +39,10 @@ const STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
   TAM_NGUNG: { color: statusAttention, label: 'Tạm ngừng' },
 };
 
-const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
-  DUOC_PHE_DUYET: { color: statusOperational, label: 'Được phê duyệt' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
-};
 
 export default function WaterZoneList() {
   const navigate = useNavigate();
+  const hasPerm = usePermissionStore((state: { hasPermission: (key: string) => boolean }) => state.hasPermission);
 
   const [search, setSearch] = useState('');
   const [filterLoai, setFilterLoai] = useState<string | undefined>();
@@ -114,7 +109,7 @@ export default function WaterZoneList() {
   const handleSubmitApproval = useCallback(
     async (record: WaterZone) => {
       try {
-        await waterZoneApproval.submitForApproval?.(record.id);
+        await waterZoneApproval.submit(record.id);
         toast.success('Đã gửi duyệt vùng nước');
         fetchData();
       } catch (err: unknown) {
@@ -127,7 +122,7 @@ export default function WaterZoneList() {
   const handleApproveL1 = useCallback(
     async (record: WaterZone) => {
       try {
-        await waterZoneApproval.approveL1?.(record.id, localStorage.getItem('user_id') || '1');
+        await waterZoneApproval.approveC1(record.id);
         toast.success('Đã phê duyệt cấp 1');
         fetchData();
       } catch (err: unknown) {
@@ -140,7 +135,7 @@ export default function WaterZoneList() {
   const handleApproveL2 = useCallback(
     async (record: WaterZone) => {
       try {
-        await waterZoneApproval.approveL2?.(record.id, localStorage.getItem('user_id') || '1');
+        await waterZoneApproval.approveC2(record.id);
         toast.success('Đã phê duyệt cấp 2');
         fetchData();
       } catch (err: unknown) {
@@ -155,7 +150,7 @@ export default function WaterZoneList() {
       const reason = window.prompt('Lý do từ chối:', '');
       if (reason === null) return;
       try {
-        await waterZoneApproval.reject(record.id, reason, localStorage.getItem('user_id') || '1');
+        await waterZoneApproval.reject(record.id, reason);
         toast.success('Đã từ chối');
         fetchData();
       } catch (err: unknown) {
@@ -166,8 +161,7 @@ export default function WaterZoneList() {
   );
 
   const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo mã, tên...' },
-    { key: 'loaiVungNuoc', type: 'text' as const, label: 'Loại vùng nước', placeholder: 'Nhập loại' },
+    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo mã, tên, loại...' },
   ], []);
 
   const headerActions = useMemo(() => [
@@ -196,10 +190,7 @@ export default function WaterZoneList() {
     },
     {
       key: 'approvalStatus', label: 'Trạng thái phê duyệt', dataIndex: 'approvalStatus', width: 170, align: 'center' as const,
-      render: (status: string) => {
-        const s = APPROVAL_STYLE_MAP[status] || BECBANG_STATUS_MAP[status as keyof typeof BECBANG_STATUS_MAP] || { color: textSecondary, label: status };
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: 500, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
-      },
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       key: 'createdAt', label: 'Ngày tạo', dataIndex: 'createdAt', width: 160, align: 'center' as const,
@@ -210,7 +201,10 @@ export default function WaterZoneList() {
   const rowActions = useCallback((record: WaterZone) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
     actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => navigate(`/WaterZone/${record.id}`) });
-    actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => navigate(`/WaterZone/${record.id}`) });
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9) — trước đây màn này không kiểm tra quyền
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'waterzone' })) {
+      actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => navigate(`/WaterZone/${record.id}`) });
+    }
     if (record.approvalStatus === 'DRAFT') {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
@@ -224,7 +218,7 @@ export default function WaterZoneList() {
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });
     }
     return actions;
-  }, [navigate, handleSubmitApproval, handleDelete, handleApproveL1, handleApproveL2, handleReject]);
+  }, [navigate, handleSubmitApproval, handleDelete, handleApproveL1, handleApproveL2, handleReject, hasPerm]);
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;

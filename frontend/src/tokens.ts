@@ -768,6 +768,16 @@ export const formSectionHeaderStyle: React.CSSProperties = {
 // --- 5.14 Filter Panel (Sidebar bộ lọc) ---
 
 /** Select/Input full-width trong filter: pill, cao 40px */
+/**
+ * Khung ngoài chuẩn của màn hình danh sách: flex column có chiều cao ràng buộc để
+ * FilterTableLayout (flex: 1) giãn hết vùng nội dung. Dùng qua <ListPageContainer/>.
+ */
+export const listPageContainerStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  height: 'calc(100% - 32px)',
+};
+
 export const filterInputStyle: React.CSSProperties = {
   width: '100%',
   borderRadius: radiusPill,

@@ -31,6 +31,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DryPortService + DryPortApprovalService unit tests — F-026/F-027/F-028/F-030")
@@ -217,6 +221,17 @@ class DryPortServiceTest {
         @Mock
         private ApprovalLogRepository approvalLogRepository;
 
+        // Ba phụ thuộc dưới đây được thêm khi cảng cạn chuyển sang quy trình 2 cấp
+        // dùng chung; thiếu @Mock thì @InjectMocks để null.
+        @Mock
+        private InfrastructureApprovalService infrastructureApprovalService;
+
+        @Mock
+        private InfrastructureHistoryRepository historyRepository;
+
+        @Mock
+        private UserRepository userRepository;
+
         private UUID testId;
         private DryPort testEntity;
 
@@ -231,43 +246,84 @@ class DryPortServiceTest {
         }
 
         @Test
-        @DisplayName("F-030: approve — null reason → sets APPROVED")
-        void approve_setsApprovedStatus() {
+        @DisplayName("F-030: approveC1 — ủy quyền cho InfrastructureApprovalService (vòng 1)")
+        void approveC1_delegatesToSharedApprovalService() {
+            UUID userId = UUID.randomUUID();
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-            when(dryPortRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            approvalService.approve(testId, "admin-user", null);
+            approvalService.approveC1(testId, null, userId);
 
-            assertEquals(ApprovalStatus.APPROVED, testEntity.getApprovalStatus());
-            verify(approvalWorkflowService).approve(eq("PENDING_APPROVAL"), eq("DryPort"),
-                    eq(testId.toString()), eq("admin-user"));
+            verify(infrastructureApprovalService).approveC1(eq(testEntity), eq(InfrastructureType.DRY_PORT),
+                    eq(ApprovalStatus.APPROVED.name()), isNull(), eq(userId));
             verify(dryPortRepository).save(testEntity);
         }
 
         @Test
-        @DisplayName("F-030: reject — non-blank reason → sets REJECTED")
-        void reject_setsTuChoiStatus() {
+        @DisplayName("F-030: approveC2 — ủy quyền cho InfrastructureApprovalService (vòng 2)")
+        void approveC2_delegatesToSharedApprovalService() {
+            UUID userId = UUID.randomUUID();
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-            when(dryPortRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            approvalService.approve(testId, "admin-user", "Hồ sơ chưa đầy đủ");
+            approvalService.approveC2(testId, null, userId);
 
-            assertEquals(ApprovalStatus.REJECTED, testEntity.getApprovalStatus());
-            verify(approvalWorkflowService).reject(eq("PENDING_APPROVAL"), eq("DryPort"),
-                    eq(testId.toString()), eq("admin-user"), eq("Hồ sơ chưa đầy đủ"));
+            verify(infrastructureApprovalService).approveC2(eq(testEntity), eq(InfrastructureType.DRY_PORT),
+                    eq(ApprovalStatus.APPROVED.name()), isNull(), eq(userId));
             verify(dryPortRepository).save(testEntity);
         }
 
         @Test
-        @DisplayName("F-030: approve on already approved entity → approvalWorkflowService.approve throws IllegalStateException")
-        void doubleApprove_throwsIllegalState() {
-            testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        @DisplayName("F-030: reject — hồ sơ chờ Cảng vụ thì trả về ở vòng 1")
+        void reject_atLevel1WhenPendingApproval() {
+            UUID userId = UUID.randomUUID();
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-            when(approvalWorkflowService.approve(eq("APPROVED"), any(), any(), any()))
-                    .thenThrow(new IllegalStateException("Cannot approve: state is APPROVED"));
 
-            assertThrows(IllegalStateException.class,
-                    () -> approvalService.approve(testId, "admin-user", null));
+            approvalService.reject(testId, "Hồ sơ chưa đầy đủ", userId);
+
+            verify(infrastructureApprovalService).approveC1(eq(testEntity), eq(InfrastructureType.DRY_PORT),
+                    eq(ApprovalStatus.REJECTED.name()), eq("Hồ sơ chưa đầy đủ"), eq(userId));
+            verify(dryPortRepository).save(testEntity);
+        }
+
+        @Test
+        @DisplayName("F-030: reject — hồ sơ chờ Cục thì trả về ở vòng 2")
+        void reject_atLevel2WhenAwaitingDepartment() {
+            UUID userId = UUID.randomUUID();
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+            when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+
+            approvalService.reject(testId, "Cục yêu cầu bổ sung", userId);
+
+            verify(infrastructureApprovalService).approveC2(eq(testEntity), eq(InfrastructureType.DRY_PORT),
+                    eq(ApprovalStatus.REJECTED.name()), eq("Cục yêu cầu bổ sung"), eq(userId));
+            verify(dryPortRepository).save(testEntity);
+        }
+
+        @Test
+        @DisplayName("F-030: submit — ủy quyền cho InfrastructureApprovalService")
+        void submit_delegatesToSharedApprovalService() {
+            UUID userId = UUID.randomUUID();
+            testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
+            when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+
+            approvalService.submit(testId, userId);
+
+            verify(infrastructureApprovalService).submit(eq(testEntity), eq(InfrastructureType.DRY_PORT), eq(userId));
+            verify(dryPortRepository).save(testEntity);
+        }
+
+        @Test
+        @DisplayName("F-030: approveCurrentStage — hồ sơ chờ Cục thì đi vòng 2, không nhảy thẳng Đã duyệt")
+        void approveCurrentStage_routesToLevel2() {
+            UUID userId = UUID.randomUUID();
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+            when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+
+            approvalService.approveCurrentStage(testId, null, userId);
+
+            verify(infrastructureApprovalService).approveC2(eq(testEntity), eq(InfrastructureType.DRY_PORT),
+                    eq(ApprovalStatus.APPROVED.name()), isNull(), eq(userId));
+            verify(infrastructureApprovalService, never()).approveC1(any(), any(), any(), any(), any());
         }
     }
 }

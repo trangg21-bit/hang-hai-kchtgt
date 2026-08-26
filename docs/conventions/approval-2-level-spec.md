@@ -123,6 +123,86 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 - Entity nghiệp vụ KCHT phải có `orgUnitId` + khai `@Filter(orgUnitFilter)` + controller `@DataScope` (xem `AGENTS.md` mục Data Scope Convention).
 - Đơn vị nào chỉ xem dữ liệu đơn vị đó; đơn vị cha xem được đơn vị con (subtree); Cục xem full.
 
+### 3.10. Hiển thị trạng thái trên giao diện — nguồn nhãn duy nhất (BẮT BUỘC)
+
+Nhãn và màu của 7 trạng thái chỉ được lấy từ **một nguồn duy nhất**:
+`frontend/src/components/shared/ApprovalStatusBadge.tsx`.
+
+| Xuất ra ở đâu | Dùng cái gì |
+| :--- | :--- |
+| Cột "Trạng thái" trong bảng | `<ApprovalStatusBadge status={v} />` |
+| Dropdown bộ lọc trạng thái | `APPROVAL_STATUS_OPTIONS` |
+| Tab trạng thái, khung chi tiết, xuất dữ liệu | `approvalStatusLabel()` / `approvalStatusColor()` / `APPROVAL_STATUS_STYLE` |
+
+**CẤM** mỗi màn tự khai một map nhãn riêng. Bài học từ đợt rà soát 26/08/2026: 11/18 màn KCHT
+tự khai map, dẫn tới ba lớp lỗi cùng lúc:
+
+1. **Lòi mã thô ra giao diện** — map thiếu `REJECTED_LEVEL1`/`REJECTED_LEVEL2` nên badge in
+   thẳng chuỗi `REJECTED_LEVEL1` cho người dùng cuối.
+2. **Nhãn lệch nhau giữa các màn** — cùng một trạng thái mà chỗ ghi "Nháp", chỗ ghi "Lưu tạm";
+   chỗ "Chờ phê duyệt", chỗ "Chờ Cảng vụ duyệt"; chỗ "Đã phê duyệt", chỗ "Đã duyệt".
+3. **Nhãn gắn sai mã, lệch hẳn một bậc** (nặng nhất) — màn Bến cảng và Cầu cảng gắn
+   `APPROVED_LEVEL1` = "Chờ Cảng vụ duyệt" (thực chất là hồ sơ **đã qua** vòng 1), gắn
+   `APPROVED_LEVEL2` = "Chờ Cục duyệt" (thực chất là mã legacy = Đã duyệt nên tab luôn rỗng),
+   và **không có tab/bộ lọc nào** cho `PENDING_APPROVAL` — tức là hồ sơ đang chờ vòng 1
+   không lọc ra được.
+
+`ApprovalStatusBadge` gọi `normalizeApprovalStatus()` (`utils/approvalEditPolicy.ts`) nên tự
+quy đổi mọi mã legacy (`PROPOSED`, `PUBLISHED`, `APPROVED_L1`, `APPROVED_LEVEL2`, `NHAP`,
+`CHO_PHE_DUYET`, `DA_PHE_DUYET`, `DELETED`...) về 7 trạng thái chuẩn trước khi tra nhãn.
+
+---
+
+### 3.9. Quyền chỉnh sửa hồ sơ theo trạng thái — quy tắc 12 (BẮT BUỘC)
+
+Nguồn: `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md` — bảng chuyển trạng thái (mục 7) + Ca dùng 8.
+Đây là **ma trận chuẩn duy nhất** cho nút "Chỉnh sửa" trên mọi màn hình KCHT và cho
+guard phía backend. Mọi tài liệu/màn hình khác phải khớp với bảng này.
+
+| Trạng thái | Cho sửa? | Hành động | Ai được sửa | Quyền yêu cầu |
+| :--- | :---: | :--- | :--- | :--- |
+| **Lưu tạm** `DRAFT` (0) | ✅ | Sửa tiếp, gửi duyệt | Người nhập | `<resource>:update` |
+| **Chờ Cảng vụ/Chi cục duyệt** `PENDING_APPROVAL` (2) | ❌ | — | — | — |
+| **Chờ Cục duyệt** `APPROVED_LEVEL1` (3) | ❌ | — | — | — |
+| **Bị Cảng vụ/Chi cục trả về** `REJECTED_LEVEL1` (8) | ✅ | Sửa **+ gửi lại** | Người nhập | `<resource>:update` |
+| **Bị Cục trả về** `REJECTED_LEVEL2` (9) | ✅ | Sửa **+ gửi lại** | Người nhập | `<resource>:update` |
+| **Đã duyệt** `APPROVED` (5) | ✅ | Sửa qua **"Lưu và phê duyệt"** | **Người có quyền phê duyệt** | `<resource>:approvec2` |
+| **Đã xóa** `ARCHIVED` (7) | ❌ | — | — | — |
+
+**Giải thích các quy tắc bắt buộc:**
+
+1. **Đóng băng khi đang chờ duyệt** (`PENDING_APPROVAL`, `APPROVED_LEVEL1`): nút "Chỉnh sửa"
+   phải **ẩn**, backend phải **từ chối** (HTTP 403 — "Không thể sửa hồ sơ đang trong quy trình
+   phê duyệt"). Lý do: nếu cho sửa, người nhập có thể đổi nội dung sau khi cán bộ đã đọc,
+   khiến cán bộ ký duyệt vào nội dung mình chưa từng xem — mất tính toàn vẹn của vòng duyệt
+   và mất trách nhiệm giải trình. Quy tắc này đồng bộ với ràng buộc "chỉ xóa được tệp đính kèm
+   khi hồ sơ ở `DRAFT`/`REJECTED_*`".
+
+2. **Bị trả về thì BẮT BUỘC cho sửa** (`REJECTED_LEVEL1`, `REJECTED_LEVEL2`): đây là mục đích
+   của việc trả về. Cấm sửa ở hai trạng thái này sẽ làm **tắc quy trình** — hồ sơ không bao giờ
+   đi tiếp được. Sau khi sửa, hồ sơ quay lại `PENDING_APPROVAL` (gửi lại vòng 1).
+
+3. **Sửa hồ sơ Đã duyệt = "Lưu và phê duyệt"** (T12): chỉ **người có quyền phê duyệt**
+   (`<resource>:approvec2`) mới thấy nút "Chỉnh sửa" trên hồ sơ `APPROVED`. Khi lưu:
+   bản cũ ghi vào nhật ký thay đổi, hồ sơ **giữ nguyên trạng thái `APPROVED`**, ghi lại
+   người thực hiện + thời điểm. **Tuyệt đối không** hạ hồ sơ về `DRAFT` — vì `/options`
+   chỉ trả về bản ghi `APPROVED` (quy tắc APPROVED ONLY), hạ trạng thái sẽ làm hồ sơ đang
+   khai thác biến mất khỏi mọi dropdown của các màn hình khác.
+
+4. **Không có quyền tương ứng thì ẩn nút**, không hiện rồi báo lỗi khi bấm.
+
+**Bộ ba nút chân form khi chỉnh sửa** (khác với khi tạo mới):
+
+| Trạng thái đang sửa | Các nút hiển thị |
+| :--- | :--- |
+| `DRAFT`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2` | `Hủy` · `Lưu tạm` · `Lưu và gửi phê duyệt` |
+| `APPROVED` | `Hủy` · `Lưu và phê duyệt` (nút xanh lá) |
+
+**Triển khai dùng chung — CẤM tự viết lại điều kiện ở từng màn:**
+
+- Frontend: `frontend/src/utils/approvalEditPolicy.ts` → `canEditApprovalRecord(status, { hasPerm, resource })`.
+- Backend: `InfrastructureApprovalService.assertEditable(entity)`.
+
 ---
 
 ## 4. Mỗi loại KCHT có một tài liệu riêng — gồm các phần sau

@@ -191,6 +191,55 @@ public class InfrastructureApprovalService {
     }
 
     /**
+     * Kiểm tra hồ sơ có được phép chỉnh sửa ở trạng thái hiện tại hay không (quy tắc 12).
+     *
+     * <p>Ma trận chuẩn (nguồn: {@code QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md} bảng chuyển trạng thái mục 7
+     * + Ca dùng 8, chuẩn hóa tại {@code docs/conventions/approval-2-level-spec.md} mục 3.9):</p>
+     *
+     * <ul>
+     *   <li>{@code DRAFT}, {@code REJECTED_LEVEL1}, {@code REJECTED_LEVEL2} — cho sửa (người nhập).</li>
+     *   <li>{@code PENDING_APPROVAL}, {@code APPROVED_LEVEL1} — <b>cấm sửa</b>, hồ sơ đang trong vòng duyệt.</li>
+     *   <li>{@code APPROVED} — cho sửa qua "Lưu và phê duyệt" (T12), chỉ người có quyền phê duyệt cấp 2;
+     *       quyền được chặn ở tầng controller bằng {@code @PreAuthorize("hasAnyAuthority('<res>:approvec2')")}.</li>
+     *   <li>{@code ARCHIVED} — cấm sửa, hồ sơ đã xóa mềm.</li>
+     * </ul>
+     *
+     * <p>Lý do cấm sửa khi đang chờ duyệt: nếu cho sửa, người nhập có thể đổi nội dung sau khi cán bộ đã
+     * đọc, khiến cán bộ ký duyệt vào nội dung mình chưa từng xem — mất tính toàn vẹn của vòng duyệt.</p>
+     *
+     * @throws IllegalStateException nếu hồ sơ đang ở trạng thái không cho phép sửa
+     */
+    public void assertEditable(ApprovableEntity entity) {
+        if (entity == null) {
+            throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
+        }
+
+        ApprovalStatus status = entity.getApprovalStatus();
+        if (status == null) {
+            return;
+        }
+
+        if (status == ApprovalStatus.PENDING_APPROVAL || status == ApprovalStatus.APPROVED_LEVEL1) {
+            throw new IllegalStateException("Không thể sửa hồ sơ đang trong quy trình phê duyệt");
+        }
+
+        if (status == ApprovalStatus.ARCHIVED) {
+            throw new IllegalStateException("Không thể sửa hồ sơ đã xóa");
+        }
+    }
+
+    /**
+     * Hồ sơ đang ở trạng thái Đã duyệt — thao tác sửa phải đi qua "Lưu và phê duyệt" (T12):
+     * giữ nguyên trạng thái Đã duyệt và ghi bản cũ vào nhật ký thay đổi.
+     *
+     * <p>Tuyệt đối không hạ hồ sơ về {@code DRAFT} khi sửa: endpoint {@code /options} chỉ trả về bản ghi
+     * {@code APPROVED}, hạ trạng thái sẽ làm hồ sơ đang khai thác biến mất khỏi mọi dropdown.</p>
+     */
+    public boolean requiresSaveAndApprove(ApprovableEntity entity) {
+        return entity != null && entity.getApprovalStatus() == ApprovalStatus.APPROVED;
+    }
+
+    /**
      * Xóa hồ sơ nháp (T13). Chỉ được xóa hồ sơ khi ở trạng thái Lưu tạm (DRAFT / PROPOSED).
      */
     @Transactional

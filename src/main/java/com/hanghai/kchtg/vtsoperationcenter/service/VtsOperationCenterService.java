@@ -190,6 +190,9 @@ public class VtsOperationCenterService {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
 
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        approvalService.assertEditable(entity);
+
         validateAllowedOrgUnit(entity.getOrgUnitId());
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());

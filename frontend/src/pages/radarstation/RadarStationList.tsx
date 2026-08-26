@@ -66,6 +66,7 @@ import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import {
   statusOperational,
   statusAttention,
@@ -719,7 +720,8 @@ export default function RadarStationList() {
     if (hasPerm('radarstation:read')) {
       actions.push({ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) });
     }
-    if (hasPerm('radarstation:update')) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'radarstation' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEditDrawer(record) });
     }
     const st = record.status || '';

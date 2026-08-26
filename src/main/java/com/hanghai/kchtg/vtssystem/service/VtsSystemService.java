@@ -577,6 +577,9 @@ public class VtsSystemService {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
+        approvalService.assertEditable(entity);
+
         DataScopeContext scope = resolveDataScope();
         if (scope.enabled()) {
             validateAllowedOrgUnit(scope, entity.getOrgUnitId(), "Đơn vị quản lý");

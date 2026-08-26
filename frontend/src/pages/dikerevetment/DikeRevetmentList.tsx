@@ -57,6 +57,8 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { colors } from '../../theme';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import {
   statusOperational,
   statusAttention,
@@ -823,7 +825,7 @@ export default function DikeRevetmentList() {
     if (val === null || val === undefined || val === '') return '—';
     if (fn === 'dikeRevetmentType') return DIKE_REVETMENT_TYPE_MAP[val] || val;
     if (fn === 'status') return OPERATIONAL_STATUS_STYLE_MAP[val]?.label || val;
-    if (fn === 'approvalStatus') return APPROVAL_STATUS_MAP[val] || val;
+    if (fn === 'approvalStatus') return approvalStatusLabel(val);
     if (fn === 'length' || fn === 'height' || fn === 'crestElevation') return `${val} m`;
     return String(val);
   };
@@ -1030,7 +1032,8 @@ export default function DikeRevetmentList() {
         onClick: () => openDetailDrawer(record),
       });
     }
-    if (canUpdate) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dikerevetment' })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',

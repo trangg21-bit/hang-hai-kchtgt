@@ -80,6 +80,8 @@ import {
   borderDefault,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
 const HISTORY_FIELD_ORDER = [
   'orgUnitId',
@@ -868,41 +870,7 @@ export const AisSystemList: React.FC = () => {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
-      render: (status: ApprovalStatus) => {
-        if (!status) return '—';
-        const key = String(status);
-        const label = key === 'DRAFT' ? 'Lưu tạm'
-          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? 'Chờ Cảng vụ duyệt'
-          : key === 'APPROVED_LEVEL1' ? 'Chờ Cục duyệt'
-          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? 'Đã duyệt'
-          : (key === 'REJECTED_LEVEL1' || key === 'REJECTED') ? 'Cảng vụ trả về'
-          : key === 'REJECTED_LEVEL2' ? 'Cục trả về'
-          : key;
-        const color = key === 'DRAFT' ? statusDraft
-          : (key === 'PENDING_APPROVAL' || key === 'PROPOSED') ? statusAttention
-          : key === 'APPROVED_LEVEL1' ? '#0284C7'
-          : (key === 'APPROVED' || key === 'APPROVED_LEVEL2') ? statusOperational
-          : statusCritical;
-        return (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 10px',
-              border: `1px solid ${color}40`,
-              borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
-              background: `${color}15`,
-              color,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {label}
-          </span>
-        );
-      },
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       key: 'updatedByName',
@@ -934,7 +902,6 @@ export const AisSystemList: React.FC = () => {
     const isDraft = record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
     const isPendingC1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL;
     const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
-    const isApproved = record.approvalStatus === ApprovalStatus.APPROVED;
 
     const currentUserId = user?.userId || user?.id;
     const isCreator = Boolean(currentUserId && record.createdBy === currentUserId);
@@ -959,8 +926,8 @@ export const AisSystemList: React.FC = () => {
       });
     }
 
-    // 3. Chỉnh sửa
-    if (canUpdate && !isApproved) {
+    // 3. Chỉnh sửa — quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm: hasPermission, resource: 'aissystem' })) {
       actions.push({
         key: 'edit',
         icon: <EditOutlined />,

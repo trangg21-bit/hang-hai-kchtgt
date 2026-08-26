@@ -19,7 +19,6 @@ import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
-import { trangThaiPheDuyetBadge } from '../../services/port/schema';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -45,19 +44,15 @@ import {
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
+import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import { APPROVAL_STATUS_STYLE } from '../../components/shared/ApprovalStatusBadge';
 
-const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Nháp' }, DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING: { color: statusAttention, label: 'Chờ phê duyệt' },
-  CHO_PHE_DUYET: { color: statusAttention, label: 'Chờ phê duyệt' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
-};
+// Nhãn + màu trạng thái lấy từ nguồn chung (approval-2-level-spec.md mục 3.1),
+// không khai lại map riêng để tránh lệch nhãn giữa các màn.
+const APPROVAL_STYLE_MAP = APPROVAL_STATUS_STYLE;
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
   NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
@@ -65,15 +60,18 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
 };
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ Cảng vụ duyệt', color: actionPrimary },
-  { key: 'APPROVED_LEVEL2', label: 'Chờ Cục duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
-  { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
+  // 7 trạng thái chuẩn — approval-2-level-spec.md mục 3.1.
+  // Trước đây tab "Chờ Cảng vụ duyệt" lại truy vấn APPROVED_LEVEL1 (hồ sơ đã qua vòng 1)
+  // và thiếu hẳn tab cho hồ sơ đang chờ vòng 1.
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
+  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
+  { key: 'REJECTED_LEVEL1', label: 'Bị trả về', color: statusCritical },
 ];
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
-  all: undefined, DRAFT: 'DRAFT', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
-  APPROVED_LEVEL2: 'APPROVED_LEVEL2', APPROVED: 'APPROVED', REJECTED: 'REJECTED',
+  all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1', APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1',
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -119,7 +117,7 @@ function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, s
   if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
   if (fn === 'structureType') { const m: Record<string,string> = { '1':'Kết cấu bệ cọc cao', '2':'Kết cấu cường từ', '3':'Kết cấu trọng lực', '4':'Kết cấu khác' }; return m[val] || val; }
   if (fn === 'constructionGrade') { const m: Record<string,string> = { '1':'Cấp đặc biệt', '2':'Cấp 1', '3':'Cấp 2', '4':'Cấp 3', '5':'Cấp 4' }; return m[val] || val; }
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Nháp', PENDING:'Chờ duyệt', PENDING_APPROVAL:'Chờ phê duyệt', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối' }; return m[val?.toUpperCase()] || val; }
+  if (fn === 'approvalStatus') return approvalStatusLabel(val);
   if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/vận hành', SUSPENDED:'Dừng khai thác/vận hành', HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác/vận hành', CHUA_KHAI_THAC:'Chưa khai thác/vận hành', DUNG_KHAI_THAC:'Dừng khai thác/vận hành' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'pierType') { const m: Record<string,string> = { CONTAINER:'Container', TONG_HOP:'Tổng hợp', HANH_KHACH:'Hành khách', CHUYEN_DUNG_XANG_DAU:'Chuyên dùng xăng dầu', CHUYEN_DUNG_ROI_QUANG:'Chuyên dùng rời/quặng', KHAC:'Khác' }; return m[val?.toUpperCase()] || val; }
   if (fn === 'province') return VIETNAM_PROVINCES[Number(val)-1] || val;
@@ -510,7 +508,7 @@ export default function PierListPage() {
     <>
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Đơn vị quản lý <span style={{ color: statusCritical }}>*</span>
+          Đơn vị quản lý
         </div>
         <OrgUnitTreeSelect
           organizations={organizations}
@@ -598,7 +596,7 @@ export default function PierListPage() {
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Trạng thái</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tất cả" allowClear
             value={filterApprovalStatus} onChange={v => { setFilterApprovalStatus(v); setActiveTab('all'); }}
-            options={[{ value: 'DRAFT', label: 'Nháp' }, { value: 'APPROVED_LEVEL1', label: 'Chờ Cảng vụ duyệt' }, { value: 'APPROVED_LEVEL2', label: 'Chờ Cục duyệt' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'REJECTED', label: 'Từ chối' }]} />
+            options={APPROVAL_STATUS_OPTIONS} />
         </div>
       </>)}
     </>
@@ -607,7 +605,8 @@ export default function PierListPage() {
   const rowActions = useCallback((record: Pier) => {
     const actions: any[] = [{ key: 'view', label: 'Chi tiết', icon: <EyeOutlined />, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
-    if (hasPerm('pier:update')) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => { setEditPierId(record.id); setCreateDrawerVisible(true); } });
     if (hasPerm('pier:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => openHistory(record) });
     if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: <CheckCircleOutlined />, onClick: () => handleSubmitApproval(record) });
     if (hasPerm('pier:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) {
@@ -685,12 +684,7 @@ export default function PierListPage() {
     { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 190, sortable: true,
       render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${b.color}15`, color: b.color }}>{b.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; } },
     { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 180, sortable: true,
-      render: (v: string) => {
-        const badge = v ? trangThaiPheDuyetBadge(v) : null;
-        if (!badge || badge.color === 'default') { const s = v && APPROVAL_STYLE_MAP[v]; return s ? <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${s.color}15`, color: s.color }}>{s.label}</span> : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>; }
-        const bc = badge.color === 'green' ? statusOperational : badge.color === 'red' ? statusCritical : badge.color === 'orange' ? statusAttention : textTertiary;
-        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${bc}15`, color: bc }}>{badge.label}</span>;
-      } },
+      render: (v: string) => <ApprovalStatusBadge status={v} /> },
     { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 200, sortable: true,
       render: (v: string, record: Pier) => (
         <div>

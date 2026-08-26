@@ -1,28 +1,27 @@
 package com.hanghai.kchtg.cctv.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.cctv.repository.CctvRepository;
-import com.hanghai.kchtg.port.entity.ApprovalLog;
-import com.hanghai.kchtg.port.entity.ChangeLog;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Approval service for CCTV entity.
- * Uses shared change_logs and approval_logs tables (same as Port).
+ * Uses shared infrastructure_history table.
  */
 @Slf4j
 @Service
@@ -32,8 +31,8 @@ public class CctvApprovalService {
     private final CctvRepository cctvRepository;
     private final ApprovalWorkflowService approvalWorkflowService;
     private final PortNotificationService notificationService;
-    private final ApprovalLogRepository approvalLogRepository;
-    private final ChangeLogRepository changeLogRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
     private final ChangeHistoryService changeHistoryService;
 
     @Transactional
@@ -103,31 +102,77 @@ public class CctvApprovalService {
         String entityId = id.toString();
         String entityType = "CCTV";
 
-        List<ChangeLog> changeLog = changeLogRepository.findByEntityTypeAndEntityId(entityType, entityId);
-        List<ApprovalLog> approvalLog = approvalLogRepository.findByEntityTypeAndEntityId(entityType, entityId);
+        List<InfrastructureHistory> list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeLog = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("fieldName", h.getChangedField());
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+                    return m;
+                })
+                .toList();
 
         return Map.of(
                 "entityId", entityId,
                 "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus(),
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
                 "changeLog", changeLog,
-                "approvalLog", approvalLog
+                "approvalLog", approvalLog,
+                "histories", list
         );
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getAllHistory() {
         String entityType = "CCTV";
-        List<ChangeLog> changeLog = changeLogRepository.findByEntityType(entityType);
-        Map<String, String> entityNames = new java.util.HashMap<>();
-        for (ChangeLog log : changeLog) {
-            if (!entityNames.containsKey(log.getEntityId())) {
-                try {
-                    cctvRepository.findById(java.util.UUID.fromString(log.getEntityId()))
-                        .ifPresent(c -> entityNames.put(log.getEntityId(), c.getDeviceName()));
-                } catch (Exception e) { entityNames.put(log.getEntityId(), log.getEntityId()); }
+        List<InfrastructureHistory> list = historyRepository.findAll();
+        Map<String, String> entityNames = new HashMap<>();
+        for (InfrastructureHistory logItem : list) {
+            if (logItem.getRefId() != null) {
+                String refIdStr = logItem.getRefId().toString();
+                if (!entityNames.containsKey(refIdStr)) {
+                    try {
+                        cctvRepository.findById(logItem.getRefId())
+                                .ifPresent(c -> entityNames.put(refIdStr, c.getDeviceName()));
+                    } catch (Exception e) { entityNames.put(refIdStr, refIdStr); }
+                }
             }
         }
-        return Map.of("entityType", entityType, "changeLog", changeLog, "entityNames", entityNames);
+        return Map.of("entityType", entityType, "changeLog", list, "entityNames", entityNames);
     }
 }

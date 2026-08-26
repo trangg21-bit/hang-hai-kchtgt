@@ -1,25 +1,25 @@
 package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.entity.ApprovalLog;
-import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.DryPort;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.DryPortRepository;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Approval service for DryPort entity.
@@ -30,8 +30,12 @@ import java.util.UUID;
 public class DryPortApprovalService {
 
     private final DryPortRepository dryPortRepository;
-
     private final InfrastructureApprovalService infrastructureApprovalService;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
+    private final ApprovalWorkflowService approvalWorkflowService;
+    private final PortNotificationService notificationService;
+    private final ChangeHistoryService changeHistoryService;
 
     // -- Phe duyet 2 cap (approval-2-level-spec 3.2) --
     // Uy quyen cho InfrastructureApprovalService: noi cai dat dung 7 trang thai,
@@ -55,18 +59,19 @@ public class DryPortApprovalService {
         dryPortRepository.save(entity);
     }
 
-    /** T08: Cuc duyet vong 2 - ho so tro thanh "Da duyet". */
+    /** T08: Cuc duyet vong 2 -- ho so tro thanh "Da duyet". */
     @Transactional
     public void approveC2(UUID id, String reason, UUID userId) {
         DryPort entity = loadForApproval(id);
         infrastructureApprovalService.approveC2(entity, InfrastructureType.DRY_PORT,
                 ApprovalStatus.APPROVED.name(), reason, userId);
         dryPortRepository.save(entity);
+        notificationService.sendApprovalNotification("DryPort", id.toString(), String.valueOf(userId), null);
     }
 
     /**
-     * T07/T09: tu choi. Vong bi tu choi suy ra tu trang thai hien tai nen giao
-     * dien khong phai tu chon cap - tranh lech giua nut bam va du lieu.
+     * T07/T09: tu choi. Vong bi tu choi suy ra tu trang thai hien tai -- tranh
+     * lech giua nut bam va du lieu.
      */
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
@@ -79,6 +84,47 @@ public class DryPortApprovalService {
                     ApprovalStatus.REJECTED.name(), reason, userId);
         }
         dryPortRepository.save(entity);
+    }
+
+    /**
+     * @deprecated Uy quyen cu dung cho cac luong chua phan cap.
+     */
+    @Deprecated
+    @Transactional
+    public void reject(UUID id, String userId, String cap, String reason) {
+        UUID uid = null;
+        try { if (userId != null) uid = UUID.fromString(userId); } catch (Exception ignored) {}
+        if ("CUC".equalsIgnoreCase(cap)) {
+            infrastructureApprovalService.approveC2(loadForApproval(id), InfrastructureType.DRY_PORT,
+                    ApprovalStatus.REJECTED.name(), reason, uid);
+        } else {
+            infrastructureApprovalService.approveC1(loadForApproval(id), InfrastructureType.DRY_PORT,
+                    ApprovalStatus.REJECTED.name(), reason, uid);
+        }
+        dryPortRepository.save(loadForApproval(id));
+    }
+
+    /**
+     * @deprecated Uy quyen cu. Dung {@link #approveC1} hoac {@link #approveC2}.
+     */
+    @Deprecated
+    @Transactional
+    public void approve(UUID id, String userId, String cap, String reason) {
+        UUID uid = null;
+        try { if (userId != null) uid = UUID.fromString(userId); } catch (Exception ignored) {}
+        if ("CUC".equalsIgnoreCase(cap)) {
+            approveC2(id, reason, uid);
+        } else {
+            approveC1(id, reason, uid);
+        }
+    }
+
+    @Deprecated
+    @Transactional
+    public void approve(UUID id, String userId, String reason) {
+        UUID uid = null;
+        try { if (userId != null) uid = UUID.fromString(userId); } catch (Exception ignored) {}
+        approveCurrentStage(id, reason, uid);
     }
 
     /**
@@ -100,92 +146,88 @@ public class DryPortApprovalService {
         return dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
     }
-    private final ApprovalWorkflowService approvalWorkflowService;
-    private final PortNotificationService notificationService;
-    private final ChangeLogRepository changeLogRepository;
-    private final ApprovalLogRepository approvalLogRepository;
-    private final ChangeHistoryService changeHistoryService;
-
-    @Transactional
-    public void approve(UUID id, String userId, String reason) {
-        DryPort entity = dryPortRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
-
-        ApprovalStatus currentStatus = entity.getApprovalStatus();
-        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
-
-        // Import DryPortService's captureSnapshot — use inline instead
-        DryPort snapshot = DryPort.builder()
-                .dryPortCode(entity.getDryPortCode()).dryPortName(entity.getDryPortName())
-                .provinceId(entity.getProvinceId()).orgUnitId(entity.getOrgUnitId())
-                .operatingUnit(entity.getOperatingUnit()).region(entity.getRegion())
-                .detailedLocation(entity.getDetailedLocation()).transportCorridor(entity.getTransportCorridor())
-                .area(entity.getArea()).warehouseArea(entity.getWarehouseArea()).yardArea(entity.getYardArea())
-                .teuCapacity(entity.getTeuCapacity()).connectionMode(entity.getConnectionMode())
-                .portStatus(entity.getPortStatus()).operationalStatus(entity.getOperationalStatus())
-                .remarks(entity.getRemarks())
-                .announcementTime(entity.getAnnouncementTime()).announcementDecisionNumber(entity.getAnnouncementDecisionNumber())
-                .announcementDecisionDate(entity.getAnnouncementDecisionDate()).announcementOrg(entity.getAnnouncementOrg())
-                .mapSymbolId(entity.getMapSymbolId())
-                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
-                .approvalStatus(entity.getApprovalStatus()).spatialId(entity.getSpatialId())
-                .build();
-
-        if (reason == null || reason.isBlank()) {
-            approvalWorkflowService.approve(currentStatusStr, "DryPort", id.toString(), userId);
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        } else {
-            approvalWorkflowService.reject(currentStatusStr, "DryPort", id.toString(), userId, reason);
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
-        }
-        DryPort saved = dryPortRepository.save(entity);
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), "system", snapshot, saved);
-
-        if (reason != null && !reason.isBlank()) {
-            changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Lý do từ chối", null, reason, userId);
-        }
-
-        if (reason == null || reason.isBlank()) {
-            log.info("DryPort [{}] approved by {}", id, userId);
-            notificationService.sendApprovalNotification("DryPort", id.toString(), userId, null);
-        } else {
-            log.info("DryPort [{}] rejected by {}: {}", id, userId, reason);
-        }
-    }
 
     @Transactional(readOnly = true)
-    public java.util.Map<String, Object> getHistory(UUID id) {
+    public Map<String, Object> getHistory(UUID id) {
         DryPort entity = dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
 
         String entityId = id.toString();
         String entityType = "DryPort";
 
-        List<ChangeLog> changeHistory = changeLogRepository.findByEntityTypeAndEntityId(entityType, entityId);
-        List<ApprovalLog> approvalLog = approvalLogRepository.findByEntityTypeAndEntityId(entityType, entityId);
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DRY_PORT, id);
 
-        return java.util.Map.of(
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("fieldName", h.getChangedField());
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+                    return m;
+                })
+                .toList();
+
+        return Map.of(
                 "entityId", entityId,
                 "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus(),
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
                 "changeHistory", changeHistory,
-                "approvalLog", approvalLog
+                "approvalLog", approvalLog,
+                "histories", list
         );
     }
 
     @Transactional(readOnly = true)
-    public java.util.Map<String, Object> getAllHistory() {
+    public Map<String, Object> getAllHistory() {
         String entityType = "DryPort";
-        List<ChangeLog> changeHistory = changeLogRepository.findByEntityType(entityType);
-        java.util.Map<String, String> entityNames = new java.util.HashMap<>();
-        for (ChangeLog log : changeHistory) {
-            if (!entityNames.containsKey(log.getEntityId())) {
-                try {
-                    dryPortRepository.findById(UUID.fromString(log.getEntityId()))
-                        .ifPresent(dp -> entityNames.put(log.getEntityId(), dp.getDryPortName()));
-                } catch (Exception e) { entityNames.put(log.getEntityId(), log.getEntityId()); }
+        List<InfrastructureHistory> list =
+                historyRepository.findByRefTypeOrderByApprovedDateDesc(InfrastructureType.DRY_PORT);
+        Map<String, String> entityNames = new HashMap<>();
+        for (InfrastructureHistory logItem : list) {
+            if (logItem.getRefId() != null) {
+                String refIdStr = logItem.getRefId().toString();
+                if (!entityNames.containsKey(refIdStr)) {
+                    try {
+                        dryPortRepository.findById(logItem.getRefId())
+                                .ifPresent(dp -> entityNames.put(refIdStr, dp.getDryPortName()));
+                    } catch (Exception e) { entityNames.put(refIdStr, refIdStr); }
+                }
             }
         }
-        return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames);
+        return Map.of("entityType", entityType, "changeHistory", list, "entityNames", entityNames);
     }
 }

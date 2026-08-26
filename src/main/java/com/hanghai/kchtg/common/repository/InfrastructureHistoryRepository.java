@@ -21,6 +21,8 @@ public interface InfrastructureHistoryRepository extends JpaRepository<Infrastru
 
     List<InfrastructureHistory> findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType refType, UUID refId, Pageable pageable);
 
+    List<InfrastructureHistory> findByRefTypeOrderByApprovedDateDesc(InfrastructureType refType);
+
     @Query("""
             SELECT h FROM InfrastructureHistory h
             WHERE h.refType = :refType

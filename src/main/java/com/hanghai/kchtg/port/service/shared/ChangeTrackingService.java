@@ -1,9 +1,10 @@
 package com.hanghai.kchtg.port.service.shared;
 
 import com.hanghai.kchtg.common.entity.EntityFields;
-
-import com.hanghai.kchtg.port.entity.ChangeLog;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,7 @@ import java.util.UUID;
 
 /**
  * Service that records field-level change history into the
- * lich_su_thay_doi table (INSERT-only, immutable audit trail).
+ * infrastructure_history table (INSERT-only, immutable audit trail).
  * <p>
  * Writes one record per changed field. Called within the same
  * @Transactional boundary as the entity save to guarantee atomicity.
@@ -28,7 +29,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChangeTrackingService {
 
-    private final ChangeLogRepository changeLogRepository;
+    private final InfrastructureHistoryRepository historyRepository;
 
     /**
      * Compare old and new entity values field-by-field and record changes.
@@ -57,6 +58,16 @@ public class ChangeTrackingService {
             }
         }
 
+        UUID entityUuid = null;
+        try {
+            if (entityId != null) entityUuid = UUID.fromString(entityId);
+        } catch (Exception ignored) {}
+
+        UUID userUuid = null;
+        try {
+            if (actualActor != null) userUuid = UUID.fromString(actualActor);
+        } catch (Exception ignored) {}
+
         List<String> changedFields = new ArrayList<>();
         Class<?> clazz = oldEntity.getClass();
 
@@ -78,20 +89,19 @@ public class ChangeTrackingService {
                     log.debug("Change in {} [{}]: {} = [{}] -> [{}]",
                             entityName, entityId, fieldName, oldValueStr, newValueStr);
 
-                    // Insert a change-history record into the database
-                    ChangeLog history = ChangeLog.builder()
-                            .id(UUID.randomUUID())
-                            .entityType(entityName)
-                            .entityId(entityId)
-                            .fieldName(fieldName)
-                            .oldValue(oldValueStr)
-                            .newValue(newValueStr)
-                            .changedBy(actualActor)
-                            .changedAt(LocalDateTime.now())
-                            .createdAt(LocalDateTime.now())
-                            .build();
-
-                    changeLogRepository.save(history);
+                    if (entityUuid != null && historyRepository != null) {
+                        historyRepository.save(InfrastructureHistory.builder()
+                                .refId(entityUuid)
+                                .refType(ChangeHistoryService.resolveInfrastructureType(entityName))
+                                .approvalLevel(ApprovalLevel.LEVEL_0)
+                                .status(InfrastructureHistoryStatus.UPDATED)
+                                .approvedBy(userUuid)
+                                .approvedDate(LocalDateTime.now())
+                                .changedField(fieldName)
+                                .previousValue(oldValueStr)
+                                .newValue(newValueStr)
+                                .build());
+                    }
                     changedFields.add(fieldName);
                 }
             } catch (IllegalAccessException e) {

@@ -1,12 +1,19 @@
 package com.hanghai.kchtg.port;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.port.service.PortApprovalService;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
@@ -61,6 +68,17 @@ class PortApprovalServiceTest {
 
     @Mock
     private PortCacheService portCacheService;
+
+    // Hai phụ thuộc dưới đây được thêm khi nhật ký cảng biển chuyển sang bảng
+    // dùng chung `infrastructure_history`; thiếu @Mock thì @InjectMocks để null.
+    @Mock
+    private InfrastructureHistoryRepository historyRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private InfrastructureApprovalService infrastructureApprovalService;
 
     private UUID testId;
     private Port testEntity;
@@ -140,61 +158,58 @@ class PortApprovalServiceTest {
     // ── HISTORY (F-013) ────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("F-013: getHistory — returns map with changeHistory and approvalLog")
+    @DisplayName("F-013: getHistory — trả về changeHistory và approvalLog từ infrastructure_history")
     void getHistory_returnsPersistedRows() {
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
 
-        ChangeLog changeRecord = ChangeLog.builder()
-                .id(UUID.randomUUID())
-                .entityType("Port")
-                .entityId(testId.toString())
-                .fieldName("portName")
-                .oldValue("Cu")
-                .newValue("Moi")
-                .changedBy("user-1")
-                .changedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .build();
-        ApprovalLog approvalLog = ApprovalLog.builder()
-                .id(UUID.randomUUID())
-                .entityType("Port")
-                .entityId(testId.toString())
-                .decision("APPROVED")
-                .decidedBy("user-1")
-                .decidedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .build();
+        // Dòng có changedField => nhật ký thay đổi
+        InfrastructureHistory changeRow = new InfrastructureHistory();
+        ReflectionTestUtils.setField(changeRow, "id", UUID.randomUUID());
+        changeRow.setRefType(InfrastructureType.SEAPORT);
+        changeRow.setRefId(testId);
+        changeRow.setChangedField("portName");
+        changeRow.setPreviousValue("Cũ");
+        changeRow.setNewValue("Mới");
+        changeRow.setApprovedDate(LocalDateTime.now());
 
-        when(changeLogRepository.findByEntityTypeAndEntityId("Port", testId.toString()))
-                .thenReturn(List.of(changeRecord));
-        when(approvalLogRepository.findByEntityTypeAndEntityId("Port", testId.toString()))
-                .thenReturn(List.of(approvalLog));
+        // Dòng không có changedField nhưng có status => vết phê duyệt
+        InfrastructureHistory approvalRow = new InfrastructureHistory();
+        ReflectionTestUtils.setField(approvalRow, "id", UUID.randomUUID());
+        approvalRow.setRefType(InfrastructureType.SEAPORT);
+        approvalRow.setRefId(testId);
+        approvalRow.setStatus(InfrastructureHistoryStatus.APPROVED);
+        approvalRow.setApprovalLevel(ApprovalLevel.LEVEL_2);
+        approvalRow.setApprovedDate(LocalDateTime.now());
+
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, testId))
+                .thenReturn(List.of(changeRow, approvalRow));
 
         Map<String, Object> result = approvalService.getHistory(testId);
 
         assertNotNull(result);
         assertEquals(testId.toString(), result.get("entityId"));
         assertEquals("Port", result.get("entityType"));
-        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.get("currentApprovalStatus"));
+        assertEquals(ApprovalStatus.PENDING_APPROVAL.name(), result.get("currentApprovalStatus"));
 
         @SuppressWarnings("unchecked")
-        List<ChangeLog> history = (List<ChangeLog>) result.get("changeHistory");
+        List<Map<String, Object>> history = (List<Map<String, Object>>) result.get("changeHistory");
         assertEquals(1, history.size());
-        assertEquals("portName", history.get(0).getFieldName());
+        assertEquals("portName", history.get(0).get("fieldName"));
+        assertEquals("Cũ", history.get(0).get("oldValue"));
+        assertEquals("Mới", history.get(0).get("newValue"));
 
         @SuppressWarnings("unchecked")
-        List<ApprovalLog> logs = (List<ApprovalLog>) result.get("approvalLog");
+        List<Map<String, Object>> logs = (List<Map<String, Object>>) result.get("approvalLog");
         assertEquals(1, logs.size());
-        assertEquals("APPROVED", logs.get(0).getDecision());
+        assertEquals(InfrastructureHistoryStatus.APPROVED.name(), logs.get(0).get("decision"));
+        assertEquals(ApprovalLevel.LEVEL_2.name(), logs.get(0).get("cap"));
     }
 
     @Test
-    @DisplayName("F-013: getHistory — empty lists when no history exists")
+    @DisplayName("F-013: getHistory — danh sách rỗng khi chưa có nhật ký")
     void getHistory_emptyWhenNoRecords() {
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(changeLogRepository.findByEntityTypeAndEntityId(any(), any()))
-                .thenReturn(List.of());
-        when(approvalLogRepository.findByEntityTypeAndEntityId(any(), any()))
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SEAPORT, testId))
                 .thenReturn(List.of());
 
         Map<String, Object> result = approvalService.getHistory(testId);

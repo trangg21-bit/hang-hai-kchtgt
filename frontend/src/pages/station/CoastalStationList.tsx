@@ -34,6 +34,7 @@ import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { usePermissionStore } from '../../store/permissionStore';
 import toast, { message, modal } from '../../components/ToastNotification';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 
 const { confirm } = modal;
 
@@ -267,7 +268,8 @@ export default function CoastalStationList() {
     const canApproveC1 = hasPerm('coastalstation:approvec1') || hasPerm('coastalstation:approve');
     const canApproveC2 = hasPerm('coastalstation:approvec2') || hasPerm('coastalstation:approve');
 
-    if (hasPerm('coastalstation:update')) {
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
+    if (canEditApprovalRecord(st, { hasPerm, resource: 'coastalstation' })) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
     }
     if (isDraftOrReturned && hasPerm('coastalstation:update')) {

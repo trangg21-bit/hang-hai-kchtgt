@@ -5,6 +5,10 @@ import FilterTableLayout from './FilterTableLayout';
 import StatusTabs from './StatusTabs';
 import DataTable from './DataTable';
 import Pagination from './Pagination';
+import ListPageContainer from './ListPageContainer';
+import SidebarFilterField from './SidebarFilterField';
 
-export { ScreenHeader, FilterBar, FilterTableLayout, StatusTabs, DataTable, Pagination };
+export { ScreenHeader, FilterBar, FilterTableLayout, StatusTabs, DataTable, Pagination, ListPageContainer, SidebarFilterField };
 export type { ScreenHeaderProps, ScreenHeaderAction };
+export type { ListPageContainerProps } from './ListPageContainer';
+export type { SidebarFilterFieldProps } from './SidebarFilterField';
