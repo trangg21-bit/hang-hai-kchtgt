@@ -32,7 +32,7 @@ import type {
   ApprovalRequest,
 } from '../../types/vtsSystem';
 import { ApprovalStatus, ConditionStatus, RecordSecurityLevel, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
-import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle } from '../../tokens';
+import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle, readonlyInputStyle } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
 
@@ -204,6 +204,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
+  const [operatingOrganizations, setOperatingOrganizations] = useState<Array<{ id: string; name: string; code: string }>>([]);
   const [rawPorts, setRawPorts] = useState<any[]>([]);
   const [tabKey, setTabKey] = useState('general');
   const [zoneList, setZoneList] = useState<any[]>([]);
@@ -241,12 +242,14 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
     if (!isDetailMode) {
       (async () => {
         try {
-          const [scopedOrganizations, scopedPorts] = await Promise.all([
+          const [scopedOrganizations, scopedPorts, operatingOrgs] = await Promise.all([
             vtsSystemCRUD.getScopedOrgUnitOptions(),
             vtsSystemCRUD.getScopedPortOptions(),
+            vtsSystemCRUD.getOperatingOrganizationOptions(),
           ]);
           const allowedOrgUnitIds = new Set(scopedOrganizations.map((organization) => String(organization.id)));
           setOrganizations(scopedOrganizations);
+          setOperatingOrganizations(operatingOrgs);
           setRawPorts(scopedPorts.filter((port) => port.orgUnitId && allowedOrgUnitIds.has(String(port.orgUnitId))));
         } catch (err) {
           console.error('Không thể tải danh sách đơn vị và cảng biển', err);
@@ -256,15 +259,6 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
       setRawPorts([]);
     }
   }, [open, isDetailMode]);
-
-  useEffect(() => {
-    if (open && isCreateMode) {
-      setHasChanges(false);
-      setPendingFiles([]);
-      setZoneList([]);
-      form.resetFields();
-    }
-  }, [open, isCreateMode, form]);
 
   // Fetch detail data
   useEffect(() => {
@@ -339,12 +333,31 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         }
       };
       loadData();
-    } else if (!id && isCreateMode && !isModalMode) {
+    } else if (!id && isCreateMode && (isModalMode ? open : true)) {
       form.resetFields();
       setRecord(null);
       setFormError(null);
       setPendingFiles([]);
       setZoneList([]);
+      setHasChanges(false);
+      vtsSystemCRUD.generateCode().then((res) => {
+        if (!cancelled && res?.code) {
+          requestAnimationFrame(() => {
+            form.setFieldsValue({
+              code: res.code,
+              conditionStatus: ConditionStatus.OPERATIONAL,
+              recordSecurityLevel: RecordSecurityLevel.NORMAL,
+            });
+          });
+        }
+      }).catch(() => {
+        requestAnimationFrame(() => {
+          form.setFieldsValue({
+            conditionStatus: ConditionStatus.OPERATIONAL,
+            recordSecurityLevel: RecordSecurityLevel.NORMAL,
+          });
+        });
+      });
     }
     return () => {
       cancelled = true;
@@ -1159,9 +1172,12 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <OrgUnitTreeSelect
-                          organizations={organizations}
+                        <Select
+                          showSearch
+                          allowClear
                           placeholder="Chọn đơn vị vận hành"
+                          filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+                          options={operatingOrganizations.map((o) => ({ value: o.id, label: o.name }))}
                           style={{ borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>
@@ -1193,7 +1209,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                         rules={[{ required: true, message: 'Vui lòng nhập mã hệ thống VTS' }]}
                         style={{ marginBottom: spaceFormField }}
                       >
-                        <Input placeholder="Nhập mã hệ thống VTS" disabled={isEditMode} maxLength={50} showCount style={{ borderRadius: radiusPill, height: 40 }} />
+                        <Input placeholder="Mã tự sinh (VTS-xxxxxx)" disabled={true} maxLength={50} style={readonlyInputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1529,10 +1545,13 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             name="operatingOrgId"
             rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
           >
-            <OrgUnitTreeSelect
-              organizations={organizations}
-              placeholder="Chọn đơn vị vận hành"
+            <Select
+              showSearch
               allowClear
+              placeholder="Chọn đơn vị vận hành"
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+              options={operatingOrganizations.map((o) => ({ value: o.id, label: o.name }))}
+              style={{ borderRadius: radiusPill, height: 40 }}
             />
           </Form.Item>
 
@@ -1554,7 +1573,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             name="code"
             rules={[{ required: true, message: 'Vui lòng nhập mã hệ thống VTS' }]}
           >
-            <Input placeholder="Nhập mã hệ thống VTS" maxLength={50} showCount />
+            <Input placeholder="Mã tự sinh (VTS-xxxxxx)" disabled={true} maxLength={50} style={readonlyInputStyle} />
           </Form.Item>
 
           <Form.Item

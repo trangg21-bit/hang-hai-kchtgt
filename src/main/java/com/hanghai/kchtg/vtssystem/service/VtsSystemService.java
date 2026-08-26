@@ -133,7 +133,21 @@ public class VtsSystemService {
         this.permissionCacheService = permissionCacheService;
     }
 
+    public String generateCode() {
+        long count = repository.count();
+        String candidate;
+        int i = 1;
+        do {
+            candidate = String.format("VTS-%06d", count + i);
+            i++;
+        } while (repository.existsByCode(candidate));
+        return candidate;
+    }
+
     public VtsSystemResponse create(VtsSystemCreateRequest request, UUID userId) {
+        if (request.getCode() == null || request.getCode().trim().isEmpty()) {
+            request.setCode(generateCode());
+        }
         validateCreateRequest(request);
         validateWriteGuard(request);
         String normalizedCode = request.getCode().trim();

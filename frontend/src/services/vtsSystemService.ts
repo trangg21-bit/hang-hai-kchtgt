@@ -29,6 +29,12 @@ export const vtsSystemCRUD = {
     return Array.isArray(data) ? data : [];
   },
 
+  async getOperatingOrganizationOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
+    const res = await api.get(`${COMMON_OPTIONS_BASE_PATH}/operating-organizations`);
+    const data = res.data?.data;
+    return Array.isArray(data) ? data : [];
+  },
+
   async getOptions(params?: { orgUnitId?: string }): Promise<Array<{ id: string; name: string; code?: string; orgUnitId?: string }>> {
     try {
       const res = await api.get(`${VTS_BASE_PATH}/options`, {
@@ -137,6 +143,11 @@ export const vtsSystemCRUD = {
   async getByStatus(status: string): Promise<VtsSystemResponse[]> {
     const res = await api.get(`${VTS_BASE_PATH}/approval-status/${status}`);
     return toArray<VtsSystemResponse>(res.data);
+  },
+
+  async generateCode(): Promise<{ code: string }> {
+    const res = await api.get(`${VTS_BASE_PATH}/generate-code`);
+    return res.data?.data || { code: '' };
   },
 };
 

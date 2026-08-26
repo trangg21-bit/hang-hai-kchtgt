@@ -49,6 +49,13 @@ public class VtsSystemController {
         return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
     }
 
+    @PreAuthorize("@auth.check(authentication, 'vts:create')")
+    @GetMapping("/generate-code")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(ApiResponse.success("Sinh mã thành công", java.util.Map.of("code", code)));
+    }
+
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @DataScope
     @GetMapping
