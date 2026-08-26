@@ -35,6 +35,13 @@ public class CctvResponse {
     private Integer yearOfUse;
     private OperationalStatus operationalStatus;
     private ApprovalStatus approvalStatus;
+    private UUID approverLevel1;
+    private String approverLevel1Name;
+    private LocalDateTime approvedDateLevel1;
+    private UUID approverLevel2;
+    private String approverLevel2Name;
+    private LocalDateTime approvedDateLevel2;
+    private String rejectionReason;
     private String specifications;
     private String maintenanceInformation;
     private String note;

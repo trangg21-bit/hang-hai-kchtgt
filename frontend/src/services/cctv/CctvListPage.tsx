@@ -53,15 +53,16 @@ import {
 } from "@ant-design/icons";
 import { Tabs, Upload, Radio } from "antd";
 import type { RcFile, UploadFile } from "antd/es/upload/interface";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { SelectAppParams } from "../../components/SelectAppParams";
 import SelectCateOther from "../../components/SelectCateOther";
 import { LongLatTable, type CoordinateRow } from "../../components/LongLatTable";
 import {
   fetchCctvList,
   deleteCctv,
-  approveCctv,
-  rejectCctv,
+  submitCctv,
+  approveCctvC1,
+  approveCctvC2,
   fetchCctvById,
   createCctv,
   updateCctv,
@@ -74,14 +75,15 @@ import {
   deleteCctvAttachment,
 } from "./api";
 import {
-  trangThaiHoatDongBadge,
-  trangThaiPheDuyetBadge,
-  TRANG_THAI_HOAT_DONG_OPTIONS,
-  TRANG_THAI_PHE_DUYET_OPTIONS,
+  operationalStatusBadge,
+  OPERATIONAL_STATUS_OPTIONS,
+  APPROVAL_STATUS_OPTIONS,
   ATTACHED_INFRA_TYPE_OPTIONS,
 } from "./schema";
-import type { CctvResponse } from "./types";
+import type { CctvResponse, ApprovalRequest } from "./types";
 import toast from "../../components/ToastNotification";
+import ApprovalModal from "../../components/shared/ApprovalModal";
+import { useAuthStore } from "../../store/authStore";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
@@ -203,6 +205,25 @@ import dayjs from "dayjs";
 
 const { Text, Title } = Typography;
 
+// ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
+const APPROVAL_STATUS_MAP: Record<string, string> = {
+  DRAFT: 'Lưu tạm',
+  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+  APPROVED_LEVEL1: 'Chờ Cục duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED_LEVEL1: 'Cảng vụ trả về',
+  REJECTED_LEVEL2: 'Cục trả về',
+};
+
+const APPROVAL_COLOR: Record<string, string> = {
+  DRAFT: statusDraft,
+  PENDING_APPROVAL: statusAttention,
+  APPROVED_LEVEL1: '#0284C7',
+  APPROVED: statusOperational,
+  REJECTED_LEVEL1: statusCritical,
+  REJECTED_LEVEL2: statusCritical,
+};
+
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
 const sectionHeader: React.CSSProperties = {
   display: "block",
@@ -245,6 +266,32 @@ function renderCctvStatusBadge(b: { color: string; label: string }) {
   else if (b.color === 'red') c = statusCritical;
   else if (b.color === 'orange') c = statusAttention;
   return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${c}15`, color: c }}>{b.label}</span>;
+}
+
+/** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
+function renderApprovalBadge(status: string | null | undefined) {
+  if (!status) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
+  const display = APPROVAL_STATUS_MAP[status] || status;
+  const color = APPROVAL_COLOR[status] || textTertiary;
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '2px 10px',
+        border: `1px solid ${color}40`,
+        borderRadius: radiusPill,
+        fontSize: fontSizeMd,
+        fontWeight: fontWeightMedium,
+        background: `${color}15`,
+        color,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {display}
+    </span>
+  );
 }
 
 /** Stat card cho chỉ số tổng hợp */
@@ -291,7 +338,7 @@ function CctvRefTable({ title, emptyText, columns, dataSource = [] }: { title: s
   const maxPage = Math.max(1, Math.ceil(dataSource.length / CCTV_TAB_PAGE_SIZE));
   const cur = Math.min(page, maxPage);
   const rows = dataSource
-    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __stt: idx + 1 }))
+    .map((row, idx) => ({ ...row, key: row?.key ?? idx, __index: idx + 1 }))
     .slice((cur - 1) * CCTV_TAB_PAGE_SIZE, cur * CCTV_TAB_PAGE_SIZE);
   const refHdr = () => ({ style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase' as const, padding: '12px 12px' } });
   return (
@@ -306,7 +353,7 @@ function CctvRefTable({ title, emptyText, columns, dataSource = [] }: { title: s
         style={{ marginLeft: 12, marginRight: 12 }}
         locale={{ emptyText: <div style={{ padding: '32px 0', textAlign: 'center' }}><div style={{ fontSize: 48, color: textTertiary, marginBottom: 12 }}><FileOutlined /></div><span style={{ color: textTertiary, fontSize: fontSizeLg }}>{emptyText}</span></div> }}
       >
-        <Table.Column title="STT" key="stt" dataIndex="__stt" width={60} align="center"
+        <Table.Column title="STT" key="index" dataIndex="__index" width={60} align="center"
           render={(v: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{v}</span>}
           onHeaderCell={refHdr} />
         {columns.map((c) => (
@@ -578,8 +625,8 @@ function buildCctvCollapseItems(
       : { color: textTertiary, label: String(rec.operationalStatus) })
     : { color: textTertiary, label: '—' };
   const appStatusBadge = rec.approvalStatus
-    ? trangThaiPheDuyetBadge(rec.approvalStatus)
-    : { color: textTertiary, label: '—' };
+    ? renderApprovalBadge(rec.approvalStatus)
+    : <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
   items.push({
     key: 'status',
     label: '7. Trạng thái',
@@ -591,7 +638,7 @@ function buildCctvCollapseItems(
         </Col>
         <Col xs={24} sm={12}>
           <Typography.Text style={fieldLabelStyle}>Phê duyệt</Typography.Text>
-          <div>{renderCctvStatusBadge(appStatusBadge)}</div>
+          <div>{appStatusBadge}</div>
         </Col>
       </Row>
     ),
@@ -601,9 +648,9 @@ function buildCctvCollapseItems(
 }
 
 const CctvListPage = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const currentUser = useAuthStore((s) => s.user);
   const isIframeModal = window.parent !== window.self;
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
@@ -638,21 +685,36 @@ const CctvListPage = () => {
   const fetchTabCounts = useCallback(async () => {
     const statuses = [
       { key: "DRAFT", status: "DRAFT" },
-      { key: "PENDING", status: "PENDING" },
+      { key: "PENDING_APPROVAL", status: "PENDING_APPROVAL" },
+      { key: "APPROVED_LEVEL1", status: "APPROVED_LEVEL1" },
       { key: "APPROVED", status: "APPROVED" },
-      { key: "REJECTED", status: "REJECTED" },
+      { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
+      { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
     ];
-    const results = await Promise.allSettled([
-      ...statuses.map((s) => fetchCctvList({ page: 0, size: 1, orgUnitId: filterValues.orgUnitId || undefined, approvalStatus: s.status })),
-      fetchCctvList({ page: 0, size: 1, orgUnitId: filterValues.orgUnitId || undefined }),
-    ]);
-    setTabCounts({
-      DRAFT: results[0].status === "fulfilled" ? (results[0].value?.totalElements ?? 0) : 0,
-      PENDING: results[1].status === "fulfilled" ? (results[1].value?.totalElements ?? 0) : 0,
-      APPROVED: results[2].status === "fulfilled" ? (results[2].value?.totalElements ?? 0) : 0,
-      REJECTED: results[3].status === "fulfilled" ? (results[3].value?.totalElements ?? 0) : 0,
+    const results = await Promise.allSettled(
+      statuses.map((s) =>
+        fetchCctvList({
+          page: 0,
+          size: 1,
+          orgUnitId: filterValues.orgUnitId || undefined,
+          approvalStatus: s.status,
+        })
+      )
+    );
+    const counts: Record<string, number> = {};
+    results.forEach((r, i) => {
+      counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
-    if (results[4].status === "fulfilled") setTotalAll(results[4].value?.totalElements ?? 0);
+    setTabCounts(counts);
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối (Cảng vụ trả về + Cục trả về)
+    setTotalAll(
+      counts.DRAFT +
+        counts.PENDING_APPROVAL +
+        counts.APPROVED_LEVEL1 +
+        counts.APPROVED +
+        counts.REJECTED_LEVEL1 +
+        counts.REJECTED_LEVEL2
+    );
   }, [filterValues.orgUnitId]);
 
   // Org units
@@ -714,12 +776,14 @@ const CctvListPage = () => {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approveTarget, setApproveTarget] = useState<CctvResponse | null>(null);
   const [approveLoading, setApproveLoading] = useState(false);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
 
   // Reject modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<CctvResponse | null>(null);
   const [rejectForm] = Form.useForm();
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
 
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<CctvResponse | null>(null);
@@ -852,7 +916,7 @@ const CctvListPage = () => {
   const columns = useMemo(
     () => [
       {
-        key: "stt",
+        key: "index",
         label: "STT",
         width: 60,
         type: "mono" as const,
@@ -1020,26 +1084,7 @@ const CctvListPage = () => {
         dataIndex: "approvalStatus",
         width: 180,
         type: "status" as const,
-        render: (val: string) => {
-          const badge = trangThaiPheDuyetBadge(val);
-          let color: string = textTertiary;
-          if (badge.color === 'green') color = statusOperational;
-          else if (badge.color === 'red') color = statusCritical;
-          else if (badge.color === 'orange') color = statusAttention;
-          else if (badge.color === 'blue') color = actionPrimary;
-          return (
-            <span style={{
-              ...badgeBaseStyle,
-              fontSize: fontSizeMd,
-              padding: '2px 10px',
-              display: 'inline-flex',
-              background: `${color}15`,
-              color,
-            }}>
-              {badge.label}
-            </span>
-          );
-        },
+        render: (val: string) => renderApprovalBadge(val),
       },
     ],
     [page, pageSize, sortField, sortOrder]
@@ -1392,6 +1437,31 @@ const CctvListPage = () => {
           },
         },
         {
+          key: "history",
+          label: "Lịch sử",
+          icon: <HistoryOutlined />,
+          onClick: () => {
+            setHistoryEntityId(record.id);
+            setHistoryEntityName(record.deviceName || '');
+            setHistoryModalVisible(true);
+            setHistoryRecords([]);
+            setLoadingHistory(true);
+            fetchCctvHistory(record.id, { page: 0, size: 200 })
+              .then((d: any) => {
+                setHistoryRecords(d.changeHistory || []);
+              })
+              .catch(() => toast.error('Không thể tải lịch sử'))
+              .finally(() => setLoadingHistory(false));
+          },
+        },
+      ];
+
+      // N09/BR-019: hồ sơ đang chờ duyệt bị khóa sửa (PENDING_APPROVAL / APPROVED_LEVEL1)
+      const isAwaitingApproval =
+        record.approvalStatus === "PENDING_APPROVAL" ||
+        record.approvalStatus === "APPROVED_LEVEL1";
+      if (!isAwaitingApproval) {
+        actions.push({
           key: "edit",
           label: "Chỉnh sửa",
           icon: <EditOutlined />,
@@ -1421,29 +1491,16 @@ const CctvListPage = () => {
             updateForm.setFieldsValue(safeRecord);
             setUpdateModalOpen(true);
           },
-        },
-        {
-          key: "history",
-          label: "Lịch sử",
-          icon: <HistoryOutlined />,
-          onClick: () => {
-            setHistoryEntityId(record.id);
-            setHistoryEntityName(record.deviceName || '');
-            setHistoryModalVisible(true);
-            setHistoryRecords([]);
-            setLoadingHistory(true);
-            fetchCctvHistory(record.id, { page: 0, size: 200 })
-              .then((d: any) => {
-                setHistoryRecords(d.changeHistory || []);
-              })
-              .catch(() => toast.error('Không thể tải lịch sử'))
-              .finally(() => setLoadingHistory(false));
-          },
-        },
-      ];
+        });
+      }
 
-      // DRAFT: Gửi phê duyệt (giống màn /port)
-      if (record.approvalStatus === "DRAFT" && hasPerm?.("cctv:update")) {
+      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + cctv:update → Gửi phê duyệt (submitCctv)
+      if (
+        hasPerm?.("cctv:update") &&
+        (record.approvalStatus === "DRAFT" ||
+          record.approvalStatus === "REJECTED_LEVEL1" ||
+          record.approvalStatus === "REJECTED_LEVEL2")
+      ) {
         actions.push({
           key: "submit",
           label: "Gửi phê duyệt",
@@ -1455,36 +1512,77 @@ const CctvListPage = () => {
         });
       }
 
-      // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
-      const isPending =
-        record.approvalStatus === "CHO_PHE_DUYET" ||
-        record.approvalStatus === "PENDING" ||
-        record.approvalStatus === "PENDING_APPROVAL";
-      if (isPending && hasPerm?.("cctv:approve")) {
+      // PENDING_APPROVAL + cctv:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
+      if (hasPerm?.("cctv:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
         actions.push({
-          key: "approve",
-          label: "Phê duyệt",
+          key: "approveC1",
+          label: "Phê duyệt cấp Cảng vụ",
           icon: <CheckCircleOutlined />,
           onClick: () => {
             setApproveTarget(record);
+            setApproveLevel("c1");
             setApproveModalOpen(true);
           },
         });
         actions.push({
-          key: "reject",
-          label: "Từ chối",
+          key: "rejectC1",
+          label: "Từ chối cấp Cảng vụ",
           icon: <CloseCircleOutlined />,
           danger: true,
           onClick: () => {
             setRejectTarget(record);
+            setRejectLevel("c1");
             setRejectModalOpen(true);
+          },
+        });
+      }
+
+      // APPROVED_LEVEL1 + cctv:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
+      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
+      if (hasPerm?.("cctv:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
+        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
+        actions.push({
+          key: "approveC2",
+          label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
+          icon: <CheckCircleOutlined />,
+          disabled: isSelfApproval,
+          onClick: () => {
+            setApproveTarget(record);
+            setApproveLevel("c2");
+            setApproveModalOpen(true);
+          },
+        });
+        actions.push({
+          key: "rejectC2",
+          label: isSelfApproval ? "Từ chối cấp Cục (không thể tự duyệt)" : "Từ chối cấp Cục",
+          icon: <CloseCircleOutlined />,
+          danger: true,
+          disabled: isSelfApproval,
+          onClick: () => {
+            setRejectTarget(record);
+            setRejectLevel("c2");
+            setRejectModalOpen(true);
+          },
+        });
+      }
+
+      // Chỉ hồ sơ "Lưu tạm" mới được xóa (phê duyệt 2 cấp — như /vts-system)
+      if (hasPerm?.("cctv:delete") && record.approvalStatus === "DRAFT") {
+        actions.push({
+          key: "delete",
+          label: "Xóa",
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => {
+            setDeleteConfirmText("");
+            setDeleteTarget(record);
           },
         });
       }
 
       return actions;
     },
-    [updateForm, navigate, hasPerm]
+    [updateForm, hasPerm, currentUser]
   );
 
   const fetchData = useCallback(async () => {
@@ -1602,30 +1700,47 @@ const CctvListPage = () => {
     }
   }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
 
-  const handleApprove = useCallback(async () => {
-    if (!approveTarget) return;
-    setApproveLoading(true);
-    try {
-      await approveCctv(approveTarget.id);
-      toast.success("Phê duyệt hệ thống CCTV thành công");
-      setApproveTarget(null);
-      setApproveModalOpen(false);
-      fetchData();
-      fetchTabCounts();
-    } catch (error: unknown) {
-      toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi phê duyệt");
-    } finally {
-      setApproveLoading(false);
-    }
-  }, [approveTarget, fetchData, fetchTabCounts]);
+  const handleApprove = useCallback(
+    async (content: string) => {
+      if (!approveTarget) return;
+      setApproveLoading(true);
+      try {
+        const payload: ApprovalRequest = { decision: "APPROVED", reason: content };
+        if (approveLevel === "c1") {
+          await approveCctvC1(approveTarget.id, payload);
+          toast.success("Phê duyệt cấp 1 thành công");
+        } else {
+          await approveCctvC2(approveTarget.id, payload);
+          toast.success("Phê duyệt cấp 2 thành công");
+        }
+        setApproveTarget(null);
+        setApproveModalOpen(false);
+        fetchData();
+        fetchTabCounts();
+      } catch (error: unknown) {
+        toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Lỗi khi phê duyệt");
+      } finally {
+        setApproveLoading(false);
+      }
+    },
+    [approveTarget, approveLevel, fetchData, fetchTabCounts]
+  );
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const { reason } = await rejectForm.validateFields();
+    let reason: string;
+    try {
+      ({ reason } = await rejectForm.validateFields());
+    } catch {
+      // Form rules đã hiển thị lỗi inline: lý do từ chối tối thiểu 10 ký tự
+      return;
+    }
     setRejectLoading(true);
     try {
-      await rejectCctv(rejectTarget.id, reason);
-      toast.success("Từ chối hệ thống CCTV thành công");
+      const payload: ApprovalRequest = { decision: "REJECTED", reason: String(reason || "").trim() };
+      if (rejectLevel === "c1") await approveCctvC1(rejectTarget.id, payload);
+      else await approveCctvC2(rejectTarget.id, payload);
+      toast.success("Từ chối thành công");
       setRejectTarget(null);
       setRejectModalOpen(false);
       rejectForm.resetFields();
@@ -1636,7 +1751,7 @@ const CctvListPage = () => {
     } finally {
       setRejectLoading(false);
     }
-  }, [rejectTarget, rejectForm, fetchData, fetchTabCounts]);
+  }, [rejectTarget, rejectLevel, rejectForm, fetchData, fetchTabCounts]);
 
   const handleCreate = useCallback(
     async (values: Record<string, unknown>) => {
@@ -1719,7 +1834,7 @@ const CctvListPage = () => {
     if (!submittingRecord) return;
     setSubmitLoading(true);
     try {
-      await updateCctv({ id: submittingRecord.id, approvalStatus: "PENDING" });
+      await submitCctv(submittingRecord.id);
       toast.success("Gửi phê duyệt thành công");
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
@@ -1825,7 +1940,7 @@ const CctvListPage = () => {
                         operationalStatus: val as number | undefined,
                       }))
                     }
-                    options={TRANG_THAI_HOAT_DONG_OPTIONS}
+                    options={OPERATIONAL_STATUS_OPTIONS}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
                 </div>
                 <div style={{ marginBottom: 12 }}>
@@ -1933,37 +2048,48 @@ const CctvListPage = () => {
           },
           {
             key: "DRAFT",
-            label: "Nháp",
+            label: "Lưu tạm",
             count: tabCounts["DRAFT"] ?? 0,
             color: statusDraft,
             active: filterValues.approvalStatus === "DRAFT",
           },
           {
-            key: "PENDING",
-            label: "Chờ phê duyệt",
-            count: tabCounts["PENDING"] ?? 0,
+            key: "PENDING_APPROVAL",
+            label: "Chờ Cảng vụ duyệt",
+            count: tabCounts["PENDING_APPROVAL"] ?? 0,
             color: statusAttention,
-            active: filterValues.approvalStatus === "PENDING",
+            active: filterValues.approvalStatus === "PENDING_APPROVAL",
+          },
+          {
+            key: "APPROVED_LEVEL1",
+            label: "Chờ Cục duyệt",
+            count: tabCounts["APPROVED_LEVEL1"] ?? 0,
+            color: "#0284C7",
+            active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
-            label: "Đã phê duyệt",
+            label: "Đã duyệt",
             count: tabCounts["APPROVED"] ?? 0,
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
           },
           {
-            key: "REJECTED",
+            key: "REJECTED_LEVEL1",
             label: "Từ chối",
-            count: tabCounts["REJECTED"] ?? 0,
+            count: (tabCounts["REJECTED_LEVEL1"] ?? 0) + (tabCounts["REJECTED_LEVEL2"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "REJECTED",
+            active:
+              filterValues.approvalStatus === "REJECTED_LEVEL1" ||
+              filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
         ]}
         onStatusTabChange={(key) => {
+          // Tab "Từ chối" có key REJECTED_LEVEL1 — active khi filter là REJECTED_LEVEL1 hoặc REJECTED_LEVEL2
+          const approvalStatus = key === "all" ? "" : key;
           setFilterValues((prev) => ({
             ...prev,
-            approvalStatus: key === "all" ? "" : key,
+            approvalStatus,
           }));
           setPage(0);
           fetchData();
@@ -2042,7 +2168,7 @@ const CctvListPage = () => {
                         { label: 'Tình trạng', value: (() => { const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus || '').toUpperCase()] || { color: textTertiary, label: String(selectedRecord.operationalStatus || '—') }; return renderCctvStatusBadge(st); })() },
                         { label: 'Model', value: selectedRecord.model || '—' },
                         { label: 'Hãng sản xuất', value: selectedRecord.manufacturer || '—' },
-                        { label: 'Phê duyệt', value: renderCctvStatusBadge(trangThaiPheDuyetBadge(selectedRecord.approvalStatus)) },
+                        { label: 'Phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
                       ].map((row) => (
                         <div key={row.label} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
@@ -2172,24 +2298,24 @@ const CctvListPage = () => {
                 ]} />,
               },
               {
-                key: "xuLyTheoDoi",
+                key: "handlingAndTracking",
                 label: "Xử lý & theo dõi",
                 children: (
                   <div style={{ paddingTop: 3 }}>
                     <div className="detail-grid">
                       {[
-                        { key: 'ngayCapNhat', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
-                        { key: 'canBoCapNhat', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
-                        { key: 'ngayGuiPheDuyet', label: 'Ngày gửi phê duyệt', value: '—' },
-                        { key: 'canBoGuiPheDuyet', label: 'Cán bộ gửi phê duyệt', value: '—' },
-                        { key: 'noiDungPheDuyet1', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
-                        { key: 'ngayPheDuyetC1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
-                        { key: 'canBoPheDuyetC1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
-                        { key: 'noiDungPheDuyet2', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
-                        { key: 'ngayPheDuyetC2', label: 'Ngày phê duyệt cấp Cục', value: '—' },
-                        { key: 'canBoPheDuyetC2', label: 'Cán bộ phê duyệt cấp Cục', value: '—' },
-                        { key: 'noiDungPheDuyet3', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
-                        { key: 'trangThai', label: 'Trạng thái', value: renderCctvStatusBadge(trangThaiPheDuyetBadge(selectedRecord.approvalStatus)), fullWidth: true },
+                        { key: 'updatedDate', label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : '—' },
+                        { key: 'updatedByUser', label: 'Cán bộ cập nhật', value: selectedRecord.updatedByName || '—' },
+                        { key: 'submittedDate', label: 'Ngày gửi phê duyệt', value: '—' },
+                        { key: 'submittedByUser', label: 'Cán bộ gửi phê duyệt', value: '—' },
+                        { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
+                        { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
+                        { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: '—' },
+                        { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
+                        { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', value: '—' },
+                        { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', value: '—' },
+                        { key: 'approvalContentExtra', label: 'Nội dung phê duyệt', value: '—', fullWidth: true },
+                        { key: 'status', label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus), fullWidth: true },
                       ].map((row) => (
                         <div key={row.key} className="detail-row" style={row.fullWidth ? { gridColumn: '1 / -1' } : undefined}>
                           <span className="detail-label">{row.label}</span>
@@ -2205,57 +2331,17 @@ const CctvListPage = () => {
         )}
       </Drawer>
 
-      {/* Approve Modal */}
-      <Modal
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Xác nhận phê duyệt
-          </span>
-        }
-        open={approveModalOpen}
+      {/* Approve Modal — dùng chung 2 cấp (C1 Cảng vụ / C2 Cục) */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approveLevel}
+        loading={approveLoading}
+        onConfirm={handleApprove}
         onCancel={() => {
           setApproveTarget(null);
           setApproveModalOpen(false);
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setApproveTarget(null);
-              setApproveModalOpen(false);
-            }}
-            style={outlineButtonStyle}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="approve"
-            type="primary"
-            onClick={handleApprove}
-            loading={approveLoading}
-            style={primaryButtonStyle}
-          >
-            Phê duyệt
-          </Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: "8px 0" }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            Phê duyệt{" "}
-            <strong>
-              {approveTarget?.deviceCode} — {approveTarget?.deviceName}
-            </strong>
-            ?
-          </p>
-        </div>
-      </Modal>
+      />
 
       {/* Submit Approval Modal — Gửi phê duyệt (giống màn /port) */}
       <Modal
@@ -2779,7 +2865,7 @@ const CctvListPage = () => {
                         >
                           <Select
                             placeholder="Chọn tình trạng"
-                            options={TRANG_THAI_HOAT_DONG_OPTIONS}
+                            options={OPERATIONAL_STATUS_OPTIONS}
                             style={{ width: "100%", ...pillStyle }}
                           />
                         </Form.Item>
@@ -3395,7 +3481,7 @@ const CctvListPage = () => {
                         >
                           <Select
                             placeholder="Chọn tình trạng"
-                            options={TRANG_THAI_HOAT_DONG_OPTIONS}
+                            options={OPERATIONAL_STATUS_OPTIONS}
                             style={{ width: "100%", ...pillStyle }}
                           />
                         </Form.Item>

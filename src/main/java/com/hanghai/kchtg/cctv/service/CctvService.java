@@ -22,6 +22,10 @@ import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +66,8 @@ public class CctvService {
   private String uploadPath;
 
   private final AttachmentRepository attachmentRepository;
+  private final InfrastructureApprovalService approvalService;
+  private final UserRepository userRepository;
 
   /**
    * Generate device code in format CCTV-NNNNNN.
@@ -148,24 +154,21 @@ public class CctvService {
   }
 
   /**
-   * Xác định trạng thái phê duyệt khi tạo mới theo action (giống màn /port):
-   * 'draft' → DRAFT, 'approve' → APPROVED, còn lại (mặc định 'submit') → PENDING_APPROVAL.
+   * Xác định trạng thái phê duyệt khi tạo mới theo action:
+   * 'draft' → DRAFT, 'submit' → PENDING_APPROVAL, 'approve' → APPROVED.
+   * Mặc định (action null/không hợp lệ) → DRAFT (Lưu tạm).
    */
   private ApprovalStatus resolveCreateApprovalStatus(String action) {
-    if (action == null || action.trim().isEmpty()) {
-      action = "submit";
-    }
-    if (!"draft".equals(action) && !"submit".equals(action) && !"approve".equals(action)) {
-      throw new IllegalArgumentException(
-        "Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft', 'submit' hoặc 'approve'");
-    }
     if ("draft".equals(action)) {
       return ApprovalStatus.DRAFT;
+    }
+    if ("submit".equals(action)) {
+      return ApprovalStatus.PENDING_APPROVAL;
     }
     if ("approve".equals(action)) {
       return ApprovalStatus.APPROVED;
     }
-    return ApprovalStatus.PENDING_APPROVAL;
+    return ApprovalStatus.DRAFT;
   }
 
   /**
@@ -283,12 +286,12 @@ public class CctvService {
     if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
     if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
 
-    // Xử lý trạng thái phê duyệt theo request (giống màn /port — PortService.update)
-    if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-      entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-    } else if (request.getApprovalStatus() != null) {
-      entity.setApprovalStatus(request.getApprovalStatus());
-    } else {
+    // Khóa sửa khi hồ sơ đang chờ duyệt; hồ sơ đã duyệt khi sửa phải duyệt lại.
+    ApprovalStatus currentStatus = entity.getApprovalStatus();
+    if (currentStatus == ApprovalStatus.PENDING_APPROVAL || currentStatus == ApprovalStatus.APPROVED_LEVEL1) {
+      throw new IllegalStateException("Hồ sơ đang chờ duyệt không được chỉnh sửa");
+    }
+    if (currentStatus == ApprovalStatus.APPROVED) {
       entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
     }
 
@@ -306,7 +309,9 @@ public class CctvService {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
     Cctv entity = cctvRepository.findById(id)
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+    approvalService.deleteDraft(entity, InfrastructureType.CCTV, currentUserId);
     entity.softDelete(currentUserId);
+    cctvRepository.save(entity);
     log.info("Soft-deleted CCTV: id={}", id);
   }
 
@@ -344,7 +349,7 @@ public class CctvService {
   /**
    * Convert entity to response DTO.
    */
-  private CctvResponse toResponse(Cctv entity) {
+  public CctvResponse toResponse(Cctv entity) {
     String orgUnitName = orgUnitCacheService.getName(entity.getOrgUnitId());
     String attachedInfrastructureName = resolveAttachedInfrastructureName(entity);
 
@@ -368,6 +373,13 @@ public class CctvService {
       .yearOfUse(entity.getYearOfUse())
       .operationalStatus(entity.getOperationalStatus())
       .approvalStatus(entity.getApprovalStatus())
+      .approverLevel1(entity.getApproverLevel1())
+      .approverLevel1Name(resolveUserName(entity.getApproverLevel1()))
+      .approvedDateLevel1(entity.getApprovedDateLevel1())
+      .approverLevel2(entity.getApproverLevel2())
+      .approverLevel2Name(resolveUserName(entity.getApproverLevel2()))
+      .approvedDateLevel2(entity.getApprovedDateLevel2())
+      .rejectionReason(entity.getRejectionReason())
       .specifications(entity.getSpecifications())
       .maintenanceInformation(entity.getMaintenanceInformation())
       .note(entity.getNote())
@@ -398,6 +410,22 @@ public class CctvService {
     if (type == 2) {
       Optional<RadarStation> radar = radarStationRepository.findById(entity.getAttachedInfrastructureId());
       return radar.map(RadarStation::getStationName).orElse(null);
+    }
+    return null;
+  }
+
+  private String resolveUserName(UUID userId) {
+    if (userId == null) return null;
+    return userRepository.findById(userId).map(this::formatUserIdentity).orElse(null);
+  }
+
+  private String formatUserIdentity(User user) {
+    if (user == null) return null;
+    if (user.getFullName() != null && !user.getFullName().trim().isEmpty()) {
+      return user.getFullName().trim();
+    }
+    if (user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
+      return user.getUsername().trim();
     }
     return null;
   }
@@ -433,6 +461,18 @@ public class CctvService {
       }
       if ("DRAFT".equals(upper)) {
         return ApprovalStatus.DRAFT;
+      }
+      if ("APPROVED_LEVEL1".equals(upper) || "APPROVED_L1".equals(upper)) {
+        return ApprovalStatus.APPROVED_LEVEL1;
+      }
+      if ("APPROVED_LEVEL2".equals(upper) || "APPROVED_L2".equals(upper)) {
+        return ApprovalStatus.APPROVED_LEVEL2;
+      }
+      if ("REJECTED_LEVEL1".equals(upper) || "REJECTED_L1".equals(upper)) {
+        return ApprovalStatus.REJECTED_LEVEL1;
+      }
+      if ("REJECTED_LEVEL2".equals(upper) || "REJECTED_L2".equals(upper)) {
+        return ApprovalStatus.REJECTED_LEVEL2;
       }
       return null;
     } catch (Exception e) {

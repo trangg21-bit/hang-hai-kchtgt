@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.cctv.dto.ApprovalRequest;
 import com.hanghai.kchtg.cctv.dto.CctvResponse;
 import com.hanghai.kchtg.cctv.dto.CctvOptionResponse;
 import com.hanghai.kchtg.cctv.dto.CreateCctvRequest;
@@ -23,8 +24,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import org.springframework.security.core.Authentication;
 
 import com.hanghai.kchtg.security.annotation.DataScope;
 
@@ -123,27 +122,32 @@ public class CctvController {
     return ResponseEntity.ok(ApiResponse.success("Xóa hệ thống CCTV thành công", null));
   }
 
-  @PostMapping("/{id}/approve")
-  @PreAuthorize("@auth.check(authentication, 'cctv:approve')")
-  public ResponseEntity<ApiResponse<Void>> approve(
-    @PathVariable UUID id,
-    Authentication authentication) {
-    String userId = authentication.getName();
-    log.info("Approving CCTV: id={}, userId={}", id, userId);
-    cctvApprovalService.approve(id, userId, null);
-    return ResponseEntity.ok(ApiResponse.success("Phê duyệt hệ thống CCTV thành công", null));
+  @PostMapping("/{id}/submit")
+  @PreAuthorize("@auth.check(authentication, 'cctv:update')")
+  public ResponseEntity<ApiResponse<CctvResponse>> submit(@PathVariable UUID id) {
+    log.info("Submitting CCTV for approval: id={}", id);
+    CctvResponse response = cctvApprovalService.submit(id, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
   }
 
-  @PostMapping("/{id}/reject")
-  @PreAuthorize("@auth.check(authentication, 'cctv:approve')")
-  public ResponseEntity<ApiResponse<Void>> reject(
+  @PostMapping("/{id}/approve/c1")
+  @PreAuthorize("@auth.check(authentication, 'cctv:approvec1')")
+  public ResponseEntity<ApiResponse<CctvResponse>> approveC1(
     @PathVariable UUID id,
-    @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,
-    Authentication authentication) {
-    String userId = authentication.getName();
-    log.info("Rejecting CCTV: id={}, userId={}", id, userId);
-    cctvApprovalService.approve(id, userId, reason);
-    return ResponseEntity.ok(ApiResponse.success("Từ chối hệ thống CCTV thành công", null));
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Approving CCTV level 1: id={}", id);
+    CctvResponse response = cctvApprovalService.approveC1(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
+  }
+
+  @PostMapping("/{id}/approve/c2")
+  @PreAuthorize("@auth.check(authentication, 'cctv:approvec2')")
+  public ResponseEntity<ApiResponse<CctvResponse>> approveC2(
+    @PathVariable UUID id,
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Approving CCTV level 2: id={}", id);
+    CctvResponse response = cctvApprovalService.approveC2(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
   }
 
   @GetMapping("/{id}/history")

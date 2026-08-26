@@ -6,6 +6,7 @@ import type {
   PageResponse,
   CctvOptionResponse,
   ApprovalResult,
+  ApprovalRequest,
   CctvHistoryResponse,
 } from './types';
 
@@ -88,15 +89,20 @@ export async function fetchCctvOptions(): Promise<CctvOptionResponse[]> {
   return res.data.data;
 }
 
-// ── Approval ────────────────────────────────────────────────────────
+// ── Approval 2 cấp (C1 Cảng vụ → C2 Cục) ───────────────────────────
 
-export async function approveCctv(id: string): Promise<ApprovalResult> {
-  const res = await api.post(`${BASE}/${id}/approve`);
+export async function submitCctv(id: string): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/submit`);
   return res.data;
 }
 
-export async function rejectCctv(id: string, reason: string): Promise<ApprovalResult> {
-  const res = await api.post(`${BASE}/${id}/reject`, null, { params: { reason } });
+export async function approveCctvC1(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/approve/c1`, data);
+  return res.data;
+}
+
+export async function approveCctvC2(id: string, data: ApprovalRequest): Promise<ApprovalResult> {
+  const res = await api.post(`${BASE}/${id}/approve/c2`, data);
   return res.data;
 }
 

@@ -19,6 +19,13 @@ export interface CctvResponse {
   yearOfUse: number | null;
   operationalStatus: string | null;
   approvalStatus: string | null;
+  approverLevel1: string | null;
+  approverLevel1Name: string | null;
+  approvedDateLevel1: string | null;
+  approverLevel2: string | null;
+  approverLevel2Name: string | null;
+  approvedDateLevel2: string | null;
+  rejectionReason: string | null;
   specifications: string | null;
   maintenanceInformation: string | null;
   note: string | null;
@@ -125,6 +132,13 @@ export interface CctvOptionResponse {
 export interface ApprovalResult {
   success: boolean;
   message: string;
+}
+
+// ── Approval request (2 cấp: C1 Cảng vụ / C2 Cục) ──────────────────
+
+export interface ApprovalRequest {
+  decision: string;
+  reason?: string;
 }
 
 // ── Approval / Change history record ────────────────────────────────

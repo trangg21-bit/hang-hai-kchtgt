@@ -1,15 +1,16 @@
 package com.hanghai.kchtg.cctv.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.cctv.dto.ApprovalRequest;
+import com.hanghai.kchtg.cctv.dto.CctvResponse;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.cctv.repository.CctvRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
-import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.PortNotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,9 @@ import java.util.UUID;
 
 /**
  * Approval service for CCTV entity.
- * Uses shared change_logs and approval_logs tables (same as Port).
+ * Quy trình phê duyệt 2 cấp chuẩn M-1006, dùng chung
+ * {@link InfrastructureApprovalService} giống module /vts-system.
+ * Lịch sử đọc từ shared change_logs / approval_logs (như Port).
  */
 @Slf4j
 @Service
@@ -30,68 +33,52 @@ import java.util.UUID;
 public class CctvApprovalService {
 
     private final CctvRepository cctvRepository;
-    private final ApprovalWorkflowService approvalWorkflowService;
-    private final PortNotificationService notificationService;
+    private final InfrastructureApprovalService approvalService;
+    private final CctvService cctvService;
     private final ApprovalLogRepository approvalLogRepository;
     private final ChangeLogRepository changeLogRepository;
-    private final ChangeHistoryService changeHistoryService;
 
     @Transactional
-    public void approve(UUID id, String userId, String reason) {
+    public CctvResponse submit(UUID id, UUID userId) {
         Cctv entity = cctvRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
 
-        ApprovalStatus currentStatus = entity.getApprovalStatus();
-        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
-
-        // Capture full snapshot before mutation
-        Cctv snapshot = Cctv.builder()
-                .id(entity.getId())
-                .deviceCode(entity.getDeviceCode())
-                .deviceName(entity.getDeviceName())
-                .detailedLocation(entity.getDetailedLocation())
-                .manufacturer(entity.getManufacturer())
-                .model(entity.getModel())
-                .quantity(entity.getQuantity())
-                .orgUnitId(entity.getOrgUnitId())
-                .operatingUnitId(entity.getOperatingUnitId())
-                .provinceName(entity.getProvinceName())
-                .attachedInfrastructureType(entity.getAttachedInfrastructureType())
-                .attachedInfrastructureId(entity.getAttachedInfrastructureId())
-                .unitOfMeasure(entity.getUnitOfMeasure())
-                .yearOfUse(entity.getYearOfUse())
-                .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
-                .specifications(entity.getSpecifications())
-                .maintenanceInformation(entity.getMaintenanceInformation())
-                .note(entity.getNote())
-                .objectType(entity.getObjectType())
-                .mapSymbolId(entity.getMapSymbolId())
-                .coordinateSystem(entity.getCoordinateSystem())
-                .displayRule(entity.getDisplayRule())
-                .spatialId(entity.getSpatialId())
-                .build();
-
-        if (reason == null || reason.isBlank()) {
-            approvalWorkflowService.approve(currentStatusStr, "CCTV", id.toString(), userId);
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        } else {
-            approvalWorkflowService.reject(currentStatusStr, "CCTV", id.toString(), userId, reason);
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
-        }
-
+        approvalService.submit(entity, InfrastructureType.CCTV, userId);
         Cctv saved = cctvRepository.save(entity);
-        changeHistoryService.recordChanges("CCTV", saved.getId().toString(), "system", snapshot, saved);
+        return cctvService.toResponse(saved);
+    }
 
-        if (reason != null && !reason.isBlank()) {
-            changeHistoryService.insertChangeRecord("CCTV", saved.getId(), "Lý do từ chối", null, reason, userId);
+    @Transactional
+    public CctvResponse approveC1(UUID id, ApprovalRequest request, UUID userId) {
+        validateDecision(request);
+        Cctv entity = cctvRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+
+        approvalService.approveC1(entity, InfrastructureType.CCTV, request.getDecision(), request.getReason(), userId);
+        Cctv saved = cctvRepository.save(entity);
+        return cctvService.toResponse(saved);
+    }
+
+    @Transactional
+    public CctvResponse approveC2(UUID id, ApprovalRequest request, UUID userId) {
+        validateDecision(request);
+        Cctv entity = cctvRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
+
+        approvalService.approveC2(entity, InfrastructureType.CCTV, request.getDecision(), request.getReason(), userId);
+        Cctv saved = cctvRepository.save(entity);
+        return cctvService.toResponse(saved);
+    }
+
+    private void validateDecision(ApprovalRequest request) {
+        if (request == null || request.getDecision() == null
+                || !(ApprovalStatus.APPROVED.name().equalsIgnoreCase(request.getDecision())
+                        || ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision()))) {
+            throw new IllegalArgumentException("Quyết định phê duyệt không hợp lệ");
         }
-
-        if (reason == null || reason.isBlank()) {
-            log.info("CCTV [{}] approved by {}", id, userId);
-            notificationService.sendApprovalNotification("CCTV", id.toString(), userId, null);
-        } else {
-            log.info("CCTV [{}] rejected by {}: {}", id, userId, reason);
+        if (ApprovalStatus.REJECTED.name().equalsIgnoreCase(request.getDecision())
+                && (request.getReason() == null || request.getReason().trim().isEmpty())) {
+            throw new IllegalArgumentException("Lý do từ chối là bắt buộc");
         }
     }
 
