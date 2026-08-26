@@ -63,6 +63,27 @@ export async function deleteCoastalVTS(id: string): Promise<void> {
   await api.delete(`/v1/stations/coastal/${id}`);
 }
 
+// Phê duyệt 2 cấp — docs/conventions/approval-2-level-spec.md (mục 3)
+export async function submitCoastalVTS(id: string): Promise<CoastalStationVTSResponse> {
+  const res = await api.post(`/v1/stations/coastal/${id}/submit`);
+  return res.data;
+}
+
+export async function approveCoastalVTSL1(id: string): Promise<CoastalStationVTSResponse> {
+  const res = await api.post(`/v1/stations/coastal/${id}/approve-l1`);
+  return res.data;
+}
+
+export async function approveCoastalVTSL2(id: string): Promise<CoastalStationVTSResponse> {
+  const res = await api.post(`/v1/stations/coastal/${id}/approve-l2`);
+  return res.data;
+}
+
+export async function rejectCoastalVTS(id: string, rejectionReason: string): Promise<CoastalStationVTSResponse> {
+  const res = await api.post(`/v1/stations/coastal/${id}/reject`, { approved: false, rejectionReason });
+  return res.data;
+}
+
 // ==========================================
 // 2. Đài vệ tinh Inmarsat (M-004: F-098..F-103)
 // ==========================================

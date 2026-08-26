@@ -33,16 +33,16 @@ public class InfrastructureHistory {
     @Column(name = "ref_id", nullable = false)
     private UUID refId;
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "ref_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ref_type", nullable = false, length = 64)
     private InfrastructureType refType;
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "approval_level", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_level", length = 32)
     private ApprovalLevel approvalLevel;
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 32)
     private InfrastructureHistoryStatus status;
 
     @Column(name = "approved_by")

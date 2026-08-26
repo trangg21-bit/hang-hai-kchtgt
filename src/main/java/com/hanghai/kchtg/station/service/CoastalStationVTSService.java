@@ -266,6 +266,10 @@ public class CoastalStationVTSService {
 
     // Tương thích ngược với endpoint /approve, /reject cũ
     public CoastalStationVTS approveStation(UUID id, boolean approved) {
+        return approveStation(id, approved, null);
+    }
+
+    public CoastalStationVTS approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationVTS entity = getStationById(id);
         if (!approved) {
             return reject(id, "Từ chối phê duyệt bởi quản trị viên");
@@ -274,6 +278,10 @@ public class CoastalStationVTSService {
             return approveLevel2(id);
         }
         return approveLevel1(id);
+    }
+
+    public CoastalStationVTS rejectStation(UUID id, String rejectionReason, Long userId) {
+        return reject(id, rejectionReason);
     }
 
 

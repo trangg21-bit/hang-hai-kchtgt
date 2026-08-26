@@ -273,6 +273,10 @@ public class CoastalStationCospasSarsatService {
 
     // Tương thích ngược với endpoint /approve, /reject cũ
     public CoastalStationCospasSarsat approveStation(UUID id, boolean approved) {
+        return approveStation(id, approved, null);
+    }
+
+    public CoastalStationCospasSarsat approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationCospasSarsat entity = getStationById(id);
         if (!approved) {
             return reject(id, "Từ chối phê duyệt bởi quản trị viên");
@@ -281,6 +285,10 @@ public class CoastalStationCospasSarsatService {
             return approveLevel2(id);
         }
         return approveLevel1(id);
+    }
+
+    public CoastalStationCospasSarsat rejectStation(UUID id, String rejectionReason, Long userId) {
+        return reject(id, rejectionReason);
     }
 
 

@@ -466,6 +466,14 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "station", "create", "Thêm nhà trạm", "Tạo mới nhà trạm hàng hải");
                 seedPermission(definitions, "station", "update", "Cập nhật nhà trạm", "Chỉnh sửa thông tin nhà trạm");
                 seedPermission(definitions, "station", "delete", "Xóa nhà trạm", "Xóa nhà trạm hàng hải");
+                // Nhóm quyền phê duyệt dùng cho toàn bộ endpoint /api/v1/stations/** —
+                // PermissionMiddleware quy resource của các đường dẫn này về "station".
+                seedPermission(definitions, "station", "approve", "Phê duyệt nhà trạm", "Phê duyệt hồ sơ nhà trạm");
+                seedPermission(definitions, "station", "approvec1", "Phê duyệt C1 nhà trạm",
+                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) hồ sơ nhà trạm");
+                seedPermission(definitions, "station", "approvec2", "Phê duyệt C2 nhà trạm",
+                                "Phê duyệt cấp 2 (Cục Hàng hải) hồ sơ nhà trạm");
+                seedPermission(definitions, "station", "reject", "Từ chối nhà trạm", "Từ chối phê duyệt hồ sơ nhà trạm");
 
                 seedPermission(definitions, "beaconstation", "read", "Xem đèn biển và nhà trạm", "Tra cứu thông tin đèn biển và nhà trạm");
                 seedPermission(definitions, "beaconstation", "read:restricted", "Xem bản ghi hạn chế đèn biển và nhà trạm",
@@ -542,6 +550,13 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstation", "update", "Cập nhật trạm bờ",
                                 "Chỉnh sửa trạm thông tin bờ");
                 seedPermission(definitions, "coastalstation", "delete", "Xóa trạm bờ", "Xóa trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "approve", "Phê duyệt trạm bờ", "Phê duyệt trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "approvec1", "Phê duyệt C1 trạm bờ",
+                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "approvec2", "Phê duyệt C2 trạm bờ",
+                                "Phê duyệt cấp 2 (Cục Hàng hải) trạm thông tin bờ");
+                seedPermission(definitions, "coastalstation", "reject", "Từ chối trạm bờ",
+                                "Từ chối phê duyệt trạm thông tin bờ");
 
                 seedPermission(definitions, "specialstation", "read", "Xem trạm chuyên dùng",
                                 "Tra cứu trạm chuyên dùng");
@@ -568,6 +583,24 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "reject", "Từ chối đài Inmarsat", "Từ chối phê duyệt đài Inmarsat");
+
+                // 10.4 Đài Cospas-Sarsat (Coastal Station Cospas-Sarsat - M-004)
+                seedPermission(definitions, "coastalstationcospassarsat", "read", "Xem đài Cospas-Sarsat",
+                                "Xem danh sách và chi tiết đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "create", "Thêm đài Cospas-Sarsat",
+                                "Tạo mới đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "update", "Cập nhật đài Cospas-Sarsat",
+                                "Chỉnh sửa đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "delete", "Xóa đài Cospas-Sarsat",
+                                "Xóa đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "approve", "Phê duyệt đài Cospas-Sarsat",
+                                "Phê duyệt đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "approvec1", "Phê duyệt C1 đài Cospas-Sarsat",
+                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "approvec2", "Phê duyệt C2 đài Cospas-Sarsat",
+                                "Phê duyệt cấp 2 (Cục Hàng hải) đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "reject", "Từ chối đài Cospas-Sarsat",
+                                "Từ chối phê duyệt đài Cospas-Sarsat");
 
                 // 11. Quản lý tài sản kết cấu hạ tầng, Điều chuyển, Kiểm kê & Bảo trì (Asset
                 // Management & Operations)
