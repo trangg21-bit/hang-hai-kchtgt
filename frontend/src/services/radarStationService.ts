@@ -167,4 +167,8 @@ export const radarStationAttachment = {
   async delete(id: string, attachmentId: string): Promise<void> {
     await api.delete(`${BASE_PATH}/${id}/attachments/${attachmentId}`);
   },
+
+  async remove(id: string, attachmentId: string): Promise<void> {
+    return this.delete(id, attachmentId);
+  },
 };

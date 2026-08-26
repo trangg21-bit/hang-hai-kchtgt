@@ -453,7 +453,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
             <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
             <Descriptions.Item label="Tình trạng">
-              {record.conditionStatus ? CONDITION_STATUS_MAP[record.conditionStatus] || record.conditionStatus : '—'}
+              {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
             </Descriptions.Item>
             <Descriptions.Item label="Loại trạm">{record.stationType || '—'}</Descriptions.Item>
             <Descriptions.Item label="Chiều cao tháp radar (m)">
