@@ -4,7 +4,7 @@ import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import { createCctv, updateCctv, fetchCctvById } from '../api';
 import { CctvResponse } from '../types';
-import { TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
+import { OPERATIONAL_STATUS_OPTIONS } from './schema';
 import toast, { modal } from '../../components/ToastNotification';
 import {
   fontSizeMd,
@@ -112,7 +112,7 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
         label="Mã thiết bị"
         rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
       >
-        <Input placeholder="Tự sinh nếu để trống" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
+        <Input placeholder="Mã tự động" disabled={isEdit} style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
@@ -160,7 +160,7 @@ const CctvFormContent = ({ initialData, onSuccess }: CctvFormProps) => {
 
       <Form.Item name="operationalStatus" label="Tình trạng">
         <Select
-          options={TRANG_THAI_HOAT_DONG_OPTIONS}
+          options={OPERATIONAL_STATUS_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>

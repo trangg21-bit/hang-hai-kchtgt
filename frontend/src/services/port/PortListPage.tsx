@@ -2887,7 +2887,7 @@ export default function PortListPage() {
                   key: 'general',
                   label: 'Thông tin chung',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
@@ -3192,7 +3192,7 @@ export default function PortListPage() {
                   key: 'gis',
                   label: 'Thông tin vị trí',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div>
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
@@ -3379,7 +3379,7 @@ export default function PortListPage() {
                   key: 'infrastructure',
                   label: 'Công trình KCHT trực thuộc',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div>
                       {/* Infra label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công trình KCHT trực thuộc</span>
@@ -3474,7 +3474,7 @@ export default function PortListPage() {
                   key: 'attachments',
                   label: 'File đính kèm',
                   children: (
-                    <div style={{ paddingTop: 16 }}>
+                    <div>
                       {/* File label + add button */}
                       <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
