@@ -708,14 +708,14 @@ export const VtsOperationCenterList: React.FC = () => {
     const allCount = draftCount + pendingCount + approvedL1Count + approvedCount + rejectedCount;
 
     return [
-      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary },
-      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft },
-      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention },
-      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7' },
-      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational },
-      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical },
+      { key: 'ALL', label: 'Tất cả', count: allCount, color: actionPrimary, active: activeTab === 'ALL' },
+      { key: 'DRAFT', label: 'Lưu tạm', count: draftCount, color: statusDraft, active: activeTab === 'DRAFT' },
+      { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: pendingCount, color: statusAttention, active: activeTab === 'PENDING_APPROVAL' },
+      { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: approvedL1Count, color: '#0284C7', active: activeTab === 'APPROVED_LEVEL1' },
+      { key: 'APPROVED', label: 'Đã duyệt', count: approvedCount, color: statusOperational, active: activeTab === 'APPROVED' },
+      { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: rejectedCount, color: statusCritical, active: activeTab === 'REJECTED_LEVEL1' || activeTab === 'REJECTED_LEVEL2' },
     ];
-  }, [statusCounts]);
+  }, [statusCounts, activeTab]);
 
   const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
     (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
