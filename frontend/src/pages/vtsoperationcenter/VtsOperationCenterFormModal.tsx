@@ -28,6 +28,7 @@ import {
   readonlyInputStyle,
   formTreeSelectStyle,
   drawerTabsStyle,
+  textAreaStyle,
   drawerTabBarStyle,
   drawerTabContentStyle,
   ATTACHMENT_HELPER_TEXT,
@@ -592,7 +593,7 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
               placeholder="Mô tả phạm vi hoặc vùng phủ sóng của trung tâm điều hành VTS"
               maxLength={255}
               showCount
-              style={{ borderRadius: radiusMd }}
+              style={textAreaStyle}
             />
           </Form.Item>
 
@@ -607,7 +608,7 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
               placeholder="Nhập ghi chú thêm nếu có"
               maxLength={2000}
               showCount
-              style={{ borderRadius: radiusMd }}
+              style={textAreaStyle}
             />
           </Form.Item>
         </div>
@@ -840,7 +841,6 @@ export const VtsOperationCenterFormModal: React.FC<VtsOperationCenterFormModalPr
             ]}
           >
             <GisLocationSelector
-              inline={true}
               value={{
                 geometryType: watchedGeom,
                 coordinates: serializeCoordinatesToWkt(coordinateList, watchedGeom),

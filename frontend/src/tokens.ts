@@ -162,6 +162,12 @@ export const selectStyle: React.CSSProperties = {
   height: controlHeight,
 };
 
+/** TextArea nhiều dòng — bo cong mềm mại đồng bộ với Input viên thuốc, đệm lề trong */
+export const textAreaStyle: React.CSSProperties = {
+  borderRadius: 20,
+  padding: '10px 16px',
+};
+
 /** Nút chính: "Tạo mới", "Lưu", "Phê duyệt", "Tìm kiếm" */
 export const primaryButtonStyle: React.CSSProperties = {
   borderRadius: radiusPill,

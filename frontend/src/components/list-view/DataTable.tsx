@@ -13,6 +13,36 @@ import { colors, layout } from '../../theme';
 const tableHeaderBg = colors.bodyBg;
 const ACTION_COLUMN_WIDTH = 60;
 
+/**
+ * Bề rộng tối thiểu để tiêu đề một cột hiển thị đủ chữ, không bị cắt "...".
+ *
+ * Tiêu đề render ở `fontSizeMd` (13px), `fontWeightBold`, `textTransform: uppercase`.
+ * Chữ hoa đậm 13px rộng trung bình ~8.8px (đã tính biên an toàn); dấu tiếng Việt không làm chữ rộng thêm.
+ * Cộng padding ngang của ô tiêu đề (12px mỗi bên) và chỗ cho mũi tên sắp xếp.
+ *
+ * Có helper này thì màn hình không phải tự canh `width` cho vừa nhãn: cột luôn được nới
+ * đủ rộng, nên bỏ được `textOverflow: 'ellipsis'` ở ô tiêu đề.
+ */
+const HEADER_CHAR_WIDTH = 8.8;
+const HEADER_HORIZONTAL_PADDING = 24;
+const HEADER_SORTER_WIDTH = 22;
+
+function headerMinWidth(column: any): number {
+  const label = typeof column?.label === 'string'
+    ? column.label
+    : typeof column?.title === 'string' ? column.title : '';
+  if (!label) return 0;
+  const sorterSpace = (column.sortable || column.sorter) ? HEADER_SORTER_WIDTH : 0;
+  return Math.ceil(label.length * HEADER_CHAR_WIDTH) + HEADER_HORIZONTAL_PADDING + sorterSpace;
+}
+
+/** Nới `width` của cột lên tối thiểu bằng bề rộng tiêu đề của chính nó. */
+function withHeaderSafeWidth(column: any): any {
+  if (typeof column?.width !== 'number') return column;
+  const required = headerMinWidth(column);
+  return required > column.width ? { ...column, width: required } : column;
+}
+
 const actionColumnCellStyle: React.CSSProperties = {
   width: ACTION_COLUMN_WIDTH,
   minWidth: ACTION_COLUMN_WIDTH,
@@ -113,7 +143,7 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, ...rest
+  columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, ...rest
 }) => {
   const tableShellRef = useRef<HTMLDivElement>(null);
   const dataSignatureRef = useRef<string | null>(null);
@@ -171,6 +201,10 @@ const DataTable: React.FC<DataTableProps> = ({
     resizeObserver.observe(shell);
     return () => resizeObserver.disconnect();
   }, []);
+
+  // Nới bề rộng cột cho vừa tiêu đề TRƯỚC mọi phép tính bề rộng phía dưới, để tổng bề
+  // rộng bảng và scroll ngang khớp với bề rộng cột thực tế.
+  const columns = (rawColumns as any[] | undefined)?.map(withHeaderSafeWidth) as typeof rawColumns;
 
   const hasFixedColumns = Boolean(columns?.some((c: any) => c.fixed));
   const hasGeneratedActionColumn = Boolean(
@@ -296,9 +330,10 @@ const DataTable: React.FC<DataTableProps> = ({
           textTransform: 'uppercase',
           padding: '10px 12px',
           cursor: col.sortable ? 'pointer' : undefined,
+          // Tiêu đề cột BẮT BUỘC hiển thị đủ chữ, không cắt "..." — bề rộng cột đã được nới
+          // tối thiểu bằng `headerMinWidth()` nên chữ không tràn sang cột bên cạnh.
           whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
+          overflow: 'visible',
           zIndex: col.fixed ? 10 : undefined,
           textAlign: col.align || 'left',
         },

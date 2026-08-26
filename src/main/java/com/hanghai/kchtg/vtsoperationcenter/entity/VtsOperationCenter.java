@@ -2,7 +2,7 @@ package com.hanghai.kchtg.vtsoperationcenter.entity;
 
 import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import jakarta.persistence.*;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-public class VtsOperationCenter extends BaseEntity implements ApprovableEntity {
+public class VtsOperationCenter extends BaseApprovableEntity {
 
     @Column(name = "code", nullable = false, unique = true, length = 50)
     private String code;
@@ -58,39 +58,14 @@ public class VtsOperationCenter extends BaseEntity implements ApprovableEntity {
     @Column(name = "note", length = 2000)
     private String note;
 
-    @Column(name = "org_unit_id")
-    private UUID orgUnitId;
+    // Trường #13 của ma trận dữ liệu (F-293): hệ quy chiếu tọa độ.
+    @Column(name = "coordinate_reference_system", length = 50)
+    private String coordinateReferenceSystem;
 
-    @Column(name = "province_id")
-    private Integer provinceId;
+    // Các trường phân quyền (org_unit_id, province_id, security_level), GIS (spatial_id) và
+    // toàn bộ vết phê duyệt 2 cấp — kể cả submitted_at/submitted_by và
+    // level1/level2_approval_content — đã nằm ở BaseApprovableEntity, không khai lại ở đây.
 
-    @Column(name = "spatial_id")
-    private UUID spatialId;
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "approval_status", nullable = false, columnDefinition = "SMALLINT")
-    @Builder.Default
-    private ApprovalStatus approvalStatus = ApprovalStatus.DRAFT;
-
-    @Column(name = "approver_level1")
-    private UUID approverLevel1;
-
-    @Column(name = "approved_date_level1")
-    private LocalDateTime approvedDateLevel1;
-
-    @Column(name = "approver_level2")
-    private UUID approverLevel2;
-
-    @Column(name = "approved_date_level2")
-    private LocalDateTime approvedDateLevel2;
-
-    @Column(name = "rejection_reason", length = 1000)
-    private String rejectionReason;
-
-    @PrePersist
-    protected void onPrePersist() {
-        if (this.approvalStatus == null) {
-            this.approvalStatus = ApprovalStatus.DRAFT;
-        }
-    }
+    // Mặc định approvalStatus = DRAFT do BaseApprovableEntity.onBaseApprovablePrePersist() lo,
+    // không khai @PrePersist trùng ở đây (trường ở lớp cha là private).
 }

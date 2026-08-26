@@ -28,10 +28,7 @@ import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import type { Symbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };

@@ -15,10 +15,7 @@ import {
 } from '../../tokens';
 import PagedTable from '../../components/list-view/PagedTable';
 import { normalizeSearchText } from '../../components/org-unit';
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };

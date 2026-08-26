@@ -203,7 +203,7 @@ Khi dùng trong filter sidebar:
 > - KHÔNG truyền `treeDefaultExpandAll={false}` (để mặc định mở rộng toàn bộ nhánh).
 > - KHÔNG bật `showPath` trong sidebar lọc.
 
-### 4.2. Form Drawer (`AppDrawer`)
+### 4.2. Form Drawer (`AppDrawer`) & Quy chuẩn Bo tròn (Pill & Rounded Design System)
 - Sử dụng `AppDrawer` thay vì modal hay Drawer tự tạo:
 ```tsx
 <AppDrawer
@@ -216,7 +216,15 @@ Khi dùng trong filter sidebar:
   <Form layout="vertical">...</Form>
 </AppDrawer>
 ```
-- Mọi Input / Select trong Form đều dùng `style={{ borderRadius: radiusPill, height: 40 }}` và `Form.Item style={{ marginBottom: spaceFormField }}`.
+- **Quy chuẩn Bo tròn đồng bộ (Pill & Rounded Inputs)**:
+  - **Ô nhập 1 dòng (`Input`, `Select`, `TreeSelect`, `DatePicker`, `InputNumber`)**: Bắt buộc dùng `style={{ borderRadius: radiusPill, height: 40 }}` (bo tròn viên thuốc 2 đầu `999px`).
+  - **Ô nhập nhiều dòng (`Input.TextArea` — Phạm vi, Thông báo hàng hải, Ghi chú, Lý do...)**: Bắt buộc dùng `style={textAreaStyle}` hoặc `style={{ borderRadius: 20, padding: '10px 16px' }}` (bo cong mềm mại góc lớn `20px` đồng điệu 100% với ô Input viên thuốc, đệm lề trong để văn bản không bị lẹm góc).
+  - **Khoảng cách và Bố cục Lưới Form**:
+    - Sử dụng `<Row gutter={[24, 0]}>` với `spaceFormField: 12px` ở `Form.Item`.
+    - Ô 1 dòng: `<Col span={12}>` (chiếm 50% dòng).
+    - Ô `TextArea` nhiều dòng, bảng con hoặc upload file: `<Col span={24}>` (chiếm 100% chiều ngang).
+  - **Nút bấm Footer**: Tất cả nút (Lưu tạm, Lưu và gửi duyệt, Lưu và phê duyệt, Hủy...) đều dùng `borderRadius: radiusPill` và `height: 40`.
+  - **Tab Lịch sử**: Bắt buộc ẩn khi Thêm mới (`drawerMode === 'create'`), chỉ hiện khi Xem chi tiết (`view`) hoặc Sửa (`edit`).
 
 ### 4.3. Nạp danh mục liên kết không giới hạn (`/options`) và Trạng thái Phê duyệt
 - Không gọi `get(page=0, size=200)` để fill Select dropdown.
@@ -290,14 +298,19 @@ Khi màn hình danh sách hoặc form nhập liệu có các quan hệ thứ b�
    - **Endpoints**: `GET/POST /api/v1/<res>/{id}/attachments`, `GET .../download`, `DELETE .../{attachmentId}`.
 
 ### 4.8. Drawer Lịch sử thay đổi & Phê duyệt (Audit Timeline - UI & Backend Architecture)
-1. **Frontend UI**:
-   - **Bộ lọc trong Drawer**: Ô tìm kiếm từ khóa + Lọc theo khoảng ngày (`Từ ngày` - `Đến ngày`).
-   - **Bố cục lưới 2 cột**: `gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)'`, gap: `16px`.
-   - **Cột trái (Metadata)**: Thời gian `HH:mm DD/MM/YYYY` + Badge hành động (`borderRadius: 999`, `flexWrap: 'wrap'`) + Người cập nhật (**Họ và tên**) + Đơn vị quản lý.
-   - **Cột phải (Card chi tiết)**: Viền trái màu gradient theo hành động, tiêu đề `Thông tin thêm mới:` / `Thông tin thay đổi:`, danh sách trường tiếng Việt + diff `<Giá trị cũ> → <Giá trị mới>`, khung Lý do từ chối / ghi chú.
-   - **Làm sạch dữ liệu**: Tự động gom nhóm thay đổi cùng giây/người, lọc bỏ dòng rỗng hoặc không thay đổi (`ov === nv`).
+1. **Phân biệt 2 loại Lịch sử trong hệ thống**:
+   - **(A) Tab Lịch sử Phê duyệt trong Drawer Form (`AppDrawer`)**:
+     - Nằm ở **Tab cuối cùng** trong Drawer Form, hiển thị tóm tắt tiến trình 2 cấp: Người tạo & ngày tạo, Người gửi duyệt & ngày gửi, Cảng vụ duyệt C1 & ngày duyệt, Cục duyệt C2 & ngày duyệt, Lý do từ chối nếu có.
+     - **QUY TẮC BẮT BUỘC**: **Khi Thêm mới (`drawerMode === 'create'`), BẮT BUỘC ẨN tab này** (dùng `...(drawerMode !== 'create' ? [{ key: '5', label: FORM_TAB_LABEL.HISTORY, ... }] : [])`) vì bản ghi chưa được tạo trong CSDL. Tab này CHỈ hiển thị khi Xem chi tiết (`view`) hoặc Chỉnh sửa (`edit`).
+   - **(B) Drawer / Modal Lịch sử biến động dữ liệu chi tiết (Change Audit Trail)**:
+     - Mở từ **Menu thao tác trên dòng (`rowActions`)** $\rightarrow$ nút **"Lịch sử" / "Lịch sử thay đổi"** (`<HistoryOutlined />`).
+     - **Bộ lọc trong Drawer**: Ô tìm kiếm từ khóa + Lọc theo khoảng ngày (`Từ ngày` - `Đến ngày`).
+     - **Bố cục lưới 2 cột**: `gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)'`, gap: `16px`.
+     - **Cột trái (Metadata)**: Thời gian `HH:mm DD/MM/YYYY` + Badge hành động (`borderRadius: 999`, `flexWrap: 'wrap'`) + Người cập nhật (**Họ và tên**) + Đơn vị quản lý.
+     - **Cột phải (Card chi tiết)**: Viền trái màu gradient theo hành động, tiêu đề `Thông tin thêm mới:` / `Thông tin thay đổi:`, danh sách trường tiếng Việt + diff `<Giá trị cũ> → <Giá trị mới>`, khung Lý do từ chối / ghi chú.
+     - **Làm sạch dữ liệu**: Tự động gom nhóm thay đổi cùng giây/người, lọc bỏ dòng rỗng hoặc không thay đổi (`ov === nv`).
 2. **Backend Logic & CSDL**:
-   - **Entity**: `InfrastructureHistory` (bảng `infrastructure_history` lưu `refId`, `refType`, `approvalLevel`, `status`, `approvedBy`, `reason`, `changedField`, `previousValue`, `newValue`, `createdAt`).
+   - **Bảng CSDL duy nhất**: `infrastructure_history` (Entity: `InfrastructureHistory`, Repository: `InfrastructureHistoryRepository`). **Tuyệt đối không dùng các bảng phân mảnh cũ như `change_logs`, `approval_logs`, `beacon_history`, `station_history`** (các bảng này đã bị DROP hoàn toàn).
    - **Xóa mềm**: Tái sử dụng `ApprovalHistoryUtils.recordSoftDelete(...)`.
    - **Endpoint**: `GET /api/v1/<res>/{id}/history` trả về danh sách lịch sử có `fullName` của người thao tác.
 
@@ -347,6 +360,24 @@ Mọi ô chọn tìm kiếm dropdown (`Select` có `showSearch`), ô tìm kiếm
      sẽ biến mất khỏi mọi dropdown `/options` của các màn hình khác.
 5. **Quy chuẩn Style Badge**:
    - `borderRadius: radiusPill` (`999px`), `fontSize: fontSizeMd` (`13px`), `fontWeight: 500`, `background: ${color}15`, `border: 1px solid ${color}40`, `color: ${color}`, `whiteSpace: 'nowrap'`, `padding: '2px 10px'`.
+
+### 4.11. Quy chuẩn Ma trận trường dữ liệu CRUD & Bộ lọc (Field CRUD & Filter Matrix Standard)
+Nguồn gốc duy nhất của các trường dữ liệu trên Bảng danh sách, Sidebar bộ lọc, Drawer Xem chi tiết, Form Tạo mới và Chỉnh sửa **BẮT BUỘC** phải lấy chính xác từ bảng **Ma trận trường dữ liệu nghiệp vụ (CRUD & Filter Matrix)** trong tài liệu thiết kế chi tiết (TKCT) của BA:
+- **Danh sách (`List = TRUE`)**: Cột hiển thị trên bảng dữ liệu `DataTable`.
+- **Bộ lọc (`Filter = TRUE`)**: Trường lọc hiển thị trên Sidebar của `FilterTableLayout` (hoặc `StatusTabs` cho trạng thái phê duyệt `approvalStatus`, ô tìm kiếm cho `code`/`name`).
+- **Xem chi tiết (`Detail = TRUE`)**: Trường hiển thị trong Drawer chi tiết (`drawerMode === 'view'`).
+- **Tạo mới (`Create = TRUE`)**: Trường nhập liệu trong Form Tạo mới (`drawerMode === 'create'`).
+- **Sửa (`Edit = TRUE`)**: Trường nhập liệu trong Form Chỉnh sửa (`drawerMode === 'edit'`).
+
+#### Quy chuẩn hiển thị các trường trên Sidebar bộ lọc (`Filter = TRUE`):
+1. `Đơn vị quản lý`: `OrgUnitTreeSelect` dạng cây theo DataScope phân quyền.
+2. `Trạng thái phê duyệt`: Dãy `StatusTabs` 6 tab màu semantic trên đầu bảng danh sách.
+3. `Mã` + `Tên`: Ô `Input` "Tìm kiếm từ khóa".
+4. `Địa điểm (Tỉnh/TP)`: Dropdown chọn Tỉnh/Thành phố có hỗ trợ tìm kiếm tiếng Việt không dấu.
+5. `Ngày cập nhật`: Ô `RangePicker` "Khoảng ngày cập nhật" (`DD/MM/YYYY`).
+6. `Tình trạng hoạt động`: Dropdown chọn trạng thái vận hành (`ConditionStatus`).
+7. `Các trường đặc thù` (Năm hoạt động, Đơn vị khai thác, Phân loại...): Hiển thị trực tiếp trên Sidebar theo đúng ma trận nghiệp vụ của đối tượng.
+8. **Cấu hình Sidebar `FilterTableLayout`**: Bắt buộc đặt `hideFilterToggle={true}` để ẩn nút phễu; toàn bộ các trường lọc được hiển thị trực tiếp trên thanh cuộn dọc 280px (`overflowY: 'auto'`), dưới đáy chỉ giữ 2 nút: **Reload** + **Tìm kiếm**.
 
 ---
 

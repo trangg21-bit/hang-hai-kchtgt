@@ -215,6 +215,25 @@ Quy tắc bắt buộc cho bảng danh sách:
 - Giữ giá trị chọn là `orgUnitId` khi gọi API; backend chịu trách nhiệm giới hạn phạm vi theo quyền.
 - Tuân thủ reference và chi tiết tại [`docs/conventions/list-screen-ui-standard.md`](docs/conventions/list-screen-ui-standard.md).
 
+### Ma trận trường dữ liệu CRUD & Bộ lọc (MANDATORY)
+
+Mọi trường dữ liệu trên Bảng danh sách, Sidebar bộ lọc, Drawer Xem chi tiết, Form Tạo mới và Sửa **BẮT BUỘC** lấy chính xác từ bảng **Ma trận trường dữ liệu nghiệp vụ (CRUD & Filter Matrix)** trong tài liệu thiết kế chi tiết (TKCT) của BA:
+- `Danh sách (List = TRUE)`: Cột hiển thị trên `DataTable`.
+- `Bộ lọc (Filter = TRUE)`: Trường lọc trên Sidebar của `FilterTableLayout` (hoặc `StatusTabs` cho `approvalStatus`, ô tìm kiếm cho `code`/`name`).
+- `Xem chi tiết (Detail = TRUE)`: Trường hiển thị trong Drawer chi tiết (`drawerMode === 'view'`).
+- `Tạo mới (Create = TRUE)`: Trường nhập liệu trong Form Tạo mới (`drawerMode === 'create'`).
+- `Sửa (Edit = TRUE)`: Trường nhập liệu trong Form Chỉnh sửa (`drawerMode === 'edit'`).
+
+**Quy chuẩn hiển thị các trường trên Sidebar bộ lọc (`Filter = TRUE`)**:
+1. `Đơn vị quản lý`: `OrgUnitTreeSelect` dạng cây theo DataScope phân quyền.
+2. `Trạng thái phê duyệt`: Dãy `StatusTabs` 6 tab màu semantic trên đầu bảng danh sách.
+3. `Mã` + `Tên`: Ô `Input` "Tìm kiếm từ khóa".
+4. `Địa điểm (Tỉnh/TP)`: Dropdown chọn Tỉnh/Thành phố có hỗ trợ tìm kiếm tiếng Việt không dấu.
+5. `Ngày cập nhật`: Ô `RangePicker` "Khoảng ngày cập nhật" (`DD/MM/YYYY`).
+6. `Tình trạng hoạt động`: Dropdown chọn trạng thái vận hành (`ConditionStatus`).
+7. `Các trường đặc thù` (Năm hoạt động, Đơn vị khai thác, Phân loại...): Hiển thị trực tiếp trên Sidebar theo đúng ma trận.
+8. **Cấu hình Sidebar**: Bắt buộc đặt `hideFilterToggle={true}` trên `FilterTableLayout`, hiển thị trực tiếp tất cả các trường lọc trên thanh cuộn dọc 280px (`overflowY: 'auto'`), dưới đáy chỉ giữ 2 nút: **Reload** + **Tìm kiếm**.
+
 ### Form/Modal Pattern
 
 Mọi form trong modal popup **PHẢI** dùng:
@@ -235,7 +254,9 @@ import { spaceFormField, radiusPill } from '../tokens';
 - **KHÔNG** hardcode border-radius — dùng `radiusPill` (999px) cho Input, Select, Button
 - `height: 40` cho mọi Input, Select
 - `labelProps()` helper cho label style nhất quán
-- Modal footer: Cancel (outlined) + Submit (primary), cả hai pill radius
+- Modal/Drawer footer: Cancel (outlined) + Submit (primary), cả hai pill radius
+- **Quy tắc Tab Lịch sử trong Form Drawer**: Tab "Lịch sử & Phê duyệt" **BẮT BUỘC chỉ hiển thị khi `drawerMode !== 'create'`** (chỉ hiện khi Xem chi tiết `view` hoặc Chỉnh sửa `edit`); khi Thêm mới (`create`), tab này **BẮT BUỘC ĐƯỢC ẨN ĐI** (`...(drawerMode !== 'create' ? [tabHistory] : [])`).
+- **Quy chuẩn Lịch sử thay đổi (Audit Trail)**: Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).
 
 ### Reference Implementation
 

@@ -13,7 +13,6 @@ import {
   spaceFormField,
   radiusPill,
   textSecondary,
-  fontWeightBold,
   fontSizeMd,
   drawerProps,
   drawerTitleStyle,
@@ -24,8 +23,9 @@ import {
   filterInputStyle,
   filterLabelStyle,
 } from '../tokens';
-import { colors } from '../theme';
+
 import toast, { modal } from '../components/ToastNotification';
+import { formLabelProps as labelProps } from '../components/shared/formLabel';
 
 const FEATURE_OPTIONS = [
   { value: 'phanhien', label: 'Phản hiện' },
@@ -59,10 +59,6 @@ interface PermissionListResponse {
   page: number;
   pageSize: number;
 }
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 export default function PermissionsPage() {
   const [search, setSearch] = useState('');

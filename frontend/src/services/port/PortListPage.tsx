@@ -23,7 +23,6 @@ import {
   Upload,
   DatePicker,
   Radio,
-  Drawer,
   Table,
 } from 'antd';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name, resolveOrgFullPath } from '../../components/org-unit';
@@ -123,13 +122,24 @@ import {
   surfacePage,
   dataSea1,
   metaStyle,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  uploadAreaStyle, uploadHintStyle, uploadFileItemStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
-  historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
-  historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
+  drawerTitleStyle,
+  requiredMarkStyle,
+  uploadAreaStyle,
+  uploadHintStyle,
+  uploadFileItemStyle,
+  historyBadgeStyle,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyInfoTitleStyle,
+  historyChangeRowStyle,
+  historyCreateRowStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
 } from '../../tokens';
 import { usePermissionStore } from '../../store/permissionStore';
 import { colors } from '../../theme';
@@ -137,6 +147,9 @@ import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import FormSaveFooter, { type FormSaveAction } from '../../components/shared/FormSaveFooter';
 
 const { confirm } = modal;
 
@@ -338,10 +351,6 @@ function getActionLabel(items: any[]): { label: string; color: string } {
   if (nullCount > items.length / 2) return { label: 'Tạo mới', color: 'blue' };
   return { label: 'Chỉnh sửa', color: 'blue' };
 }
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
 
 // ── Loại kết cấu hạ tầng (bộ lọc tab "Danh sách kết cấu hạ tầng khác") ──
 const KCHT_TYPE_OPTIONS = [
@@ -1245,7 +1254,10 @@ export default function PortListPage() {
         area: values.area as number | undefined,
         maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
-        approvalStatus: selectedRecord.approvalStatus === 'APPROVED' ? 'PENDING' : selectedRecord.approvalStatus,
+        // T12 / quy tắc 12 (approval-2-level-spec.md mục 3.9): sửa hồ sơ Đã duyệt thì GIỮ NGUYÊN
+        // trạng thái Đã duyệt, bản cũ đi vào nhật ký. Trước đây hạ về 'PENDING' (mã legacy) —
+        // hồ sơ đang khai thác lập tức biến mất khỏi mọi dropdown `/options` (quy tắc APPROVED ONLY).
+        approvalStatus: selectedRecord.approvalStatus,
         orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
         portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         mapSymbolId: (values.gisLocation as any)?.mapSymbolId || (values.mapSymbolId as string) || undefined,
@@ -2088,8 +2100,7 @@ export default function PortListPage() {
 
       {/* ── Create Drawer ─────────────────────────────── */}
       {!isIframeModal && (
-        <Drawer
-          {...drawerProps}
+        <AppDrawer
           title={
             <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
               Thêm mới cảng biển
@@ -2097,13 +2108,17 @@ export default function PortListPage() {
           }
           open={createModalVisible}
           onClose={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
-          extra={<Button type="text" onClick={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
-            <div style={drawerFooterStyle}>
-              <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-              {canSubmitForApproval && <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); createForm.submit(); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>}
-              {canSubmitForApproval && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>}
-            </div>
+            <FormSaveFooter
+              onAction={(nextAction) => {
+                actionTypeRef.current = nextAction;
+                setActionType(nextAction);
+                createForm.submit();
+              }}
+              loadingAction={submitting ? (actionType as FormSaveAction) : null}
+              canSubmitForApproval={canSubmitForApproval}
+              canApprove={canSubmitForApproval}
+            />
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -2843,13 +2858,12 @@ export default function PortListPage() {
               }
             ]} />
           </Form>
-        </Drawer>
+        </AppDrawer>
       )}
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
       {(!isIframeModal || action === 'edit') && (
-        <Drawer
-          {...drawerProps}
+        <AppDrawer
           size={isIframeModal ? '100%' : 1000}
           mask={!isIframeModal}
           title={
@@ -2861,11 +2875,12 @@ export default function PortListPage() {
           }
           open={updateModalVisible}
           onClose={closeUpdateModal}
-          extra={<Button type="text" onClick={closeUpdateModal} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
-            <div style={drawerFooterStyle}>
-              <Button type="primary" htmlType="submit" loading={submitting} onClick={() => updateForm.submit()} style={primaryButtonStyle}>Cập nhật</Button>
-            </div>
+            <FormSaveFooter
+              onAction={() => updateForm.submit()}
+              loadingAction={submitting ? 'draft' : null}
+              draftLabel="Cập nhật"
+            />
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -3569,13 +3584,12 @@ export default function PortListPage() {
             />
 
           </Form>
-        </Drawer>
+        </AppDrawer>
       )}
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       {(!isIframeModal || action === 'detail') && (
-        <Drawer
-          {...drawerProps}
+        <AppDrawer
           size={isIframeModal ? '100%' : 1000}
           mask={!isIframeModal}
           title={
@@ -3585,7 +3599,6 @@ export default function PortListPage() {
           }
           open={detailModalVisible}
           onClose={closeDetailModal}
-          extra={<Button type="text" onClick={closeDetailModal} style={drawerCloseBtnStyle}>✕</Button>}
           footer={null}
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -3858,13 +3871,12 @@ export default function PortListPage() {
             />
           )}
 
-        </Drawer>
+        </AppDrawer>
       )}
 
 
       {/* ── Chi tiết KCHT khác (Drawer lồng — không chuyển trang) ── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={isIframeModal ? '100%' : 950}
         mask={!isIframeModal}
         title={
@@ -3876,7 +3888,6 @@ export default function PortListPage() {
         }
         open={kchtDetailOpen}
         onClose={() => setKchtDetailOpen(false)}
-        extra={<Button type="text" onClick={() => setKchtDetailOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -3903,16 +3914,14 @@ export default function PortListPage() {
         ) : kchtDetailRecord && kchtDetailType === 'waterzone' ? (
           <WaterZoneDetailMini record={kchtDetailRecord} symbols={symbols as any[]} files={kchtDetailFiles} userMap={userMap} />
         ) : null}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={900}
         title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
         open={pierDetailOpen}
         onClose={() => setPierDetailOpen(false)}
-        extra={<Button type="text" onClick={() => setPierDetailOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -3942,11 +3951,10 @@ export default function PortListPage() {
             waterwayMap={waterwayMap}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── History Modal ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={isIframeModal ? '100%' : 880}
         mask={!isIframeModal}
         title={
@@ -3962,7 +3970,6 @@ export default function PortListPage() {
         }
         open={historyModalVisible}
         onClose={() => setHistoryModalVisible(false)}
-        extra={<Button type="text" onClick={() => setHistoryModalVisible(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -4005,7 +4012,7 @@ export default function PortListPage() {
           ) : renderPortHistoryTimeline(historyRecords) /* STALE_RENDER const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000); const sorted = [...historyRecords].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime()); const q = historySearch.toLowerCase().trim(); const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = []; for (const r of sorted) { if (q) { const fn = (r.fieldName || '').toLowerCase(); const ov = (r.oldValue || '').toLowerCase(); const nv = (r.newValue || '').toLowerCase(); const lb = historyFieldName(r.fieldName || '').toLowerCase(); const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase(); const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase(); if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue; } if (historyEntityFilter && r.entityId !== historyEntityFilter) continue; if (historyDateFrom || historyDateTo) { const cd = (r.changedAt || r.createdAt || '').substring(0, 16); if (historyDateFrom && cd < historyDateFrom.replace(' ', 'T')) continue; if (historyDateTo && cd > historyDateTo.replace(' ', 'T') + ':59') continue; } const ts = r.changedAt || r.createdAt || ''; const sec = ts ? toSec(ts) : 0; const prev = groups[groups.length - 1]; if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r); else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] }); } if (groups.length === 0) return (<div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>); const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; }; if (historySearchRef.current === 'initial') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length > 0 && historySearchRef.current !== q) { historySearchRef.current = q; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = true; }); setTimeout(() => setHistoryExpanded(init), 0); } else if (q.length === 0 && historySearchRef.current !== '') { historySearchRef.current = ''; const init: Record<number, boolean> = {}; groups.forEach((_, i) => { init[i] = false; }); setTimeout(() => setHistoryExpanded(init), 0); } return (<div>{groups.map((g, gi) => (<div key={gi} style={{ display: 'flex', gap: spaceSm, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', background: surfaceCard, border: `1px solid ${actionPrimary}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ClockCircleFilled style={{ color: actionPrimary, fontSize: 14 }} /></div>{gi < groups.length - 1 && (<div style={{ width: 1, flex: 1, minHeight: 24, background: borderDefault, marginTop: spaceXs }} />)}</div><div style={{ ...cardStyle, flex: 1, padding: `${spaceSm}px ${spaceFormField}px`, marginBottom: 0, borderRadius: radiusLg, boxShadow: shadowSm }}><div onClick={() => setHistoryExpanded(prev => ({ ...prev, [gi]: !prev[gi] }))} style={{ display: 'flex', alignItems: 'center', gap: spaceSm, cursor: 'pointer' }}><Typography.Text style={{ fontSize: fontSizeLg, color: textPrimary, fontWeight: fontWeightBold }}>{g.ts ? fmtTime(g.ts) : '—'}</Typography.Text>{g.actor && (<Typography.Text style={{ fontSize: fontSizeMd, color: textSecondary }}>— {g.actor}</Typography.Text>)}{(() => { const a = getActionLabel(g.items); return <Tag color={a.color} style={{ fontSize: 11, marginLeft: spaceSm, borderRadius: radiusPill }}>{a.label}</Tag>; })()}<span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: actionPrimary, background: `${actionPrimary}12`, borderRadius: radiusPill, padding: '2px 10px', marginLeft: 'auto' }}>{g.items.length}</span>{historyExpanded[gi] === false ? (<DownOutlined style={{ fontSize: 12, color: textTertiary }} />) : (<UpOutlined style={{ fontSize: 12, color: textTertiary }} />)}</div>{historyExpanded[gi] !== false && (<><Divider style={{ margin: `${spaceSm}px 0`, borderColor: borderDefault }} /><table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>{g.items.map((r: any, ri: number) => { const fn = r.fieldName || ''; const ov = r.oldValue !== undefined && r.oldValue != null ? historyFieldValue(fn, r.oldValue, orgMap, symbolMap) : null; const nv = r.newValue !== undefined && r.newValue != null ? historyFieldValue(fn, r.newValue, orgMap, symbolMap) : null; return (<tr key={r.id || ri}><td style={{ padding: `${spaceXs}px ${spaceSm}px ${spaceXs}px 0`, fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textPrimary, whiteSpace: 'nowrap', verticalAlign: 'middle', width: 1 }}>{historyMode === 'all' ? (<><Tag color="blue" style={{ marginRight: spaceXs, fontSize: fontSizeSm, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryMode('current'); setLoadingHistory(true); setHistoryRecords([]); import('./api').then(m => m.fetchportHistory(r.entityId, { page: 0, size: 200 })).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); }} onClick={async (e) => { e.stopPropagation(); setHistoryEntityId(r.entityId); setHistoryEntityName(historyEntityNames[r.entityId] || ''); setHistoryMode('current'); setLoadingHistory(true); setHistoryRecords([]); historySearchRef.current = 'initial'; const { fetchportHistory } = await import('./api'); fetchportHistory(r.entityId, { page: 0, size: 200 }).then((d: any) => setHistoryRecords(d.changeHistory || [])).catch(() => toast.error('Không thể tải lịch sử')).finally(() => setLoadingHistory(false)); }}>{historyEntityNames[r.entityId] || r.entityId?.substring(0,8)}</Tag> </>) : null}{fn ? historyFieldName(fn) : '—'}</td><td style={{ padding: `${spaceXs}px 0`, verticalAlign: 'middle' }}><Space size={spaceXs}>{ov ? (<Typography.Text delete style={{ fontSize: fontSizeMd, color: statusCritical }}>{ov}</Typography.Text>) : (<span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>)}<ArrowRightOutlined style={{ fontSize: 10, cursor: 'pointer', color: textTertiary }} />{nv ? (<Typography.Text strong style={{ fontSize: fontSizeMd, color: statusOperational }}>{nv}</Typography.Text>) : (<span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>)}</Space></td></tr>); })}</tbody></table></>)}</div></div>))}</div>); })()}
         */}
         </div>
-      </Drawer>
+      </AppDrawer>
 
       {selectedRecord && (
         <DocumentUploadModal

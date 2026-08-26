@@ -5,7 +5,17 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Modal, Input, Alert, Space, Drawer, Form, DatePicker, TreeSelect, Select, Typography, Radio,
+  Button,
+  Modal,
+  Input,
+  Alert,
+  Space,
+  Form,
+  DatePicker,
+  TreeSelect,
+  Select,
+  Typography,
+  Radio,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined,
@@ -47,16 +57,43 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
 import {
-  statusOperational, statusCritical, actionPrimary, statusDraft, statusAttention,
-  textPrimary, textSecondary, textTertiary, borderDefault,
-  fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField, radiusPill,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyBadgeStyle, historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
-  historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
-  historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
+  statusOperational,
+  statusCritical,
+  actionPrimary,
+  statusDraft,
+  statusAttention,
+  textPrimary,
+  textSecondary,
+  textTertiary,
+  borderDefault,
+  fontSizeMd,
+  fontSizeLg,
+  fontWeightMedium,
+  fontWeightBold,
+  spaceMd,
+  spaceSm,
+  spaceXs,
+  spaceXl,
+  spaceFormField,
+  radiusPill,
+  drawerTitleStyle,
+  drawerCloseBtnStyle,
+  primaryButtonStyle,
+  outlineButtonStyle,
+  requiredMarkStyle,
+  historyBadgeStyle,
+  historyGroupGridStyle,
+  historyTimeStyle,
+  historyMetaRowStyle,
+  historyInfoCardStyle,
+  historyAccentBarStyle,
+  historyInfoTitleStyle,
+  historyChangeRowStyle,
+  historyCreateRowStyle,
+  historyFieldLabelStyle,
+  historyOldValueStyle,
+  historyNewValueStyle,
+  historyArrowStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
 import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
@@ -65,6 +102,7 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import { approvalStatusColor } from '../../components/shared/ApprovalStatusBadge';
 import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 
 // ── Helpers (moved verbatim from BuoyList.tsx / BuoyForm.tsx) ────────
 
@@ -1665,18 +1703,17 @@ export default function BuoyListPage() {
       </FilterTableLayout>
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới thông tin phao, tiêu</span>}
         open={createDrawerOpen}
         onClose={closeCreateDrawer}
-        extra={<Button type="text" onClick={closeCreateDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; createForm.submit(); }} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
+          <>
+
+          <Button onClick={() => { actionTypeRef.current = 'draft'; createForm.submit(); }} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; createForm.submit(); }} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'approved'; createForm.submit(); }} disabled={submitting} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
-          </div>
+          </>
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1734,19 +1771,15 @@ export default function BuoyListPage() {
             ddToDms={ddToDms}
           />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin phao, tiêu — {editingRecord ? editingRecord.name : 'Phao, tiêu'}</span>}
         open={editDrawerOpen}
         onClose={closeEditDrawer}
-        extra={<Button type="text" onClick={closeEditDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => updateForm.submit()} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Cập nhật</Button>
-          </div>
+          <Button type="primary" onClick={() => updateForm.submit()} loading={submitting} disabled={submitting} style={primaryButtonStyle}>Cập nhật</Button>
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1785,11 +1818,10 @@ export default function BuoyListPage() {
             ddToDms={ddToDms}
           />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={1000}
         title={<span style={drawerTitleStyle}>
           {detailRecord ? `Chi tiết thông tin phao, tiêu - ${detailRecord.name}` : 'Chi tiết thông tin phao, tiêu'}
@@ -1817,11 +1849,10 @@ export default function BuoyListPage() {
             ddToDms={ddToDms}
           />
         ) : null}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── History Drawer ─────────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
+      <AppDrawer
         size={880 as any}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -1836,7 +1867,6 @@ export default function BuoyListPage() {
         }
         open={historyDrawerOpen}
         onClose={() => setHistoryDrawerOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1882,7 +1912,7 @@ export default function BuoyListPage() {
             </div>
           ) : renderBuoyHistoryTimeline(historyData)}
         </div>
-      </Drawer>
+      </AppDrawer>
 
       {/* ── DocumentUploadModal (detail drawer) ────────────────────── */}
       {detailRecord && (

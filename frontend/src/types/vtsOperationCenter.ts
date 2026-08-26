@@ -31,6 +31,9 @@ export interface VtsOperationCenterResponse {
   symbolId?: string;
   approvalStatus: ApprovalStatus;
   approvalStatusLabel?: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  submittedByName?: string;
   approverLevel1?: string;
   approverLevel1Name?: string;
   approvedDateLevel1?: string;
@@ -70,6 +73,9 @@ export interface VtsOperationCenterListItem {
   createdAt?: string;
   createdBy?: string;
   createdByName?: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  submittedByName?: string;
   approverLevel1?: string;
   approverLevel1Name?: string;
   approvedDateLevel1?: string;

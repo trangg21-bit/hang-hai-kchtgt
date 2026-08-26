@@ -28,10 +28,10 @@ import {
   GEOMETRY_OPTIONS, COORD_SYS_OPTIONS, GEOMETRY_POINT_COUNT,
 } from './schema';
 import { CONDITION_OPTIONS } from '../buoy/schema';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'APPROVED' | 'UPDATE';
 
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };

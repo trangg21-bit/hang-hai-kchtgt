@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
@@ -15,7 +14,6 @@ import lombok.experimental.FieldNameConstants;
 import java.util.UUID;
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldNameConstants
@@ -57,4 +55,47 @@ public class VtsOperationCenterRequest {
     private String coordinates;
     private UUID symbolId;
     private ApprovalStatus approvalStatus;
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String code;
+        private String name;
+        private UUID vtsSystemId;
+        private UUID portId;
+        private UUID orgUnitId;
+        private Integer provinceId;
+        private String detailedLocation;
+        private String coverage;
+        private ConditionStatus conditionStatus;
+        private String note;
+        private UUID spatialId;
+        private GisGeometryType geometryType;
+        private String coordinates;
+        private UUID symbolId;
+        private ApprovalStatus approvalStatus;
+
+        public Builder code(String code) { this.code = code; return this; }
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder vtsSystemId(UUID vtsSystemId) { this.vtsSystemId = vtsSystemId; return this; }
+        public Builder portId(UUID portId) { this.portId = portId; return this; }
+        public Builder orgUnitId(UUID orgUnitId) { this.orgUnitId = orgUnitId; return this; }
+        public Builder provinceId(Integer provinceId) { this.provinceId = provinceId; return this; }
+        public Builder detailedLocation(String detailedLocation) { this.detailedLocation = detailedLocation; return this; }
+        public Builder coverage(String coverage) { this.coverage = coverage; return this; }
+        public Builder conditionStatus(ConditionStatus conditionStatus) { this.conditionStatus = conditionStatus; return this; }
+        public Builder note(String note) { this.note = note; return this; }
+        public Builder spatialId(UUID spatialId) { this.spatialId = spatialId; return this; }
+        public Builder geometryType(GisGeometryType geometryType) { this.geometryType = geometryType; return this; }
+        public Builder coordinates(String coordinates) { this.coordinates = coordinates; return this; }
+        public Builder symbolId(UUID symbolId) { this.symbolId = symbolId; return this; }
+        public Builder approvalStatus(ApprovalStatus approvalStatus) { this.approvalStatus = approvalStatus; return this; }
+
+        public VtsOperationCenterRequest build() {
+            return new VtsOperationCenterRequest(code, name, vtsSystemId, portId, orgUnitId, provinceId,
+                    detailedLocation, coverage, conditionStatus, note, spatialId, geometryType, coordinates, symbolId, approvalStatus);
+        }
+    }
 }

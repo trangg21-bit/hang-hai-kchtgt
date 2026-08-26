@@ -35,10 +35,9 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { usePermissionStore } from '../../store/permissionStore';
 import toast, { message, modal } from '../../components/ToastNotification';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const { confirm } = modal;
-
-const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function CoastalStationList() {
   const [dataSource, setDataSource] = useState<CoastalStationVTSResponse[]>([]);

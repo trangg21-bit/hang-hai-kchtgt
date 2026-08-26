@@ -273,6 +273,20 @@ export default function SomePage() {
                 </Form.Item>
               </Col>
             </Row>
+
+            <Form.Item
+              name="description"
+              {...labelProps('Mô tả / Ghi chú')}
+              style={{ marginBottom: spaceFormField }}
+            >
+              <Input.TextArea
+                rows={3}
+                placeholder="Nhập mô tả / ghi chú..."
+                showCount
+                maxLength={2000}
+                style={{ borderRadius: 20, padding: '10px 16px' }}
+              />
+            </Form.Item>
           </Form>
         </Spin>
       </Modal>
@@ -293,6 +307,8 @@ export default function SomePage() {
 8. Wrap form body trong `<Spin spinning={submitting}>` để disable khi submit
 9. Dùng `Row gutter={16} + Col xs={24} md={12}` cho form fields nằm ngang 2 cột
 10. `labelCol={{ style: { padding: 0, marginBottom: 4 } }}` trên Form
+11. **Tab Lịch sử trong Form Drawer**: Tab "Lịch sử & Phê duyệt" **BẮT BUỘC chỉ hiển thị khi `drawerMode !== 'create'`** (chỉ hiện khi Xem chi tiết `view` hoặc Chỉnh sửa `edit`); khi Thêm mới (`create`), tab này **BẮT BUỘC ĐƯỢC ẨN ĐI** (`...(drawerMode !== 'create' ? [tabHistory] : [])`).
+12. **Lịch sử thay đổi (Audit Trail)**: Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).
 
 ---
 

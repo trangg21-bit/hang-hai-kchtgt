@@ -32,7 +32,7 @@ import type {
   ApprovalRequest,
 } from '../../types/vtsSystem';
 import { ApprovalStatus, ConditionStatus, RecordSecurityLevel, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
-import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary } from '../../tokens';
+import { drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle, requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg, fontWeightBold, fontWeightMedium, spaceMd, spaceSm, fontSizeMd, fontSizeSm, textSecondary, textTertiary, textPrimary, borderDefault, surfaceCard, uploadHintStyle, statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle } from '../../tokens';
 import { colors } from '../../theme';
 import { VIETNAM_PROVINCES, getProvinceIdByName, getProvinceNameById } from '../../types/common';
 
@@ -787,7 +787,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
         >
           <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
           <Input.TextArea rows={3} value={rejectReason} maxLength={500} showCount
-            onChange={(e) => setRejectReason(e.target.value)} placeholder="Nhập lý do từ chối..." />
+            onChange={(e) => setRejectReason(e.target.value)} placeholder="Nhập lý do từ chối..." style={textAreaStyle} />
         </Modal>
       </>
     );
@@ -1122,7 +1122,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                     name="note"
                     style={{ marginBottom: spaceFormField }}
                   >
-                    <Input.TextArea rows={3} placeholder="Nhập ghi chú" showCount maxLength={2000} style={{ borderRadius: radiusMd }} />
+                    <Input.TextArea rows={3} placeholder="Nhập ghi chú" showCount maxLength={2000} style={textAreaStyle} />
                   </Form.Item>
                 </div>,
               },
@@ -1257,7 +1257,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                     name="scope"
                     style={{ marginBottom: spaceFormField }}
                   >
-                    <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" showCount maxLength={2000} style={{ borderRadius: radiusMd }} />
+                    <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" showCount maxLength={2000} style={textAreaStyle} />
                   </Form.Item>
 
                   <Form.Item
@@ -1265,7 +1265,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
                     name="maritimeNotice"
                     style={{ marginBottom: spaceFormField }}
                   >
-                    <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={{ borderRadius: radiusMd }} />
+                    <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={textAreaStyle} />
                   </Form.Item>
 
                   <Row gutter={16}>
@@ -1497,7 +1497,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
           </Form.Item>
 
           <Form.Item label="Phạm vi áp dụng" name="scope">
-            <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" />
+            <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" style={textAreaStyle} />
           </Form.Item>
 
           <Form.Item
@@ -1588,7 +1588,7 @@ export default function VtsSystemForm({ open, editId, initialData, initialDataOn
             label="Thông báo hàng hải"
             name="maritimeNotice"
           >
-            <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" maxLength={2000} showCount />
+            <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" maxLength={2000} showCount style={textAreaStyle} />
           </Form.Item>
 
           <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>

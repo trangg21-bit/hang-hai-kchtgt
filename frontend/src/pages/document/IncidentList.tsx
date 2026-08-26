@@ -17,6 +17,7 @@ import Pagination from '../../components/list-view/Pagination';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
 import toast, { modal } from '../../components/ToastNotification';
 import { colors } from '../../theme';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import {
   actionPrimary,
   fontSizeMd,
@@ -59,10 +60,6 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   DA_XU_LY: statusOperational,
   DA_DONG: statusDraft,
 };
-
-const labelProps = (label: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{label}</span>,
-});
 
 function formatDate(value?: string) {
   return value ? dayjs(value).format('DD/MM/YYYY HH:mm') : '—';

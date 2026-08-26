@@ -54,12 +54,18 @@ export const vtsSystemCRUD = {
     const res = await api.get(VTS_BASE_PATH, {
       params: {
         orgUnitId: params?.orgUnitId,
+        portId: params?.portId,
+        provinceId: params?.provinceId,
         page: params?.page || 0,
         size: params?.size || 20,
         keyword: params?.keyword,
         conditionStatus: params?.conditionStatus,
         approvalStatus: params?.approvalStatus,
         year: params?.year,
+        operationStartDateFrom: params?.operationStartDateFrom,
+        operationStartDateTo: params?.operationStartDateTo,
+        updatedFrom: params?.updatedFrom,
+        updatedTo: params?.updatedTo,
         includeCounts: params?.includeCounts ?? true,
         // `<field>,<asc|desc>` — sắp xếp thực hiện ở server để áp dụng cho toàn bộ
         // kết quả, không chỉ trang đang hiển thị.

@@ -79,6 +79,7 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import { APPROVAL_STATUS_OPTIONS } from '../../components/shared/ApprovalStatusBadge';
 import { APPROVAL_STATUS_STYLE } from '../../components/shared/ApprovalStatusBadge';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 
 /* ───────────────────────────────────────────────
@@ -214,10 +215,6 @@ const parseGisCoordinates = (
 };
 
 /* ── Form helper styles (merged from the previous form component) ── */
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
-
 const inputStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   height: 40,
