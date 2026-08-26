@@ -1280,6 +1280,7 @@ export const VtsOperationCenterList: React.FC = () => {
                 organizations={orgUnits}
                 placeholder="Tất cả"
                 allowClear
+                treeDefaultExpandAll={true}
                 listHeight={256}
                 value={orgUnitId}
                 onChange={handleOrgUnitChange}

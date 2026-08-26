@@ -17,6 +17,25 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
+-- 0. Các cột phê duyệt nền — trước đây chỉ tồn tại nhờ Hibernate ddl-auto,
+--    chưa migration nào tạo. Khai báo ở đây để migration tự đứng được trên
+--    một CSDL sạch (không phụ thuộc ddl-auto).
+-- ------------------------------------------------------------
+ALTER TABLE coastal_station_vts ADD COLUMN IF NOT EXISTS approval_status SMALLINT DEFAULT 0;
+ALTER TABLE coastal_station_vts ADD COLUMN IF NOT EXISTS status SMALLINT DEFAULT 0;
+ALTER TABLE coastal_station_vts ADD COLUMN IF NOT EXISTS approval_level SMALLINT;
+ALTER TABLE coastal_station_vts ADD COLUMN IF NOT EXISTS approved_by UUID;
+ALTER TABLE coastal_station_vts ADD COLUMN IF NOT EXISTS approved_date TIMESTAMP;
+ALTER TABLE coastal_station_vts ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+ALTER TABLE coastal_station_cospas_sarsat ADD COLUMN IF NOT EXISTS approval_status SMALLINT DEFAULT 0;
+ALTER TABLE coastal_station_cospas_sarsat ADD COLUMN IF NOT EXISTS status SMALLINT DEFAULT 0;
+ALTER TABLE coastal_station_cospas_sarsat ADD COLUMN IF NOT EXISTS approval_level SMALLINT;
+ALTER TABLE coastal_station_cospas_sarsat ADD COLUMN IF NOT EXISTS approved_by UUID;
+ALTER TABLE coastal_station_cospas_sarsat ADD COLUMN IF NOT EXISTS approved_date TIMESTAMP;
+ALTER TABLE coastal_station_cospas_sarsat ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+-- ------------------------------------------------------------
 -- 1. Bổ sung cột phục vụ 2 vòng duyệt (M-1006 Standard)
 -- ------------------------------------------------------------
 ALTER TABLE coastal_station_vts ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP;
