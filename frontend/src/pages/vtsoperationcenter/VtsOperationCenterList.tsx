@@ -433,7 +433,6 @@ export const VtsOperationCenterList: React.FC = () => {
   const [portId, setPortId] = useState<string | undefined>();
   const [provinceId, setProvinceId] = useState<number | undefined>();
   const [conditionStatus, setConditionStatus] = useState<ConditionStatus | undefined>();
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState<string | undefined>();
 
   // Reference data
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -527,7 +526,7 @@ export const VtsOperationCenterList: React.FC = () => {
       setLoading(true);
       setIsError(false);
 
-      const effectiveApprovalStatus = activeTab === 'ALL' ? approvalStatusFilter : activeTab;
+      const effectiveApprovalStatus = activeTab === 'ALL' ? undefined : activeTab;
 
       const res = await vtsOperationCenterService.search({
         keyword: keyword.trim() || undefined,
@@ -563,7 +562,6 @@ export const VtsOperationCenterList: React.FC = () => {
     portId,
     provinceId,
     conditionStatus,
-    approvalStatusFilter,
     activeTab,
     sortField,
     sortDirection,
@@ -595,7 +593,6 @@ export const VtsOperationCenterList: React.FC = () => {
     setPortId(undefined);
     setProvinceId(undefined);
     setConditionStatus(undefined);
-    setApprovalStatusFilter(undefined);
     setActiveTab('ALL');
     setPage(1);
   };
@@ -930,7 +927,8 @@ export const VtsOperationCenterList: React.FC = () => {
     const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
     const isApproved = record.approvalStatus === ApprovalStatus.APPROVED;
 
-    const isCreator = user?.id && record.createdBy === user.id;
+    const currentUserId = user?.userId || user?.id;
+    const isCreator = Boolean(currentUserId && record.createdBy === currentUserId);
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
 
@@ -1369,29 +1367,6 @@ export const VtsOperationCenterList: React.FC = () => {
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               />
             </div>
-            {activeTab === 'ALL' && (
-              <>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                    Trạng thái phê duyệt
-                  </div>
-                  <Select
-                    placeholder="Tất cả"
-                    allowClear
-                    value={approvalStatusFilter}
-                    onChange={setApprovalStatusFilter}
-                    options={[
-                      { value: 'DRAFT', label: 'Lưu tạm' },
-                      { value: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt' },
-                      { value: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt' },
-                      { value: 'APPROVED', label: 'Đã duyệt' },
-                      { value: 'REJECTED_LEVEL1', label: 'Từ chối' },
-                    ]}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  />
-                </div>
-              </>
-            )}
           </>
         }
         hideFilterToggle={true}

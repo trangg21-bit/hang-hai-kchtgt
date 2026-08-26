@@ -445,7 +445,6 @@ export const AisSystemList: React.FC = () => {
   const [provinceId, setProvinceId] = useState<number | undefined>();
   const [commissioningYear, setCommissioningYear] = useState<number | undefined>();
   const [conditionStatus, setConditionStatus] = useState<number | undefined>();
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState<string | undefined>();
 
   // Reference data
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -525,7 +524,7 @@ export const AisSystemList: React.FC = () => {
       setLoading(true);
       setIsError(false);
 
-      const effectiveApprovalStatus = activeTab === 'ALL' ? approvalStatusFilter : activeTab;
+      const effectiveApprovalStatus = activeTab === 'ALL' ? undefined : activeTab;
 
       const res = await aisSystemService.search({
         keyword: keyword.trim() || undefined,
@@ -561,7 +560,6 @@ export const AisSystemList: React.FC = () => {
     provinceId,
     commissioningYear,
     conditionStatus,
-    approvalStatusFilter,
     activeTab,
     sortField,
     sortDirection,
@@ -593,7 +591,6 @@ export const AisSystemList: React.FC = () => {
     setProvinceId(undefined);
     setCommissioningYear(undefined);
     setConditionStatus(undefined);
-    setApprovalStatusFilter(undefined);
     setActiveTab('ALL');
     setPage(1);
   };
@@ -939,7 +936,8 @@ export const AisSystemList: React.FC = () => {
     const isApprovedL1 = record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1;
     const isApproved = record.approvalStatus === ApprovalStatus.APPROVED;
 
-    const isCreator = user?.id && record.createdBy === user.id;
+    const currentUserId = user?.userId || user?.id;
+    const isCreator = Boolean(currentUserId && record.createdBy === currentUserId);
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
 
