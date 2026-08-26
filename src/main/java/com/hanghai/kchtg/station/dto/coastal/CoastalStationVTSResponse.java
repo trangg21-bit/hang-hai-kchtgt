@@ -5,10 +5,10 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,7 +17,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
+@Builder
 public class CoastalStationVTSResponse {
 
     private UUID id;
@@ -34,6 +34,13 @@ public class CoastalStationVTSResponse {
     private ApprovalLevel approvalLevel;
     private UUID approvedBy;
     private LocalDateTime approvedDate;
+    private LocalDateTime submittedAt;
+    private UUID submittedBy;
+    private UUID approverLevel1;
+    private LocalDateTime approvedDateLevel1;
+    private UUID approverLevel2;
+    private LocalDateTime approvedDateLevel2;
+    private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

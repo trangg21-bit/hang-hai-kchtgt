@@ -64,8 +64,27 @@ public class CoastalStationVTS extends BaseEntity {
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
     protected ApprovalLevel approvalLevel;
 
+    // --- Phê duyệt 2 cấp (docs/conventions/approval-2-level-spec.md mục 3) ---
+    @Column(name = "submitted_at")
+    protected java.time.LocalDateTime submittedAt;
+
+    @Column(name = "submitted_by")
+    protected UUID submittedBy;
+
+    @Column(name = "approver_level1")
+    protected UUID approverLevel1;
+
+    @Column(name = "approved_date_level1")
+    protected java.time.LocalDateTime approvedDateLevel1;
+
+    @Column(name = "approver_level2")
+    protected UUID approverLevel2;
+
+    @Column(name = "approved_date_level2")
+    protected java.time.LocalDateTime approvedDateLevel2;
+
     @Column(name = "approved_by")
-    protected String approvedBy;
+    protected UUID approvedBy;
 
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;
@@ -93,7 +112,12 @@ public class CoastalStationVTS extends BaseEntity {
     }
 
     private void setDefaultStatus() {
-        this.status = StationStatus.PENDING_APPROVAL;
-        this.approvalStatus = ApprovalStatus.PROPOSED;
+        // Tạo mới luôn ở "Lưu tạm" — chỉ chuyển sang chờ duyệt khi người dùng gửi phê duyệt
+        if (this.status == null) {
+            this.status = StationStatus.DRAFT;
+        }
+        if (this.approvalStatus == null) {
+            this.approvalStatus = ApprovalStatus.DRAFT;
+        }
     }
 }

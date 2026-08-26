@@ -16,14 +16,14 @@ export type ApprovalStatus =
 
 export const DIKE_REVETMENT_STATUS_MAP: Record<string, { label: string }> = {
   DRAFT: { label: 'Lưu tạm' },
+  PROPOSED: { label: 'Chờ Cảng vụ duyệt' },
   PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt' },
   APPROVED_LEVEL1: { label: 'Chờ Cục duyệt' },
   REJECTED_LEVEL1: { label: 'Cảng vụ trả về' },
   REJECTED_LEVEL2: { label: 'Cục trả về' },
   APPROVED: { label: 'Đã duyệt' },
-  PROPOSED: { label: 'Lưu tạm' },
   APPROVED_LEVEL2: { label: 'Đã duyệt' },
-  REJECTED: { label: 'Bị trả về' },
+  REJECTED: { label: 'Từ chối' },
 };
 
 export const CONDITION_STATUS_MAP: Record<string, { label: string }> = {
@@ -68,6 +68,7 @@ export interface DikeRevetmentOptionResponse {
 }
 
 export interface DikeRevetmentResponse {
+  [key: string]: any;
   id: string;
   code?: string;
   dikeRevetmentType: DikeRevetmentType;
@@ -90,6 +91,14 @@ export interface DikeRevetmentResponse {
   locationDetail?: string;
   constructionDate?: string;
   lastMaintenanceYear?: string;
+  maintenancePlanCode?: string;
+  maintenancePlanName?: string;
+  maintenanceStartDate?: string;
+  maintenanceEndDate?: string;
+  incidentCode?: string;
+  incidentType?: string;
+  incidentLocation?: string;
+  incidentTime?: string;
   submittedAt?: string;
   submittedByName?: string;
   approvedByNameLevel1?: string;

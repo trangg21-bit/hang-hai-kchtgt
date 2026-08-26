@@ -168,26 +168,35 @@ const historyFieldName = (fn: string): string => FIELD_LABELS[fn] || fn;
 
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
+  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
   '': undefined,
   DRAFT: 'DRAFT',
+  PROPOSED: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 };
 
 // Status badge config — semantic token colors (AGENTS.md: no hardcoded hex)
 const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Nháp' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PROPOSED: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
+  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
+  APPROVED_LEVEL2: { color: statusOperational, label: 'Đã duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ trả về' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục trả về' },
   DELETED: { color: textTertiary, label: 'Đã xóa' },
 };
 

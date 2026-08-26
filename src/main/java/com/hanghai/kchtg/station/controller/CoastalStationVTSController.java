@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -72,25 +73,46 @@ public class CoastalStationVTSController {
         return ResponseEntity.ok(results);
     }
 
+    @PostMapping("/{id}/submit")
+    @Operation(summary = "Gửi phê duyệt cấp Cảng vụ/Chi cục")
+    @PreAuthorize("hasAnyAuthority('coastalstation:create', 'coastalstation:update', 'data:create', 'admin:all')")
+    public ResponseEntity<CoastalStationVTS> submit(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.submit(id));
+    }
+
+    @PostMapping("/{id}/approve-l1")
+    @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
+    @PreAuthorize("hasAnyAuthority('coastalstation:approvec1', 'coastalstation:approve', 'data:approvec1', 'data:approve', 'admin:all')")
+    public ResponseEntity<CoastalStationVTS> approveLevel1(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.approveLevel1(id));
+    }
+
+    @PostMapping("/{id}/approve-l2")
+    @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
+    @PreAuthorize("hasAnyAuthority('coastalstation:approvec2', 'coastalstation:approve', 'data:approvec2', 'data:approve', 'admin:all')")
+    public ResponseEntity<CoastalStationVTS> approveLevel2(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.approveLevel2(id));
+    }
+
+    /** @deprecated dùng /approve-l1 hoặc /approve-l2 — endpoint này giữ để tương thích client cũ. */
+    @Deprecated
     @PostMapping("/{id}/approve")
-    @Operation(summary = "Approve a coastal station (supports L1 and L2)")
+    @Operation(summary = "Approve a coastal station (legacy — tự chọn vòng theo trạng thái hiện tại)")
+    @PreAuthorize("hasAnyAuthority('coastalstation:approvec1', 'coastalstation:approvec2', 'coastalstation:approve', 'data:approve', 'admin:all')")
     public ResponseEntity<CoastalStationVTS> approveStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationVTSApprovalRequest request) {
-        // UserId from security context will be injected in Wave 2
-        Long userId = 1L;
-        CoastalStationVTS approved = service.approveStation(id, request.getApproved(), userId);
+        CoastalStationVTS approved = service.approveStation(id, Boolean.TRUE.equals(request.getApproved()));
         return ResponseEntity.ok(approved);
     }
 
     @PostMapping("/{id}/reject")
-    @Operation(summary = "Reject a coastal station")
+    @Operation(summary = "Từ chối phê duyệt kèm lý do (tối thiểu 10 ký tự)")
+    @PreAuthorize("hasAnyAuthority('coastalstation:reject', 'coastalstation:approvec1', 'coastalstation:approvec2', 'coastalstation:approve', 'data:approve', 'admin:all')")
     public ResponseEntity<CoastalStationVTS> rejectStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationVTSApprovalRequest request) {
-        // UserId from security context will be injected in Wave 2
-        Long userId = 1L;
-        CoastalStationVTS rejected = service.rejectStation(id, request.getRejectionReason(), userId);
+        CoastalStationVTS rejected = service.reject(id, request.getRejectionReason());
         return ResponseEntity.ok(rejected);
     }
 

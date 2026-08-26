@@ -135,16 +135,19 @@ const historyFieldName = (fn: string): string => FIELD_LABELS[fn] || fn;
 
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
-  { key: 'PROPOSED', label: 'Nháp', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: '#0284C7' },
+  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
   { key: 'REJECTED', label: 'Từ chối', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, ApprovalStatus | undefined> = {
   '': undefined,
-  PROPOSED: 'PROPOSED',
+  DRAFT: 'DRAFT',
+  PROPOSED: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
 };
@@ -186,10 +189,15 @@ const OPERATIONAL_STATUS_STYLE_MAP: Record<string, { color: string; label: strin
 const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
 
 const APPROVAL_STATUS_MAP: Record<string, string> = {
-  PROPOSED: 'Nháp',
-  PENDING_APPROVAL: 'Chờ phê duyệt',
-  APPROVED: 'Đã phê duyệt',
+  DRAFT: 'Lưu tạm',
+  PROPOSED: 'Chờ Cảng vụ duyệt',
+  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+  APPROVED_LEVEL1: 'Chờ Cục duyệt',
+  APPROVED_LEVEL2: 'Đã duyệt',
+  APPROVED: 'Đã duyệt',
   REJECTED: 'Từ chối',
+  REJECTED_LEVEL1: 'Cảng vụ trả về',
+  REJECTED_LEVEL2: 'Cục trả về',
 };
 
 // History action colors — semantic tokens
