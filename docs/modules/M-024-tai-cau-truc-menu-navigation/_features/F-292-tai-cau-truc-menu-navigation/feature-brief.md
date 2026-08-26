@@ -1,17 +1,19 @@
 ---
 id: F-292
-name: "Tái cấu trúc menu & điều hướng"
+name: Tái cấu trúc menu & điều hướng
 slug: tai-cau-truc-menu-navigation
 module-id: M-024
 status: proposed
 classification: local
 priority: medium
-created: "2026-08-25T09:37:14Z"
-last-updated: "2026-08-25T09:37:14Z"
+created: 2026-08-25T09:37:14Z
+last-updated: 2026-08-26T01:50:11Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - frontend/src/store/permissionStore.ts
+  - frontend/src/store/permissionStore.test.ts
 ---
-
 # Đặc tả nghiệp vụ: Tái cấu trúc menu & điều hướng
 
 **Tài liệu:** Tài liệu chức năng — phần riêng (theo mẫu này)

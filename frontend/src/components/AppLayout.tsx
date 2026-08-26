@@ -26,6 +26,7 @@ import {
   GlobalOutlined,
   BankOutlined,
   BlockOutlined,
+  CheckSquareOutlined,
   BuildOutlined,
   EnvironmentOutlined,
   TruckOutlined,
@@ -35,6 +36,17 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
 import { layout } from '../theme';
+import {
+  cardStyle,
+  spaceMd,
+  spaceLg,
+  fontSizeMd,
+  fontSizeXl,
+  fontWeightBold,
+  textPrimary,
+  shadowSm,
+  shadowMd,
+} from '../tokens';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -50,19 +62,19 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/gis/layers': 'map:manage',
   '/gis/map': 'data:read',
   '/gis/permits': 'map:manage',
-  '/beacon-stations': 'data:read',
-  '/buoys': 'data:read',
-  '/buoy-station': 'data:read',
+  '/beacon-stations': 'beaconstation:read',
+  '/buoys': 'buoy:read',
+  '/buoy-station': 'buoystation:read',
   '/history': 'admin:view',
   '/port': 'port:read',
   '/berth': 'berth:read',
   '/pier': 'pier:read',
   '/dry-port': 'dryport:read',
-  '/water-zone': 'waterarea:read',
-  '/asset/increase': 'data:read',
-  '/asset/decrease': 'data:read',
-  '/asset/inventory': 'data:read',
-  '/asset/exploitation': 'data:read',
+  '/water-zone': 'waterzone:read',
+  '/asset/increase': 'assetincrease:manage',
+  '/asset/decrease': 'assetdecrease:manage',
+  '/asset/inventory': 'inventoryasset:manage',
+  '/asset/exploitation': 'assetexploitation:manage',
   '/navigation-channel': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
   '/ship-repair-facility': 'shiprepair:read',
@@ -75,11 +87,20 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/reports': 'report:read',
   '/settings': 'admin:manage',
   '/logs': 'admin:view',
-  '/symbols': 'map:manage',
+  '/symbols': 'data:read',
   '/documents/legal': 'document:read',
   '/documents/incidents': 'document:read',
   '/documents/port-planning': 'document:read',
 };
+
+const DASHBOARD_BLOCKS = [
+  { label: 'QUẢN LÝ KCHT HÀNG HẢI', icon: <ContainerOutlined />, target: '/port', permission: 'port:read' },
+  { label: 'QUẢN LÝ TÀI SẢN KCHT HÀNG HẢI', icon: <BuildOutlined />, target: '/asset/inventory', permission: 'inventoryasset:manage' },
+  { label: 'BÁO CÁO THỐNG KÊ', icon: <BarChartOutlined />, target: '/reports', permission: 'report:read' },
+  { label: 'QUẢN LÝ NGƯỜI DÙNG', icon: <UserOutlined />, target: '/users', permission: 'user:read' },
+  { label: 'QUẢN LÝ QUY HOẠCH & VẬN HÀNH', icon: <CompassOutlined />, target: '/documents/legal', permission: 'document:read' },
+  { label: 'TÍCH HỢP', icon: <ApiOutlined />, target: '/connections', permission: 'connection:read' },
+];
 
 const canAccessMenu = (path: string): boolean => {
   const required = MENU_PERMISSION_MAP[path];
@@ -142,6 +163,7 @@ export default function AppLayout() {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [isMenuFullScreen, setIsMenuFullScreen] = useState(false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const [hoveredBlock, setHoveredBlock] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
@@ -172,12 +194,14 @@ export default function AppLayout() {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'port') {
-    selectedKey = 'port-parent';
+    selectedKey = '/port';
   } else if (pathSegments[0] === 'berth') {
     selectedKey = 'berth-parent';
   } else if (pathSegments[0] === 'pier' || pathSegments[0] === 'dry-port' || pathSegments[0] === 'water-zone') {
     selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
+  } else if (pathSegments[0] === 'navigation-channel') {
+    selectedKey = 'nav-channel-parent';
+  } else if (pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'reports') {
     selectedKey = location.pathname;
@@ -188,33 +212,32 @@ export default function AppLayout() {
   useEffect(() => {
     if (selectedKey) {
       if (selectedKey === 'buoy-station-parent' || selectedKey === '/buoys') {
-        // Giữ submenu "Nhà trạm phao, tiêu" mở khi đang ở /buoy-station hoặc /buoys
-        // (tương tự chuỗi cảng biển → bến cảng được giữ mở ở nhánh phía dưới)
-        setOpenKeys(['beacon', 'buoy-station-parent']);
-      } else if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-stations' || selectedKey === '/history') {
-        setOpenKeys(['beacon']);
-      } else if (selectedKey.startsWith('/gis')) {
-        setOpenKeys(['gis']);
-      } else if (selectedKey === 'berth-parent') {
-        setOpenKeys(['cangben', 'port-parent', 'berth-parent']);
-      } else if (selectedKey === 'port-parent') {
-        setOpenKeys(['cangben', 'port-parent']);
-      } else if (selectedKey === '/pier') {
-        setOpenKeys(['cangben', 'port-parent', 'berth-parent']);
-      } else if (['/dry-port', '/water-zone'].includes(selectedKey)) {
-        setOpenKeys(['cangben']);
+        // Giữ chuỗi cảng biển → luồng hàng hải → nhà trạm phao/tiêu mở khi ở /buoy-station hoặc /buoys
+        setOpenKeys(['group-kcht', 'port-tree', 'nav-channel-parent', 'buoy-station-parent']);
+      } else if (selectedKey === '/beacon-stations' || selectedKey === '/dike-revetment') {
+        setOpenKeys(['group-kcht', 'port-tree', 'nav-channel-parent']);
+      } else if (selectedKey === '/pier' || selectedKey === 'berth-parent') {
+        setOpenKeys(['group-kcht', 'port-tree', 'berth-parent']);
+      } else if (selectedKey === '/port') {
+        setOpenKeys(['group-kcht', 'port-tree']);
+      } else if (selectedKey === '/ship-repair-facility') {
+        setOpenKeys(['group-kcht', 'port-tree']);
+      } else if (selectedKey === '/vts-system') {
+        setOpenKeys(['group-kcht', 'vts-parent']);
+      } else if (selectedKey === '/radar-station' || selectedKey === '/station/coastal' || selectedKey === '/station/special') {
+        setOpenKeys(['group-kcht', 'vts-parent', 'vts-ops-center']);
+      } else if (selectedKey === '/dry-port') {
+        setOpenKeys(['group-kcht']);
+      } else if (selectedKey.startsWith('/gis') || selectedKey.startsWith('/documents') || selectedKey === '/symbols') {
+        setOpenKeys(['group-planning']);
       } else if (selectedKey.startsWith('/asset')) {
-        setOpenKeys(['asset-movement']);
-      } else if (selectedKey.startsWith('/documents')) {
-        setOpenKeys(['documents-incidents']);
-      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system'].includes(selectedKey)) {
-        setOpenKeys(['khu-nuoc-vts']);
-      } else if (selectedKey.startsWith('/station')) {
-        setOpenKeys(['stations']);
+        setOpenKeys(['group-asset']);
       } else if (selectedKey.startsWith('/reports')) {
-        setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
-      } else if (['/users', '/organizations', '/groups', '/interconnect', '/logs'].includes(selectedKey)) {
-        setOpenKeys(['system-admin']);
+        setOpenKeys(['group-reports', 'reports-chung', 'reports-kcht', 'reports-dl', 'reports-pttv', 'reports-dn', 'reports-tt48', 'reports-ccndb', 'reports-thtn']);
+      } else if (['/users', '/organizations', '/groups', '/logs'].includes(selectedKey)) {
+        setOpenKeys(['group-users']);
+      } else if (['/connections', '/interconnect'].includes(selectedKey)) {
+        setOpenKeys(['group-integration']);
       }
     }
   }, [selectedKey]);
@@ -223,132 +246,133 @@ export default function AppLayout() {
     { key: '/', icon: <DashboardOutlined />, label: 'Trang chủ' },
     { type: 'divider' as const },
     {
-      key: 'system-admin',
-      icon: <SettingOutlined />,
-      label: 'Quản trị hệ thống',
-      children: [
-        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý tài khoản người dùng' } : null,
-        canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
-        canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
-        canAccessMenu('/interconnect') ? { key: '/interconnect', label: 'Quản lý kết nối liên thông' } : null,
-        canAccessMenu('/logs') ? { key: '/logs', label: 'Quản lý log truy cập' } : null,
-      ].filter(Boolean),
-    },
-    { type: 'divider' as const },
-    /* ẨN MENU: Quản lý KCHT trên nền bản đồ (GIS)
-    {
-      key: 'gis',
-      icon: <CompassOutlined />,
-      label: 'Quản lý KCHT trên nền bản đồ (GIS)',
-      children: [
-        canAccessMenu('/gis/points') ? { key: '/gis/points', label: 'Quản lý danh mục đối tượng điểm' } : null,
-        canAccessMenu('/gis/lines') ? { key: '/gis/lines', label: 'Quản lý danh mục đối tượng đường' } : null,
-        canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', label: 'Quản lý danh mục đối tượng vùng' } : null,
-        canAccessMenu('/gis/layers') ? { key: '/gis/layers', label: 'Quản lý lớp bản đồ' } : null,
-        canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
-      ].filter(Boolean),
-    },
-    */
-    { type: 'divider' as const },
-    {
-      key: 'beacon',
-      icon: <SettingOutlined />,
-      label: 'Báo hiệu hàng hải',
-      children: [
-        (canAccessMenu('/buoy-station') || canAccessMenu('/buoys')) ? {
-          key: 'buoy-station-parent',
-          label: 'Nhà trạm Phao, tiêu',
-          icon: <BankOutlined />,
-          onTitleClick: () => navigate('/buoy-station'),
-          className: selectedKey === 'buoy-station-parent' ? 'submenu-active' : '',
-          children: [
-            canAccessMenu('/buoys') ? { key: '/buoys', label: 'Quản lý Phao, tiêu', icon: <EnvironmentOutlined /> } : null,
-          ].filter(Boolean),
-        } : null,
-        canAccessMenu('/beacon-stations') ? { key: '/beacon-stations', label: 'Đèn biển và nhà trạm', icon: <EnvironmentOutlined /> } : null,
-      ].filter(Boolean),
-    },
-    { type: 'divider' as const },
-    {
-      key: 'cangben',
+      key: 'group-kcht',
       icon: <ContainerOutlined />,
-      label: 'Quản lý KCHT Hàng Hải',
+      label: 'I. QUẢN LÝ KCHT HÀNG HẢI',
       children: [
-        (canAccessMenu('/port') || canAccessMenu('/berth') || canAccessMenu('/pier')) ? {
-          key: 'port-parent',
+        {
+          key: 'port-tree',
           label: 'Quản lý cảng biển',
           icon: <GlobalOutlined />,
           onTitleClick: () => navigate('/port'),
-          className: selectedKey === 'port-parent' ? 'submenu-active' : '',
+          className: selectedKey === '/port' || selectedKey === 'berth-parent' || selectedKey === '/pier' || selectedKey === 'nav-channel-parent' || selectedKey === 'buoy-station-parent' || selectedKey === '/buoys' || selectedKey === '/beacon-stations' || selectedKey === '/dike-revetment' || selectedKey === '/ship-repair-facility' ? 'submenu-active' : '',
           children: [
-            (canAccessMenu('/berth') || canAccessMenu('/pier')) ? {
+            canAccessMenu('/port') ? { key: '/port', label: 'Cảng biển' } : null,
+            {
               key: 'berth-parent',
-              label: 'Quản lý bến cảng',
+              label: 'Bến cảng',
               icon: <BankOutlined />,
               onTitleClick: () => navigate('/berth'),
-              className: selectedKey === 'berth-parent' ? 'submenu-active' : '',
+              className: selectedKey === 'berth-parent' || selectedKey === '/pier' ? 'submenu-active' : '',
               children: [
-                canAccessMenu('/pier') ? { key: '/pier', label: 'Quản lý cầu cảng', icon: <BuildOutlined /> } : null,
+                canAccessMenu('/pier') ? { key: '/pier', label: 'Cầu cảng', icon: <BuildOutlined /> } : null,
               ].filter(Boolean),
-            } : null,
+            },
+            {
+              key: 'nav-channel-parent',
+              label: 'Luồng hàng hải',
+              icon: <EnvironmentOutlined />,
+              onTitleClick: () => navigate('/navigation-channel'),
+              className: selectedKey === 'nav-channel-parent' || selectedKey === 'buoy-station-parent' || selectedKey === '/buoys' || selectedKey === '/beacon-stations' || selectedKey === '/dike-revetment' ? 'submenu-active' : '',
+              children: [
+                { key: 'mooring-buoy-placeholder', label: 'Bến phao', disabled: true, title: 'Chưa triển khai' },
+                canAccessMenu('/beacon-stations') ? { key: '/beacon-stations', label: 'Đèn biển + nhà trạm gắn đèn', icon: <EnvironmentOutlined /> } : null,
+                canAccessMenu('/dike-revetment') ? { key: '/dike-revetment', label: 'Đê/kè', icon: <BlockOutlined /> } : null,
+                {
+                  key: 'buoy-station-parent',
+                  label: 'Nhà trạm phao/tiêu',
+                  icon: <BankOutlined />,
+                  onTitleClick: () => navigate('/buoy-station'),
+                  className: selectedKey === 'buoy-station-parent' || selectedKey === '/buoys' ? 'submenu-active' : '',
+                  children: [
+                    canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu', icon: <EnvironmentOutlined /> } : null,
+                  ].filter(Boolean),
+                },
+              ].filter(Boolean),
+            },
+            { key: 'anchorage-area-placeholder', label: 'Khu neo đậu', disabled: true, title: 'Chưa triển khai' },
+            { key: 'transshipment-area-placeholder', label: 'Khu chuyển tải', disabled: true, title: 'Chưa triển khai' },
+            { key: 'storm-shelter-area-placeholder', label: 'Khu tránh/trú bão', disabled: true, title: 'Chưa triển khai' },
+            canAccessMenu('/ship-repair-facility') ? { key: '/ship-repair-facility', label: 'CS sửa chữa/đóng tàu' } : null,
           ].filter(Boolean),
-        } : null,
-        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Quản lý cảng cạn', icon: <TruckOutlined /> } : null,
-        canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
+        },
+        {
+          key: 'vts-parent',
+          label: 'Hệ thống VTS',
+          icon: <AimOutlined />,
+          onTitleClick: () => navigate('/vts-system'),
+          className: selectedKey === '/vts-system' || selectedKey === '/radar-station' || selectedKey === '/station/coastal' || selectedKey === '/station/special' ? 'submenu-active' : '',
+          children: [
+            canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Thông tin hệ thống VTS' } : null,
+            {
+              key: 'vts-ops-center',
+              label: 'Trung tâm điều hành VTS',
+              className: selectedKey === '/radar-station' || selectedKey === '/station/coastal' || selectedKey === '/station/special' ? 'submenu-active' : '',
+              children: [
+                { key: 'vts-ops-info-placeholder', label: 'Thông tin TT ĐHVTS', disabled: true, title: 'Chưa triển khai' },
+                canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Radar' } : null,
+                { key: 'ais-placeholder', label: 'AIS', disabled: true, title: 'Chưa triển khai' },
+                { key: 'cctv-placeholder', label: 'CCTV', disabled: true, title: 'Chưa triển khai' },
+                { key: 'scada-placeholder', label: 'SCADA', disabled: true, title: 'Chưa triển khai' },
+                { key: 'transmission-placeholder', label: 'Truyền dẫn', disabled: true, title: 'Chưa triển khai' },
+                { key: 'vts-aux-placeholder', label: 'Phụ trợ VTS', disabled: true, title: 'Chưa triển khai' },
+                { key: 'vhf-placeholder', label: 'VHF', disabled: true, title: 'Chưa triển khai' },
+                canAccessMenu('/station/coastal') ? { key: '/station/coastal', label: 'Đài TT duyên hải' } : null,
+                canAccessMenu('/station/special') ? { key: '/station/special', label: 'Inmarsat' } : null,
+                { key: 'sarsat-placeholder', label: 'Sarsat', disabled: true, title: 'Chưa triển khai' },
+                { key: 'lrit-placeholder', label: 'LRIT', disabled: true, title: 'Chưa triển khai' },
+                { key: 'tt-center-placeholder', label: 'Trung tâm xử lý TT', disabled: true, title: 'Chưa triển khai' },
+              ].filter(Boolean),
+            },
+          ].filter(Boolean),
+        },
+        canAccessMenu('/dry-port') ? { key: '/dry-port', label: 'Thông tin cảng cạn', icon: <TruckOutlined /> } : null,
       ].filter(Boolean),
     },
-    /* ẨN MENU: Biến động tài sản
     {
-      key: 'asset-movement',
-      icon: <ContainerOutlined />,
-      label: 'Biến động tài sản',
+      key: 'group-asset',
+      icon: <BuildOutlined />,
+      label: 'II. QUẢN LÝ TÀI SẢN KCHT HÀNG HẢI',
       children: [
         canAccessMenu('/asset/increase') ? { key: '/asset/increase', label: 'Yêu cầu tăng tài sản' } : null,
         canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', label: 'Yêu cầu giảm tài sản' } : null,
         canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', label: 'Kiểm kê tài sản' } : null,
         canAccessMenu('/asset/exploitation') ? { key: '/asset/exploitation', label: 'Khai thác tài sản' } : null,
-      ].filter(Boolean),
-    },
-    */
-    {
-      key: 'documents-incidents',
-      icon: <ContainerOutlined />,
-      label: 'Văn bản & Sự cố',
-      children: [
-        canAccessMenu('/documents/legal') ? { key: '/documents/legal', label: 'Văn bản pháp lý' } : null,
-        canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Sự cố hàng hải' } : null,
-        canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', label: 'Quy hoạch bến cảng' } : null,
-      ].filter(Boolean),
-    },
-    { type: 'divider' as const },
-    {
-      key: 'khu-nuoc-vts',
-      icon: <SettingOutlined />,
-      label: 'Khu nước & VTS',
-      children: [
-        canAccessMenu('/navigation-channel') ? { key: '/navigation-channel', label: 'Luồng hàng hải' } : null,
-        canAccessMenu('/dike-revetment') ? { key: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: <BlockOutlined /> } : null,
-        canAccessMenu('/ship-repair-facility') ? { key: '/ship-repair-facility', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
-        canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Trạm Radar' } : null,
-        canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Hệ thống VTS' } : null,
+        { key: 'asset-port-placeholder', label: 'Tài sản cảng biển', disabled: true, title: 'Chưa triển khai' },
+        { key: 'asset-berth-placeholder', label: 'Tài sản bến cảng', disabled: true, title: 'Chưa triển khai' },
+        { key: 'asset-pier-placeholder', label: 'Tài sản cầu cảng', disabled: true, title: 'Chưa triển khai' },
+        { key: 'asset-buoy-placeholder', label: 'Tài sản bến phao', disabled: true, title: 'Chưa triển khai' },
+        { key: 'asset-dryport-placeholder', label: 'Tài sản cảng cạn', disabled: true, title: 'Chưa triển khai' },
+        { key: 'asset-output-placeholder', label: 'Quản lý sản lượng cảng biển', disabled: true, title: 'Chưa triển khai' },
       ].filter(Boolean),
     },
     {
-      key: 'stations',
-      icon: <SettingOutlined />,
-      label: 'Đài duyên hải & Vệ tinh',
+      key: 'group-approval',
+      icon: <CheckSquareOutlined />,
+      label: 'III. PHÊ DUYỆT',
       children: [
-        canAccessMenu('/station/coastal') ? { key: '/station/coastal', label: 'Đài duyên hải VTS' } : null,
-        canAccessMenu('/station/special') ? { key: '/station/special', label: 'Đài vệ tinh Inmarsat' } : null,
+        { key: 'approve-berth-placeholder', label: 'Duyệt Bến cảng', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-pier-placeholder', label: 'Duyệt Cầu cảng', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-mooring-buoy-placeholder', label: 'Duyệt Bến phao', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-storm-shelter-placeholder', label: 'Duyệt Khu tránh/trú bão', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-transshipment-placeholder', label: 'Duyệt Khu chuyển tải', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-anchorage-placeholder', label: 'Duyệt Khu neo đậu', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-shiprepair-placeholder', label: 'Duyệt CS sửa chữa/đóng tàu', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-navchannel-placeholder', label: 'Duyệt Luồng hàng hải', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-beacon-placeholder', label: 'Duyệt Đèn biển + nhà trạm gắn đèn', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-dike-placeholder', label: 'Duyệt Đê/kè', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-buoy-station-placeholder', label: 'Duyệt Nhà trạm phao/tiêu', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-buoy-placeholder', label: 'Duyệt Phao tiêu', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-vts-placeholder', label: 'Duyệt hệ thống VTS', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-dryport-placeholder', label: 'Duyệt cảng cạn', disabled: true, title: 'Chưa triển khai' },
+        { key: 'approve-output-placeholder', label: 'Duyệt sản lượng cảng biển', disabled: true, title: 'Chưa triển khai' },
       ].filter(Boolean),
     },
-    { type: 'divider' as const },
-    /* ẨN MENU: BÁO CÁO THỐNG KÊ
-    canAccessMenu('/reports') ? {
-      key: 'reports-parent',
+    {
+      key: 'group-reports',
       icon: <BarChartOutlined />,
-      label: 'BÁO CÁO THỐNG KÊ',
-      children: [
+      label: 'IV. BÁO CÁO THỐNG KÊ',
+      children: canAccessMenu('/reports') ? [
         { key: '/reports', label: 'Tất cả báo cáo' },
         {
           key: 'reports-chung',
@@ -360,8 +384,8 @@ export default function AppLayout() {
             { key: '/reports/F-144', label: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải' },
             { key: '/reports/F-145', label: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải' },
             { key: '/reports/F-146', label: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải' },
-            { key: '/reports/F-147', label: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý' }
-          ]
+            { key: '/reports/F-147', label: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý' },
+          ],
         },
         {
           key: 'reports-kcht',
@@ -371,16 +395,16 @@ export default function AppLayout() {
             { key: '/reports/F-149', label: 'Biểu 02-N: Năng lực thông qua cảng biển' },
             { key: '/reports/F-150', label: 'Biểu 03-N: Thống kê cầu cảng' },
             { key: '/reports/F-151', label: 'Biểu 04-N: Thống kê luồng hàng hải' },
-            { key: '/reports/F-152', label: <span style={{ color: 'red' }}>Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão</span> },
-            { key: '/reports/F-153', label: <span style={{ color: 'red' }}>Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu</span> },
-            { key: '/reports/F-154', label: <span style={{ color: 'red' }}>Biểu 07-N: Thống kê bến phao, khu neo đậu</span> },
+            { key: '/reports/F-152', label: 'Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão' },
+            { key: '/reports/F-153', label: 'Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu' },
+            { key: '/reports/F-154', label: 'Biểu 07-N: Thống kê bến phao, khu neo đậu' },
             { key: '/reports/F-155', label: 'Biểu 08-N: Thống kê hệ thống đèn biển' },
-            { key: '/reports/F-156', label: <span style={{ color: 'red' }}>Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng</span> },
-            { key: '/reports/F-157', label: <span style={{ color: 'red' }}>Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng</span> },
+            { key: '/reports/F-156', label: 'Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng' },
+            { key: '/reports/F-157', label: 'Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng' },
             { key: '/reports/F-158', label: 'Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)' },
-            { key: '/reports/F-159', label: <span style={{ color: 'red' }}>Biểu 12-N: Hệ thống các đài thông tin duyên hải</span> },
-            { key: '/reports/F-160', label: 'Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát' }
-          ]
+            { key: '/reports/F-159', label: 'Biểu 12-N: Hệ thống các đài thông tin duyên hải' },
+            { key: '/reports/F-160', label: 'Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát' },
+          ],
         },
         {
           key: 'reports-dl',
@@ -394,8 +418,8 @@ export default function AppLayout() {
             { key: '/reports/F-166', label: 'Biểu 12-N: Khối lượng hàng hóa, hành khách thông qua cảng biển theo năm' },
             { key: '/reports/F-167', label: 'Biểu 13-T: Lượt tàu thuyền ra, vào cảng' },
             { key: '/reports/F-168', label: 'Biểu 14-T: Khối lượng hàng hóa thông qua cảng biển bằng đội tàu biển Việt Nam và phương tiện thủy nội địa' },
-            { key: '/reports/F-169', label: 'Biểu 15-T: Khối lượng hàng hóa, lượt tàu thông qua cảng biển, bến trong khu vực quản lý' }
-          ]
+            { key: '/reports/F-169', label: 'Biểu 15-T: Khối lượng hàng hóa, lượt tàu thông qua cảng biển, bến trong khu vực quản lý' },
+          ],
         },
         {
           key: 'reports-pttv',
@@ -403,16 +427,16 @@ export default function AppLayout() {
           children: [
             { key: '/reports/F-170', label: 'Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải' },
             { key: '/reports/F-171', label: 'Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam' },
-            { key: '/reports/F-172', label: 'Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt' }
-          ]
+            { key: '/reports/F-172', label: 'Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt' },
+          ],
         },
         {
           key: 'reports-dn',
           label: 'Nhóm chỉ tiêu về doanh nghiệp',
           children: [
             { key: '/reports/F-173', label: 'Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển' },
-            { key: '/reports/F-174', label: 'Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển' }
-          ]
+            { key: '/reports/F-174', label: 'Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển' },
+          ],
         },
         {
           key: 'reports-tt48',
@@ -422,8 +446,8 @@ export default function AppLayout() {
             { key: '/reports/F-176', label: 'Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý' },
             { key: '/reports/F-177', label: 'Biểu 28-T: Khối lượng hàng hóa thông qua cảng' },
             { key: '/reports/F-178', label: 'Biểu 29-N: Khối lượng hàng hóa thông qua cảng' },
-            { key: '/reports/F-179', label: 'Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển' }
-          ]
+            { key: '/reports/F-179', label: 'Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển' },
+          ],
         },
         {
           key: 'reports-ccndb',
@@ -438,8 +462,8 @@ export default function AppLayout() {
             { key: '/reports/F-186', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đèn biển và nhà trạm gắn với đèn biển' },
             { key: '/reports/F-187', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đê, kè' },
             { key: '/reports/F-188', label: 'Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải' },
-            { key: '/reports/F-189', label: 'Báo cáo tình hình hoạt động của báo hiệu hàng hải và công trình đê, kè' }
-          ]
+            { key: '/reports/F-189', label: 'Báo cáo tình hình hoạt động của báo hiệu hàng hải và công trình đê, kè' },
+          ],
         },
         {
           key: 'reports-thtn',
@@ -448,17 +472,54 @@ export default function AppLayout() {
             { key: '/reports/F-180N', label: 'Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng biển theo ngày' },
             { key: '/reports/F-182N', label: 'Biểu 13-T: Lượt tàu thuyền vào, rời cảng biển theo ngày' },
             { key: '/reports/F-183N', label: 'Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu thông qua cảng biển bằng đội tàu Việt Nam theo ngày' },
-            { key: '/reports/F-184N', label: 'Biểu 15-T: Khối lượng hàng hóa, hành khách thông qua qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý theo ngày' }
-          ]
-        }
-      ]
-    } : null,
-    */
+            { key: '/reports/F-184N', label: 'Biểu 15-T: Khối lượng hàng hóa, hành khách thông qua qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý theo ngày' },
+          ],
+        },
+      ] : [],
+    },
+    {
+      key: 'group-users',
+      icon: <UserOutlined />,
+      label: 'V. QUẢN LÝ NGƯỜI DÙNG',
+      children: [
+        canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
+        canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm người dùng' } : null,
+        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý người dùng' } : null,
+        canAccessMenu('/logs') ? { key: '/logs', label: 'Quản lý log truy cập' } : null,
+      ].filter(Boolean),
+    },
+    {
+      key: 'group-planning',
+      icon: <CompassOutlined />,
+      label: 'VI. QUẢN LÝ QUY HOẠCH & VẬN HÀNH',
+      children: [
+        { key: 'planning-placeholder', label: 'Quản lý quy hoạch', disabled: true, title: 'Chưa triển khai' },
+        { key: 'operation-placeholder', label: 'Quản lý thông tin vận hành khai thác', disabled: true, title: 'Chưa triển khai' },
+        { key: 'maintenance-placeholder', label: 'Quản lý thông tin bảo trì', disabled: true, title: 'Chưa triển khai' },
+        canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Quản lý thông tin sự cố' } : null,
+        canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
+        canAccessMenu('/symbols') ? { key: '/symbols', label: 'Quản lý biểu tượng trên bản đồ' } : null,
+        canAccessMenu('/gis/points') ? { key: '/gis/points', label: 'Quản lý danh mục đối tượng điểm' } : null,
+        canAccessMenu('/gis/lines') ? { key: '/gis/lines', label: 'Quản lý danh mục đối tượng đường' } : null,
+        canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', label: 'Quản lý danh mục đối tượng vùng' } : null,
+        canAccessMenu('/documents/legal') ? { key: '/documents/legal', label: 'Quản lý văn bản pháp lý' } : null,
+        { key: 'records-placeholder', label: 'Quản lý hồ sơ', disabled: true, title: 'Chưa triển khai' },
+      ].filter(Boolean),
+    },
+    {
+      key: 'group-integration',
+      icon: <ApiOutlined />,
+      label: 'VII. TÍCH HỢP',
+      children: [
+        canAccessMenu('/connections') ? { key: '/connections', label: 'Quản lý kết nối liên thông chia sẻ dữ liệu' } : null,
+        canAccessMenu('/interconnect') ? { key: '/interconnect', label: 'Quản lý kết nối liên thông' } : null,
+        { key: 'chart-integration-placeholder', label: 'Tích hợp các mảnh hải đồ điện tử', disabled: true, title: 'Chưa triển khai' },
+        { key: 'planning-map-integration-placeholder', label: 'Tích hợp bản đồ quy hoạch cảng biển', disabled: true, title: 'Chưa triển khai' },
+      ].filter(Boolean),
+    },
     { type: 'divider' as const },
-    canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
-    { type: 'divider' as const },
-    canAccessMenu('/symbols') ? { key: '/symbols', icon: <CompassOutlined />, label: 'Quản lý biểu tượng trên bản đồ' } : null,
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
+    canAccessMenu('/water-zone') ? { key: '/water-zone', label: 'Quản lý vùng nước' } : null,
   ].filter(Boolean) as MenuProps['items'];
 
   const filterEmptyChildren = (items: MenuProps['items']): MenuProps['items'] => {
@@ -821,6 +882,49 @@ export default function AppLayout() {
             overflow: location.pathname === '/gis/map' ? 'hidden' : 'auto',
           }}
         >
+          {location.pathname === '/' && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: spaceLg,
+                marginBottom: spaceLg,
+              }}
+            >
+              {DASHBOARD_BLOCKS.map((block) => (
+                <div
+                  key={block.target}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={block.label}
+                  onClick={() => {
+                    navigate(block.target);
+                    if (isMobile) setMobileDrawerOpen(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(block.target);
+                      if (isMobile) setMobileDrawerOpen(false);
+                    }
+                  }}
+                  onMouseEnter={() => setHoveredBlock(block.target)}
+                  onMouseLeave={() => setHoveredBlock(null)}
+                  style={{
+                    ...cardStyle,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spaceMd,
+                    boxShadow: hoveredBlock === block.target ? shadowMd : shadowSm,
+                  }}
+                >
+                  <span style={{ fontSize: fontSizeXl, color: textPrimary, display: 'inline-flex' }}>{block.icon}</span>
+                  <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: textPrimary }}>{block.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <Outlet />
         </Content>
       </Layout>
