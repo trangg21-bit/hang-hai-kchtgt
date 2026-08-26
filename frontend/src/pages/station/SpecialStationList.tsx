@@ -31,8 +31,6 @@ import {
   SendOutlined,
   UploadOutlined,
   FileOutlined,
-  FileExcelOutlined,
-  ReloadOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -65,6 +63,7 @@ import EmptyState from '../../components/EmptyState';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
@@ -78,7 +77,6 @@ import {
   textPrimary,
   textSecondary,
   textTertiary,
-  fontSizeSm,
   fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
@@ -97,8 +95,9 @@ import {
   uploadHintStyle,
   inputStyle,
   selectStyle,
+  filterLabelStyle,
+  filterInputStyle,
   primaryButtonStyle,
-  outlineButtonStyle,
   dangerButtonStyle,
   rejectReasonStyle,
   formFieldStyle,
@@ -157,10 +156,14 @@ export default function SpecialStationList() {
   const [filterKeyword, setFilterKeyword] = useState<string>('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>(undefined);
   const [filterDateRange, setFilterDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [filterUpdatedBy, setFilterUpdatedBy] = useState<string | undefined>(undefined);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   // Dropdown options
   const [operatingOrgOptions, setOperatingOrgOptions] = useState<{ value: string; label: string }[]>([]);
   const [mapSymbolOptions, setMapSymbolOptions] = useState<{ value: string; label: string }[]>([]);
+  const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
+  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
 
   // Drawer States
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -191,12 +194,19 @@ export default function SpecialStationList() {
   useEffect(() => {
     (async () => {
       try {
+        const orgTree = await organizationService.getTree();
+        setOrgUnitOptions((orgTree || []) as OrgUnitTreeOption[]);
+
         const orgRes = await organizationService.list({ pageSize: 1000 });
         const orgs = orgRes.data || (orgRes as any).content || [];
         setOperatingOrgOptions(orgs.map((o: any) => ({ value: o.id, label: o.name })));
 
         const symbols = await symbolService.getOptions();
         setMapSymbolOptions(symbols.map((s: any) => ({ value: s.id, label: s.name })));
+
+        const userRes = await userService.list({ pageSize: 1000 });
+        const users = userRes.data || (userRes as any).content || [];
+        setUserOptions(users.map((u: any) => ({ value: u.id, label: u.fullName || u.username || u.id })));
       } catch (e) {
         console.error('Failed to load lookup options', e);
       }
@@ -220,6 +230,7 @@ export default function SpecialStationList() {
         keyword: filterKeyword ? filterKeyword.trim() : undefined,
         conditionStatus: filterConditionStatus,
         approvalStatus: activeTab === 'ALL' ? undefined : activeTab,
+        updatedBy: filterUpdatedBy,
         updatedFrom: fromStr,
         updatedTo: toStr,
       });
@@ -249,6 +260,7 @@ export default function SpecialStationList() {
     filterKeyword,
     filterConditionStatus,
     filterDateRange,
+    filterUpdatedBy,
   ]);
 
   useEffect(() => {
@@ -282,6 +294,7 @@ export default function SpecialStationList() {
     setFilterKeyword('');
     setFilterConditionStatus(undefined);
     setFilterDateRange(null);
+    setFilterUpdatedBy(undefined);
     setPage(1);
   };
 
@@ -476,14 +489,6 @@ export default function SpecialStationList() {
   };
 
   // Export Excel
-  const handleExportExcel = () => {
-    const filename = `danh_sach_dai_inmarsat_${dayjs().format('YYYYMMDD')}.xlsx`;
-    toast.info(`Đang tạo tệp ${filename}...`);
-    setTimeout(() => {
-      toast.success(`Xuất dữ liệu thành công: ${filename}`);
-    }, 800);
-  };
-
   // Anti-self-approval checker
   const isCreator = (record: CoastalStationInmarsatResponse) => {
     return currentUserId && record.createdBy && String(record.createdBy) === String(currentUserId);
@@ -697,26 +702,23 @@ export default function SpecialStationList() {
 
   // Sidebar Filter Component
   const sidebarFilterContent = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceMd }}>
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Đơn vị quản lý
-        </Text>
+    <>
+      <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
         <OrgUnitTreeSelect
+          organizations={orgUnitOptions}
           value={filterOrgUnitId}
           onChange={(val) => setFilterOrgUnitId(val)}
           placeholder="Tất cả"
           allowClear
           treeDefaultExpandAll={true}
           listHeight={256}
-          style={{ width: '100%', marginTop: spaceXs, borderRadius: radiusPill }}
+          style={{ ...selectStyle, width: '100%' }}
         />
       </div>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Tỉnh / Thành phố
-        </Text>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tỉnh / Thành phố</div>
         <Select
           value={filterProvinceId}
           onChange={(val) => setFilterProvinceId(val)}
@@ -727,67 +729,81 @@ export default function SpecialStationList() {
           filterOption={(input, option) =>
             normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
           }
-          style={{ ...selectStyle, width: '100%', marginTop: spaceXs }}
+          style={{ ...selectStyle, width: '100%' }}
         />
       </div>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Tìm kiếm từ khóa
-        </Text>
-        <Input.Search
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tìm kiếm từ khóa</div>
+        <Input
           value={filterKeyword}
           onChange={(e) => setFilterKeyword(e.target.value)}
-          onSearch={() => { setPage(1); loadData(); }}
+          onPressEnter={() => { setPage(1); loadData(); }}
           placeholder="Mã, tên đài, địa chỉ..."
           allowClear
-          style={{ ...inputStyle, width: '100%', marginTop: spaceXs }}
+          style={{ ...inputStyle, width: '100%' }}
         />
       </div>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Tình trạng hoạt động
-        </Text>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng hoạt động</div>
         <Select
           value={filterConditionStatus}
           onChange={(val) => setFilterConditionStatus(val)}
           options={CONDITION_STATUS_OPTIONS}
           placeholder="Tất cả tình trạng"
           allowClear
-          style={{ ...selectStyle, width: '100%', marginTop: spaceXs }}
+          style={{ ...selectStyle, width: '100%' }}
         />
       </div>
 
-      <div>
-        <Text style={{ fontWeight: fontWeightBold, fontSize: fontSizeSm, color: textSecondary }}>
-          Khoảng ngày cập nhật
-        </Text>
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Khoảng ngày cập nhật</div>
         <RangePicker
           value={filterDateRange}
           onChange={(dates) => setFilterDateRange(dates as any)}
+          placeholder={['Từ ngày', 'Đến ngày']}
           format="DD/MM/YYYY"
-          style={{ width: '100%', marginTop: spaceXs, borderRadius: radiusPill, height: 40 }}
+          style={{ ...filterInputStyle, width: '100%' }}
         />
       </div>
 
-      <div style={{ display: 'flex', gap: spaceSm, marginTop: spaceSm }}>
-        <Button
-          type="primary"
-          icon={<ReloadOutlined />}
-          onClick={() => { setPage(1); loadData(); }}
-          style={{ ...primaryButtonStyle, flex: 1 }}
-        >
-          Áp dụng
-        </Button>
-        <Button
-          onClick={handleResetFilter}
-          style={{ ...outlineButtonStyle, flex: 1 }}
-        >
-          Đặt lại
-        </Button>
-      </div>
-    </div>
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị khai thác</div>
+            <Select
+              value={filterOperatingOrgId}
+              onChange={(val) => setFilterOperatingOrgId(val)}
+              options={operatingOrgOptions}
+              placeholder="Tất cả đơn vị khai thác"
+              allowClear
+              showSearch
+              filterOption={(input, option) =>
+                normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+              }
+              style={{ ...selectStyle, width: '100%' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
+            <Select
+              value={filterUpdatedBy}
+              onChange={(val) => setFilterUpdatedBy(val)}
+              options={userOptions}
+              placeholder="Tất cả cán bộ"
+              allowClear
+              showSearch
+              filterOption={(input, option) =>
+                normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+              }
+              style={{ ...selectStyle, width: '100%' }}
+            />
+          </div>
+        </>
+      )}
+    </>
   );
 
   return (
@@ -807,13 +823,6 @@ export default function SpecialStationList() {
                 Thêm đài Inmarsat
               </Button>
             )}
-            <Button
-              icon={<FileExcelOutlined />}
-              onClick={handleExportExcel}
-              style={outlineButtonStyle}
-            >
-              Xuất Excel
-            </Button>
           </Space>
         }
       />
@@ -830,6 +839,8 @@ export default function SpecialStationList() {
           loadData();
         }}
         onFilterReset={handleResetFilter}
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed((prev) => !prev)}
       >
         <DataTable
           loading={loading}
@@ -917,6 +928,7 @@ export default function SpecialStationList() {
                           style={{ marginBottom: spaceFormField }}
                         >
                           <OrgUnitTreeSelect
+                            organizations={orgUnitOptions}
                             placeholder="Chọn đơn vị quản lý"
                             allowClear
                             treeDefaultExpandAll={true}
